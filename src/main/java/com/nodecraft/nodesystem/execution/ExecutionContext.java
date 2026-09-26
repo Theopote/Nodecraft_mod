@@ -3,8 +3,14 @@ package com.nodecraft.nodesystem.execution;
 import com.nodecraft.core.exception.NodeExecutionException;
 import com.nodecraft.nodesystem.minecraft.DefaultPlayerAccessor;
 import com.nodecraft.nodesystem.minecraft.PlayerAccessor;
+import com.nodecraft.nodesystem.execution.subgraph.SubgraphCallFrame;
+import com.nodecraft.nodesystem.io.SavedGraph;
+
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -27,6 +33,10 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
     
     // 存储上下文变量
     private final Map<String, Object> variables = new HashMap<>();
+
+    private final Deque<SubgraphCallFrame> subgraphCallFrames = new ArrayDeque<>();
+    private Map<String, SavedGraph> subgraphDefinitions = Map.of();
+    private boolean skipOutputExecuteSideEffects;
     
     // 玩家数据访问器
     private PlayerAccessor playerAccessor;
@@ -182,5 +192,41 @@ public class ExecutionContext implements com.nodecraft.nodesystem.api.ExecutionC
      */
     public Map<String, Object> getVariables() {
         return Collections.unmodifiableMap(variables);
+    }
+
+    public void pushSubgraphCallFrame(SubgraphCallFrame frame) {
+        if (frame != null) {
+            subgraphCallFrames.push(frame);
+        }
+    }
+
+    @Nullable
+    public SubgraphCallFrame popSubgraphCallFrame() {
+        return subgraphCallFrames.isEmpty() ? null : subgraphCallFrames.pop();
+    }
+
+    @Nullable
+    public SubgraphCallFrame peekSubgraphCallFrame() {
+        return subgraphCallFrames.peek();
+    }
+
+    public Map<String, SavedGraph> getSubgraphDefinitions() {
+        return subgraphDefinitions;
+    }
+
+    public void setSubgraphDefinitions(@Nullable Map<String, SavedGraph> definitions) {
+        if (definitions == null || definitions.isEmpty()) {
+            subgraphDefinitions = Map.of();
+            return;
+        }
+        subgraphDefinitions = Collections.unmodifiableMap(new LinkedHashMap<>(definitions));
+    }
+
+    public boolean isSkipOutputExecuteSideEffects() {
+        return skipOutputExecuteSideEffects;
+    }
+
+    public void setSkipOutputExecuteSideEffects(boolean skipOutputExecuteSideEffects) {
+        this.skipOutputExecuteSideEffects = skipOutputExecuteSideEffects;
     }
 }

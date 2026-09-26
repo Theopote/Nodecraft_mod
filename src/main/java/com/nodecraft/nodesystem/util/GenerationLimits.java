@@ -108,6 +108,9 @@ public final class GenerationLimits {
     /** Maximum dilate/erode iterations per morphology operation. */
     public static final int MAX_MORPHOLOGY_ITERATIONS = 64;
 
+    /** Maximum nested subgraph call depth (hard budget; not user-tunable). */
+    public static final int MAX_SUBGRAPH_CALL_DEPTH = 8;
+
     private GenerationLimits() {
     }
 

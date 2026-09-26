@@ -31,6 +31,8 @@ Last updated: 2026-09-25
 | Pattern linear / arrays & instancing | [`node-language-v1-pattern-linear.md`](./node-language-v1-pattern-linear.md) **(PASSED / FROZEN, V41)** |
 | FileIO / IMAGE import | [`node-language-v1-fileio.md`](./node-language-v1-fileio.md) **(PASSED / FROZEN, V56)** |
 | Block Morphology | [`node-language-v1-morphology.md`](./node-language-v1-morphology.md) **(PASSED / FROZEN, V57)** |
+| Organization & Subgraph | [`node-language-v1-organization.md`](./node-language-v1-organization.md) **(PASSED / FROZEN, V58)** |
+| Organization & Subgraph | [`node-language-v1-organization.md`](./node-language-v1-organization.md) **(PASSED / FROZEN, V58)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 

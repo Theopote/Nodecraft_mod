@@ -28,6 +28,18 @@ public enum NodeEffect {
     /** UI, chat, or other editor-facing effects. */
     UI_EFFECT(false),
 
+    /** Reads graph/subgraph call-frame inputs (Graph Input). */
+    CONTEXT_READ(true),
+
+    /** Writes graph/subgraph call-frame outputs (Graph Output). */
+    CONTEXT_WRITE(true),
+
+    /** Composite shell node; child side-effect policy enforced by nested executor. */
+    COMPOSITE(true),
+
+    /** Reserved for non-runtime metadata helpers. */
+    EDITOR_ONLY(true),
+
     /**
      * Annotation placeholder — resolved via {@link com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver}.
      */

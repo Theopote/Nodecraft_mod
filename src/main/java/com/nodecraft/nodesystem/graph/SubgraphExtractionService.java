@@ -167,7 +167,9 @@ public final class SubgraphExtractionService {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("inputName", inputKey);
         state.put("required", targetPort != null && targetPort.isRequired());
-        state.put("inferredType", dataTypeId(targetPort));
+        String typeId = dataTypeId(targetPort);
+        state.put("inferredType", typeId);
+        state.put("declaredType", typeId);
         node.state = state;
         return node;
     }
@@ -178,7 +180,9 @@ public final class SubgraphExtractionService {
         node.typeId = GRAPH_OUTPUT_TYPE_ID;
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("outputName", outputKey);
-        state.put("inferredType", dataTypeId(sourcePort));
+        String typeId = dataTypeId(sourcePort);
+        state.put("inferredType", typeId);
+        state.put("declaredType", typeId);
         node.state = state;
         return node;
     }

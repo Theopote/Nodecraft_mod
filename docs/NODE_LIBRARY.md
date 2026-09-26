@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **532**
+- Total nodes: **528**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -62,7 +62,7 @@
 | `utilities.assist` | 5 |
 | `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
-| `utilities.organization` | 7 |
+| `utilities.organization` | 3 |
 | `variable` | 6 |
 | `world.query` | 11 |
 | `world.read` | 12 |
@@ -785,17 +785,13 @@
 |---|---|---|---|
 | Block Morphology | `utilities.morphology.block_list_morphology` | Dilate or erode a block set. | `BlockListMorphologyNode` |
 
-## utilities.organization (7)
+## utilities.organization (3)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with optional override and default fallback. | `GraphInputNode` |
-| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into execution context. | `GraphOutputNode` |
-| Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph with named input/output mapping. | `SubgraphNode` |
-| Subgraph Register | `utilities.organization.subgraph_register` | Registers a subgraph reference into execution context for Subgraph calls. | `SubgraphRegisterNode` |
-| Runtime Preset | `utilities.organization.preset` | Saves, loads, and deletes named runtime presets in execution context. | `NodePresetNode` |
-| Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
-| Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |
+| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with typed default fallback. | `GraphInputNode` |
+| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into the active call frame. | `GraphOutputNode` |
+| Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph definition with typed interface ports. | `SubgraphNode` |
 
 ## variable (6)
 

@@ -15,14 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@NodeInfo(
-    effect = NodeEffect.PURE,
-    id = "utilities.organization.preset",
-    displayName = "Runtime Preset",
-    description = "Saves, loads, and deletes named runtime presets in execution context.",
-    category = "utilities.organization",
-    order = 7
-)
+/** @deprecated Removed from catalog in Graph V58. */
+@Deprecated
 public class NodePresetNode extends BaseNode {
 
     @NodeProperty(displayName = "Default Preset Name", category = "Preset", order = 1)

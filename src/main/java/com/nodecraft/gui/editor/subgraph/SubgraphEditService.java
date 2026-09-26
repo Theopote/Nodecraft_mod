@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.io.SavedPosition;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphPortIds;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -109,12 +110,13 @@ public final class SubgraphEditService {
         try {
             syncGraphNodePositions(document.getGraph(), document.getNodePositions());
             if (wasRecording) {
-                beforeSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
+                beforeSnapshot = snapshotDocument(document);
             }
             SubgraphExtractionService.ExtractionResult extraction =
                     SubgraphExtractionService.extract(document.getGraph(), selection, subgraphName);
-            String embeddedGraphJson = GraphSerializer.toJson(extraction.savedGraph());
-            Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName, embeddedGraphJson);
+            String ref = keyToken(subgraphName);
+            document.getSubgraphDefinitions().put(ref, extraction.savedGraph());
+            Map<String, Object> subgraphState = buildSubgraphNodeState(extraction, subgraphName);
             NodePosition wrapperPosition = selectionCenter(document.getNodePositions(), selection);
 
             if (wasRecording) {
@@ -131,6 +133,9 @@ public final class SubgraphEditService {
                 if (wrapper == null) {
                     return false;
                 }
+                if (wrapper instanceof SubgraphNode subgraphWrapper) {
+                    subgraphWrapper.syncPortsFromDefinition(extraction.savedGraph());
+                }
 
                 for (UUID nodeId : new ArrayList<>(selection)) {
                     if (document.getGraph().removeNode(nodeId)) {
@@ -144,7 +149,7 @@ public final class SubgraphEditService {
                 host.setSelectedNodeId(wrapper.getId());
                 host.notifyStructureDirty();
                 if (wasRecording) {
-                    SavedGraph afterSnapshot = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
+                    SavedGraph afterSnapshot = snapshotDocument(document);
                     history.resumeRecording();
                     history.recordGraphTransaction("Create Subgraph", beforeSnapshot, afterSnapshot);
                     history.pauseRecording();
@@ -185,14 +190,20 @@ public final class SubgraphEditService {
         EditContext context = editStack.pop();
         try {
             syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-            SavedGraph savedGraph = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
-            String embeddedGraphJson = GraphSerializer.toJson(savedGraph);
+            SavedGraph savedGraph = snapshotDocument(document);
 
             INode wrapperNode = context.parentGraph().getNode(context.wrapperNodeId());
-            if (wrapperNode instanceof BaseNode wrapperBase) {
-                Map<String, Object> state = copyStateMap(wrapperBase.getNodeState());
-                state.put("embeddedGraphJson", embeddedGraphJson);
-                wrapperBase.setNodeState(state);
+            if (wrapperNode instanceof SubgraphNode wrapperSubgraph) {
+                String ref = resolvedSubgraphRef(wrapperSubgraph);
+                if (ref != null && !ref.isBlank()) {
+                    context.parentSubgraphDefinitions().put(ref, savedGraph);
+                }
+                wrapperSubgraph.syncPortsFromDefinition(savedGraph);
+            } else if (wrapperNode instanceof BaseNode wrapperBase) {
+                String ref = stateString(wrapperBase.getNodeState(), "subgraphRef");
+                if (ref != null && !ref.isBlank()) {
+                    context.parentSubgraphDefinitions().put(ref, savedGraph);
+                }
             } else {
                 NodeCraft.LOGGER.warn(
                         "Cannot write edited subgraph back because wrapper node is missing: {}",
@@ -201,6 +212,7 @@ public final class SubgraphEditService {
             }
 
             document.setGraph(context.parentGraph());
+            document.setSubgraphDefinitions(context.parentSubgraphDefinitions());
             document.replaceNodePositions(copyNodePositions(context.parentPositions()));
             host.clearSelectedNodes();
             if (document.getGraph().getNode(context.wrapperNodeId()) != null) {
@@ -208,7 +220,7 @@ public final class SubgraphEditService {
                 host.setSelectedNodeId(context.wrapperNodeId());
             }
             host.notifyStructureDirty();
-            SavedGraph parentAfter = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
+            SavedGraph parentAfter = snapshotDocument(document);
             ImGuiNodeHistory history = host.history();
             if (history != null) {
                 history.exitScope();
@@ -233,16 +245,12 @@ public final class SubgraphEditService {
             return false;
         }
 
-        String embeddedGraphJson = stateString(
-                wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null,
-                "embeddedGraphJson"
-        );
-        if (embeddedGraphJson == null || embeddedGraphJson.isBlank()) {
+        SavedGraph savedGraph = resolveSubgraphDefinition(document, wrapperNode);
+        if (savedGraph == null) {
             return false;
         }
 
         try {
-            SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
             GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(savedGraph);
             if (!loadResult.hasLoadedNodes()) {
                 return false;
@@ -250,10 +258,11 @@ public final class SubgraphEditService {
             LoadedGraph loadedGraph = toLoadedGraph(savedGraph, loadResult);
 
             syncGraphNodePositions(document.getGraph(), document.getNodePositions());
-            SavedGraph parentSnapshotBefore = toSavedGraphWithPositions(document.getGraph(), document.getNodePositions());
+            SavedGraph parentSnapshotBefore = snapshotDocument(document);
             editStack.push(new EditContext(
                     document.getGraph(),
                     copyNodePositions(document.getNodePositions()),
+                    new LinkedHashMap<>(document.getSubgraphDefinitions()),
                     wrapperNodeId,
                     parentSnapshotBefore
             ));
@@ -291,11 +300,8 @@ public final class SubgraphEditService {
             return false;
         }
 
-        String embeddedGraphJson = stateString(
-                wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null,
-                "embeddedGraphJson"
-        );
-        if (embeddedGraphJson == null || embeddedGraphJson.isBlank()) {
+        SavedGraph savedGraph = resolveSubgraphDefinition(document, wrapperNode);
+        if (savedGraph == null || savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
             return false;
         }
 
@@ -303,12 +309,11 @@ public final class SubgraphEditService {
         boolean wasRecording = history != null && history.isRecording();
         syncGraphNodePositions(document.getGraph(), document.getNodePositions());
         SavedGraph beforeSnapshot = wasRecording
-                ? toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
+                ? snapshotDocument(document)
                 : null;
 
         try {
-            SavedGraph savedGraph = GraphSerializer.fromJson(embeddedGraphJson);
-            if (savedGraph == null || savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
+            if (savedGraph.nodes == null || savedGraph.nodes.isEmpty()) {
                 return false;
             }
 
@@ -453,7 +458,7 @@ public final class SubgraphEditService {
                 history.recordGraphTransaction(
                         "Dissolve Subgraph",
                         beforeSnapshot,
-                        toSavedGraphWithPositions(document.getGraph(), document.getNodePositions())
+                        snapshotDocument(document)
                 );
             }
             NodeCraft.LOGGER.info("Dissolved subgraph node {} into {} nodes", wrapperNodeId, restoredNodeIds.size());
@@ -507,7 +512,17 @@ public final class SubgraphEditService {
     }
 
     public static SavedGraph toSavedGraphWithPositions(NodeGraph graph, Map<UUID, NodePosition> positions) {
-        SavedGraph savedGraph = GraphSerializer.toSavedGraph(graph);
+        return toSavedGraphWithDocument(graph, positions, Map.of(), List.of(), List.of());
+    }
+
+    public static SavedGraph toSavedGraphWithDocument(
+            NodeGraph graph,
+            Map<UUID, NodePosition> positions,
+            Map<String, SavedGraph> subgraphDefinitions,
+            List<com.nodecraft.nodesystem.io.SavedGraphComment> comments,
+            List<com.nodecraft.nodesystem.io.SavedGraphGroup> groups
+    ) {
+        SavedGraph savedGraph = GraphSerializer.toSavedGraph(graph, subgraphDefinitions, comments, groups);
         savedGraph.nodePositions = new LinkedHashMap<>();
         if (positions != null) {
             for (Map.Entry<UUID, NodePosition> entry : positions.entrySet()) {
@@ -523,27 +538,55 @@ public final class SubgraphEditService {
         return savedGraph;
     }
 
+    public SavedGraph toSavedGraphWithDocument(EditorDocumentState document) {
+        return snapshotDocument(document);
+    }
+
+    private SavedGraph snapshotDocument(EditorDocumentState document) {
+        return toSavedGraphWithDocument(
+                document.getGraph(),
+                document.getNodePositions(),
+                document.getSubgraphDefinitions(),
+                document.getComments(),
+                document.getGroups()
+        );
+    }
+
+    @Nullable
+    private SavedGraph resolveSubgraphDefinition(EditorDocumentState document, INode wrapperNode) {
+        String ref = wrapperNode instanceof SubgraphNode subgraph
+                ? resolvedSubgraphRef(subgraph)
+                : stateString(wrapperNode instanceof BaseNode base ? base.getNodeState() : null, "subgraphRef");
+        if (ref != null && !ref.isBlank()) {
+            SavedGraph fromDocument = document.getSubgraphDefinitions().get(ref);
+            if (fromDocument != null) {
+                return fromDocument;
+            }
+        }
+        String legacyJson = stateString(
+                wrapperNode instanceof BaseNode baseNode ? baseNode.getNodeState() : null,
+                "embeddedGraphJson"
+        );
+        if (legacyJson == null || legacyJson.isBlank()) {
+            return null;
+        }
+        return GraphSerializer.fromJson(legacyJson);
+    }
+
+    @Nullable
+    private static String resolvedSubgraphRef(SubgraphNode subgraph) {
+        Object state = subgraph.getNodeState();
+        return stateString(state, "subgraphRef");
+    }
+
     private Map<String, Object> buildSubgraphNodeState(
             SubgraphExtractionService.ExtractionResult extraction,
-            String subgraphName,
-            String embeddedGraphJson
+            String subgraphName
     ) {
-        List<String> inputKeys = extraction.inputKeys();
-        List<String> outputKeys = extraction.outputKeys();
-        String primaryInputKey = inputKeys.isEmpty() ? "in" : inputKeys.getFirst();
-        String primaryOutputKey = outputKeys.isEmpty() ? "out" : outputKeys.getFirst();
-
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("displayName", subgraphName);
         state.put("subgraphRef", keyToken(subgraphName));
-        state.put("inputKey", primaryInputKey);
-        state.put("outputKey", primaryOutputKey);
-        state.put("strictMode", true);
-        state.put("maxCallDepth", 8);
-        state.put("additionalInputKeys", joinAdditionalKeys(inputKeys));
-        state.put("additionalOutputKeys", joinAdditionalKeys(outputKeys));
-        state.put("emitDebugTrace", true);
-        state.put("embeddedGraphJson", embeddedGraphJson);
+        state.put("enabled", true);
         return state;
     }
 
@@ -688,11 +731,11 @@ public final class SubgraphEditService {
     }
 
     private static String dynamicInputPortId(String key) {
-        return "dynamic_input_key_" + keyToken(key);
+        return SubgraphPortIds.dynamicInputPortId(key);
     }
 
     private static String dynamicOutputPortId(String key) {
-        return "dynamic_output_key_" + keyToken(key);
+        return SubgraphPortIds.dynamicOutputPortId(key);
     }
 
     private static String dynamicKeyFromInputPortId(String portId) {
@@ -725,6 +768,7 @@ public final class SubgraphEditService {
     private record EditContext(
             NodeGraph parentGraph,
             Map<UUID, NodePosition> parentPositions,
+            Map<String, SavedGraph> parentSubgraphDefinitions,
             UUID wrapperNodeId,
             SavedGraph parentSnapshotBefore
     ) {

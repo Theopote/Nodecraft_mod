@@ -8,16 +8,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Comment 节点: 在画布上添加文本注释
- * 此节点不处理任何数据，仅提供UI级别的注释功能
+ * Legacy comment node — migrated to {@link com.nodecraft.nodesystem.io.SavedGraphComment} metadata in V58.
  */
-@NodeInfo(
-    effect = NodeEffect.PURE,
-    id = "utilities.organization.comment",
-    displayName = "Comment",
-    description = "在画布上添加文本注释",
-    category = "utilities.organization"
-)
+@Deprecated
 public class CommentNode extends BaseNode {
 
     // --- 节点属性 ---

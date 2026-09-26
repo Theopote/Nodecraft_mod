@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**532**
+- **节点总数**：**528**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -62,7 +62,7 @@
 | `utilities.assist` | 5 |
 | `utilities.fileio` | 3 |
 | `utilities.morphology` | 1 |
-| `utilities.organization` | 7 |
+| `utilities.organization` | 3 |
 | `variable` | 6 |
 | `world.query` | 11 |
 | `world.read` | 12 |
@@ -785,17 +785,13 @@
 |---|---|---|---|
 | Block Morphology | `utilities.morphology.block_list_morphology` | Dilate or erode a block set. | `BlockListMorphologyNode` |
 
-## utilities.organization（7）
+## utilities.organization（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with optional override and default fallback. | `GraphInputNode` |
-| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into execution context. | `GraphOutputNode` |
-| Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph with named input/output mapping. | `SubgraphNode` |
-| Subgraph Register | `utilities.organization.subgraph_register` | Registers a subgraph reference into execution context for Subgraph calls. | `SubgraphRegisterNode` |
-| Runtime Preset | `utilities.organization.preset` | Saves, loads, and deletes named runtime presets in execution context. | `NodePresetNode` |
-| Comment | `utilities.organization.comment` | 在画布上添加文本注释 | `CommentNode` |
-| Group | `utilities.organization.group` | 将选中的节点打包成一个可视化组 | `GroupNode` |
+| Graph Input | `utilities.organization.graph_input` | Defines a named graph-level input with typed default fallback. | `GraphInputNode` |
+| Graph Output | `utilities.organization.graph_output` | Defines a named graph-level output and publishes it into the active call frame. | `GraphOutputNode` |
+| Subgraph | `utilities.organization.subgraph` | Executes a referenced subgraph definition with typed interface ports. | `SubgraphNode` |
 
 ## variable（6）
 

@@ -82,6 +82,25 @@ public class GraphSerializer {
         return savedGraph;
     }
 
+    public static SavedGraph toSavedGraph(
+            NodeGraph graph,
+            @Nullable Map<String, SavedGraph> subgraphDefinitions,
+            @Nullable List<com.nodecraft.nodesystem.io.SavedGraphComment> comments,
+            @Nullable List<com.nodecraft.nodesystem.io.SavedGraphGroup> groups
+    ) {
+        SavedGraph savedGraph = toSavedGraph(graph);
+        if (subgraphDefinitions != null && !subgraphDefinitions.isEmpty()) {
+            savedGraph.subgraphDefinitions = new HashMap<>(subgraphDefinitions);
+        }
+        if (comments != null && !comments.isEmpty()) {
+            savedGraph.comments = new ArrayList<>(comments);
+        }
+        if (groups != null && !groups.isEmpty()) {
+            savedGraph.groups = new ArrayList<>(groups);
+        }
+        return savedGraph;
+    }
+
     public static String toJson(SavedGraph savedGraph) {
         return GSON.toJson(savedGraph);
     }

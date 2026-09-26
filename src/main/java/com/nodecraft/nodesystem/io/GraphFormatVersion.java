@@ -357,8 +357,14 @@ public final class GraphFormatVersion {
      */
     public static final int V57 = 57;
 
+    /**
+     * Organization & Subgraph v1: three runtime nodes, SubgraphCallFrame IO,
+     * typed subgraph interfaces, SavedGraph.subgraphDefinitions, Comment/Group metadata.
+     */
+    public static final int V58 = 58;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V57;
+    public static final int CURRENT = V58;
 
     private GraphFormatVersion() {
     }

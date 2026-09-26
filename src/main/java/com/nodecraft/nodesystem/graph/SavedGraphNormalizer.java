@@ -48,6 +48,15 @@ public final class SavedGraphNormalizer {
         if (graph.nodePositions == null) {
             graph.nodePositions = new HashMap<>();
         }
+        if (graph.subgraphDefinitions == null) {
+            graph.subgraphDefinitions = new HashMap<>();
+        }
+        if (graph.comments == null) {
+            graph.comments = new ArrayList<>();
+        }
+        if (graph.groups == null) {
+            graph.groups = new ArrayList<>();
+        }
 
         return graph;
     }

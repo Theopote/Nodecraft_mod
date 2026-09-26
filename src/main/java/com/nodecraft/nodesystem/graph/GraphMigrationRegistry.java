@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Applies incremental migrations to {@link SavedGraph} payloads loaded from disk or embedded JSON.
@@ -114,6 +115,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V54 -> migrateV54ToV55(graph);
             case GraphFormatVersion.V55 -> migrateV55ToV56(graph);
             case GraphFormatVersion.V56 -> migrateV56ToV57(graph);
+            case GraphFormatVersion.V57 -> migrateV57ToV58(graph);
             default -> graph;
         };
     }
@@ -3481,6 +3483,300 @@ public final class GraphMigrationRegistry {
         });
 
         return graph;
+    }
+
+    private static final String SUBGRAPH_TYPE = "utilities.organization.subgraph";
+    private static final String GRAPH_INPUT_TYPE = "utilities.organization.graph_input";
+    private static final String GRAPH_OUTPUT_TYPE = "utilities.organization.graph_output";
+    private static final String SUBGRAPH_REGISTER_TYPE = "utilities.organization.subgraph_register";
+    private static final String NODE_PRESET_TYPE = "utilities.organization.preset";
+    private static final String COMMENT_TYPE = "utilities.organization.comment";
+    private static final String GROUP_TYPE = "utilities.organization.group";
+
+    private static final Set<String> SUBGRAPH_V58_DROP_PORTS = Set.of(
+            "input_subgraph_ref",
+            "input_subgraph_graph",
+            "input_value",
+            "input_inputs",
+            "input_outputs",
+            "input_input_keys",
+            "input_output_keys",
+            "output_value",
+            "output_inputs",
+            "output_outputs",
+            "output_mapped_outputs",
+            "output_metadata",
+            "output_debug_trace"
+    );
+
+    private static final Set<String> GRAPH_INPUT_V58_DROP_PORTS = Set.of("input_override");
+
+    private static final Set<String> GRAPH_OUTPUT_V58_DROP_PORTS = Set.of(
+            "input_name_override",
+            "output_outputs"
+    );
+
+    private static final Set<String> SUBGRAPH_V58_STRIP_STATE_KEYS = Set.of(
+            "inputkey",
+            "outputkey",
+            "strictmode",
+            "maxcalldepth",
+            "additionalinputkeys",
+            "additionaloutputkeys",
+            "emitdebugtrace",
+            "embeddedgraphjson"
+    );
+
+    /**
+     * Organization & Subgraph v1: lift embeddedGraphJson to subgraphDefinitions, migrate Comment/Group
+     * to metadata, drop removed node types and obsolete port wires.
+     */
+    private static SavedGraph migrateV57ToV58(SavedGraph graph) {
+        if (graph.subgraphDefinitions == null) {
+            graph.subgraphDefinitions = new HashMap<>();
+        }
+        if (graph.comments == null) {
+            graph.comments = new ArrayList<>();
+        }
+        if (graph.groups == null) {
+            graph.groups = new ArrayList<>();
+        }
+
+        if (graph.nodes != null) {
+            List<SavedNode> retained = new ArrayList<>();
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String typeId = node.typeId.toLowerCase(Locale.ROOT);
+
+                if (COMMENT_TYPE.equals(typeId)) {
+                    liftCommentNode(graph, node);
+                    continue;
+                }
+                if (GROUP_TYPE.equals(typeId)) {
+                    liftGroupNode(graph, node);
+                    continue;
+                }
+                if (SUBGRAPH_REGISTER_TYPE.equals(typeId) || NODE_PRESET_TYPE.equals(typeId)) {
+                    continue;
+                }
+
+                if (SUBGRAPH_TYPE.equals(typeId)) {
+                    extractEmbeddedSubgraphDefinition(graph, node);
+                    stripSubgraphNodeState(node);
+                }
+                if (GRAPH_INPUT_TYPE.equals(typeId)) {
+                    remapGraphInputPorts(node);
+                }
+                if (GRAPH_OUTPUT_TYPE.equals(typeId)) {
+                    stripGraphOutputState(node);
+                }
+
+                retained.add(node);
+            }
+            graph.nodes = retained;
+        }
+
+        if (graph.connections != null) {
+            Map<String, String> nodeTypeBySavedId = new HashMap<>();
+            if (graph.nodes != null) {
+                for (SavedNode node : graph.nodes) {
+                    if (node != null && node.nodeId != null && node.typeId != null) {
+                        nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+
+            graph.connections = new ArrayList<>(graph.connections);
+            graph.connections.removeIf(connection -> {
+                if (connection == null) {
+                    return false;
+                }
+                String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+                String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+                String sourcePort = normalizePortId(connection.sourcePortId);
+                String targetPort = normalizePortId(connection.targetPortId);
+
+                if (SUBGRAPH_TYPE.equals(sourceType) && sourcePort != null
+                        && SUBGRAPH_V58_DROP_PORTS.contains(sourcePort)) {
+                    return true;
+                }
+                if (SUBGRAPH_TYPE.equals(targetType) && targetPort != null
+                        && SUBGRAPH_V58_DROP_PORTS.contains(targetPort)) {
+                    return true;
+                }
+                if (GRAPH_INPUT_TYPE.equals(targetType) && targetPort != null
+                        && GRAPH_INPUT_V58_DROP_PORTS.contains(targetPort)) {
+                    return true;
+                }
+                if (GRAPH_OUTPUT_TYPE.equals(sourceType) && sourcePort != null
+                        && GRAPH_OUTPUT_V58_DROP_PORTS.contains(sourcePort)) {
+                    return true;
+                }
+                if (GRAPH_OUTPUT_TYPE.equals(targetType) && targetPort != null
+                        && GRAPH_OUTPUT_V58_DROP_PORTS.contains(targetPort)) {
+                    return true;
+                }
+                if (GRAPH_INPUT_TYPE.equals(sourceType) && "output_was_overridden".equals(sourcePort)) {
+                    connection.sourcePortId = "output_was_provided";
+                }
+                return false;
+            });
+        }
+
+        return graph;
+    }
+
+    private static void extractEmbeddedSubgraphDefinition(SavedGraph graph, SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Object embedded = state.get("embeddedGraphJson");
+        if (!(embedded instanceof String json) || json.isBlank()) {
+            return;
+        }
+        String ref = readStateString(state, "subgraphRef");
+        if (ref == null || ref.isBlank()) {
+            ref = "subgraph_" + node.nodeId;
+        }
+        try {
+            SavedGraph definition = GraphSerializer.fromJson(json);
+            if (definition != null) {
+                graph.subgraphDefinitions.put(ref.trim(), definition);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Failed extracting embedded subgraph for node {}: {}", node.nodeId, e.getMessage());
+        }
+    }
+
+    private static void stripSubgraphNodeState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if (SUBGRAPH_V58_STRIP_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        if (!cleaned.containsKey("enabled")) {
+            cleaned.put("enabled", true);
+        }
+        node.state = cleaned.isEmpty() ? null : cleaned;
+    }
+
+    private static void remapGraphInputPorts(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        Object inferred = cleaned.get("inferredType");
+        if (inferred instanceof String typeId && !typeId.isBlank()) {
+            cleaned.putIfAbsent("declaredType", typeId.trim());
+        }
+        node.state = cleaned;
+    }
+
+    private static void stripGraphOutputState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        Object inferred = cleaned.get("inferredType");
+        if (inferred instanceof String typeId && !typeId.isBlank()) {
+            cleaned.putIfAbsent("declaredType", typeId.trim());
+        }
+        node.state = cleaned;
+    }
+
+    private static void liftCommentNode(SavedGraph graph, SavedNode node) {
+        com.nodecraft.nodesystem.io.SavedGraphComment comment = new com.nodecraft.nodesystem.io.SavedGraphComment();
+        comment.id = node.nodeId;
+        if (node.state instanceof Object[] array && array.length >= 9) {
+            comment.text = array[0] instanceof String value ? value : "";
+            comment.textColor = array[1] instanceof String value ? value : "#000000";
+            comment.backgroundColor = array[2] instanceof String value ? value : "#FFEB3B";
+            comment.fontSize = array[3] instanceof Number value ? value.floatValue() : 14.0f;
+            comment.bold = array[4] instanceof Boolean value && value;
+            comment.italic = array[5] instanceof Boolean value && value;
+            comment.style = array[6] instanceof String value ? value : "STICKY_NOTE";
+            comment.width = array[7] instanceof Number value ? value.floatValue() : 200.0f;
+            comment.height = array[8] instanceof Number value ? value.floatValue() : 120.0f;
+        }
+        if (graph.nodePositions != null && node.nodeId != null) {
+            var pos = graph.nodePositions.get(node.nodeId);
+            if (pos != null) {
+                comment.x = pos.x;
+                comment.y = pos.y;
+            }
+        }
+        graph.comments.add(comment);
+        if (graph.nodePositions != null && node.nodeId != null) {
+            graph.nodePositions.remove(node.nodeId);
+        }
+    }
+
+    private static void liftGroupNode(SavedGraph graph, SavedNode node) {
+        com.nodecraft.nodesystem.io.SavedGraphGroup group = new com.nodecraft.nodesystem.io.SavedGraphGroup();
+        group.id = node.nodeId;
+        group.nodeIds = new ArrayList<>();
+        if (node.state instanceof Object[] array && array.length >= 7) {
+            group.title = array[0] instanceof String value ? value : "Group";
+            group.color = array[1] instanceof String value ? value : "#3498db";
+            group.collapsed = array[2] instanceof Boolean value && value;
+            group.locked = array[3] instanceof Boolean value && value;
+            group.width = array[4] instanceof Number value ? value.floatValue() : 300.0f;
+            group.height = array[5] instanceof Number value ? value.floatValue() : 200.0f;
+            if (array[6] instanceof UUID[] ids) {
+                for (UUID id : ids) {
+                    if (id != null) {
+                        group.nodeIds.add(id.toString());
+                    }
+                }
+            }
+        }
+        if (graph.nodePositions != null && node.nodeId != null) {
+            var pos = graph.nodePositions.get(node.nodeId);
+            if (pos != null) {
+                group.x = pos.x;
+                group.y = pos.y;
+            }
+        }
+        graph.groups.add(group);
+        if (graph.nodePositions != null && node.nodeId != null) {
+            graph.nodePositions.remove(node.nodeId);
+        }
+    }
+
+    @Nullable
+    private static String readStateString(Map<?, ?> state, String key) {
+        Object value = state.get(key);
+        if (value instanceof String text && !text.isBlank()) {
+            return text.trim();
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String normalizePortId(@Nullable String portId) {
+        return portId == null ? null : portId.toLowerCase(Locale.ROOT);
     }
 
     private static boolean isFileIoObsoleteEndpoint(@Nullable String nodeType, @Nullable String portId) {

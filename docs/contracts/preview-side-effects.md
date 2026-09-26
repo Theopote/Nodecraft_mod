@@ -23,6 +23,13 @@ Every catalog node declares an execution capability via `@NodeInfo(effect = …)
 | `FILE_IO` | **No** | `utilities.fileio.*`, `output.export.*` |
 | `NETWORK` | **No** | (reserved) |
 | `UI_EFFECT` | **No** | `output.debug.*`, bake status UI |
+| `CONTEXT_READ` | Yes | `utilities.organization.graph_input` |
+| `CONTEXT_WRITE` | Yes | `utilities.organization.graph_output` |
+| `COMPOSITE` | Yes | `utilities.organization.subgraph` (child policy via nested executor) |
+| `EDITOR_ONLY` | Yes | reserved editor metadata helpers |
+
+Nested subgraph execution inherits the parent `skipOutputExecuteSideEffects` flag via
+`NodeExecutor.nestedSync` so preview mode skips `WORLD_WRITE` / `FILE_IO` inside child graphs.
 
 Helpers:
 

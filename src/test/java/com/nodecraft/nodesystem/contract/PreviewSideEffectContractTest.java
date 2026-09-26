@@ -150,6 +150,10 @@ class PreviewSideEffectContractTest {
         assertTrue(NodeEffect.PURE.isAllowedInPreview());
         assertTrue(NodeEffect.WORLD_READ.isAllowedInPreview());
         assertTrue(NodeEffect.PREVIEW_WRITE.isAllowedInPreview());
+        assertTrue(NodeEffect.CONTEXT_READ.isAllowedInPreview());
+        assertTrue(NodeEffect.CONTEXT_WRITE.isAllowedInPreview());
+        assertTrue(NodeEffect.COMPOSITE.isAllowedInPreview());
+        assertTrue(NodeEffect.EDITOR_ONLY.isAllowedInPreview());
         assertFalse(NodeEffect.WORLD_WRITE.isAllowedInPreview());
         assertFalse(NodeEffectResolver.inferFromTypeId("world.write.clone_region").isAllowedInPreview());
         assertTrue(NodeEffectResolver.inferFromTypeId("output.preview.blocks").isAllowedInPreview());

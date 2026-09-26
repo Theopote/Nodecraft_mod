@@ -5,8 +5,8 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.nodes.utilities.organization.GraphInputNode;
 import com.nodecraft.nodesystem.nodes.utilities.organization.GraphOutputNode;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
@@ -168,12 +168,12 @@ class ImGuiNodeEditorSubgraphTest {
         assertNotNull(editor.addNode("test.pass", 400, 100));
         assertTrue(editor.closeCurrentSubgraph());
         assertEquals(ImGuiNodeHistory.ActionType.GRAPH_TRANSACTION, editor.getHistory().getUndoTopActionType());
-        assertEquals(5, embeddedNodeCount(findSubgraphNode(editor.getCurrentGraph())));
+        assertEquals(5, embeddedNodeCount(editor, findSubgraphNode(editor.getCurrentGraph())));
 
         assertTrue(editor.undo());
-        assertEquals(4, embeddedNodeCount(findSubgraphNode(editor.getCurrentGraph())));
+        assertEquals(4, embeddedNodeCount(editor, findSubgraphNode(editor.getCurrentGraph())));
         assertTrue(editor.redo());
-        assertEquals(5, embeddedNodeCount(findSubgraphNode(editor.getCurrentGraph())));
+        assertEquals(5, embeddedNodeCount(editor, findSubgraphNode(editor.getCurrentGraph())));
     }
 
     @Test
@@ -234,13 +234,16 @@ class ImGuiNodeEditorSubgraphTest {
             .orElse(null);
     }
 
-    private static int embeddedNodeCount(SubgraphNode node) {
+    private static int embeddedNodeCount(ImGuiNodeEditor editor, SubgraphNode node) {
         assertNotNull(node);
         Object state = node.getNodeState();
         assertTrue(state instanceof Map<?, ?>);
-        Object json = ((Map<?, ?>) state).get("embeddedGraphJson");
-        assertTrue(json instanceof String);
-        return GraphSerializer.fromJson((String) json).nodes.size();
+        Object refObj = ((Map<?, ?>) state).get("subgraphRef");
+        assertTrue(refObj instanceof String);
+        SavedGraph definition = editor.getDocument().getSubgraphDefinitions().get((String) refObj);
+        assertNotNull(definition);
+        assertNotNull(definition.nodes);
+        return definition.nodes.size();
     }
 
     private static boolean hasConnectionFrom(NodeGraph graph, UUID sourceNodeId) {

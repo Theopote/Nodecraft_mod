@@ -13,7 +13,10 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecFrontierSnapshot;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode;
+import com.nodecraft.nodesystem.io.SavedGraphComment;
+import com.nodecraft.nodesystem.io.SavedGraphGroup;
 import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
+import org.jetbrains.annotations.Nullable;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
@@ -44,6 +47,62 @@ public class ImGuiNodeRenderer {
         this.connectionRenderer = new ConnectionRenderer(editor);
         this.customUIRenderer = new CustomUIRenderer(editor);
         this.portCalculator = new PortPositionCalculator(editor);
+    }
+
+    public void renderGraphMetadata(
+            ImDrawList drawList,
+            ImVec2 canvasPos,
+            java.util.List<SavedGraphComment> comments,
+            java.util.List<SavedGraphGroup> groups,
+            float canvasZoom,
+            float canvasOffsetX,
+            float canvasOffsetY
+    ) {
+        if (comments != null) {
+            for (SavedGraphComment comment : comments) {
+                if (comment == null) {
+                    continue;
+                }
+                float x = canvasPos.x + (comment.x + canvasOffsetX) * canvasZoom;
+                float y = canvasPos.y + (comment.y + canvasOffsetY) * canvasZoom;
+                float w = Math.max(40f, comment.width * canvasZoom);
+                float h = Math.max(24f, comment.height * canvasZoom);
+                int bg = parseColor(comment.backgroundColor, 0xFFFFEB3B);
+                int fg = parseColor(comment.textColor, 0xFF000000);
+                drawList.addRectFilled(x, y, x + w, y + h, bg, 4f);
+                drawList.addText(x + 6f, y + 6f, fg, comment.text == null ? "" : comment.text);
+            }
+        }
+        if (groups != null) {
+            for (SavedGraphGroup group : groups) {
+                if (group == null) {
+                    continue;
+                }
+                float x = canvasPos.x + (group.x + canvasOffsetX) * canvasZoom;
+                float y = canvasPos.y + (group.y + canvasOffsetY) * canvasZoom;
+                float w = Math.max(80f, group.width * canvasZoom);
+                float h = Math.max(48f, group.height * canvasZoom);
+                int color = parseColor(group.color, 0xFF3498DB);
+                drawList.addRect(x, y, x + w, y + h, color, 6f, ImDrawFlags.None, 2f);
+                drawList.addText(x + 8f, y + 8f, color, group.title == null ? "Group" : group.title);
+            }
+        }
+    }
+
+    private static int parseColor(@Nullable String hex, int fallback) {
+        if (hex == null || hex.isBlank()) {
+            return fallback;
+        }
+        String normalized = hex.startsWith("#") ? hex.substring(1) : hex;
+        if (normalized.length() != 6) {
+            return fallback;
+        }
+        try {
+            int rgb = Integer.parseInt(normalized, 16);
+            return 0xFF000000 | rgb;
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     public void renderNodesDirect(ImDrawList drawList, ImVec2 canvasPos, NodeGraph graph,

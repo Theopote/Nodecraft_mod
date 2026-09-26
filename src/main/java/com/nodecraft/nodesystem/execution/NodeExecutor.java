@@ -148,6 +148,27 @@ public class NodeExecutor {
         this.shutdownEphemeralOnComplete = sharedWorker == null && shutdownWorkerOnComplete;
     }
 
+    /**
+     * Nested subgraph execution on the caller thread. Inherits preview side-effect policy from parent.
+     */
+    public static NodeExecutor nestedSync(
+            NodeGraph graph,
+            ExecutionContext context,
+            boolean skipOutputExecuteSideEffects
+    ) {
+        return new NodeExecutor(
+                graph,
+                context,
+                null,
+                IncrementalExecutionOptions.defaults(),
+                ExecutionRunLimits.defaults(),
+                CancellationToken.none(),
+                skipOutputExecuteSideEffects,
+                null,
+                true
+        );
+    }
+
     public ExecutionProfiler.Profile getLastExecutionProfile() {
         return lastExecutionProfile;
     }
@@ -283,6 +304,10 @@ public class NodeExecutor {
         nodeStates.clear();
         for (INode node : graph.getNodes()) {
             nodeStates.put(node.getId(), NodeState.NOT_VISITED);
+        }
+
+        if (context != null) {
+            context.setSkipOutputExecuteSideEffects(skipOutputExecuteSideEffects);
         }
 
         try {

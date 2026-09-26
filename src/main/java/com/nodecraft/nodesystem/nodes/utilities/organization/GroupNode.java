@@ -14,16 +14,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Group 节点：将选中的节点打包成一个可视化组
- * 这是一个特殊的节点，主要作用于编辑器UI层面，不参与数据流的处理
+ * Legacy group node — migrated to {@link com.nodecraft.nodesystem.io.SavedGraphGroup} metadata in V58.
  */
-@NodeInfo(
-    effect = NodeEffect.PURE,
-    id = "utilities.organization.group",
-    displayName = "Group",
-    description = "将选中的节点打包成一个可视化组",
-    category = "utilities.organization"
-)
+@Deprecated
 public class GroupNode extends BaseNode {
     
     // --- 节点属性 ---

@@ -203,7 +203,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 world = integratedServer.getOverworld();
             }
         }
-        return new ExecutionContext(world, serverPlayer);
+        ExecutionContext context = new ExecutionContext(world, serverPlayer);
+        context.setSubgraphDefinitions(document.getSubgraphDefinitions());
+        return context;
     }
 
     /**
@@ -343,6 +345,15 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             } else {
                 interaction.setPendingClickTargetNodeId(null);
             }
+            renderer.renderGraphMetadata(
+                    drawList,
+                    canvasPos,
+                    document.getComments(),
+                    document.getGroups(),
+                    getCanvasZoom(),
+                    getCanvasOffsetX(),
+                    getCanvasOffsetY()
+            );
             // 【关键修改点】：节点选择和拖拽的启动和持续移动逻辑现在都移到 ImGuiNodeRenderer 内部处理。
             renderer.renderNodesDirect(drawList, canvasPos, document.getGraph(), document.getNodePositions(), portScreenPositions, interactionState.getSelectedNodeIds());
 
@@ -1204,6 +1215,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             SubgraphEditService.LoadedGraph loadedGraph = SubgraphEditService.toLoadedGraph(snapshot, loadResult);
             document.setGraph(loadedGraph.graph());
             document.replaceNodePositions(loadedGraph.positions());
+            document.applySavedGraphMetadata(snapshot);
             clearSelectedNodes();
             markGraphStructureDirty();
             return true;

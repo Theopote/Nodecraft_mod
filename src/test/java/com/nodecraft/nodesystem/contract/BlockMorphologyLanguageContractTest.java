@@ -55,9 +55,9 @@ class BlockMorphologyLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV57() {
+    void currentGraphFormatIsAtLeastV57() {
         assertEquals(57, GraphFormatVersion.V57);
-        assertEquals(GraphFormatVersion.V57, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V57);
     }
 
     @Test

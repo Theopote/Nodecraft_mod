@@ -16,14 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@NodeInfo(
-    effect = NodeEffect.PURE,
-    id = "utilities.organization.subgraph_register",
-    displayName = "Subgraph Register",
-    description = "Registers a subgraph reference into execution context for Subgraph calls.",
-    category = "utilities.organization",
-    order = 6
-)
+/** @deprecated Removed from catalog in Graph V58 — use {@link SavedGraph#subgraphDefinitions}. */
+@Deprecated
 public class SubgraphRegisterNode extends BaseNode {
 
     @NodeProperty(displayName = "Default Ref", category = "Subgraph Register", order = 1)

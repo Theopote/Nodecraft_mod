@@ -1,113 +1,113 @@
-package com.nodecraft.nodesystem.contract;
-
-import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
-import com.nodecraft.nodesystem.datatypes.RegionData;
-import com.nodecraft.nodesystem.datatypes.SphereData;
-import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
-import org.joml.Vector3d;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-/**
- * Spatial Convention v1 alignment: Selected Block Center �?geometry �?voxelize �?preview cells.
- */
-class GeometryVoxelAlignmentContractTest {
-
-    private static final BlockPos SELECTED = new BlockPos(100, 64, 100);
-
-    @Test
-    void blockPosResolvesToCellCenterNotCorner() {
-        Vector3d point = SpatialValueResolver.resolvePoint(SELECTED);
-        assertEquals(100.5d, point.x, 1e-12);
-        assertEquals(64.5d, point.y, 1e-12);
-        assertEquals(100.5d, point.z, 1e-12);
-        assertEquals(BlockSpace.blockCenter(SELECTED), point);
-    }
-
-    @Test
-    void selectedBlockCenter_box1x1x1_voxelizesToSameCell() {
-        Vector3d center = BlockSpace.blockCenter(SELECTED);
-        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(0.5d, 0.5d, 0.5d));
-
-        // Continuous AABB must be the selected cell.
-        assertEquals(100.0d, center.x - 0.5d, 1e-12);
-        assertEquals(101.0d, center.x + 0.5d, 1e-12);
-
-        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
-        assertEquals(SELECTED, region.getMinCorner());
-        assertEquals(SELECTED, region.getMaxCorner());
-
-        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
-        assertEquals(1, blocks.size());
-        assertEquals(SELECTED, blocks.getPositions().getFirst());
-
-        // PreviewBlock stores cell index; ghost draws [n, n+1] �?matches continuous AABB.
-        PreviewBlock preview = new PreviewBlock(SELECTED.getX(), SELECTED.getY(), SELECTED.getZ(), "minecraft:stone");
-        assertEquals(100.0d, preview.x(), 1e-12);
-        assertEquals(BlockSpace.blockCellMin(SELECTED).x, preview.x(), 1e-12);
-        assertEquals(BlockSpace.blockCellMax(SELECTED).x, preview.x() + 1.0d, 1e-12);
-    }
-
-    @Test
-    void selectedBlockCenter_box3x3x3_hasCentralVoxelAtSelected() {
-        Vector3d center = BlockSpace.blockCenter(SELECTED);
-        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(1.5d, 1.5d, 1.5d));
-
-        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
-        assertEquals(27, blocks.size());
-        assertTrue(blocks.contains(SELECTED));
-
-        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
-        assertEquals(new BlockPos(99, 63, 99), region.getMinCorner());
-        assertEquals(new BlockPos(101, 65, 101), region.getMaxCorner());
-    }
-
-    @Test
-    void evenContinuousSizeOnBlockCenterCannotHaveUniqueCentralVoxel() {
-        // Size 2 centered on cell (0,0,0) center �?continuous AABB [-0.5, 1.5].
-        // Cell centers in that AABB: -0.5, 0.5, 1.5 �?three cells/axis (not two).
-        // This is expected: even continuous size + cell-center center �?unique central Minecraft block.
-        Vector3d center = BlockSpace.cellCenter(0, 0, 0);
-        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(1.0d, 1.0d, 1.0d));
-
-        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
-        assertEquals(27, blocks.size());
-        assertTrue(blocks.contains(new BlockPos(0, 0, 0)));
-        assertTrue(blocks.contains(new BlockPos(-1, -1, -1)));
-        assertTrue(blocks.contains(new BlockPos(1, 1, 1)));
-    }
-
-    @Test
-    void sphereAtSelectedBlockCenter_radiusHalfIncludesOnlySelectedCell() {
-        Vector3d center = BlockSpace.blockCenter(SELECTED);
-        // Radius 0.5: only the selected cell center is inside (distance 0); neighbors are ~1 away.
-        SphereData sphere = new SphereData(center, 0.5d);
-
-        BlockPosList blocks = GeometryVoxelizer.voxelize(sphere, true);
-        assertEquals(1, blocks.size());
-        assertEquals(SELECTED, blocks.getPositions().getFirst());
-    }
-
-    @Test
-    void continuousBoxAabbMatchesPreviewCellSpan() {
-        Vector3d center = BlockSpace.cellCenter(10, 64, 20);
-        Vector3d half = new Vector3d(2.5d, 2.5d, 2.5d);
-        BoxGeometryData box = new BoxGeometryData(center, half);
-        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
-
-        // Ghost/Region draw inclusive max + 1 �?world exclusive corner equals continuous max.
-        assertEquals(center.x - half.x, region.getMinCorner().getX(), 1e-12);
-        assertEquals(center.x + half.x, region.getMaxCorner().getX() + 1.0d, 1e-12);
-        assertEquals(center.y - half.y, region.getMinCorner().getY(), 1e-12);
-        assertEquals(center.y + half.y, region.getMaxCorner().getY() + 1.0d, 1e-12);
-        assertEquals(center.z - half.z, region.getMinCorner().getZ(), 1e-12);
-        assertEquals(center.z + half.z, region.getMaxCorner().getZ() + 1.0d, 1e-12);
-    }
-}
+package com.nodecraft.nodesystem.contract;
+
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
+import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import net.minecraft.util.math.BlockPos;
+import org.joml.Vector3d;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Spatial Convention v1 alignment: Selected Block Center â?geometry â?voxelize â?preview cells.
+ */
+class GeometryVoxelAlignmentContractTest {
+
+    private static final BlockPos SELECTED = new BlockPos(100, 64, 100);
+
+    @Test
+    void blockPosResolvesToCellCenterNotCorner() {
+        Vector3d point = SpatialValueResolver.resolvePoint(SELECTED);
+        assertEquals(100.5d, point.x, 1e-12);
+        assertEquals(64.5d, point.y, 1e-12);
+        assertEquals(100.5d, point.z, 1e-12);
+        assertEquals(BlockSpace.blockCenter(SELECTED), point);
+    }
+
+    @Test
+    void selectedBlockCenter_box1x1x1_voxelizesToSameCell() {
+        Vector3d center = BlockSpace.blockCenter(SELECTED);
+        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(0.5d, 0.5d, 0.5d));
+
+        // Continuous AABB must be the selected cell.
+        assertEquals(100.0d, center.x - 0.5d, 1e-12);
+        assertEquals(101.0d, center.x + 0.5d, 1e-12);
+
+        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
+        assertEquals(SELECTED, region.getMinCorner());
+        assertEquals(SELECTED, region.getMaxCorner());
+
+        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
+        assertEquals(1, blocks.size());
+        assertEquals(SELECTED, blocks.getPositions().getFirst());
+
+        // PreviewBlock stores cell index; ghost draws [n, n+1] â?matches continuous AABB.
+        PreviewBlock preview = new PreviewBlock(SELECTED.getX(), SELECTED.getY(), SELECTED.getZ(), "minecraft:stone");
+        assertEquals(100.0d, preview.x(), 1e-12);
+        assertEquals(BlockSpace.blockCellMin(SELECTED).x, preview.x(), 1e-12);
+        assertEquals(BlockSpace.blockCellMax(SELECTED).x, preview.x() + 1.0d, 1e-12);
+    }
+
+    @Test
+    void selectedBlockCenter_box3x3x3_hasCentralVoxelAtSelected() {
+        Vector3d center = BlockSpace.blockCenter(SELECTED);
+        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(1.5d, 1.5d, 1.5d));
+
+        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
+        assertEquals(27, blocks.size());
+        assertTrue(blocks.contains(SELECTED));
+
+        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
+        assertEquals(new BlockPos(99, 63, 99), region.getMinCorner());
+        assertEquals(new BlockPos(101, 65, 101), region.getMaxCorner());
+    }
+
+    @Test
+    void evenContinuousSizeOnBlockCenterCannotHaveUniqueCentralVoxel() {
+        // Size 2 centered on cell (0,0,0) center â?continuous AABB [-0.5, 1.5].
+        // Cell centers in that AABB: -0.5, 0.5, 1.5 â?three cells/axis (not two).
+        // This is expected: even continuous size + cell-center center â?unique central Minecraft block.
+        Vector3d center = BlockSpace.cellCenter(0, 0, 0);
+        BoxGeometryData box = new BoxGeometryData(center, new Vector3d(1.0d, 1.0d, 1.0d));
+
+        BlockPosList blocks = GeometryVoxelizer.voxelizeBox(box, true);
+        assertEquals(27, blocks.size());
+        assertTrue(blocks.contains(new BlockPos(0, 0, 0)));
+        assertTrue(blocks.contains(new BlockPos(-1, -1, -1)));
+        assertTrue(blocks.contains(new BlockPos(1, 1, 1)));
+    }
+
+    @Test
+    void sphereAtSelectedBlockCenter_radiusHalfIncludesOnlySelectedCell() {
+        Vector3d center = BlockSpace.blockCenter(SELECTED);
+        // Radius 0.5: only the selected cell center is inside (distance 0); neighbors are ~1 away.
+        SphereData sphere = new SphereData(center, 0.5d);
+
+        BlockPosList blocks = GeometryVoxelizer.voxelize(sphere, true);
+        assertEquals(1, blocks.size());
+        assertEquals(SELECTED, blocks.getPositions().getFirst());
+    }
+
+    @Test
+    void continuousBoxAabbMatchesPreviewCellSpan() {
+        Vector3d center = BlockSpace.cellCenter(10, 64, 20);
+        Vector3d half = new Vector3d(2.5d, 2.5d, 2.5d);
+        BoxGeometryData box = new BoxGeometryData(center, half);
+        RegionData region = GeometryVoxelizer.createAxisAlignedRegion(box);
+
+        // Ghost/Region draw inclusive max + 1 â?world exclusive corner equals continuous max.
+        assertEquals(center.x - half.x, region.getMinCorner().getX(), 1e-12);
+        assertEquals(center.x + half.x, region.getMaxCorner().getX() + 1.0d, 1e-12);
+        assertEquals(center.y - half.y, region.getMinCorner().getY(), 1e-12);
+        assertEquals(center.y + half.y, region.getMaxCorner().getY() + 1.0d, 1e-12);
+        assertEquals(center.z - half.z, region.getMinCorner().getZ(), 1e-12);
+        assertEquals(center.z + half.z, region.getMaxCorner().getZ() + 1.0d, 1e-12);
+    }
+}

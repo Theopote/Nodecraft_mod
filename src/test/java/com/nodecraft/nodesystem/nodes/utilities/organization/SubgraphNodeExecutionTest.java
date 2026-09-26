@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.NodeExecutor;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -28,12 +29,10 @@ class SubgraphNodeExecutionTest {
     @BeforeEach
     void registerNodes() {
         registry.clear();
-        registry.registerNode(new NodeInfo("test.pass", "Pass", "pass-through test node", "test", 0, PassNode.class));
         registry.registerNode(new NodeInfo("test.constant", "Constant", "constant source", "test", 0, ConstantSourceNode.class));
         registry.registerNode(new NodeInfo("utilities.organization.graph_input", "Graph Input", "graph input", "utilities.organization", 0, GraphInputNode.class));
         registry.registerNode(new NodeInfo("utilities.organization.graph_output", "Graph Output", "graph output", "utilities.organization", 0, GraphOutputNode.class));
         registry.registerNode(new NodeInfo("utilities.organization.subgraph", "Subgraph", "subgraph", "utilities.organization", 0, SubgraphNode.class));
-        registry.registerNode(new NodeInfo("utilities.organization.subgraph_register", "Subgraph Register", "subgraph register", "utilities.organization", 0, SubgraphRegisterNode.class));
     }
 
     @AfterEach
@@ -42,79 +41,48 @@ class SubgraphNodeExecutionTest {
     }
 
     @Test
-    void embeddedSubgraphExecutesThroughGraphInputAndOutput() {
-        NodeGraph inner = passthroughSubgraph();
-        SubgraphNode subgraph = configuredSubgraph("embedded-test", GraphSerializer.toJson(inner));
+    void definitionBackedSubgraphExecutesThroughGraphInputAndOutput() {
+        SavedGraph definition = passthroughSubgraphDefinition();
+        SubgraphNode subgraph = configuredSubgraph("embedded-test", definition);
 
         NodeGraph outer = new NodeGraph("outer");
         ConstantSourceNode source = new ConstantSourceNode(21);
         outer.addNode(source);
         outer.addNode(subgraph);
-        outer.connect(source.getId(), "out", subgraph.getId(), "input_value");
+        outer.connect(
+                source.getId(),
+                "out",
+                subgraph.getId(),
+                SubgraphPortIds.dynamicInputPortId("in")
+        );
 
         ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSubgraphDefinitions(Map.of("embedded-test", definition));
 
         assertTrue(new NodeExecutor(outer, context).executeSync());
         assertEquals(true, subgraph.getOutput("output_valid"));
-        assertEquals(21, subgraph.getOutput("output_value"));
-    }
-
-    @Test
-    void registryBackedSubgraphExecutesWithMappedOutputs() {
-        ExecutionContext context = ExecutionContext.createEmpty(null);
-        NodeGraph inner = passthroughSubgraph();
-
-        SubgraphRegisterNode register = new SubgraphRegisterNode();
-        Map<String, Object> registered = register.compute(Map.of(
-            "input_subgraph_ref", "helper",
-            "input_subgraph_graph", inner,
-            "input_register", true
-        ), context);
-        assertEquals(true, registered.get("output_success"));
-
-        SubgraphNode subgraph = configuredSubgraph("helper", "");
-        Map<String, Object> outputs = subgraph.compute(Map.of("input_value", 42), context);
-
-        assertEquals(true, outputs.get("output_valid"));
-        assertEquals(42, outputs.get("output_value"));
+        assertEquals(
+                21,
+                subgraph.getOutput(SubgraphPortIds.dynamicOutputPortId("out"))
+        );
     }
 
     @Test
     void recursiveSubgraphCallIsBlocked() {
-        NodeGraph inner = passthroughSubgraph();
-        SubgraphNode nested = configuredSubgraph("loop", GraphSerializer.toJson(inner));
+        SavedGraph definition = passthroughSubgraphDefinition();
+        SubgraphNode nested = configuredSubgraph("loop", definition);
 
         ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSubgraphDefinitions(Map.of("loop", definition));
         context.setVariable(GraphIOKeys.SUBGRAPH_CALL_STACK_KEY, new java.util.ArrayList<>(java.util.List.of("loop")));
 
-        Map<String, Object> outputs = nested.compute(Map.of("input_value", 1), context);
+        Map<String, Object> outputs = nested.compute(Map.of(), context);
         assertEquals(false, outputs.get("output_valid"));
-        assertEquals("recursive_call_blocked", ((Map<?, ?>) outputs.get("output_metadata")).get("mode"));
+        assertTrue(String.valueOf(outputs.get("output_error")).contains("recursive"));
     }
 
-    @Test
-    void executorRunsRegisterBeforeSubgraphCall() {
-        NodeGraph graph = new NodeGraph("register-then-call");
-        ConstantSourceNode source = new ConstantSourceNode(99);
-        SubgraphRegisterNode register = new SubgraphRegisterNode();
-        register.setNodeState(Map.of("defaultRef", "helper"));
-        ConstantSourceNode graphPayload = new ConstantSourceNode(passthroughSubgraph());
-        SubgraphNode subgraph = configuredSubgraph("helper", "");
-
-        graph.addNode(source);
-        graph.addNode(graphPayload);
-        graph.addNode(register);
-        graph.addNode(subgraph);
-        graph.connect(source.getId(), "out", subgraph.getId(), "input_value");
-        graph.connect(graphPayload.getId(), "out", register.getId(), "input_subgraph_graph");
-        graph.connect(register.getId(), "output_ref", subgraph.getId(), "input_subgraph_ref");
-
-        ExecutionContext context = ExecutionContext.createEmpty(null);
-        assertTrue(new NodeExecutor(graph, context).executeSync());
-
-        assertEquals(true, register.getOutput("output_success"));
-        assertEquals(true, subgraph.getOutput("output_valid"));
-        assertEquals(99, subgraph.getOutput("output_value"));
+    private static SavedGraph passthroughSubgraphDefinition() {
+        return GraphSerializer.toSavedGraph(passthroughSubgraph());
     }
 
     private static NodeGraph passthroughSubgraph() {
@@ -130,28 +98,13 @@ class SubgraphNodeExecutionTest {
         return inner;
     }
 
-    private static SubgraphNode configuredSubgraph(String ref, String embeddedGraphJson) {
+    private static SubgraphNode configuredSubgraph(String ref, SavedGraph definition) {
         SubgraphNode subgraph = new SubgraphNode();
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("subgraphRef", ref);
-        state.put("inputKey", "in");
-        state.put("outputKey", "out");
-        state.put("embeddedGraphJson", embeddedGraphJson);
         subgraph.setNodeState(state);
+        subgraph.syncPortsFromDefinition(definition);
         return subgraph;
-    }
-
-    public static final class PassNode extends BaseNode {
-        public PassNode() {
-            super(UUID.randomUUID(), "test.pass");
-            addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this));
-            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
-        }
-
-        @Override
-        public void processNode(@Nullable ExecutionContext context) {
-            outputValues.put("out", inputValues.get("in"));
-        }
     }
 
     public static final class ConstantSourceNode extends BaseNode {
