@@ -68,6 +68,16 @@ public class InsetBoxFaceNode extends BaseNode {
             writeInvalid();
             return;
         }
+        for (Vector3d corner : corners) {
+            if (!VectorUtils.isFinite(corner)) {
+                writeInvalid();
+                return;
+            }
+        }
+        if (!VectorUtils.isFinite(face.getCenter())) {
+            writeInvalid();
+            return;
+        }
 
         Vector3d c0 = corners.get(0);
         Vector3d c1 = corners.get(1);

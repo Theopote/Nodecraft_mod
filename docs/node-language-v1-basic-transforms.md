@@ -74,6 +74,7 @@ Any null child under `CompositeGeometryData` causes the whole Composite transfor
 
 Offset / Inset emit only `Face` + `Valid`. Distance is required and must be finite.
 Positive inset requires `distance < min(width, height) / 2`; negative outset accepts any finite value.
+Both reject non-finite corners with `Face=null` / `Valid=false` (no exception).
 
 ## Transform Points by Frames
 

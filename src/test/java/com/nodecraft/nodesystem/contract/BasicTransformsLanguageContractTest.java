@@ -219,6 +219,25 @@ class BasicTransformsLanguageContractTest {
     }
 
     @Test
+    void insetFaceRejectsNonFiniteCornersWithoutThrowing() {
+        List<Vector3d> corners = List.of(
+                new Vector3d(0, 0, 0),
+                new Vector3d(Double.NaN, 0, 0),
+                new Vector3d(2, 2, 0),
+                new Vector3d(0, 2, 0)
+        );
+        BoxFaceData malformed = new BoxFaceData(
+                0, "front", List.of(0, 1, 2, 3), corners, new Vector3d(1, 1, 0), new Vector3d(0, 0, 1));
+
+        BaseNode inset = node("transform.basic_transforms.inset_face");
+        inset.setInput("input_face", malformed);
+        inset.setInput("input_distance", 0.1d);
+        inset.processNode(null);
+        assertEquals(Boolean.FALSE, inset.getOutput("output_valid"));
+        assertNull(inset.getOutput("output_face"));
+    }
+
+    @Test
     void transformByFramesIsCartesianFrameMajor() {
         FrameData frame0 = new FrameData(
                 new Vector3d(0, 0, 0),
