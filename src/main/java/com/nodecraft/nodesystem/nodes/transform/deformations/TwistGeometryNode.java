@@ -243,8 +243,12 @@ public class TwistGeometryNode extends BaseNode {
     }
 
     private @Nullable SourceData buildSdfSource(SignedDistanceFieldData sdf) {
-        Bounds bounds = resolveInputBounds();
-        if (bounds == null || !bounds.isValid()) {
+        BoundsResolution boundsResolution = resolveInputBounds();
+        if (boundsResolution.status == BoundsStatus.INVALID) {
+            return null;
+        }
+        Bounds bounds = boundsResolution.bounds;
+        if (boundsResolution.status == BoundsStatus.ABSENT) {
             SdfBoundsEstimator.AxisAlignedBounds estimated = SdfBoundsEstimator.estimate(sdf);
             if (estimated == null || !estimated.isValid()) {
                 return null;
@@ -254,18 +258,52 @@ public class TwistGeometryNode extends BaseNode {
         return new SourceData(sdf, bounds.min, bounds.max, 0.0d, false, 0);
     }
 
-    private @Nullable Bounds resolveInputBounds() {
+    /**
+     * Bounds Min/Max are a paired optional input:
+     * both unconnected → ABSENT (auto-estimate allowed);
+     * both connected and valid → VALID;
+     * half-connected or invalid → INVALID (fail closed, never estimate).
+     */
+    private BoundsResolution resolveInputBounds() {
         boolean minConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MIN_ID);
         boolean maxConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MAX_ID);
         if (!minConnected && !maxConnected) {
-            return null;
+            return BoundsResolution.absent();
+        }
+        if (minConnected != maxConnected) {
+            return BoundsResolution.invalid();
         }
         Vector3d min = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MIN_ID, null);
         Vector3d max = OptionalPortDrive.resolveOptionalPoint(this, INPUT_BOUNDS_MAX_ID, null);
-        if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)) {
-            return null;
+        if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)
+                || min.x > max.x || min.y > max.y || min.z > max.z) {
+            return BoundsResolution.invalid();
         }
-        return new Bounds(min, max);
+        Bounds bounds = new Bounds(min, max);
+        if (!bounds.isValid()) {
+            return BoundsResolution.invalid();
+        }
+        return BoundsResolution.valid(bounds);
+    }
+
+    private enum BoundsStatus {
+        ABSENT,
+        VALID,
+        INVALID
+    }
+
+    private record BoundsResolution(BoundsStatus status, @Nullable Bounds bounds) {
+        static BoundsResolution absent() {
+            return new BoundsResolution(BoundsStatus.ABSENT, null);
+        }
+
+        static BoundsResolution invalid() {
+            return new BoundsResolution(BoundsStatus.INVALID, null);
+        }
+
+        static BoundsResolution valid(Bounds bounds) {
+            return new BoundsResolution(BoundsStatus.VALID, bounds);
+        }
     }
 
     private static @Nullable Bounds boundsFromRegion(RegionData region) {

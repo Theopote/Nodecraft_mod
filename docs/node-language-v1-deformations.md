@@ -79,6 +79,15 @@ Geometry unconnected → SDF port (connection-aware)
 Non-SDF `GEOMETRY` is voxelized (`Approximate=true`). Voxel count over
 `GenerationLimits.MAX_DEFORM_SOURCE_VOXELS` → fail closed.
 
+Bounds Min / Max are a **paired** optional input on the SDF path:
+
+```text
+both unconnected     → auto-estimate bounds allowed
+both connected+valid → use explicit bounds
+half-connected       → Valid=false (never estimate)
+both connected+invalid → Valid=false (never estimate)
+```
+
 ## Budgets
 
 - `GenerationLimits.MAX_RELAX_POINTS` (8192)

@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.transform.deformations.BendGeometryNode;
 import com.nodecraft.nodesystem.nodes.transform.deformations.NoiseDisplacePointListNode;
 import com.nodecraft.nodesystem.nodes.transform.deformations.TwistGeometryNode;
 import com.nodecraft.nodesystem.nodes.transform.deformations.TwistPointListNode;
@@ -250,6 +251,58 @@ class DeformationsLanguageContractTest {
         assertNull(twist.getOutput("output_geometry"));
     }
 
+    @Test
+    void twistGeometryHalfConnectedBoundsFailsClosed() {
+        SignedDistanceFieldData sdf = point -> point.length() - 2.0d;
+
+        TwistGeometryProbe minOnly = new TwistGeometryProbe();
+        minOnly.setInput("input_sdf", sdf);
+        minOnly.setInput("input_axis_origin", new PointData(0, 0, 0));
+        minOnly.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        minOnly.connectInput("input_bounds_min", NodeDataType.POINT);
+        minOnly.putRawInput("input_bounds_min", new PointData(0, 0, 0));
+        minOnly.processNode(null);
+        assertEquals(Boolean.FALSE, minOnly.getOutput("output_valid"));
+        assertNull(minOnly.getOutput("output_geometry"));
+
+        TwistGeometryProbe maxOnly = new TwistGeometryProbe();
+        maxOnly.setInput("input_sdf", sdf);
+        maxOnly.setInput("input_axis_origin", new PointData(0, 0, 0));
+        maxOnly.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        maxOnly.connectInput("input_bounds_max", NodeDataType.POINT);
+        maxOnly.putRawInput("input_bounds_max", new PointData(4, 4, 4));
+        maxOnly.processNode(null);
+        assertEquals(Boolean.FALSE, maxOnly.getOutput("output_valid"));
+        assertNull(maxOnly.getOutput("output_geometry"));
+    }
+
+    @Test
+    void bendGeometryHalfConnectedBoundsFailsClosed() {
+        SignedDistanceFieldData sdf = point -> point.length() - 2.0d;
+
+        BendGeometryProbe minOnly = new BendGeometryProbe();
+        minOnly.setInput("input_sdf", sdf);
+        minOnly.setInput("input_axis_origin", new PointData(0, 0, 0));
+        minOnly.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        minOnly.setInput("input_bend_normal", new Vector3d(1, 0, 0));
+        minOnly.connectInput("input_bounds_min", NodeDataType.POINT);
+        minOnly.putRawInput("input_bounds_min", new PointData(0, 0, 0));
+        minOnly.processNode(null);
+        assertEquals(Boolean.FALSE, minOnly.getOutput("output_valid"));
+        assertNull(minOnly.getOutput("output_geometry"));
+
+        BendGeometryProbe maxOnly = new BendGeometryProbe();
+        maxOnly.setInput("input_sdf", sdf);
+        maxOnly.setInput("input_axis_origin", new PointData(0, 0, 0));
+        maxOnly.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        maxOnly.setInput("input_bend_normal", new Vector3d(1, 0, 0));
+        maxOnly.connectInput("input_bounds_max", NodeDataType.POINT);
+        maxOnly.putRawInput("input_bounds_max", new PointData(4, 4, 4));
+        maxOnly.processNode(null);
+        assertEquals(Boolean.FALSE, maxOnly.getOutput("output_valid"));
+        assertNull(maxOnly.getOutput("output_geometry"));
+    }
+
     private static boolean hasPropertyField(BaseNode node, String fieldName) {
         try {
             node.getClass().getDeclaredField(fieldName);
@@ -307,6 +360,16 @@ class DeformationsLanguageContractTest {
     }
 
     private static final class TwistGeometryProbe extends TwistGeometryNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            DeformationsLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class BendGeometryProbe extends BendGeometryNode {
         void putRawInput(String portId, Object value) {
             inputValues.put(portId, value);
         }
