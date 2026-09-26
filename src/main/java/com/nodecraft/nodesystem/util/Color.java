@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jspecify.annotations.NonNull;
+
 /**
  * 颜色类，表示RGBA颜色
  */
@@ -213,7 +215,7 @@ public record Color(float red, float green, float blue, float alpha) {
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return String.format("Color(%.2f, %.2f, %.2f, %.2f)", red, green, blue, alpha);
     }
 

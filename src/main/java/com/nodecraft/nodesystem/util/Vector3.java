@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jspecify.annotations.NonNull;
+
 /**
  * 表示三维向量或坐标的类
  */
@@ -173,7 +175,7 @@ public record Vector3(float x, float y, float z) {
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return String.format("(%.2f, %.2f, %.2f)", x, y, z);
     }
 

@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.preset;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,7 +44,7 @@ public record PresetDefinition(String presetId, String version, String schemaVer
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "PresetDefinition{" +
                 "presetId='" + presetId + '\'' +
                 ", version='" + version + '\'' +

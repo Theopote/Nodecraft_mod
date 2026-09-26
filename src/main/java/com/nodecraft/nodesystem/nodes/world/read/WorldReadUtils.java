@@ -27,8 +27,8 @@ final class WorldReadUtils {
         if (value instanceof Vector3d vector) {
             return BlockPos.ofFloored(vector.x, vector.y, vector.z);
         }
-        if (value instanceof Vector3 vector) {
-            return BlockPos.ofFloored(vector.x(), vector.y(), vector.z());
+        if (value instanceof Vector3(float x, float y, float z)) {
+            return BlockPos.ofFloored(x, y, z);
         }
         return null;
     }
@@ -90,7 +90,7 @@ final class WorldReadUtils {
 
     static int resolveMaxListElements(@Nullable Object value) {
         int requested = value instanceof Number number ? Math.max(0, number.intValue()) : 0;
-        if (requested <= 0) {
+        if (requested == 0) {
             return GenerationLimits.MAX_LIST_ELEMENTS;
         }
         return GenerationLimits.clampPositiveCount(requested);
@@ -98,7 +98,7 @@ final class WorldReadUtils {
 
     static int resolveMaxStringLength(@Nullable Object value) {
         int requested = value instanceof Number number ? Math.max(0, number.intValue()) : 0;
-        if (requested <= 0) {
+        if (requested == 0) {
             return DEFAULT_MAX_NBT_STRING_LENGTH;
         }
         return Math.min(requested, MAX_NBT_STRING_LENGTH);

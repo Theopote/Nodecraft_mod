@@ -1,7 +1,5 @@
 package com.nodecraft.gui.preset;
 
-import com.nodecraft.core.NodeCraft;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -96,13 +94,15 @@ public final class GraphPresetCatalog {
         if (category == null) {
             category = findUserCategory(DEFAULT_USER_CATEGORY_ID);
         }
-        if (category.presets == null) {
+        if (category != null && category.presets == null) {
             category.presets = new ArrayList<>();
         }
 
         preset.id = generateUserPresetId(preset.displayName);
         preset.kind = "composite";
-        category.presets.add(preset);
+        if (category != null) {
+            category.presets.add(preset);
+        }
         persistUserRules();
         return preset.id;
     }
@@ -221,18 +221,23 @@ public final class GraphPresetCatalog {
         if (target == null) {
             target = findUserCategory(DEFAULT_USER_CATEGORY_ID);
         }
-        if (target.presets == null) {
+        if (target != null && target.presets == null) {
             target.presets = new ArrayList<>();
         }
 
-        int clampedIndex = Math.max(0, Math.min(targetIndex, target.presets.size()));
-        if (sourceCategoryId != null
+        int clampedIndex = 0;
+        if (target != null) {
+            clampedIndex = Math.max(0, Math.min(targetIndex, target.presets.size()));
+        }
+        if (target != null && sourceCategoryId != null
                 && sourceCategoryId.equals(target.id)
                 && sourceIndex >= 0
                 && sourceIndex < clampedIndex) {
             clampedIndex--;
         }
-        target.presets.add(clampedIndex, preset);
+        if (target != null) {
+            target.presets.add(clampedIndex, preset);
+        }
         persistUserRules();
         return true;
     }
@@ -353,7 +358,7 @@ public final class GraphPresetCatalog {
             category.id = DEFAULT_USER_CATEGORY_ID;
             category.displayName = "我的预设";
             category.presets = new ArrayList<>();
-            userRules.categories.add(0, category);
+            userRules.categories.addFirst(category);
             persistUserRules();
         }
     }

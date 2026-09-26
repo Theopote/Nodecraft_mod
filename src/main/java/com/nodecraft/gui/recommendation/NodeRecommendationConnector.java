@@ -13,7 +13,6 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 final class NodeRecommendationConnector {
@@ -318,7 +317,7 @@ final class NodeRecommendationConnector {
                 continue;
             }
             if (!schema.outputs().isEmpty()) {
-                return schema.outputs().get(0).id();
+                return schema.outputs().getFirst().id();
             }
         }
         return null;

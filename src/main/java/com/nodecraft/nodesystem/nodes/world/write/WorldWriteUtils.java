@@ -50,8 +50,8 @@ final class WorldWriteUtils {
         if (value instanceof BlockPos pos) {
             return pos.toImmutable();
         }
-        if (value instanceof Coordinate coordinate) {
-            return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
+        if (value instanceof Coordinate(int x, int y, int z)) {
+            return new BlockPos(x, y, z);
         }
         if (value instanceof PointData pointData) {
             Vector3d position = pointData.position();
@@ -63,8 +63,8 @@ final class WorldWriteUtils {
         if (value instanceof Vec3d vector) {
             return BlockPos.ofFloored(vector.x, vector.y, vector.z);
         }
-        if (value instanceof Vector3 vector) {
-            return BlockPos.ofFloored(vector.x(), vector.y(), vector.z());
+        if (value instanceof Vector3(float x, float y, float z)) {
+            return BlockPos.ofFloored(x, y, z);
         }
         return null;
     }

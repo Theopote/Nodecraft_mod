@@ -32,14 +32,14 @@ final class WorldSelectionResolveUtils {
         if (value instanceof Vec3d vector) {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
+        if (value instanceof Vector3(float x, float y, float z)) {
+            return new Vector3d(x, y, z);
         }
         if (value instanceof BlockPos blockPos) {
             return BlockSpace.cellCenter(blockPos);
         }
-        if (value instanceof Coordinate coordinate) {
-            return BlockSpace.cellCenter(coordinate.x(), coordinate.y(), coordinate.z());
+        if (value instanceof Coordinate(int x, int y, int z)) {
+            return BlockSpace.cellCenter(x, y, z);
         }
         return null;
     }
@@ -48,8 +48,8 @@ final class WorldSelectionResolveUtils {
         if (value instanceof BlockPos pos) {
             return pos.toImmutable();
         }
-        if (value instanceof Coordinate coordinate) {
-            return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
+        if (value instanceof Coordinate(int x, int y, int z)) {
+            return new BlockPos(x, y, z);
         }
         Vector3d vector = resolveVector3d(value);
         if (vector != null) {

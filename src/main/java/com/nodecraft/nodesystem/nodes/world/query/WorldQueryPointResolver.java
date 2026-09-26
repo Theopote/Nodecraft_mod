@@ -23,8 +23,8 @@ final class WorldQueryPointResolver {
         if (value instanceof Vec3d vector) {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
+        if (value instanceof Vector3(float x, float y, float z)) {
+            return new Vector3d(x, y, z);
         }
         if (value instanceof BlockPos pos) {
             // Spatial Convention v1: BlockPos as continuous location = cell center, not min corner.

@@ -55,7 +55,7 @@ public final class AiConversationHistoryService {
         }
 
         while (result.size() > 1 && totalChars > totalLimit) {
-            AiRemotePlannerService.ConversationMessage removed = result.remove(0);
+            AiRemotePlannerService.ConversationMessage removed = result.removeFirst();
             totalChars -= removed.content().length();
         }
 
@@ -112,7 +112,7 @@ public final class AiConversationHistoryService {
                 continue;
             }
 
-            recent.add(0, message);
+            recent.addFirst(message);
         }
 
         return recent;

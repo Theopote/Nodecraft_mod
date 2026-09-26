@@ -37,9 +37,13 @@ final class PresetCoordinateSpaceAuditor {
     private static final String PREVIEW_GEOMETRY_TYPE = "output.preview.preview_geometry";
     private static final String VOXELIZE_TYPE = "geometry.voxel.voxelize_geometry";
     private static final String CREATE_LIST_TYPE = "math.list.create_list";
+    private static final String DECONSTRUCT_POINT_TYPE = "reference.points.deconstruct_point";
+    private static final String CONSTRUCT_VECTOR_TYPE = "reference.vectors.construct_vector";
 
     private static final String PLAYER_OUTPUT_PORT = "output_position";
     private static final String MOVE_TRANSLATION_PORT = "input_translation";
+    private static final String DECONSTRUCT_POINT_INPUT = "input_point";
+    private static final String CONSTRUCT_VECTOR_OUTPUT = "output_vector";
 
     private static final Set<String> WORLD_PLACEMENT_PORTS = Set.of(
             "input_base",
@@ -100,8 +104,7 @@ final class PresetCoordinateSpaceAuditor {
                 }
 
                 String targetType = typeByRef.get(connection.toRef);
-                if (MOVE_GEOMETRY_TYPE.equals(targetType)
-                        && MOVE_TRANSLATION_PORT.equals(connection.toPort)) {
+                if (isPlayerTranslationTarget(preset, typeByRef, connection.toRef, connection.toPort, targetType)) {
                     usesFinalMove = true;
                     continue;
                 }
@@ -187,11 +190,9 @@ final class PresetCoordinateSpaceAuditor {
             if (!PLAYER_OUTPUT_PORT.equals(connection.fromPort)) {
                 continue;
             }
-            if (!MOVE_TRANSLATION_PORT.equals(connection.toPort)) {
-                continue;
-            }
-            if (MOVE_GEOMETRY_TYPE.equals(typeByRef.get(connection.toRef))) {
-                moves.add(connection.toRef);
+            String moveRef = resolvePlayerAnchoredMoveRef(preset, typeByRef, connection.toRef, connection.toPort);
+            if (moveRef != null) {
+                moves.add(moveRef);
             }
         }
         return moves;
@@ -241,6 +242,54 @@ final class PresetCoordinateSpaceAuditor {
             }
         }
         return visited;
+    }
+
+    private static boolean isPlayerTranslationTarget(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef,
+            String targetRef,
+            String targetPort,
+            String targetType) {
+        if (MOVE_GEOMETRY_TYPE.equals(targetType) && MOVE_TRANSLATION_PORT.equals(targetPort)) {
+            return true;
+        }
+        return resolvePlayerAnchoredMoveRef(preset, typeByRef, targetRef, targetPort) != null;
+    }
+
+    private static String resolvePlayerAnchoredMoveRef(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef,
+            String targetRef,
+            String targetPort) {
+        if (MOVE_GEOMETRY_TYPE.equals(typeByRef.get(targetRef)) && MOVE_TRANSLATION_PORT.equals(targetPort)) {
+            return targetRef;
+        }
+        if (!DECONSTRUCT_POINT_TYPE.equals(typeByRef.get(targetRef))
+                || !DECONSTRUCT_POINT_INPUT.equals(targetPort)
+                || preset.connections == null) {
+            return null;
+        }
+
+        String vectorRef = null;
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (targetRef.equals(connection.fromRef) && "output_x".equals(connection.fromPort)) {
+                vectorRef = connection.toRef;
+                break;
+            }
+        }
+        if (vectorRef == null || !CONSTRUCT_VECTOR_TYPE.equals(typeByRef.get(vectorRef))) {
+            return null;
+        }
+
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (vectorRef.equals(connection.fromRef)
+                    && CONSTRUCT_VECTOR_OUTPUT.equals(connection.fromPort)
+                    && MOVE_GEOMETRY_TYPE.equals(typeByRef.get(connection.toRef))
+                    && MOVE_TRANSLATION_PORT.equals(connection.toPort)) {
+                return connection.toRef;
+            }
+        }
+        return null;
     }
 
     private static boolean isWorldPlacementPort(String toPort, String targetTypeId) {
@@ -346,8 +395,7 @@ final class PresetCoordinateSpaceAuditor {
                     continue;
                 }
                 String targetType = typeByRef.get(connection.toRef);
-                if (MOVE_GEOMETRY_TYPE.equals(targetType)
-                        && MOVE_TRANSLATION_PORT.equals(connection.toPort)) {
+                if (isPlayerTranslationTarget(preset, typeByRef, connection.toRef, connection.toPort, targetType)) {
                     usesFinalMove = true;
                     continue;
                 }

@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jspecify.annotations.NonNull;
+
 /**
  * 表示Minecraft世界中的整数坐标
  * 专门用于方块位置，区别于浮点数的Vector3
@@ -25,7 +27,7 @@ public record Coordinate(int x, int y, int z) {
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return String.format("(%d, %d, %d)", x, y, z);
     }
 } 

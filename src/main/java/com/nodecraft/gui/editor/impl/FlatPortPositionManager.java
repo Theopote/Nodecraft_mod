@@ -8,55 +8,43 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import imgui.ImVec2;
+import org.jspecify.annotations.NonNull;
 
 /**
  * 扁平化端口位置管理器
  * 使用高效的数据结构替代嵌套Map，提升查找和更新性能
  */
 public class FlatPortPositionManager {
-    
+
     /**
-     * 端口位置数据结构
-     * 使用扁平化设计，避免嵌套Map的开销
-     */
-    public static class PortPosition {
-        public final UUID nodeId;
-        public final String portId;
-        public final float x;
-        public final float y;
-        public final long frameCreated;
-        
-        public PortPosition(UUID nodeId, String portId, float x, float y, long frameCreated) {
-            this.nodeId = nodeId;
-            this.portId = portId;
-            this.x = x;
-            this.y = y;
-            this.frameCreated = frameCreated;
-        }
-        
+         * 端口位置数据结构
+         * 使用扁平化设计，避免嵌套Map的开销
+         */
+        public record PortPosition(UUID nodeId, String portId, float x, float y, long frameCreated) {
+
         public ImVec2 toImVec2() {
-            return new ImVec2(x, y);
-        }
-        
+                return new ImVec2(x, y);
+            }
+
         @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (obj == null || getClass() != obj.getClass()) return false;
-            PortPosition that = (PortPosition) obj;
-            return nodeId.equals(that.nodeId) && portId.equals(that.portId);
-        }
-        
+            public boolean equals(Object obj) {
+                if (this == obj) return true;
+                if (obj == null || getClass() != obj.getClass()) return false;
+                PortPosition that = (PortPosition) obj;
+                return nodeId.equals(that.nodeId) && portId.equals(that.portId);
+            }
+
         @Override
-        public int hashCode() {
-            return nodeId.hashCode() * 31 + portId.hashCode();
-        }
-        
+            public int hashCode() {
+                return nodeId.hashCode() * 31 + portId.hashCode();
+            }
+
         @Override
-        public String toString() {
-            return String.format("PortPosition{node=%s, port=%s, pos=(%.1f,%.1f)}", 
-                               nodeId.toString().substring(0, 8), portId, x, y);
+            public @NonNull String toString() {
+                return String.format("PortPosition{node=%s, port=%s, pos=(%.1f,%.1f)}",
+                        nodeId.toString().substring(0, 8), portId, x, y);
+            }
         }
-    }
     
     /**
      * 复合键，用于快速查找端口位置
@@ -330,14 +318,15 @@ public class FlatPortPositionManager {
      */
     public String getDetailedStats() {
         return String.format(
-            "FlatPortPositionManager Stats:\n" +
-            "  Total Positions: %d\n" +
-            "  Active Nodes: %d\n" +
-            "  Total Lookups: %d\n" +
-            "  Cache Hits: %d\n" +
-            "  Hit Rate: %.2f%%\n" +
-            "  Total Updates: %d\n" +
-            "  Current Frame: %d",
+                """
+                        FlatPortPositionManager Stats:
+                          Total Positions: %d
+                          Active Nodes: %d
+                          Total Lookups: %d
+                          Cache Hits: %d
+                          Hit Rate: %.2f%%
+                          Total Updates: %d
+                          Current Frame: %d""",
             portPositions.size(),
             nodeCollections.size(),
             totalLookups,
