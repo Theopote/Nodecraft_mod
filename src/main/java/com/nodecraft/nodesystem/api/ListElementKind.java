@@ -25,5 +25,6 @@ public enum ListElementKind {
     BLOCK_PLACEMENT,
     PLANT_STRUCTURE,
     L_SYSTEM_RULE,
-    PLANT_BLOCK
+    PLANT_BLOCK,
+    COLOR
 }

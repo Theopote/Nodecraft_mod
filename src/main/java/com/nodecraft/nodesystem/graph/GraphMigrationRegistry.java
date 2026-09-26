@@ -112,6 +112,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V52 -> migrateV52ToV53(graph);
             case GraphFormatVersion.V53 -> migrateV53ToV54(graph);
             case GraphFormatVersion.V54 -> migrateV54ToV55(graph);
+            case GraphFormatVersion.V55 -> migrateV55ToV56(graph);
             default -> graph;
         };
     }
@@ -3185,6 +3186,38 @@ public final class GraphMigrationRegistry {
     private static final String VALIDATE_TYPE = "utilities.assist.validate";
     private static final String COALESCE_TYPE = "utilities.assist.coalesce";
 
+    private static final String READ_IMAGE_TYPE = "utilities.fileio.read_image";
+    private static final String IMAGE_SAMPLER_TYPE = "utilities.fileio.image_sampler";
+    private static final String IMPORT_VOX_TYPE = "utilities.fileio.import_vox";
+
+    private static final Set<String> FILEIO_V56_STRIP_STATE_KEYS = Set.of(
+            "allowexternalpaths",
+            "maxpixels",
+            "maxvoxels",
+            "defaultblock",
+            "defaultblocktype"
+    );
+
+    private static final Set<String> READ_IMAGE_OBSOLETE_PORTS = Set.of(
+            "input_max_pixels",
+            "input_allow_external_paths"
+    );
+
+    private static final Set<String> IMPORT_VOX_OBSOLETE_PORTS = Set.of(
+            "input_max_voxels",
+            "input_allow_external_paths",
+            "input_block_type",
+            "output_placements"
+    );
+
+    private static final Set<String> IMAGE_SAMPLER_OBSOLETE_PORTS = Set.of(
+            "input_pixel_colors",
+            "input_image_width",
+            "input_image_height",
+            "input_width",
+            "input_height"
+    );
+
     /**
      * Assist Utilities v1: remap Reroute/Tag→Relay, Assert→Validate, Signal Merge→Coalesce;
      * drop Assert Passed wires; strip failHard.
@@ -3253,6 +3286,98 @@ public final class GraphMigrationRegistry {
             case LEGACY_SIGNAL_MERGE_TYPE -> COALESCE_TYPE;
             default -> typeId;
         };
+    }
+
+    /**
+     * FileIO v1: strip obsolete allow-external / max-pixels / max-voxels / default-block state;
+     * drop wires to removed Read Image / Image Sampler / Import VOX ports.
+     */
+    private static SavedGraph migrateV55ToV56(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String type = node.typeId.toLowerCase(Locale.ROOT);
+                if (!READ_IMAGE_TYPE.equals(type)
+                        && !IMAGE_SAMPLER_TYPE.equals(type)
+                        && !IMPORT_VOX_TYPE.equals(type)) {
+                    continue;
+                }
+                if (!(node.state instanceof Map<?, ?> state)) {
+                    continue;
+                }
+                Map<String, Object> cleaned = new HashMap<>();
+                for (Map.Entry<?, ?> entry : state.entrySet()) {
+                    if (!(entry.getKey() instanceof String key)) {
+                        continue;
+                    }
+                    if (FILEIO_V56_STRIP_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                        LOGGER.debug("Stripped FileIO state key {} from {}", key, node.nodeId);
+                        continue;
+                    }
+                    cleaned.put(key, entry.getValue());
+                }
+                node.state = cleaned.isEmpty() ? null : cleaned;
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            String targetType = nodeTypeBySavedId.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId == null
+                    ? null
+                    : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null
+                    ? null
+                    : connection.targetPortId.toLowerCase(Locale.ROOT);
+
+            if (isFileIoObsoleteEndpoint(sourceType, sourcePort)
+                    || isFileIoObsoleteEndpoint(targetType, targetPort)) {
+                LOGGER.debug(
+                        "Dropped FileIO obsolete wire {}#{} -> {}#{}",
+                        connection.sourceNodeId,
+                        connection.sourcePortId,
+                        connection.targetNodeId,
+                        connection.targetPortId
+                );
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static boolean isFileIoObsoleteEndpoint(@Nullable String nodeType, @Nullable String portId) {
+        if (nodeType == null || portId == null) {
+            return false;
+        }
+        if (READ_IMAGE_TYPE.equals(nodeType)) {
+            return READ_IMAGE_OBSOLETE_PORTS.contains(portId);
+        }
+        if (IMPORT_VOX_TYPE.equals(nodeType)) {
+            return IMPORT_VOX_OBSOLETE_PORTS.contains(portId);
+        }
+        if (IMAGE_SAMPLER_TYPE.equals(nodeType)) {
+            return IMAGE_SAMPLER_OBSOLETE_PORTS.contains(portId);
+        }
+        return false;
     }
 
     private static String remapBlockStateTypeId(String typeId) {

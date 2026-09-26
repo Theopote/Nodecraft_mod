@@ -90,6 +90,18 @@ public final class GenerationLimits {
     /** Maximum turtle bracket stack depth. */
     public static final int MAX_LSYSTEM_TURTLE_STACK_DEPTH = 4096;
 
+    /** Maximum materializable image sample count (width × height after downsample). */
+    public static final int MAX_IMAGE_PIXELS = 1_048_576;
+
+    /** Maximum accepted raster image file size on disk. */
+    public static final long MAX_IMAGE_FILE_BYTES = 64L * 1024 * 1024;
+
+    /** Maximum accepted MagicaVoxel .vox file size on disk. */
+    public static final long MAX_VOX_FILE_BYTES = 64L * 1024 * 1024;
+
+    /** Maximum solid voxels accepted from a single .vox import. */
+    public static final int MAX_IMPORTED_VOXELS = 262_144;
+
     private GenerationLimits() {
     }
 

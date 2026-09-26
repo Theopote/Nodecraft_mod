@@ -2,10 +2,14 @@ package com.nodecraft.nodesystem.util;
 
 import net.fabricmc.loader.api.FabricLoader;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
  * Validates default import read paths for file-input nodes when external paths are disabled.
+ * Existing files and allowlist roots are compared via {@link Path#toRealPath()} when present
+ * so symlink escapes outside the allowlist are rejected.
  */
 public final class ImportPathUtil {
 
@@ -22,31 +26,45 @@ public final class ImportPathUtil {
     }
 
     static boolean isAllowedDefaultPath(Path path, Path gameDir, ImportKind kind) {
-        Path normalized = path.toAbsolutePath().normalize();
-        Path gameRoot = gameDir.toAbsolutePath().normalize();
-        Path nodecraftConfig = gameRoot.resolve("config").resolve("nodecraft").normalize();
+        Path resolvedPath = resolveForCompare(path.toAbsolutePath().normalize());
+        Path gameRoot = resolveForCompare(gameDir.toAbsolutePath().normalize());
+        Path nodecraftConfig = resolveForCompare(gameRoot.resolve("config").resolve("nodecraft"));
 
         if (kind == ImportKind.IMAGE) {
-            if (startsWithDirectory(normalized, nodecraftConfig.resolve("images"))) {
+            if (startsWithDirectory(resolvedPath, resolveForCompare(nodecraftConfig.resolve("images")))) {
                 return true;
             }
-            if (startsWithDirectory(normalized, gameRoot.resolve("screenshots"))) {
+            if (startsWithDirectory(resolvedPath, resolveForCompare(gameRoot.resolve("screenshots")))) {
                 return true;
             }
         } else {
-            if (startsWithDirectory(normalized, nodecraftConfig.resolve("assets"))) {
+            if (startsWithDirectory(resolvedPath, resolveForCompare(nodecraftConfig.resolve("assets")))) {
                 return true;
             }
-            if (startsWithDirectory(normalized, nodecraftConfig.resolve("vox"))) {
+            if (startsWithDirectory(resolvedPath, resolveForCompare(nodecraftConfig.resolve("vox")))) {
                 return true;
             }
         }
 
-        return startsWithDirectory(normalized, gameRoot.resolve("saves"));
+        return startsWithDirectory(resolvedPath, resolveForCompare(gameRoot.resolve("saves")));
+    }
+
+    /**
+     * Lexical absolute normalize; when the path exists, prefer the real path (symlink-resolved).
+     */
+    private static Path resolveForCompare(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        if (!Files.exists(normalized)) {
+            return normalized;
+        }
+        try {
+            return normalized.toRealPath();
+        } catch (IOException ignored) {
+            return normalized;
+        }
     }
 
     private static boolean startsWithDirectory(Path path, Path directory) {
-        Path base = directory.toAbsolutePath().normalize();
-        return path.startsWith(base);
+        return path.startsWith(directory);
     }
 }

@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,6 +13,11 @@ class ImportPathUtilTest {
 
     @TempDir
     Path gameDir;
+
+    @AfterEach
+    void resetImportAccessPolicy() {
+        ImportAccessPolicy.reset();
+    }
 
     @Test
     void allowsNodecraftImageDirectory() {
@@ -61,5 +67,14 @@ class ImportPathUtilTest {
             .resolve("secret.png");
 
         assertFalse(ImportPathUtil.isAllowedDefaultPath(fakePath, gameDir, ImportPathUtil.ImportKind.IMAGE));
+    }
+
+    @Test
+    void importAccessPolicyDeniesPathOutsideAllowlist() {
+        Path outside = gameDir.resolve("server.properties");
+        ImportAccessPolicy.setCurrent((path, kind) ->
+            ImportPathUtil.isAllowedDefaultPath(path, gameDir, kind));
+
+        assertFalse(ImportAccessPolicy.current().allows(outside, ImportPathUtil.ImportKind.IMAGE));
     }
 }

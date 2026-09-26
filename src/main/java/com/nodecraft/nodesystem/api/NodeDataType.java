@@ -64,6 +64,9 @@ public enum NodeDataType {
     REGION("region", "Region", RegionData.class),
 
     COLOR("color", "Color", ColorData.class),
+    IMAGE("image", "Image", ImageData.class),
+    /** Ordered pixel / sample colors (row-major image buffers). */
+    COLOR_LIST("color_list", "Color List", List.class, ListElementKind.COLOR),
 
     BLOCK_POS("block_pos", "Block Position", BlockPos.class),
     BLOCK_LIST("block_list", "Block List", BlockPosList.class, ListElementKind.BLOCK_POS),
@@ -210,6 +213,7 @@ public enum NodeDataType {
             case PLANT_STRUCTURE -> PLANT_STRUCTURE;
             case L_SYSTEM_RULE -> L_SYSTEM_RULE;
             case PLANT_BLOCK -> PLANT_BLOCK;
+            case COLOR -> COLOR;
         };
     }
 
@@ -332,6 +336,7 @@ public enum NodeDataType {
             case PLANT_STRUCTURE -> value instanceof PlantStructure;
             case L_SYSTEM_RULE -> value instanceof LSystemRule;
             case PLANT_BLOCK -> value instanceof PlantStructure.PlantBlock;
+            case COLOR -> value instanceof ColorData;
         };
     }
 

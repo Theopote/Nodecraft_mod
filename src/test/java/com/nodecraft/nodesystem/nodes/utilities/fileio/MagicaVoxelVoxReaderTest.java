@@ -1,8 +1,15 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
-import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.ColorData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ImportAccessPolicy;
 import net.minecraft.util.math.BlockPos;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -10,7 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,6 +29,16 @@ class MagicaVoxelVoxReaderTest {
 
     @TempDir
     Path tempDir;
+
+    @BeforeEach
+    void allowImports() {
+        ImportAccessPolicy.setCurrent((path, kind) -> true);
+    }
+
+    @AfterEach
+    void resetPolicy() {
+        ImportAccessPolicy.reset();
+    }
 
     @Test
     void readsSizeVoxelsAndRgbaPalette() throws Exception {
@@ -57,24 +74,34 @@ class MagicaVoxelVoxReaderTest {
         Files.write(file, createVoxFile());
 
         ImportVoxNode node = new ImportVoxNode();
-        Map<String, Object> outputs = node.compute(Map.of(
-                "input_path", file.toString(),
-                "input_allow_external_paths", true,
-                "input_block_type", "minecraft:gold_block",
-                "input_origin", new BlockPos(10, 20, 30)
-        ));
+        PortStubNode originStub = new PortStubNode(NodeDataType.BLOCK_POS);
+        originStub.setOutputValue(new BlockPos(10, 20, 30));
+        BasePort originOut = (BasePort) originStub.getOutputPorts().getFirst();
+        BasePort originIn = (BasePort) node.getInputPorts().stream()
+                .filter(port -> "input_origin".equals(port.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(originOut.connectTo(originIn));
 
-        assertTrue((Boolean) outputs.get("output_valid"));
-        assertEquals(2, outputs.get("output_count"));
+        node.setInput("input_path", file.toString());
+        node.setInput("input_origin", new BlockPos(10, 20, 30));
+        node.processNode(null);
 
-        BlockPosList blocks = assertInstanceOf(BlockPosList.class, outputs.get("output_blocks"));
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals(2, node.getOutput("output_count"));
+
+        BlockPosList blocks = assertInstanceOf(BlockPosList.class, node.getOutput("output_blocks"));
         assertTrue(blocks.contains(new BlockPos(10, 20, 30)));
         assertTrue(blocks.contains(new BlockPos(12, 24, 33)));
 
-        List<?> placements = assertInstanceOf(List.class, outputs.get("output_placements"));
-        assertFalse(placements.isEmpty());
-        BlockPlacementData placement = assertInstanceOf(BlockPlacementData.class, placements.getFirst());
-        assertEquals("minecraft:gold_block", placement.blockId());
+        List<?> colors = assertInstanceOf(List.class, node.getOutput("output_colors"));
+        List<?> indices = assertInstanceOf(List.class, node.getOutput("output_color_indices"));
+        assertEquals(2, colors.size());
+        assertEquals(2, indices.size());
+        assertInstanceOf(ColorData.class, colors.getFirst());
+        assertInstanceOf(Integer.class, indices.getFirst());
+
+        assertFalse(node.getOutputPorts().stream().anyMatch(p -> "output_placements".equals(p.getId())));
     }
 
     private static byte[] createVoxFile() {
@@ -124,5 +151,20 @@ class MagicaVoxelVoxReaderTest {
             out.writeBytes(part);
         }
         return out.toByteArray();
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        void setOutputValue(Object value) {
+            outputValues.put("output_stub", value);
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

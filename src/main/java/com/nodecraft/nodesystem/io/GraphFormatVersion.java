@@ -345,8 +345,14 @@ public final class GraphFormatVersion {
      */
     public static final int V55 = 55;
 
+    /**
+     * FileIO v1: IMAGE/ImageData protocol, ImportAccessPolicy (no graph self-grant),
+     * COLOR_LIST, GenerationLimits image/vox caps, VOX structure-only (no stone/placements).
+     */
+    public static final int V56 = 56;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V55;
+    public static final int CURRENT = V56;
 
     private GraphFormatVersion() {
     }

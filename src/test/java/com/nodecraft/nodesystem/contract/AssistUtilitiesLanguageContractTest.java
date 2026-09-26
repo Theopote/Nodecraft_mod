@@ -41,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Assist Utilities v1 language fence (Graph V55).
+ * CURRENT may advance; this family remains frozen at V55+.
  */
 class AssistUtilitiesLanguageContractTest {
 
@@ -70,9 +71,9 @@ class AssistUtilitiesLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV55() {
+    void currentGraphFormatIsAtLeastV55() {
         assertEquals(55, GraphFormatVersion.V55);
-        assertEquals(GraphFormatVersion.V55, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V55);
     }
 
     @Test

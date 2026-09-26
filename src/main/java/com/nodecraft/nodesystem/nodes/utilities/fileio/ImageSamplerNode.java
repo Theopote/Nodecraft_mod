@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
+import com.nodecraft.nodesystem.datatypes.ImageData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,13 +15,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Samples color and channel values from flattened image pixel data.
+ * Samples color and channel values from an {@link ImageData} payload.
  */
 @NodeInfo(
-    effect = NodeEffect.FILE_IO,
+    effect = NodeEffect.PURE,
     id = "utilities.fileio.image_sampler",
     displayName = "Image Sampler",
-    description = "Samples color, channels, and grayscale values from image pixels using UV or pixel coordinates",
+    description = "Samples color, channels, and grayscale values from IMAGE using UV or pixel coordinates",
     category = "utilities.fileio",
     order = 1
 )
@@ -59,9 +60,7 @@ public class ImageSamplerNode extends BaseNode {
     @NodeProperty(displayName = "Origin", category = "Sampling", order = 4)
     private OriginMode originMode = OriginMode.TOP_LEFT;
 
-    private static final String INPUT_PIXEL_COLORS_ID = "input_pixel_colors";
-    private static final String INPUT_IMAGE_WIDTH_ID = "input_image_width";
-    private static final String INPUT_IMAGE_HEIGHT_ID = "input_image_height";
+    private static final String INPUT_IMAGE_ID = "input_image";
     private static final String INPUT_U_ID = "input_u";
     private static final String INPUT_V_ID = "input_v";
     private static final String INPUT_X_ID = "input_x";
@@ -82,9 +81,7 @@ public class ImageSamplerNode extends BaseNode {
     public ImageSamplerNode() {
         super(UUID.randomUUID(), "utilities.fileio.image_sampler");
 
-        addInputPort(new BasePort(INPUT_PIXEL_COLORS_ID, "Pixel Colors", "Flattened row-major list of image colors", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_IMAGE_WIDTH_ID, "Width", "Image width in pixels", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_IMAGE_HEIGHT_ID, "Height", "Image height in pixels", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_IMAGE_ID, "Image", "IMAGE payload from Read Image", NodeDataType.IMAGE, this));
         addInputPort(new BasePort(INPUT_U_ID, "U", "Normalized horizontal coordinate in 0..1", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_V_ID, "V", "Normalized vertical coordinate in 0..1", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_X_ID, "X", "Pixel-space horizontal coordinate", NodeDataType.DOUBLE, this));
@@ -110,32 +107,42 @@ public class ImageSamplerNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Samples color, channels, and grayscale values from image pixels using UV or pixel coordinates";
+        return "Samples color, channels, and grayscale values from IMAGE using UV or pixel coordinates";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        ImageView image = resolveImage();
-        if (image == null) {
-            writeInvalid("Invalid image inputs");
+        Object imageObj = inputValues.get(INPUT_IMAGE_ID);
+        if (!(imageObj instanceof ImageData image)) {
+            writeInvalid("Missing or invalid IMAGE");
             return;
         }
 
+        CoordinateMode resolvedMode = coordinateMode == null ? CoordinateMode.UV : coordinateMode;
         double x;
         double y;
-        CoordinateMode resolvedMode = coordinateMode == null ? CoordinateMode.UV : coordinateMode;
         if (resolvedMode == CoordinateMode.PIXEL) {
-            x = getInputDouble(INPUT_X_ID, 0.0d);
-            y = getInputDouble(INPUT_Y_ID, 0.0d);
+            Double px = requireFiniteDouble(INPUT_X_ID);
+            Double py = requireFiniteDouble(INPUT_Y_ID);
+            if (px == null || py == null) {
+                writeInvalid("Pixel coordinates must be finite doubles");
+                return;
+            }
+            x = px;
+            y = py;
         } else {
-            double u = getInputDouble(INPUT_U_ID, 0.0d);
-            double v = getInputDouble(INPUT_V_ID, 0.0d);
-            x = u * Math.max(0, image.width - 1);
-            y = v * Math.max(0, image.height - 1);
+            Double u = requireFiniteDouble(INPUT_U_ID);
+            Double v = requireFiniteDouble(INPUT_V_ID);
+            if (u == null || v == null) {
+                writeInvalid("UV coordinates must be finite doubles");
+                return;
+            }
+            x = u * Math.max(0, image.sampleWidth() - 1);
+            y = v * Math.max(0, image.sampleHeight() - 1);
         }
 
         if (originMode == OriginMode.BOTTOM_LEFT) {
-            y = Math.max(0, image.height - 1) - y;
+            y = Math.max(0, image.sampleHeight() - 1) - y;
         }
 
         ColorData color = filterMode == FilterMode.NEAREST
@@ -153,39 +160,31 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_BLUE_ID, (double) color.b());
         outputValues.put(OUTPUT_ALPHA_ID, (double) color.a());
         outputValues.put(OUTPUT_GRAYSCALE_ID, grayscale(color));
-        outputValues.put(OUTPUT_SAMPLE_X_ID, resolveCoordinate(x, image.width));
-        outputValues.put(OUTPUT_SAMPLE_Y_ID, resolveCoordinate(y, image.height));
+        outputValues.put(OUTPUT_SAMPLE_X_ID, resolveCoordinate(x, image.sampleWidth()));
+        outputValues.put(OUTPUT_SAMPLE_Y_ID, resolveCoordinate(y, image.sampleHeight()));
         outputValues.put(OUTPUT_RESOLVED_MODE_ID, resolvedMode.name());
         outputValues.put(OUTPUT_ERROR_ID, "");
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private ImageView resolveImage() {
-        Object colorsObj = inputValues.get(INPUT_PIXEL_COLORS_ID);
-        Object widthObj = inputValues.get(INPUT_IMAGE_WIDTH_ID);
-        Object heightObj = inputValues.get(INPUT_IMAGE_HEIGHT_ID);
-        if (!(colorsObj instanceof List<?> colors) || !(widthObj instanceof Number wn) || !(heightObj instanceof Number hn)) {
+    private @Nullable Double requireFiniteDouble(String portId) {
+        Object value = inputValues.get(portId);
+        if (!(value instanceof Number number)) {
             return null;
         }
-
-        int width = Math.max(0, wn.intValue());
-        int height = Math.max(0, hn.intValue());
-        if (width < 1 || height < 1 || colors.size() < width * height) {
-            return null;
-        }
-
-        return new ImageView(width, height, colors);
+        double resolved = number.doubleValue();
+        return Double.isFinite(resolved) ? resolved : null;
     }
 
-    private ColorData sampleNearest(ImageView image, double x, double y) {
-        int px = (int) Math.round(resolveCoordinate(x, image.width));
-        int py = (int) Math.round(resolveCoordinate(y, image.height));
+    private ColorData sampleNearest(ImageData image, double x, double y) {
+        int px = (int) Math.round(resolveCoordinate(x, image.sampleWidth()));
+        int py = (int) Math.round(resolveCoordinate(y, image.sampleHeight()));
         return readColor(image, px, py);
     }
 
-    private ColorData sampleBilinear(ImageView image, double x, double y) {
-        double rx = resolveCoordinate(x, image.width);
-        double ry = resolveCoordinate(y, image.height);
+    private ColorData sampleBilinear(ImageData image, double x, double y) {
+        double rx = resolveCoordinate(x, image.sampleWidth());
+        double ry = resolveCoordinate(y, image.sampleHeight());
         int x0 = (int) Math.floor(rx);
         int y0 = (int) Math.floor(ry);
         int x1 = x0 + 1;
@@ -208,22 +207,15 @@ public class ImageSamplerNode extends BaseNode {
         return new ColorData(r, g, b, a);
     }
 
-    private ColorData readColor(ImageView image, int x, int y) {
-        int px = (int) resolveCoordinate(x, image.width);
-        int py = (int) resolveCoordinate(y, image.height);
-        int index = py * image.width + px;
-        if (index < 0 || index >= image.colors.size()) {
+    private ColorData readColor(ImageData image, int x, int y) {
+        int px = (int) resolveCoordinate(x, image.sampleWidth());
+        int py = (int) resolveCoordinate(y, image.sampleHeight());
+        int index = py * image.sampleWidth() + px;
+        List<ColorData> colors = image.colors();
+        if (index < 0 || index >= colors.size()) {
             return null;
         }
-        Object value = image.colors.get(index);
-        if (value instanceof ColorData color) {
-            return color;
-        }
-        if (value instanceof Number number) {
-            double gray = clamp01(number.doubleValue());
-            return new ColorData((float) gray, (float) gray, (float) gray, 1.0f);
-        }
-        return null;
+        return colors.get(index);
     }
 
     private double resolveCoordinate(double value, int size) {
@@ -272,15 +264,6 @@ public class ImageSamplerNode extends BaseNode {
         return color.r() * 0.299d + color.g() * 0.587d + color.b() * 0.114d;
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private double clamp01(double value) {
-        return Math.max(0.0d, Math.min(1.0d, value));
-    }
-
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_COLOR_ID, ColorData.BLACK);
         outputValues.put(OUTPUT_RED_ID, 0.0d);
@@ -294,6 +277,4 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
-
-    private record ImageView(int width, int height, List<?> colors) {}
 }
