@@ -272,8 +272,14 @@ public final class GraphFormatVersion {
      */
     public static final int V43 = 43;
 
+    /**
+     * Surface / Volume Distribution v1: six canonical scatter/sampling nodes;
+     * continuous POINT_LIST outputs; deterministic seeds; no BLOCK_LIST mirrors.
+     */
+    public static final int V44 = 44;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V43;
+    public static final int CURRENT = V44;
 
     private GraphFormatVersion() {
     }

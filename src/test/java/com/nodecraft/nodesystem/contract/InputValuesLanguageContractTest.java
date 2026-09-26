@@ -53,7 +53,7 @@ class InputValuesLanguageContractTest {
         assertEquals(34, GraphFormatVersion.V34);
         assertEquals(35, GraphFormatVersion.V35);
         assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(GraphFormatVersion.V43, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V44, GraphFormatVersion.CURRENT);
     }
 
     @Test

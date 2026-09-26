@@ -62,7 +62,7 @@ class BasicAssignmentLanguageContractTest {
     void currentGraphFormatIsV41() {
         assertEquals(40, GraphFormatVersion.V40);
         assertEquals(41, GraphFormatVersion.V41);
-        assertEquals(GraphFormatVersion.V43, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V44, GraphFormatVersion.CURRENT);
     }
 
     @Test

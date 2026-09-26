@@ -1,7 +1,5 @@
 package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -10,7 +8,10 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -21,9 +22,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
-/**
- * Poisson-disk style sampling on a plane rectangle in UV space (bridson-like rejection sampling).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.poisson_disk_plane",
@@ -34,17 +32,18 @@ import java.util.UUID;
 )
 public class PoissonDiskOnPlaneNode extends BaseNode {
 
-    private static final double EPS = 1.0e-9d;
-
     @NodeProperty(displayName = "Max Attempts", category = "Sampling", order = 1,
-        description = "Maximum random proposals before stopping (may return fewer than Count)")
-    private int maxAttempts = 20000;
+        description = "Maximum random proposals before stopping (may return fewer than Target Count)")
+    private int maxAttempts = 20_000;
+
+    @NodeProperty(displayName = "Seed", category = "Sampling", order = 2)
+    private int seed = DeterministicSeedUtils.DEFAULT_SEED;
 
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String INPUT_HALF_U_ID = "input_half_u";
     private static final String INPUT_HALF_V_ID = "input_half_v";
-    private static final String INPUT_COUNT_ID = "input_count";
+    private static final String INPUT_TARGET_COUNT_ID = "input_target_count";
     private static final String INPUT_MIN_DISTANCE_ID = "input_min_distance";
     private static final String INPUT_SEED_ID = "input_seed";
 
@@ -56,40 +55,18 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
     public PoissonDiskOnPlaneNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.poisson_disk_plane");
 
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
-            "Plane defining UV basis and projection",
-            NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin",
-            "Rectangle center on the plane. When disconnected, the plane reference point is used.",
-            NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_HALF_U_ID, "Half U",
-            "Half extent along the plane U axis",
-            NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HALF_V_ID, "Half V",
-            "Half extent along the plane V axis",
-            NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Target number of samples",
-            NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance",
-            "Minimum Euclidean distance between accepted samples",
-            NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed",
-            "Optional RNG seed for reproducibility",
-            NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Plane defining UV basis and projection", NodeDataType.PLANE, this));
+        addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Rectangle center on the plane. When disconnected, the plane reference point is used.", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_HALF_U_ID, "Half U", "Half extent along the plane U axis", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HALF_V_ID, "Half V", "Half extent along the plane V axis", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Target number of samples", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean distance between accepted samples", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional RNG seed for reproducibility", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
-            "Accepted sample positions",
-            NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Number of accepted samples",
-            NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ATTEMPTS_ID, "Attempts",
-            "Number of random proposals tried",
-            NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when the requested count was reached",
-            NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Accepted sample positions", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of accepted samples", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_ATTEMPTS_ID, "Attempts", "Number of random proposals tried", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs are valid", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -105,38 +82,36 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        Object halfUObj = inputValues.get(INPUT_HALF_U_ID);
-        Object halfVObj = inputValues.get(INPUT_HALF_V_ID);
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
-        Object minDistObj = inputValues.get(INPUT_MIN_DISTANCE_ID);
-        if (!(planeObj instanceof PlaneData plane)
-            || !(halfUObj instanceof Number huNum)
-            || !(halfVObj instanceof Number hvNum)
-            || !(countObj instanceof Number cNum)
-            || !(minDistObj instanceof Number mdNum)) {
+        if (!(planeObj instanceof PlaneData plane)) {
             writeInvalid();
             return;
         }
 
-        double halfU = huNum.doubleValue();
-        double halfV = hvNum.doubleValue();
-        int targetCount = GenerationLimits.clampPositiveCount(cNum.intValue());
-        double minDist = mdNum.doubleValue();
+        double halfU = inputValues.get(INPUT_HALF_U_ID) instanceof Number n ? n.doubleValue() : Double.NaN;
+        double halfV = inputValues.get(INPUT_HALF_V_ID) instanceof Number n ? n.doubleValue() : Double.NaN;
+        double minDist = inputValues.get(INPUT_MIN_DISTANCE_ID) instanceof Number n ? n.doubleValue() : Double.NaN;
+        int requestedTarget = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), 1);
 
-        if (targetCount < 1 || halfU <= EPS || halfV <= EPS || minDist < EPS) {
+        if (requestedTarget <= 0
+            || !Double.isFinite(halfU) || !Double.isFinite(halfV) || !Double.isFinite(minDist)
+            || halfU <= 0.0d || halfV <= 0.0d || minDist < 0.0d) {
+            writeInvalid();
+            return;
+        }
+
+        int targetCount = GenerationLimits.clampLayoutInstanceCount(requestedTarget);
+        if (targetCount <= 0) {
             writeInvalid();
             return;
         }
 
         Vector3d origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID), plane);
-        com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils.PlaneAxes axes =
-            com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         Vector3d projectedOrigin = plane.projectPoint(origin);
         Vector2d originUv = axes.to2d(projectedOrigin);
 
-        Object seedObj = inputValues.get(INPUT_SEED_ID);
-        long seed = seedObj instanceof Number n ? n.longValue() : System.nanoTime();
-        Random rng = new Random(seed);
+        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
+        Random rng = new Random(resolvedSeed);
 
         double minDistSq = minDist * minDist;
         List<Vector3d> accepted = new ArrayList<>(targetCount);
@@ -149,14 +124,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
             double v = originUv.y + (rng.nextDouble() * 2.0d - 1.0d) * halfV;
             Vector3d candidate = axes.from2d(new Vector2d(u, v));
 
-            boolean ok = true;
-            for (Vector3d p : accepted) {
-                if (p.distanceSquared(candidate) < minDistSq) {
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
+            if (MinDistanceScatterSelector.isFarEnough(candidate, accepted, minDistSq)) {
                 accepted.add(candidate);
             }
         }
@@ -164,7 +132,7 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(accepted));
         outputValues.put(OUTPUT_COUNT_ID, accepted.size());
         outputValues.put(OUTPUT_ATTEMPTS_ID, attempts);
-        outputValues.put(OUTPUT_VALID_ID, accepted.size() == targetCount);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
@@ -194,9 +162,18 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
         }
     }
 
+    public int getSeed() {
+        return seed;
+    }
+
+    public void setSeed(int seed) {
+        this.seed = seed;
+        markDirty();
+    }
+
     @Override
     public Object getNodeState() {
-        return java.util.Map.of("maxAttempts", maxAttempts);
+        return java.util.Map.of("maxAttempts", maxAttempts, "seed", seed);
     }
 
     @Override
@@ -205,6 +182,10 @@ public class PoissonDiskOnPlaneNode extends BaseNode {
             Object ma = map.get("maxAttempts");
             if (ma instanceof Number n) {
                 setMaxAttempts(n.intValue());
+            }
+            Object seedValue = map.get("seed");
+            if (seedValue instanceof Number n) {
+                setSeed(n.intValue());
             }
         }
     }

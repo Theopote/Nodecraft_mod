@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **535**
+- Total nodes: **532**
 - Total categories: **59**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -48,7 +48,7 @@
 | `pattern.linear` | 4 |
 | `pattern.lsystem` | 2 |
 | `pattern.radial` | 3 |
-| `pattern.surface_volume_distribution` | 9 |
+| `pattern.surface_volume_distribution` | 6 |
 | `pattern.voronoi_3d` | 1 |
 | `reference.frames` | 8 |
 | `reference.planes` | 7 |
@@ -611,19 +611,16 @@
 | Spiral | `pattern.radial.spiral` | Generates spiral anchor points with tangents and placement frames | `SpiralNode` |
 | Phyllotaxis | `pattern.radial.phyllotaxis` | Generates golden-angle phyllotaxis anchor points with tangents and placement frames | `PhyllotaxisNode` |
 
-## pattern.surface_volume_distribution (9)
+## pattern.surface_volume_distribution (6)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Populate Region | `pattern.surface_volume_distribution.populate_region` | 在指定区域内随机或均匀生成坐标列表 | `PopulateRegionNode` |
-| Sample Sphere Surface | `pattern.surface_volume_distribution.sample_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
-| Sample Geometry Surface | `pattern.surface_volume_distribution.sample_geometry_surface` | Samples points from voxelized geometry surfaces using density or explicit count | `SampleGeometrySurfaceNode` |
-| Scatter On Sphere Surface | `pattern.surface_volume_distribution.surface_scatter` | Scatters points on a sphere surface and outputs matching normals and optional snapped block coordinates | `ScatterOnSphereSurfaceNode` |
+| Sample Sphere Surface | `pattern.surface_volume_distribution.sample_sphere_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
+| Scatter On Surface | `pattern.surface_volume_distribution.scatter_surface` | Scatters points on supported primitive geometry surfaces with random or blue-noise distribution | `ScatterOnSurfaceNode` |
 | Poisson Disk On Plane | `pattern.surface_volume_distribution.poisson_disk_plane` | Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling | `PoissonDiskOnPlaneNode` |
-| Scatter On Geometry Surface | `pattern.surface_volume_distribution.scatter_geometry_surface` | Scatters points on voxelized geometry surfaces with random or blue-noise approximation and spacing fallback controls | `ScatterOnGeometrySurfaceNode` |
-| Scatter On Surface Strip | `pattern.surface_volume_distribution.scatter_surface_strip` | Scatters points on a surface strip by random section interpolation with optional spacing | `ScatterOnSurfaceStripNode` |
-| Scatter In Volume | `pattern.surface_volume_distribution.scatter_volume` | Scatters points inside voxelized geometry volume with random or blue-noise approximation. | `ScatterInVolumeNode` |
-| Image-Based Scatter | `pattern.surface_volume_distribution.image_scatter` | Scatters points using image grayscale density maps on a plane or world XZ. | `ImageBasedScatterNode` |
+| Scatter On Surface Strip | `pattern.surface_volume_distribution.scatter_surface_strip` | Scatters points on a surface strip by area-weighted quad sampling with optional spacing | `ScatterOnSurfaceStripNode` |
+| Scatter In Volume | `pattern.surface_volume_distribution.scatter_volume` | Scatters points inside supported primitive geometry volumes with random or blue-noise distribution | `ScatterInVolumeNode` |
+| Image Scatter | `pattern.surface_volume_distribution.image_scatter` | Scatters points using image density maps on a plane or world XZ | `ImageBasedScatterNode` |
 
 ## pattern.voronoi_3d (1)
 

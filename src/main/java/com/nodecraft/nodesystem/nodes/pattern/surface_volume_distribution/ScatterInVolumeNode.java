@@ -6,237 +6,197 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
+import com.nodecraft.nodesystem.util.PrimitiveVolumeSampler;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.scatter_volume",
     displayName = "Scatter In Volume",
-    description = "Scatters points inside voxelized geometry volume with random or blue-noise approximation.",
+    description = "Scatters points inside supported primitive geometry volumes with random or blue-noise distribution",
     category = "pattern.surface_volume_distribution",
-    order = 8
+    order = 6
 )
 public class ScatterInVolumeNode extends BaseNode {
 
     public enum DistributionMode {
         RANDOM,
-        BLUE_NOISE_APPROX
+        BLUE_NOISE
     }
 
-    @NodeProperty(displayName = "Count", category = "Scatter", order = 1)
-    private int count = 256;
+    @NodeProperty(displayName = "Target Count", category = "Scatter", order = 1)
+    private int targetCount = 256;
 
     @NodeProperty(displayName = "Seed", category = "Scatter", order = 2)
-    private int seed = 12345;
+    private int seed = DeterministicSeedUtils.DEFAULT_SEED;
 
-    @NodeProperty(displayName = "Min Spacing", category = "Scatter", order = 3)
-    private double minSpacing = 0.0d;
+    @NodeProperty(displayName = "Min Distance", category = "Scatter", order = 3)
+    private double minDistance = 0.0d;
 
     @NodeProperty(displayName = "Distribution", category = "Scatter", order = 4)
-    private DistributionMode distributionMode = DistributionMode.BLUE_NOISE_APPROX;
-
-    @NodeProperty(displayName = "Unique Blocks Only", category = "Output", order = 5)
-    private boolean uniqueBlocksOnly = true;
+    private DistributionMode distributionMode = DistributionMode.BLUE_NOISE;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
-    private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
-    private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
-    private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
-    private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
-    private static final String INPUT_COUNT_ID = "input_count";
+    private static final String INPUT_TARGET_COUNT_ID = "input_target_count";
     private static final String INPUT_SEED_ID = "input_seed";
-    private static final String INPUT_MIN_SPACING_ID = "input_min_spacing";
+    private static final String INPUT_MIN_DISTANCE_ID = "input_min_distance";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_BLOCKS_ID = "output_blocks";
-    private static final String OUTPUT_POINT_COUNT_ID = "output_point_count";
-    private static final String OUTPUT_BLOCK_COUNT_ID = "output_block_count";
+    private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScatterInVolumeNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.scatter_volume");
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry fallback input", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry fallback input", NodeDataType.CYLINDER_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry fallback input", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry fallback input", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Optional scatter count override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Primitive geometry volume to scatter inside", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_SPACING_ID, "Min Spacing", "Minimum Euclidean spacing in block units", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered volume points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Scattered points snapped to block coordinates", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POINT_COUNT_ID, "Point Count", "Number of scattered geometric points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_COUNT_ID, "Block Count", "Number of scattered snapped block coordinates", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Actual number of accepted points", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry input is valid and supported", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Scatters points inside voxelized geometry volume with random or blue-noise approximation.";
+        return "Scatters points inside supported primitive geometry volumes with random or blue-noise distribution";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPosList volumeBlocks = GeometryVoxelizer.resolveBlocks(
-            null,
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
-        );
-        if (volumeBlocks.isEmpty()) {
-            writeEmpty(false);
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (!(geometryObj instanceof GeometryData geometry) || !PrimitiveVolumeSampler.isSupported(geometry)) {
+            writeEmpty();
             return;
         }
 
-        int resolvedCount = GenerationLimits.clampPositiveCount(inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
-        int resolvedSeed = inputValues.get(INPUT_SEED_ID) instanceof Number n ? n.intValue() : seed;
-        double resolvedMinSpacing = Math.max(0.0d, inputValues.get(INPUT_MIN_SPACING_ID) instanceof Number n ? n.doubleValue() : minSpacing);
-        Random random = new Random(resolvedSeed);
+        int requestedCount = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), targetCount);
+        if (requestedCount <= 0) {
+            writeEmpty();
+            return;
+        }
 
-        List<BlockPos> source = new ArrayList<>(volumeBlocks.getPositions());
-        List<BlockPos> selected = selectPositions(source, resolvedCount, resolvedMinSpacing, random);
+        double minDist = inputValues.get(INPUT_MIN_DISTANCE_ID) instanceof Number n ? n.doubleValue() : minDistance;
+        if (!Double.isFinite(minDist) || minDist < 0.0d) {
+            writeEmpty();
+            return;
+        }
 
-        List<Vector3d> points = new ArrayList<>(selected.size());
-        BlockPosList blocks = new BlockPosList();
-        Set<BlockPos> unique = uniqueBlocksOnly ? new LinkedHashSet<>() : null;
-        for (BlockPos pos : selected) {
-            points.add(toPoint(pos));
-            if (unique != null) {
-                if (unique.add(pos.toImmutable())) {
-                    blocks.add(pos);
-                }
-            } else {
-                blocks.add(pos);
-            }
+        int resolvedCount = GenerationLimits.clampLayoutInstanceCount(requestedCount);
+        if (resolvedCount <= 0) {
+            writeEmpty();
+            return;
+        }
+
+        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
+        MinDistanceScatterSelector.DistributionMode mode = distributionMode == DistributionMode.RANDOM
+            ? MinDistanceScatterSelector.DistributionMode.RANDOM
+            : MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX;
+
+        List<Vector3d> points = PrimitiveVolumeSampler.scatter(geometry, resolvedCount, resolvedSeed, minDist, mode);
+        if (points.isEmpty()) {
+            writeEmpty();
+            return;
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_BLOCKS_ID, blocks);
-        outputValues.put(OUTPUT_POINT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_BLOCK_COUNT_ID, blocks.size());
+        outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private void writeEmpty(boolean valid) {
+    private void writeEmpty() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
-        outputValues.put(OUTPUT_POINT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_BLOCK_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private List<BlockPos> selectPositions(List<BlockPos> source, int targetCount, double minSpacing, Random random) {
-        if (source.isEmpty()) {
-            return List.of();
-        }
-        if (targetCount >= source.size() && minSpacing <= 0.0d) {
-            return source;
-        }
-
-        double minSpacingSq = minSpacing * minSpacing;
-        if (distributionMode == DistributionMode.RANDOM && minSpacingSq <= 0.0d) {
-            List<BlockPos> pool = new ArrayList<>(source);
-            Collections.shuffle(pool, random);
-            return pool.subList(0, Math.min(targetCount, pool.size()));
-        }
-
-        List<BlockPos> candidates = new ArrayList<>(source);
-        Collections.shuffle(candidates, random);
-        List<BlockPos> selected = new ArrayList<>(Math.min(targetCount, source.size()));
-        if (distributionMode == DistributionMode.BLUE_NOISE_APPROX && !candidates.isEmpty()) {
-            selected.add(candidates.removeFirst());
-            while (!candidates.isEmpty() && selected.size() < targetCount) {
-                int bestIndex = -1;
-                double bestScore = Double.NEGATIVE_INFINITY;
-                int attempts = Math.min(24, candidates.size());
-                for (int i = 0; i < attempts; i++) {
-                    int candidateIndex = random.nextInt(candidates.size());
-                    BlockPos candidate = candidates.get(candidateIndex);
-                    double nearestSq = nearestDistanceSq(candidate, selected);
-                    if (minSpacingSq > 0.0d && nearestSq < minSpacingSq) {
-                        continue;
-                    }
-                    if (nearestSq > bestScore) {
-                        bestScore = nearestSq;
-                        bestIndex = candidateIndex;
-                    }
-                }
-                if (bestIndex < 0) {
-                    break;
-                }
-                selected.add(candidates.remove(bestIndex));
-            }
-        } else {
-            for (BlockPos candidate : candidates) {
-                if (selected.size() >= targetCount) {
-                    break;
-                }
-                if (minSpacingSq > 0.0d && nearestDistanceSq(candidate, selected) < minSpacingSq) {
-                    continue;
-                }
-                selected.add(candidate);
-            }
-        }
-
-        if (selected.size() < targetCount) {
-            List<BlockPos> remainder = new ArrayList<>(source);
-            remainder.removeAll(selected);
-            Collections.shuffle(remainder, random);
-            for (BlockPos pos : remainder) {
-                if (selected.size() >= targetCount) {
-                    break;
-                }
-                selected.add(pos);
-            }
-        }
-        return selected;
+    public DistributionMode getDistributionMode() {
+        return distributionMode;
     }
 
-    private double nearestDistanceSq(BlockPos candidate, List<BlockPos> selected) {
-        if (selected.isEmpty()) {
-            return Double.POSITIVE_INFINITY;
-        }
-        double minSq = Double.POSITIVE_INFINITY;
-        double cx = candidate.getX() + 0.5d;
-        double cy = candidate.getY() + 0.5d;
-        double cz = candidate.getZ() + 0.5d;
-        for (BlockPos pos : selected) {
-            double dx = cx - (pos.getX() + 0.5d);
-            double dy = cy - (pos.getY() + 0.5d);
-            double dz = cz - (pos.getZ() + 0.5d);
-            double distanceSq = (dx * dx) + (dy * dy) + (dz * dz);
-            if (distanceSq < minSq) {
-                minSq = distanceSq;
-            }
-        }
-        return minSq;
+    public void setDistributionMode(DistributionMode distributionMode) {
+        this.distributionMode = distributionMode == null ? DistributionMode.BLUE_NOISE : distributionMode;
+        markDirty();
     }
 
-    private Vector3d toPoint(BlockPos pos) {
-        return new Vector3d(
-            pos.getX() + 0.5d,
-            pos.getY() + 0.5d,
-            pos.getZ() + 0.5d
-        );
+    public void setDistributionModeString(String mode) {
+        if (mode == null || mode.isBlank()) {
+            setDistributionMode(DistributionMode.BLUE_NOISE);
+            return;
+        }
+        try {
+            String normalized = mode.trim().toUpperCase().replace("BLUE_NOISE_APPROX", "BLUE_NOISE");
+            setDistributionMode(DistributionMode.valueOf(normalized));
+        } catch (IllegalArgumentException ignored) {
+            setDistributionMode(DistributionMode.BLUE_NOISE);
+        }
+    }
+
+    public int getTargetCount() {
+        return targetCount;
+    }
+
+    public void setTargetCount(int targetCount) {
+        this.targetCount = Math.max(1, targetCount);
+        markDirty();
+    }
+
+    public int getSeed() {
+        return seed;
+    }
+
+    public void setSeed(int seed) {
+        this.seed = seed;
+        markDirty();
+    }
+
+    public double getMinDistance() {
+        return minDistance;
+    }
+
+    public void setMinDistance(double minDistance) {
+        this.minDistance = minDistance;
+        markDirty();
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("targetCount", targetCount);
+        state.put("seed", seed);
+        state.put("minDistance", minDistance);
+        state.put("distributionMode", distributionMode.name());
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("targetCount") instanceof Number countValue) {
+            setTargetCount(countValue.intValue());
+        }
+        if (map.get("seed") instanceof Number seedValue) {
+            setSeed(seedValue.intValue());
+        }
+        if (map.get("minDistance") instanceof Number minDistanceValue) {
+            setMinDistance(minDistanceValue.doubleValue());
+        }
+        if (map.get("distributionMode") instanceof String distributionModeValue) {
+            setDistributionModeString(distributionModeValue);
+        }
     }
 }
-

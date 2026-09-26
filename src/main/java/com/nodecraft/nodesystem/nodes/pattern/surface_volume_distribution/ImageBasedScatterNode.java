@@ -1,7 +1,5 @@
 package com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -11,10 +9,10 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -23,25 +21,27 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.image_scatter",
-    displayName = "Image-Based Scatter",
-    description = "Scatters points using image grayscale density maps on a plane or world XZ.",
+    displayName = "Image Scatter",
+    description = "Scatters points using image density maps on a plane or world XZ",
     category = "pattern.surface_volume_distribution",
-    order = 9
+    order = 7
 )
 public class ImageBasedScatterNode extends BaseNode {
 
-    @NodeProperty(displayName = "Count", category = "Scatter", order = 1)
-    private int count = 256;
+    @NodeProperty(displayName = "Target Count", category = "Scatter", order = 1)
+    private int targetCount = 256;
 
     @NodeProperty(displayName = "Seed", category = "Scatter", order = 2)
-    private int seed = 12345;
+    private int seed = DeterministicSeedUtils.DEFAULT_SEED;
 
     @NodeProperty(displayName = "Threshold", category = "Scatter", order = 3)
     private double threshold = 0.0d;
@@ -49,7 +49,7 @@ public class ImageBasedScatterNode extends BaseNode {
     @NodeProperty(displayName = "Invert", category = "Scatter", order = 4)
     private boolean invert = false;
 
-    private static final String INPUT_GRAYSCALE_VALUES_ID = "input_grayscale_values";
+    private static final String INPUT_DENSITY_VALUES_ID = "input_density_values";
     private static final String INPUT_IMAGE_WIDTH_ID = "input_image_width";
     private static final String INPUT_IMAGE_HEIGHT_ID = "input_image_height";
     private static final String INPUT_IMAGE_PATH_ID = "input_image_path";
@@ -57,20 +57,21 @@ public class ImageBasedScatterNode extends BaseNode {
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String INPUT_SPAN_U_ID = "input_span_u";
     private static final String INPUT_SPAN_V_ID = "input_span_v";
-    private static final String INPUT_COUNT_ID = "input_count";
+    private static final String INPUT_TARGET_COUNT_ID = "input_target_count";
     private static final String INPUT_SEED_ID = "input_seed";
     private static final String INPUT_THRESHOLD_ID = "input_threshold";
     private static final String INPUT_INVERT_ID = "input_invert";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_BLOCKS_ID = "output_blocks";
-    private static final String OUTPUT_UV_ID = "output_uv";
+    private static final String OUTPUT_U_VALUES_ID = "output_u_values";
+    private static final String OUTPUT_V_VALUES_ID = "output_v_values";
+    private static final String OUTPUT_DENSITY_VALUES_ID = "output_density_values";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ImageBasedScatterNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.image_scatter");
-        addInputPort(new BasePort(INPUT_GRAYSCALE_VALUES_ID, "Grayscale Values", "Flattened row-major grayscale values in [0,1]", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_DENSITY_VALUES_ID, "Density Values", "Flattened row-major density values in [0,1]", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_IMAGE_WIDTH_ID, "Image Width", "Image width in pixels", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_IMAGE_HEIGHT_ID, "Image Height", "Image height in pixels", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_IMAGE_PATH_ID, "Image Path", "Optional image file path fallback", NodeDataType.FILE_PATH, this));
@@ -78,21 +79,22 @@ public class ImageBasedScatterNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional scatter origin point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_SPAN_U_ID, "Span U", "World span along U axis", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SPAN_V_ID, "Span V", "World span along V axis", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Target number of scattered points", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Target number of scattered points", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Random seed", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_THRESHOLD_ID, "Threshold", "Density threshold in [0,1]", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert grayscale density", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert density values", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Scattered points snapped to block coordinates", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "List of sampled UV maps {u,v,density}", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_U_VALUES_ID, "U Values", "Normalized U coordinate per point", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_V_VALUES_ID, "V Values", "Normalized V coordinate per point", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_DENSITY_VALUES_ID, "Density Values", "Sampled density per point", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of scattered points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when image data is valid", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Scatters points using image grayscale density maps on a plane or world XZ.";
+        return "Scatters points using image density maps on a plane or world XZ";
     }
 
     @Override
@@ -103,15 +105,36 @@ public class ImageBasedScatterNode extends BaseNode {
             return;
         }
 
-        int targetCount = GenerationLimits.clampPositiveCount(inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : count);
-        int resolvedSeed = inputValues.get(INPUT_SEED_ID) instanceof Number n ? n.intValue() : seed;
-        double resolvedThreshold = clamp01(inputValues.get(INPUT_THRESHOLD_ID) instanceof Number n ? n.doubleValue() : threshold);
+        int requestedTarget = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), targetCount);
+        if (requestedTarget <= 0) {
+            writeInvalid();
+            return;
+        }
+
+        int resolvedTarget = GenerationLimits.clampLayoutInstanceCount(requestedTarget);
+        if (resolvedTarget <= 0) {
+            writeInvalid();
+            return;
+        }
+
+        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
+        double resolvedThreshold = inputValues.get(INPUT_THRESHOLD_ID) instanceof Number n ? n.doubleValue() : threshold;
+        if (!Double.isFinite(resolvedThreshold)) {
+            writeInvalid();
+            return;
+        }
+        resolvedThreshold = clamp01(resolvedThreshold);
+
         boolean resolvedInvert = inputValues.get(INPUT_INVERT_ID) instanceof Boolean b ? b : invert;
-        double spanU = Math.max(1.0d, inputValues.get(INPUT_SPAN_U_ID) instanceof Number n ? n.doubleValue() : image.width);
-        double spanV = Math.max(1.0d, inputValues.get(INPUT_SPAN_V_ID) instanceof Number n ? n.doubleValue() : image.height);
+        double spanU = inputValues.get(INPUT_SPAN_U_ID) instanceof Number n ? n.doubleValue() : image.width;
+        double spanV = inputValues.get(INPUT_SPAN_V_ID) instanceof Number n ? n.doubleValue() : image.height;
+        if (!Double.isFinite(spanU) || !Double.isFinite(spanV) || spanU <= 0.0d || spanV <= 0.0d) {
+            writeInvalid();
+            return;
+        }
 
         double[] cumulative = buildCumulativeDensity(image.values, resolvedThreshold, resolvedInvert);
-        if (cumulative.length == 0 || cumulative[cumulative.length - 1] <= 1.0e-9d) {
+        if (cumulative.length == 0 || !Double.isFinite(cumulative[cumulative.length - 1]) || cumulative[cumulative.length - 1] <= 1.0e-9d) {
             writeInvalid();
             return;
         }
@@ -121,10 +144,12 @@ public class ImageBasedScatterNode extends BaseNode {
         PlaneProjectionUtils.PlaneAxes axes = plane != null ? PlaneProjectionUtils.PlaneAxes.from(plane) : null;
 
         Random rng = new Random(resolvedSeed);
-        List<Vector3d> points = new ArrayList<>(targetCount);
-        BlockPosList blocks = new BlockPosList();
-        List<java.util.Map<String, Object>> uv = new ArrayList<>(targetCount);
-        for (int i = 0; i < targetCount; i++) {
+        List<Vector3d> points = new ArrayList<>(resolvedTarget);
+        List<Double> uValues = new ArrayList<>(resolvedTarget);
+        List<Double> vValues = new ArrayList<>(resolvedTarget);
+        List<Double> densityValues = new ArrayList<>(resolvedTarget);
+
+        for (int i = 0; i < resolvedTarget; i++) {
             int pixel = sampleIndex(cumulative, rng);
             int px = pixel % image.width;
             int py = pixel / image.width;
@@ -138,41 +163,42 @@ public class ImageBasedScatterNode extends BaseNode {
             double localV = (v01 - 0.5d) * spanV;
             Vector3d world = toWorldPoint(origin, axes, localU, localV);
             points.add(world);
-            blocks.add(BlockPos.ofFloored(world.x, world.y, world.z));
-
-            double d = density(image.values.get(pixel), resolvedThreshold, resolvedInvert);
-            uv.add(java.util.Map.of("u", u01, "v", v01, "density", d));
+            uValues.add(u01);
+            vValues.add(v01);
+            densityValues.add(density(image.values.get(pixel), resolvedThreshold, resolvedInvert));
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_BLOCKS_ID, blocks);
-        outputValues.put(OUTPUT_UV_ID, List.copyOf(uv));
+        outputValues.put(OUTPUT_U_VALUES_ID, List.copyOf(uValues));
+        outputValues.put(OUTPUT_V_VALUES_ID, List.copyOf(vValues));
+        outputValues.put(OUTPUT_DENSITY_VALUES_ID, List.copyOf(densityValues));
         outputValues.put(OUTPUT_COUNT_ID, points.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
         outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
-        outputValues.put(OUTPUT_UV_ID, List.of());
+        outputValues.put(OUTPUT_U_VALUES_ID, List.of());
+        outputValues.put(OUTPUT_V_VALUES_ID, List.of());
+        outputValues.put(OUTPUT_DENSITY_VALUES_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private ImageData resolveImageData() {
-        Object grayscaleObj = inputValues.get(INPUT_GRAYSCALE_VALUES_ID);
+        Object densityObj = inputValues.get(INPUT_DENSITY_VALUES_ID);
         Object widthObj = inputValues.get(INPUT_IMAGE_WIDTH_ID);
         Object heightObj = inputValues.get(INPUT_IMAGE_HEIGHT_ID);
-        if (grayscaleObj instanceof List<?> list && widthObj instanceof Number wn && heightObj instanceof Number hn) {
-            int width = Math.max(1, wn.intValue());
-            int height = Math.max(1, hn.intValue());
+        if (densityObj instanceof List<?> list && widthObj instanceof Integer width && heightObj instanceof Integer height) {
+            if (width < 1 || height < 1) {
+                return null;
+            }
             List<Double> values = new ArrayList<>(width * height);
             for (Object item : list) {
-                if (item instanceof Number n) {
-                    values.add(clamp01(n.doubleValue()));
-                } else if (item instanceof ColorData c) {
-                    values.add(clamp01(c.r() * 0.299d + c.g() * 0.587d + c.b() * 0.114d));
+                if (!(item instanceof Number n) || !Double.isFinite(n.doubleValue())) {
+                    return null;
                 }
+                values.add(clamp01(n.doubleValue()));
             }
             if (values.size() >= width * height) {
                 return new ImageData(width, height, List.copyOf(values.subList(0, width * height)));
@@ -211,13 +237,20 @@ public class ImageBasedScatterNode extends BaseNode {
         double[] cumulative = new double[values.size()];
         double acc = 0.0d;
         for (int i = 0; i < values.size(); i++) {
-            acc += density(values.get(i), thresholdValue, invertDensity);
+            double d = density(values.get(i), thresholdValue, invertDensity);
+            if (!Double.isFinite(d)) {
+                return new double[0];
+            }
+            acc += d;
             cumulative[i] = acc;
         }
         return cumulative;
     }
 
     private double density(double gray, double thresholdValue, boolean invertDensity) {
+        if (!Double.isFinite(gray)) {
+            return Double.NaN;
+        }
         double d = invertDensity ? (1.0d - gray) : gray;
         if (d <= thresholdValue) {
             return 0.0d;
@@ -261,10 +294,76 @@ public class ImageBasedScatterNode extends BaseNode {
     }
 
     private double clamp01(double value) {
-        if (value < 0.0d) return 0.0d;
+        if (!Double.isFinite(value) || value < 0.0d) {
+            return 0.0d;
+        }
         return Math.min(value, 1.0d);
+    }
+
+    public int getTargetCount() {
+        return targetCount;
+    }
+
+    public void setTargetCount(int targetCount) {
+        this.targetCount = Math.max(1, targetCount);
+        markDirty();
+    }
+
+    public int getSeed() {
+        return seed;
+    }
+
+    public void setSeed(int seed) {
+        this.seed = seed;
+        markDirty();
+    }
+
+    public double getThreshold() {
+        return threshold;
+    }
+
+    public void setThreshold(double threshold) {
+        this.threshold = threshold;
+        markDirty();
+    }
+
+    public boolean isInvert() {
+        return invert;
+    }
+
+    public void setInvert(boolean invert) {
+        this.invert = invert;
+        markDirty();
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("targetCount", targetCount);
+        state.put("seed", seed);
+        state.put("threshold", threshold);
+        state.put("invert", invert);
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("targetCount") instanceof Number countValue) {
+            setTargetCount(countValue.intValue());
+        }
+        if (map.get("seed") instanceof Number seedValue) {
+            setSeed(seedValue.intValue());
+        }
+        if (map.get("threshold") instanceof Number thresholdValue) {
+            setThreshold(thresholdValue.doubleValue());
+        }
+        if (map.get("invert") instanceof Boolean invertValue) {
+            setInvert(invertValue);
+        }
     }
 
     private record ImageData(int width, int height, List<Double> values) {}
 }
-

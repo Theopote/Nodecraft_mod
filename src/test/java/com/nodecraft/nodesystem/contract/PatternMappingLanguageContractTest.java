@@ -60,7 +60,7 @@ class PatternMappingLanguageContractTest {
     void currentGraphFormatIsV38() {
         assertEquals(37, GraphFormatVersion.V37);
         assertEquals(38, GraphFormatVersion.V38);
-        assertEquals(GraphFormatVersion.V43, GraphFormatVersion.CURRENT);
+        assertEquals(GraphFormatVersion.V44, GraphFormatVersion.CURRENT);
     }
 
     @Test
