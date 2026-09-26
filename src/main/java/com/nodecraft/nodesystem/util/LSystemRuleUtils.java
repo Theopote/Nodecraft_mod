@@ -1,0 +1,37 @@
+package com.nodecraft.nodesystem.util;
+
+import com.nodecraft.nodesystem.datatypes.LSystemRule;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public final class LSystemRuleUtils {
+
+    private LSystemRuleUtils() {
+    }
+
+    public static @Nullable List<LSystemRule> resolveStrictRuleList(@Nullable Object value) {
+        if (!(value instanceof Collection<?> collection)) {
+            return null;
+        }
+        List<LSystemRule> rules = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            if (!(entry instanceof LSystemRule rule)) {
+                return null;
+            }
+            rules.add(rule);
+        }
+        return rules;
+    }
+
+    public static List<LSystemRule> mergeRules(@Nullable List<LSystemRule> listRules, List<LSystemRule> portRules) {
+        List<LSystemRule> merged = new ArrayList<>();
+        if (listRules != null) {
+            merged.addAll(listRules);
+        }
+        merged.addAll(portRules);
+        return merged;
+    }
+}

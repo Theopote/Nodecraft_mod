@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**532**
+- **节点总数**：**533**
 - **分类总数**：**59**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -46,7 +46,7 @@
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
 | `pattern.linear` | 4 |
-| `pattern.lsystem` | 2 |
+| `pattern.lsystem` | 3 |
 | `pattern.radial` | 3 |
 | `pattern.surface_volume_distribution` | 6 |
 | `pattern.voronoi_3d` | 1 |
@@ -596,12 +596,13 @@
 | Instance on Points | `pattern.linear.instance_on_points` | Instances a block-placement template at each input point. | `InstanceOnPointsNode` |
 | Curve Array | `pattern.linear.curve_array` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayNode` |
 
-## pattern.lsystem（2）
+## pattern.lsystem（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| L-System Expand String | `pattern.lsystem.expand_string` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; probabilities as weights) | `LSystemExpandStringNode` |
-| L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \ roll, [] stack (local turns; angle in degrees) | `LSystemTurtle3DNode` |
+| L-System Rule | `pattern.lsystem.rule` | Constructs one L-system production rule from symbol, production string, and relative weight | `LSystemRuleNode` |
+| L-System Expand | `pattern.lsystem.expand` | Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; weights are relative) | `LSystemExpandNode` |
+| L-System Turtle 3D | `pattern.lsystem.turtle_3d` | Interprets L-system commands as independent 3D draw segments (PATH_LIST). F draws, f moves without drawing, +- yaw, &/^ pitch, / \ roll, [] stack | `LSystemTurtle3DNode` |
 
 ## pattern.radial（3）
 

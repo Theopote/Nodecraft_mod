@@ -9,11 +9,13 @@ import java.util.Random;
 
 /**
  * Deterministic / seeded stochastic expansion of L-system strings from {@link LSystemRule} lists.
- * Context-sensitive fields on rules are ignored in this MVP.
+ * Weights are relative among competing rules for the same symbol.
  */
 public final class LSystemStringExpander {
 
-    public static final int DEFAULT_MAX_EXPANDED_LENGTH = 1_000_000;
+    /** @deprecated Use {@link GenerationLimits#MAX_LSYSTEM_EXPANDED_LENGTH}. */
+    @Deprecated
+    public static final int DEFAULT_MAX_EXPANDED_LENGTH = GenerationLimits.MAX_LSYSTEM_EXPANDED_LENGTH;
 
     private LSystemStringExpander() {
     }
@@ -21,12 +23,8 @@ public final class LSystemStringExpander {
     public record ExpandResult(String text, boolean hitLimit, int iterationsApplied) {
     }
 
-    /**
-     * Expands {@code axiom} for {@code iterations} rounds. Longest matching rule symbol wins at each position.
-     * Probabilities are relative weights among rules sharing the same matched symbol prefix.
-     */
     public static ExpandResult expand(String axiom, List<LSystemRule> rules, int iterations, long seed) {
-        return expand(axiom, rules, iterations, seed, DEFAULT_MAX_EXPANDED_LENGTH);
+        return expand(axiom, rules, iterations, seed, GenerationLimits.MAX_LSYSTEM_EXPANDED_LENGTH);
     }
 
     public static ExpandResult expand(
@@ -43,8 +41,11 @@ public final class LSystemStringExpander {
         if (axiom.length() > safeMaxLength) {
             return new ExpandResult("", true, 0);
         }
-        if (iterations < 1) {
+        if (iterations == 0) {
             return new ExpandResult(axiom, false, 0);
+        }
+        if (iterations < 0) {
+            return new ExpandResult("", false, 0);
         }
 
         List<LSystemRule> sorted = new ArrayList<>(rules == null ? List.of() : rules);
@@ -108,42 +109,57 @@ public final class LSystemStringExpander {
                 }
             }
             String production = pickProduction(candidates, random);
-            int productionLength = production != null ? production.length() : 0;
-            if (out.length() + productionLength > maxLength) {
-                return new ExpandOnceResult(out.toString(), true);
-            }
-            if (productionLength > 0) {
-                out.append(production);
+            if (production == null) {
+                if (out.length() + matchLen > maxLength) {
+                    return new ExpandOnceResult(out.toString(), true);
+                }
+                out.append(current, i, i + matchLen);
+            } else {
+                int productionLength = production.length();
+                if (out.length() + productionLength > maxLength) {
+                    return new ExpandOnceResult(out.toString(), true);
+                }
+                if (productionLength > 0) {
+                    out.append(production);
+                }
             }
             i += matchLen;
         }
         return new ExpandOnceResult(out.toString(), false);
     }
 
-    private static String pickProduction(List<LSystemRule> candidates, Random random) {
+    /**
+     * @return production string, or {@code null} when all candidate weights are &lt;= 0 (keep symbol)
+     */
+    private static @org.jetbrains.annotations.Nullable String pickProduction(List<LSystemRule> candidates, Random random) {
         if (candidates.isEmpty()) {
-            return "";
+            return null;
         }
-        if (candidates.size() == 1) {
-            return candidates.getFirst().production() != null ? candidates.getFirst().production() : "";
-        }
+        List<LSystemRule> weighted = new ArrayList<>(candidates.size());
         double total = 0.0d;
-        for (LSystemRule r : candidates) {
-            total += Math.max(0.0d, r.probability());
+        for (LSystemRule rule : candidates) {
+            if (rule.weight() > 0.0d) {
+                weighted.add(rule);
+                total += rule.weight();
+            }
         }
-        if (total <= 1.0e-12d) {
-            LSystemRule r = candidates.getFirst();
-            return r.production() != null ? r.production() : "";
+        if (weighted.isEmpty() || total <= 1.0e-12d) {
+            return null;
+        }
+        if (weighted.size() == 1) {
+            String production = weighted.getFirst().production();
+            return production != null ? production : "";
         }
         double pick = random.nextDouble() * total;
         double acc = 0.0d;
-        for (LSystemRule r : candidates) {
-            acc += Math.max(0.0d, r.probability());
+        for (LSystemRule rule : weighted) {
+            acc += rule.weight();
             if (pick <= acc) {
-                return r.production() != null ? r.production() : "";
+                String production = rule.production();
+                return production != null ? production : "";
             }
         }
-        LSystemRule last = candidates.getLast();
-        return last.production() != null ? last.production() : "";
+        String production = weighted.getLast().production();
+        return production != null ? production : "";
     }
 }

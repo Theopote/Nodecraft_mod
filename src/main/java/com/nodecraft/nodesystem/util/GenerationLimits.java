@@ -65,6 +65,21 @@ public final class GenerationLimits {
      */
     public static final long MAX_LLOYD_DISTANCE_TESTS = 100_000_000L;
 
+    /** Maximum L-system rewrite iterations. */
+    public static final int MAX_LSYSTEM_ITERATIONS = 16;
+
+    /** Maximum expanded L-system command string length. */
+    public static final int MAX_LSYSTEM_EXPANDED_LENGTH = 1_000_000;
+
+    /** Maximum turtle command string length. */
+    public static final int MAX_LSYSTEM_COMMAND_LENGTH = 1_000_000;
+
+    /** Maximum draw segments emitted by L-system turtle interpretation. */
+    public static final int MAX_LSYSTEM_TURTLE_SEGMENTS = 1_000_000;
+
+    /** Maximum turtle bracket stack depth. */
+    public static final int MAX_LSYSTEM_TURTLE_STACK_DEPTH = 4096;
+
     private GenerationLimits() {
     }
 

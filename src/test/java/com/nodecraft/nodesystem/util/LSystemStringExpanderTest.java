@@ -1,7 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
-import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandStringNode;
+import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemTurtle3DNode;
 import org.junit.jupiter.api.Test;
 
@@ -48,24 +48,24 @@ class LSystemStringExpanderTest {
     }
 
     @Test
-    void expandStringNodeExposesHitLimitOutput() {
-        LSystemExpandStringNode node = new LSystemExpandStringNode();
+    void expandNodeExposesHitLimitOutput() {
+        LSystemExpandNode node = new LSystemExpandNode();
         node.compute(Map.of(
                 "input_axiom", "F",
-                "input_rules", List.of(new LSystemRule("F", "F[+F]F[-F]F")),
+                "input_rule_0", new LSystemRule("F", "F[+F]F[-F]F"),
                 "input_iterations", 16
         ));
 
         assertEquals(true, node.getOutput("output_valid"));
         assertEquals(true, node.getOutput("output_hit_limit"));
-        assertTrue(((String) node.getOutput("output_string")).length() <= LSystemStringExpander.DEFAULT_MAX_EXPANDED_LENGTH);
+        assertTrue(((String) node.getOutput("output_string")).length() <= GenerationLimits.MAX_LSYSTEM_EXPANDED_LENGTH);
     }
 
     @Test
     void turtleNodeRejectsOversizedCommandString() {
         LSystemTurtle3DNode node = new LSystemTurtle3DNode();
         node.compute(Map.of(
-                "input_commands", "F".repeat(LSystemTurtle3DNode.MAX_COMMAND_LENGTH + 1)
+                "input_commands", "F".repeat(GenerationLimits.MAX_LSYSTEM_COMMAND_LENGTH + 1)
         ));
 
         assertEquals(false, node.getOutput("output_valid"));
@@ -89,14 +89,43 @@ class LSystemStringExpanderTest {
     }
 
     @Test
-    void turtleNodeStopsWhenPolylinePointCapReached() {
-        LSystemTurtle3DNode node = new LSystemTurtle3DNode();
-        int cap = LSystemTurtle3DNode.MAX_POLYLINE_POINTS;
-        node.compute(Map.of(
-                "input_commands", "F".repeat(cap)
-        ));
+    void turtleInterpreterStopsWhenSegmentCapReached() {
+        int cap = 100;
+        LSystemTurtle3DInterpreter.TurtleResult result = LSystemTurtle3DInterpreter.interpret(
+                "F".repeat(cap + 1),
+                new org.joml.Vector3d(),
+                1.0d,
+                25.0d,
+                cap + 10,
+                cap,
+                GenerationLimits.MAX_LSYSTEM_TURTLE_STACK_DEPTH
+        );
 
-        assertEquals(true, node.getOutput("output_hit_limit"));
-        assertEquals(cap, ((List<?>) node.getOutput("output_points")).size());
+        assertTrue(result.hitLimit());
+        assertEquals(cap, result.segmentCount());
+    }
+
+    @Test
+    void zeroWeightSingleRuleKeepsSymbol() {
+        LSystemStringExpander.ExpandResult result = LSystemStringExpander.expand(
+                "F",
+                List.of(new LSystemRule("F", "FF", 0.0d)),
+                1,
+                0L
+        );
+        assertFalse(result.hitLimit());
+        assertEquals("F", result.text());
+    }
+
+    @Test
+    void zeroIterationsPassthroughWithoutRules() {
+        LSystemStringExpander.ExpandResult result = LSystemStringExpander.expand(
+                "ABC",
+                List.of(),
+                0,
+                0L
+        );
+        assertEquals("ABC", result.text());
+        assertEquals(0, result.iterationsApplied());
     }
 }

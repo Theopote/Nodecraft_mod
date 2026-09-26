@@ -31,22 +31,16 @@ public final class LSystemRulePropertyRenderer {
             boolean isReadOnly = prop.setter == null;
             String symbolKey = panel.getTempValueKey(node, prop.name + "_symbol");
             String productionKey = panel.getTempValueKey(node, prop.name + "_production");
-            String contextKey = panel.getTempValueKey(node, prop.name + "_context");
-            String probabilityKey = panel.getTempValueKey(node, prop.name + "_probability");
+            String weightKey = panel.getTempValueKey(node, prop.name + "_weight");
 
             ImString symbol = panel.getOrCreateTempValue(symbolKey, () -> new ImString(rule.symbol(), 64));
             ImString production = panel.getOrCreateTempValue(productionKey, () -> new ImString(rule.production(), 256));
-            ImString context = panel.getOrCreateTempValue(
-                    contextKey,
-                    () -> new ImString(rule.context() != null ? rule.context() : "", 128)
-            );
-            float[] probability = panel.getOrCreateTempValue(probabilityKey, () -> new float[]{rule.probability()});
+            float[] weight = panel.getOrCreateTempValue(weightKey, () -> new float[]{(float) rule.weight()});
 
             if (!panel.isPropertyBeingEdited(node, prop.name)) {
                 symbol.set(rule.symbol());
                 production.set(rule.production());
-                context.set(rule.context() != null ? rule.context() : "");
-                probability[0] = rule.probability();
+                weight[0] = (float) rule.weight();
             }
 
             if (isReadOnly) {
@@ -61,11 +55,7 @@ public final class LSystemRulePropertyRenderer {
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
-            changed |= ImGui.inputText("Context##" + prop.name, context, ImGuiInputTextFlags.EnterReturnsTrue);
-            if (ImGui.isItemActive()) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-            changed |= ImGui.dragFloat("Probability##" + prop.name, probability, 0.01f, 0.0f, 1.0f, "%.2f");
+            changed |= ImGui.dragFloat("Weight##" + prop.name, weight, 0.01f, 0.0f, 100.0f, "%.3f");
             if (ImGui.isItemActive()) {
                 panel.markPropertyBeingEdited(node, prop.name);
             }
@@ -77,12 +67,10 @@ public final class LSystemRulePropertyRenderer {
             }
 
             if (!isReadOnly && changed) {
-                String contextValue = context.get().trim();
                 panel.applyPropertyValue(node, prop, new LSystemRule(
                         symbol.get(),
                         production.get(),
-                        Math.max(0.0f, Math.min(1.0f, probability[0])),
-                        contextValue.isEmpty() ? null : contextValue
+                        Math.max(0.0d, weight[0])
                 ));
             }
 

@@ -284,8 +284,14 @@ public final class GraphFormatVersion {
      */
     public static final int V45 = 45;
 
+    /**
+     * Pattern L-System v1: Rule / Expand / Turtle 3D with typed LSYSTEM_RULE_LIST,
+     * strict validation, PATH_LIST turtle segments, and fail-closed bracket limits.
+     */
+    public static final int V46 = 46;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V45;
+    public static final int CURRENT = V46;
 
     private GraphFormatVersion() {
     }

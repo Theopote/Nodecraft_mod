@@ -6,38 +6,34 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.LSystemStringExpander;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.LSystemTurtle3DInterpreter;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Interprets a command string with a simple 3D turtle: F/f move, +- yaw, &, ^ pitch, / and \\ roll, [] stack.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.lsystem.turtle_3d",
     displayName = "L-System Turtle 3D",
-    description = "Traces a 3D polyline from L-system commands: F/f forward, +- yaw, & and ^ pitch, / and \\ roll, [] stack (local turns; angle in degrees)",
+    description = "Interprets L-system commands as independent 3D draw segments (PATH_LIST). F draws, f moves without drawing, +- yaw, &/^ pitch, / \\ roll, [] stack",
     category = "pattern.lsystem",
-    order = 2
+    order = 3
 )
 public class LSystemTurtle3DNode extends BaseNode {
 
-    public static final int MAX_COMMAND_LENGTH = LSystemStringExpander.DEFAULT_MAX_EXPANDED_LENGTH;
-    public static final int MAX_POLYLINE_POINTS = LSystemStringExpander.DEFAULT_MAX_EXPANDED_LENGTH;
+    /** @deprecated Use {@link GenerationLimits#MAX_LSYSTEM_COMMAND_LENGTH}. */
+    @Deprecated
+    public static final int MAX_COMMAND_LENGTH = GenerationLimits.MAX_LSYSTEM_COMMAND_LENGTH;
 
-    private static final Vector3d LOCAL_FORWARD = new Vector3d(0.0d, 0.0d, 1.0d);
+    /** @deprecated Use {@link GenerationLimits#MAX_LSYSTEM_TURTLE_SEGMENTS}. */
+    @Deprecated
+    public static final int MAX_POLYLINE_POINTS = GenerationLimits.MAX_LSYSTEM_TURTLE_SEGMENTS;
 
     @NodeProperty(displayName = "Step", category = "Turtle", order = 1)
     private double step = 1.0d;
@@ -51,7 +47,9 @@ public class LSystemTurtle3DNode extends BaseNode {
     private static final String INPUT_ANGLE_ID = "input_angle";
     private static final String INPUT_ORIGIN_ID = "input_origin";
 
+    private static final String OUTPUT_PATHS_ID = "output_paths";
     private static final String OUTPUT_POINTS_ID = "output_points";
+    private static final String OUTPUT_SEGMENT_COUNT_ID = "output_segment_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
 
@@ -63,14 +61,16 @@ public class LSystemTurtle3DNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Turn angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional start point", NodeDataType.POINT, this));
 
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Polyline vertices in world space", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one segment was emitted", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when command length or polyline point cap was reached", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_PATHS_ID, "Paths", "One line path per draw segment", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Draw endpoints from segment runs (not one polyline)", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SEGMENT_COUNT_ID, "Segment Count", "Number of drawn segments", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one segment was emitted without bracket errors", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when command length, segment cap, or stack depth was reached", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Traces a 3D polyline from an L-system command string using local yaw/pitch/roll turns (+/-/&/^/\\/ ) and a bracket stack";
+        return "Interprets L-system commands as independent 3D draw segments (PATH_LIST). F draws, f moves without drawing, +- yaw, &/^ pitch, / \\ roll, [] stack";
     }
 
     @Override
@@ -80,93 +80,54 @@ public class LSystemTurtle3DNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object cmdObj = inputValues.get(INPUT_COMMANDS_ID);
-        String commands = cmdObj instanceof String s ? s : "";
-        if (commands.length() > MAX_COMMAND_LENGTH) {
-            outputValues.put(OUTPUT_POINTS_ID, List.of());
-            outputValues.put(OUTPUT_VALID_ID, false);
-            outputValues.put(OUTPUT_HIT_LIMIT_ID, true);
+        String commands = inputValues.get(INPUT_COMMANDS_ID) instanceof String s ? s : "";
+        double st = readDouble(inputValues.get(INPUT_STEP_ID), step);
+        double angDeg = readDouble(inputValues.get(INPUT_ANGLE_ID), angleDegrees);
+        Vector3d origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID));
+
+        if (origin == null) {
+            writeInvalid(false);
             return;
         }
 
-        double st = getInputDouble(INPUT_STEP_ID, step);
-        st = Math.max(1.0e-6d, st);
-        double angDeg = getInputDouble(INPUT_ANGLE_ID, angleDegrees);
-        double angRad = Math.toRadians(angDeg);
+        LSystemTurtle3DInterpreter.TurtleResult result = LSystemTurtle3DInterpreter.interpret(
+                commands,
+                origin,
+                st,
+                angDeg,
+                GenerationLimits.MAX_LSYSTEM_COMMAND_LENGTH,
+                GenerationLimits.MAX_LSYSTEM_TURTLE_SEGMENTS,
+                GenerationLimits.MAX_LSYSTEM_TURTLE_STACK_DEPTH
+        );
 
-        Vector3d pos = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID));
-        Quaterniond q = new Quaterniond();
-
-        List<Vector3d> points = new ArrayList<>();
-        points.add(new Vector3d(pos));
-
-        Deque<TurtleState> stack = new ArrayDeque<>();
-        boolean drew = false;
-        boolean hitLimit = false;
-
-        for (int i = 0; i < commands.length(); i++) {
-            char c = commands.charAt(i);
-            switch (c) {
-                case 'F' -> {
-                    if (points.size() >= MAX_POLYLINE_POINTS) {
-                        hitLimit = true;
-                        i = commands.length();
-                        break;
-                    }
-                    moveForward(pos, q, st);
-                    points.add(new Vector3d(pos));
-                    drew = true;
-                }
-                case 'f' -> moveForward(pos, q, st);
-                case '+' -> q.rotateLocalY(angRad);
-                case '-' -> q.rotateLocalY(-angRad);
-                case '&' -> q.rotateLocalX(angRad);
-                case '^' -> q.rotateLocalX(-angRad);
-                case '/' -> q.rotateLocalZ(-angRad);
-                case '\\' -> q.rotateLocalZ(angRad);
-                case '[' -> stack.push(new TurtleState(new Vector3d(pos), new Quaterniond(q)));
-                case ']' -> {
-                    TurtleState stt = stack.poll();
-                    if (stt != null) {
-                        pos.set(stt.position);
-                        q.set(stt.orientation);
-                    }
-                }
-                default -> {
-                    // ignore other symbols (e.g. leaves X)
-                }
-            }
-        }
-
-        boolean valid = drew && points.size() >= 2;
-        outputValues.put(OUTPUT_POINTS_ID, valid ? SpatialValueResolver.toPointDataList(points) : List.of());
+        boolean valid = result.segmentCount() > 0 && !result.bracketError();
+        outputValues.put(OUTPUT_PATHS_ID, valid ? result.paths() : List.<PathData>of());
+        outputValues.put(OUTPUT_POINTS_ID, valid ? SpatialValueResolver.toPointDataList(result.drawPoints()) : List.of());
+        outputValues.put(OUTPUT_SEGMENT_COUNT_ID, result.segmentCount());
         outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, result.hitLimit());
+    }
+
+    private void writeInvalid(boolean hitLimit) {
+        outputValues.put(OUTPUT_PATHS_ID, List.of());
+        outputValues.put(OUTPUT_POINTS_ID, List.of());
+        outputValues.put(OUTPUT_SEGMENT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
     }
 
-    private static void moveForward(Vector3d pos, Quaterniond q, double stepLen) {
-        Vector3d dir = q.transform(new Vector3d(LOCAL_FORWARD), new Vector3d());
-        pos.fma(stepLen, dir);
+    private static @Nullable Vector3d resolveOrigin(@Nullable Object value) {
+        Vector3d resolved = SpatialValueResolver.resolvePoint(value);
+        if (resolved == null) {
+            return new Vector3d();
+        }
+        if (!Double.isFinite(resolved.x) || !Double.isFinite(resolved.y) || !Double.isFinite(resolved.z)) {
+            return null;
+        }
+        return resolved;
     }
 
-    private static Vector3d resolveOrigin(Object value) {
-        if (value instanceof PointData pd) {
-            return new Vector3d(pd.position());
-        }
-        if (value instanceof Vector3d v) {
-            return new Vector3d(v);
-        }
-        if (value instanceof BlockPos bp) {
-            return new Vector3d(bp.getX(), bp.getY(), bp.getZ());
-        }
-        return new Vector3d();
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object v = inputValues.get(portId);
-        return v instanceof Number n ? n.doubleValue() : fallback;
-    }
-
-    private record TurtleState(Vector3d position, Quaterniond orientation) {
+    private static double readDouble(@Nullable Object value, double fallback) {
+        return value instanceof Number n ? n.doubleValue() : fallback;
     }
 }
