@@ -30,6 +30,18 @@ Runtime INTEGER ports accept exact `Integer` only (no `Number.intValue()` trunca
 
 Deconstruct Block Position keeps `0` sentinel on invalid inputs (INTEGER has no NaN).
 
+### Connected vs unconnected optional inputs
+
+Optional override ports use **port connection state**, not `inputValues != null`:
+
+```text
+unconnected              -> property fallback
+connected + valid input  -> input override
+connected + null/invalid -> fail closed (no property fallback)
+```
+
+Applies to Block Position Input X/Y/Z and Get Box Face Face Name / Face Index selection.
+
 ## Strict POINT_LIST
 
 `PointUtils.resolveStrictPointList()` shared by Closest Point, Point List Center, Point List Bounds:

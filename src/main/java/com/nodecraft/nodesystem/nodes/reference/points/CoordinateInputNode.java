@@ -168,7 +168,10 @@ public class CoordinateInputNode extends BaseCustomUINode {
     }
 
     private @Nullable Integer resolveComponent(String inputPortId, int fallback) {
-        return StrictIntegerUtils.resolveExactInteger(inputValues.get(inputPortId), fallback);
+        if (isInputConnected(inputPortId)) {
+            return StrictIntegerUtils.requireExactInteger(inputValues.get(inputPortId));
+        }
+        return fallback;
     }
 
     private boolean isInputConnected(String inputPortId) {

@@ -5,11 +5,14 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.points.CoordinateInputNode;
+import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -117,7 +121,18 @@ class ReferencePointsLanguageContractTest {
     @Test
     void blockPositionInputConnectedDoubleFailsClosed() {
         BlockPositionInputProbe input = new BlockPositionInputProbe();
+        input.connectInput("input_x", NodeDataType.INTEGER);
         input.putRawInput("input_x", 3.9d);
+        input.processNode(null);
+        assertEquals(Boolean.FALSE, input.getOutput("output_valid"));
+        assertNull(input.getOutput("output_block_pos"));
+    }
+
+    @Test
+    void blockPositionInputConnectedNullFailsClosed() {
+        BlockPositionInputProbe input = new BlockPositionInputProbe();
+        input.connectInput("input_x", NodeDataType.INTEGER);
+        input.putRawInput("input_x", null);
         input.processNode(null);
         assertEquals(Boolean.FALSE, input.getOutput("output_valid"));
         assertNull(input.getOutput("output_block_pos"));
@@ -190,10 +205,12 @@ class ReferencePointsLanguageContractTest {
     @Test
     void getBoxFaceConnectedNameBeatsIndex() {
         BoxGeometryData box = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
-        BaseNode face = node("reference.points.get_box_face");
-        face.setInput("input_box_geometry", box);
-        face.setInput("input_face_name", "top");
-        face.setInput("input_index", 0);
+        GetBoxFaceProbe face = new GetBoxFaceProbe();
+        face.putRawInput("input_box_geometry", box);
+        face.connectInput("input_face_name", NodeDataType.STRING);
+        face.connectInput("input_index", NodeDataType.INTEGER);
+        face.putRawInput("input_face_name", "top");
+        face.putRawInput("input_index", 0);
         face.processNode(null);
         assertEquals(Boolean.TRUE, face.getOutput("output_found"));
         assertEquals("Top", face.getOutput("output_name"));
@@ -202,10 +219,27 @@ class ReferencePointsLanguageContractTest {
     @Test
     void getBoxFaceInvalidConnectedNameFailsClosed() {
         BoxGeometryData box = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
-        BaseNode face = node("reference.points.get_box_face");
-        face.setInput("input_box_geometry", box);
-        face.setInput("input_face_name", "not-a-face");
-        face.setInput("input_index", 0);
+        GetBoxFaceProbe face = new GetBoxFaceProbe();
+        face.putRawInput("input_box_geometry", box);
+        face.connectInput("input_face_name", NodeDataType.STRING);
+        face.connectInput("input_index", NodeDataType.INTEGER);
+        face.putRawInput("input_face_name", "not-a-face");
+        face.putRawInput("input_index", 0);
+        face.processNode(null);
+        assertEquals(Boolean.FALSE, face.getOutput("output_found"));
+        assertNull(face.getOutput("output_face"));
+    }
+
+    @Test
+    void getBoxFaceConnectedNullNameFailsClosedWithoutIndexOrPropertyFallback() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+        GetBoxFaceProbe face = new GetBoxFaceProbe();
+        face.setDefaultFaceName("top");
+        face.putRawInput("input_box_geometry", box);
+        face.connectInput("input_face_name", NodeDataType.STRING);
+        face.connectInput("input_index", NodeDataType.INTEGER);
+        face.putRawInput("input_face_name", null);
+        face.putRawInput("input_index", 0);
         face.processNode(null);
         assertEquals(Boolean.FALSE, face.getOutput("output_found"));
         assertNull(face.getOutput("output_face"));
@@ -288,10 +322,45 @@ class ReferencePointsLanguageContractTest {
                 .anyMatch(port -> port.getId().equals(portId));
     }
 
-    /** Bypasses port compatibility so runtime strict-Integer behavior can be exercised. */
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+                .filter(port -> inputPortId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+    }
+
+    /** Bypasses port compatibility and simulates wired inputs for runtime contract probes. */
     private static final class BlockPositionInputProbe extends CoordinateInputNode {
         void putRawInput(String portId, Object value) {
             inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            ReferencePointsLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class GetBoxFaceProbe extends GetBoxFaceNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            ReferencePointsLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
         }
     }
 }

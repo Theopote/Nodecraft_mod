@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -201,6 +204,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
             new Vector3d(5.0d, 1.5d, 4.0d)
         );
         GetBoxFaceNode getFace = new GetBoxFaceNode();
+        connectInput(getFace, "input_face_name", NodeDataType.STRING);
         getFace.setInput("input_box_geometry", box);
         getFace.setInput("input_face_name", "bottom");
         getFace.processNode(null);
@@ -211,6 +215,27 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         getFace.processNode(null);
         assertEquals(Boolean.TRUE, getFace.getOutput("output_found"));
         assertEquals("Front", getFace.getOutput("output_name"));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+                .filter(port -> inputPortId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 
     private static BoxFaceData requireFace(BoxGeometryData box, String name) {

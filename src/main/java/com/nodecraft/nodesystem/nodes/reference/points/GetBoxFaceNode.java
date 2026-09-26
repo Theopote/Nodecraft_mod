@@ -69,8 +69,8 @@ public class GetBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        boolean faceNameConnected = inputValues.get(INPUT_FACE_NAME_ID) != null;
-        boolean indexConnected = inputValues.get(INPUT_INDEX_ID) != null;
+        boolean faceNameConnected = isInputConnected(INPUT_FACE_NAME_ID);
+        boolean indexConnected = isInputConnected(INPUT_INDEX_ID);
 
         BoxFaceData face = null;
         boolean found = false;
@@ -111,6 +111,11 @@ public class GetBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_FOUND_ID, found);
         outputValues.put(OUTPUT_NAME_ID, name);
         outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
+    }
+
+    private boolean isInputConnected(String inputPortId) {
+        return inputPorts.stream()
+            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
     }
 
     private BoxFaceData resolveBySemanticName(List<BoxFaceData> faces, Object faceNameObj) {
