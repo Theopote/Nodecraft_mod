@@ -7,9 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.TreePathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,26 +32,17 @@ public class ConstructTreePathNode extends BaseNode {
                 NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Constructed tree path",
                 NodeDataType.TREE_PATH, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether all indices were integers",
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether all indices were exact Integer values",
                 NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object indicesObj = inputValues.get(INPUT_INDICES_ID);
-        if (!(indicesObj instanceof List<?> list)) {
+        List<Integer> indices = StrictIntegerUtils.resolveStrictIntegerList(inputValues.get(INPUT_INDICES_ID));
+        if (indices == null) {
             outputValues.put(OUTPUT_PATH_ID, TreePathData.empty());
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
-        }
-        List<Integer> indices = new ArrayList<>(list.size());
-        for (Object item : list) {
-            if (!(item instanceof Number number)) {
-                outputValues.put(OUTPUT_PATH_ID, TreePathData.empty());
-                outputValues.put(OUTPUT_VALID_ID, false);
-                return;
-            }
-            indices.add(number.intValue());
         }
         outputValues.put(OUTPUT_PATH_ID, new TreePathData(indices));
         outputValues.put(OUTPUT_VALID_ID, true);

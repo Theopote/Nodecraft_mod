@@ -2,7 +2,7 @@
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
 - Total nodes: **533**
-- Total categories: **59**
+- Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
 ## Category Statistics
@@ -40,6 +40,7 @@
 | `math.scalar_math` | 23 |
 | `math.sequence` | 3 |
 | `math.trigonometry` | 10 |
+| `math.vector` | 1 |
 | `output.debug` | 4 |
 | `output.execute` | 8 |
 | `output.export` | 4 |
@@ -53,7 +54,7 @@
 | `reference.frames` | 8 |
 | `reference.planes` | 7 |
 | `reference.points` | 19 |
-| `reference.vectors` | 18 |
+| `reference.vectors` | 17 |
 | `transform.basic_transforms` | 15 |
 | `transform.deformations` | 10 |
 | `transform.orientation` | 6 |
@@ -529,6 +530,12 @@
 | Cosh | `math.trigonometry.cosh` | Computes the hyperbolic cosine of the input value. | `CoshNode` |
 | Tanh | `math.trigonometry.tanh` | Computes the hyperbolic tangent of the input value. | `TanhNode` |
 
+## math.vector (1)
+
+| Node Name | Node ID | Description | Class |
+|---|---|---|---|
+| Vector Component Min/Max | `math.vector.component_minmax` | Computes per-component min and max between vectors A and B. | `VectorComponentMinMaxNode` |
+
 ## output.debug (4)
 
 | Node Name | Node ID | Description | Class |
@@ -678,7 +685,7 @@
 | Deconstruct Box Face | `reference.points.deconstruct_face` | Extracts corners, edges, plane, center, and normal from a box face | `DeconstructBoxFaceNode` |
 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | Extracts endpoints, midpoint, direction, displacement, and length from a face edge | `DeconstructFaceEdgeNode` |
 
-## reference.vectors (18)
+## reference.vectors (17)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -699,7 +706,6 @@
 | Slerp Vectors | `reference.vectors.slerp` | Performs spherical linear interpolation between two direction vectors. | `SlerpVectorsNode` |
 | Reflect Vector | `reference.vectors.reflect` | Reflects an input vector around a normal vector using v - 2(v·n)n. | `ReflectVectorNode` |
 | Project Vector onto Vector | `reference.vectors.project` | Projects vector A onto vector B as (A·B / \|B\|^2)B. | `ProjectVectorNode` |
-| Vector Component Min/Max | `reference.vectors.component_minmax` | Computes per-component min and max between vectors A and B. | `VectorComponentMinMaxNode` |
 
 ## transform.basic_transforms (15)
 

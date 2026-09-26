@@ -62,7 +62,7 @@ public class PlaneData {
         double ny = equation.y;
         double nz = equation.z;
         double normalLengthSq = nx * nx + ny * ny + nz * nz;
-        if (!Double.isFinite(normalLengthSq) || normalLengthSq <= EPS * EPS) {
+        if (!Double.isFinite(normalLengthSq) || normalLengthSq <= PlaneUtils.EPS_SQ) {
             return null;
         }
         double invLength = 1.0d / Math.sqrt(normalLengthSq);

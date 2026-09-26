@@ -67,7 +67,7 @@ public class VectorScalarDivideNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_QUOTIENT_ID, vector.mul(1.0d / scalar));
+        outputValues.put(OUTPUT_QUOTIENT_ID, VectorUtils.toVectorPort(vector.mul(1.0d / scalar, new Vector3d())));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

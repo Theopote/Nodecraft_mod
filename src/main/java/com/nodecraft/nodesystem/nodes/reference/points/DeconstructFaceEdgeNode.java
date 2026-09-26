@@ -74,7 +74,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         }
 
         double lengthSquared = start.squaredDistanceTo(end);
-        if (lengthSquared <= PointUtils.EPS) {
+        if (lengthSquared <= PointUtils.EPS_SQ) {
             writeInvalid();
             return;
         }

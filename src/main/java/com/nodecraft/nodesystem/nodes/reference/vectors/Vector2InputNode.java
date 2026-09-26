@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
@@ -112,7 +113,7 @@ public class Vector2InputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(x, y, 0.0d));
+        outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new Vector3d(x, y, 0.0d)));
         syncOutputPorts();
     }
 

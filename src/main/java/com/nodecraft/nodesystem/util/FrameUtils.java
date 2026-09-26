@@ -10,7 +10,8 @@ import org.joml.Vector3d;
  */
 public final class FrameUtils {
 
-    public static final double EPS = 1.0e-12d;
+    public static final double EPS = SpatialTolerance.EPS;
+    public static final double EPS_SQ = SpatialTolerance.EPS_SQ;
 
     private static final Vector3d WORLD_X = new Vector3d(1.0d, 0.0d, 0.0d);
     private static final Vector3d WORLD_Y = new Vector3d(0.0d, 1.0d, 0.0d);
@@ -35,7 +36,7 @@ public final class FrameUtils {
     }
 
     public static boolean isUsableAxis(@Nullable Vector3d axis) {
-        return isFinite(axis) && axis.lengthSquared() > EPS;
+        return isFinite(axis) && axis.lengthSquared() > EPS_SQ;
     }
 
     public static @Nullable Vector3d normalizedDirection(@Nullable Vector3d from, @Nullable Vector3d to) {

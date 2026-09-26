@@ -1,10 +1,11 @@
 # Node Language v1 — Reference Vectors
 
-**Status: PASSED / FROZEN** (Graph **V50**)
+**Status: PASSED / FROZEN** (Graph **V50**; P1 follow-up at Graph **V51**)
 
-Language unification for the eighteen canonical `reference.vectors.*` nodes: finite VECTOR
+Language unification for the seventeen canonical `reference.vectors.*` nodes: finite VECTOR
 semantics (zero vector valid), connected-vs-unconnected optional inputs, null invalid outputs,
-Slerp geodesic fix, shared `VectorUtils`, and unique node ordering 0–17.
+Slerp geodesic fix, shared `VectorUtils`, typed `VectorData` payloads, and unique node ordering
+0–16.
 
 Related: [`node-language-v1-reference-points.md`](./node-language-v1-reference-points.md),
 [`node-language-v1-reference-planes.md`](./node-language-v1-reference-planes.md),
@@ -15,11 +16,13 @@ Related: [`node-language-v1-reference-points.md`](./node-language-v1-reference-p
 ```text
 VECTOR = finite 3D direction / displacement
 zero VECTOR is valid
+runtime payload = VectorData (legacy Vector3d / Vec3d still accepted on inputs)
 ```
 
 Zero displacement is valid data (`A + (-A) = 0`, `0 · B = 0`, `|0| = 0`).
 
-Operations requiring a **direction** additionally require `|V| > EPS`:
+Operations requiring a **direction** additionally require `|V| > EPS`
+(implemented as `lengthSquared() > EPS_SQ`):
 
 - Normalize Vector
 - Angle Between Vectors
@@ -50,17 +53,22 @@ connected + null/invalid → fail closed (no property fallback)
 
 Applies to Vector Input X/Y/Z and Angle Between Vectors Reference.
 
-## Shared VectorUtils
+## Shared VectorUtils / SpatialTolerance
 
 Single helper class: `com.nodecraft.nodesystem.util.VectorUtils`
 
 Public API:
-- `EPS`, `isFinite`, `isNonZero`
-- `toVector(Object)` — strict VECTOR port (`Vector3d`, legacy `Vec3d`)
+- `EPS`, `EPS_SQ` (aliases of `SpatialTolerance`)
+- `isFinite`, `isNonZero` (`lengthSquared() > EPS_SQ`)
+- `toVector(Object)` — strict VECTOR port (`VectorData`, `Vector3d`, legacy `Vec3d`)
+- `toVectorPort(Vector3d)` — canonical `VectorData` for VECTOR outputs
 
 Finiteness delegates to `FrameUtils.isFinite`.
 
-## Inventory (18)
+`PointUtils` / `PlaneUtils` / `FrameUtils` / `VectorUtils` share `SpatialTolerance.EPS` and
+`EPS_SQ`. Squared-length comparisons use `EPS_SQ`; linear scalar comparisons use `EPS`.
+
+## Inventory (17)
 
 | order | Display name | Type id | Role |
 |------:|--------------|---------|------|
@@ -81,7 +89,8 @@ Finiteness delegates to `FrameUtils.isFinite`.
 | 14 | Slerp Vectors | `reference.vectors.slerp` | Spherical interpolation |
 | 15 | Reflect Vector | `reference.vectors.reflect` | Reflection across normal |
 | 16 | Project Vector onto Vector | `reference.vectors.project` | Projection / rejection |
-| 17 | Vector Component Min/Max | `reference.vectors.component_minmax` | Per-component min/max |
+
+Moved at V51: Vector Component Min/Max → `math.vector.component_minmax`.
 
 ## Cross Product
 
@@ -123,9 +132,9 @@ Removed at V50: `shortestPath` property (was incorrect for ordinary vectors).
 
 Use Deconstruct Vector / Normalize Vector downstream when components or unit normal are needed.
 
-## Deferred (P1 — non-blocking)
+## V51 P1 follow-up
 
-- Unify EPS vs EPS² tolerance naming across Plane/Point/Vector utils
-- `INTEGER_LIST` exact-Integer-only at runtime (scalar INTEGER already exact)
-- Optional `VectorData` datatype layer
-- Move Component Min/Max to math family
+- `VectorData` datatype layer for VECTOR outputs
+- `SpatialTolerance` EPS / EPS_SQ naming across Point/Plane/Frame/Vector utils
+- `INTEGER_LIST` exact-Integer-only at runtime (`StrictIntegerUtils.resolveStrictIntegerList`)
+- Component Min/Max relocated to `math.vector.component_minmax` (V50→V51 migration remaps type id)

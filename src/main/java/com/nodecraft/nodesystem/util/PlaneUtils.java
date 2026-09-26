@@ -9,7 +9,8 @@ import org.joml.Vector3d;
  */
 public final class PlaneUtils {
 
-    public static final double EPS = 1.0e-12d;
+    public static final double EPS = SpatialTolerance.EPS;
+    public static final double EPS_SQ = SpatialTolerance.EPS_SQ;
 
     private PlaneUtils() {
     }
@@ -19,7 +20,7 @@ public final class PlaneUtils {
     }
 
     public static boolean isUsableNormal(@Nullable Vector3d normal) {
-        return isFinite(normal) && normal.lengthSquared() > EPS;
+        return isFinite(normal) && normal.lengthSquared() > EPS_SQ;
     }
 
     public static @Nullable PlaneData fromOriginNormal(@Nullable Vector3d origin, @Nullable Vector3d normal) {

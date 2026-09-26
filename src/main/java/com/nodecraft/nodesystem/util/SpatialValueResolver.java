@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -59,6 +60,9 @@ public final class SpatialValueResolver {
      * Strict: accepts only vector-like values, not {@link PointData} or {@link BlockPos}.
      */
     public static @Nullable Vector3d resolveVector(@Nullable Object value) {
+        if (value instanceof VectorData vectorData) {
+            return vectorData.components();
+        }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
         }

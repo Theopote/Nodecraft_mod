@@ -65,7 +65,7 @@ public class CrossProductNode extends BaseNode {
         }
 
         Vector3d cross = new Vector3d(a).cross(b);
-        outputValues.put(OUTPUT_CROSS_PRODUCT_ID, cross);
+        outputValues.put(OUTPUT_CROSS_PRODUCT_ID, VectorUtils.toVectorPort(cross));
         outputValues.put(OUTPUT_MAGNITUDE_ID, cross.length());
         outputValues.put(OUTPUT_VALID_ID, true);
     }

@@ -13,7 +13,8 @@ import java.util.List;
  */
 public final class PointUtils {
 
-    public static final double EPS = 1.0e-12d;
+    public static final double EPS = SpatialTolerance.EPS;
+    public static final double EPS_SQ = SpatialTolerance.EPS_SQ;
 
     private PointUtils() {
     }

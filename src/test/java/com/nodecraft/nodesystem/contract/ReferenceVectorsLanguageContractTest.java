@@ -6,12 +6,14 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.vectors.AngleBetweenVectorsNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.Vector2InputNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.VectorInputNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Reference Vectors v1 language fence (Graph V50).
+ * Reference Vectors v1 language fence (Graph V50 freeze + V51 P1: VectorData / math.vector move).
  */
 class ReferenceVectorsLanguageContractTest {
 
@@ -50,8 +52,7 @@ class ReferenceVectorsLanguageContractTest {
             "reference.vectors.lerp_vectors",
             "reference.vectors.slerp",
             "reference.vectors.reflect",
-            "reference.vectors.project",
-            "reference.vectors.component_minmax"
+            "reference.vectors.project"
     );
 
     private static NodeRegistry registry;
@@ -65,23 +66,26 @@ class ReferenceVectorsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV50() {
+    void currentGraphFormatIsV51() {
         assertEquals(50, GraphFormatVersion.V50);
-        assertEquals(GraphFormatVersion.V50, GraphFormatVersion.CURRENT);
+        assertEquals(51, GraphFormatVersion.V51);
+        assertEquals(GraphFormatVersion.V51, GraphFormatVersion.CURRENT);
     }
 
     @Test
-    void exactlyEighteenCanonicalReferenceVectorNodesRegistered() {
+    void exactlySeventeenCanonicalReferenceVectorNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("reference.vectors."))
                 .sorted()
                 .toList();
-        assertEquals(18, ids.size(), "Expected 18 reference.vectors nodes: " + ids);
+        assertEquals(17, ids.size(), "Expected 17 reference.vectors nodes: " + ids);
         assertEquals(CANONICAL_IDS, Set.copyOf(ids));
+        assertFalse(registry.getAllNodeIds().contains("reference.vectors.component_minmax"));
+        assertNotNull(registry.createNodeInstance("math.vector.component_minmax"));
     }
 
     @Test
-    void referenceVectorNodesHaveUniqueOrderZeroThroughSeventeen() {
+    void referenceVectorNodesHaveUniqueOrderZeroThroughSixteen() {
         int[] orders = CANONICAL_IDS.stream()
                 .mapToInt(typeId -> {
                     INode node = registry.createNodeInstance(typeId);
@@ -92,7 +96,7 @@ class ReferenceVectorsLanguageContractTest {
                 })
                 .sorted()
                 .toArray();
-        assertEquals(18, orders.length);
+        assertEquals(17, orders.length);
         for (int i = 0; i < orders.length; i++) {
             assertEquals(i, orders[i], "Expected unique order " + i);
         }
@@ -121,8 +125,18 @@ class ReferenceVectorsLanguageContractTest {
         input.setZ(3.0d);
         input.processNode(null);
         assertEquals(Boolean.TRUE, input.getOutput("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, input.getOutput("output_vector"));
-        assertVectorEquals(new Vector3d(1, 2, 3), vector, 1.0e-9d);
+        assertVectorEquals(new Vector3d(1, 2, 3), requireVector(input.getOutput("output_vector")), 1.0e-9d);
+    }
+
+    @Test
+    void vectorPortsEmitTypedVectorData() {
+        BaseNode construct = node("reference.vectors.construct_vector");
+        construct.setInput("input_x", 1.0d);
+        construct.setInput("input_y", 2.0d);
+        construct.setInput("input_z", 3.0d);
+        construct.processNode(null);
+        VectorData data = assertInstanceOf(VectorData.class, construct.getOutput("output_vector"));
+        assertVectorEquals(new Vector3d(1, 2, 3), data.components(), 1.0e-9d);
     }
 
     @Test
@@ -132,7 +146,7 @@ class ReferenceVectorsLanguageContractTest {
         cross.setInput("input_vector_b", new Vector3d(2, 0, 0));
         cross.processNode(null);
         assertEquals(Boolean.TRUE, cross.getOutput("output_valid"));
-        Vector3d result = assertInstanceOf(Vector3d.class, cross.getOutput("output_cross_product"));
+        Vector3d result = requireVector(cross.getOutput("output_cross_product"));
         assertEquals(0.0d, result.length(), 1.0e-9d);
         assertEquals(0.0d, cross.getOutput("output_magnitude"));
     }
@@ -182,7 +196,7 @@ class ReferenceVectorsLanguageContractTest {
         multiply.setInput("input_scalar", 0.0d);
         multiply.processNode(null);
         assertEquals(Boolean.TRUE, multiply.getOutput("output_valid"));
-        Vector3d result = assertInstanceOf(Vector3d.class, multiply.getOutput("output_vector_product"));
+        Vector3d result = requireVector(multiply.getOutput("output_vector_product"));
         assertEquals(0.0d, result.length(), 1.0e-9d);
     }
 
@@ -204,8 +218,7 @@ class ReferenceVectorsLanguageContractTest {
         lerp.setInput("input_t", 2.0d);
         lerp.processNode(null);
         assertEquals(Boolean.TRUE, lerp.getOutput("output_valid"));
-        Vector3d result = assertInstanceOf(Vector3d.class, lerp.getOutput("output_result"));
-        assertVectorEquals(new Vector3d(2, 0, 0), result, 1.0e-9d);
+        assertVectorEquals(new Vector3d(2, 0, 0), requireVector(lerp.getOutput("output_result")), 1.0e-9d);
     }
 
     @Test
@@ -220,12 +233,12 @@ class ReferenceVectorsLanguageContractTest {
         slerp.setInput("input_t", 0.0d);
         slerp.processNode(null);
         assertEquals(Boolean.TRUE, slerp.getOutput("output_valid"));
-        assertVectorEquals(new Vector3d(1, 0, 0), assertInstanceOf(Vector3d.class, slerp.getOutput("output_result")), 1.0e-6d);
+        assertVectorEquals(new Vector3d(1, 0, 0), requireVector(slerp.getOutput("output_result")), 1.0e-6d);
 
         slerp.setInput("input_t", 1.0d);
         slerp.processNode(null);
         assertEquals(Boolean.TRUE, slerp.getOutput("output_valid"));
-        assertVectorEquals(bDir, assertInstanceOf(Vector3d.class, slerp.getOutput("output_result")), 1.0e-6d);
+        assertVectorEquals(bDir, requireVector(slerp.getOutput("output_result")), 1.0e-6d);
     }
 
     @Test
@@ -239,11 +252,11 @@ class ReferenceVectorsLanguageContractTest {
 
         slerp.setInput("input_t", 0.0d);
         slerp.processNode(null);
-        assertVectorEquals(a, assertInstanceOf(Vector3d.class, slerp.getOutput("output_result")), 1.0e-6d);
+        assertVectorEquals(a, requireVector(slerp.getOutput("output_result")), 1.0e-6d);
 
         slerp.setInput("input_t", 1.0d);
         slerp.processNode(null);
-        assertVectorEquals(b, assertInstanceOf(Vector3d.class, slerp.getOutput("output_result")), 1.0e-6d);
+        assertVectorEquals(b, requireVector(slerp.getOutput("output_result")), 1.0e-6d);
     }
 
     @Test
@@ -305,6 +318,17 @@ class ReferenceVectorsLanguageContractTest {
         assertFalse(hasPort(node, "output_uv"));
     }
 
+    @Test
+    void componentMinMaxLivesInMathVectorFamily() {
+        BaseNode minMax = node("math.vector.component_minmax");
+        minMax.setInput("input_a", new Vector3d(1, 5, 0));
+        minMax.setInput("input_b", new Vector3d(3, 2, 4));
+        minMax.processNode(null);
+        assertEquals(Boolean.TRUE, minMax.getOutput("output_valid"));
+        assertVectorEquals(new Vector3d(1, 2, 0), requireVector(minMax.getOutput("output_min")), 1.0e-9d);
+        assertVectorEquals(new Vector3d(3, 5, 4), requireVector(minMax.getOutput("output_max")), 1.0e-9d);
+    }
+
     private static BaseNode node(String typeId) {
         BaseNode node = (BaseNode) registry.createNodeInstance(typeId);
         assertNotNull(node, typeId);
@@ -336,6 +360,12 @@ class ReferenceVectorsLanguageContractTest {
 
     private static boolean hasPort(INode node, String portId) {
         return node.getOutputPorts().stream().anyMatch(port -> portId.equals(port.getId()));
+    }
+
+    private static Vector3d requireVector(Object value) {
+        Vector3d vector = VectorUtils.toVector(value);
+        assertNotNull(vector, "expected VECTOR payload");
+        return vector;
     }
 
     private static void assertVectorEquals(Vector3d expected, Vector3d actual, double epsilon) {

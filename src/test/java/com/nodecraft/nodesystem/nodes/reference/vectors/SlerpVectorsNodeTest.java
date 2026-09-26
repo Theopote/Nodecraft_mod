@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ class SlerpVectorsNodeTest {
             "input_t", 0.0d
         ));
         assertEquals(Boolean.TRUE, atZero.get("output_valid"));
-        assertVectorClose(a, (Vector3d) atZero.get("output_result"), 1.0e-6d);
+        assertVectorClose(a, requireVector(atZero.get("output_result")), 1.0e-6d);
 
         Map<String, Object> atOne = node.compute(Map.of(
             "input_a", a,
@@ -34,7 +35,7 @@ class SlerpVectorsNodeTest {
             "input_t", 1.0d
         ));
         assertEquals(Boolean.TRUE, atOne.get("output_valid"));
-        assertVectorClose(expectedB, (Vector3d) atOne.get("output_result"), 1.0e-6d);
+        assertVectorClose(expectedB, requireVector(atOne.get("output_result")), 1.0e-6d);
     }
 
     @Test
@@ -51,7 +52,7 @@ class SlerpVectorsNodeTest {
             "input_t", 0.0d
         ));
         assertEquals(Boolean.TRUE, atZero.get("output_valid"));
-        assertVectorClose(a, (Vector3d) atZero.get("output_result"), 1.0e-6d);
+        assertVectorClose(a, requireVector(atZero.get("output_result")), 1.0e-6d);
 
         Map<String, Object> atOne = node.compute(Map.of(
             "input_a", a,
@@ -59,7 +60,7 @@ class SlerpVectorsNodeTest {
             "input_t", 1.0d
         ));
         assertEquals(Boolean.TRUE, atOne.get("output_valid"));
-        assertVectorClose(b, (Vector3d) atOne.get("output_result"), 1.0e-6d);
+        assertVectorClose(b, requireVector(atOne.get("output_result")), 1.0e-6d);
     }
 
     @Test
@@ -74,11 +75,17 @@ class SlerpVectorsNodeTest {
         ));
 
         assertEquals(Boolean.TRUE, outputs.get("output_valid"));
-        Vector3d result = (Vector3d) outputs.get("output_result");
+        Vector3d result = requireVector(outputs.get("output_result"));
         assertNotNull(result);
         assertTrue(Double.isFinite(result.x));
         assertTrue(Double.isFinite(result.y));
         assertTrue(Double.isFinite(result.z));
+    }
+
+    private static Vector3d requireVector(Object value) {
+        Vector3d vector = VectorUtils.toVector(value);
+        assertNotNull(vector);
+        return vector;
     }
 
     private static void assertVectorClose(Vector3d expected, Vector3d actual, double epsilon) {

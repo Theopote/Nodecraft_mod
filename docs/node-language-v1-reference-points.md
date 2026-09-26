@@ -125,10 +125,9 @@ Removed at V49: `Edge Corner Index Pairs` (no port alias migration).
 
 Deconstruct Face Edge rejects degenerate lines (`lengthSquared <= EPS`).
 
-## Deferred (P1/P2 — non-blocking)
+## Deferred (P2 — non-blocking)
 
 - `PointData.canonical()` / constructor finite invariant
 - `LineData` finite/non-degenerate invariant at datatype layer
 - Rename display/id `mid_point` -> `midpoint` (optional canonical naming)
 - Further slim Deconstruct Box Face outputs (e.g. drop Plane)
-- Unify `EPS` vs `EPS^2` tolerance naming across Plane/Point utils

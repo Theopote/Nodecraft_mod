@@ -107,6 +107,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
             case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
             case GraphFormatVersion.V49 -> migrateV49ToV50(graph);
+            case GraphFormatVersion.V50 -> migrateV50ToV51(graph);
             default -> graph;
         };
     }
@@ -2863,6 +2864,28 @@ public final class GraphMigrationRegistry {
             return false;
         });
 
+        return graph;
+    }
+
+    private static final String LEGACY_VECTOR_COMPONENT_MINMAX_TYPE = "reference.vectors.component_minmax";
+    private static final String VECTOR_COMPONENT_MINMAX_TYPE = "math.vector.component_minmax";
+
+    /**
+     * Reference Vectors P1: move Component Min/Max to math.vector family.
+     */
+    private static SavedGraph migrateV50ToV51(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return graph;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_VECTOR_COMPONENT_MINMAX_TYPE.equalsIgnoreCase(node.typeId)) {
+                node.typeId = VECTOR_COMPONENT_MINMAX_TYPE;
+                LOGGER.debug("Remapped {} -> {}", LEGACY_VECTOR_COMPONENT_MINMAX_TYPE, VECTOR_COMPONENT_MINMAX_TYPE);
+            }
+        }
         return graph;
     }
 

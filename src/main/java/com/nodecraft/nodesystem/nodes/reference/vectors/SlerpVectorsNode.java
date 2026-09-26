@@ -70,7 +70,7 @@ public class SlerpVectorsNode extends BaseNode {
             writeInvalid();
             return;
         }
-        if (aRaw.lengthSquared() < VectorUtils.EPS || bRaw.lengthSquared() < VectorUtils.EPS) {
+        if (aRaw.lengthSquared() < VectorUtils.EPS_SQ || bRaw.lengthSquared() < VectorUtils.EPS_SQ) {
             writeInvalid();
             return;
         }
@@ -103,14 +103,14 @@ public class SlerpVectorsNode extends BaseNode {
             direction.mul(length);
         }
 
-        outputValues.put(OUTPUT_RESULT_ID, direction);
+        outputValues.put(OUTPUT_RESULT_ID, VectorUtils.toVectorPort(direction));
         outputValues.put(OUTPUT_ANGLE_ID, Math.toDegrees(angle));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private Vector3d degenerateLongArcDirection(Vector3d a, Vector3d b, double angle, double t) {
         Vector3d lerped = new Vector3d(a).lerp(b, t);
-        if (lerped.lengthSquared() >= VectorUtils.EPS) {
+        if (lerped.lengthSquared() >= VectorUtils.EPS_SQ) {
             return lerped.normalize();
         }
         return rotateAroundAxis(a, orthogonalAxis(a), angle * t);
@@ -118,7 +118,7 @@ public class SlerpVectorsNode extends BaseNode {
 
     private static Vector3d orthogonalAxis(Vector3d a) {
         Vector3d axis = new Vector3d(a).cross(0.0d, 1.0d, 0.0d);
-        if (axis.lengthSquared() < VectorUtils.EPS) {
+        if (axis.lengthSquared() < VectorUtils.EPS_SQ) {
             axis = new Vector3d(a).cross(0.0d, 0.0d, 1.0d);
         }
         return axis.normalize();

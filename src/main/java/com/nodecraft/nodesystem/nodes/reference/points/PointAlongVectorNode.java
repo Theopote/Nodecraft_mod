@@ -74,7 +74,7 @@ public class PointAlongVectorNode extends BaseNode {
         }
 
         direction = new Vector3d(direction);
-        if (direction.lengthSquared() <= PointUtils.EPS) {
+        if (direction.lengthSquared() <= PointUtils.EPS_SQ) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;

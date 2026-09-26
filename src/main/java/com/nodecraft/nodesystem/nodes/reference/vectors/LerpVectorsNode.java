@@ -73,7 +73,7 @@ public class LerpVectorsNode extends BaseNode {
             a.y + (b.y - a.y) * t,
             a.z + (b.z - a.z) * t
         );
-        outputValues.put(OUTPUT_RESULT_ID, result);
+        outputValues.put(OUTPUT_RESULT_ID, VectorUtils.toVectorPort(result));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

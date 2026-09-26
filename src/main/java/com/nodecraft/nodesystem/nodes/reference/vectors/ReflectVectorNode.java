@@ -52,7 +52,7 @@ public class ReflectVectorNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d v = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
         Vector3d n = VectorUtils.toVector(inputValues.get(INPUT_NORMAL_ID));
-        if (!VectorUtils.isFinite(v) || !VectorUtils.isFinite(n) || n.lengthSquared() < VectorUtils.EPS) {
+        if (!VectorUtils.isFinite(v) || !VectorUtils.isFinite(n) || n.lengthSquared() < VectorUtils.EPS_SQ) {
             outputValues.put(OUTPUT_REFLECTED_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
@@ -62,7 +62,7 @@ public class ReflectVectorNode extends BaseNode {
         double scale = 2.0d * v.dot(nn);
         Vector3d reflected = new Vector3d(v).sub(new Vector3d(nn).mul(scale));
 
-        outputValues.put(OUTPUT_REFLECTED_ID, reflected);
+        outputValues.put(OUTPUT_REFLECTED_ID, VectorUtils.toVectorPort(reflected));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

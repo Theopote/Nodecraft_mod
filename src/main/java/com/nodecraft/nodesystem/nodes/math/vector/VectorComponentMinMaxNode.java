@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.reference.vectors;
+package com.nodecraft.nodesystem.nodes.math.vector;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -14,11 +14,11 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "reference.vectors.component_minmax",
+    id = "math.vector.component_minmax",
     displayName = "Vector Component Min/Max",
     description = "Computes per-component min and max between vectors A and B.",
-    category = "reference.vectors",
-    order = 17
+    category = "math.vector",
+    order = 0
 )
 public class VectorComponentMinMaxNode extends BaseNode {
 
@@ -30,7 +30,7 @@ public class VectorComponentMinMaxNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public VectorComponentMinMaxNode() {
-        super(UUID.randomUUID(), "reference.vectors.component_minmax");
+        super(UUID.randomUUID(), "math.vector.component_minmax");
 
         addInputPort(new BasePort(INPUT_A_ID, "A", "First vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_B_ID, "B", "Second vector", NodeDataType.VECTOR, this));
@@ -72,8 +72,8 @@ public class VectorComponentMinMaxNode extends BaseNode {
             Math.max(a.z, b.z)
         );
 
-        outputValues.put(OUTPUT_MIN_ID, min);
-        outputValues.put(OUTPUT_MAX_ID, max);
+        outputValues.put(OUTPUT_MIN_ID, VectorUtils.toVectorPort(min));
+        outputValues.put(OUTPUT_MAX_ID, VectorUtils.toVectorPort(max));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

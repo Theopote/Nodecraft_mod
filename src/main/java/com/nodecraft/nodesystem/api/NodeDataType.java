@@ -269,8 +269,8 @@ public enum NodeDataType {
             return value instanceof Boolean;
         }
 
-        // VECTOR accepts legacy Vector3 wrappers in addition to Vector3d.
-        if (this == VECTOR && value instanceof Vector3) {
+        // VECTOR accepts typed VectorData, legacy Vector3 wrappers, and Vector3d.
+        if (this == VECTOR && (value instanceof VectorData || value instanceof Vector3)) {
             return true;
         }
 
@@ -312,14 +312,13 @@ public enum NodeDataType {
         }
         return switch (kind) {
             case NONE, UNCONSTRAINED, BLOCK_INFO, BLOCK_PLACEMENT -> true;
-            case INTEGER -> value instanceof Integer || value instanceof Long || value instanceof Short
-                    || value instanceof Byte;
+            case INTEGER -> value instanceof Integer;
             case DOUBLE -> value instanceof Number;
             case BOOLEAN -> value instanceof Boolean;
             case STRING -> value instanceof String;
             case BLOCK_POS -> value instanceof BlockPos;
             case POINT -> value instanceof PointData;
-            case VECTOR -> value instanceof Vector3d || value instanceof Vector3;
+            case VECTOR -> value instanceof VectorData || value instanceof Vector3d || value instanceof Vector3;
             case PLANE -> value instanceof PlaneData;
             case FRAME -> value instanceof FrameData;
             case PATH -> value instanceof PathData

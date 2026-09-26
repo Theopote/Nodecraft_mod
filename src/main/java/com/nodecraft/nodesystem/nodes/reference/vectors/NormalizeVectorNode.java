@@ -53,13 +53,13 @@ public class NormalizeVectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
-        if (!VectorUtils.isFinite(vector) || vector.lengthSquared() < VectorUtils.EPS) {
+        if (!VectorUtils.isFinite(vector) || vector.lengthSquared() < VectorUtils.EPS_SQ) {
             outputValues.put(OUTPUT_NORMALIZED_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        outputValues.put(OUTPUT_NORMALIZED_ID, vector.normalize());
+        outputValues.put(OUTPUT_NORMALIZED_ID, VectorUtils.toVectorPort(vector.normalize()));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

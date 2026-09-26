@@ -62,7 +62,7 @@ public class VectorSubtractionNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_DIFFERENCE_ID, a.sub(b));
+        outputValues.put(OUTPUT_DIFFERENCE_ID, VectorUtils.toVectorPort(a.sub(b, new Vector3d())));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }

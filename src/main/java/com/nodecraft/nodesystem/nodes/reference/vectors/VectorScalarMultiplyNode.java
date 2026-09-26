@@ -67,7 +67,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_PRODUCT_ID, vector.mul(scalar));
+        outputValues.put(OUTPUT_PRODUCT_ID, VectorUtils.toVectorPort(vector.mul(scalar, new Vector3d())));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

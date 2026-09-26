@@ -215,6 +215,29 @@ class DataTreeLanguageContractTest {
     }
 
     @Test
+    void constructTreePathRequiresExactIntegerList() {
+        ConstructTreePathNode exact = new ConstructTreePathNode();
+        exact.setInput("input_indices", List.of(1, 2, 3));
+        exact.processNode(null);
+        assertEquals(Boolean.TRUE, exact.getOutput("output_valid"));
+        assertEquals(new TreePathData(List.of(1, 2, 3)), exact.getOutput("output_path"));
+
+        ConstructTreePathNode truncating = new ConstructTreePathNode();
+        truncating.setInput("input_indices", List.of(1L, 2));
+        truncating.processNode(null);
+        assertEquals(Boolean.FALSE, truncating.getOutput("output_valid"));
+        assertEquals(TreePathData.empty(), truncating.getOutput("output_path"));
+
+        ConstructTreePathNode doubles = new ConstructTreePathNode();
+        doubles.setInput("input_indices", List.of(1.0d, 2.0d));
+        doubles.processNode(null);
+        assertEquals(Boolean.FALSE, doubles.getOutput("output_valid"));
+
+        assertFalse(NodeDataType.INTEGER_LIST.isCompatible(List.of(1L)));
+        assertTrue(NodeDataType.INTEGER_LIST.isCompatible(List.of(1, 2)));
+    }
+
+    @Test
     void v23ToV24MigrationStripsPropsAndIllegalPathWires() {
         SavedGraph v23 = new SavedGraph();
         v23.formatVersion = GraphFormatVersion.V23;

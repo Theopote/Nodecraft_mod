@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -57,7 +58,7 @@ public class ConstructVectorNode extends BaseNode {
         double z = toDouble(inputValues.get(INPUT_Z_ID));
         boolean valid = Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z);
 
-        outputValues.put(OUTPUT_VECTOR_ID, valid ? new Vector3d(x, y, z) : null);
+        outputValues.put(OUTPUT_VECTOR_ID, valid ? VectorUtils.toVectorPort(new Vector3d(x, y, z)) : null);
         outputValues.put(OUTPUT_VALID_ID, valid);
     }
 

@@ -314,8 +314,14 @@ public final class GraphFormatVersion {
      */
     public static final int V50 = 50;
 
+    /**
+     * Reference Vectors P1: VectorData layer, SpatialTolerance EPS/EPS_SQ, strict INTEGER_LIST,
+     * Component Min/Max moved to math.vector.
+     */
+    public static final int V51 = 51;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V50;
+    public static final int CURRENT = V51;
 
     private GraphFormatVersion() {
     }

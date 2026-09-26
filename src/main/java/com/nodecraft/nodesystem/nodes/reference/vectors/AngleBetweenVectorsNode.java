@@ -68,7 +68,7 @@ public class AngleBetweenVectorsNode extends BaseNode {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)
-            || a.lengthSquared() < VectorUtils.EPS || b.lengthSquared() < VectorUtils.EPS) {
+            || a.lengthSquared() < VectorUtils.EPS_SQ || b.lengthSquared() < VectorUtils.EPS_SQ) {
             writeInvalid();
             return;
         }
@@ -83,7 +83,7 @@ public class AngleBetweenVectorsNode extends BaseNode {
         Vector3d ref = VectorUtils.toVector(inputValues.get(INPUT_REFERENCE_ID));
 
         if (referenceConnected) {
-            if (!VectorUtils.isFinite(ref) || ref.lengthSquared() < VectorUtils.EPS) {
+            if (!VectorUtils.isFinite(ref) || ref.lengthSquared() < VectorUtils.EPS_SQ) {
                 writeInvalid();
                 return;
             }

@@ -62,7 +62,7 @@ public class ProjectVectorNode extends BaseNode {
         }
 
         double bLenSq = b.lengthSquared();
-        if (bLenSq < VectorUtils.EPS) {
+        if (bLenSq < VectorUtils.EPS_SQ) {
             writeInvalid();
             return;
         }
@@ -71,8 +71,8 @@ public class ProjectVectorNode extends BaseNode {
         Vector3d projection = new Vector3d(b).mul(scale);
         Vector3d rejection = new Vector3d(a).sub(projection);
 
-        outputValues.put(OUTPUT_PROJECTION_ID, projection);
-        outputValues.put(OUTPUT_REJECTION_ID, rejection);
+        outputValues.put(OUTPUT_PROJECTION_ID, VectorUtils.toVectorPort(projection));
+        outputValues.put(OUTPUT_REJECTION_ID, VectorUtils.toVectorPort(rejection));
         outputValues.put(OUTPUT_SCALE_ID, scale);
         outputValues.put(OUTPUT_VALID_ID, true);
     }

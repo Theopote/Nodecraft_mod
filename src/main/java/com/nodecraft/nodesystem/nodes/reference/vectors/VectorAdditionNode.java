@@ -62,7 +62,7 @@ public class VectorAdditionNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_SUM_ID, a.add(b));
+        outputValues.put(OUTPUT_SUM_ID, VectorUtils.toVectorPort(a.add(b, new Vector3d())));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 }
