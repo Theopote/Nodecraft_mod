@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.LSystemTurtle3DInterpreter;
@@ -26,14 +25,6 @@ import java.util.UUID;
     order = 3
 )
 public class LSystemTurtle3DNode extends BaseNode {
-
-    /** @deprecated Use {@link GenerationLimits#MAX_LSYSTEM_COMMAND_LENGTH}. */
-    @Deprecated
-    public static final int MAX_COMMAND_LENGTH = GenerationLimits.MAX_LSYSTEM_COMMAND_LENGTH;
-
-    /** @deprecated Use {@link GenerationLimits#MAX_LSYSTEM_TURTLE_SEGMENTS}. */
-    @Deprecated
-    public static final int MAX_POLYLINE_POINTS = GenerationLimits.MAX_LSYSTEM_TURTLE_SEGMENTS;
 
     @NodeProperty(displayName = "Step", category = "Turtle", order = 1)
     private double step = 1.0d;
@@ -101,10 +92,15 @@ public class LSystemTurtle3DNode extends BaseNode {
         );
 
         boolean valid = result.segmentCount() > 0 && !result.bracketError();
-        outputValues.put(OUTPUT_PATHS_ID, valid ? result.paths() : List.<PathData>of());
-        outputValues.put(OUTPUT_POINTS_ID, valid ? SpatialValueResolver.toPointDataList(result.drawPoints()) : List.of());
+        if (!valid) {
+            writeInvalid(result.hitLimit());
+            return;
+        }
+
+        outputValues.put(OUTPUT_PATHS_ID, result.paths());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(result.drawPoints()));
         outputValues.put(OUTPUT_SEGMENT_COUNT_ID, result.segmentCount());
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, result.hitLimit());
     }
 

@@ -227,6 +227,22 @@ class PatternLSystemLanguageContractTest {
     }
 
     @Test
+    void turtleBracketErrorClearsAllOutputs() {
+        BaseNode node = createNode("pattern.lsystem.turtle_3d");
+        node.setInput("input_commands", "F]");
+        node.processNode(null);
+
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(0, node.getOutput("output_segment_count"));
+        @SuppressWarnings("unchecked")
+        List<PathData> paths = assertInstanceOf(List.class, node.getOutput("output_paths"));
+        @SuppressWarnings("unchecked")
+        List<PointData> points = assertInstanceOf(List.class, node.getOutput("output_points"));
+        assertTrue(paths.isEmpty());
+        assertTrue(points.isEmpty());
+    }
+
+    @Test
     void turtleUnclosedBracketFailsClosed() {
         BaseNode node = createNode("pattern.lsystem.turtle_3d");
         node.setInput("input_commands", "F[+F");
@@ -290,6 +306,26 @@ class PatternLSystemLanguageContractTest {
         BaseNode node = createNode("pattern.lsystem.expand");
         node.setInput("input_axiom", "F");
         node.setInput("input_rules", List.of("not-a-rule"));
+        node.setInput("input_iterations", 1);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+    }
+
+    @Test
+    void expandMalformedRuleObjectFailsClosed() {
+        BaseNode node = createNode("pattern.lsystem.expand");
+        node.setInput("input_axiom", "F");
+        node.setInput("input_rule_0", new LSystemRule("F", "FF", Double.NaN));
+        node.setInput("input_iterations", 1);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+    }
+
+    @Test
+    void expandMalformedRuleListEntryFailsClosed() {
+        BaseNode node = createNode("pattern.lsystem.expand");
+        node.setInput("input_axiom", "F");
+        node.setInput("input_rules", List.of(new LSystemRule("F", "FF", Double.NaN)));
         node.setInput("input_iterations", 1);
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));

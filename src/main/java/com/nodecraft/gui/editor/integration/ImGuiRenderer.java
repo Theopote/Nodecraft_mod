@@ -538,7 +538,7 @@ public class ImGuiRenderer {
 
         // 边框和最小尺寸
         style.setWindowBorderSize(1.5f * scale);
-        style.setFrameBorderSize(1.0f * scale);
+        style.setFrameBorderSize(scale);
         style.setWindowMinSize(400.0f * scale, 300.0f * scale);
 
         // 滚动条和抓取柄大小

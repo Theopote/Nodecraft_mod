@@ -105,14 +105,20 @@ public class LSystemExpandNode extends BaseNode {
         }
 
         List<LSystemRule> portRules = collectPortRules();
+        List<LSystemRule> validatedPortRules = LSystemRuleUtils.collectValidPortRules(portRules);
+        if (validatedPortRules == null) {
+            writeInvalid("", 0, false);
+            return;
+        }
+
         List<LSystemRule> listRules = LSystemRuleUtils.resolveStrictRuleList(inputValues.get(INPUT_RULES_ID));
         if (inputValues.get(INPUT_RULES_ID) != null && listRules == null) {
             writeInvalid("", 0, false);
             return;
         }
 
-        List<LSystemRule> rules = LSystemRuleUtils.mergeRules(listRules, portRules);
-        if (rules.stream().noneMatch(rule -> rule != null && !rule.symbol().trim().isEmpty())) {
+        List<LSystemRule> rules = LSystemRuleUtils.mergeRules(listRules, validatedPortRules);
+        if (rules.isEmpty()) {
             writeInvalid("", 0, false);
             return;
         }
