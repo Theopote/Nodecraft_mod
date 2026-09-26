@@ -49,9 +49,10 @@ class VectorLanguageContractTest {
     }
 
     @Test
-    void vectorInputEmitsVectorOnly() {
+    void vectorInputEmitsVectorAndValidOnly() {
         VectorInputNode node = new VectorInputNode();
         assertEquals(NodeDataType.VECTOR, findPort(node, "output_vector").getDataType());
+        assertEquals(NodeDataType.BOOLEAN, findPort(node, "output_valid").getDataType());
         assertFalse(hasPort(node, "output_x"));
         assertFalse(hasPort(node, "output_y"));
         assertFalse(hasPort(node, "output_z"));

@@ -32,6 +32,7 @@ public class VectorInputNode extends BaseCustomUINode {
     private static final String INPUT_Z_ID = "input_z";
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X component")
     private double x = 0.0;
@@ -56,6 +57,8 @@ public class VectorInputNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y component override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z component override", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when all components resolved to finite numbers", NodeDataType.BOOLEAN, this));
         updateOutput();
     }
 
@@ -142,32 +145,45 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        double resolvedX = getResolvedX();
-        double resolvedY = getResolvedY();
-        double resolvedZ = getResolvedZ();
-        Vector3d vector = new Vector3d(resolvedX, resolvedY, resolvedZ);
-        outputValues.put(OUTPUT_VECTOR_ID, vector);
+        Double resolvedX = resolveComponent(INPUT_X_ID, x);
+        Double resolvedY = resolveComponent(INPUT_Y_ID, y);
+        Double resolvedZ = resolveComponent(INPUT_Z_ID, z);
+
+        if (resolvedX == null || resolvedY == null || resolvedZ == null) {
+            outputValues.put(OUTPUT_VECTOR_ID, null);
+            outputValues.put(OUTPUT_VALID_ID, false);
+        } else {
+            outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(resolvedX, resolvedY, resolvedZ));
+            outputValues.put(OUTPUT_VALID_ID, true);
+        }
         syncOutputPorts();
     }
 
     private double getResolvedX() {
-        return resolveComponent(INPUT_X_ID, x);
+        Double resolved = resolveComponent(INPUT_X_ID, x);
+        return resolved != null ? resolved : x;
     }
 
     private double getResolvedY() {
-        return resolveComponent(INPUT_Y_ID, y);
+        Double resolved = resolveComponent(INPUT_Y_ID, y);
+        return resolved != null ? resolved : y;
     }
 
     private double getResolvedZ() {
-        return resolveComponent(INPUT_Z_ID, z);
+        Double resolved = resolveComponent(INPUT_Z_ID, z);
+        return resolved != null ? resolved : z;
     }
 
-    private double resolveComponent(String inputPortId, double fallback) {
-        Object value = inputValues.get(inputPortId);
-        if (value instanceof Number number) {
-            return number.doubleValue();
+    private @Nullable Double resolveComponent(String inputPortId, double fallback) {
+        if (isInputConnected(inputPortId)) {
+            Object value = inputValues.get(inputPortId);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
         }
-        return fallback;
+        return Double.isFinite(fallback) ? fallback : null;
     }
 
     private boolean isInputConnected(String inputPortId) {

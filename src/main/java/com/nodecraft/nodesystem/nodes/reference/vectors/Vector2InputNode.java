@@ -13,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.DoubleConsumer;
@@ -22,16 +21,13 @@ import java.util.function.DoubleConsumer;
     effect = NodeEffect.PURE,
     id = "reference.vectors.vector2_input",
     displayName = "2D Vector Input",
-    description = "Inputs a 2D vector (X/Y or U/V) and outputs vector + components.",
+    description = "Inputs a 2D vector (X/Y) and outputs Vector3d(x, y, 0).",
     category = "reference.vectors",
     order = 1
 )
 public class Vector2InputNode extends BaseCustomUINode {
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
-    private static final String OUTPUT_X_ID = "output_x";
-    private static final String OUTPUT_Y_ID = "output_y";
-    private static final String OUTPUT_UV_ID = "output_uv";
 
     @NodeProperty(displayName = "X", category = "Value", order = 1)
     private double x = 0.0d;
@@ -46,15 +42,12 @@ public class Vector2InputNode extends BaseCustomUINode {
     public Vector2InputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector2_input");
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "2D vector as Vector3d(x,y,0)", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_X_ID, "X", "X / U component", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y / V component", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_UV_ID, "UV", "UV pair list [x, y]", NodeDataType.LIST, this));
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "Inputs a 2D vector (X/Y or U/V) and outputs vector + components.";
+        return "Inputs a 2D vector (X/Y) and outputs Vector3d(x, y, 0).";
     }
 
     @Override
@@ -120,9 +113,6 @@ public class Vector2InputNode extends BaseCustomUINode {
 
     private void updateOutput() {
         outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(x, y, 0.0d));
-        outputValues.put(OUTPUT_X_ID, x);
-        outputValues.put(OUTPUT_Y_ID, y);
-        outputValues.put(OUTPUT_UV_ID, List.of(x, y));
         syncOutputPorts();
     }
 

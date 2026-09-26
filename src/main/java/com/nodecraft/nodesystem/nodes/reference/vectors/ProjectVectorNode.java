@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -17,7 +18,7 @@ import java.util.UUID;
     displayName = "Project Vector onto Vector",
     description = "Projects vector A onto vector B as (A·B / |B|^2)B.",
     category = "reference.vectors",
-    order = 14
+    order = 16
 )
 public class ProjectVectorNode extends BaseNode {
 
@@ -56,19 +57,13 @@ public class ProjectVectorNode extends BaseNode {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
-            outputValues.put(OUTPUT_PROJECTION_ID, new Vector3d());
-            outputValues.put(OUTPUT_REJECTION_ID, new Vector3d());
-            outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
 
         double bLenSq = b.lengthSquared();
         if (bLenSq < VectorUtils.EPS) {
-            outputValues.put(OUTPUT_PROJECTION_ID, new Vector3d());
-            outputValues.put(OUTPUT_REJECTION_ID, new Vector3d(a));
-            outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
 
@@ -80,5 +75,12 @@ public class ProjectVectorNode extends BaseNode {
         outputValues.put(OUTPUT_REJECTION_ID, rejection);
         outputValues.put(OUTPUT_SCALE_ID, scale);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_PROJECTION_ID, null);
+        outputValues.put(OUTPUT_REJECTION_ID, null);
+        outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

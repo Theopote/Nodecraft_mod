@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
     displayName = "Dot Product",
     description = "Computes the dot product of vectors A and B.",
     category = "reference.vectors",
-    order = 4
+    order = 10
 )
 public class DotProductNode extends BaseNode {
 

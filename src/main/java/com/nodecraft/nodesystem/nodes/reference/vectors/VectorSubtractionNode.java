@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -56,7 +57,7 @@ public class VectorSubtractionNode extends BaseNode {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
-            outputValues.put(OUTPUT_DIFFERENCE_ID, new Vector3d());
+            outputValues.put(OUTPUT_DIFFERENCE_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }

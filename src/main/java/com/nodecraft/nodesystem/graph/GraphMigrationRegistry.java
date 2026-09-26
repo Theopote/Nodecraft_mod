@@ -106,6 +106,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V37 -> migrateV37ToV38(graph);
             case GraphFormatVersion.V38 -> migrateV38ToV39(graph);
             case GraphFormatVersion.V39 -> migrateV39ToV40(graph);
+            case GraphFormatVersion.V49 -> migrateV49ToV50(graph);
             default -> graph;
         };
     }
@@ -2791,6 +2792,74 @@ public final class GraphMigrationRegistry {
                 return true;
             }
 
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static final String REFLECT_VECTOR_TYPE = "reference.vectors.reflect";
+    private static final String VECTOR2_INPUT_TYPE = "reference.vectors.vector2_input";
+
+    private static final Set<String> VECTOR2_INPUT_LEGACY_OUTPUT_PORTS = Set.of(
+            "output_x",
+            "output_y",
+            "output_uv"
+    );
+
+    /**
+     * Reference Vectors v1: drop Reflect normalized-normal echo, Vector2 component/UV echoes,
+     * strip obsolete Slerp shortestPath state.
+     */
+    private static SavedGraph migrateV49ToV50(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (SLERP_VECTORS_TYPE.equalsIgnoreCase(node.typeId) && node.state instanceof Map<?, ?> state) {
+                    Map<String, Object> cleaned = new HashMap<>();
+                    for (Map.Entry<?, ?> entry : state.entrySet()) {
+                        if (entry.getKey() instanceof String key && !"shortestpath".equals(key.toLowerCase(Locale.ROOT))) {
+                            cleaned.put(key, entry.getValue());
+                        }
+                    }
+                    node.state = cleaned.isEmpty() ? null : cleaned;
+                }
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (sourceType == null || connection.sourcePortId == null) {
+                return false;
+            }
+            String sourcePort = connection.sourcePortId.toLowerCase(Locale.ROOT);
+
+            if (REFLECT_VECTOR_TYPE.equals(sourceType) && "output_normalized_normal".equals(sourcePort)) {
+                LOGGER.debug("Dropped Reflect Vector legacy output_normalized_normal from {}", connection.sourceNodeId);
+                return true;
+            }
+            if (VECTOR2_INPUT_TYPE.equals(sourceType) && VECTOR2_INPUT_LEGACY_OUTPUT_PORTS.contains(sourcePort)) {
+                LOGGER.debug("Dropped 2D Vector Input legacy output {} from {}", connection.sourcePortId, connection.sourceNodeId);
+                return true;
+            }
             return false;
         });
 

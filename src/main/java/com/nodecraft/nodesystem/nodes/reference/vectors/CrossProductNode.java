@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,11 +21,10 @@ import java.util.UUID;
     displayName = "Cross Product",
     description = "Computes the cross product A x B and its magnitude.",
     category = "reference.vectors",
-    order = 3
+    order = 11
 )
 public class CrossProductNode extends BaseNode {
 
-    // Keep existing port IDs so saved graphs continue to resolve connections.
     private static final String INPUT_A_ID = "input_vector_a";
     private static final String INPUT_B_ID = "input_vector_b";
 
@@ -41,7 +41,7 @@ public class CrossProductNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_CROSS_PRODUCT_ID, "Cross Product", "Result A x B", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_MAGNITUDE_ID, "Magnitude", "Length of the cross product", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when inputs are valid and the cross product is non-zero",
+            "True when both input vectors are finite",
             NodeDataType.BOOLEAN, this));
     }
 
@@ -65,17 +65,14 @@ public class CrossProductNode extends BaseNode {
         }
 
         Vector3d cross = new Vector3d(a).cross(b);
-        double magnitude = cross.length();
-
         outputValues.put(OUTPUT_CROSS_PRODUCT_ID, cross);
-        outputValues.put(OUTPUT_MAGNITUDE_ID, magnitude);
-        outputValues.put(OUTPUT_VALID_ID, magnitude >= VectorUtils.EPS);
+        outputValues.put(OUTPUT_MAGNITUDE_ID, cross.length());
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_CROSS_PRODUCT_ID, new Vector3d());
+        outputValues.put(OUTPUT_CROSS_PRODUCT_ID, null);
         outputValues.put(OUTPUT_MAGNITUDE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
-
 }

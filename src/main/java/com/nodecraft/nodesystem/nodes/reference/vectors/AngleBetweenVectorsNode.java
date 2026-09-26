@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
     displayName = "Angle Between Vectors",
     description = "Angle between two vectors in degrees; optional reference vector yields a signed angle",
     category = "reference.vectors",
-    order = 11
+    order = 12
 )
 public class AngleBetweenVectorsNode extends BaseNode {
 
@@ -66,21 +67,26 @@ public class AngleBetweenVectorsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
-        Vector3d ref = VectorUtils.toVector(inputValues.get(INPUT_REFERENCE_ID));
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)
             || a.lengthSquared() < VectorUtils.EPS || b.lengthSquared() < VectorUtils.EPS) {
             writeInvalid();
             return;
         }
+
         Vector3d an = new Vector3d(a).normalize();
         Vector3d bn = new Vector3d(b).normalize();
         double cos = Math.max(-1.0d, Math.min(1.0d, an.dot(bn)));
         double angleRad = Math.acos(cos);
         double deg = Math.toDegrees(angleRad);
 
-        outputValues.put(OUTPUT_ANGLE_ID, deg);
+        boolean referenceConnected = isInputConnected(INPUT_REFERENCE_ID);
+        Vector3d ref = VectorUtils.toVector(inputValues.get(INPUT_REFERENCE_ID));
 
-        if (VectorUtils.isFinite(ref) && ref.lengthSquared() >= VectorUtils.EPS) {
+        if (referenceConnected) {
+            if (!VectorUtils.isFinite(ref) || ref.lengthSquared() < VectorUtils.EPS) {
+                writeInvalid();
+                return;
+            }
             Vector3d rn = new Vector3d(ref).normalize();
             Vector3d cross = new Vector3d(an).cross(bn);
             double sinSigned = rn.dot(cross);
@@ -89,7 +95,14 @@ public class AngleBetweenVectorsNode extends BaseNode {
         } else {
             outputValues.put(OUTPUT_SIGNED_ANGLE_ID, Double.NaN);
         }
+
+        outputValues.put(OUTPUT_ANGLE_ID, deg);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private boolean isInputConnected(String inputPortId) {
+        return inputPorts.stream()
+            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
     }
 
     private void writeInvalid() {

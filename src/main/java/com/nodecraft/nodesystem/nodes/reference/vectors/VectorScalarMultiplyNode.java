@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -71,7 +72,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_PRODUCT_ID, new Vector3d());
+        outputValues.put(OUTPUT_PRODUCT_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

@@ -17,7 +17,7 @@ import java.util.UUID;
     displayName = "Construct Vector",
     description = "Constructs a vector from X, Y, and Z components",
     category = "reference.vectors",
-    order = 1
+    order = 2
 )
 public class ConstructVectorNode extends BaseNode {
 

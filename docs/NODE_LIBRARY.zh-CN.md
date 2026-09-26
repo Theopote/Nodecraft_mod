@@ -683,23 +683,23 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Vector Input | `reference.vectors.vector` | Inputs a 3D vector from panel values or optional X/Y/Z input ports | `VectorInputNode` |
+| 2D Vector Input | `reference.vectors.vector2_input` | Inputs a 2D vector (X/Y) and outputs Vector3d(x, y, 0). | `Vector2InputNode` |
 | Construct Vector | `reference.vectors.construct_vector` | Constructs a vector from X, Y, and Z components | `ConstructVectorNode` |
 | Deconstruct Vector | `reference.vectors.deconstruct_vector` | Outputs the X, Y, and Z components of a vector. | `DeconstructVectorNode` |
-| 2D Vector Input | `reference.vectors.vector2_input` | Inputs a 2D vector (X/Y or U/V) and outputs vector + components. | `Vector2InputNode` |
-| Normalize Vector | `reference.vectors.normalize_vector` | Normalizes a vector to unit length. | `NormalizeVectorNode` |
-| Cross Product | `reference.vectors.cross_product` | Computes the cross product A x B and its magnitude. | `CrossProductNode` |
-| Dot Product | `reference.vectors.dot_product` | Computes the dot product of vectors A and B. | `DotProductNode` |
 | Vector Length | `reference.vectors.vector_length` | Computes the length (magnitude) of a vector. | `VectorLengthNode` |
+| Normalize Vector | `reference.vectors.normalize_vector` | Normalizes a vector to unit length. | `NormalizeVectorNode` |
 | Vector Addition (+) | `reference.vectors.vector_addition` | Computes the vector sum A + B. | `VectorAdditionNode` |
 | Vector Subtraction (-) | `reference.vectors.vector_subtraction` | Computes the vector difference A - B. | `VectorSubtractionNode` |
 | Vector Scalar Multiply | `reference.vectors.vector_scalar_multiply` | Multiplies a vector by a scalar. | `VectorScalarMultiplyNode` |
 | Vector Scalar Divide | `reference.vectors.vector_scalar_divide` | Divides a vector by a scalar. | `VectorScalarDivideNode` |
+| Dot Product | `reference.vectors.dot_product` | Computes the dot product of vectors A and B. | `DotProductNode` |
+| Cross Product | `reference.vectors.cross_product` | Computes the cross product A x B and its magnitude. | `CrossProductNode` |
 | Angle Between Vectors | `reference.vectors.angle_between` | Angle between two vectors in degrees; optional reference vector yields a signed angle | `AngleBetweenVectorsNode` |
 | Lerp Vectors | `reference.vectors.lerp_vectors` | Linearly interpolates between vector A and B using parameter T. | `LerpVectorsNode` |
+| Slerp Vectors | `reference.vectors.slerp` | Performs spherical linear interpolation between two direction vectors. | `SlerpVectorsNode` |
 | Reflect Vector | `reference.vectors.reflect` | Reflects an input vector around a normal vector using v - 2(v·n)n. | `ReflectVectorNode` |
 | Project Vector onto Vector | `reference.vectors.project` | Projects vector A onto vector B as (A·B / \|B\|^2)B. | `ProjectVectorNode` |
 | Vector Component Min/Max | `reference.vectors.component_minmax` | Computes per-component min and max between vectors A and B. | `VectorComponentMinMaxNode` |
-| Slerp Vectors | `reference.vectors.slerp` | Performs spherical linear interpolation between two direction vectors. | `SlerpVectorsNode` |
 
 ## transform.basic_transforms（15）
 

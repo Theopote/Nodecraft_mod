@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,16 +21,13 @@ import java.util.UUID;
     displayName = "Slerp Vectors",
     description = "Performs spherical linear interpolation between two direction vectors.",
     category = "reference.vectors",
-    order = 16
+    order = 14
 )
 public class SlerpVectorsNode extends BaseNode {
 
     private static final double DEGENERATE_DOT_EPS = 1.0e-6d;
 
-    @NodeProperty(displayName = "Shortest Path", category = "Slerp", order = 1)
-    private boolean shortestPath = true;
-
-    @NodeProperty(displayName = "Preserve Magnitude", category = "Slerp", order = 2)
+    @NodeProperty(displayName = "Preserve Magnitude", category = "Slerp", order = 1)
     private boolean preserveMagnitude = true;
 
     private static final String INPUT_A_ID = "input_a";
@@ -87,12 +85,7 @@ public class SlerpVectorsNode extends BaseNode {
         Vector3d b = new Vector3d(bRaw).normalize();
 
         double dot = Math.max(-1.0d, Math.min(1.0d, a.dot(b)));
-        if (shortestPath && dot < 0.0d) {
-            b.negate();
-            dot = -dot;
-        }
-
-        double angle = Math.acos(Math.max(-1.0d, Math.min(1.0d, dot)));
+        double angle = Math.acos(dot);
         Vector3d direction;
         if (1.0d - dot < DEGENERATE_DOT_EPS) {
             direction = new Vector3d(a).lerp(b, t).normalize();
@@ -141,7 +134,7 @@ public class SlerpVectorsNode extends BaseNode {
     }
 
     private void writeInvalid() {
-        outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
+        outputValues.put(OUTPUT_RESULT_ID, null);
         outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
     }
@@ -149,7 +142,6 @@ public class SlerpVectorsNode extends BaseNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        state.put("shortestPath", shortestPath);
         state.put("preserveMagnitude", preserveMagnitude);
         return state;
     }
@@ -158,10 +150,6 @@ public class SlerpVectorsNode extends BaseNode {
     public void setNodeState(Object state) {
         if (!(state instanceof Map<?, ?> map)) {
             return;
-        }
-        Object shortestPathValue = map.get("shortestPath");
-        if (shortestPathValue instanceof Boolean value) {
-            shortestPath = value;
         }
         Object preserveMagnitudeValue = map.get("preserveMagnitude");
         if (preserveMagnitudeValue instanceof Boolean value) {

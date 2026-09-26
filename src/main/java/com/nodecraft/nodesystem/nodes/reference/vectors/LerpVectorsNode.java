@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -17,7 +18,7 @@ import java.util.UUID;
     displayName = "Lerp Vectors",
     description = "Linearly interpolates between vector A and B using parameter T.",
     category = "reference.vectors",
-    order = 12
+    order = 13
 )
 public class LerpVectorsNode extends BaseNode {
 
@@ -55,14 +56,14 @@ public class LerpVectorsNode extends BaseNode {
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
         Object tObj = inputValues.get(INPUT_T_ID);
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b) || !(tObj instanceof Number tNumber)) {
-            outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
+            outputValues.put(OUTPUT_RESULT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
         double t = tNumber.doubleValue();
         if (!VectorUtils.isFinite(t)) {
-            outputValues.put(OUTPUT_RESULT_ID, new Vector3d());
+            outputValues.put(OUTPUT_RESULT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }

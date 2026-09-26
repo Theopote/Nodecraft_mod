@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
     displayName = "Normalize Vector",
     description = "Normalizes a vector to unit length.",
     category = "reference.vectors",
-    order = 2
+    order = 5
 )
 public class NormalizeVectorNode extends BaseNode {
 
@@ -53,7 +54,7 @@ public class NormalizeVectorNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
         if (!VectorUtils.isFinite(vector) || vector.lengthSquared() < VectorUtils.EPS) {
-            outputValues.put(OUTPUT_NORMALIZED_ID, new Vector3d());
+            outputValues.put(OUTPUT_NORMALIZED_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }

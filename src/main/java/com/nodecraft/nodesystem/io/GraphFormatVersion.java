@@ -308,8 +308,14 @@ public final class GraphFormatVersion {
      */
     public static final int V49 = 49;
 
+    /**
+     * Reference Vectors v1: Slerp geodesic fix, zero-vector validity, connected-vs-unconnected inputs,
+     * null invalid VECTOR outputs, VectorUtils util, unique order 0-17.
+     */
+    public static final int V50 = 50;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V49;
+    public static final int CURRENT = V50;
 
     private GraphFormatVersion() {
     }

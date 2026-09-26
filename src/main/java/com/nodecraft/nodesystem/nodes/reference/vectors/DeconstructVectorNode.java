@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
     displayName = "Deconstruct Vector",
     description = "Outputs the X, Y, and Z components of a vector.",
     category = "reference.vectors",
-    order = 1
+    order = 3
 )
 public class DeconstructVectorNode extends BaseNode {
 
