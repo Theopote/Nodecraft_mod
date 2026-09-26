@@ -1,12 +1,14 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Surface strip topology validation and area-weighted quad sampling.
+ * Surface strip topology validation and globally area-weighted quad sampling.
  */
 public final class SurfaceStripSampling {
 
@@ -30,33 +32,104 @@ public final class SurfaceStripSampling {
     }
 
     /**
-     * Samples a random point on a strip quad using two triangles (abc) and (bdc).
+     * Returns the number of strip quads used for globally area-weighted sampling.
      */
-    public static Vector3d samplePointOnStrip(List<List<Vector3d>> sections, Random random) {
-        int sectionCount = sections.size();
-        int pointsPerSection = sections.getFirst().size();
+    public static int countQuads(SurfaceStripData strip) {
+        return QuadCatalog.from(strip).size();
+    }
 
-        int s = random.nextInt(sectionCount - 1);
-        int i = random.nextInt(pointsPerSection);
-        int nextI = (i + 1) % pointsPerSection;
+    /**
+     * Samples a random point on a strip using globally area-weighted quad selection.
+     */
+    public static Vector3d samplePointOnStrip(SurfaceStripData strip, Random random) {
+        return QuadCatalog.from(strip).sample(random);
+    }
 
-        Vector3d a = sections.get(s).get(i);
-        Vector3d b = sections.get(s).get(nextI);
-        Vector3d c = sections.get(s + 1).get(i);
-        Vector3d d = sections.get(s + 1).get(nextI);
+    /**
+     * Precomputed quad catalog for repeated sampling on the same strip.
+     */
+    public static final class QuadCatalog {
+        private final List<StripQuad> quads;
+        private final double[] cumulativeAreas;
 
-        double trianglePick = random.nextDouble();
-        double areaAbc = triangleArea(a, b, c);
-        double areaBdc = triangleArea(b, d, c);
-        double totalArea = areaAbc + areaBdc;
-        if (totalArea <= 1.0e-12d) {
-            return new Vector3d(a);
+        private QuadCatalog(List<StripQuad> quads, double[] cumulativeAreas) {
+            this.quads = quads;
+            this.cumulativeAreas = cumulativeAreas;
         }
 
-        if (trianglePick * totalArea < areaAbc) {
-            return sampleTriangle(a, b, c, random);
+        public static QuadCatalog from(SurfaceStripData strip) {
+            List<List<Vector3d>> sections = strip.sections();
+            boolean closed = strip.areAllSectionsClosed();
+            int pointsPerSection = sections.getFirst().size();
+            int segmentCount = closed ? pointsPerSection : pointsPerSection - 1;
+            if (segmentCount <= 0) {
+                return new QuadCatalog(List.of(), new double[0]);
+            }
+
+            List<StripQuad> quads = new ArrayList<>((sections.size() - 1) * segmentCount);
+            for (int s = 0; s < sections.size() - 1; s++) {
+                for (int i = 0; i < segmentCount; i++) {
+                    int nextI = closed ? (i + 1) % pointsPerSection : i + 1;
+                    Vector3d a = sections.get(s).get(i);
+                    Vector3d b = sections.get(s).get(nextI);
+                    Vector3d c = sections.get(s + 1).get(i);
+                    Vector3d d = sections.get(s + 1).get(nextI);
+                    double area = triangleArea(a, b, c) + triangleArea(b, d, c);
+                    if (area > 1.0e-12d) {
+                        quads.add(new StripQuad(a, b, c, d, area));
+                    }
+                }
+            }
+
+            double[] cumulativeAreas = new double[quads.size()];
+            double acc = 0.0d;
+            for (int i = 0; i < quads.size(); i++) {
+                acc += quads.get(i).totalArea();
+                cumulativeAreas[i] = acc;
+            }
+            return new QuadCatalog(List.copyOf(quads), cumulativeAreas);
         }
-        return sampleTriangle(b, d, c, random);
+
+        public int size() {
+            return quads.size();
+        }
+
+        public Vector3d sample(Random random) {
+            if (quads.isEmpty()) {
+                return new Vector3d();
+            }
+
+            StripQuad quad = pickQuad(random);
+            double areaAbc = triangleArea(quad.a(), quad.b(), quad.c());
+            double areaBdc = triangleArea(quad.b(), quad.d(), quad.c());
+            double total = areaAbc + areaBdc;
+            if (total <= 1.0e-12d) {
+                return new Vector3d(quad.a());
+            }
+            if (random.nextDouble() * total < areaAbc) {
+                return sampleTriangle(quad.a(), quad.b(), quad.c(), random);
+            }
+            return sampleTriangle(quad.b(), quad.d(), quad.c(), random);
+        }
+
+        private StripQuad pickQuad(Random random) {
+            double total = cumulativeAreas[cumulativeAreas.length - 1];
+            double target = random.nextDouble() * total;
+            int low = 0;
+            int high = cumulativeAreas.length - 1;
+            while (low < high) {
+                int mid = (low + high) >>> 1;
+                if (target <= cumulativeAreas[mid]) {
+                    high = mid;
+                } else {
+                    low = mid + 1;
+                }
+            }
+            return quads.get(low);
+        }
+    }
+
+    private record StripQuad(Vector3d a, Vector3d b, Vector3d c, Vector3d d, double totalArea) {
     }
 
     private static Vector3d sampleTriangle(Vector3d a, Vector3d b, Vector3d c, Random random) {

@@ -54,8 +54,9 @@ Scatter On Surface / Scatter In Volume use **primitive continuous sampling**
 (Sphere, Box, Cylinder, Torus, Cone, Ellipsoid, Hemisphere). Composite/Boolean
 geometry fails closed (Valid=false) — no silent voxelize.
 
-Scatter On Surface Strip validates uniform section topology and uses dual-triangle
-quad sampling (full quad coverage).
+Scatter On Surface Strip validates uniform section topology, respects
+`sectionClosedFlags` (open sections do not wrap last-to-first), and uses globally
+area-weighted dual-triangle quad sampling.
 
 Image Scatter inputs:
 

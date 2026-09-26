@@ -143,7 +143,7 @@ public final class PrimitiveVolumeSampler {
             return new Vector3d(apex);
         }
         axis.div(height);
-        double t = random.nextDouble();
+        double t = Math.cbrt(random.nextDouble());
         double r = cone.getBaseRadius() * t * Math.sqrt(random.nextDouble());
         Vector3d tangent = orthonormalTangent(axis, random);
         Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();

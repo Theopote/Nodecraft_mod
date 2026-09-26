@@ -76,8 +76,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
             return;
         }
 
-        List<List<Vector3d>> sections = strip.sections();
-        if (!SurfaceStripSampling.hasValidTopology(sections)) {
+        if (!SurfaceStripSampling.hasValidTopology(strip.sections())) {
             writeEmpty();
             return;
         }
@@ -102,11 +101,16 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
 
         int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
         Random random = new Random(resolvedSeed);
+        SurfaceStripSampling.QuadCatalog quadCatalog = SurfaceStripSampling.QuadCatalog.from(strip);
+        if (quadCatalog.size() == 0) {
+            writeEmpty();
+            return;
+        }
 
         List<Vector3d> candidates = new ArrayList<>(Math.max(resolvedCount * 32, resolvedCount));
         int maxAttempts = Math.max(resolvedCount * 32, 128);
         for (int attempt = 0; attempt < maxAttempts && candidates.size() < resolvedCount * 8; attempt++) {
-            candidates.add(SurfaceStripSampling.samplePointOnStrip(sections, random));
+            candidates.add(quadCatalog.sample(random));
         }
 
         List<Vector3d> points = MinDistanceScatterSelector.select(

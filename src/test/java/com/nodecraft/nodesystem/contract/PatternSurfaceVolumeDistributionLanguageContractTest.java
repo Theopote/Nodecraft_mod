@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SurfaceStripSampling;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -195,6 +196,39 @@ class PatternSurfaceVolumeDistributionLanguageContractTest {
         node.processNode(null);
 
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+    }
+
+    @Test
+    void surfaceStripOpenSectionsExcludeWrapSegment() {
+        List<List<Vector3d>> sections = List.of(
+                List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(100, 0, 0)),
+                List.of(new Vector3d(0, 1, 0), new Vector3d(1, 1, 0), new Vector3d(100, 1, 0))
+        );
+        SurfaceStripData openStrip = new SurfaceStripData(sections, List.of(false, false));
+        assertEquals(2, SurfaceStripSampling.countQuads(openStrip));
+
+        List<List<Vector3d>> closedSections = List.of(
+                List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(100, 0, 0)),
+                List.of(new Vector3d(0, 1, 0), new Vector3d(1, 1, 0), new Vector3d(100, 1, 0))
+        );
+        SurfaceStripData closedStrip = new SurfaceStripData(closedSections, List.of(true, true));
+        assertEquals(3, SurfaceStripSampling.countQuads(closedStrip));
+    }
+
+    @Test
+    void surfaceStripOpenSectionsDoNotWrapLastToFirst() {
+        List<List<Vector3d>> sections = List.of(
+                List.of(new Vector3d(0, 0, 0), new Vector3d(10, 0, 0), new Vector3d(20, 0, 50)),
+                List.of(new Vector3d(0, 10, 0), new Vector3d(10, 10, 0), new Vector3d(20, 10, 50))
+        );
+        SurfaceStripData strip = new SurfaceStripData(sections, List.of(false, false));
+        SurfaceStripSampling.QuadCatalog catalog = SurfaceStripSampling.QuadCatalog.from(strip);
+
+        for (int i = 0; i < 500; i++) {
+            Vector3d point = catalog.sample(new java.util.Random(12_345 + i));
+            assertTrue(point.x >= 9.0d || point.z < 1.0d,
+                    "open strip must not sample wrap quad; got x=" + point.x + " z=" + point.z);
+        }
     }
 
     @Test
