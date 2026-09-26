@@ -649,10 +649,10 @@
 | World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin | `PlaneSelectorNode` |
 | Construct Plane | `reference.planes.construct_plane` | Constructs a plane from an origin point and a normal vector | `ConstructPlaneNode` |
 | Construct Plane From Points | `reference.planes.plane_from_points` | Constructs a plane from three non-collinear points | `ConstructPlaneFromPointsNode` |
-| Deconstruct Plane | `reference.planes.deconstruct_plane` | Splits a PLANE into origin point and normal vector | `DeconstructPlaneNode` |
-| Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
-| Box Face To Plane | `reference.planes.block_face_plane` | Converts a box face into its supporting plane | `BoxFaceToPlaneNode` |
+| Box Face To Plane | `reference.planes.box_face_plane` | Converts a box face into its supporting plane | `BoxFaceToPlaneNode` |
 | Offset Plane | `reference.planes.offset_plane` | Offsets a plane along its normal by a signed distance | `OffsetPlaneNode` |
+| Distance Point To Plane | `reference.planes.distance_point_to_plane` | Measures the absolute and signed distance from a geometric point to a plane | `DistancePointToPlaneNode` |
+| Deconstruct Plane | `reference.planes.deconstruct_plane` | Splits a PLANE into origin point and normal vector | `DeconstructPlaneNode` |
 
 ## reference.points（19）
 

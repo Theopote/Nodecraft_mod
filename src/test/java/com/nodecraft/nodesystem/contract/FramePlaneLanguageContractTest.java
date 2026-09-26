@@ -46,7 +46,7 @@ class FramePlaneLanguageContractTest {
             "reference.planes.deconstruct_plane",
             "reference.planes.world_plane",
             "reference.planes.offset_plane",
-            "reference.planes.block_face_plane",
+            "reference.planes.box_face_plane",
             "transform.basic_transforms.transform_by_frames",
             "pattern.linear.path_frames"
     );
@@ -232,6 +232,7 @@ class FramePlaneLanguageContractTest {
     void worldPlaneHasNoBlockPosOutput() {
         assertPortType("reference.planes.world_plane", "input_origin", true, NodeDataType.POINT);
         assertPortType("reference.planes.world_plane", "output_plane", false, NodeDataType.PLANE);
+        assertPortType("reference.planes.world_plane", "output_valid", false, NodeDataType.BOOLEAN);
         assertFalse(hasOutputPort("reference.planes.world_plane", "output_origin"));
         assertFalse(hasOutputPort("reference.planes.world_plane", "output_normal"));
     }
@@ -255,7 +256,7 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasOutputPort("reference.frames.sphere_surface_frame", "output_plane"));
 
         assertFalse(hasOutputPort("reference.frames.world_frame", "output_origin_pos"));
-        assertFalse(hasOutputPort("reference.planes.block_face_plane", "output_center"));
+        assertFalse(hasOutputPort("reference.planes.box_face_plane", "output_center"));
         assertFalse(hasOutputPort("reference.planes.construct_plane", "output_normalized_normal"));
     }
 

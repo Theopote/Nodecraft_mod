@@ -1,31 +1,99 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.FrameUtils;
+import com.nodecraft.nodesystem.util.PlaneUtils;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Math;
 import org.joml.Vector3d;
 import org.joml.Vector4d;
-import org.joml.Math;
+
 import java.util.Objects;
 import net.minecraft.util.math.Vec3d;
 
 /**
  * Plane with an explicit construction origin plus ax+by+cz+d=0 equation.
  * {@link #getPoint()} returns the construction origin (Minecraft-first profile/world plane workflows).
+ * <p>
+ * Canonical invariant: finite origin + unit non-zero normal (|normal| = 1).
  */
 public class PlaneData {
+    private static final double EPS = PlaneUtils.EPS;
+
     private final Vector4d plane; // x,y,z = normal, w = plane constant
     private final Vector3d origin;
 
-    public static final PlaneData XY_PLANE = new PlaneData(new Vector3d(0, 0, 0), new Vector3d(0, 0, 1));
-    public static final PlaneData YZ_PLANE = new PlaneData(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0));
-    public static final PlaneData XZ_PLANE = new PlaneData(new Vector3d(0, 0, 0), new Vector3d(0, 1, 0));
+    public static final PlaneData XY_PLANE = requireCanonical(new Vector3d(0, 0, 0), new Vector3d(0, 0, 1));
+    public static final PlaneData YZ_PLANE = requireCanonical(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0));
+    public static final PlaneData XZ_PLANE = requireCanonical(new Vector3d(0, 0, 0), new Vector3d(0, 1, 0));
+
+    private PlaneData(Vector3d origin, Vector4d plane) {
+        this.origin = origin;
+        this.plane = plane;
+    }
+
+    /**
+     * Builds a canonical plane from a finite origin and usable normal.
+     * Returns {@code null} when origin or normal is invalid.
+     */
+    public static @Nullable PlaneData canonical(@Nullable Vector3d origin, @Nullable Vector3d normal) {
+        if (!FrameUtils.isFinite(origin) || !PlaneUtils.isUsableNormal(normal)) {
+            return null;
+        }
+        Vector3d normalizedNormal = new Vector3d(normal).normalize();
+        Vector3d canonicalOrigin = new Vector3d(origin);
+        return new PlaneData(
+                canonicalOrigin,
+                new Vector4d(
+                        normalizedNormal.x,
+                        normalizedNormal.y,
+                        normalizedNormal.z,
+                        -normalizedNormal.dot(canonicalOrigin))
+        );
+    }
+
+    /**
+     * Builds a canonical plane from a plane equation, normalizing (a,b,c,d) by |normal|.
+     */
+    public static @Nullable PlaneData fromEquation(Vector4d equation) {
+        if (equation == null) {
+            return null;
+        }
+        double nx = equation.x;
+        double ny = equation.y;
+        double nz = equation.z;
+        double normalLengthSq = nx * nx + ny * ny + nz * nz;
+        if (!Double.isFinite(normalLengthSq) || normalLengthSq <= EPS * EPS) {
+            return null;
+        }
+        double invLength = 1.0d / Math.sqrt(normalLengthSq);
+        Vector4d normalized = new Vector4d(
+                nx * invLength,
+                ny * invLength,
+                nz * invLength,
+                equation.w * invLength
+        );
+        Vector3d reconstructedOrigin = reconstructAnyPoint(normalized);
+        if (!FrameUtils.isFinite(reconstructedOrigin)) {
+            return null;
+        }
+        return new PlaneData(
+                reconstructedOrigin,
+                new Vector4d(normalized)
+        );
+    }
+
+    /** Returns a canonical copy of this plane, or {@code null} if degenerate. */
+    public @Nullable PlaneData normalized() {
+        return canonical(origin, getNormal());
+    }
 
     public PlaneData(Vector3d origin, Vector3d normal) {
-        Vector3d normalizedNormal = new Vector3d(normal).normalize();
-        this.origin = new Vector3d(origin);
-        this.plane = new Vector4d(
-                normalizedNormal.x,
-                normalizedNormal.y,
-                normalizedNormal.z,
-                -normalizedNormal.dot(this.origin));
+        PlaneData canonical = canonical(origin, normal);
+        if (canonical == null) {
+            throw new IllegalArgumentException("invalid plane origin or normal");
+        }
+        this.origin = canonical.origin;
+        this.plane = canonical.plane;
     }
 
     public PlaneData(Vec3d origin, Vec3d normal) {
@@ -33,32 +101,42 @@ public class PlaneData {
     }
 
     public PlaneData(Vector3d p1, Vector3d p2, Vector3d p3) {
-        Vector3d v1 = new Vector3d();
-        Vector3d v2 = new Vector3d();
-        Vector3d normal = new Vector3d();
-
-        p2.sub(p1, v1);
-        p3.sub(p1, v2);
-        v1.cross(v2, normal);
-        normal.normalize();
-
-        this.origin = new Vector3d(p1);
-        this.plane = new Vector4d(normal, -normal.dot(p1));
+        PlaneData fromPoints = PlaneUtils.fromThreePoints(p1, p2, p3);
+        if (fromPoints == null) {
+            throw new IllegalArgumentException("three points do not define a valid plane");
+        }
+        this.origin = fromPoints.origin;
+        this.plane = fromPoints.plane;
     }
 
     public PlaneData(Vector4d plane) {
-        this.plane = new Vector4d(plane);
-        this.origin = reconstructAnyPoint(this.plane);
+        PlaneData fromEquation = fromEquation(plane);
+        if (fromEquation == null) {
+            throw new IllegalArgumentException("invalid plane equation");
+        }
+        this.origin = fromEquation.origin;
+        this.plane = fromEquation.plane;
+    }
+
+    private static PlaneData requireCanonical(Vector3d origin, Vector3d normal) {
+        PlaneData canonical = canonical(origin, normal);
+        if (canonical == null) {
+            throw new ExceptionInInitializerError("invalid plane constant");
+        }
+        return canonical;
     }
 
     private static Vector3d reconstructAnyPoint(Vector4d plane) {
-        if (Math.abs(plane.x) > 1e-6) {
+        if (Math.abs(plane.x) > EPS) {
             return new Vector3d(-plane.w / plane.x, 0, 0);
         }
-        if (Math.abs(plane.y) > 1e-6) {
+        if (Math.abs(plane.y) > EPS) {
             return new Vector3d(0, -plane.w / plane.y, 0);
         }
-        return new Vector3d(0, 0, -plane.w / plane.z);
+        if (Math.abs(plane.z) > EPS) {
+            return new Vector3d(0, 0, -plane.w / plane.z);
+        }
+        return new Vector3d(Double.NaN, Double.NaN, Double.NaN);
     }
 
     public Vector4d getPlane() {

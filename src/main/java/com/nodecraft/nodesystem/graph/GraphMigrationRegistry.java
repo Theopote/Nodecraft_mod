@@ -984,7 +984,7 @@ public final class GraphMigrationRegistry {
     private static final String TRANSFORM_BY_FRAMES_TYPE = "transform.basic_transforms.transform_by_frames";
     private static final String WORLD_PLANE_TYPE = "reference.planes.world_plane";
     private static final String OFFSET_PLANE_TYPE = "reference.planes.offset_plane";
-    private static final String BOX_FACE_TO_PLANE_TYPE = "reference.planes.block_face_plane";
+    private static final String BOX_FACE_TO_PLANE_TYPE = "reference.planes.box_face_plane";
     private static final String FACE_CENTER_FRAME_TYPE = "reference.frames.frame_from_face";
     private static final String SPHERE_SURFACE_FRAME_TYPE = "reference.frames.sphere_surface_frame";
     private static final String CONSTRUCT_PLANE_TYPE = "reference.planes.construct_plane";

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PlaneUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
     displayName = "Offset Plane",
     description = "Offsets a plane along its normal by a signed distance",
     category = "reference.planes",
-    order = 5
+    order = 4
 )
 public class OffsetPlaneNode extends BaseNode {
 
@@ -50,14 +51,22 @@ public class OffsetPlaneNode extends BaseNode {
             writeEmpty();
             return;
         }
-        Vector3d normal = plane.getNormal();
-        if (!PlaneUtils.isUsableNormal(normal)) {
+
+        PlaneData canonical = plane.normalized();
+        if (canonical == null) {
             writeEmpty();
             return;
         }
-        normal.normalize();
-        Vector3d origin = plane.getPoint().add(new Vector3d(normal).mul(distance));
-        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(origin, normal));
+
+        Vector3d normal = canonical.getNormal();
+        Vector3d newOrigin = canonical.getPoint().add(new Vector3d(normal).mul(distance));
+        PlaneData offset = PlaneUtils.fromOriginNormal(newOrigin, normal);
+        if (offset == null) {
+            writeEmpty();
+            return;
+        }
+
+        outputValues.put(OUTPUT_PLANE_ID, offset);
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 

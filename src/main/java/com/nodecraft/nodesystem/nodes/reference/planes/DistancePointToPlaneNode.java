@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,7 +21,7 @@ import java.util.UUID;
     displayName = "Distance Point To Plane",
     description = "Measures the absolute and signed distance from a geometric point to a plane",
     category = "reference.planes",
-    order = 3
+    order = 5
 )
 public class DistancePointToPlaneNode extends BaseNode {
 
@@ -60,22 +62,35 @@ public class DistancePointToPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d point = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
 
         if (!PlaneUtils.isFinite(point) || !(planeObj instanceof PlaneData plane)) {
-            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid();
             return;
         }
 
-        double signedDistance = plane.signedDistanceTo(point);
-        double distance = Math.abs(signedDistance);
+        PlaneData canonical = plane.normalized();
+        if (canonical == null) {
+            writeInvalid();
+            return;
+        }
 
-        outputValues.put(OUTPUT_DISTANCE_ID, distance);
+        double signedDistance = canonical.signedDistanceTo(point);
+        if (!Double.isFinite(signedDistance)) {
+            writeInvalid();
+            return;
+        }
+
+        outputValues.put(OUTPUT_DISTANCE_ID, Math.abs(signedDistance));
         outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, signedDistance);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
+        outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     @Override
@@ -87,5 +102,4 @@ public class DistancePointToPlaneNode extends BaseNode {
     public void setNodeState(Object state) {
         // stateless
     }
-
 }

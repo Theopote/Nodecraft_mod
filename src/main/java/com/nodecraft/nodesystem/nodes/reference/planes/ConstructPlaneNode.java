@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -41,21 +43,12 @@ public class ConstructPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object originObj = inputValues.get(INPUT_ORIGIN_ID);
-        Object normalObj = inputValues.get(INPUT_NORMAL_ID);
+        Vector3d origin = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+        Vector3d normal = SpatialValueResolver.resolveVector(inputValues.get(INPUT_NORMAL_ID));
 
-        PlaneData plane = null;
-        boolean valid = false;
-
-        Vector3d originVec = PlaneUtils.resolvePoint(originObj);
-        if (PlaneUtils.isFinite(originVec) && normalObj instanceof Vector3d normal && PlaneUtils.isUsableNormal(normal)) {
-            Vector3d normalizedNormal = new Vector3d(normal).normalize();
-            plane = new PlaneData(new Vector3d(originVec), normalizedNormal);
-            valid = true;
-        }
-
+        PlaneData plane = PlaneUtils.fromOriginNormal(origin, normal);
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, plane != null);
     }
 
     @Override

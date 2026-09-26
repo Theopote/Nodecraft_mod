@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -33,6 +35,7 @@ public class PlaneSelectorNode extends BaseNode {
 
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String OUTPUT_PLANE_ID = "output_plane";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(
         displayName = "Plane Preset",
@@ -74,6 +77,8 @@ public class PlaneSelectorNode extends BaseNode {
             NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
             "Constructed plane data", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when a valid plane was constructed", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -83,17 +88,25 @@ public class PlaneSelectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d originVector = resolveOriginVector(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d normal = resolveNormal();
-        outputValues.put(OUTPUT_PLANE_ID, new PlaneData(new Vector3d(originVector), new Vector3d(normal)));
-    }
-
-    private Vector3d resolveOriginVector(Object originObj) {
-        Vector3d fromInput = PlaneUtils.resolvePoint(originObj);
-        if (PlaneUtils.isFinite(fromInput)) {
-            return fromInput;
+        boolean originConnected = inputValues.get(INPUT_ORIGIN_ID) != null;
+        Vector3d originVector;
+        if (originConnected) {
+            originVector = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+            if (!PlaneUtils.isFinite(originVector)) {
+                writeInvalid();
+                return;
+            }
+        } else {
+            originVector = new Vector3d(originX, originY, originZ);
         }
-        return new Vector3d(originX, originY, originZ);
+
+        PlaneData plane = PlaneUtils.fromOriginNormal(originVector, resolveNormal());
+        if (plane == null) {
+            writeInvalid();
+            return;
+        }
+        outputValues.put(OUTPUT_PLANE_ID, plane);
+        outputValues.put(OUTPUT_VALID_ID, true);
     }
 
     private Vector3d resolveNormal() {
@@ -102,6 +115,11 @@ public class PlaneSelectorNode extends BaseNode {
             case YZ -> new Vector3d(1.0d, 0.0d, 0.0d);
             case XZ -> new Vector3d(0.0d, 1.0d, 0.0d);
         };
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_PLANE_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     public PlanePreset getPlanePreset() {

@@ -296,8 +296,14 @@ public final class GraphFormatVersion {
      */
     public static final int V47 = 47;
 
+    /**
+     * Reference Planes v1: PLANE invariant, box_face_plane rename, World Plane Valid,
+     * canonical validation at deconstruct/distance/offset boundaries, unified PlaneUtils.
+     */
+    public static final int V48 = 48;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V47;
+    public static final int CURRENT = V48;
 
     private GraphFormatVersion() {
     }

@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -43,26 +45,13 @@ public class ConstructPlaneFromPointsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d av = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_A_ID));
-        Vector3d bv = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_B_ID));
-        Vector3d cv = PlaneUtils.resolvePoint(inputValues.get(INPUT_POINT_C_ID));
+        Vector3d a = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_A_ID));
+        Vector3d b = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_B_ID));
+        Vector3d c = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_C_ID));
 
-        PlaneData plane = null;
-        boolean valid = false;
-
-        if (PlaneUtils.isFinite(av) && PlaneUtils.isFinite(bv) && PlaneUtils.isFinite(cv)) {
-            Vector3d ab = new Vector3d(bv).sub(av);
-            Vector3d ac = new Vector3d(cv).sub(av);
-            Vector3d cross = ab.cross(ac, new Vector3d());
-
-            if (cross.lengthSquared() > 1e-9) {
-                plane = new PlaneData(av, bv, cv);
-                valid = true;
-            }
-        }
-
+        PlaneData plane = PlaneUtils.fromThreePoints(a, b, c);
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, plane != null);
     }
 
     @Override

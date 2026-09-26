@@ -72,7 +72,7 @@
     "panel": "output.debug.data_inspector",
     "spatial.analysis.bounding_box": "geometry.boolean.bounding_box",
     "spatial.analysis.box_face_boundary_path": "geometry.curves.face_boundary_curve",
-    "spatial.analysis.box_face_to_plane": "reference.planes.block_face_plane",
+    "spatial.analysis.box_face_to_plane": "reference.planes.box_face_plane",
     "spatial.analysis.closest_point": "reference.points.closest_point",
     "spatial.analysis.deconstruct_box_face": "reference.points.deconstruct_face",
     "spatial.analysis.deconstruct_box_geometry": "geometry.primitives.deconstruct_box",

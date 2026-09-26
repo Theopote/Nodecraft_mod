@@ -325,7 +325,7 @@ reference.frames.sphere_surface_frame|reference.frames|Sphere Surface Frame
 reference.frames.frame_from_face|reference.frames|Face Center Frame
 reference.frames.transform_frame|reference.frames|Transform Frame
 reference.frames.world_frame|reference.frames|World Frame
-reference.planes.block_face_plane|reference.planes|Box Face To Plane
+reference.planes.box_face_plane|reference.planes|Box Face To Plane
 reference.planes.construct_plane|reference.planes|Construct Plane
 reference.planes.distance_point_to_plane|reference.planes|Distance Point To Plane
 reference.planes.offset_plane|reference.planes|Offset Plane
