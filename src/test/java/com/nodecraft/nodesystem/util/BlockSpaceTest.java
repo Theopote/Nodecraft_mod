@@ -23,6 +23,19 @@ class BlockSpaceTest {
     }
 
     @Test
+    void floorSnapRoundTripsCellCenter() {
+        Vector3d center = BlockSpace.cellCenter(0, 0, 0);
+        assertEquals(new BlockPos(0, 0, 0), BlockSpace.snapCellCenter(center));
+        assertEquals(new BlockPos(0, 0, 0), BlockSpace.pointToBlockFloor(center));
+    }
+
+    @Test
+    void nearestSnapBreaksCellCenterRoundTrip() {
+        Vector3d center = BlockSpace.cellCenter(0, 0, 0);
+        assertEquals(new BlockPos(1, 1, 1), BlockSpace.pointToBlockNearest(center));
+    }
+
+    @Test
     void sizeOneBoxOnBlockCenterYieldsSingleCell() {
         Vector3d center = BlockSpace.cellCenter(10, 64, 20);
         Vector3d half = new Vector3d(0.5d, 0.5d, 0.5d);

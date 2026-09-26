@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
@@ -20,13 +21,13 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.placement.scale_coordinates",
-    displayName = "Scale Coordinates",
-    description = "Scales a list of block coordinates relative to a center point",
+    id = "transform.placement.scale_block_positions",
+    displayName = "Scale Block Positions",
+    description = "Scales a list of block positions relative to a center point",
     category = "transform.placement",
     order = 6
 )
-public class ScaleCoordinatesNode extends BaseNode {
+public class ScaleBlockPositionsNode extends BaseNode {
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_CENTER_ID = "input_center";
@@ -41,28 +42,28 @@ public class ScaleCoordinatesNode extends BaseNode {
     @NodeProperty(displayName = "Use Uniform Scaling", category = "Scale", order = 1)
     private boolean useUniformScaling = true;
 
-    public ScaleCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.placement.scale_coordinates");
+    public ScaleBlockPositionsNode() {
+        super(UUID.randomUUID(), "transform.placement.scale_block_positions");
 
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to scale", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Block Positions", "The block positions to scale", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scaling center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_SCALE_FACTOR_ID, "Scale Factor", "Uniform scaling factor", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SCALE_VECTOR_ID, "Scale Vector", "Non-uniform scaling vector (XYZ)", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Scaled coordinates", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Block Positions", "Scaled block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale vector actually applied", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output coordinates", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate scale succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output block positions", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position scale succeeded", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Scales a list of coordinates relative to a center point";
+        return "Scales a list of block positions relative to a center point";
     }
 
     @Override
     public String getDisplayName() {
-        return "Scale Coordinates";
+        return "Scale Block Positions";
     }
 
     @Override
@@ -81,16 +82,13 @@ public class ScaleCoordinatesNode extends BaseNode {
             return;
         }
 
+        // Preserve input order and duplicates.
         for (BlockPos pos : coordinates) {
-            Vector3d scaled = new Vector3d(pos.getX(), pos.getY(), pos.getZ())
+            Vector3d scaled = BlockSpace.cellCenter(pos)
                 .sub(center)
                 .mul(scale)
                 .add(center);
-            result.add(new BlockPos(
-                (int) Math.round(scaled.x),
-                (int) Math.round(scaled.y),
-                (int) Math.round(scaled.z)
-            ));
+            result.add(BlockSpace.snapCellCenter(scaled));
         }
 
         writeResult(result, true, scale);

@@ -60,11 +60,11 @@ class BasicTransformsLanguageContractTest {
     );
 
     private static final Set<String> PLACEMENT_BLOCK_IDS = Set.of(
-            "transform.placement.offset_coordinate",
-            "transform.placement.offset_coordinates",
-            "transform.placement.rotate_coordinates",
-            "transform.placement.scale_coordinates",
-            "transform.placement.mirror_coordinates"
+            "transform.placement.offset_block_position",
+            "transform.placement.offset_block_positions",
+            "transform.placement.rotate_block_positions",
+            "transform.placement.scale_block_positions",
+            "transform.placement.mirror_block_positions"
     );
 
     private static NodeRegistry registry;
@@ -291,7 +291,7 @@ class BasicTransformsLanguageContractTest {
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
-        assertEquals("transform.placement.offset_coordinate", typeOf(migrated, "n1"));
+        assertEquals("transform.placement.offset_block_position", typeOf(migrated, "n1"));
         assertEquals("transform.deformations.shear_point_list", typeOf(migrated, "n2"));
         assertEquals("transform.basic_transforms.mirror_point_list_plane", typeOf(migrated, "n3"));
         assertEquals("transform.basic_transforms.offset_face", typeOf(migrated, "n4"));

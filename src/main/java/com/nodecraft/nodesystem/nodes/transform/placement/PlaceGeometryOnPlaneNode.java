@@ -10,7 +10,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -71,20 +71,32 @@ public class PlaceGeometryOnPlaneNode extends BaseNode {
             return;
         }
 
-        Vector3d xHint = SpatialValueResolver.resolveVector(inputValues.get(INPUT_X_HINT_ID));
-        FrameData frame = FrameUtils.fromPlane(plane, xHint);
-        if (frame == null) {
-            writeResult(null, null, false, "Could not build orthonormal frame on plane");
+        Vector3d pivot = OptionalPortDrive.resolveOptionalPoint(this, INPUT_PIVOT_ID, new Vector3d());
+        if (pivot == null) {
+            writeResult(null, null, false, "Pivot connected but invalid");
             return;
         }
 
-        Vector3d pivot = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_PIVOT_ID));
-        if (pivot == null) {
-            pivot = new Vector3d();
-        }
-        if (!isFinite(pivot)) {
-            writeResult(null, null, false, "Pivot contains NaN or Infinity");
-            return;
+        // Unconnected X Hint → auto tangent (cardinal fallback OK).
+        // Connected valid → use hint; connected invalid / zero projection → fail closed.
+        FrameData frame;
+        if (OptionalPortDrive.isConnected(this, INPUT_X_HINT_ID)) {
+            Vector3d xHint = OptionalPortDrive.resolveOptionalVector(this, INPUT_X_HINT_ID, null);
+            if (xHint == null) {
+                writeResult(null, null, false, "X Hint connected but invalid");
+                return;
+            }
+            frame = FrameUtils.fromPlaneRequireHint(plane, xHint);
+            if (frame == null) {
+                writeResult(null, null, false, "X Hint has zero length when projected onto the plane");
+                return;
+            }
+        } else {
+            frame = FrameUtils.fromPlane(plane, null);
+            if (frame == null) {
+                writeResult(null, null, false, "Could not build orthonormal frame on plane");
+                return;
+            }
         }
 
         GeometryData placed = PlaceGeometryOnFramesNode.placeOnFrame(geometry, pivot, frame);
@@ -96,12 +108,5 @@ public class PlaceGeometryOnPlaneNode extends BaseNode {
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
-    }
-
-    private static boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
     }
 }

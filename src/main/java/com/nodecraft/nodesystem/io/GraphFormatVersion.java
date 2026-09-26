@@ -333,8 +333,14 @@ public final class GraphFormatVersion {
      */
     public static final int V53 = 53;
 
+    /**
+     * Placement v1: BlockPos cell-center→floor snap pipeline, Coordinate→Block Position rename,
+     * strict FRAME_LIST, Frame XOR Frames, place-on-frames transactional + instance cap.
+     */
+    public static final int V54 = 54;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V53;
+    public static final int CURRENT = V54;
 
     private GraphFormatVersion() {
     }

@@ -4,11 +4,13 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -16,14 +18,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Freeze fence for Batch 6 Placement language: FRAME placement + array/path frame ports.
+ * Geometry placement behavioural cases require Frame/Frames port connection (V54 XOR rule).
  */
 class PlacementFamilyContractTest {
 
@@ -41,6 +46,7 @@ class PlacementFamilyContractTest {
         assertPortType("transform.placement.place_geometry_on_frames", "input_pivot", true, NodeDataType.POINT);
         assertPortType("transform.placement.place_geometry_on_frames", "input_frame", true, NodeDataType.FRAME);
         assertPortType("transform.placement.place_geometry_on_frames", "input_frames", true, NodeDataType.FRAME_LIST);
+        assertFalse(hasOutputPort("transform.placement.place_geometry_on_frames", "output_geometries"));
 
         assertPortType("transform.placement.place_geometry_on_plane", "input_plane", true, NodeDataType.PLANE);
         assertPortType("transform.placement.place_geometry_on_plane", "input_x_hint", true, NodeDataType.VECTOR);
@@ -48,6 +54,12 @@ class PlacementFamilyContractTest {
 
         assertPortType("transform.placement.orient_geometry_to_frame", "input_frame", true, NodeDataType.FRAME);
         assertPortType("transform.placement.orient_geometry_to_frame", "input_pivot", true, NodeDataType.POINT);
+
+        assertPortType("transform.placement.offset_block_position", "input_coordinate", true, NodeDataType.BLOCK_POS);
+        assertPortType("transform.placement.offset_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.rotate_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.scale_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.mirror_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
     }
 
     @Test
@@ -61,8 +73,7 @@ class PlacementFamilyContractTest {
 
     @Test
     void placeGeometryOnFrameMovesSphereCenter() {
-        BaseNode place = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("transform.placement.place_geometry_on_frames"));
+        PlaceFramesProbe place = new PlaceFramesProbe();
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 2.0d);
         FrameData frame = new FrameData(
             new Vector3d(10, 0, 0),
@@ -72,6 +83,7 @@ class PlacementFamilyContractTest {
         );
         place.setInput("input_geometry", sphere);
         place.setInput("input_pivot", new PointData(0, 0, 0));
+        place.connectInput("input_frame", NodeDataType.FRAME);
         place.setInput("input_frame", frame);
         place.processNode(null);
 
@@ -83,14 +95,14 @@ class PlacementFamilyContractTest {
 
     @Test
     void placeGeometryOnPlaneBuildsFrameAndPlaces() {
-        BaseNode place = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("transform.placement.place_geometry_on_plane"));
+        PlacePlaneProbe place = new PlacePlaneProbe();
         BoxGeometryData box = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
         PlaneData plane = new PlaneData(new Vector3d(0, 5, 0), new Vector3d(0, 1, 0));
 
         place.setInput("input_geometry", box);
         place.setInput("input_pivot", new PointData(0, 0, 0));
         place.setInput("input_plane", plane);
+        place.connectInput("input_x_hint", NodeDataType.VECTOR);
         place.setInput("input_x_hint", new Vector3d(1, 0, 0));
         place.processNode(null);
 
@@ -101,14 +113,14 @@ class PlacementFamilyContractTest {
 
     @Test
     void placeGeometryOnFramesListProducesComposite() {
-        BaseNode place = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("transform.placement.place_geometry_on_frames"));
+        PlaceFramesProbe place = new PlaceFramesProbe();
         SphereData sphere = new SphereData(new Vector3d(), 1.0d);
         List<FrameData> frames = List.of(
             new FrameData(new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)),
             new FrameData(new Vector3d(3, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1))
         );
         place.setInput("input_geometry", sphere);
+        place.connectInput("input_frames", NodeDataType.FRAME_LIST);
         place.setInput("input_frames", frames);
         place.processNode(null);
 
@@ -157,8 +169,7 @@ class PlacementFamilyContractTest {
 
     @Test
     void placePivotMapsExactlyToFrameOrigin() {
-        BaseNode place = assertInstanceOf(BaseNode.class,
-            NodeRegistry.getInstance().createNodeInstance("transform.placement.place_geometry_on_frames"));
+        PlaceFramesProbe place = new PlaceFramesProbe();
         FrameData frame = FrameData.orthonormal(
             new Vector3d(7, 2, -3),
             new Vector3d(0, 0, -1),
@@ -168,7 +179,9 @@ class PlacementFamilyContractTest {
         assertNotNull(frame);
         SphereData sphere = new SphereData(new Vector3d(1, 0, 0), 1.5d);
         place.setInput("input_geometry", sphere);
+        place.connectInput("input_pivot", NodeDataType.POINT);
         place.setInput("input_pivot", new PointData(1, 0, 0));
+        place.connectInput("input_frame", NodeDataType.FRAME);
         place.setInput("input_frame", frame);
         place.processNode(null);
 
@@ -191,5 +204,45 @@ class PlacementFamilyContractTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError(typeId + " missing port " + portId));
         assertEquals(expected, port.getDataType(), typeId + "." + portId);
+    }
+
+    private static boolean hasOutputPort(String typeId, String portId) {
+        INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
+        return node.getOutputPorts().stream().anyMatch(port -> port.getId().equals(portId));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+    }
+
+    private static final class PlaceFramesProbe
+            extends com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            PlacementFamilyContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class PlacePlaneProbe
+            extends com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnPlaneNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            PlacementFamilyContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

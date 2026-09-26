@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryTransform;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -67,12 +67,9 @@ public class OrientGeometryToFrameNode extends BaseNode {
             return;
         }
 
-        Vector3d pivot = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_PIVOT_ID));
+        Vector3d pivot = OptionalPortDrive.resolveOptionalPoint(this, INPUT_PIVOT_ID, new Vector3d());
         if (pivot == null) {
-            pivot = new Vector3d();
-        }
-        if (!isFinite(pivot)) {
-            writeResult(null, false, "Pivot contains NaN or Infinity");
+            writeResult(null, false, "Pivot connected but invalid");
             return;
         }
 
@@ -91,12 +88,5 @@ public class OrientGeometryToFrameNode extends BaseNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, valid);
-    }
-
-    private static boolean isFinite(Vector3d vector) {
-        return vector != null
-            && Double.isFinite(vector.x)
-            && Double.isFinite(vector.y)
-            && Double.isFinite(vector.z);
     }
 }

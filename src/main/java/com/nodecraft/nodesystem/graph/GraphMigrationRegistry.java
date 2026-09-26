@@ -110,6 +110,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V50 -> migrateV50ToV51(graph);
             case GraphFormatVersion.V51 -> migrateV51ToV52(graph);
             case GraphFormatVersion.V52 -> migrateV52ToV53(graph);
+            case GraphFormatVersion.V53 -> migrateV53ToV54(graph);
             default -> graph;
         };
     }
@@ -3050,6 +3051,129 @@ public final class GraphMigrationRegistry {
             node.state = cleaned.isEmpty() ? null : cleaned;
         }
         return graph;
+    }
+
+    private static final String PLACE_GEOMETRY_ON_FRAMES_TYPE = "transform.placement.place_geometry_on_frames";
+    private static final String LEGACY_PLACEMENT_OFFSET_COORDINATE = "transform.placement.offset_coordinate";
+    private static final String LEGACY_PLACEMENT_OFFSET_COORDINATES = "transform.placement.offset_coordinates";
+    private static final String LEGACY_PLACEMENT_ROTATE_COORDINATES = "transform.placement.rotate_coordinates";
+    private static final String LEGACY_PLACEMENT_SCALE_COORDINATES = "transform.placement.scale_coordinates";
+    private static final String LEGACY_PLACEMENT_MIRROR_COORDINATES = "transform.placement.mirror_coordinates";
+
+    private static final String OFFSET_BLOCK_POSITION_TYPE = "transform.placement.offset_block_position";
+    private static final String OFFSET_BLOCK_POSITIONS_TYPE = "transform.placement.offset_block_positions";
+    private static final String ROTATE_BLOCK_POSITIONS_TYPE = "transform.placement.rotate_block_positions";
+    private static final String SCALE_BLOCK_POSITIONS_TYPE = "transform.placement.scale_block_positions";
+    private static final String MIRROR_BLOCK_POSITIONS_TYPE = "transform.placement.mirror_block_positions";
+
+    /**
+     * Placement v1: rename Coordinate(s) → Block Position(s), drop Geometries LIST port wires,
+     * strip RoundingMode / CUSTOM axis-plane enum state.
+     */
+    private static SavedGraph migrateV53ToV54(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                String remapped = remapPlacementV54TypeId(node.typeId);
+                if (!remapped.equals(node.typeId)) {
+                    LOGGER.debug("Remapped {} -> {}", node.typeId, remapped);
+                    node.typeId = remapped;
+                }
+                sanitizePlacementV54State(node);
+            }
+        }
+
+        if (graph.connections == null || graph.nodes == null) {
+            return graph;
+        }
+
+        graph.connections = new ArrayList<>(graph.connections);
+
+        Map<String, String> nodeTypeBySavedId = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypeBySavedId.put(node.nodeId, node.typeId.toLowerCase(Locale.ROOT));
+            }
+        }
+
+        graph.connections.removeIf(connection -> {
+            if (connection == null || connection.sourcePortId == null) {
+                return false;
+            }
+            String sourceType = nodeTypeBySavedId.get(connection.sourceNodeId);
+            if (sourceType == null) {
+                return false;
+            }
+            if (PLACE_GEOMETRY_ON_FRAMES_TYPE.equals(sourceType)
+                    && "output_geometries".equals(connection.sourcePortId.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Dropped Place On Frames Geometries LIST {}#{}",
+                        connection.sourceNodeId, connection.sourcePortId);
+                return true;
+            }
+            return false;
+        });
+
+        return graph;
+    }
+
+    private static String remapPlacementV54TypeId(String typeId) {
+        String normalized = typeId.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case LEGACY_PLACEMENT_OFFSET_COORDINATE -> OFFSET_BLOCK_POSITION_TYPE;
+            case LEGACY_PLACEMENT_OFFSET_COORDINATES -> OFFSET_BLOCK_POSITIONS_TYPE;
+            case LEGACY_PLACEMENT_ROTATE_COORDINATES -> ROTATE_BLOCK_POSITIONS_TYPE;
+            case LEGACY_PLACEMENT_SCALE_COORDINATES -> SCALE_BLOCK_POSITIONS_TYPE;
+            case LEGACY_PLACEMENT_MIRROR_COORDINATES -> MIRROR_BLOCK_POSITIONS_TYPE;
+            default -> typeId;
+        };
+    }
+
+    private static void sanitizePlacementV54State(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        String type = node.typeId == null ? "" : node.typeId.toLowerCase(Locale.ROOT);
+        boolean isRotate = ROTATE_BLOCK_POSITIONS_TYPE.equals(type)
+                || LEGACY_PLACEMENT_ROTATE_COORDINATES.equals(type);
+        boolean isMirror = MIRROR_BLOCK_POSITIONS_TYPE.equals(type)
+                || LEGACY_PLACEMENT_MIRROR_COORDINATES.equals(type);
+        boolean isOffsetList = OFFSET_BLOCK_POSITIONS_TYPE.equals(type)
+                || LEGACY_PLACEMENT_OFFSET_COORDINATES.equals(type);
+
+        if (!isRotate && !isMirror && !isOffsetList) {
+            return;
+        }
+
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            String keyLower = key.toLowerCase(Locale.ROOT);
+            if ("roundingmode".equals(keyLower)) {
+                LOGGER.debug("Stripped Placement RoundingMode from {}", node.nodeId);
+                continue;
+            }
+            Object value = entry.getValue();
+            if (isRotate && "rotationaxis".equals(keyLower) && value instanceof String axisName) {
+                if ("CUSTOM".equalsIgnoreCase(axisName)) {
+                    cleaned.put(key, "Y_AXIS");
+                    LOGGER.debug("Mapped CUSTOM rotationAxis → Y_AXIS on {}", node.nodeId);
+                    continue;
+                }
+            }
+            if (isMirror && "mirrorplane".equals(keyLower) && value instanceof String planeName) {
+                if ("CUSTOM".equalsIgnoreCase(planeName)) {
+                    cleaned.put(key, "XZ");
+                    LOGGER.debug("Mapped CUSTOM mirrorPlane → XZ on {}", node.nodeId);
+                    continue;
+                }
+            }
+            cleaned.put(key, value);
+        }
+        node.state = cleaned.isEmpty() ? null : cleaned;
     }
 
     private static String remapBlockStateTypeId(String typeId) {

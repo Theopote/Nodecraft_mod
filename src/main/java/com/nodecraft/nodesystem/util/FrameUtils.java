@@ -5,6 +5,9 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Shared frame construction helpers used across frame/plane nodes.
  */
@@ -18,6 +21,24 @@ public final class FrameUtils {
     private static final Vector3d WORLD_Z = new Vector3d(0.0d, 0.0d, 1.0d);
 
     private FrameUtils() {
+    }
+
+    /**
+     * Strict FRAME_LIST resolution: null / non-List / empty → null;
+     * any non-{@link FrameData} entry → null; otherwise a copy (no filtering).
+     */
+    public static @Nullable List<FrameData> resolveStrictFrameList(@Nullable Object value) {
+        if (!(value instanceof List<?> list) || list.isEmpty()) {
+            return null;
+        }
+        List<FrameData> frames = new ArrayList<>(list.size());
+        for (Object entry : list) {
+            if (!(entry instanceof FrameData frame)) {
+                return null;
+            }
+            frames.add(frame);
+        }
+        return List.copyOf(frames);
     }
 
     public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
@@ -72,6 +93,31 @@ public final class FrameUtils {
             return null;
         }
         return fromNormal(plane.getPoint(), plane.getNormal(), xHint);
+    }
+
+    /**
+     * Like {@link #fromPlane} but requires {@code xHint} to project to a usable in-plane axis —
+     * no cardinal fallback. Used when an X Hint port is connected (fail-closed).
+     */
+    public static @Nullable FrameData fromPlaneRequireHint(PlaneData plane, Vector3d xHint) {
+        if (plane == null || !isUsableAxis(xHint)) {
+            return null;
+        }
+        if (!isFinite(plane.getPoint()) || !isUsableAxis(plane.getNormal())) {
+            return null;
+        }
+        Vector3d z = new Vector3d(plane.getNormal()).normalize();
+        Vector3d x = projectOntoPlane(xHint, z);
+        if (!isUsableAxis(x)) {
+            return null;
+        }
+        x.normalize();
+        Vector3d y = new Vector3d(z).cross(x);
+        if (!isUsableAxis(y)) {
+            return null;
+        }
+        y.normalize();
+        return FrameData.orthonormal(plane.getPoint(), x, y, z);
     }
 
     /**

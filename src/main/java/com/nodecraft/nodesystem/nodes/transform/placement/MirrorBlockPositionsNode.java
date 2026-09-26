@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.GeometryMirror;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -22,27 +23,20 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.placement.mirror_coordinates",
-    displayName = "Mirror Coordinates",
-    description = "Mirrors a block coordinate list across a plane and snaps results to the block grid",
+    id = "transform.placement.mirror_block_positions",
+    displayName = "Mirror Block Positions",
+    description = "Mirrors a block position list across a plane and snaps results to the block grid",
     category = "transform.placement",
     order = 7
 )
-public class MirrorCoordinatesNode extends BaseNode {
+public class MirrorBlockPositionsNode extends BaseNode {
 
     public enum MirrorPlane {
-        XY, YZ, XZ, CUSTOM
-    }
-
-    public enum RoundingMode {
-        ROUND, FLOOR, CEIL
+        XY, YZ, XZ
     }
 
     @NodeProperty(displayName = "Default Plane", category = "Mirror", order = 1)
     private MirrorPlane mirrorPlane = MirrorPlane.XZ;
-
-    @NodeProperty(displayName = "Rounding Mode", category = "Coordinate Transform", order = 2)
-    private RoundingMode roundingMode = RoundingMode.ROUND;
 
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -54,28 +48,28 @@ public class MirrorCoordinatesNode extends BaseNode {
     private static final String OUTPUT_OUTPUT_COUNT_ID = "output_output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public MirrorCoordinatesNode() {
-        super(UUID.randomUUID(), "transform.placement.mirror_coordinates");
+    public MirrorBlockPositionsNode() {
+        super(UUID.randomUUID(), "transform.placement.mirror_block_positions");
 
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "The coordinates to mirror", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Block Positions", "The block positions to mirror", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Mirror plane override", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Point on mirror plane", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Normal vector of mirror plane", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Coordinates", "Mirrored coordinates", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_INPUT_COUNT_ID, "Input Count", "Number of input coordinates", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_OUTPUT_COUNT_ID, "Output Count", "Number of output coordinates", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate mirror succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Block Positions", "Mirrored block positions", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_INPUT_COUNT_ID, "Input Count", "Number of input block positions", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_OUTPUT_COUNT_ID, "Output Count", "Number of output block positions", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position mirror succeeded", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Mirrors a block coordinate list across a plane and snaps results to the block grid";
+        return "Mirrors a block position list across a plane and snaps results to the block grid";
     }
 
     @Override
     public String getDisplayName() {
-        return "Mirror Coordinates";
+        return "Mirror Block Positions";
     }
 
     @Override
@@ -94,13 +88,16 @@ public class MirrorCoordinatesNode extends BaseNode {
 
         BlockPosList result = new BlockPosList();
         for (BlockPos pos : coordinates) {
-            Vector3d mirrored = GeometryMirror.mirrorPoint(new Vector3d(pos.getX(), pos.getY(), pos.getZ()), plane);
-            result.add(new BlockPos(roundToBlock(mirrored.x), roundToBlock(mirrored.y), roundToBlock(mirrored.z)));
+            Vector3d mirrored = GeometryMirror.mirrorPoint(BlockSpace.cellCenter(pos), plane);
+            result.add(BlockSpace.snapCellCenter(mirrored));
         }
 
         writeResult(result, coordinates.size(), true);
     }
 
+    /**
+     * Plane resolution: connected Plane → Point+Normal custom path → Default Plane property.
+     */
     private @Nullable PlaneData resolvePlane() {
         if (OptionalPortDrive.isConnected(this, INPUT_PLANE_ID)) {
             return OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
@@ -123,16 +120,7 @@ public class MirrorCoordinatesNode extends BaseNode {
         return switch (mirrorPlane == null ? MirrorPlane.XZ : mirrorPlane) {
             case XY -> PlaneData.XY_PLANE;
             case YZ -> PlaneData.YZ_PLANE;
-            case XZ, CUSTOM -> PlaneData.XZ_PLANE;
-        };
-    }
-
-    private int roundToBlock(double value) {
-        RoundingMode mode = roundingMode == null ? RoundingMode.ROUND : roundingMode;
-        return switch (mode) {
-            case FLOOR -> (int) Math.floor(value);
-            case CEIL -> (int) Math.ceil(value);
-            case ROUND -> (int) Math.round(value);
+            case XZ -> PlaneData.XZ_PLANE;
         };
     }
 
@@ -154,22 +142,10 @@ public class MirrorCoordinatesNode extends BaseNode {
         }
     }
 
-    public RoundingMode getRoundingMode() {
-        return roundingMode;
-    }
-
-    public void setRoundingMode(RoundingMode roundingMode) {
-        if (roundingMode != null && this.roundingMode != roundingMode) {
-            this.roundingMode = roundingMode;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("mirrorPlane", mirrorPlane.name());
-        state.put("roundingMode", roundingMode.name());
         return state;
     }
 
@@ -181,12 +157,6 @@ public class MirrorCoordinatesNode extends BaseNode {
         if (stateMap.get("mirrorPlane") instanceof String planeName) {
             try {
                 setMirrorPlane(MirrorPlane.valueOf(planeName));
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-        if (stateMap.get("roundingMode") instanceof String roundingName) {
-            try {
-                setRoundingMode(RoundingMode.valueOf(roundingName));
             } catch (IllegalArgumentException ignored) {
             }
         }

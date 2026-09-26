@@ -67,9 +67,9 @@ class DeformationsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV53() {
+    void deformationsFreezeVersionIsV53() {
         assertEquals(53, GraphFormatVersion.V53);
-        assertEquals(GraphFormatVersion.V53, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V53);
     }
 
     @Test

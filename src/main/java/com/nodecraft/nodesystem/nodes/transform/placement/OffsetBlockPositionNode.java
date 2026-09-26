@@ -15,17 +15,17 @@ import org.joml.Vector3d;
 import java.util.UUID;
 
 /**
- * Offsets one block coordinate by a rounded vector or integer X/Y/Z amounts.
+ * Offsets one block position by a rounded vector or integer X/Y/Z amounts.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "transform.placement.offset_coordinate",
-    displayName = "Offset Coordinate",
-    description = "Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector",
+    id = "transform.placement.offset_block_position",
+    displayName = "Offset Block Position",
+    description = "Offsets a single block position by integer X, Y, Z amounts or a rounded vector",
     category = "transform.placement",
     order = 3
 )
-public class OffsetCoordinateNode extends BaseNode {
+public class OffsetBlockPositionNode extends BaseNode {
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
     private static final String INPUT_OFFSET_VECTOR_ID = "input_offset_vector";
@@ -37,28 +37,28 @@ public class OffsetCoordinateNode extends BaseNode {
     private static final String OUTPUT_EFFECTIVE_OFFSET_ID = "output_effective_offset";
     private static final String OUTPUT_VALID_ID = "output_valid";
 
-    public OffsetCoordinateNode() {
-        super(UUID.randomUUID(), "transform.placement.offset_coordinate");
+    public OffsetBlockPositionNode() {
+        super(UUID.randomUUID(), "transform.placement.offset_block_position");
 
-        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Source block coordinate", NodeDataType.BLOCK_POS, this));
+        addInputPort(new BasePort(INPUT_COORDINATE_ID, "Block Position", "Source block position", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_OFFSET_VECTOR_ID, "Offset Vector", "Optional vector offset rounded to integer blocks", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_OFFSET_X_ID, "Offset X", "Integer offset on X", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_OFFSET_Y_ID, "Offset Y", "Integer offset on Y", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_OFFSET_Z_ID, "Offset Z", "Integer offset on Z", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Coordinate", "Offset block coordinate", NodeDataType.BLOCK_POS, this));
+        addOutputPort(new BasePort(OUTPUT_COORDINATE_ID, "Block Position", "Offset block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_OFFSET_ID, "Effective Offset", "Integer block offset actually applied", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the coordinate offset succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position offset succeeded", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Offsets a single block coordinate by integer X, Y, Z amounts or a rounded vector";
+        return "Offsets a single block position by integer X, Y, Z amounts or a rounded vector";
     }
 
     @Override
     public String getDisplayName() {
-        return "Offset Coordinate";
+        return "Offset Block Position";
     }
 
     @Override
@@ -72,6 +72,7 @@ public class OffsetCoordinateNode extends BaseNode {
         int offsetX;
         int offsetY;
         int offsetZ;
+        // Vector port takes precedence over XYZ integer ports when connected.
         if (OptionalPortDrive.isConnected(this, INPUT_OFFSET_VECTOR_ID)) {
             Vector3d offsetVector = OptionalPortDrive.resolveOptionalVector(this, INPUT_OFFSET_VECTOR_ID, null);
             if (offsetVector == null) {

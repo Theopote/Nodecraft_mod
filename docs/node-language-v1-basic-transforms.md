@@ -41,7 +41,7 @@ Moved out at V52:
 
 | Legacy id | New id |
 |-----------|--------|
-| `…offset_coordinate` / `offset_coordinates` / `rotate_coordinates` / `scale_coordinates` / `mirror_coordinates` | `transform.placement.*` (orders 3–7) |
+| `…offset_coordinate` / `offset_coordinates` / `rotate_coordinates` / `scale_coordinates` / `mirror_coordinates` | `transform.placement.*_block_position(s)` (orders 3–7; renamed from Coordinate at V54) |
 | `…shear` | `transform.deformations.shear_point_list` (order 10) |
 | `…mirror_vector_list_plane` | `…mirror_point_list_plane` (rename in-family) |
 

@@ -17,8 +17,11 @@ import org.joml.Vector3d;
  * <b>Canonical BlockPos → Point</b> — always the cell center:
  * {@code POINT = BLOCK_POS + (0.5, 0.5, 0.5)}. Never map to the cell corner as a POINT.
  * <p>
- * <b>Point → BlockPos</b> — explicit snap only ({@link #pointToBlockFloor},
- * {@link #pointToBlockNearest}, {@link #pointToBlockCeil}).
+ * <b>Point → BlockPos</b> — explicit snap only. Placement / block-grid transforms use
+ * {@link #pointToBlockFloor} / {@link #snapCellCenter} (containing cell). Do <em>not</em> use
+ * {@link #pointToBlockNearest} for Placement — it is half-up integer rounding, not “nearest cell
+ * center”, and breaks {@code cellCenter} round-trips ({@code (0.5,0.5,0.5) → (1,1,1)}).
+ * Also available: {@link #pointToBlockCeil}.
  * <p>
  * <b>PreviewBlock / Apply</b> — store cell indices (min corner integers). Ghost draws
  * {@code [n, n+1]} without adding 0.5.
@@ -96,6 +99,21 @@ public final class BlockSpace {
         return cellContaining(point);
     }
 
+    /**
+     * Snap a continuous point that represents a transformed <em>cell center</em> back to a
+     * {@code BLOCK_POS}. Alias of {@link #pointToBlockFloor} — Placement v1 canonical rule.
+     * <p>
+     * Pipeline: {@code BLOCK_POS → cellCenter → continuous transform → snapCellCenter → BLOCK_POS}.
+     */
+    public static BlockPos snapCellCenter(Vector3d continuousPoint) {
+        return pointToBlockFloor(continuousPoint);
+    }
+
+    /**
+     * Half-up integer rounding per axis. <b>Not</b> “nearest cell center”.
+     * {@code Math.round(0.5) = 1}, so {@code cellCenter(0,0,0)} does not round-trip.
+     * Prefer {@link #snapCellCenter} / {@link #pointToBlockFloor} for Placement.
+     */
     public static BlockPos pointToBlockNearest(Vector3d point) {
         return new BlockPos(
             (int) Math.round(point.x),
