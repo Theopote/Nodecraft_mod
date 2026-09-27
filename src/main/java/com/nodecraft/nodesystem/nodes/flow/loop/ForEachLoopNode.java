@@ -4,28 +4,34 @@ import com.nodecraft.nodesystem.api.ExecLoopNode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Collection-driven exec loop: fires Exec Body once per list item, then Exec Complete.
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "flow.loop.for_each",
     displayName = "For Each Loop",
-    description = "Expands a list into items. Wire exec_body for per-item side effects; legacy list outputs remain for dataflow graphs.",
+    description = "Iterates a list with exec_body per item. List element type T binds to Item. "
+        + "Enabled false or empty list: body 0 times, complete once.",
     category = "flow.loop",
     order = 0
 )
 public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
+
+    private static final String LIST_T = "T";
 
     private static final String INPUT_EXEC_ID = "exec_in";
     private static final String INPUT_LIST_ID = "input_list";
@@ -35,35 +41,33 @@ public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
     private static final String OUTPUT_EXEC_COMPLETE_ID = "exec_complete";
     private static final String OUTPUT_ITEM_ID = "output_item";
     private static final String OUTPUT_INDEX_ID = "output_index";
-    private static final String OUTPUT_ITEMS_ID = "output_items";
-    private static final String OUTPUT_INDICES_ID = "output_indices";
-    private static final String OUTPUT_PAIRS_ID = "output_pairs";
-    private static final String OUTPUT_FIRST_ITEM_ID = "output_first_item";
-    private static final String OUTPUT_LAST_ITEM_ID = "output_last_item";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    @NodeProperty(displayName = "Enabled", category = "Loop", order = 0)
+    private boolean enabled = true;
 
     private transient List<Object> resolvedItems = List.of();
+    private transient boolean fireComplete = true;
     private transient Set<String> activeExecOutputs = Set.of();
 
     public ForEachLoopNode() {
         super(UUID.randomUUID(), "flow.loop.for_each");
 
         addInputPort(new BasePort(INPUT_EXEC_ID, "Exec In", "Incoming execution pulse", NodeDataType.EXEC, this, true, false));
-        addInputPort(new BasePort(INPUT_LIST_ID, "List", "List to iterate", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_LIST_ID, "List", "List to iterate (element type T)", NodeDataType.LIST, this)
+            .bindListType(LIST_T));
         addInputPort(new BasePort(INPUT_ENABLED_ID, "Enabled", "Whether iteration is enabled", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_EXEC_BODY_ID, "Exec Body", "Fires once per list item", NodeDataType.EXEC, this));
-        addOutputPort(new BasePort(OUTPUT_EXEC_COMPLETE_ID, "Exec Complete", "Fires after all items are processed", NodeDataType.EXEC, this));
-        addOutputPort(new BasePort(OUTPUT_ITEM_ID, "Item", "Current iterated item", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Current item index", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ITEMS_ID, "Items", "Iterated items", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_INDICES_ID, "Indices", "Item indices", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PAIRS_ID, "Pairs", "List of {index,item} maps", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_FIRST_ITEM_ID, "First Item", "First iterated item", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_LAST_ITEM_ID, "Last Item", "Last iterated item", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of iterated items", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether list input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_EXEC_COMPLETE_ID, "Exec Complete", "Fires after all items (or empty/disabled)", NodeDataType.EXEC, this));
+        addOutputPort(new BasePort(OUTPUT_ITEM_ID, "Item", "Current iterated item (T)", NodeDataType.ANY, this)
+            .bindListElementType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Current item index (0-based)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of body iterations", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why the loop did not run", NodeDataType.STRING, this));
     }
 
     @Override
@@ -74,6 +78,11 @@ public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
     @Override
     public int execLoopIterationCount() {
         return resolvedItems.size();
+    }
+
+    @Override
+    public boolean shouldFireExecComplete() {
+        return fireComplete;
     }
 
     @Override
@@ -108,90 +117,68 @@ public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object listObj = inputValues.get(INPUT_LIST_ID);
-        boolean enabled = coerceEnabled(inputValues.get(INPUT_ENABLED_ID));
-
         activeExecOutputs = Set.of();
         outputValues.put(OUTPUT_EXEC_BODY_ID, null);
         outputValues.put(OUTPUT_EXEC_COMPLETE_ID, null);
         outputValues.put(OUTPUT_ITEM_ID, null);
         outputValues.put(OUTPUT_INDEX_ID, null);
+        resolvedItems = List.of();
+        fireComplete = true;
 
-        if (!enabled) {
-            resolvedItems = List.of();
-            writeEmptyOutputs(true);
+        Boolean enabledResolved = resolveEnabled();
+        if (enabledResolved == null) {
+            publish(0, false, "Enabled is null or invalid.");
+            fireComplete = false;
             return;
         }
 
+        if (!enabledResolved) {
+            publish(0, true, "");
+            return;
+        }
+
+        Object listObj = inputValues.get(INPUT_LIST_ID);
         if (!(listObj instanceof List<?> inputList)) {
-            resolvedItems = List.of();
-            writeEmptyOutputs(false);
+            publish(0, false, "List is null or invalid.");
+            fireComplete = false;
             return;
         }
 
-        List<Object> items = new ArrayList<>(inputList);
-        resolvedItems = items;
-        writeExpandedOutputs(items);
+        if (inputList.size() > GenerationLimits.MAX_LOOP_ITERATIONS) {
+            publish(0, false, "List size exceeds MAX_LOOP_ITERATIONS ("
+                + GenerationLimits.MAX_LOOP_ITERATIONS + ").");
+            fireComplete = false;
+            return;
+        }
+
+        resolvedItems = new ArrayList<>(inputList);
+        publish(resolvedItems.size(), true, "");
     }
 
-    private void writeEmptyOutputs(boolean valid) {
-        outputValues.put(OUTPUT_ITEMS_ID, List.of());
-        outputValues.put(OUTPUT_INDICES_ID, List.of());
-        outputValues.put(OUTPUT_PAIRS_ID, List.of());
-        outputValues.put(OUTPUT_FIRST_ITEM_ID, null);
-        outputValues.put(OUTPUT_LAST_ITEM_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
+    private @Nullable Boolean resolveEnabled() {
+        if (OptionalPortDrive.isConnected(this, INPUT_ENABLED_ID)) {
+            Object value = inputValues.get(INPUT_ENABLED_ID);
+            return value instanceof Boolean bool ? bool : null;
+        }
+        Object raw = inputValues.get(INPUT_ENABLED_ID);
+        if (raw == null) {
+            return enabled;
+        }
+        return raw instanceof Boolean bool ? bool : null;
+    }
+
+    private void publish(int count, boolean valid, String error) {
+        outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    private void writeExpandedOutputs(List<Object> items) {
-        List<Object> indices = new ArrayList<>(items.size());
-        List<Object> pairs = new ArrayList<>(items.size());
-
-        for (int i = 0; i < items.size(); i++) {
-            indices.add(i);
-            Map<String, Object> pair = new LinkedHashMap<>();
-            pair.put("index", i);
-            pair.put("item", items.get(i));
-            pairs.add(pair);
-        }
-
-        Object firstItem = items.isEmpty() ? null : items.getFirst();
-        Object lastItem = items.isEmpty() ? null : items.getLast();
-
-        outputValues.put(OUTPUT_ITEMS_ID, items);
-        outputValues.put(OUTPUT_INDICES_ID, indices);
-        outputValues.put(OUTPUT_PAIRS_ID, pairs);
-        outputValues.put(OUTPUT_FIRST_ITEM_ID, firstItem);
-        outputValues.put(OUTPUT_LAST_ITEM_ID, lastItem);
-        outputValues.put(OUTPUT_COUNT_ID, items.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+    public boolean isEnabled() {
+        return enabled;
     }
 
-    private boolean coerceEnabled(Object value) {
-        switch (value) {
-            case null -> {
-                return true;
-            }
-            case Boolean booleanValue -> {
-                return booleanValue;
-            }
-            case Number number -> {
-                return number.doubleValue() != 0.0d;
-            }
-            case String stringValue -> {
-                String normalized = stringValue.trim();
-                if (normalized.isEmpty()) {
-                    return false;
-                }
-                return switch (normalized.toLowerCase(Locale.ROOT)) {
-                    case "true", "yes", "1", "on" -> true;
-                    default -> false;
-                };
-            }
-            default -> {
-            }
-        }
-        return true;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        markDirty();
     }
 }

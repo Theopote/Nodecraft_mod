@@ -124,6 +124,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V62 -> migrateV62ToV63(graph);
             case GraphFormatVersion.V63 -> migrateV63ToV64(graph);
             case GraphFormatVersion.V64 -> migrateV64ToV65(graph);
+            case GraphFormatVersion.V65 -> migrateV65ToV66(graph);
             default -> graph;
         };
     }
@@ -4711,6 +4712,116 @@ public final class GraphMigrationRegistry {
             Map<String, Object> state = (Map<String, Object>) node.state;
             state.remove("fallbackExecuted");
         }
+    }
+
+    /**
+     * Flow Loop v1: drop dead For Each / While ports, remove Accumulator nodes.
+     */
+    private static SavedGraph migrateV65ToV66(SavedGraph graph) {
+        applyFlowLoopV66ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyFlowLoopV66ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final Set<String> FLOW_LOOP_FOREACH_DEAD_PORTS = Set.of(
+            "output_items",
+            "output_indices",
+            "output_pairs",
+            "output_first_item",
+            "output_last_item"
+    );
+
+    private static final Set<String> FLOW_LOOP_WHILE_DEAD_PORTS = Set.of(
+            "input_values",
+            "output_values"
+    );
+
+    private static void applyFlowLoopV66ToGraph(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+
+        Set<String> removedNodeIds = new HashSet<>();
+        List<SavedNode> keptNodes = new ArrayList<>();
+        for (SavedNode node : graph.nodes) {
+            if (node == null) {
+                continue;
+            }
+            if ("flow.loop.accumulator".equals(node.typeId)) {
+                if (node.nodeId != null) {
+                    removedNodeIds.add(node.nodeId);
+                }
+                continue;
+            }
+            keptNodes.add(node);
+        }
+        graph.nodes = keptNodes;
+
+        if (graph.connections != null) {
+            List<SavedConnection> kept = new ArrayList<>();
+            for (SavedConnection connection : graph.connections) {
+                if (connection == null) {
+                    continue;
+                }
+                if (connection.sourceNodeId != null && removedNodeIds.contains(connection.sourceNodeId)) {
+                    continue;
+                }
+                if (connection.targetNodeId != null && removedNodeIds.contains(connection.targetNodeId)) {
+                    continue;
+                }
+                if (isDeadFlowLoopPortWire(graph, connection)) {
+                    continue;
+                }
+                kept.add(connection);
+            }
+            graph.connections = kept;
+        }
+
+        if (graph.nodePositions != null && !removedNodeIds.isEmpty()) {
+            for (String id : removedNodeIds) {
+                graph.nodePositions.remove(id);
+            }
+        }
+    }
+
+    private static boolean isDeadFlowLoopPortWire(SavedGraph graph, SavedConnection connection) {
+        String sourceType = typeIdOf(graph, connection.sourceNodeId);
+        String targetType = typeIdOf(graph, connection.targetNodeId);
+        if ("flow.loop.for_each".equals(sourceType)
+            && FLOW_LOOP_FOREACH_DEAD_PORTS.contains(connection.sourcePortId)) {
+            return true;
+        }
+        if ("flow.loop.for_each".equals(targetType)
+            && FLOW_LOOP_FOREACH_DEAD_PORTS.contains(connection.targetPortId)) {
+            return true;
+        }
+        if ("flow.loop.while".equals(sourceType)
+            && FLOW_LOOP_WHILE_DEAD_PORTS.contains(connection.sourcePortId)) {
+            return true;
+        }
+        if ("flow.loop.while".equals(targetType)
+            && FLOW_LOOP_WHILE_DEAD_PORTS.contains(connection.targetPortId)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static @Nullable String typeIdOf(SavedGraph graph, @Nullable String nodeId) {
+        if (graph.nodes == null || nodeId == null) {
+            return null;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node != null && nodeId.equals(node.nodeId)) {
+                return node.typeId;
+            }
+        }
+        return null;
     }
 
     private static final Set<String> WORLD_WRITE_MUTATOR_TYPES = Set.of(

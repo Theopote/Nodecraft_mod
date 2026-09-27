@@ -563,6 +563,10 @@ public class NodeExecutor {
             return true;
         }
 
+        if (!loopNode.shouldFireExecComplete()) {
+            return true;
+        }
+
         LinkedHashSet<ExecFrontierSnapshot.ExecWire> completeWires = new LinkedHashSet<>();
         ArrayDeque<UUID> completeFrontier = new ArrayDeque<>();
         for (UUID nextId : flowGraph.execSuccessors(nodeId, completePortId)) {

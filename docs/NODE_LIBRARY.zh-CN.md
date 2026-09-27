@@ -10,7 +10,7 @@
 | 分类 ID | 节点数 |
 |---|---:|
 | `flow.control` | 3 |
-| `flow.loop` | 3 |
+| `flow.loop` | 2 |
 | `geometry.analysis` | 2 |
 | `geometry.architectural_primitives` | 20 |
 | `geometry.boolean` | 2 |
@@ -34,7 +34,7 @@
 | `math.compare` | 6 |
 | `math.data_tree` | 14 |
 | `math.fields` | 17 |
-| `math.list` | 23 |
+| `math.list` | 24 |
 | `math.logic` | 6 |
 | `math.random` | 6 |
 | `math.scalar_math` | 23 |
@@ -78,13 +78,12 @@
 | Sequence | `flow.control.sequence` | Fires Exec Step 1..N in order. Signal is optional passthrough T; Step Count is exact INTEGER 1..8. | `SequenceNode` |
 | Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset. Signal is optional passthrough T and never gates exec. | `DoOnceNode` |
 
-## flow.loop（3）
+## flow.loop（2）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| For Each Loop | `flow.loop.for_each` | Expands a list into items. Wire exec_body for per-item side effects; legacy list outputs remain for dataflow graphs. | `ForEachLoopNode` |
-| Accumulator | `flow.loop.accumulator` | Accumulates list values into a single result. | `AccumulatorNode` |
-| While Loop | `flow.loop.while` | Routes exec flow while condition is true. Wire exec_body for loop body and loop exec back to exec_in; exec_complete fires when condition is false. | `WhileLoopNode` |
+| For Each Loop | `flow.loop.for_each` | Iterates a list with exec_body per item. List element type T binds to Item. | `ForEachLoopNode` |
+| While Loop | `flow.loop.while` | Routes exec_body while Condition is true under Max Iterations. | `WhileLoopNode` |
 
 ## geometry.analysis（2）
 
@@ -429,7 +428,7 @@
 | Repulsor Field | `math.fields.repulsor_field` | Inverts a vector field direction (repulsion) with optional strength scaling. | `RepulsorFieldNode` |
 | Blend Vector Fields | `math.fields.attractor_blend` | Blends up to four vector fields using per-field weights. | `AttractorFieldBlendNode` |
 
-## math.list（23）
+## math.list（24）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -444,6 +443,7 @@
 | Min Number | `math.list.min_number` | Minimum of a DOUBLE_LIST. | `MinNumberNode` |
 | Max Number | `math.list.max_number` | Maximum of a DOUBLE_LIST. | `MaxNumberNode` |
 | Average | `math.list.average` | Average of a DOUBLE_LIST. | `AverageNumbersNode` |
+| Join Strings | `math.list.join_strings` | Joins STRING_LIST items with a separator into one STRING. | `JoinStringsNode` |
 | Dispatch List | `math.list.dispatch_list` | Splits a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `FilterListNode` |
 | Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |

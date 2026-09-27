@@ -76,7 +76,7 @@ class FlowControlNodeTest {
     }
 
     @Test
-    void forEachExpandsListIntoItemsIndicesAndPairs() {
+    void forEachReportsCountAndValidForList() {
         ForEachLoopNode forEach = new ForEachLoopNode();
         Map<String, Object> outputs = forEach.compute(Map.of(
             "input_list", List.of("a", "b", "c")
@@ -84,20 +84,12 @@ class FlowControlNodeTest {
 
         assertEquals(true, outputs.get("output_valid"));
         assertEquals(3, outputs.get("output_count"));
-        assertEquals(List.of("a", "b", "c"), outputs.get("output_items"));
-        assertEquals(List.of(0, 1, 2), outputs.get("output_indices"));
-        assertEquals("a", outputs.get("output_first_item"));
-        assertEquals("c", outputs.get("output_last_item"));
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> pairs = (List<Map<String, Object>>) outputs.get("output_pairs");
-        assertEquals(3, pairs.size());
-        assertEquals(1, pairs.get(1).get("index"));
-        assertEquals("b", pairs.get(1).get("item"));
+        assertEquals(3, forEach.execLoopIterationCount());
+        assertTrue(forEach.shouldFireExecComplete());
     }
 
     @Test
-    void forEachReturnsEmptyOutputsWhenDisabled() {
+    void forEachReturnsEmptyWhenDisabled() {
         ForEachLoopNode forEach = new ForEachLoopNode();
         Map<String, Object> outputs = forEach.compute(Map.of(
             "input_list", List.of("a", "b"),
@@ -106,7 +98,8 @@ class FlowControlNodeTest {
 
         assertEquals(true, outputs.get("output_valid"));
         assertEquals(0, outputs.get("output_count"));
-        assertEquals(List.of(), outputs.get("output_items"));
+        assertEquals(0, forEach.execLoopIterationCount());
+        assertTrue(forEach.shouldFireExecComplete());
     }
 
     @Test
@@ -158,10 +151,13 @@ class FlowControlNodeTest {
     @Test
     void whileRoutesExecOutputsByCondition() {
         WhileLoopNode whileLoop = new WhileLoopNode();
-        whileLoop.compute(Map.of("input_condition", true));
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new com.nodecraft.nodesystem.execution.ExecutionRunGuard());
+
+        whileLoop.compute(Map.of("input_condition", true), context);
         assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
 
-        whileLoop.compute(Map.of("input_condition", false));
+        whileLoop.compute(Map.of("input_condition", false), context);
         assertEquals(Set.of("exec_complete"), whileLoop.getActiveExecOutputPortIds());
     }
 
@@ -169,21 +165,25 @@ class FlowControlNodeTest {
     void whileStopsExecBodyAfterMaxIterations() {
         WhileLoopNode whileLoop = new WhileLoopNode();
         whileLoop.setNodeState(Map.of("maxIterations", 2));
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new com.nodecraft.nodesystem.execution.ExecutionRunGuard());
 
-        whileLoop.compute(Map.of("input_condition", true));
+        whileLoop.compute(Map.of("input_condition", true), context);
         assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
         assertEquals(1, whileLoop.getOutput("output_iterations"));
 
-        whileLoop.compute(Map.of("input_condition", true));
+        whileLoop.compute(Map.of("input_condition", true), context);
         assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
         assertEquals(2, whileLoop.getOutput("output_iterations"));
 
-        whileLoop.compute(Map.of("input_condition", true));
+        whileLoop.compute(Map.of("input_condition", true), context);
         assertEquals(Set.of("exec_complete"), whileLoop.getActiveExecOutputPortIds());
         assertEquals(true, whileLoop.getOutput("output_hit_limit"));
         assertEquals(2, whileLoop.getOutput("output_iterations"));
 
-        whileLoop.compute(Map.of("input_condition", true));
+        // New run guard resets the counter.
+        context.setSharedExecutionRunGuard(new com.nodecraft.nodesystem.execution.ExecutionRunGuard());
+        whileLoop.compute(Map.of("input_condition", true), context);
         assertEquals(Set.of("exec_body"), whileLoop.getActiveExecOutputPortIds());
         assertEquals(1, whileLoop.getOutput("output_iterations"));
     }

@@ -21,4 +21,12 @@ public interface ExecLoopNode extends ExecRoutingNode {
     String execBodyPortId();
 
     String execCompletePortId();
+
+    /**
+     * When {@code false}, the executor drains zero body iterations and does not fire
+     * {@link #execCompletePortId()} (invalid preflight). Valid empty/disabled loops return {@code true}.
+     */
+    default boolean shouldFireExecComplete() {
+        return true;
+    }
 }

@@ -405,8 +405,14 @@ public final class GraphFormatVersion {
      */
     public static final int V65 = 65;
 
+    /**
+     * Flow Loop v1: slim For Each + pure exec While, delete Accumulator,
+     * ExecLoopNode completion policy, run-local While iteration counter.
+     */
+    public static final int V66 = 66;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V65;
+    public static final int CURRENT = V66;
 
     private GraphFormatVersion() {
     }

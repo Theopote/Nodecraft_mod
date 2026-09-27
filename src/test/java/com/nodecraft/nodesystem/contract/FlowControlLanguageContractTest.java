@@ -56,9 +56,9 @@ class FlowControlLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV65() {
+    void currentGraphFormatIsAtLeastV65() {
         assertEquals(65, GraphFormatVersion.V65);
-        assertEquals(GraphFormatVersion.V65, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V65);
     }
 
     @Test

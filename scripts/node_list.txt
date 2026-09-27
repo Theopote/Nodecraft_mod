@@ -1,9 +1,9 @@
 flow.control.branch|flow.control|Branch
 flow.control.do_once|flow.control|Do Once
 flow.control.sequence|flow.control|Sequence
-flow.loop.accumulator|flow.loop|Accumulator
 flow.loop.for_each|flow.loop|For Each Loop
 flow.loop.while|flow.loop|While Loop
+math.list.join_strings|math.list|Join Strings
 geometry.architectural_primitives.arch_opening|geometry.architectural_primitives|Arch Opening
 geometry.architectural_primitives.array_along_curve|geometry.architectural_primitives|Array Along Curve
 geometry.architectural_primitives.column_grid|geometry.architectural_primitives|Column Grid

@@ -17,6 +17,7 @@ public final class ExecutionRunGuard {
     private final long startedAtMs;
     private long steps;
     private final Map<String, Boolean> runLocalFlags = new HashMap<>();
+    private final Map<String, Integer> runLocalInts = new HashMap<>();
 
     public ExecutionRunGuard() {
         this(ExecutionRunLimits.defaults());
@@ -94,6 +95,32 @@ public final class ExecutionRunGuard {
     public void clearRunLocalFlag(String key) {
         if (key != null) {
             runLocalFlags.remove(key);
+        }
+    }
+
+    /** Run-local integer (While iteration count, etc.). Absent → {@code 0}. */
+    public int getRunLocalInt(String key) {
+        if (key == null) {
+            return 0;
+        }
+        Integer value = runLocalInts.get(key);
+        return value == null ? 0 : value;
+    }
+
+    public void setRunLocalInt(String key, int value) {
+        if (key == null) {
+            return;
+        }
+        if (value == 0) {
+            runLocalInts.remove(key);
+        } else {
+            runLocalInts.put(key, value);
+        }
+    }
+
+    public void clearRunLocalInt(String key) {
+        if (key != null) {
+            runLocalInts.remove(key);
         }
     }
 }

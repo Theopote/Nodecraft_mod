@@ -11,7 +11,7 @@ The comprehensive review is **directionally correct**: NodeCraft is still primar
 | Branch/While cannot skip branches | **Still true for dataflow nodes**; exec scheduler is the path to fix this |
 | Cycles fail immediately | **Data cycles still fail**; exec cycles are bounded by `ExecutionRunGuard` |
 
-Existing flow nodes (`flow.control.branch`, `flow.control.sequence`, `flow.loop.*`) remain **dataflow helpers** when used without exec wires. With exec wires, Branch / Sequence / Do Once route execution (see Graph **V65** Flow Control language freeze: [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md)).
+Existing flow nodes (`flow.control.*`, `flow.loop.*`) remain usable as data helpers when used without exec wires. With exec wires they route execution — see Graph **V65** [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) and Graph **V66** [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md).
 
 Reference roadmap: `docs/node-system-完善版路线图-2026-04-26.md` (P0-A / P0-B).
 

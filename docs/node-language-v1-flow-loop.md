@@ -1,0 +1,78 @@
+# Flow Loop — Node Language v1
+
+**Status: PASSED / FROZEN** (Graph **V66**)
+
+Flow Loop v1 freezes the language for the 2 `flow.loop` nodes as pure exec repetition.
+List aggregation / Take-While / First-Last belong in `math.list`, not here.
+
+## Inventory (order 0–1)
+
+| Order | Display | Id | Effect |
+|------:|---------|-----|--------|
+| 0 | For Each Loop | `flow.loop.for_each` | `PURE` (`ExecLoopNode`) |
+| 1 | While Loop | `flow.loop.while` | `PURE` (`ExecRoutingNode` + loop-back) |
+
+**Removed:** `flow.loop.accumulator` (use typed `math.list.*`; string join → `math.list.join_strings`).
+
+## For Each
+
+| Port | Type |
+|------|------|
+| Exec In | EXEC |
+| List | LIST&lt;T&gt; (`bindListType`) |
+| Enabled | BOOLEAN optional |
+| Exec Body / Exec Complete | EXEC |
+| Item | T (`bindListElementType`) |
+| Index | INTEGER |
+| Count | INTEGER |
+| Valid / Error | BOOLEAN / STRING |
+
+Rules:
+
+- Enabled: unconnected → property default `true`; connected null/wrong type → `Valid=false`, no Complete
+- List size `> MAX_LOOP_ITERATIONS` (100_000) → `Valid=false`, Body 0, no Complete
+- Empty list / Enabled=false → `Valid=true`, Body 0, Complete once, Count=0
+- Null list elements count as iterations
+- Invalid input: `shouldFireExecComplete()=false` (executor does not fire Complete)
+
+## While
+
+| Port | Type |
+|------|------|
+| Exec In | EXEC |
+| Condition | BOOLEAN |
+| Max Iterations | INTEGER exact `1..MAX_LOOP_ITERATIONS` |
+| Exec Body / Exec Complete | EXEC |
+| Iterations | INTEGER |
+| Terminated By Condition | BOOLEAN |
+| Hit Limit | BOOLEAN |
+| Valid / Error | BOOLEAN / STRING |
+
+Rules:
+
+- Condition: unconnected → property default; connected-invalid → `Valid=false`, neither Body nor Complete
+- Max Iterations: exact INTEGER; no `Number.intValue()` / no silent clamp on live path
+- Iteration counter is **run-local** on `ExecutionRunGuard` (not node field / SavedGraph)
+- Dual budget: node Max Iterations + global `ExecutionRunGuard.maxSteps`
+- Hit Limit: Condition still true and Iterations == Max → Complete fires with `HitLimit=true`
+
+## ExecLoopNode completion policy
+
+```text
+shouldFireExecComplete() == false  → 0 body drains, no Complete
+shouldFireExecComplete() == true   → after N body drains, fire Complete
+```
+
+## Migration (V65 → V66)
+
+- Drop wires to removed For Each ports (Items/Indices/Pairs/First/Last)
+- Drop wires to While Values in/out
+- Remove `flow.loop.accumulator` nodes and incident connections
+
+## Verification
+
+```text
+./gradlew.bat test --tests "com.nodecraft.nodesystem.contract.FlowLoopLanguageContractTest"
+./gradlew.bat test --tests "com.nodecraft.nodesystem.flow.FlowControlNodeTest"
+./gradlew.bat test --tests "com.nodecraft.nodesystem.execution.ExecFlowExecutorTest"
+```

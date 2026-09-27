@@ -10,9 +10,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class WhileLoopNodeTest {
 
     @Test
-    void maxIterationsPropertyIsCappedByGenerationLimits() {
+    void illegalMaxIterationsStateFallsBackToDefault() {
         WhileLoopNode node = new WhileLoopNode();
         node.setNodeState(Map.of("maxIterations", Integer.MAX_VALUE));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> state = (Map<String, Object>) node.getNodeState();
+
+        assertEquals(256, state.get("maxIterations"));
+    }
+
+    @Test
+    void exactMaxIterationsWithinCapIsPreserved() {
+        WhileLoopNode node = new WhileLoopNode();
+        node.setNodeState(Map.of("maxIterations", GenerationLimits.MAX_LOOP_ITERATIONS));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> state = (Map<String, Object>) node.getNodeState();
