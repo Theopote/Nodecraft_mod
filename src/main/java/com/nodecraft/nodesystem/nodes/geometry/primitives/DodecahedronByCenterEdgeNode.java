@@ -15,7 +15,7 @@ import java.util.List;
     displayName = "Dodecahedron By Center Edge",
     description = "Constructs a regular dodecahedron from a center point, edge length, and optional orientation",
     category = "geometry.primitives",
-    order = 24
+    order = 16
 )
 public class DodecahedronByCenterEdgeNode extends AbstractPolyhedronNode<DodecahedronGeometryData> {
 

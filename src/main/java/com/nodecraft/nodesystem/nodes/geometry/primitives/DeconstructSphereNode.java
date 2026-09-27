@@ -3,18 +3,16 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
-import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -22,9 +20,9 @@ import java.util.UUID;
     displayName = "Deconstruct Sphere",
     description = "Extracts center, radius, diameter, bounds, area, and volume from sphere geometry",
     category = "geometry.primitives",
-    order = 11
+    order = 18
 )
-public class DeconstructSphereNode extends BaseNode {
+public class DeconstructSphereNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_SPHERE_ID = "input_sphere";
 
@@ -35,10 +33,9 @@ public class DeconstructSphereNode extends BaseNode {
     private static final String OUTPUT_VOLUME_ID = "output_volume";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructSphereNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_sphere");
+        super("geometry.primitives.deconstruct_sphere");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to deconstruct", NodeDataType.SPHERE, this));
 
@@ -49,7 +46,7 @@ public class DeconstructSphereNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Analytical sphere volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when sphere input is present", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -61,14 +58,13 @@ public class DeconstructSphereNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object sphereObj = inputValues.get(INPUT_SPHERE_ID);
         if (!(sphereObj instanceof SphereData sphere)) {
-            outputValues.put(OUTPUT_CENTER_ID, null);
-            outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-            outputValues.put(OUTPUT_DIAMETER_ID, 0.0d);
-            outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-            outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-            outputValues.put(OUTPUT_REGION_ID, null);
-            outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeEmptyOutputs("Valid sphere geometry is required");
+            return;
+        }
+
+        String error = PrimitiveGeometryValidator.validateSphere(sphere);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
@@ -87,6 +83,17 @@ public class DeconstructSphereNode extends BaseNode {
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
+        putDoubleOutputs(0.0d,
+            OUTPUT_RADIUS_ID,
+            OUTPUT_DIAMETER_ID,
+            OUTPUT_SURFACE_AREA_ID,
+            OUTPUT_VOLUME_ID
+        );
+        markInvalid(reason);
     }
 }

@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
@@ -48,9 +49,9 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
         addInputPort(new BasePort(INPUT_CORNER_ID, "Corner", "Anchor corner of the box", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Signed size along local X. Negative values grow from the corner in the opposite X direction. 0 disables box generation.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Signed size along local Y. Negative values grow from the corner in the opposite Y direction. 0 disables box generation.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Signed size along local Z. Negative values grow from the corner in the opposite Z direction. 0 disables box generation.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Signed size along local X. Negative values grow from the corner in the opposite X direction.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Signed size along local Y. Negative values grow from the corner in the opposite Y direction.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Signed size along local Z. Negative values grow from the corner in the opposite Z direction.", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this));
@@ -68,34 +69,40 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     protected BoxDefinition resolveBoxDefinition() {
-        Object cornerObj = inputValues.get(INPUT_CORNER_ID);
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        Object sizeXObj = inputValues.get(INPUT_SIZE_X_ID);
-        Object sizeYObj = inputValues.get(INPUT_SIZE_Y_ID);
-        Object sizeZObj = inputValues.get(INPUT_SIZE_Z_ID);
-        Object rotXObj = inputValues.get(INPUT_ROT_X_ID);
-        Object rotYObj = inputValues.get(INPUT_ROT_Y_ID);
-        Object rotZObj = inputValues.get(INPUT_ROT_Z_ID);
-
-        Vector3d cornerVector = resolveVectorInput(cornerObj);
-        if (cornerVector == null) {
-            cornerVector = new Vector3d(cornerX, cornerY, cornerZ);
+        Vector3d corner = resolveOptionalPoint(INPUT_CORNER_ID, new Vector3d(cornerX, cornerY, cornerZ));
+        if (corner == null) {
+            failBox(isPortConnected(INPUT_CORNER_ID) ? "Corner input is invalid" : "Box requires a finite corner");
+            return null;
         }
 
-        double resolvedSizeX = resolveFiniteDouble(sizeXObj, sizeX);
-        double resolvedSizeY = resolveFiniteDouble(sizeYObj, sizeY);
-        double resolvedSizeZ = resolveFiniteDouble(sizeZObj, sizeZ);
+        PlaneData plane = resolveOptionalPlane(INPUT_PLANE_ID, null);
+        if (isPortConnected(INPUT_PLANE_ID) && plane == null) {
+            failBox("Plane input is invalid");
+            return null;
+        }
 
-        double rotationX = resolveFiniteDouble(rotXObj, 0.0d);
-        double rotationY = resolveFiniteDouble(rotYObj, 0.0d);
-        double rotationZ = resolveFiniteDouble(rotZObj, 0.0d);
+        Double resolvedSizeX = resolveFiniteDouble(INPUT_SIZE_X_ID, sizeX);
+        Double resolvedSizeY = resolveFiniteDouble(INPUT_SIZE_Y_ID, sizeY);
+        Double resolvedSizeZ = resolveFiniteDouble(INPUT_SIZE_Z_ID, sizeZ);
+        if (resolvedSizeX == null || resolvedSizeY == null || resolvedSizeZ == null) {
+            failBox("Box sizes must be finite");
+            return null;
+        }
+
+        Double rotationX = resolveFiniteDouble(INPUT_ROT_X_ID, 0.0d);
+        Double rotationY = resolveFiniteDouble(INPUT_ROT_Y_ID, 0.0d);
+        Double rotationZ = resolveFiniteDouble(INPUT_ROT_Z_ID, 0.0d);
+        if (rotationX == null || rotationY == null || rotationZ == null) {
+            failBox("Rotation inputs must be finite");
+            return null;
+        }
 
         return createContinuousCornerAndSizeDefinition(
-            cornerVector,
+            corner,
             resolvedSizeX,
             resolvedSizeY,
             resolvedSizeZ,
-            planeObj,
+            plane,
             rotationX,
             rotationY,
             rotationZ
@@ -105,14 +112,6 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        Object parent = super.getNodeState();
-        if (parent instanceof Map<?, ?> parentMap) {
-            for (Map.Entry<?, ?> entry : parentMap.entrySet()) {
-                if (entry.getKey() != null) {
-                    state.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-        }
         state.put("cornerX", cornerX);
         state.put("cornerY", cornerY);
         state.put("cornerZ", cornerZ);
@@ -124,7 +123,6 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     public void setNodeState(Object state) {
-        super.setNodeState(state);
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
@@ -135,5 +133,4 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
         if (map.get("sizeY") instanceof Number n) sizeY = n.doubleValue();
         if (map.get("sizeZ") instanceof Number n) sizeZ = n.doubleValue();
     }
-
 }

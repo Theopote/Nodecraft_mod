@@ -64,19 +64,6 @@
               "connectPortId": "input_geometry"
             }
           ]
-        },
-        "output_box_blocks": {
-          "downstream": [
-            {
-              "nodeId": "material.basic_assignment.assign_block_type",
-              "order": 0,
-              "connectPortId": "input_coordinates"
-            },
-            {
-              "nodeId": "output.execute.apply_changes",
-              "order": 10
-            }
-          ]
         }
       }
     },

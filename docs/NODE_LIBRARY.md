@@ -166,33 +166,33 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Box by Center + Size | `geometry.primitives.box` | Constructs continuous box geometry from a center point and X/Y/Z sizes. Blocks/Region remain legacy convenience outputs. | `BoxCenterSizeNode` |
+| Box by Center + Size | `geometry.primitives.box` | Constructs continuous box geometry from a center point and X/Y/Z sizes. | `BoxCenterSizeNode` |
 | Box by Corner + Size | `geometry.primitives.box_from_corner_size` | Generates a box from one anchor corner and signed X/Y/Z sizes. Negative values grow in the opposite local axis direction. | `BoxCornerSizeNode` |
 | Box by Two Corners | `geometry.primitives.box_from_corners` | Generates an axis-aligned box from two opposite corner points | `BoxCornersNode` |
 | Sphere By Center Radius | `geometry.primitives.sphere` | Constructs sphere geometry from a center point and radius | `SphereByCenterRadiusNode` |
 | Sphere By Diameter | `geometry.primitives.sphere_from_diameter` | Constructs sphere geometry from two diameter endpoints | `SphereByDiameterNode` |
 | Cylinder By Axis Radius | `geometry.primitives.cylinder` | Constructs cylinder geometry from two axis endpoints and a radius | `CylinderByAxisRadiusNode` |
-| Torus By Center Axis Radii | `geometry.primitives.torus` | Constructs torus geometry from a center point, symmetry axis direction, major radius, and tube (minor) radius | `TorusByCenterAxisRadiiNode` |
-| Frustum By Two Centers Radii | `geometry.primitives.frustum_cone` | Constructs a circular frustum from two parallel face centers and their radii (set top radius to 0 for a cone) | `FrustumByTwoCentersRadiiNode` |
 | Cone By Base Apex Radius | `geometry.primitives.cone` | Constructs cone geometry from a base center, apex point, and base radius | `ConeByBaseApexRadiusNode` |
-| Ellipsoid By Center Radii | `geometry.primitives.ellipsoid` | Constructs ellipsoid geometry from a center point and X/Y/Z radii | `EllipsoidByCenterRadiiNode` |
-| Deconstruct Box Geometry | `geometry.primitives.deconstruct_box` | Extracts center, half extents, orientation, corners, and faces from box geometry | `DeconstructBoxGeometryNode` |
-| Octahedron By Center Size | `geometry.primitives.octahedron` | Constructs octahedron geometry from a center point, vertex radius, and optional orientation | `OctahedronByCenterSizeNode` |
-| Deconstruct Sphere | `geometry.primitives.deconstruct_sphere` | Extracts center, radius, diameter, bounds, area, and volume from sphere geometry | `DeconstructSphereNode` |
-| Tetrahedron By Center Edge | `geometry.primitives.tetrahedron` | Constructs tetrahedron geometry from a center point, edge length, and optional orientation | `TetrahedronByCenterEdgeNode` |
-| Deconstruct Cylinder | `geometry.primitives.deconstruct_cylinder` | Extracts axis, radius, height, bounds, and analytical values from cylinder geometry | `DeconstructCylinderNode` |
-| Deconstruct Cone | `geometry.primitives.deconstruct_cone` | Extracts axis, height, radius, bounds, and analytical values from cone geometry | `DeconstructConeNode` |
-| Hemisphere By Center Axis Radius | `geometry.primitives.hemisphere` | Constructs a solid hemisphere: sphere intersected with the half-space on the +axis side of the center (flat face through center, dome along axis) | `HemisphereByCenterAxisRadiusNode` |
+| Frustum By Two Centers Radii | `geometry.primitives.frustum_cone` | Constructs a circular frustum from two parallel face centers and their radii (set top radius to 0 for a cone) | `FrustumByTwoCentersRadiiNode` |
 | Capsule By Axis Radius | `geometry.primitives.capsule` | Constructs analytic capsule geometry from axis endpoints and radius (cylinder + two hemispheres). | `CapsuleByAxisRadiusNode` |
-| Deconstruct Frustum Cone | `geometry.primitives.deconstruct_frustum_cone` | Extracts axis, heights, radii, bounds, and analytical values from frustum cone geometry | `DeconstructFrustumConeNode` |
+| Hemisphere By Center Axis Radius | `geometry.primitives.hemisphere` | Constructs a solid hemisphere: sphere intersected with the half-space on the +axis side of the center (flat face through center, dome along axis) | `HemisphereByCenterAxisRadiusNode` |
+| Torus By Center Axis Radii | `geometry.primitives.torus` | Constructs torus geometry from a center point, symmetry axis direction, major radius, and tube (minor) radius | `TorusByCenterAxisRadiiNode` |
+| Ellipsoid By Center Radii | `geometry.primitives.ellipsoid` | Constructs ellipsoid geometry from a center point and X/Y/Z radii | `EllipsoidByCenterRadiiNode` |
 | Square Pyramid | `geometry.primitives.square_pyramid` | Constructs square pyramid geometry from a base center, base size, height, and plane | `SquarePyramidNode` |
-| Deconstruct Ellipsoid | `geometry.primitives.deconstruct_ellipsoid` | Extracts center, radii, bounds, volume, and approximate surface area from ellipsoid geometry | `DeconstructEllipsoidNode` |
-| Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
-| Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
-| Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
-| Deconstruct Hemisphere | `geometry.primitives.deconstruct_hemisphere` | Extracts center, axis, radius, bounds, and analytical values from hemisphere geometry | `DeconstructHemisphereNode` |
+| Tetrahedron By Center Edge | `geometry.primitives.tetrahedron` | Constructs tetrahedron geometry from a center point, edge length, and optional orientation | `TetrahedronByCenterEdgeNode` |
+| Octahedron By Center Size | `geometry.primitives.octahedron` | Constructs octahedron geometry from a center point, vertex radius, and optional orientation | `OctahedronByCenterSizeNode` |
 | Icosahedron By Center Edge | `geometry.primitives.icosahedron` | Constructs a regular icosahedron from a center point, edge length, and optional orientation | `IcosahedronByCenterEdgeNode` |
 | Dodecahedron By Center Edge | `geometry.primitives.dodecahedron` | Constructs a regular dodecahedron from a center point, edge length, and optional orientation | `DodecahedronByCenterEdgeNode` |
+| Deconstruct Box Geometry | `geometry.primitives.deconstruct_box` | Extracts center, half extents, orientation, corners, and faces from box geometry | `DeconstructBoxGeometryNode` |
+| Deconstruct Sphere | `geometry.primitives.deconstruct_sphere` | Extracts center, radius, diameter, bounds, area, and volume from sphere geometry | `DeconstructSphereNode` |
+| Deconstruct Cylinder | `geometry.primitives.deconstruct_cylinder` | Extracts axis, radius, height, bounds, and analytical values from cylinder geometry | `DeconstructCylinderNode` |
+| Deconstruct Cone | `geometry.primitives.deconstruct_cone` | Extracts axis, height, radius, bounds, and analytical values from cone geometry | `DeconstructConeNode` |
+| Deconstruct Frustum Cone | `geometry.primitives.deconstruct_frustum_cone` | Extracts axis, heights, radii, bounds, and analytical values from frustum cone geometry | `DeconstructFrustumConeNode` |
+| Deconstruct Hemisphere | `geometry.primitives.deconstruct_hemisphere` | Extracts center, axis, radius, bounds, and analytical values from hemisphere geometry | `DeconstructHemisphereNode` |
+| Deconstruct Ellipsoid | `geometry.primitives.deconstruct_ellipsoid` | Extracts center, radii, bounds, volume, and approximate surface area from ellipsoid geometry | `DeconstructEllipsoidNode` |
+| Deconstruct Prism | `geometry.primitives.deconstruct_prism` | Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry | `DeconstructPrismNode` |
+| Deconstruct Tetrahedron | `geometry.primitives.deconstruct_tetrahedron` | Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry | `DeconstructTetrahedronNode` |
+| Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
 

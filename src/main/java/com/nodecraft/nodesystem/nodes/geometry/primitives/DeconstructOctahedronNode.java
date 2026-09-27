@@ -3,20 +3,15 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3d;
-import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,9 +19,9 @@ import java.util.UUID;
     displayName = "Deconstruct Octahedron",
     description = "Extracts center, size, vertices, bounds, and analytical values from octahedron geometry",
     category = "geometry.primitives",
-    order = 16
+    order = 26
 )
-public class DeconstructOctahedronNode extends BaseNode {
+public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_OCTAHEDRON_ID = "input_octahedron";
 
@@ -38,10 +33,9 @@ public class DeconstructOctahedronNode extends BaseNode {
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
     private static final String OUTPUT_ORIENTATION_ID = "output_orientation";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructOctahedronNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_octahedron");
+        super("geometry.primitives.deconstruct_octahedron");
 
         addInputPort(new BasePort(INPUT_OCTAHEDRON_ID, "Octahedron", "Octahedron geometry to deconstruct", NodeDataType.OCTAHEDRON_GEOMETRY, this));
 
@@ -52,8 +46,8 @@ public class DeconstructOctahedronNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular octahedron volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame ->?world)", NodeDataType.MATRIX3, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when octahedron input is present", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -65,11 +59,16 @@ public class DeconstructOctahedronNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object octahedronObj = inputValues.get(INPUT_OCTAHEDRON_ID);
         if (!(octahedronObj instanceof OctahedronGeometryData octahedron)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid octahedron geometry is required");
             return;
         }
 
         double size = octahedron.getVertexRadius();
+        if (size <= 0.0d) {
+            writeEmptyOutputs("Octahedron size must be > 0");
+            return;
+        }
+
         double edgeLength = size * Math.sqrt(2.0d);
         double surfaceArea = 2.0d * Math.sqrt(3.0d) * edgeLength * edgeLength;
         double volume = (Math.sqrt(2.0d) / 3.0d) * edgeLength * edgeLength * edgeLength;
@@ -84,19 +83,13 @@ public class DeconstructOctahedronNode extends BaseNode {
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
         outputValues.put(OUTPUT_ORIENTATION_ID, octahedron.getOrientationMatrix());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_SIZE_ID, 0.0d);
-        outputValues.put(OUTPUT_VERTICES_ID, java.util.List.of());
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_ORIENTATION_ID, new Matrix3d().identity());
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
+        putEmptyListOutputs(OUTPUT_VERTICES_ID);
+        putDoubleOutputs(0.0d, OUTPUT_SIZE_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        markInvalid(reason);
     }
 }
-

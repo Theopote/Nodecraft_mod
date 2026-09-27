@@ -3,20 +3,15 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
-import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3d;
-import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,9 +19,9 @@ import java.util.UUID;
     displayName = "Deconstruct Tetrahedron",
     description = "Extracts center, edge length, vertices, bounds, and analytical values from tetrahedron geometry",
     category = "geometry.primitives",
-    order = 17
+    order = 25
 )
-public class DeconstructTetrahedronNode extends BaseNode {
+public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_TETRAHEDRON_ID = "input_tetrahedron";
 
@@ -39,10 +34,9 @@ public class DeconstructTetrahedronNode extends BaseNode {
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
     private static final String OUTPUT_ORIENTATION_ID = "output_orientation";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructTetrahedronNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_tetrahedron");
+        super("geometry.primitives.deconstruct_tetrahedron");
 
         addInputPort(new BasePort(INPUT_TETRAHEDRON_ID, "Tetrahedron", "Tetrahedron geometry to deconstruct", NodeDataType.TETRAHEDRON_GEOMETRY, this));
 
@@ -54,8 +48,8 @@ public class DeconstructTetrahedronNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular tetrahedron volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame ->?world)", NodeDataType.MATRIX3, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when tetrahedron input is present", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -67,11 +61,16 @@ public class DeconstructTetrahedronNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object tetrahedronObj = inputValues.get(INPUT_TETRAHEDRON_ID);
         if (!(tetrahedronObj instanceof TetrahedronGeometryData tetrahedron)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid tetrahedron geometry is required");
             return;
         }
 
         double edgeLength = tetrahedron.getEdgeLength();
+        if (edgeLength <= 0.0d) {
+            writeEmptyOutputs("Tetrahedron edge length must be > 0");
+            return;
+        }
+
         double surfaceArea = Math.sqrt(3.0d) * edgeLength * edgeLength;
         double volume = (edgeLength * edgeLength * edgeLength) / (6.0d * Math.sqrt(2.0d));
         RegionData region = GeometryVoxelizer.createBoundingRegion(tetrahedron);
@@ -86,20 +85,13 @@ public class DeconstructTetrahedronNode extends BaseNode {
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
         outputValues.put(OUTPUT_ORIENTATION_ID, tetrahedron.getOrientationMatrix());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_EDGE_ID, 0.0d);
-        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_VERTICES_ID, java.util.List.of());
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_ORIENTATION_ID, new Matrix3d().identity());
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
+        putEmptyListOutputs(OUTPUT_VERTICES_ID);
+        putDoubleOutputs(0.0d, OUTPUT_EDGE_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        markInvalid(reason);
     }
 }
-

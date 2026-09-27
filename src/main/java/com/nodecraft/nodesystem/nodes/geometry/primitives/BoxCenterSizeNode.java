@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.Map;
     effect = NodeEffect.PURE,
     id = "geometry.primitives.box",
     displayName = "Box by Center + Size",
-    description = "Constructs continuous box geometry from a center point and X/Y/Z sizes. Blocks/Region remain legacy convenience outputs.",
+    description = "Constructs continuous box geometry from a center point and X/Y/Z sizes.",
     category = "geometry.primitives",
     order = 0
 )
@@ -48,9 +49,9 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Box size along local X (continuous). 0 disables generation.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Box size along local Y (continuous). 0 disables generation.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Box size along local Z (continuous). 0 disables generation.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Box size along local X (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Box size along local Y (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Box size along local Z (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this));
@@ -58,7 +59,7 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     public String getDescription() {
-        return "Constructs continuous box geometry from a center point and X/Y/Z sizes";
+        return "Constructs continuous box geometry from a center point and X/Y/Z sizes.";
     }
 
     @Override
@@ -68,28 +69,40 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     protected BoxDefinition resolveBoxDefinition() {
-        Object centerObj = inputValues.get(INPUT_CENTER_ID);
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
-
-        Vector3d centerVector = resolveVectorInput(centerObj);
-        if (centerVector == null) {
-            centerVector = new Vector3d(centerX, centerY, centerZ);
+        Vector3d center = resolveOptionalPoint(INPUT_CENTER_ID, new Vector3d(centerX, centerY, centerZ));
+        if (center == null) {
+            failBox(isPortConnected(INPUT_CENTER_ID) ? "Center input is invalid" : "Box requires a finite center");
+            return null;
         }
 
-        double resolvedSizeX = resolveFiniteDouble(inputValues.get(INPUT_SIZE_X_ID), sizeX);
-        double resolvedSizeY = resolveFiniteDouble(inputValues.get(INPUT_SIZE_Y_ID), sizeY);
-        double resolvedSizeZ = resolveFiniteDouble(inputValues.get(INPUT_SIZE_Z_ID), sizeZ);
+        PlaneData plane = resolveOptionalPlane(INPUT_PLANE_ID, null);
+        if (isPortConnected(INPUT_PLANE_ID) && plane == null) {
+            failBox("Plane input is invalid");
+            return null;
+        }
 
-        double rotationX = resolveFiniteDouble(inputValues.get(INPUT_ROT_X_ID), 0.0d);
-        double rotationY = resolveFiniteDouble(inputValues.get(INPUT_ROT_Y_ID), 0.0d);
-        double rotationZ = resolveFiniteDouble(inputValues.get(INPUT_ROT_Z_ID), 0.0d);
+        Double resolvedSizeX = resolvePositiveDouble(INPUT_SIZE_X_ID, sizeX);
+        Double resolvedSizeY = resolvePositiveDouble(INPUT_SIZE_Y_ID, sizeY);
+        Double resolvedSizeZ = resolvePositiveDouble(INPUT_SIZE_Z_ID, sizeZ);
+        if (resolvedSizeX == null || resolvedSizeY == null || resolvedSizeZ == null) {
+            failBox("Box sizes must be finite and > 0");
+            return null;
+        }
+
+        Double rotationX = resolveFiniteDouble(INPUT_ROT_X_ID, 0.0d);
+        Double rotationY = resolveFiniteDouble(INPUT_ROT_Y_ID, 0.0d);
+        Double rotationZ = resolveFiniteDouble(INPUT_ROT_Z_ID, 0.0d);
+        if (rotationX == null || rotationY == null || rotationZ == null) {
+            failBox("Rotation inputs must be finite");
+            return null;
+        }
 
         return createContinuousCenterDefinition(
-            centerVector,
+            center,
             resolvedSizeX,
             resolvedSizeY,
             resolvedSizeZ,
-            planeObj,
+            plane,
             rotationX,
             rotationY,
             rotationZ
@@ -99,14 +112,6 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        Object parent = super.getNodeState();
-        if (parent instanceof Map<?, ?> parentMap) {
-            for (Map.Entry<?, ?> entry : parentMap.entrySet()) {
-                if (entry.getKey() != null) {
-                    state.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-        }
         state.put("centerX", centerX);
         state.put("centerY", centerY);
         state.put("centerZ", centerZ);
@@ -118,7 +123,6 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
 
     @Override
     public void setNodeState(Object state) {
-        super.setNodeState(state);
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }

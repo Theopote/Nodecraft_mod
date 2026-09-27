@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
@@ -15,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -23,9 +21,9 @@ import java.util.UUID;
     displayName = "Deconstruct Prism",
     description = "Extracts base polygon, top polygon, extrusion, side surface strip, and bounds from prism geometry",
     category = "geometry.primitives",
-    order = 18
+    order = 24
 )
-public class DeconstructPrismNode extends BaseNode {
+public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_PRISM_ID = "input_prism";
 
@@ -37,10 +35,9 @@ public class DeconstructPrismNode extends BaseNode {
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructPrismNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_prism");
+        super("geometry.primitives.deconstruct_prism");
 
         addInputPort(new BasePort(INPUT_PRISM_ID, "Prism", "Prism geometry to deconstruct", NodeDataType.PRISM_GEOMETRY, this));
 
@@ -52,7 +49,7 @@ public class DeconstructPrismNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Side surface strip between base and top polygons", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when prism input is present", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -64,7 +61,7 @@ public class DeconstructPrismNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object prismObj = inputValues.get(INPUT_PRISM_ID);
         if (!(prismObj instanceof PrismGeometryData prism)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid prism geometry is required");
             return;
         }
 
@@ -84,19 +81,14 @@ public class DeconstructPrismNode extends BaseNode {
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, prism.getSideSurfaceStrip());
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_EXTRUSION_VECTOR_ID, null);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_SIDE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putEmptyListOutputs(OUTPUT_BASE_POINTS_ID, OUTPUT_TOP_POINTS_ID);
+        putNullOutputs(OUTPUT_EXTRUSION_VECTOR_ID, OUTPUT_SURFACE_STRIP_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
+        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID);
+        putIntOutputs(0, OUTPUT_SIDE_COUNT_ID);
+        markInvalid(reason);
     }
 }
-

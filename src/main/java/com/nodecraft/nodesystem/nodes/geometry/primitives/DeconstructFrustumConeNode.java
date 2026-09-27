@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
@@ -11,10 +10,9 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -22,14 +20,15 @@ import java.util.UUID;
     displayName = "Deconstruct Frustum Cone",
     description = "Extracts axis, heights, radii, bounds, and analytical values from frustum cone geometry",
     category = "geometry.primitives",
-    order = 14
+    order = 21
 )
-public class DeconstructFrustumConeNode extends BaseNode {
+public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_FRUSTUM_ID = "input_frustum";
 
     private static final String OUTPUT_BASE_CENTER_ID = "output_base_center";
     private static final String OUTPUT_TOP_CENTER_ID = "output_top_center";
+    private static final String OUTPUT_AXIS_PATH_ID = "output_axis_path";
     private static final String OUTPUT_AXIS_VECTOR_ID = "output_axis_vector";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
     private static final String OUTPUT_BASE_RADIUS_ID = "output_base_radius";
@@ -42,15 +41,15 @@ public class DeconstructFrustumConeNode extends BaseNode {
     private static final String OUTPUT_VOLUME_ID = "output_volume";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructFrustumConeNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_frustum_cone");
+        super("geometry.primitives.deconstruct_frustum_cone");
 
         addInputPort(new BasePort(INPUT_FRUSTUM_ID, "Frustum", "Frustum cone geometry to deconstruct", NodeDataType.FRUSTUM_CONE_GEOMETRY, this));
 
         addOutputPort(new BasePort(OUTPUT_BASE_CENTER_ID, "Base Center", "Base face center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_TOP_CENTER_ID, "Top Center", "Top face center", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_AXIS_PATH_ID, "Axis Path", "Path through base and top centers", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_VECTOR_ID, "Axis Vector", "Axis from base to top", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Distance between face centers", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_BASE_RADIUS_ID, "Base Radius", "Base face radius", NodeDataType.DOUBLE, this));
@@ -63,7 +62,7 @@ public class DeconstructFrustumConeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frustum input is present", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -75,7 +74,13 @@ public class DeconstructFrustumConeNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object frustumObj = inputValues.get(INPUT_FRUSTUM_ID);
         if (!(frustumObj instanceof FrustumConeGeometryData frustum)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid frustum geometry is required");
+            return;
+        }
+
+        String error = PrimitiveGeometryValidator.validateFrustum(frustum);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
@@ -99,6 +104,7 @@ public class DeconstructFrustumConeNode extends BaseNode {
 
         outputValues.put(OUTPUT_BASE_CENTER_ID, new PointData(baseCenter));
         outputValues.put(OUTPUT_TOP_CENTER_ID, new PointData(topCenter));
+        outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(baseCenter, topCenter));
         outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_BASE_RADIUS_ID, rb);
@@ -111,25 +117,29 @@ public class DeconstructFrustumConeNode extends BaseNode {
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_BASE_CENTER_ID, null);
-        outputValues.put(OUTPUT_TOP_CENTER_ID, null);
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, null);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_BASE_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_TOP_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_SLANT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_BASE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_TOP_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_LATERAL_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(
+            OUTPUT_BASE_CENTER_ID,
+            OUTPUT_TOP_CENTER_ID,
+            OUTPUT_AXIS_PATH_ID,
+            OUTPUT_AXIS_VECTOR_ID,
+            OUTPUT_REGION_ID,
+            OUTPUT_BOUNDING_BOX_ID
+        );
+        putDoubleOutputs(0.0d,
+            OUTPUT_HEIGHT_ID,
+            OUTPUT_BASE_RADIUS_ID,
+            OUTPUT_TOP_RADIUS_ID,
+            OUTPUT_SLANT_HEIGHT_ID,
+            OUTPUT_BASE_AREA_ID,
+            OUTPUT_TOP_AREA_ID,
+            OUTPUT_LATERAL_AREA_ID,
+            OUTPUT_SURFACE_AREA_ID,
+            OUTPUT_VOLUME_ID
+        );
+        markInvalid(reason);
     }
 }
-

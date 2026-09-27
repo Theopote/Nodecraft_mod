@@ -15,7 +15,7 @@ import java.util.List;
     displayName = "Icosahedron By Center Edge",
     description = "Constructs a regular icosahedron from a center point, edge length, and optional orientation",
     category = "geometry.primitives",
-    order = 23
+    order = 15
 )
 public class IcosahedronByCenterEdgeNode extends AbstractPolyhedronNode<IcosahedronGeometryData> {
 

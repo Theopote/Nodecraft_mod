@@ -238,7 +238,8 @@ class GeometryProfilesLanguageContractTest {
         graph.nodes = List.of(hull);
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V73, migrated.formatVersion);
+        assertTrue(migrated.formatVersion >= GraphFormatVersion.V73);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals("geometry.analysis.convex_hull_3d", migrated.nodes.getFirst().typeId);
     }
 

@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
@@ -14,17 +13,15 @@ import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.UUID;
-
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.primitives.deconstruct_hemisphere",
     displayName = "Deconstruct Hemisphere",
     description = "Extracts center, axis, radius, bounds, and analytical values from hemisphere geometry",
     category = "geometry.primitives",
-    order = 19
+    order = 22
 )
-public class DeconstructHemisphereNode extends BaseNode {
+public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_HEMISPHERE_ID = "input_hemisphere";
 
@@ -37,10 +34,9 @@ public class DeconstructHemisphereNode extends BaseNode {
     private static final String OUTPUT_VOLUME_ID = "output_volume";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructHemisphereNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_hemisphere");
+        super("geometry.primitives.deconstruct_hemisphere");
 
         addInputPort(new BasePort(INPUT_HEMISPHERE_ID, "Hemisphere", "Hemisphere geometry to deconstruct", NodeDataType.HEMISPHERE_GEOMETRY, this));
 
@@ -53,7 +49,7 @@ public class DeconstructHemisphereNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Solid hemisphere volume (2/3 πR³)", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when hemisphere input is present", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -65,13 +61,18 @@ public class DeconstructHemisphereNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object hemisphereObj = inputValues.get(INPUT_HEMISPHERE_ID);
         if (!(hemisphereObj instanceof HemisphereGeometryData hemisphere)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid hemisphere geometry is required");
             return;
         }
 
         Vector3d center = hemisphere.center();
         Vector3d axis = hemisphere.axis();
         double r = hemisphere.radius();
+        if (r <= 0.0d) {
+            writeEmptyOutputs("Hemisphere radius must be > 0");
+            return;
+        }
+
         double curved = 2.0d * Math.PI * r * r;
         double flat = Math.PI * r * r;
         double surface = curved + flat;
@@ -89,20 +90,18 @@ public class DeconstructHemisphereNode extends BaseNode {
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_AXIS_ID, null);
-        outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_CURVED_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_FLAT_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_AXIS_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
+        putDoubleOutputs(0.0d,
+            OUTPUT_RADIUS_ID,
+            OUTPUT_CURVED_AREA_ID,
+            OUTPUT_FLAT_AREA_ID,
+            OUTPUT_SURFACE_AREA_ID,
+            OUTPUT_VOLUME_ID
+        );
+        markInvalid(reason);
     }
 }
-

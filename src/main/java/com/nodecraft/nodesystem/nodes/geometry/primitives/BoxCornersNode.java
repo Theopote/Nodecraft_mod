@@ -38,12 +38,19 @@ public class BoxCornersNode extends AbstractBoxGeneratorNode {
 
     @Override
     protected BoxDefinition resolveBoxDefinition() {
-        Object cornerAObj = inputValues.get(INPUT_CORNER_A_ID);
-        Object cornerBObj = inputValues.get(INPUT_CORNER_B_ID);
+        Vector3d cornerA = resolveOptionalPoint(INPUT_CORNER_A_ID, null);
+        if (cornerA == null) {
+            failBox(isPortConnected(INPUT_CORNER_A_ID)
+                ? "Corner A input is invalid"
+                : "Box requires corner A");
+            return null;
+        }
 
-        Vector3d cornerA = resolveVectorInput(cornerAObj);
-        Vector3d cornerB = resolveVectorInput(cornerBObj);
-        if (cornerA == null || cornerB == null) {
+        Vector3d cornerB = resolveOptionalPoint(INPUT_CORNER_B_ID, null);
+        if (cornerB == null) {
+            failBox(isPortConnected(INPUT_CORNER_B_ID)
+                ? "Corner B input is invalid"
+                : "Box requires corner B");
             return null;
         }
 

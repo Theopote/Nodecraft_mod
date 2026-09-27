@@ -461,8 +461,14 @@ public final class GraphFormatVersion {
      */
     public static final int V73 = 73;
 
+    /**
+     * Primitive Geometry Language v1: Valid+Error on 29 nodes, BOX_FACE_LIST, PATH not LINE,
+     * Box continuous-only (no Blocks/Region), Capsule/Torus fail-closed, orders 0–28.
+     */
+    public static final int V74 = 74;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V73;
+    public static final int CURRENT = V74;
 
     private GraphFormatVersion() {
     }

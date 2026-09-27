@@ -132,6 +132,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V70 -> migrateV70ToV71(graph);
             case GraphFormatVersion.V71 -> migrateV71ToV72(graph);
             case GraphFormatVersion.V72 -> migrateV72ToV73(graph);
+            case GraphFormatVersion.V73 -> migrateV73ToV74(graph);
             default -> graph;
         };
     }
@@ -5044,6 +5045,107 @@ public final class GraphMigrationRegistry {
             if (LEGACY_CONVEX_HULL_3D_PROFILE_TYPE.equals(node.typeId)) {
                 node.typeId = CONVEX_HULL_3D_ANALYSIS_TYPE;
             }
+        }
+    }
+
+    private static final Set<String> PRIMITIVES_V74_BOX_TYPES = Set.of(
+            "geometry.primitives.box",
+            "geometry.primitives.box_from_corner_size",
+            "geometry.primitives.box_from_corners"
+    );
+
+    private static final Set<String> PRIMITIVES_V74_REMOVED_BOX_OUTPUTS = Set.of(
+            "output_box_blocks",
+            "output_region",
+            "output_min_corner",
+            "output_max_corner",
+            "output_count"
+    );
+
+    /**
+     * Primitive Geometry Language v1: drop Box voxel convenience ports, remap LINE → PATH ids,
+     * strip Fill Box / Output Region Only state.
+     */
+    private static SavedGraph migrateV73ToV74(SavedGraph graph) {
+        applyPrimitivesV74PortMigration(graph);
+        applyPrimitivesV74NodeStateMigration(graph);
+        return graph;
+    }
+
+    private static void applyPrimitivesV74PortMigration(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return;
+        }
+
+        Map<String, String> nodeTypes = new HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypes.put(node.nodeId, node.typeId);
+            }
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypes.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId;
+            if (sourcePort == null) {
+                continue;
+            }
+
+            String remapped = remapPrimitivesV74SourcePort(sourceType, sourcePort);
+            if (remapped == null) {
+                continue;
+            }
+            connection.sourcePortId = remapped;
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static @Nullable String remapPrimitivesV74SourcePort(@Nullable String sourceType, String sourcePort) {
+        if (sourceType != null && PRIMITIVES_V74_BOX_TYPES.contains(sourceType)
+                && PRIMITIVES_V74_REMOVED_BOX_OUTPUTS.contains(sourcePort)) {
+            return null;
+        }
+
+        if (sourceType != null && sourceType.startsWith("geometry.primitives.")) {
+            return switch (sourcePort) {
+                case "output_axis_line" -> "output_axis_path";
+                case "output_diameter_line" -> "output_diameter_path";
+                default -> sourcePort;
+            };
+        }
+        return sourcePort;
+    }
+
+    private static void applyPrimitivesV74NodeStateMigration(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.state == null || node.typeId == null) {
+                continue;
+            }
+            if (!PRIMITIVES_V74_BOX_TYPES.contains(node.typeId)) {
+                continue;
+            }
+            if (!(node.state instanceof Map<?, ?> map)) {
+                continue;
+            }
+            Map<String, Object> copy = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!(entry.getKey() instanceof String key)) {
+                    continue;
+                }
+                if ("fillBox".equals(key) || "outputAsRegion".equals(key)) {
+                    continue;
+                }
+                copy.put(key, entry.getValue());
+            }
+            node.state = copy;
         }
     }
 

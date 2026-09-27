@@ -110,6 +110,10 @@ class GeometrySampleLanguageContractTest {
     void boxKeepsContinuousCenterInGeometry() {
         BaseNode box = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.primitives.box");
         assertNotNull(box);
+        connectInput(box, "input_center", NodeDataType.POINT);
+        connectInput(box, "input_size_x", NodeDataType.DOUBLE);
+        connectInput(box, "input_size_y", NodeDataType.DOUBLE);
+        connectInput(box, "input_size_z", NodeDataType.DOUBLE);
         box.setInput("input_center", new PointData(10.8d, 64.7d, 20.4d));
         box.setInput("input_size_x", 4.0d);
         box.setInput("input_size_y", 4.0d);

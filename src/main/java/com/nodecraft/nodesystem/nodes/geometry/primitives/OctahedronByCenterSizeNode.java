@@ -15,7 +15,7 @@ import java.util.List;
     displayName = "Octahedron By Center Size",
     description = "Constructs octahedron geometry from a center point, vertex radius, and optional orientation",
     category = "geometry.primitives",
-    order = 10
+    order = 14
 )
 public class OctahedronByCenterSizeNode extends AbstractPolyhedronNode<OctahedronGeometryData> {
 

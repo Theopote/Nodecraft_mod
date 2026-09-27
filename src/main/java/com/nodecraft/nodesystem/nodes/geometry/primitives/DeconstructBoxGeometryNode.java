@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
@@ -14,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -22,9 +20,9 @@ import java.util.UUID;
     displayName = "Deconstruct Box Geometry",
     description = "Extracts center, half extents, orientation, corners, and faces from box geometry",
     category = "geometry.primitives",
-    order = 10
+    order = 17
 )
-public class DeconstructBoxGeometryNode extends BaseNode {
+public class DeconstructBoxGeometryNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
 
@@ -42,7 +40,7 @@ public class DeconstructBoxGeometryNode extends BaseNode {
     private static final String OUTPUT_Z_AXIS_ID = "output_z_axis";
 
     public DeconstructBoxGeometryNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_box");
+        super("geometry.primitives.deconstruct_box");
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The box geometry to deconstruct", NodeDataType.BOX_GEOMETRY, this));
 
@@ -50,14 +48,15 @@ public class DeconstructBoxGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_HALF_EXTENTS_ID, "Half Extents", "Half size along local X/Y/Z", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_IS_ORIENTED_ID, "Is Oriented", "Whether the box uses an oriented basis", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_CORNERS_ID, "Corners", "Ordered list of the 8 box corners", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CORNER_NAMES_ID, "Corner Names", "Names that correspond to the ordered corner list", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_FACES_ID, "Faces", "Ordered list of the 6 box faces", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_FACE_NAMES_ID, "Face Names", "Names that correspond to the ordered face list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNER_NAMES_ID, "Corner Names", "Names that correspond to the ordered corner list", NodeDataType.STRING_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FACES_ID, "Faces", "Ordered list of the 6 box faces", NodeDataType.BOX_FACE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FACE_NAMES_ID, "Face Names", "Names that correspond to the ordered face list", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CORNER_COUNT_ID, "Corner Count", "Number of corners in the box definition", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_FACE_COUNT_ID, "Face Count", "Number of faces in the box definition", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_X_AXIS_ID, "X Axis", "Local X axis in world space", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_Y_AXIS_ID, "Y Axis", "Local Y axis in world space", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_Z_AXIS_ID, "Z Axis", "Local Z axis in world space", NodeDataType.VECTOR, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -69,18 +68,7 @@ public class DeconstructBoxGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
         if (!(geometryObj instanceof BoxGeometryData geometry)) {
-            outputValues.put(OUTPUT_CENTER_ID, null);
-            outputValues.put(OUTPUT_HALF_EXTENTS_ID, null);
-            outputValues.put(OUTPUT_IS_ORIENTED_ID, false);
-            outputValues.put(OUTPUT_CORNERS_ID, List.of());
-            outputValues.put(OUTPUT_CORNER_NAMES_ID, List.of());
-            outputValues.put(OUTPUT_FACES_ID, List.of());
-            outputValues.put(OUTPUT_FACE_NAMES_ID, List.of());
-            outputValues.put(OUTPUT_CORNER_COUNT_ID, 0);
-            outputValues.put(OUTPUT_FACE_COUNT_ID, 0);
-            outputValues.put(OUTPUT_X_AXIS_ID, null);
-            outputValues.put(OUTPUT_Y_AXIS_ID, null);
-            outputValues.put(OUTPUT_Z_AXIS_ID, null);
+            writeEmptyOutputs("Valid box geometry is required");
             return;
         }
 
@@ -106,5 +94,14 @@ public class DeconstructBoxGeometryNode extends BaseNode {
         outputValues.put(OUTPUT_X_AXIS_ID, xAxis);
         outputValues.put(OUTPUT_Y_AXIS_ID, yAxis);
         outputValues.put(OUTPUT_Z_AXIS_ID, zAxis);
+        markSuccess();
+    }
+
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_HALF_EXTENTS_ID, OUTPUT_X_AXIS_ID, OUTPUT_Y_AXIS_ID, OUTPUT_Z_AXIS_ID);
+        outputValues.put(OUTPUT_IS_ORIENTED_ID, false);
+        putEmptyListOutputs(OUTPUT_CORNERS_ID, OUTPUT_CORNER_NAMES_ID, OUTPUT_FACES_ID, OUTPUT_FACE_NAMES_ID);
+        putIntOutputs(0, OUTPUT_CORNER_COUNT_ID, OUTPUT_FACE_COUNT_ID);
+        markInvalid(reason);
     }
 }

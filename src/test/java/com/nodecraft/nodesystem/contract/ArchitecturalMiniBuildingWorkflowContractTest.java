@@ -56,10 +56,14 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
     void miniBuildingChainProducesVoxelPreviewableGeometry() {
         // Volume box defines shared footprint / wall / roof faces.
         BaseNode volume = (BaseNode) registry.createNodeInstance("geometry.primitives.box_from_corner_size");
-        volume.setInput("input_corner", new Vector3d(0.0d, 0.0d, 0.0d));
-        volume.setInput("input_size_x", 10.0d);
-        volume.setInput("input_size_y", 3.0d);
-        volume.setInput("input_size_z", 8.0d);
+        volume.setNodeState(java.util.Map.of(
+            "cornerX", 0.0d,
+            "cornerY", 0.0d,
+            "cornerZ", 0.0d,
+            "sizeX", 10.0d,
+            "sizeY", 3.0d,
+            "sizeZ", 8.0d
+        ));
         volume.processNode(null);
 
         BoxGeometryData box = assertInstanceOf(BoxGeometryData.class, volume.getOutput("output_box_geometry"));

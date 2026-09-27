@@ -3,18 +3,13 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,7 +19,7 @@ import java.util.UUID;
     category = "geometry.primitives",
     order = 4
 )
-public class SphereByDiameterNode extends BaseNode {
+public class SphereByDiameterNode extends AbstractPrimitiveNode {
 
     private static final String INPUT_START_ID = "input_start";
     private static final String INPUT_END_ID = "input_end";
@@ -34,11 +29,10 @@ public class SphereByDiameterNode extends BaseNode {
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_RADIUS_ID = "output_radius";
     private static final String OUTPUT_DIAMETER_ID = "output_diameter";
-    private static final String OUTPUT_DIAMETER_LINE_ID = "output_diameter_line";
-    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_DIAMETER_PATH_ID = "output_diameter_path";
 
     public SphereByDiameterNode() {
-        super(UUID.randomUUID(), "geometry.primitives.sphere_from_diameter");
+        super("geometry.primitives.sphere_from_diameter");
 
         addInputPort(new BasePort(INPUT_START_ID, "Point A", "First diameter endpoint", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_END_ID, "Point B", "Second diameter endpoint", NodeDataType.POINT, this));
@@ -48,8 +42,8 @@ public class SphereByDiameterNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved sphere center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Resolved radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_DIAMETER_ID, "Diameter", "Diameter length", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_DIAMETER_LINE_ID, "Diameter Line", "Line segment between both diameter endpoints", NodeDataType.LINE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a sphere could be constructed", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_DIAMETER_PATH_ID, "Diameter Path", "Path between both diameter endpoints", NodeDataType.PATH, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -59,75 +53,50 @@ public class SphereByDiameterNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object startInput = inputValues.get(INPUT_START_ID);
-        Object endInput = inputValues.get(INPUT_END_ID);
-
-        Vector3d start = resolvePoint(startInput);
-        Vector3d end = resolvePoint(endInput);
-
-        if (start == null || end == null) {
-            LineData diameterLine = extractLine(startInput);
-            if (diameterLine == null) {
-                diameterLine = extractLine(endInput);
-            }
-            if (diameterLine != null) {
-                Vec3d lineStart = diameterLine.start();
-                Vec3d lineEnd = diameterLine.end();
-                if (start == null) {
-                    start = new Vector3d(lineStart.x, lineStart.y, lineStart.z);
-                }
-                if (end == null) {
-                    end = new Vector3d(lineEnd.x, lineEnd.y, lineEnd.z);
-                }
-            }
+        Vector3d start = resolveOptionalPoint(INPUT_START_ID, null);
+        if (start == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_START_ID)
+                ? "Point A input is invalid"
+                : "Sphere diameter requires point A");
+            return;
         }
 
-        if (start == null || end == null) {
-            writeEmptyOutputs();
+        Vector3d end = resolveOptionalPoint(INPUT_END_ID, null);
+        if (end == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_END_ID)
+                ? "Point B input is invalid"
+                : "Sphere diameter requires point B");
+            return;
+        }
+
+        if (start.distance(end) <= PrimitiveGeometryValidator.AXIS_EPS) {
+            writeEmptyOutputs("Diameter endpoints must be distinct");
             return;
         }
 
         Vector3d center = new Vector3d(start).add(end).mul(0.5d);
         double diameter = start.distance(end);
         double radius = diameter * 0.5d;
-        if (!Double.isFinite(diameter) || diameter <= 1.0e-9d || !Double.isFinite(radius) || radius <= 0.0d) {
-            writeEmptyOutputs();
+
+        String error = PrimitiveGeometryValidator.validateSphere(center, radius);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
         SphereData sphere = new SphereData(center, radius);
-        LineData diameterLine = new LineData(
-            new Vec3d(start.x, start.y, start.z),
-            new Vec3d(end.x, end.y, end.z)
-        );
-
         outputValues.put(OUTPUT_SPHERE_ID, sphere);
         outputValues.put(OUTPUT_GEOMETRY_ID, sphere);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_DIAMETER_ID, diameter);
-        outputValues.put(OUTPUT_DIAMETER_LINE_ID, diameterLine);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_DIAMETER_PATH_ID, pathFromLine(start, end));
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SPHERE_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_DIAMETER_ID, 0.0d);
-        outputValues.put(OUTPUT_DIAMETER_LINE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
-    }
-
-    private LineData extractLine(Object value) {
-        if (value instanceof LineData lineData) {
-            return lineData;
-        }
-        return null;
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_SPHERE_ID, OUTPUT_GEOMETRY_ID, OUTPUT_CENTER_ID, OUTPUT_DIAMETER_PATH_ID);
+        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID, OUTPUT_DIAMETER_ID);
+        markInvalid(reason);
     }
 }

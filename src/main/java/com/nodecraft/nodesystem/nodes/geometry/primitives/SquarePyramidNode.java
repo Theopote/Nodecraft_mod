@@ -4,22 +4,18 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Vector3;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -27,9 +23,9 @@ import java.util.UUID;
     displayName = "Square Pyramid",
     description = "Constructs square pyramid geometry from a base center, base size, height, and plane",
     category = "geometry.primitives",
-    order = 14
+    order = 12
 )
-public class SquarePyramidNode extends BaseNode {
+public class SquarePyramidNode extends AbstractPrimitiveNode {
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_BASE_SIZE_ID = "input_base_size";
@@ -43,7 +39,6 @@ public class SquarePyramidNode extends BaseNode {
     private static final String OUTPUT_BASE_SIZE_ID = "output_base_size";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
     private static final String OUTPUT_PLANE_ID = "output_plane";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Base Center X", category = "Center", order = 1)
     private double centerX = 0.0d;
@@ -59,7 +54,7 @@ public class SquarePyramidNode extends BaseNode {
     private double height = 5.0d;
 
     public SquarePyramidNode() {
-        super(UUID.randomUUID(), "geometry.primitives.square_pyramid");
+        super("geometry.primitives.square_pyramid");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Base Center", "Center point of the square base", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_BASE_SIZE_ID, "Base Size", "Length of each base edge", NodeDataType.DOUBLE, this));
@@ -73,7 +68,7 @@ public class SquarePyramidNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BASE_SIZE_ID, "Base Size", "Resolved base size", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Resolved height", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved base plane", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the pyramid could be constructed", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -83,27 +78,36 @@ public class SquarePyramidNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolveCenter();
-        double resolvedBaseSize = resolveDouble(inputValues.get(INPUT_BASE_SIZE_ID), baseSize);
-        double resolvedHeight = resolveDouble(inputValues.get(INPUT_HEIGHT_ID), height);
-        PlaneData plane = inputValues.get(INPUT_PLANE_ID) instanceof PlaneData p ? p : PlaneData.XZ_PLANE;
-        Vector3d preferredXAxis = resolveDirection(inputValues.get(INPUT_X_AXIS_ID));
-
+        Vector3d center = resolveOptionalPoint(INPUT_CENTER_ID, new Vector3d(centerX, centerY, centerZ));
         if (center == null) {
-            writeEmptyOutputs();
+            writeEmptyOutputs(isPortConnected(INPUT_CENTER_ID)
+                ? "Base center input is invalid"
+                : "Square pyramid requires a finite base center");
             return;
         }
 
-        double baseSize = resolvedBaseSize;
-        double height = resolvedHeight;
-        if (!Double.isFinite(baseSize) || !Double.isFinite(height) || baseSize <= 0.0d || height <= 0.0d) {
-            writeEmptyOutputs();
+        Double resolvedBaseSize = resolvePositiveDouble(INPUT_BASE_SIZE_ID, baseSize);
+        Double resolvedHeight = resolvePositiveDouble(INPUT_HEIGHT_ID, height);
+        if (resolvedBaseSize == null || resolvedHeight == null) {
+            writeEmptyOutputs("Base size and height must be finite and > 0");
+            return;
+        }
+
+        PlaneData plane = resolveOptionalPlane(INPUT_PLANE_ID, PlaneData.XZ_PLANE);
+        if (isPortConnected(INPUT_PLANE_ID) && plane == null) {
+            writeEmptyOutputs("Plane input is invalid");
+            return;
+        }
+
+        Vector3d preferredXAxis = resolveOptionalVector(INPUT_X_AXIS_ID, null);
+        if (isPortConnected(INPUT_X_AXIS_ID) && preferredXAxis == null) {
+            writeEmptyOutputs("X axis input must be a usable vector");
             return;
         }
 
         Basis basis = createBasis(plane, preferredXAxis);
         if (basis == null) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Square pyramid basis could not be constructed");
             return;
         }
 
@@ -113,27 +117,24 @@ public class SquarePyramidNode extends BaseNode {
             basis.xAxis,
             basis.yAxis,
             basis.normal,
-            baseSize,
-            height
+            resolvedBaseSize,
+            resolvedHeight
         );
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_APEX_ID, new PointData(geometry.getApex()));
         outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(geometry.getBaseVertices()));
-        outputValues.put(OUTPUT_BASE_SIZE_ID, baseSize);
-        outputValues.put(OUTPUT_HEIGHT_ID, height);
+        outputValues.put(OUTPUT_BASE_SIZE_ID, resolvedBaseSize);
+        outputValues.put(OUTPUT_HEIGHT_ID, resolvedHeight);
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_APEX_ID, null);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BASE_SIZE_ID, 0.0d);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_APEX_ID, OUTPUT_PLANE_ID);
+        putEmptyListOutputs(OUTPUT_BASE_POINTS_ID);
+        putDoubleOutputs(0.0d, OUTPUT_BASE_SIZE_ID, OUTPUT_HEIGHT_ID);
+        markInvalid(reason);
     }
 
     private Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {
@@ -170,31 +171,6 @@ public class SquarePyramidNode extends BaseNode {
             ? new Vector3d(0.0d, 0.0d, 1.0d)
             : new Vector3d(0.0d, 1.0d, 0.0d);
         return reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
-    }
-
-    private @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        return null;
-    }
-
-    private Vector3d resolveCenter() {
-        Vector3d fromPort = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
-        return fromPort != null ? fromPort : new Vector3d(centerX, centerY, centerZ);
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
     }
 
     @Override

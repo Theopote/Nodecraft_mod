@@ -3,20 +3,15 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix3d;
-import org.joml.Vector3d;
-
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,9 +19,9 @@ import java.util.UUID;
     displayName = "Deconstruct Dodecahedron",
     description = "Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry",
     category = "geometry.primitives",
-    order = 26
+    order = 28
 )
-public class DeconstructDodecahedronNode extends BaseNode {
+public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_DODECAHEDRON_ID = "input_dodecahedron";
 
@@ -39,10 +34,9 @@ public class DeconstructDodecahedronNode extends BaseNode {
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
     private static final String OUTPUT_ORIENTATION_ID = "output_orientation";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructDodecahedronNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_dodecahedron");
+        super("geometry.primitives.deconstruct_dodecahedron");
 
         addInputPort(new BasePort(INPUT_DODECAHEDRON_ID, "Dodecahedron", "Dodecahedron geometry to deconstruct", NodeDataType.DODECAHEDRON_GEOMETRY, this));
 
@@ -54,8 +48,8 @@ public class DeconstructDodecahedronNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame ->?world)", NodeDataType.MATRIX3, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when input is present", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -67,18 +61,23 @@ public class DeconstructDodecahedronNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object obj = inputValues.get(INPUT_DODECAHEDRON_ID);
         if (!(obj instanceof DodecahedronGeometryData dodeca)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid dodecahedron geometry is required");
             return;
         }
 
-        double a = dodeca.getEdgeLength();
-        double surface = 3.0d * Math.sqrt(25.0d + 10.0d * Math.sqrt(5.0d)) * a * a;
-        double volume = ((15.0d + 7.0d * Math.sqrt(5.0d)) / 4.0d) * a * a * a;
+        double edgeLength = dodeca.getEdgeLength();
+        if (edgeLength <= 0.0d) {
+            writeEmptyOutputs("Dodecahedron edge length must be > 0");
+            return;
+        }
+
+        double surface = 3.0d * Math.sqrt(25.0d + 10.0d * Math.sqrt(5.0d)) * edgeLength * edgeLength;
+        double volume = ((15.0d + 7.0d * Math.sqrt(5.0d)) / 4.0d) * edgeLength * edgeLength * edgeLength;
         RegionData region = GeometryVoxelizer.createBoundingRegion(dodeca);
         BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(dodeca.getCenter()));
-        outputValues.put(OUTPUT_EDGE_LENGTH_ID, a);
+        outputValues.put(OUTPUT_EDGE_LENGTH_ID, edgeLength);
         outputValues.put(OUTPUT_CIRCUMRADIUS_ID, dodeca.getCircumradius());
         outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(dodeca.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
@@ -86,20 +85,13 @@ public class DeconstructDodecahedronNode extends BaseNode {
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
         outputValues.put(OUTPUT_ORIENTATION_ID, dodeca.getOrientationMatrix());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_EDGE_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_VERTICES_ID, java.util.List.of());
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_ORIENTATION_ID, new Matrix3d().identity());
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
+        putEmptyListOutputs(OUTPUT_VERTICES_ID);
+        putDoubleOutputs(0.0d, OUTPUT_EDGE_LENGTH_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        markInvalid(reason);
     }
 }
-

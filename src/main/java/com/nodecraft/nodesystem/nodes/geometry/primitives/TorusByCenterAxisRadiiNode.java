@@ -4,19 +4,15 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import com.nodecraft.nodesystem.util.Vector3;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,9 +20,9 @@ import java.util.UUID;
     displayName = "Torus By Center Axis Radii",
     description = "Constructs torus geometry from a center point, symmetry axis direction, major radius, and tube (minor) radius",
     category = "geometry.primitives",
-    order = 6
+    order = 10
 )
-public class TorusByCenterAxisRadiiNode extends BaseNode {
+public class TorusByCenterAxisRadiiNode extends AbstractPrimitiveNode {
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_AXIS_ID = "input_axis";
@@ -38,7 +34,6 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
     private static final String OUTPUT_AXIS_NORMALIZED_ID = "output_axis_normalized";
     private static final String OUTPUT_MAJOR_RADIUS_ID = "output_major_radius";
     private static final String OUTPUT_MINOR_RADIUS_ID = "output_minor_radius";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Center X", category = "Center", order = 1)
     private double centerX = 0.0d;
@@ -61,7 +56,7 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
     private double minorRadius = 1.0d;
 
     public TorusByCenterAxisRadiiNode() {
-        super(UUID.randomUUID(), "geometry.primitives.torus");
+        super("geometry.primitives.torus");
 
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Torus center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Symmetry axis direction (tube runs around this axis)", NodeDataType.VECTOR, this));
@@ -73,7 +68,7 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_AXIS_NORMALIZED_ID, "Axis Normalized", "Unit axis direction stored on the torus", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_MAJOR_RADIUS_ID, "Major Radius", "Resolved major radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_MINOR_RADIUS_ID, "Minor Radius", "Resolved minor radius", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a torus could be constructed", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -83,16 +78,32 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolveCenter();
-        Vector3d axis = resolveAxis();
-        double major = resolveDouble(inputValues.get(INPUT_MAJOR_RADIUS_ID), majorRadius);
-        double minor = resolveDouble(inputValues.get(INPUT_MINOR_RADIUS_ID), minorRadius);
+        Vector3d center = resolveOptionalPoint(INPUT_CENTER_ID, new Vector3d(centerX, centerY, centerZ));
+        if (center == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_CENTER_ID)
+                ? "Center input is invalid"
+                : "Torus requires a finite center");
+            return;
+        }
 
-        if (center == null || axis == null
-                || !Double.isFinite(major) || !Double.isFinite(minor)
-                || major <= 0.0d || minor <= 0.0d
-                || axis.length() <= 1.0e-9d) {
-            writeEmptyOutputs();
+        Vector3d axis = resolveOptionalUsableAxis(INPUT_AXIS_ID, new Vector3d(axisX, axisY, axisZ));
+        if (axis == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_AXIS_ID)
+                ? "Axis input must be a usable direction"
+                : "Torus requires a usable symmetry axis");
+            return;
+        }
+
+        Double major = resolvePositiveDouble(INPUT_MAJOR_RADIUS_ID, majorRadius);
+        Double minor = resolvePositiveDouble(INPUT_MINOR_RADIUS_ID, minorRadius);
+        if (major == null || minor == null) {
+            writeEmptyOutputs("Torus radii must be finite and > 0");
+            return;
+        }
+
+        String error = PrimitiveGeometryValidator.validateRingTorus(center, axis, major, minor);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
@@ -102,43 +113,13 @@ public class TorusByCenterAxisRadiiNode extends BaseNode {
         outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, torus.axis());
         outputValues.put(OUTPUT_MAJOR_RADIUS_ID, major);
         outputValues.put(OUTPUT_MINOR_RADIUS_ID, minor);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Vector3d resolveCenter() {
-        Vector3d fromPort = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
-        return fromPort != null ? fromPort : new Vector3d(centerX, centerY, centerZ);
-    }
-
-    private Vector3d resolveAxis() {
-        Object value = inputValues.get(INPUT_AXIS_ID);
-        // VECTOR only — never treat a Point / Plane / Line as an axis.
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        return new Vector3d(axisX, axisY, axisZ);
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_TORUS_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, null);
-        outputValues.put(OUTPUT_MAJOR_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_MINOR_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_TORUS_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_NORMALIZED_ID);
+        putDoubleOutputs(0.0d, OUTPUT_MAJOR_RADIUS_ID, OUTPUT_MINOR_RADIUS_ID);
+        markInvalid(reason);
     }
 
     @Override

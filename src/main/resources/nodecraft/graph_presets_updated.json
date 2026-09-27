@@ -522,13 +522,13 @@
             },
             {
               "fromRef": "span_path",
-              "fromPort": "output_diameter_line",
+              "fromPort": "output_diameter_path",
               "toRef": "deck",
               "toPort": "input_path"
             },
             {
               "fromRef": "span_path",
-              "fromPort": "output_diameter_line",
+              "fromPort": "output_diameter_path",
               "toRef": "railings",
               "toPort": "input_path"
             },
@@ -3223,7 +3223,7 @@
             },
             {
               "fromRef": "stair_path",
-              "fromPort": "output_diameter_line",
+              "fromPort": "output_diameter_path",
               "toRef": "staircase",
               "toPort": "input_path"
             },
@@ -3510,7 +3510,7 @@
             },
             {
               "fromRef": "stair_path",
-              "fromPort": "output_diameter_line",
+              "fromPort": "output_diameter_path",
               "toRef": "staircase",
               "toPort": "input_path"
             },

@@ -4,19 +4,15 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -24,9 +20,9 @@ import java.util.UUID;
     displayName = "Cone By Base Apex Radius",
     description = "Constructs cone geometry from a base center, apex point, and base radius",
     category = "geometry.primitives",
-    order = 8
+    order = 6
 )
-public class ConeByBaseApexRadiusNode extends BaseNode {
+public class ConeByBaseApexRadiusNode extends AbstractPrimitiveNode {
 
     private static final String INPUT_BASE_CENTER_ID = "input_base_center";
     private static final String INPUT_APEX_ID = "input_apex";
@@ -34,11 +30,10 @@ public class ConeByBaseApexRadiusNode extends BaseNode {
 
     private static final String OUTPUT_CONE_ID = "output_cone";
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
-    private static final String OUTPUT_AXIS_LINE_ID = "output_axis_line";
+    private static final String OUTPUT_AXIS_PATH_ID = "output_axis_path";
     private static final String OUTPUT_AXIS_VECTOR_ID = "output_axis_vector";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
     private static final String OUTPUT_RADIUS_ID = "output_radius";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Base X", category = "Base", order = 1)
     private double baseX = 0.0d;
@@ -58,7 +53,7 @@ public class ConeByBaseApexRadiusNode extends BaseNode {
     private double radius = 4.0d;
 
     public ConeByBaseApexRadiusNode() {
-        super(UUID.randomUUID(), "geometry.primitives.cone");
+        super("geometry.primitives.cone");
 
         addInputPort(new BasePort(INPUT_BASE_CENTER_ID, "Base Center", "Cone base center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_APEX_ID, "Apex", "Cone apex point", NodeDataType.POINT, this));
@@ -66,11 +61,11 @@ public class ConeByBaseApexRadiusNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_CONE_ID, "Cone", "Constructed cone geometry", NodeDataType.CONE_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_AXIS_LINE_ID, "Axis Line", "Cone axis line", NodeDataType.LINE, this));
+        addOutputPort(new BasePort(OUTPUT_AXIS_PATH_ID, "Axis Path", "Cone axis path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_AXIS_VECTOR_ID, "Axis Vector", "Cone axis vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Cone axis length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Base Radius", "Resolved base radius", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a cone could be constructed", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -80,58 +75,53 @@ public class ConeByBaseApexRadiusNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d baseCenter = resolvePoint(inputValues.get(INPUT_BASE_CENTER_ID), baseX, baseY, baseZ);
-        Vector3d apex = resolvePoint(inputValues.get(INPUT_APEX_ID), apexX, apexY, apexZ);
-        double resolvedRadius = resolveRadius();
+        Vector3d baseCenter = resolveOptionalPoint(INPUT_BASE_CENTER_ID, new Vector3d(baseX, baseY, baseZ));
+        if (baseCenter == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_BASE_CENTER_ID)
+                ? "Base center input is invalid"
+                : "Cone requires a finite base center");
+            return;
+        }
 
-        if (baseCenter == null || apex == null || !Double.isFinite(resolvedRadius) || resolvedRadius <= 0.0d) {
-            writeEmptyOutputs();
+        Vector3d apex = resolveOptionalPoint(INPUT_APEX_ID, new Vector3d(apexX, apexY, apexZ));
+        if (apex == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_APEX_ID)
+                ? "Apex input is invalid"
+                : "Cone requires a finite apex");
+            return;
+        }
+
+        Double resolvedRadius = resolvePositiveDouble(INPUT_RADIUS_ID, radius);
+        if (resolvedRadius == null) {
+            writeEmptyOutputs(isPortConnected(INPUT_RADIUS_ID)
+                ? "Base radius input must be finite and > 0"
+                : "Cone base radius must be finite and > 0");
+            return;
+        }
+
+        String error = PrimitiveGeometryValidator.validateCone(baseCenter, apex, resolvedRadius);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
         Vector3d axisVector = new Vector3d(apex).sub(baseCenter);
         double height = axisVector.length();
-        if (height <= 1.0e-9d) {
-            writeEmptyOutputs();
-            return;
-        }
-
         ConeGeometryData cone = new ConeGeometryData(baseCenter, apex, resolvedRadius);
-        LineData axisLine = new LineData(
-            new Vec3d(baseCenter.x, baseCenter.y, baseCenter.z),
-            new Vec3d(apex.x, apex.y, apex.z)
-        );
 
         outputValues.put(OUTPUT_CONE_ID, cone);
         outputValues.put(OUTPUT_GEOMETRY_ID, cone);
-        outputValues.put(OUTPUT_AXIS_LINE_ID, axisLine);
+        outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(baseCenter, apex));
         outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_RADIUS_ID, resolvedRadius);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Vector3d resolvePoint(@Nullable Object value, double fx, double fy, double fz) {
-        Vector3d fromPort = SpatialValueResolver.resolveVector3d(value);
-        return fromPort != null ? fromPort : new Vector3d(fx, fy, fz);
-    }
-
-    private double resolveRadius() {
-        Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
-        if (radiusObj instanceof Number number) {
-            return number.doubleValue();
-        }
-        return radius;
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CONE_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_AXIS_LINE_ID, null);
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, null);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CONE_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_PATH_ID, OUTPUT_AXIS_VECTOR_ID);
+        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID, OUTPUT_RADIUS_ID);
+        markInvalid(reason);
     }
 
     @Override

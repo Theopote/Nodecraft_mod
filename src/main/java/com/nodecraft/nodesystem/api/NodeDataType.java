@@ -40,6 +40,8 @@ public enum NodeDataType {
     VECTOR_FIELD("vector_field", "Vector Field", VectorFieldData.class),
     BOX_GEOMETRY("box_geometry", "Box Geometry", BoxGeometryData.class),
     BOX_FACE("box_face", "Box Face", BoxFaceData.class),
+    /** Ordered box faces (six-face box deconstruct / face lists). */
+    BOX_FACE_LIST("box_face_list", "Box Face List", List.class, ListElementKind.BOX_FACE),
     CONE_GEOMETRY("cone_geometry", "Cone Geometry", ConeGeometryData.class),
     FRUSTUM_CONE_GEOMETRY("frustum_cone_geometry", "Frustum Cone Geometry", FrustumConeGeometryData.class),
     CYLINDER_GEOMETRY("cylinder_geometry", "Cylinder Geometry", CylinderGeometryData.class),
@@ -211,6 +213,7 @@ public enum NodeDataType {
             case LINE -> LINE;
             case TREE_PATH -> TREE_PATH;
             case POLYGON_PROFILE -> POLYGON_PROFILE;
+            case BOX_FACE -> BOX_FACE;
             case SURFACE_STRIP -> SURFACE_STRIP;
             case REGION -> REGION;
             case BLOCK_INFO -> BLOCK_INFO;
@@ -337,6 +340,7 @@ public enum NodeDataType {
             case LINE -> value instanceof LineData;
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
+            case BOX_FACE -> value instanceof BoxFaceData;
             case SURFACE_STRIP -> value instanceof SurfaceStripData;
             case REGION -> value instanceof RegionData;
             case PLANT_STRUCTURE -> value instanceof PlantStructure;

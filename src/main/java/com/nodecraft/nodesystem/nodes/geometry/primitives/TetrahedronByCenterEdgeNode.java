@@ -17,7 +17,7 @@ import java.util.List;
     displayName = "Tetrahedron By Center Edge",
     description = "Constructs tetrahedron geometry from a center point, edge length, and optional orientation",
     category = "geometry.primitives",
-    order = 11
+    order = 13
 )
 public class TetrahedronByCenterEdgeNode extends AbstractPolyhedronNode<TetrahedronGeometryData> {
 

@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
@@ -14,17 +13,15 @@ import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.UUID;
-
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.primitives.deconstruct_ellipsoid",
     displayName = "Deconstruct Ellipsoid",
     description = "Extracts center, radii, bounds, volume, and approximate surface area from ellipsoid geometry",
     category = "geometry.primitives",
-    order = 15
+    order = 23
 )
-public class DeconstructEllipsoidNode extends BaseNode {
+public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
 
     private static final String INPUT_ELLIPSOID_ID = "input_ellipsoid";
 
@@ -35,10 +32,9 @@ public class DeconstructEllipsoidNode extends BaseNode {
     private static final String OUTPUT_SURFACE_AREA_ID = "output_surface_area";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_BOUNDING_BOX_ID = "output_bounding_box";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructEllipsoidNode() {
-        super(UUID.randomUUID(), "geometry.primitives.deconstruct_ellipsoid");
+        super("geometry.primitives.deconstruct_ellipsoid");
 
         addInputPort(new BasePort(INPUT_ELLIPSOID_ID, "Ellipsoid", "Ellipsoid geometry to deconstruct", NodeDataType.ELLIPSOID_GEOMETRY, this));
 
@@ -49,7 +45,7 @@ public class DeconstructEllipsoidNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Approximate ellipsoid surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when ellipsoid input is present", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -61,12 +57,17 @@ public class DeconstructEllipsoidNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object ellipsoidObj = inputValues.get(INPUT_ELLIPSOID_ID);
         if (!(ellipsoidObj instanceof EllipsoidGeometryData ellipsoid)) {
-            writeEmptyOutputs();
+            writeEmptyOutputs("Valid ellipsoid geometry is required");
             return;
         }
 
         Vector3d center = ellipsoid.getCenter();
         Vector3d radii = ellipsoid.getRadii();
+        if (radii.x <= 0.0d || radii.y <= 0.0d || radii.z <= 0.0d) {
+            writeEmptyOutputs("Ellipsoid radii must be > 0");
+            return;
+        }
+
         Vector3d diameters = new Vector3d(radii).mul(2.0d);
         double volume = (4.0d / 3.0d) * Math.PI * radii.x * radii.y * radii.z;
         double surfaceArea = approximateSurfaceArea(radii.x, radii.y, radii.z);
@@ -80,22 +81,16 @@ public class DeconstructEllipsoidNode extends BaseNode {
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_RADII_ID, null);
-        outputValues.put(OUTPUT_DIAMETERS_ID, null);
-        outputValues.put(OUTPUT_VOLUME_ID, 0.0d);
-        outputValues.put(OUTPUT_SURFACE_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeEmptyOutputs(String reason) {
+        putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_RADII_ID, OUTPUT_DIAMETERS_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
+        putDoubleOutputs(0.0d, OUTPUT_VOLUME_ID, OUTPUT_SURFACE_AREA_ID);
+        markInvalid(reason);
     }
 
     private double approximateSurfaceArea(double a, double b, double c) {
-        // Knud Thomsen approximation with p = 1.6075
         double p = 1.6075d;
         double ap = Math.pow(a * b, p);
         double bp = Math.pow(a * c, p);
@@ -103,4 +98,3 @@ public class DeconstructEllipsoidNode extends BaseNode {
         return 4.0d * Math.PI * Math.pow((ap + bp + cp) / 3.0d, 1.0d / p);
     }
 }
-
