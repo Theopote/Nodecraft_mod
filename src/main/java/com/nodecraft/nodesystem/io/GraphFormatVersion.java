@@ -535,7 +535,7 @@ public final class GraphFormatVersion {
     public static final int V82 = 82;
 
     /**
-     * Pattern Voronoi 3D Language v2: Valid+Error on Lloyd Relax 3D, order 0,
+     * Pattern Voronoi 3D Language v2 (PASSED / FROZEN): Valid+Error on Lloyd Relax 3D, order 0,
      * OptionalPortDrive for Cells/Iterations (connected non-exact Integer fails),
      * transactional publish fence (cardinality / finite / in-bounds).
      * V45 remains the historical Pattern Voronoi 3D v1 fence.

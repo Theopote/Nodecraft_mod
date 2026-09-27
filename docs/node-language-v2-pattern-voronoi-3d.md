@@ -1,6 +1,6 @@
 # Node Language v2 — Pattern Voronoi 3D
 
-**Status: implemented** (Graph **V83**; V45 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V83**; V45 remains historical v1)
 
 Language modernization for the single canonical `pattern.voronoi_3d.lloyd_relax`
 node: Valid+Error, OptionalPortDrive for Cells/Iterations, order 0, and a
