@@ -234,6 +234,15 @@ public final class GenerationLimits {
     /** Maximum turtle bracket stack depth. */
     public static final int MAX_LSYSTEM_TURTLE_STACK_DEPTH = 4096;
 
+    /** Maximum merged production rules accepted by L-System Expand. */
+    public static final int MAX_LSYSTEM_RULES = 4096;
+
+    /**
+     * Hard cap on estimated rewrite match work:
+     * stringLength × ruleCount × iterations (and per-round stringLength × ruleCount).
+     */
+    public static final long MAX_LSYSTEM_REWRITE_MATCH_TESTS = 100_000_000L;
+
     /** Maximum materializable image sample count (width × height after downsample). */
     public static final int MAX_IMAGE_PIXELS = 1_048_576;
 
@@ -394,6 +403,28 @@ public final class GenerationLimits {
         }
         long cellsCubed = (long) cellsPerAxis * cellsPerAxis * cellsPerAxis;
         return cellsCubed * (long) siteCount * (long) iterations > MAX_LLOYD_DISTANCE_TESTS;
+    }
+
+    /**
+     * Estimated L-system rewrite match tests for a full expansion request.
+     * {@code iterations <= 0} never exceeds (passthrough has no rewrite work).
+     */
+    public static boolean exceedsLSystemRewriteMatchBudget(int stringLength, int ruleCount, int iterations) {
+        if (iterations <= 0 || stringLength <= 0 || ruleCount <= 0) {
+            return false;
+        }
+        long perRound = (long) stringLength * (long) ruleCount;
+        if (perRound > MAX_LSYSTEM_REWRITE_MATCH_TESTS) {
+            return true;
+        }
+        return perRound * (long) iterations > MAX_LSYSTEM_REWRITE_MATCH_TESTS;
+    }
+
+    /**
+     * Effective turtle segment cap so {@code points = 2 × segments} never exceeds {@link #MAX_LIST_ELEMENTS}.
+     */
+    public static int maxLSystemTurtleSegments() {
+        return Math.min(MAX_LSYSTEM_TURTLE_SEGMENTS, MAX_LIST_ELEMENTS / 2);
     }
 
     public static int clampNonNegativeCount(int count) {

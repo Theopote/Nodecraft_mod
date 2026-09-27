@@ -1,6 +1,7 @@
 # Node Language v1 — Pattern L-System
 
-**Status: PASSED / FROZEN** (Graph **V46**)
+**Status: PASSED / FROZEN** (Graph **V46**; superseded by Language v2 at Graph **V84** —
+see [`node-language-v2-pattern-lsystem.md`](./node-language-v2-pattern-lsystem.md))
 
 Language unification for the three canonical `pattern.lsystem.*` nodes: typed rule
 authoring, deterministic string rewriting, and turtle interpretation as independent draw

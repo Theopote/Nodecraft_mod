@@ -6,12 +6,14 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.core.NodePropertyBindings;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.LSystemRuleUtils;
 import com.nodecraft.nodesystem.util.LSystemStringExpander;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -26,7 +28,7 @@ import java.util.UUID;
     displayName = "L-System Expand",
     description = "Expands an L-system axiom using production rules for a fixed number of iterations (longest symbol match; weights are relative)",
     category = "pattern.lsystem",
-    order = 2
+    order = 1
 )
 public class LSystemExpandNode extends BaseNode {
 
@@ -54,13 +56,14 @@ public class LSystemExpandNode extends BaseNode {
     private static final String OUTPUT_ITERATIONS_APPLIED_ID = "output_iterations_applied";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public LSystemExpandNode() {
         super(UUID.randomUUID(), "pattern.lsystem.expand");
 
         addInputPort(new BasePort(INPUT_AXIOM_ID, "Axiom", "Starting string", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_RULES_ID, "Rules", "Typed list of L-system rules", NodeDataType.L_SYSTEM_RULE_LIST, this));
-        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Rewrite rounds (falls back to property)", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Rewrite rounds (optional override)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Random seed for probabilistic rule choice", NodeDataType.INTEGER, this));
         rebuildRuleInputPorts();
 
@@ -68,6 +71,7 @@ public class LSystemExpandNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_ITERATIONS_APPLIED_ID, "Iterations Applied", "Rewrite rounds actually completed", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when expansion succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when expansion stopped early due to string length cap", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -82,44 +86,66 @@ public class LSystemExpandNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String axiom = inputValues.get(INPUT_AXIOM_ID) instanceof String s ? s : "";
-        if (axiom.isEmpty()) {
-            writeInvalid("", 0, false);
+        Object axiomRaw = inputValues.get(INPUT_AXIOM_ID);
+        if (!(axiomRaw instanceof String axiom) || axiom.isEmpty()) {
+            writeInvalid("", 0, false, "Axiom is required");
+            return;
+        }
+        if (axiom.length() > GenerationLimits.MAX_LSYSTEM_EXPANDED_LENGTH) {
+            writeInvalid("", 0, true, "Axiom exceeds MAX_LSYSTEM_EXPANDED_LENGTH");
             return;
         }
 
-        int iters = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_ITERATIONS_ID), iterations);
-        int resolvedSeed = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_SEED_ID), seed);
+        Integer iters = OptionalPortDrive.resolveOptionalInteger(this, INPUT_ITERATIONS_ID, iterations);
+        if (iters == null) {
+            writeInvalid("", 0, false, "Iterations connected but invalid");
+            return;
+        }
+        Integer resolvedSeed = OptionalPortDrive.resolveOptionalInteger(this, INPUT_SEED_ID, seed);
+        if (resolvedSeed == null) {
+            writeInvalid("", 0, false, "Seed connected but invalid");
+            return;
+        }
 
         if (iters < 0 || iters > GenerationLimits.MAX_LSYSTEM_ITERATIONS) {
-            writeInvalid("", 0, false);
+            writeInvalid("", 0, false, "Iterations must be in [0, "
+                + GenerationLimits.MAX_LSYSTEM_ITERATIONS + "]");
             return;
         }
 
         if (iters == 0) {
-            outputValues.put(OUTPUT_STRING_ID, axiom);
-            outputValues.put(OUTPUT_ITERATIONS_APPLIED_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, true);
-            outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
+            writeSuccess(axiom, 0, false);
             return;
         }
 
-        List<LSystemRule> portRules = collectPortRules();
-        List<LSystemRule> validatedPortRules = LSystemRuleUtils.collectValidPortRules(portRules);
-        if (validatedPortRules == null) {
-            writeInvalid("", 0, false);
+        List<LSystemRule> portRules = collectConnectedPortRules();
+        if (portRules == null) {
+            writeInvalid("", 0, false, "Rule port connected but invalid");
             return;
         }
 
-        List<LSystemRule> listRules = LSystemRuleUtils.resolveStrictRuleList(inputValues.get(INPUT_RULES_ID));
-        if (inputValues.get(INPUT_RULES_ID) != null && listRules == null) {
-            writeInvalid("", 0, false);
-            return;
+        List<LSystemRule> listRules;
+        if (OptionalPortDrive.isConnected(this, INPUT_RULES_ID)) {
+            listRules = LSystemRuleUtils.resolveStrictRuleList(inputValues.get(INPUT_RULES_ID));
+            if (listRules == null) {
+                writeInvalid("", 0, false, "Rules list connected but invalid");
+                return;
+            }
+        } else {
+            listRules = null;
         }
 
-        List<LSystemRule> rules = LSystemRuleUtils.mergeRules(listRules, validatedPortRules);
+        List<LSystemRule> rules = LSystemRuleUtils.mergeRules(listRules, portRules);
         if (rules.isEmpty()) {
-            writeInvalid("", 0, false);
+            writeInvalid("", 0, false, "At least one valid rule is required");
+            return;
+        }
+        if (rules.size() > GenerationLimits.MAX_LSYSTEM_RULES) {
+            writeInvalid("", 0, false, "Rule count exceeds MAX_LSYSTEM_RULES");
+            return;
+        }
+        if (GenerationLimits.exceedsLSystemRewriteMatchBudget(axiom.length(), rules.size(), iters)) {
+            writeInvalid("", 0, false, "L-System rewrite match budget exceeded");
             return;
         }
 
@@ -129,26 +155,48 @@ public class LSystemExpandNode extends BaseNode {
                 iters,
                 resolvedSeed
         );
-        outputValues.put(OUTPUT_STRING_ID, expanded.text());
-        outputValues.put(OUTPUT_ITERATIONS_APPLIED_ID, expanded.iterationsApplied());
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, expanded.hitLimit());
+        if (!expanded.ok()) {
+            writeInvalid("", 0, expanded.hitLimit(),
+                expanded.error() == null ? "L-System expansion failed" : expanded.error());
+            return;
+        }
+
+        writeSuccess(expanded.text(), expanded.iterationsApplied(), expanded.hitLimit());
     }
 
-    private void writeInvalid(String text, int iterationsApplied, boolean hitLimit) {
+    private void writeSuccess(String text, int iterationsApplied, boolean hitLimit) {
+        outputValues.put(OUTPUT_STRING_ID, text);
+        outputValues.put(OUTPUT_ITERATIONS_APPLIED_ID, iterationsApplied);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String text, int iterationsApplied, boolean hitLimit, String error) {
         outputValues.put(OUTPUT_STRING_ID, text);
         outputValues.put(OUTPUT_ITERATIONS_APPLIED_ID, iterationsApplied);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    private List<LSystemRule> collectPortRules() {
+    /**
+     * Connection-aware dynamic Rule ports: unconnected skipped; connected must be valid LSystemRule.
+     *
+     * @return null when a connected port is invalid
+     */
+    private @Nullable List<LSystemRule> collectConnectedPortRules() {
         List<LSystemRule> rules = new ArrayList<>();
         for (int i = 0; i < ruleInputCount; i++) {
-            Object value = inputValues.get(ruleInputPortId(i));
-            if (value instanceof LSystemRule rule) {
-                rules.add(rule);
+            String portId = ruleInputPortId(i);
+            if (!OptionalPortDrive.isConnected(this, portId)) {
+                continue;
             }
+            Object value = inputValues.get(portId);
+            if (!(value instanceof LSystemRule rule) || !LSystemRuleUtils.isValidRule(rule)) {
+                return null;
+            }
+            rules.add(rule);
         }
         return rules;
     }
@@ -192,7 +240,18 @@ public class LSystemExpandNode extends BaseNode {
 
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof Map<?, ?> map && map.get("ruleInputCount") instanceof Number value) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        Map<String, Object> typed = new HashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (entry.getKey() instanceof String key) {
+                typed.put(key, entry.getValue());
+            }
+        }
+        Object countObj = typed.remove("ruleInputCount");
+        NodePropertyBindings.deserialize(this, typed);
+        if (countObj instanceof Number value) {
             setRuleInputCount(value.intValue());
         }
     }

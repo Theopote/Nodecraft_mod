@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.LSystemTurtle3DInterpreter;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -22,9 +23,11 @@ import java.util.UUID;
     displayName = "L-System Turtle 3D",
     description = "Interprets L-system commands as independent 3D draw segments (PATH_LIST). F draws, f moves without drawing, +- yaw, &/^ pitch, / \\ roll, [] stack",
     category = "pattern.lsystem",
-    order = 3
+    order = 2
 )
 public class LSystemTurtle3DNode extends BaseNode {
+
+    private static final Vector3d DEFAULT_ORIGIN = new Vector3d();
 
     @NodeProperty(displayName = "Step", category = "Turtle", order = 1)
     private double step = 1.0d;
@@ -43,6 +46,7 @@ public class LSystemTurtle3DNode extends BaseNode {
     private static final String OUTPUT_SEGMENT_COUNT_ID = "output_segment_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public LSystemTurtle3DNode() {
         super(UUID.randomUUID(), "pattern.lsystem.turtle_3d");
@@ -55,8 +59,9 @@ public class LSystemTurtle3DNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PATHS_ID, "Paths", "One line path per draw segment", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Draw endpoints from segment runs (not one polyline)", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SEGMENT_COUNT_ID, "Segment Count", "Number of drawn segments", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one segment was emitted without bracket errors", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when interpretation succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "True when command length, segment cap, or stack depth was reached", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -72,12 +77,30 @@ public class LSystemTurtle3DNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         String commands = inputValues.get(INPUT_COMMANDS_ID) instanceof String s ? s : "";
-        double st = readDouble(inputValues.get(INPUT_STEP_ID), step);
-        double angDeg = readDouble(inputValues.get(INPUT_ANGLE_ID), angleDegrees);
-        Vector3d origin = resolveOrigin(inputValues.get(INPUT_ORIGIN_ID));
 
+        Double st = OptionalPortDrive.resolveOptionalDouble(this, INPUT_STEP_ID, step);
+        if (st == null) {
+            writeInvalid(false, "Step connected but invalid");
+            return;
+        }
+        if (!Double.isFinite(st) || st <= 0.0d) {
+            writeInvalid(false, "Step must be finite and > 0");
+            return;
+        }
+
+        Double angDeg = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_ID, angleDegrees);
+        if (angDeg == null) {
+            writeInvalid(false, "Angle connected but invalid");
+            return;
+        }
+        if (!Double.isFinite(angDeg)) {
+            writeInvalid(false, "Angle must be finite");
+            return;
+        }
+
+        Vector3d origin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_ORIGIN_ID, DEFAULT_ORIGIN);
         if (origin == null) {
-            writeInvalid(false);
+            writeInvalid(false, "Origin connected but invalid");
             return;
         }
 
@@ -87,13 +110,12 @@ public class LSystemTurtle3DNode extends BaseNode {
                 st,
                 angDeg,
                 GenerationLimits.MAX_LSYSTEM_COMMAND_LENGTH,
-                GenerationLimits.MAX_LSYSTEM_TURTLE_SEGMENTS,
+                GenerationLimits.maxLSystemTurtleSegments(),
                 GenerationLimits.MAX_LSYSTEM_TURTLE_STACK_DEPTH
         );
 
-        boolean valid = result.segmentCount() > 0 && !result.bracketError();
-        if (!valid) {
-            writeInvalid(result.hitLimit());
+        if (!result.valid()) {
+            writeInvalid(result.hitLimit(), result.error());
             return;
         }
 
@@ -102,28 +124,15 @@ public class LSystemTurtle3DNode extends BaseNode {
         outputValues.put(OUTPUT_SEGMENT_COUNT_ID, result.segmentCount());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, result.hitLimit());
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid(boolean hitLimit) {
+    private void writeInvalid(boolean hitLimit, String error) {
         outputValues.put(OUTPUT_PATHS_ID, List.of());
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SEGMENT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-    }
-
-    private static @Nullable Vector3d resolveOrigin(@Nullable Object value) {
-        Vector3d resolved = SpatialValueResolver.resolvePoint(value);
-        if (resolved == null) {
-            return new Vector3d();
-        }
-        if (!Double.isFinite(resolved.x) || !Double.isFinite(resolved.y) || !Double.isFinite(resolved.z)) {
-            return null;
-        }
-        return resolved;
-    }
-
-    private static double readDouble(@Nullable Object value, double fallback) {
-        return value instanceof Number n ? n.doubleValue() : fallback;
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

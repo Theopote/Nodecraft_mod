@@ -1,10 +1,13 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 /**
@@ -20,7 +23,13 @@ public final class LSystemStringExpander {
     private LSystemStringExpander() {
     }
 
-    public record ExpandResult(String text, boolean hitLimit, int iterationsApplied) {
+    /**
+     * @param error non-null when expansion failed closed (not a length Hit Limit success)
+     */
+    public record ExpandResult(String text, boolean hitLimit, int iterationsApplied, @Nullable String error) {
+        public boolean ok() {
+            return error == null;
+        }
     }
 
     public static ExpandResult expand(String axiom, List<LSystemRule> rules, int iterations, long seed) {
@@ -36,37 +45,62 @@ public final class LSystemStringExpander {
     ) {
         int safeMaxLength = Math.max(1, maxLength);
         if (axiom == null) {
-            return new ExpandResult("", false, 0);
+            return new ExpandResult("", false, 0, "Axiom is required");
         }
         if (axiom.length() > safeMaxLength) {
-            return new ExpandResult("", true, 0);
+            return new ExpandResult("", true, 0, "Axiom exceeds MAX_LSYSTEM_EXPANDED_LENGTH");
         }
         if (iterations == 0) {
-            return new ExpandResult(axiom, false, 0);
+            return new ExpandResult(axiom, false, 0, null);
         }
         if (iterations < 0) {
-            return new ExpandResult("", false, 0);
+            return new ExpandResult("", false, 0, "Iterations must be non-negative");
         }
 
         List<LSystemRule> sorted = new ArrayList<>(rules == null ? List.of() : rules);
         sorted.removeIf(r -> r == null || r.symbol() == null || r.symbol().isEmpty());
         sorted.sort(Comparator.comparingInt((LSystemRule r) -> r.symbol().length()).reversed());
         if (sorted.isEmpty()) {
-            return new ExpandResult(axiom, false, 0);
+            return new ExpandResult(axiom, false, 0, null);
+        }
+
+        String weightError = validateFiniteWeightTotals(sorted);
+        if (weightError != null) {
+            return new ExpandResult("", false, 0, weightError);
         }
 
         Random random = new Random(seed);
         String current = axiom;
         int applied = 0;
+        int ruleCount = sorted.size();
         for (int it = 0; it < iterations; it++) {
+            if (GenerationLimits.exceedsLSystemRewriteMatchBudget(current.length(), ruleCount, 1)) {
+                return new ExpandResult("", false, 0, "L-System rewrite match budget exceeded");
+            }
             ExpandOnceResult next = expandOnce(current, sorted, random, safeMaxLength);
             if (next.hitLimit()) {
-                return new ExpandResult(current, true, applied);
+                return new ExpandResult(current, true, applied, null);
             }
             current = next.text();
             applied++;
         }
-        return new ExpandResult(current, false, applied);
+        return new ExpandResult(current, false, applied, null);
+    }
+
+    private static @Nullable String validateFiniteWeightTotals(List<LSystemRule> rules) {
+        Map<String, Double> totals = new HashMap<>();
+        for (LSystemRule rule : rules) {
+            if (rule.weight() <= 0.0d) {
+                continue;
+            }
+            String symbol = rule.symbol();
+            double next = totals.getOrDefault(symbol, 0.0d) + rule.weight();
+            if (!Double.isFinite(next)) {
+                return "Competing rule weight sum must be finite";
+            }
+            totals.put(symbol, next);
+        }
+        return null;
     }
 
     private record ExpandOnceResult(String text, boolean hitLimit) {
@@ -131,7 +165,7 @@ public final class LSystemStringExpander {
     /**
      * @return production string, or {@code null} when all candidate weights are &lt;= 0 (keep symbol)
      */
-    private static @org.jetbrains.annotations.Nullable String pickProduction(List<LSystemRule> candidates, Random random) {
+    private static @Nullable String pickProduction(List<LSystemRule> candidates, Random random) {
         if (candidates.isEmpty()) {
             return null;
         }
@@ -143,7 +177,7 @@ public final class LSystemStringExpander {
                 total += rule.weight();
             }
         }
-        if (weighted.isEmpty() || total <= 1.0e-12d) {
+        if (weighted.isEmpty() || !Double.isFinite(total) || total <= 1.0e-12d) {
             return null;
         }
         if (weighted.size() == 1) {

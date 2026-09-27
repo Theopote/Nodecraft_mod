@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -18,7 +19,7 @@ import java.util.UUID;
     displayName = "L-System Rule",
     description = "Constructs one L-system production rule from symbol, production string, and relative weight",
     category = "pattern.lsystem",
-    order = 1
+    order = 0
 )
 public class LSystemRuleNode extends BaseNode {
 
@@ -32,6 +33,7 @@ public class LSystemRuleNode extends BaseNode {
 
     private static final String OUTPUT_RULE_ID = "output_rule";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public LSystemRuleNode() {
         super(UUID.randomUUID(), "pattern.lsystem.rule");
@@ -42,6 +44,7 @@ public class LSystemRuleNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_RULE_ID, "Rule", "Constructed L-system rule", NodeDataType.L_SYSTEM_RULE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the rule inputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -56,29 +59,38 @@ public class LSystemRuleNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String symbol = readString(inputValues.get(INPUT_SYMBOL_ID));
-        String production = readString(inputValues.get(INPUT_PRODUCTION_ID));
-        double ruleWeight = readWeight(inputValues.get(INPUT_WEIGHT_ID), weight);
+        Object symbolRaw = inputValues.get(INPUT_SYMBOL_ID);
+        if (!(symbolRaw instanceof String symbol) || symbol.trim().isEmpty()) {
+            writeInvalid("Symbol is required");
+            return;
+        }
 
-        if (symbol.trim().isEmpty() || !Double.isFinite(ruleWeight) || ruleWeight < 0.0d) {
-            writeInvalid();
+        Object productionRaw = inputValues.get(INPUT_PRODUCTION_ID);
+        if (!(productionRaw instanceof String production)) {
+            writeInvalid("Production must be a String");
+            return;
+        }
+
+        Double ruleWeight = OptionalPortDrive.resolveOptionalDouble(this, INPUT_WEIGHT_ID, weight);
+        if (ruleWeight == null) {
+            writeInvalid(OptionalPortDrive.isConnected(this, INPUT_WEIGHT_ID)
+                ? "Weight connected but invalid"
+                : "Weight must be finite and >= 0");
+            return;
+        }
+        if (ruleWeight < 0.0d) {
+            writeInvalid("Weight must be finite and >= 0");
             return;
         }
 
         outputValues.put(OUTPUT_RULE_ID, new LSystemRule(symbol, production, ruleWeight));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_RULE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private static String readString(@Nullable Object value) {
-        return value instanceof String s ? s : "";
-    }
-
-    private static double readWeight(@Nullable Object value, double fallback) {
-        return value instanceof Number n ? n.doubleValue() : fallback;
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

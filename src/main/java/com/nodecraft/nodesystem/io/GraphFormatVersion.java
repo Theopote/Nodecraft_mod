@@ -289,8 +289,9 @@ public final class GraphFormatVersion {
     public static final int V45 = 45;
 
     /**
-     * Pattern L-System v1: Rule / Expand / Turtle 3D with typed LSYSTEM_RULE_LIST,
-     * strict validation, PATH_LIST turtle segments, and fail-closed bracket limits.
+     * Pattern L-System v1 (historical milestone): Rule / Expand / Turtle 3D with typed
+     * LSYSTEM_RULE_LIST, strict validation, PATH_LIST turtle segments, and fail-closed bracket limits.
+     * Superseded by {@link #V84}.
      */
     public static final int V46 = 46;
 
@@ -542,8 +543,16 @@ public final class GraphFormatVersion {
      */
     public static final int V83 = 83;
 
+    /**
+     * Pattern L-System Language v2: Valid+Error on Rule/Expand/Turtle, orders 0–2,
+     * OptionalPortDrive / connection-aware rules, axiom and rewrite workloads,
+     * weighted-sum finite fence, Turtle hard-fail transactional geometry.
+     * V46 remains the historical Pattern L-System v1 fence.
+     */
+    public static final int V84 = 84;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V83;
+    public static final int CURRENT = V84;
 
     private GraphFormatVersion() {
     }

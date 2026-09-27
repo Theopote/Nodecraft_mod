@@ -4,10 +4,15 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandNode;
+import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemRuleNode;
+import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemTurtle3DNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.LSystemStringExpander;
@@ -16,7 +21,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pattern L-System v1 language fence (Graph V46).
+ * OptionalPortDrive / Error / Turtle transactional fail are owned by Language v2 (V84).
  */
 class PatternLSystemLanguageContractTest {
 
@@ -93,7 +101,8 @@ class PatternLSystemLanguageContractTest {
     void ruleNaNWeightFailsClosed() {
         BaseNode node = createNode("pattern.lsystem.rule");
         node.setInput("input_symbol", "F");
-        node.setInput("input_weight", Double.NaN);
+        node.setInput("input_production", "FF");
+        node.setNodeState(Map.of("weight", Double.NaN));
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
     }
@@ -102,7 +111,7 @@ class PatternLSystemLanguageContractTest {
     void expandZeroIterationsPassthroughWithoutRules() {
         BaseNode node = createNode("pattern.lsystem.expand");
         node.setInput("input_axiom", "F");
-        node.setInput("input_iterations", 0);
+        node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
@@ -111,65 +120,64 @@ class PatternLSystemLanguageContractTest {
     }
 
     @Test
-    void expandStrictIntegerIterationsUsesPropertyFallback() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rule_0", new LSystemRule("F", "FF"));
-        node.setInput("input_iterations", 3.8d);
-        node.processNode(null);
+    void expandConnectedNonExactIntegerIterationsFailsClosed() {
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectRule(0, new LSystemRule("F", "FF"));
+        probe.connectInput("input_iterations", NodeDataType.INTEGER);
+        probe.putRawInput("input_iterations", 3.8d);
+        probe.processNode(null);
 
-        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
-        assertEquals("FFFF", node.getOutput("output_string"));
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertEquals(0, probe.getOutput("output_iterations_applied"));
     }
 
     @Test
     void expandNegativeIterationsFailClosed() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rule_0", new LSystemRule("F", "FF"));
-        node.setInput("input_iterations", -1);
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectRule(0, new LSystemRule("F", "FF"));
+        probe.setNodeState(Map.of("iterations", -1));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
     void expandOverMaxIterationsFailClosed() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rule_0", new LSystemRule("F", "FF"));
-        node.setInput("input_iterations", GenerationLimits.MAX_LSYSTEM_ITERATIONS + 1);
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectRule(0, new LSystemRule("F", "FF"));
+        probe.setNodeState(Map.of("iterations", GenerationLimits.MAX_LSYSTEM_ITERATIONS + 1));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
     void expandZeroWeightSoloRuleKeepsSymbol() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rule_0", new LSystemRule("F", "FF", 0.0d));
-        node.setInput("input_iterations", 1);
-        node.processNode(null);
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectRule(0, new LSystemRule("F", "FF", 0.0d));
+        probe.setNodeState(Map.of("iterations", 1));
+        probe.processNode(null);
 
-        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
-        assertEquals("F", node.getOutput("output_string"));
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertEquals("F", probe.getOutput("output_string"));
     }
 
     @Test
     void expandDeterministicWeightedChoice() {
-        BaseNode first = createNode("pattern.lsystem.expand");
+        ExpandProbe first = new ExpandProbe();
         first.setInput("input_axiom", "F");
-        first.setInput("input_rule_0", new LSystemRule("F", "A", 1.0d));
-        first.setInput("input_rule_1", new LSystemRule("F", "B", 3.0d));
-        first.setInput("input_iterations", 1);
-        first.setInput("input_seed", 42);
+        first.connectRule(0, new LSystemRule("F", "A", 1.0d));
+        first.connectRule(1, new LSystemRule("F", "B", 3.0d));
+        first.setNodeState(Map.of("iterations", 1, "seed", 42));
         first.processNode(null);
 
-        BaseNode second = createNode("pattern.lsystem.expand");
+        ExpandProbe second = new ExpandProbe();
         second.setInput("input_axiom", "F");
-        second.setInput("input_rule_0", new LSystemRule("F", "A", 1.0d));
-        second.setInput("input_rule_1", new LSystemRule("F", "B", 3.0d));
-        second.setInput("input_iterations", 1);
-        second.setInput("input_seed", 42);
+        second.connectRule(0, new LSystemRule("F", "A", 1.0d));
+        second.connectRule(1, new LSystemRule("F", "B", 3.0d));
+        second.setNodeState(Map.of("iterations", 1, "seed", 42));
         second.processNode(null);
 
         assertEquals(first.getOutput("output_string"), second.getOutput("output_string"));
@@ -186,6 +194,7 @@ class PatternLSystemLanguageContractTest {
                 10_000
         );
 
+        assertTrue(result.ok());
         assertTrue(result.hitLimit());
         assertEquals(0, result.iterationsApplied());
         assertEquals("F", result.text());
@@ -193,10 +202,9 @@ class PatternLSystemLanguageContractTest {
 
     @Test
     void turtleBranchingProducesIndependentSegments() {
-        BaseNode node = createNode("pattern.lsystem.turtle_3d");
+        TurtleProbe node = new TurtleProbe();
         node.setInput("input_commands", "F[+F]F");
-        node.setInput("input_step", 1.0d);
-        node.setInput("input_angle", 90.0d);
+        node.setNodeState(Map.of("step", 1.0d, "angleDegrees", 90.0d));
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
@@ -208,9 +216,9 @@ class PatternLSystemLanguageContractTest {
 
     @Test
     void turtlePenUpMoveDoesNotConnectSegments() {
-        BaseNode node = createNode("pattern.lsystem.turtle_3d");
+        TurtleProbe node = new TurtleProbe();
         node.setInput("input_commands", "F f F");
-        node.setInput("input_step", 1.0d);
+        node.setNodeState(Map.of("step", 1.0d));
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
@@ -253,7 +261,7 @@ class PatternLSystemLanguageContractTest {
     void turtleNonPositiveStepFailsClosed() {
         BaseNode node = createNode("pattern.lsystem.turtle_3d");
         node.setInput("input_commands", "F");
-        node.setInput("input_step", -1.0d);
+        node.setNodeState(Map.of("step", -1.0d));
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
     }
@@ -262,7 +270,7 @@ class PatternLSystemLanguageContractTest {
     void turtleNaNAngleFailsClosed() {
         BaseNode node = createNode("pattern.lsystem.turtle_3d");
         node.setInput("input_commands", "F");
-        node.setInput("input_angle", Double.NaN);
+        node.setNodeState(Map.of("angleDegrees", Double.NaN));
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
     }
@@ -284,16 +292,16 @@ class PatternLSystemLanguageContractTest {
         rule.processNode(null);
         assertEquals(Boolean.TRUE, rule.getOutput("output_valid"));
 
-        BaseNode expand = createNode("pattern.lsystem.expand");
+        ExpandProbe expand = new ExpandProbe();
         expand.setInput("input_axiom", "F");
-        expand.setInput("input_rule_0", rule.getOutput("output_rule"));
-        expand.setInput("input_iterations", 1);
+        expand.connectRule(0, (LSystemRule) rule.getOutput("output_rule"));
+        expand.setNodeState(Map.of("iterations", 1));
         expand.processNode(null);
         assertEquals(Boolean.TRUE, expand.getOutput("output_valid"));
 
-        BaseNode turtle = createNode("pattern.lsystem.turtle_3d");
+        TurtleProbe turtle = new TurtleProbe();
         turtle.setInput("input_commands", expand.getOutput("output_string"));
-        turtle.setInput("input_angle", 90.0d);
+        turtle.setNodeState(Map.of("angleDegrees", 90.0d));
         turtle.processNode(null);
 
         assertEquals(Boolean.TRUE, turtle.getOutput("output_valid"));
@@ -302,32 +310,34 @@ class PatternLSystemLanguageContractTest {
 
     @Test
     void expandInvalidRuleListEntryFailsClosed() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rules", List.of("not-a-rule"));
-        node.setInput("input_iterations", 1);
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectInput("input_rules", NodeDataType.L_SYSTEM_RULE_LIST);
+        probe.putRawInput("input_rules", List.of("not-a-rule"));
+        probe.setNodeState(Map.of("iterations", 1));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
     void expandMalformedRuleObjectFailsClosed() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rule_0", new LSystemRule("F", "FF", Double.NaN));
-        node.setInput("input_iterations", 1);
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectRule(0, new LSystemRule("F", "FF", Double.NaN));
+        probe.setNodeState(Map.of("iterations", 1));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
     void expandMalformedRuleListEntryFailsClosed() {
-        BaseNode node = createNode("pattern.lsystem.expand");
-        node.setInput("input_axiom", "F");
-        node.setInput("input_rules", List.of(new LSystemRule("F", "FF", Double.NaN)));
-        node.setInput("input_iterations", 1);
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "F");
+        probe.connectInput("input_rules", NodeDataType.L_SYSTEM_RULE_LIST);
+        probe.putRawInput("input_rules", List.of(new LSystemRule("F", "FF", Double.NaN)));
+        probe.setNodeState(Map.of("iterations", 1));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
@@ -335,14 +345,13 @@ class PatternLSystemLanguageContractTest {
         String firstPick = null;
         String secondPick = null;
         for (int seed = 0; seed < 32 && (firstPick == null || firstPick.equals(secondPick)); seed++) {
-            BaseNode node = createNode("pattern.lsystem.expand");
-            node.setInput("input_axiom", "F");
-            node.setInput("input_rule_0", new LSystemRule("F", "A", 1.0d));
-            node.setInput("input_rule_1", new LSystemRule("F", "B", 1.0d));
-            node.setInput("input_iterations", 1);
-            node.setInput("input_seed", seed);
-            node.processNode(null);
-            String out = (String) node.getOutput("output_string");
+            ExpandProbe probe = new ExpandProbe();
+            probe.setInput("input_axiom", "F");
+            probe.connectRule(0, new LSystemRule("F", "A", 1.0d));
+            probe.connectRule(1, new LSystemRule("F", "B", 1.0d));
+            probe.setNodeState(Map.of("iterations", 1, "seed", seed));
+            probe.processNode(null);
+            String out = (String) probe.getOutput("output_string");
             if (firstPick == null) {
                 firstPick = out;
             } else if (!firstPick.equals(out)) {
@@ -363,5 +372,49 @@ class PatternLSystemLanguageContractTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(typeId + " missing port " + portId));
         assertEquals(expected, port.getDataType(), typeId + "." + portId);
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+                .filter(port -> inputPortId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class ExpandProbe extends LSystemExpandNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            PatternLSystemLanguageContractTest.connectInput(this, portId, outputType);
+        }
+
+        void connectRule(int index, LSystemRule rule) {
+            String portId = "input_rule_" + index;
+            connectInput(portId, NodeDataType.L_SYSTEM_RULE);
+            putRawInput(portId, rule);
+        }
+    }
+
+    private static final class TurtleProbe extends LSystemTurtle3DNode {
+    }
+
+    @SuppressWarnings("unused")
+    private static final class RuleProbe extends LSystemRuleNode {
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

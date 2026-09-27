@@ -1,12 +1,17 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemTurtle3DNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +30,7 @@ class LSystemStringExpanderTest {
                 10_000
         );
 
+        assertTrue(result.ok());
         assertTrue(result.hitLimit());
         assertTrue(result.iterationsApplied() < 16);
         assertTrue(result.text().length() <= 10_000);
@@ -42,6 +48,7 @@ class LSystemStringExpanderTest {
                 1_000
         );
 
+        assertTrue(result.ok());
         assertFalse(result.hitLimit());
         assertEquals(4, result.iterationsApplied());
         assertEquals("ABBBB", result.text());
@@ -49,12 +56,12 @@ class LSystemStringExpanderTest {
 
     @Test
     void expandNodeExposesHitLimitOutput() {
-        LSystemExpandNode node = new LSystemExpandNode();
-        node.compute(Map.of(
-                "input_axiom", "F",
-                "input_rule_0", new LSystemRule("F", "F[+F]F[-F]F"),
-                "input_iterations", 16
-        ));
+        ExpandProbe node = new ExpandProbe();
+        node.setNodeState(Map.of("iterations", 16));
+        node.setInput("input_axiom", "F");
+        node.connectInput("input_rule_0", NodeDataType.L_SYSTEM_RULE);
+        node.putRawInput("input_rule_0", new LSystemRule("F", "F[+F]F[-F]F"));
+        node.processNode(null);
 
         assertEquals(true, node.getOutput("output_valid"));
         assertEquals(true, node.getOutput("output_hit_limit"));
@@ -83,13 +90,14 @@ class LSystemStringExpanderTest {
                 10_000
         );
 
+        assertTrue(result.ok());
         assertTrue(result.hitLimit());
         assertEquals(0, result.iterationsApplied());
         assertEquals("F", result.text());
     }
 
     @Test
-    void turtleInterpreterStopsWhenSegmentCapReached() {
+    void turtleInterpreterFailsClosedWhenSegmentCapReached() {
         int cap = 100;
         LSystemTurtle3DInterpreter.TurtleResult result = LSystemTurtle3DInterpreter.interpret(
                 "F".repeat(cap + 1),
@@ -101,8 +109,10 @@ class LSystemStringExpanderTest {
                 GenerationLimits.MAX_LSYSTEM_TURTLE_STACK_DEPTH
         );
 
+        assertFalse(result.valid());
         assertTrue(result.hitLimit());
-        assertEquals(cap, result.segmentCount());
+        assertEquals(0, result.segmentCount());
+        assertTrue(result.paths().isEmpty());
     }
 
     @Test
@@ -113,6 +123,7 @@ class LSystemStringExpanderTest {
                 1,
                 0L
         );
+        assertTrue(result.ok());
         assertFalse(result.hitLimit());
         assertEquals("F", result.text());
     }
@@ -125,7 +136,35 @@ class LSystemStringExpanderTest {
                 0,
                 0L
         );
+        assertTrue(result.ok());
         assertEquals("ABC", result.text());
         assertEquals(0, result.iterationsApplied());
+    }
+
+    private static final class ExpandProbe extends LSystemExpandNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            PortStubNode stub = new PortStubNode(outputType);
+            BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+            BasePort input = (BasePort) getInputPorts().stream()
+                .filter(port -> portId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow();
+            assertTrue(output.connectTo(input));
+        }
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

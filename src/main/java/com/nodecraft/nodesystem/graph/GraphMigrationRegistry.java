@@ -142,6 +142,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V80 -> migrateV80ToV81(graph);
             case GraphFormatVersion.V81 -> migrateV81ToV82(graph);
             case GraphFormatVersion.V82 -> migrateV82ToV83(graph);
+            case GraphFormatVersion.V83 -> migrateV83ToV84(graph);
             default -> graph;
         };
     }
@@ -5319,6 +5320,13 @@ public final class GraphMigrationRegistry {
      * Pattern Voronoi 3D Language v2: format bump only (Error port additive; order is catalog metadata).
      */
     private static SavedGraph migrateV82ToV83(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern L-System Language v2: format bump only (Error ports additive; order is catalog metadata).
+     */
+    private static SavedGraph migrateV83ToV84(SavedGraph graph) {
         return graph;
     }
 
