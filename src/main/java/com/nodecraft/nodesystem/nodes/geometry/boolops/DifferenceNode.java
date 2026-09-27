@@ -14,6 +14,7 @@ import java.util.UUID;
 
 /**
  * Deferred voxel boolean difference: evaluated on the Minecraft block grid at voxelize/bake time.
+ * {@code Valid} means the deferred expression was constructed — not that voxelization is guaranteed.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -21,7 +22,7 @@ import java.util.UUID;
     displayName = "Difference",
     description = "Subtracts cutter geometry when voxelized/built. Result is evaluated on the Minecraft block grid (deferred voxel boolean, not analytic BRep).",
     category = "geometry.boolean",
-    order = 3
+    order = 0
 )
 public class DifferenceNode extends BaseNode {
 
@@ -30,6 +31,7 @@ public class DifferenceNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DifferenceNode() {
         super(UUID.randomUUID(), "geometry.boolean.difference");
@@ -38,7 +40,10 @@ public class DifferenceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CUTTER_ID, "Cutter Geometry", "Geometry that will be removed from the base", NodeDataType.GEOMETRY, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Deferred voxel difference geometry", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both base and cutter geometry are available", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when the deferred Difference expression was constructed (not a voxelization guarantee)",
+            NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -51,15 +56,23 @@ public class DifferenceNode extends BaseNode {
         Object baseObj = inputValues.get(INPUT_BASE_ID);
         Object cutterObj = inputValues.get(INPUT_CUTTER_ID);
 
-        GeometryData result = null;
-        boolean valid = false;
-
-        if (baseObj instanceof GeometryData baseGeometry && cutterObj instanceof GeometryData cutterGeometry) {
-            result = new DifferenceGeometryData(baseGeometry, cutterGeometry);
-            valid = true;
+        if (!(baseObj instanceof GeometryData baseGeometry)) {
+            writeInvalid("Base Geometry is required");
+            return;
+        }
+        if (!(cutterObj instanceof GeometryData cutterGeometry)) {
+            writeInvalid("Cutter Geometry is required");
+            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, result);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_GEOMETRY_ID, new DifferenceGeometryData(baseGeometry, cutterGeometry));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

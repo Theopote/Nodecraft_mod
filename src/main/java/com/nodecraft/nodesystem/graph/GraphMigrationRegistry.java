@@ -127,6 +127,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V65 -> migrateV65ToV66(graph);
             case GraphFormatVersion.V66 -> migrateV66ToV67(graph);
             case GraphFormatVersion.V67 -> migrateV67ToV68(graph);
+            case GraphFormatVersion.V68 -> migrateV68ToV69(graph);
             default -> graph;
         };
     }
@@ -4759,6 +4760,13 @@ public final class GraphMigrationRegistry {
                 }
             }
         }
+        return graph;
+    }
+
+    /**
+     * Geometry Boolean v1: format bump only (Error ports additive; orders are catalog metadata).
+     */
+    private static SavedGraph migrateV68ToV69(SavedGraph graph) {
         return graph;
     }
 

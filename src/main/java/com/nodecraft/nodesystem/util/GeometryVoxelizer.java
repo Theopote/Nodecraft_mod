@@ -34,11 +34,17 @@ import java.util.Set;
 
 /**
  * Shared geometry-to-voxel bridge for nodes that consume abstract geometry.
+ *
+ * <p>Canonical evaluation is {@link #voxelizeStrict(GeometryData, boolean)}. The legacy
+ * {@link #voxelize(GeometryData, boolean)} API is lossy: FAILURE collapses to an empty list.
  */
 public final class GeometryVoxelizer {
 
-    /** Hard cap for geometry voxelization bounding volume (blocks). */
-    public static final long MAX_SDF_VOXEL_VOLUME = 262_144L;
+    /**
+     * @deprecated Use {@link GenerationLimits#MAX_GEOMETRY_VOXELS}.
+     */
+    @Deprecated
+    public static final long MAX_SDF_VOXEL_VOLUME = GenerationLimits.MAX_GEOMETRY_VOXELS;
 
     private GeometryVoxelizer() {
     }
@@ -90,19 +96,75 @@ public final class GeometryVoxelizer {
         return null;
     }
 
+    /**
+     * Lossy voxelize: SUCCESS → blocks; FAILURE → empty list.
+     * Prefer {@link #voxelizeStrict(GeometryData, boolean)} for Boolean / Preview paths.
+     */
     public static BlockPosList voxelize(GeometryData geometry, boolean fillSolid) {
+        GeometryVoxelizationResult result = voxelizeStrict(geometry, fillSolid);
+        return result.success() ? result.blocks() : new BlockPosList();
+    }
+
+    /**
+     * Strict geometry→voxel evaluation. Distinguishes legal empty SUCCESS from FAILURE.
+     */
+    public static GeometryVoxelizationResult voxelizeStrict(@Nullable GeometryData geometry, boolean fillSolid) {
+        if (geometry == null) {
+            return GeometryVoxelizationResult.fail(VoxelizationStatus.UNSUPPORTED, "Geometry is null");
+        }
         if (geometry instanceof CompositeGeometryData compositeGeometry) {
-            return voxelizeComposite(compositeGeometry, fillSolid);
+            return voxelizeCompositeStrict(compositeGeometry, fillSolid);
         }
         if (geometry instanceof DifferenceGeometryData differenceGeometry) {
-            return voxelizeDifference(differenceGeometry, fillSolid);
+            return voxelizeDifferenceStrict(differenceGeometry, fillSolid);
         }
         if (geometry instanceof IntersectionGeometryData intersectionGeometry) {
-            return voxelizeIntersection(intersectionGeometry, fillSolid);
+            return voxelizeIntersectionStrict(intersectionGeometry, fillSolid);
         }
-        if (boundingVolumeExceedsLimit(geometry)) {
-            return new BlockPosList();
+        if (!isSupportedLeafType(geometry)) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.UNSUPPORTED,
+                "Unsupported geometry type: " + geometry.getClass().getSimpleName()
+            );
         }
+
+        GeometryVoxelizationResult budget = checkLeafVoxelBudget(geometry);
+        if (!budget.success()) {
+            return budget;
+        }
+
+        BlockPosList blocks = voxelizeLeaf(geometry, fillSolid);
+        if (blocks == null) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.UNSUPPORTED,
+                "Unsupported geometry type: " + geometry.getClass().getSimpleName()
+            );
+        }
+        return GeometryVoxelizationResult.ok(blocks);
+    }
+
+    private static boolean isSupportedLeafType(GeometryData geometry) {
+        return geometry instanceof BoxGeometryData
+            || geometry instanceof ConeGeometryData
+            || geometry instanceof FrustumConeGeometryData
+            || geometry instanceof CylinderGeometryData
+            || geometry instanceof EllipsoidGeometryData
+            || geometry instanceof HemisphereGeometryData
+            || geometry instanceof OctahedronGeometryData
+            || geometry instanceof IcosahedronGeometryData
+            || geometry instanceof DodecahedronGeometryData
+            || geometry instanceof PrismGeometryData
+            || geometry instanceof SquarePyramidGeometryData
+            || geometry instanceof SphereData
+            || geometry instanceof SdfGeometryData
+            || geometry instanceof TetrahedronGeometryData
+            || geometry instanceof TorusGeometryData;
+    }
+
+    /**
+     * @return leaf blocks, or {@code null} when the type is unsupported
+     */
+    private static @Nullable BlockPosList voxelizeLeaf(GeometryData geometry, boolean fillSolid) {
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
         }
@@ -148,7 +210,7 @@ public final class GeometryVoxelizer {
         if (geometry instanceof TorusGeometryData torusGeometry) {
             return voxelizeTorus(torusGeometry, fillSolid);
         }
-        return new BlockPosList();
+        return null;
     }
 
     public static @Nullable RegionData createBoundingRegion(GeometryData geometry) {
@@ -267,48 +329,102 @@ public final class GeometryVoxelizer {
     }
 
     public static BlockPosList voxelizeComposite(CompositeGeometryData geometry, boolean fillSolid) {
-        Set<BlockPos> mergedPositions = new LinkedHashSet<>();
+        GeometryVoxelizationResult result = voxelizeCompositeStrict(geometry, fillSolid);
+        return result.success() ? result.blocks() : new BlockPosList();
+    }
 
+    public static GeometryVoxelizationResult voxelizeCompositeStrict(
+        CompositeGeometryData geometry,
+        boolean fillSolid
+    ) {
+        Set<BlockPos> mergedPositions = new LinkedHashSet<>();
         for (GeometryData child : geometry.getGeometries()) {
-            BlockPosList childBlocks = voxelize(child, fillSolid);
-            for (BlockPos pos : childBlocks) {
+            GeometryVoxelizationResult childResult = voxelizeStrict(child, fillSolid);
+            if (!childResult.success()) {
+                return GeometryVoxelizationResult.fail(
+                    VoxelizationStatus.CHILD_FAILURE,
+                    childResult.error().isEmpty()
+                        ? "Composite child voxelization failed"
+                        : childResult.error()
+                );
+            }
+            for (BlockPos pos : childResult.blocks()) {
                 mergedPositions.add(pos.toImmutable());
             }
         }
-
-        return new BlockPosList(mergedPositions);
+        return GeometryVoxelizationResult.ok(new BlockPosList(mergedPositions));
     }
 
     public static BlockPosList voxelizeDifference(DifferenceGeometryData geometry, boolean fillSolid) {
-        BlockPosList baseBlocks = voxelize(geometry.getMinuend(), fillSolid);
-        BlockPosList cutterBlocks = voxelize(geometry.getSubtrahend(), true);
+        GeometryVoxelizationResult result = voxelizeDifferenceStrict(geometry, fillSolid);
+        return result.success() ? result.blocks() : new BlockPosList();
+    }
+
+    public static GeometryVoxelizationResult voxelizeDifferenceStrict(
+        DifferenceGeometryData geometry,
+        boolean fillSolid
+    ) {
+        GeometryVoxelizationResult base = voxelizeStrict(geometry.getMinuend(), fillSolid);
+        if (!base.success()) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.CHILD_FAILURE,
+                base.error().isEmpty() ? "Difference base voxelization failed" : base.error()
+            );
+        }
+        GeometryVoxelizationResult cutter = voxelizeStrict(geometry.getSubtrahend(), true);
+        if (!cutter.success()) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.CHILD_FAILURE,
+                cutter.error().isEmpty() ? "Difference cutter voxelization failed" : cutter.error()
+            );
+        }
 
         Set<BlockPos> result = new LinkedHashSet<>();
-        for (BlockPos pos : baseBlocks) {
+        for (BlockPos pos : base.blocks()) {
             result.add(pos.toImmutable());
         }
-        for (BlockPos pos : cutterBlocks) {
+        for (BlockPos pos : cutter.blocks()) {
             result.remove(pos);
         }
-        return new BlockPosList(result);
+        return GeometryVoxelizationResult.ok(new BlockPosList(result));
     }
 
     public static BlockPosList voxelizeIntersection(IntersectionGeometryData geometry, boolean fillSolid) {
-        BlockPosList leftBlocks = voxelize(geometry.left(), fillSolid);
-        BlockPosList rightBlocks = voxelize(geometry.right(), fillSolid);
+        GeometryVoxelizationResult result = voxelizeIntersectionStrict(geometry, fillSolid);
+        return result.success() ? result.blocks() : new BlockPosList();
+    }
+
+    public static GeometryVoxelizationResult voxelizeIntersectionStrict(
+        IntersectionGeometryData geometry,
+        boolean fillSolid
+    ) {
+        GeometryVoxelizationResult left = voxelizeStrict(geometry.left(), fillSolid);
+        if (!left.success()) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.CHILD_FAILURE,
+                left.error().isEmpty() ? "Intersection left voxelization failed" : left.error()
+            );
+        }
+        GeometryVoxelizationResult right = voxelizeStrict(geometry.right(), fillSolid);
+        if (!right.success()) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.CHILD_FAILURE,
+                right.error().isEmpty() ? "Intersection right voxelization failed" : right.error()
+            );
+        }
 
         Set<BlockPos> rightSet = new HashSet<>();
-        for (BlockPos pos : rightBlocks) {
+        for (BlockPos pos : right.blocks()) {
             rightSet.add(pos.toImmutable());
         }
 
         Set<BlockPos> result = new LinkedHashSet<>();
-        for (BlockPos pos : leftBlocks) {
+        for (BlockPos pos : left.blocks()) {
             if (rightSet.contains(pos)) {
                 result.add(pos.toImmutable());
             }
         }
-        return new BlockPosList(result);
+        return GeometryVoxelizationResult.ok(new BlockPosList(result));
     }
 
     public static @Nullable RegionData createCompositeBoundingRegion(CompositeGeometryData geometry) {
@@ -805,36 +921,63 @@ public final class GeometryVoxelizer {
         return new BlockPosList(shell);
     }
 
-    private static boolean boundingVolumeExceedsLimit(GeometryData geometry) {
+    private static GeometryVoxelizationResult checkLeafVoxelBudget(GeometryData geometry) {
         RegionData region = createBoundingRegion(geometry);
         if (region == null || !region.isComplete()) {
-            return false;
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.INVALID_BOUNDS,
+                "Geometry bounds could not be resolved for " + geometry.getClass().getSimpleName()
+            );
         }
 
         BlockPos minCorner = region.getMinCorner();
         BlockPos maxCorner = region.getMaxCorner();
         if (minCorner == null || maxCorner == null) {
-            return false;
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.INVALID_BOUNDS,
+                "Geometry bounds incomplete for " + geometry.getClass().getSimpleName()
+            );
         }
 
-        long volume = regionVolume(minCorner, maxCorner);
-        if (volume > MAX_SDF_VOXEL_VOLUME) {
+        final long volume;
+        try {
+            volume = regionVolume(minCorner, maxCorner);
+        } catch (ArithmeticException overflow) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.OVER_BUDGET,
+                "Geometry bounds volume overflow for " + geometry.getClass().getSimpleName()
+            );
+        }
+
+        if (volume > GenerationLimits.MAX_GEOMETRY_VOXELS) {
             NodeCraft.LOGGER.warn(
                 "Geometry voxelization skipped: bounds volume {} exceeds limit {} for {}.",
                 volume,
-                MAX_SDF_VOXEL_VOLUME,
+                GenerationLimits.MAX_GEOMETRY_VOXELS,
                 geometry.getClass().getSimpleName()
             );
-            return true;
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.OVER_BUDGET,
+                "Geometry bounds volume " + volume + " exceeds MAX_GEOMETRY_VOXELS ("
+                    + GenerationLimits.MAX_GEOMETRY_VOXELS + ")"
+            );
         }
-        return false;
+        return GeometryVoxelizationResult.ok(new BlockPosList());
+    }
+
+    private static boolean boundingVolumeExceedsLimit(GeometryData geometry) {
+        GeometryVoxelizationResult check = checkLeafVoxelBudget(geometry);
+        return check.status() == VoxelizationStatus.OVER_BUDGET;
     }
 
     private static long regionVolume(BlockPos minCorner, BlockPos maxCorner) {
         long sizeX = (long) maxCorner.getX() - minCorner.getX() + 1L;
         long sizeY = (long) maxCorner.getY() - minCorner.getY() + 1L;
         long sizeZ = (long) maxCorner.getZ() - minCorner.getZ() + 1L;
-        return sizeX * sizeY * sizeZ;
+        if (sizeX <= 0L || sizeY <= 0L || sizeZ <= 0L) {
+            return 0L;
+        }
+        return Math.multiplyExact(Math.multiplyExact(sizeX, sizeY), sizeZ);
     }
 
     public static RegionData createAxisAlignedRegion(BoxGeometryData geometry) {

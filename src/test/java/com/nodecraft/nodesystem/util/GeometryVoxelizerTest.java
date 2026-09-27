@@ -9,6 +9,7 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,6 +105,12 @@ class GeometryVoxelizerTest {
         assertTrue(GeometryVoxelizer.voxelize(oversizedSdf, true).isEmpty());
         assertTrue(GeometryVoxelizer.voxelize(oversizedBox, true).isEmpty());
         assertTrue(GeometryVoxelizer.voxelizeBox(oversizedBox, true).isEmpty());
+
+        GeometryVoxelizationResult strictBox = GeometryVoxelizer.voxelizeStrict(oversizedBox, true);
+        assertEquals(VoxelizationStatus.OVER_BUDGET, strictBox.status());
+        assertFalse(strictBox.success());
+        GeometryVoxelizationResult strictSdf = GeometryVoxelizer.voxelizeStrict(oversizedSdf, true);
+        assertEquals(VoxelizationStatus.OVER_BUDGET, strictSdf.status());
     }
 
     @Test

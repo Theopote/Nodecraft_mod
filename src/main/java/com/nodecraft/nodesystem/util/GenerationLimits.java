@@ -119,6 +119,12 @@ public final class GenerationLimits {
     /** Maximum solid voxels accepted from a single .vox import. */
     public static final int MAX_IMPORTED_VOXELS = 262_144;
 
+    /**
+     * Hard cap for geometry→voxel bounding volume (blocks) used by
+     * {@link GeometryVoxelizer} / deferred Difference & Intersection evaluation.
+     */
+    public static final long MAX_GEOMETRY_VOXELS = 262_144L;
+
     /** Maximum unique blocks for morphology input, intermediate, and output sets. */
     public static final int MAX_MORPHOLOGY_BLOCKS = 262_144;
 

@@ -18,6 +18,7 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
 import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Color;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
@@ -188,9 +189,29 @@ public class PreviewGeometryNode extends BaseNode {
                     surfaceGeometries,
                     options
                 ));
-                String voxelPreviewId = refreshVoxelBooleanPreview(context, voxelBooleanGeometries);
-                if (voxelPreviewId != null) {
-                    refreshedIds.add(voxelPreviewId);
+                VoxelBooleanPreviewOutcome voxelOutcome = refreshVoxelBooleanPreview(context, voxelBooleanGeometries);
+                if (!voxelOutcome.success()) {
+                    PreviewManager.hideNodePreviews(getId().toString());
+                    clearPreviewCache();
+                    previewIds = List.of();
+                    cachedPreviewIds = previewIds;
+                    cachedGeometrySignature = geometrySignature;
+                    lastExecutionTime = now;
+                    cachedOptionsSignature = optionsSignature;
+                    NodeCraft.LOGGER.warn(
+                        "PreviewGeometryNode[{}] voxel boolean evaluation failed: {}",
+                        getId(),
+                        voxelOutcome.error()
+                    );
+                    outputValues.put(OUTPUT_SUCCESS_ID, false);
+                    outputValues.put(OUTPUT_PREVIEW_ID_ID, null);
+                    outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.of());
+                    outputValues.put(OUTPUT_PREVIEW_COUNT_ID, 0);
+                    outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+                    return;
+                }
+                if (voxelOutcome.previewId() != null) {
+                    refreshedIds.add(voxelOutcome.previewId());
                 }
                 previewIds = List.copyOf(refreshedIds);
                 cachedPreviewIds = previewIds;
@@ -241,15 +262,30 @@ public class PreviewGeometryNode extends BaseNode {
             || geometry instanceof IntersectionGeometryData;
     }
 
-    private @Nullable String refreshVoxelBooleanPreview(@Nullable ExecutionContext context,
-                                                        List<GeometryData> voxelBooleanGeometries) {
+    private VoxelBooleanPreviewOutcome refreshVoxelBooleanPreview(@Nullable ExecutionContext context,
+                                                                  List<GeometryData> voxelBooleanGeometries) {
+        if (voxelBooleanGeometries.isEmpty()) {
+            return VoxelBooleanPreviewOutcome.ok(null);
+        }
+
         BlockPosList merged = new BlockPosList();
         for (GeometryData geometry : voxelBooleanGeometries) {
-            BlockPosList voxelized = GeometryVoxelizer.voxelize(geometry, true);
-            if (voxelized != null && !voxelized.isEmpty()) {
-                merged.addAll(voxelized.getPositions());
+            GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(geometry, true);
+            if (!result.success()) {
+                return VoxelBooleanPreviewOutcome.fail(
+                    result.error().isEmpty() ? "Voxel boolean evaluation failed" : result.error()
+                );
+            }
+            if (!result.blocks().isEmpty()) {
+                merged.addAll(result.blocks().getPositions());
             }
         }
+
+        if (merged.isEmpty()) {
+            // Legal empty SUCCESS (e.g. A−A or disjoint ∩) — no ghost payload, not a failure.
+            return VoxelBooleanPreviewOutcome.ok(null);
+        }
+
         PreviewSampling.BlockSample sample = PreviewSampling.sampleBlocks(merged, MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS);
         var payload = PreviewPayloadAdapters.fromBlockPosList(sample.blocks(), VOXEL_BOOLEAN_PREVIEW_BLOCK);
         PreviewStyle style = PreviewStyle.forGhostBlocks(
@@ -263,9 +299,20 @@ public class PreviewGeometryNode extends BaseNode {
             0.1f,
             Math.max(1, duration) * 20
         );
-        return PreviewManager.showPreview(
+        String previewId = PreviewManager.showPreview(
             new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
         );
+        return VoxelBooleanPreviewOutcome.ok(previewId);
+    }
+
+    private record VoxelBooleanPreviewOutcome(boolean success, @Nullable String previewId, String error) {
+        static VoxelBooleanPreviewOutcome ok(@Nullable String previewId) {
+            return new VoxelBooleanPreviewOutcome(true, previewId, "");
+        }
+
+        static VoxelBooleanPreviewOutcome fail(String error) {
+            return new VoxelBooleanPreviewOutcome(false, null, error == null ? "" : error);
+        }
     }
 
     private int computeGeometrySignature(List<GeometryData> geometries) {
