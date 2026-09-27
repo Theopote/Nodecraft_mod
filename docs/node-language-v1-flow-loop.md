@@ -10,7 +10,7 @@ List aggregation / Take-While / First-Last belong in `math.list`, not here.
 | Order | Display | Id | Effect |
 |------:|---------|-----|--------|
 | 0 | For Each Loop | `flow.loop.for_each` | `PURE` (`ExecLoopNode`) |
-| 1 | While Loop | `flow.loop.while` | `PURE` (`ExecRoutingNode` + loop-back) |
+| 1 | While Loop | `flow.loop.while` | `CONTEXT_WRITE` (`ExecRoutingNode` + loop-back; run-local iteration on `ExecutionRunGuard`) |
 
 **Removed:** `flow.loop.accumulator` (use typed `math.list.*`; string join → `math.list.join_strings`).
 

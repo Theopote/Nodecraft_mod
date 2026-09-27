@@ -81,10 +81,10 @@ class FlowLoopLanguageContractTest {
     }
 
     @Test
-    void effectsArePure() {
+    void effectsMatchFlowLoopContract() {
         assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(
                 registry.createNodeInstance("flow.loop.for_each").getClass(), "flow.loop.for_each"));
-        assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(
+        assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.resolve(
                 registry.createNodeInstance("flow.loop.while").getClass(), "flow.loop.while"));
     }
 

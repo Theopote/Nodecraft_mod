@@ -24,7 +24,7 @@ import java.util.UUID;
  * Iteration count is run-local on {@link ExecutionRunGuard}.
  */
 @NodeInfo(
-    effect = NodeEffect.PURE,
+    effect = NodeEffect.CONTEXT_WRITE,
     id = "flow.loop.while",
     displayName = "While Loop",
     description = "Routes exec_body while Condition is true under Max Iterations. "
