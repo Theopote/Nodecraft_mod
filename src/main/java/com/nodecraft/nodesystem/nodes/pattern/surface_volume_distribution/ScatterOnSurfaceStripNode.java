@@ -103,6 +103,19 @@ public class ScatterOnSurfaceStripNode extends AbstractSurfaceVolumeDistribution
             return;
         }
 
+        long maxAttemptsLong = Math.max((long) resolvedCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET, 128L);
+        long fillCapLong = (long) resolvedCount * 8L;
+        String selectionWork = GenerationLimits.validateScatterSelectionWork(
+            fillCapLong,
+            resolvedCount,
+            MinDistanceScatterSelector.DistributionMode.RANDOM,
+            minDist
+        );
+        if (selectionWork != null) {
+            writeFail(selectionWork);
+            return;
+        }
+
         Random random = new Random(resolvedSeed);
         SurfaceStripSampling.QuadCatalog quadCatalog = SurfaceStripSampling.QuadCatalog.from(strip);
         if (quadCatalog.size() == 0) {
@@ -110,9 +123,7 @@ public class ScatterOnSurfaceStripNode extends AbstractSurfaceVolumeDistribution
             return;
         }
 
-        long maxAttemptsLong = Math.max((long) resolvedCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET, 128L);
         int maxAttempts = (int) Math.min(maxAttemptsLong, Integer.MAX_VALUE);
-        long fillCapLong = (long) resolvedCount * 8L;
         int fillCap = (int) Math.min(fillCapLong, Integer.MAX_VALUE);
 
         List<Vector3d> candidates = new ArrayList<>(Math.min(maxAttempts, fillCap));

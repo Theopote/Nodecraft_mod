@@ -30,15 +30,23 @@ public final class GenerationLimits {
     public static final int SCATTER_CANDIDATES_PER_TARGET = 32;
 
     /**
-     * Hard cap on candidate generation for surface/volume scatter ({@code target × factor}).
+     * Hard cap on candidate-pool size for surface/volume scatter preflight
+     * ({@code target × SCATTER_CANDIDATES_PER_TARGET}). This bounds the accepted
+     * candidate list size, not every internal rejection attempt inside a single
+     * sample (e.g. Torus/Hemisphere volume probes).
      */
     public static final long MAX_SCATTER_CANDIDATES = (long) MAX_LAYOUT_INSTANCES * SCATTER_CANDIDATES_PER_TARGET;
 
     /**
      * Hard cap on Poisson / min-distance pairwise distance tests
-     * (approx {@code attempts × accepted}).
+     * (approx {@code attempts × accepted} or selector selection work).
      */
     public static final long MAX_SCATTER_DISTANCE_TESTS = MAX_LIST_ELEMENTS;
+
+    /**
+     * Probe attempts per blue-noise selection step in {@link MinDistanceScatterSelector}.
+     */
+    public static final int SCATTER_BLUE_NOISE_PROBES = MinDistanceScatterSelector.BLUE_NOISE_PROBE_ATTEMPTS;
 
     /**
      * Fail-closed candidate budget for scatter oversampling.
@@ -81,6 +89,50 @@ public final class GenerationLimits {
         }
         if (product > MAX_SCATTER_DISTANCE_TESTS) {
             return "Scatter distance-test budget exceeds MAX_SCATTER_DISTANCE_TESTS";
+        }
+        return null;
+    }
+
+    /**
+     * Fail-closed selection workload before {@link MinDistanceScatterSelector#select}.
+     * When {@code minDistance <= 0}, spacing work is skipped (shuffle/subList path).
+     * <ul>
+     *   <li>RANDOM: {@code candidateCount × targetCount}</li>
+     *   <li>BLUE_NOISE_APPROX: {@code SCATTER_BLUE_NOISE_PROBES × targetCount²}</li>
+     * </ul>
+     *
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateScatterSelectionWork(
+        long candidateCount,
+        int targetCount,
+        MinDistanceScatterSelector.DistributionMode mode,
+        double minDistance
+    ) {
+        if (!Double.isFinite(minDistance) || minDistance <= 0.0d) {
+            return null;
+        }
+        if (candidateCount < 0L || targetCount < 0) {
+            return "Scatter selection workload invalid";
+        }
+        if (targetCount == 0) {
+            return null;
+        }
+        long work;
+        try {
+            if (mode == MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX) {
+                work = Math.multiplyExact(
+                    Math.multiplyExact((long) SCATTER_BLUE_NOISE_PROBES, (long) targetCount),
+                    (long) targetCount
+                );
+            } else {
+                work = Math.multiplyExact(candidateCount, (long) targetCount);
+            }
+        } catch (ArithmeticException overflow) {
+            return "Scatter selection workload overflows";
+        }
+        if (work > MAX_SCATTER_DISTANCE_TESTS) {
+            return "Scatter selection workload exceeds MAX_SCATTER_DISTANCE_TESTS";
         }
         return null;
     }

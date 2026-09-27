@@ -1,6 +1,6 @@
 # Node Language v2 — Surface / Volume Distribution
 
-**Status: PASSED pending freeze** (Graph **V82**; V44 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V82**; V44 remains historical v1)
 
 Language modernization for the six canonical `pattern.surface_volume_distribution.*`
 nodes aligned with Pattern Linear/Grid/Radial v2 rules: Valid+Error+Complete,
@@ -20,6 +20,7 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 8. **Degenerate primitives** fail closed (no world-axis / point repair).
 9. **Volume Torus** uses continuous AABB (`GeometryBoundsResolver`) — never GeometryVoxelizer / BlockPos.
 10. **Image Scatter** — Density Values + Width + Height all required and connected; size exactly Width×Height; densities ∈ [0,1]; no FILE_PATH (use Read Image upstream).
+11. **Min Distance > 0** — selection workload preflight (`candidate×target` or `24×target²` for blue-noise approx) against `MAX_SCATTER_DISTANCE_TESTS`; over budget → Valid=false.
 
 ## Inventory (orders 0–5)
 

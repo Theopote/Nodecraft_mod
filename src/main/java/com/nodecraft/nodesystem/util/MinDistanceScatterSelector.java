@@ -17,6 +17,9 @@ public final class MinDistanceScatterSelector {
         BLUE_NOISE_APPROX
     }
 
+    /** Probe attempts per selection step for {@link DistributionMode#BLUE_NOISE_APPROX}. */
+    public static final int BLUE_NOISE_PROBE_ATTEMPTS = 24;
+
     private MinDistanceScatterSelector() {
     }
 
@@ -92,7 +95,7 @@ public final class MinDistanceScatterSelector {
         while (!pool.isEmpty() && selected.size() < targetCount) {
             int bestIndex = -1;
             double bestScore = Double.NEGATIVE_INFINITY;
-            int attempts = Math.min(24, pool.size());
+            int attempts = Math.min(BLUE_NOISE_PROBE_ATTEMPTS, pool.size());
             for (int i = 0; i < attempts; i++) {
                 int candidateIndex = random.nextInt(pool.size());
                 Vector3d candidate = pool.get(candidateIndex);

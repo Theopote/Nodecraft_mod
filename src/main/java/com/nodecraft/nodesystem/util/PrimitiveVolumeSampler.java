@@ -53,11 +53,16 @@ public final class PrimitiveVolumeSampler {
         if (budgetError != null) {
             return null;
         }
+        long fillCapLong = (long) targetCount * 8L;
+        String selectionWork = GenerationLimits.validateScatterSelectionWork(
+            fillCapLong, targetCount, mode, minDistance);
+        if (selectionWork != null) {
+            return null;
+        }
 
         Random random = new Random(seed);
         long candidateBudgetLong = (long) targetCount * MAX_REJECTION_ATTEMPTS;
         int candidateBudget = (int) Math.min(candidateBudgetLong, Integer.MAX_VALUE);
-        long fillCapLong = (long) targetCount * 8L;
         int fillCap = (int) Math.min(fillCapLong, Integer.MAX_VALUE);
         List<Vector3d> candidates = new ArrayList<>(Math.min(candidateBudget, fillCap));
 

@@ -524,10 +524,11 @@ public final class GraphFormatVersion {
     public static final int V81 = 81;
 
     /**
-     * Surface / Volume Distribution Language v2: Valid+Error+Complete on 6 nodes,
+     * Surface / Volume Distribution Language v2 (PASSED / FROZEN): Valid+Error+Complete on 6 nodes,
      * OptionalPortDrive / fail-closed Count budgets (no silent clamp), contiguous orders 0–5,
      * continuous volume AABB (no GeometryVoxelizer/BlockPos), strict Image density protocol
-     * (exact Width×Height, no FILE_PATH), under-target scatter Valid=true Complete=false.
+     * (exact Width×Height, no FILE_PATH), under-target scatter Valid=true Complete=false,
+     * min-distance selection workload preflight.
      * V44 remains the historical Surface / Volume Distribution v1 fence.
      */
     public static final int V82 = 82;

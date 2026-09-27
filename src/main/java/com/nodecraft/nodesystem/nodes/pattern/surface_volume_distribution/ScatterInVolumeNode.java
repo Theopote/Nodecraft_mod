@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
 import com.nodecraft.nodesystem.util.PrimitiveVolumeSampler;
 import org.jetbrains.annotations.Nullable;
@@ -105,6 +106,14 @@ public class ScatterInVolumeNode extends AbstractSurfaceVolumeDistributionNode {
         MinDistanceScatterSelector.DistributionMode mode = distributionMode == DistributionMode.RANDOM
             ? MinDistanceScatterSelector.DistributionMode.RANDOM
             : MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX;
+
+        long candidatePool = (long) resolvedCount * 8L;
+        String selectionWork = GenerationLimits.validateScatterSelectionWork(
+            candidatePool, resolvedCount, mode, minDist);
+        if (selectionWork != null) {
+            writeFail(selectionWork);
+            return;
+        }
 
         List<Vector3d> points = PrimitiveVolumeSampler.scatter(
             geometry, resolvedCount, resolvedSeed, minDist, mode);

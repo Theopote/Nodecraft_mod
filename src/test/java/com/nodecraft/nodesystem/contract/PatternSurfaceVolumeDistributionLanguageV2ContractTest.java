@@ -194,6 +194,60 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
     }
 
     @Test
+    void scatterSurfaceSpacingWorkOverBudgetFailsClosed() {
+        BaseNode node = node("pattern.surface_volume_distribution.scatter_surface");
+        node.setInput("input_geometry", new SphereData(new Vector3d(), 2.0d));
+        node.setNodeState(Map.of(
+            "targetCount", 512,
+            "minDistance", 0.1d,
+            "seed", 1,
+            "distributionMode", "BLUE_NOISE"
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_complete"));
+        assertEquals(0, node.getOutput("output_count"));
+        String error = String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("workload") || error.contains("budget"));
+    }
+
+    @Test
+    void scatterSurfaceStripSpacingWorkOverBudgetFailsClosed() {
+        BaseNode node = node("pattern.surface_volume_distribution.scatter_surface_strip");
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 1, 0), new Vector3d(1, 1, 0), new Vector3d(2, 1, 0))
+        );
+        node.setInput("input_surface_strip",
+            new com.nodecraft.nodesystem.datatypes.SurfaceStripData(sections, List.of(false, false)));
+        node.setNodeState(Map.of("targetCount", 1024, "minDistance", 0.05d, "seed", 2));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_complete"));
+        assertEquals(0, node.getOutput("output_count"));
+        String error = String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("workload") || error.contains("budget"));
+    }
+
+    @Test
+    void scatterVolumeSpacingWorkOverBudgetFailsClosed() {
+        BaseNode node = node("pattern.surface_volume_distribution.scatter_volume");
+        node.setInput("input_geometry", new SphereData(new Vector3d(), 5.0d));
+        node.setNodeState(Map.of(
+            "targetCount", 512,
+            "minDistance", 0.1d,
+            "seed", 3,
+            "distributionMode", "BLUE_NOISE"
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_complete"));
+        assertEquals(0, node.getOutput("output_count"));
+        String error = String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("workload") || error.contains("budget"));
+    }
+
+    @Test
     void scatterSurfaceDegenerateCylinderFails() {
         BaseNode node = node("pattern.surface_volume_distribution.scatter_surface");
         node.setInput("input_geometry", new CylinderGeometryData(

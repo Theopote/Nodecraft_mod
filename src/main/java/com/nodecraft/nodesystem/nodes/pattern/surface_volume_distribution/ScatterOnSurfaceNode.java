@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
 import com.nodecraft.nodesystem.util.PrimitiveGeometrySurfaceSampler;
 import org.jetbrains.annotations.Nullable;
@@ -108,6 +109,14 @@ public class ScatterOnSurfaceNode extends AbstractSurfaceVolumeDistributionNode 
         MinDistanceScatterSelector.DistributionMode mode = distributionMode == DistributionMode.RANDOM
             ? MinDistanceScatterSelector.DistributionMode.RANDOM
             : MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX;
+
+        long candidateCount = (long) resolvedCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET;
+        String selectionWork = GenerationLimits.validateScatterSelectionWork(
+            candidateCount, resolvedCount, mode, minDist);
+        if (selectionWork != null) {
+            writeFail(selectionWork);
+            return;
+        }
 
         List<PrimitiveGeometrySurfaceSampler.SurfaceSample> samples = PrimitiveGeometrySurfaceSampler.scatter(
             geometry,

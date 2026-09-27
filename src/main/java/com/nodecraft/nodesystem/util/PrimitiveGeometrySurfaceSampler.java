@@ -63,9 +63,14 @@ public final class PrimitiveGeometrySurfaceSampler {
         if (budgetError != null) {
             return null;
         }
+        long candidateCountLong = (long) targetCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET;
+        String selectionWork = GenerationLimits.validateScatterSelectionWork(
+            candidateCountLong, targetCount, mode, minDistance);
+        if (selectionWork != null) {
+            return null;
+        }
 
         Random random = new Random(seed);
-        long candidateCountLong = (long) targetCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET;
         int candidateCount = (int) Math.min(Math.max(candidateCountLong, targetCount), Integer.MAX_VALUE);
         List<Vector3d> candidates = new ArrayList<>(candidateCount);
         List<Vector3d> candidateNormals = new ArrayList<>(candidateCount);
