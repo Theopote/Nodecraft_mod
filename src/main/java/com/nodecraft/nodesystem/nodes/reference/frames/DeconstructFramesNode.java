@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -35,6 +36,7 @@ public class DeconstructFramesNode extends BaseNode {
     private static final String OUTPUT_PLANES_ID = "output_planes";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructFramesNode() {
         super(UUID.randomUUID(), "reference.frames.deconstruct_frames");
@@ -47,13 +49,18 @@ public class DeconstructFramesNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PLANES_ID, "Planes", "Planes from each frame", NodeDataType.PLANE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of frames", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when input is a non-empty frame list", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object raw = inputValues.get(INPUT_FRAMES_ID);
         if (!(raw instanceof List<?> list) || list.isEmpty()) {
-            writeEmpty();
+            writeEmpty("Frames input must be a non-empty FRAME_LIST");
+            return;
+        }
+        if (list.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
+            writeEmpty("Frame count exceeds MAX_LIST_ELEMENTS");
             return;
         }
 
@@ -65,12 +72,12 @@ public class DeconstructFramesNode extends BaseNode {
 
         for (Object item : list) {
             if (!(item instanceof FrameData frame)) {
-                writeEmpty();
+                writeEmpty("Every FRAME_LIST entry must be FRAME");
                 return;
             }
             FrameData canonical = frame.orthonormalized();
             if (canonical == null) {
-                writeEmpty();
+                writeEmpty("Every frame must be usable and finite");
                 return;
             }
             origins.add(new Vector3d(canonical.getOrigin()));
@@ -87,9 +94,10 @@ public class DeconstructFramesNode extends BaseNode {
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
         outputValues.put(OUTPUT_COUNT_ID, list.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeEmpty() {
+    private void writeEmpty(String error) {
         outputValues.put(OUTPUT_ORIGINS_ID, List.of());
         outputValues.put(OUTPUT_X_AXES_ID, List.of());
         outputValues.put(OUTPUT_Y_AXES_ID, List.of());
@@ -97,5 +105,6 @@ public class DeconstructFramesNode extends BaseNode {
         outputValues.put(OUTPUT_PLANES_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -49,6 +49,7 @@ public class TransformFrameNode extends BaseNode {
 
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public TransformFrameNode() {
         super(UUID.randomUUID(), "reference.frames.transform_frame");
@@ -60,6 +61,7 @@ public class TransformFrameNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Transformed orthonormal frame", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame transform succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -71,27 +73,40 @@ public class TransformFrameNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object frameObj = inputValues.get(INPUT_FRAME_ID);
         if (!(frameObj instanceof FrameData frame)) {
-            writeInvalid();
+            writeInvalid("Frame input must be FRAME");
             return;
         }
 
-        Vector3d origin = frame.getOrigin();
-        Vector3d xAxis = frame.getXAxis();
-        Vector3d yAxis = frame.getYAxis();
-        Vector3d zAxis = frame.getZAxis();
-
-        Vector3d translation = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
-        if (translation == null) {
-            translation = new Vector3d(translationX, translationY, translationZ);
+        FrameData canonical = frame.orthonormalized();
+        if (canonical == null) {
+            writeInvalid("Input frame must be usable and finite");
+            return;
         }
-        double rx = inputValues.get(INPUT_ROT_X_ID) instanceof Number n ? n.doubleValue() : rotationX;
-        double ry = inputValues.get(INPUT_ROT_Y_ID) instanceof Number n ? n.doubleValue() : rotationY;
-        double rz = inputValues.get(INPUT_ROT_Z_ID) instanceof Number n ? n.doubleValue() : rotationZ;
-        if (!FrameUtils.isFinite(translation)
-            || !Double.isFinite(rx)
-            || !Double.isFinite(ry)
-            || !Double.isFinite(rz)) {
-            writeInvalid();
+
+        Vector3d propertyTranslation = new Vector3d(translationX, translationY, translationZ);
+        Vector3d translation = OptionalPortDrive.resolveOptionalVector(this, INPUT_TRANSLATION_ID, propertyTranslation);
+        if (translation == null) {
+            writeInvalid("Translation connected but invalid");
+            return;
+        }
+        if (!FrameUtils.isFinite(translation)) {
+            writeInvalid("Translation must be finite");
+            return;
+        }
+
+        Double rx = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_X_ID, rotationX);
+        if (rx == null) {
+            writeInvalid("Rotation X connected but invalid");
+            return;
+        }
+        Double ry = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Y_ID, rotationY);
+        if (ry == null) {
+            writeInvalid("Rotation Y connected but invalid");
+            return;
+        }
+        Double rz = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Z_ID, rotationZ);
+        if (rz == null) {
+            writeInvalid("Rotation Z connected but invalid");
             return;
         }
 
@@ -101,24 +116,26 @@ public class TransformFrameNode extends BaseNode {
             Math.toRadians(rz)
         );
 
-        Vector3d outX = rotation.transform(new Vector3d(xAxis));
-        Vector3d outY = rotation.transform(new Vector3d(yAxis));
-        Vector3d outZ = rotation.transform(new Vector3d(zAxis));
-        Vector3d outOrigin = origin.add(translation, new Vector3d());
+        Vector3d outX = rotation.transform(new Vector3d(canonical.getXAxis()));
+        Vector3d outY = rotation.transform(new Vector3d(canonical.getYAxis()));
+        Vector3d outZ = rotation.transform(new Vector3d(canonical.getZAxis()));
+        Vector3d outOrigin = canonical.getOrigin().add(translation, new Vector3d());
 
         FrameData outFrame = FrameData.orthonormal(outOrigin, outX, outY, outZ);
         if (outFrame == null) {
-            writeInvalid();
+            writeInvalid("Transformed frame became degenerate");
             return;
         }
 
         outputValues.put(OUTPUT_FRAME_ID, outFrame);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

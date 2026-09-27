@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -31,6 +32,7 @@ public class FaceCenterFrameNode extends BaseNode {
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public FaceCenterFrameNode() {
         super(UUID.randomUUID(), "reference.frames.frame_from_face");
@@ -40,6 +42,7 @@ public class FaceCenterFrameNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Oriented frame at the face center", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Face center point used as frame origin", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a valid face frame could be constructed", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -51,41 +54,44 @@ public class FaceCenterFrameNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
         if (!(faceObj instanceof BoxFaceData face)) {
-            writeEmptyOutputs();
+            writeInvalid("Face input must be BOX_FACE");
+            return;
+        }
+
+        String faceError = BoxFaceValidator.validate(face);
+        if (faceError != null) {
+            writeInvalid(faceError);
             return;
         }
 
         List<Vector3d> corners = face.getCorners();
-        if (corners.size() < 4) {
-            writeEmptyOutputs();
-            return;
-        }
-
         Vector3d xAxis = FrameUtils.normalizedDirection(corners.get(0), corners.get(1));
         Vector3d yAxis = FrameUtils.normalizedDirection(corners.get(0), corners.get(3));
         Vector3d center = face.getCenter();
         Vector3d zAxis = new Vector3d(face.getNormal());
 
         if (xAxis == null || yAxis == null || !FrameUtils.isFinite(center) || !FrameUtils.isUsableAxis(zAxis)) {
-            writeEmptyOutputs();
+            writeInvalid("Could not derive usable face axes");
             return;
         }
         zAxis.normalize();
 
         FrameData frame = FrameData.orthonormal(center, xAxis, yAxis, zAxis);
         if (frame == null) {
-            writeEmptyOutputs();
+            writeInvalid("Could not build orthonormal frame from face");
             return;
         }
 
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeEmptyOutputs() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

@@ -1,6 +1,6 @@
 # Node Language v1 — Reference Frames
 
-**Status: PASSED / FROZEN** (Graph **V47**)
+**Status: PASSED / FROZEN** (Graph **V47**; V85 remains the v2 fence)
 
 Language unification for the eight canonical `reference.frames.*` nodes: canonical IDs,
 shared `FrameUtils`, strict Construct semantics, Sphere X Hint, and orthonormal validation

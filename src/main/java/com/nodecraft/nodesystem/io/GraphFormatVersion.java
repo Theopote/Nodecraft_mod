@@ -296,7 +296,7 @@ public final class GraphFormatVersion {
     public static final int V46 = 46;
 
     /**
-     * Reference Frames v1: sphere_surface_frame rename, unified FrameUtils,
+     * Reference Frames v1 (historical milestone): sphere_surface_frame rename, unified FrameUtils,
      * Construct strict parallel axes, Sphere X Hint, deconstruct orthonormal boundary.
      */
     public static final int V47 = 47;
@@ -551,8 +551,17 @@ public final class GraphFormatVersion {
      */
     public static final int V84 = 84;
 
+    /**
+     * Reference Frames Language v2 (PASSED / FROZEN): Valid+Error on seven fallible nodes,
+     * OptionalPortDrive on Construct/Transform optional ports, connected X Hint uses RequireHint
+     * helpers (no fallback when connected), BoxFaceValidator on Face Center Frame,
+     * Transform input canonicalization, Deconstruct Frames MAX_LIST_ELEMENTS cap.
+     * V47 remains the historical Reference Frames v1 fence.
+     */
+    public static final int V85 = 85;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V84;
+    public static final int CURRENT = V85;
 
     private GraphFormatVersion() {
     }

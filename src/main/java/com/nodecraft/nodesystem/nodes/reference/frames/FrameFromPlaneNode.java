@@ -9,7 +9,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -30,6 +30,7 @@ public class FrameFromPlaneNode extends BaseNode {
 
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public FrameFromPlaneNode() {
         super(UUID.randomUUID(), "reference.frames.frame_from_plane");
@@ -39,28 +40,50 @@ public class FrameFromPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Orthonormal frame on the plane", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame construction succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint)";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         if (!(planeObj instanceof PlaneData plane)) {
-            writeInvalid();
+            writeInvalid("Plane input must be PLANE");
             return;
         }
 
-        Vector3d xHint = SpatialValueResolver.resolveVector(inputValues.get(INPUT_X_HINT_ID));
-        FrameData frame = FrameUtils.fromPlane(plane, xHint);
-        if (frame == null) {
-            writeInvalid();
-            return;
+        FrameData frame;
+        if (OptionalPortDrive.isConnected(this, INPUT_X_HINT_ID)) {
+            Vector3d xHint = OptionalPortDrive.resolveOptionalVector(this, INPUT_X_HINT_ID, null);
+            if (xHint == null) {
+                writeInvalid("X Hint connected but invalid");
+                return;
+            }
+            frame = FrameUtils.fromPlaneRequireHint(plane, xHint);
+            if (frame == null) {
+                writeInvalid("X Hint has zero length when projected onto the plane");
+                return;
+            }
+        } else {
+            frame = FrameUtils.fromPlane(plane, null);
+            if (frame == null) {
+                writeInvalid("Could not build orthonormal frame on plane");
+                return;
+            }
         }
+
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

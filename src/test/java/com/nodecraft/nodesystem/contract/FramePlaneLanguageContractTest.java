@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -12,6 +13,7 @@ import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import org.joml.Vector3d;
@@ -20,7 +22,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -85,6 +89,9 @@ class FramePlaneLanguageContractTest {
     @Test
     void constructFrameOrthonormalizesScaledAxes() {
         BaseNode construct = node("reference.frames.construct_frame");
+        connectInput(construct, "input_origin", NodeDataType.POINT);
+        connectInput(construct, "input_x_axis", NodeDataType.VECTOR);
+        connectInput(construct, "input_y_axis", NodeDataType.VECTOR);
         construct.setInput("input_origin", new PointData(0, 0, 0));
         construct.setInput("input_x_axis", new Vector3d(2, 0, 0));
         construct.setInput("input_y_axis", new Vector3d(0, 3, 0));
@@ -114,7 +121,7 @@ class FramePlaneLanguageContractTest {
         );
         BaseNode transform = node("reference.frames.transform_frame");
         transform.setInput("input_frame", input);
-        transform.setInput("input_rotation_z", 90.0d);
+        transform.setNodeState(Map.of("rotationZ", 90.0d));
         transform.processNode(null);
 
         assertEquals(Boolean.TRUE, transform.getOutput("output_valid"));
@@ -125,29 +132,22 @@ class FramePlaneLanguageContractTest {
     }
 
     @Test
-    void frameFromPlaneUsesXHintAndDeterministicFallback() {
+    void frameFromPlaneUsesDeterministicFallbackWhenUnconnected() {
         PlaneData plane = new PlaneData(new Vector3d(1, 2, 3), new Vector3d(0, 1, 0));
 
         BaseNode fromPlane = node("reference.frames.frame_from_plane");
         fromPlane.setInput("input_plane", plane);
-        fromPlane.setInput("input_x_hint", new Vector3d(1, 0, 0));
         fromPlane.processNode(null);
         assertEquals(Boolean.TRUE, fromPlane.getOutput("output_valid"));
 
         FrameData frame = assertInstanceOf(FrameData.class, fromPlane.getOutput("output_frame"));
         assertVectorEquals(new Vector3d(1, 2, 3), frame.getOrigin(), 1.0e-9d);
         assertVectorEquals(new Vector3d(0, 1, 0), frame.getZAxis(), 1.0e-9d);
-        assertVectorEquals(new Vector3d(1, 0, 0), frame.getXAxis(), 1.0e-9d);
+        assertEquals(1.0d, frame.getXAxis().length(), 1.0e-9d);
 
-        fromPlane.setInput("input_x_hint", new Vector3d(0, 1, 0));
-        fromPlane.processNode(null);
-        assertEquals(Boolean.TRUE, fromPlane.getOutput("output_valid"));
-        FrameData fallback = assertInstanceOf(FrameData.class, fromPlane.getOutput("output_frame"));
-        assertEquals(1.0d, fallback.getXAxis().length(), 1.0e-9d);
-
-        FrameData helper = FrameUtils.fromPlane(plane, new Vector3d(0, 1, 0));
+        FrameData helper = FrameUtils.fromPlane(plane, null);
         assertNotNull(helper);
-        assertVectorEquals(fallback.getXAxis(), helper.getXAxis(), 1.0e-9d);
+        assertVectorEquals(helper.getXAxis(), frame.getXAxis(), 1.0e-9d);
     }
 
     @Test
@@ -335,5 +335,26 @@ class FramePlaneLanguageContractTest {
         assertEquals(expected.x, actual.x, epsilon);
         assertEquals(expected.y, actual.y, epsilon);
         assertEquals(expected.z, actual.z, epsilon);
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

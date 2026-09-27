@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,12 +24,17 @@ import java.util.UUID;
 )
 public class ConstructFrameNode extends BaseNode {
 
+    private static final Vector3d DEFAULT_ORIGIN = new Vector3d();
+    private static final Vector3d DEFAULT_X = new Vector3d(1, 0, 0);
+    private static final Vector3d DEFAULT_Y = new Vector3d(0, 1, 0);
+
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String INPUT_X_AXIS_ID = "input_x_axis";
     private static final String INPUT_Y_AXIS_ID = "input_y_axis";
 
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ConstructFrameNode() {
         super(UUID.randomUUID(), "reference.frames.construct_frame");
@@ -38,6 +44,7 @@ public class ConstructFrameNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Orthonormal right-handed frame", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame axes are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -47,53 +54,52 @@ public class ConstructFrameNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean originConnected = inputValues.get(INPUT_ORIGIN_ID) != null;
-        boolean xConnected = inputValues.get(INPUT_X_AXIS_ID) != null;
-        boolean yConnected = inputValues.get(INPUT_Y_AXIS_ID) != null;
-
-        Vector3d origin = FrameUtils.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d x = FrameUtils.resolveVector(inputValues.get(INPUT_X_AXIS_ID));
-        Vector3d y = FrameUtils.resolveVector(inputValues.get(INPUT_Y_AXIS_ID));
-
-        if (originConnected && origin == null) {
-            writeInvalid();
-            return;
-        }
-        if (xConnected && !FrameUtils.isUsableAxis(x)) {
-            writeInvalid();
-            return;
-        }
-        if (yConnected && !FrameUtils.isUsableAxis(y)) {
-            writeInvalid();
-            return;
-        }
-
+        Vector3d origin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_ORIGIN_ID, DEFAULT_ORIGIN);
         if (origin == null) {
-            origin = new Vector3d();
-        }
-        if (x == null) {
-            x = new Vector3d(1, 0, 0);
-        }
-        if (y == null) {
-            y = new Vector3d(0, 1, 0);
+            writeInvalid("Origin connected but invalid");
+            return;
         }
 
+        Vector3d x = OptionalPortDrive.resolveOptionalVector(this, INPUT_X_AXIS_ID, DEFAULT_X);
+        if (x == null) {
+            writeInvalid("X Axis connected but invalid");
+            return;
+        }
+        if (!FrameUtils.isUsableAxis(x)) {
+            writeInvalid("X Axis must be finite and non-zero");
+            return;
+        }
+
+        Vector3d y = OptionalPortDrive.resolveOptionalVector(this, INPUT_Y_AXIS_ID, DEFAULT_Y);
+        if (y == null) {
+            writeInvalid("Y Axis connected but invalid");
+            return;
+        }
+        if (!FrameUtils.isUsableAxis(y)) {
+            writeInvalid("Y Axis must be finite and non-zero");
+            return;
+        }
+
+        boolean xConnected = OptionalPortDrive.isConnected(this, INPUT_X_AXIS_ID);
+        boolean yConnected = OptionalPortDrive.isConnected(this, INPUT_Y_AXIS_ID);
         if (xConnected && yConnected && FrameUtils.areParallel(x, y)) {
-            writeInvalid();
+            writeInvalid("Connected X and Y axes must not be parallel");
             return;
         }
 
         FrameData frame = FrameData.orthonormal(origin, x, y, null);
         if (frame == null) {
-            writeInvalid();
+            writeInvalid("Could not build orthonormal frame from axes");
             return;
         }
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_FRAME_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

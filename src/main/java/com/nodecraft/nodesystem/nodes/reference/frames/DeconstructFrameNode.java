@@ -29,6 +29,7 @@ public class DeconstructFrameNode extends BaseNode {
     private static final String OUTPUT_Z_AXIS_ID = "output_z_axis";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructFrameNode() {
         super(UUID.randomUUID(), "reference.frames.deconstruct_frame");
@@ -40,6 +41,7 @@ public class DeconstructFrameNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_Z_AXIS_ID, "Z Axis", "Frame Z axis", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane from origin + Z axis", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame input is a usable orthonormal frame", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -51,13 +53,13 @@ public class DeconstructFrameNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object frameObj = inputValues.get(INPUT_FRAME_ID);
         if (!(frameObj instanceof FrameData frame)) {
-            writeInvalid();
+            writeInvalid("Frame input must be FRAME");
             return;
         }
 
         FrameData canonical = frame.orthonormalized();
         if (canonical == null) {
-            writeInvalid();
+            writeInvalid("Frame must be usable and finite");
             return;
         }
 
@@ -67,14 +69,16 @@ public class DeconstructFrameNode extends BaseNode {
         outputValues.put(OUTPUT_Z_AXIS_ID, canonical.getZAxis());
         outputValues.put(OUTPUT_PLANE_ID, canonical.toPlane());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_ORIGIN_ID, null);
         outputValues.put(OUTPUT_X_AXIS_ID, null);
         outputValues.put(OUTPUT_Y_AXIS_ID, null);
         outputValues.put(OUTPUT_Z_AXIS_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }
