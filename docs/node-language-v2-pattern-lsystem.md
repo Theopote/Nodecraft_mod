@@ -1,6 +1,6 @@
 # Node Language v2 — Pattern L-System
 
-**Status: implemented** (Graph **V84**; V46 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V84**; V46 remains historical v1)
 
 Language modernization for the three canonical `pattern.lsystem.*` nodes:
 Valid+Error, OptionalPortDrive, connection-aware rules, axiom/rewrite budgets,

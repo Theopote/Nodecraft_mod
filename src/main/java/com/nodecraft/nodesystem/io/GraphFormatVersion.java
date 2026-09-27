@@ -544,7 +544,7 @@ public final class GraphFormatVersion {
     public static final int V83 = 83;
 
     /**
-     * Pattern L-System Language v2: Valid+Error on Rule/Expand/Turtle, orders 0–2,
+     * Pattern L-System Language v2 (PASSED / FROZEN): Valid+Error on Rule/Expand/Turtle, orders 0–2,
      * OptionalPortDrive / connection-aware rules, axiom and rewrite workloads,
      * weighted-sum finite fence, Turtle hard-fail transactional geometry.
      * V46 remains the historical Pattern L-System v1 fence.
