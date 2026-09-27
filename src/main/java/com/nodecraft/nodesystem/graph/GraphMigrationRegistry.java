@@ -144,6 +144,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V82 -> migrateV82ToV83(graph);
             case GraphFormatVersion.V83 -> migrateV83ToV84(graph);
             case GraphFormatVersion.V84 -> migrateV84ToV85(graph);
+            case GraphFormatVersion.V85 -> migrateV85ToV86(graph);
             default -> graph;
         };
     }
@@ -5335,6 +5336,13 @@ public final class GraphMigrationRegistry {
      * Reference Frames Language v2: format bump only (Error ports additive; order is catalog metadata).
      */
     private static SavedGraph migrateV84ToV85(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Reference Planes Language v2: format bump only (Error ports additive; order is catalog metadata).
+     */
+    private static SavedGraph migrateV85ToV86(SavedGraph graph) {
         return graph;
     }
 

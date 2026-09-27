@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PlaneUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -31,6 +32,7 @@ public class DistancePointToPlaneNode extends BaseNode {
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_SIGNED_DISTANCE_ID = "output_signed_distance";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DistancePointToPlaneNode() {
         super(UUID.randomUUID(), "reference.planes.distance_point_to_plane");
@@ -48,6 +50,8 @@ public class DistancePointToPlaneNode extends BaseNode {
             "Signed distance from the point to the plane", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when both point and plane inputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -62,35 +66,46 @@ public class DistancePointToPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d point = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_ID));
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
+        Object pointObj = inputValues.get(INPUT_POINT_ID);
+        if (!(pointObj instanceof PointData)) {
+            writeInvalid("Point must be a finite POINT");
+            return;
+        }
+        Vector3d point = SpatialValueResolver.resolvePoint(pointObj);
+        if (!PlaneUtils.isFinite(point)) {
+            writeInvalid("Point must be a finite POINT");
+            return;
+        }
 
-        if (!PlaneUtils.isFinite(point) || !(planeObj instanceof PlaneData plane)) {
-            writeInvalid();
+        Object planeObj = inputValues.get(INPUT_PLANE_ID);
+        if (!(planeObj instanceof PlaneData plane)) {
+            writeInvalid("Plane input must be PLANE");
             return;
         }
 
         PlaneData canonical = plane.normalized();
         if (canonical == null) {
-            writeInvalid();
+            writeInvalid("Plane must be finite with non-zero normal");
             return;
         }
 
         double signedDistance = canonical.signedDistanceTo(point);
         if (!Double.isFinite(signedDistance)) {
-            writeInvalid();
+            writeInvalid("Signed distance is not finite");
             return;
         }
 
         outputValues.put(OUTPUT_DISTANCE_ID, Math.abs(signedDistance));
         outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, signedDistance);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
         outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

@@ -1,6 +1,6 @@
 # Node Language v1 — Reference Planes
 
-**Status: PASSED / FROZEN** (Graph **V48**)
+**Status: PASSED / FROZEN** (Graph **V48**; V86 remains the v2 fence)
 
 Language unification for the seven canonical `reference.planes.*` nodes: PLANE invariant,
 shared `PlaneUtils`, strict World Plane Origin semantics, canonical validation at query/deconstruct

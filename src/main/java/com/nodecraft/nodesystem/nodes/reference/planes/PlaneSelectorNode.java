@@ -8,8 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PlaneUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -36,6 +36,7 @@ public class PlaneSelectorNode extends BaseNode {
     private static final String INPUT_ORIGIN_ID = "input_origin";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(
         displayName = "Plane Preset",
@@ -79,6 +80,8 @@ public class PlaneSelectorNode extends BaseNode {
             "Constructed plane data", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a valid plane was constructed", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -88,25 +91,25 @@ public class PlaneSelectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean originConnected = inputValues.get(INPUT_ORIGIN_ID) != null;
-        Vector3d originVector;
-        if (originConnected) {
-            originVector = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
-            if (!PlaneUtils.isFinite(originVector)) {
-                writeInvalid();
-                return;
-            }
-        } else {
-            originVector = new Vector3d(originX, originY, originZ);
+        Vector3d propertyOrigin = new Vector3d(originX, originY, originZ);
+        Vector3d origin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_ORIGIN_ID, propertyOrigin);
+        if (origin == null) {
+            writeInvalid("Origin connected but invalid");
+            return;
+        }
+        if (!PlaneUtils.isFinite(origin)) {
+            writeInvalid("Origin must be finite");
+            return;
         }
 
-        PlaneData plane = PlaneUtils.fromOriginNormal(originVector, resolveNormal());
+        PlaneData plane = PlaneUtils.fromOriginNormal(origin, resolveNormal());
         if (plane == null) {
-            writeInvalid();
+            writeInvalid("Plane construction failed");
             return;
         }
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private Vector3d resolveNormal() {
@@ -117,9 +120,10 @@ public class PlaneSelectorNode extends BaseNode {
         };
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     public PlanePreset getPlanePreset() {

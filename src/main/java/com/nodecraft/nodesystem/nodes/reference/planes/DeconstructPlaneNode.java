@@ -27,6 +27,7 @@ public class DeconstructPlaneNode extends BaseNode {
     private static final String OUTPUT_ORIGIN_ID = "output_origin";
     private static final String OUTPUT_NORMAL_ID = "output_normal";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructPlaneNode() {
         super(UUID.randomUUID(), "reference.planes.deconstruct_plane");
@@ -35,30 +36,33 @@ public class DeconstructPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_ORIGIN_ID, "Origin", "Plane origin point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Plane normal vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when plane input is a usable canonical plane", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         if (!(planeObj instanceof PlaneData plane)) {
-            writeInvalid();
+            writeInvalid("Plane input must be PLANE");
             return;
         }
 
         PlaneData canonical = plane.normalized();
         if (canonical == null) {
-            writeInvalid();
+            writeInvalid("Plane must be finite with non-zero normal");
             return;
         }
 
         outputValues.put(OUTPUT_ORIGIN_ID, new PointData(canonical.getPoint()));
         outputValues.put(OUTPUT_NORMAL_ID, canonical.getNormal());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_ORIGIN_ID, null);
         outputValues.put(OUTPUT_NORMAL_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

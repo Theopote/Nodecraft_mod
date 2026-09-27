@@ -302,7 +302,7 @@ public final class GraphFormatVersion {
     public static final int V47 = 47;
 
     /**
-     * Reference Planes v1: PLANE invariant, box_face_plane rename, World Plane Valid,
+     * Reference Planes v1 (historical milestone): PLANE invariant, box_face_plane rename, World Plane Valid,
      * canonical validation at deconstruct/distance/offset boundaries, unified PlaneUtils.
      */
     public static final int V48 = 48;
@@ -560,8 +560,16 @@ public final class GraphFormatVersion {
      */
     public static final int V85 = 85;
 
+    /**
+     * Reference Planes Language v2 (PASSED / FROZEN): Valid+Error on all seven nodes,
+     * OptionalPortDrive on World Plane Origin and Offset Distance, BoxFaceValidator on Box Face To Plane,
+     * strict DOUBLE distance semantics, canonical producer/consumer boundaries.
+     * V48 remains the historical Reference Planes v1 fence.
+     */
+    public static final int V86 = 86;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V85;
+    public static final int CURRENT = V86;
 
     private GraphFormatVersion() {
     }

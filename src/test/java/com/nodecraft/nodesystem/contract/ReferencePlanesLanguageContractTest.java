@@ -5,9 +5,11 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.PlaneUtils;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -120,6 +123,7 @@ class ReferencePlanesLanguageContractTest {
     @Test
     void worldPlaneConnectedInvalidOriginFailsClosed() {
         BaseNode world = node("reference.planes.world_plane");
+        connectInput(world, "input_origin", NodeDataType.POINT);
         world.setInput("input_origin", new PointData(Double.NaN, 0, 0));
         world.processNode(null);
         assertEquals(Boolean.FALSE, world.getOutput("output_valid"));
@@ -273,5 +277,26 @@ class ReferencePlanesLanguageContractTest {
         assertEquals(expected.x, actual.x, epsilon);
         assertEquals(expected.y, actual.y, epsilon);
         assertEquals(expected.z, actual.z, epsilon);
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+                .filter(port -> inputPortId.equals(port.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

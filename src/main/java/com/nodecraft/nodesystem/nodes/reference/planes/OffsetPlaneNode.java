@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PlaneUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -28,6 +29,7 @@ public class OffsetPlaneNode extends BaseNode {
 
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public OffsetPlaneNode() {
         super(UUID.randomUUID(), "reference.planes.offset_plane");
@@ -36,25 +38,26 @@ public class OffsetPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Offset plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when offset succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         if (!(planeObj instanceof PlaneData plane)) {
-            writeEmpty();
+            writeInvalid("Plane input must be PLANE");
             return;
         }
 
-        double distance = inputValues.get(INPUT_DISTANCE_ID) instanceof Number n ? n.doubleValue() : 0.0d;
-        if (!Double.isFinite(distance)) {
-            writeEmpty();
+        Double distance = OptionalPortDrive.resolveOptionalDouble(this, INPUT_DISTANCE_ID, 0.0d);
+        if (distance == null) {
+            writeInvalid("Distance connected but invalid");
             return;
         }
 
         PlaneData canonical = plane.normalized();
         if (canonical == null) {
-            writeEmpty();
+            writeInvalid("Plane must be finite with non-zero normal");
             return;
         }
 
@@ -62,16 +65,18 @@ public class OffsetPlaneNode extends BaseNode {
         Vector3d newOrigin = canonical.getPoint().add(new Vector3d(normal).mul(distance));
         PlaneData offset = PlaneUtils.fromOriginNormal(newOrigin, normal);
         if (offset == null) {
-            writeEmpty();
+            writeInvalid("Plane construction failed");
             return;
         }
 
         outputValues.put(OUTPUT_PLANE_ID, offset);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeEmpty() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }
