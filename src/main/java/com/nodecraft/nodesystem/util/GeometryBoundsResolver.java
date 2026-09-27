@@ -38,65 +38,31 @@ public final class GeometryBoundsResolver {
     }
 
     public static @Nullable BoundingBoxData resolve(@Nullable GeometryData geometry) {
-        if (geometry == null) {
-            return null;
-        }
-        if (geometry instanceof CompositeGeometryData composite) {
-            return resolveComposite(composite);
-        }
-        if (geometry instanceof DifferenceGeometryData difference) {
-            // A - B cannot extend beyond A; keep continuous envelope on the minuend.
-            return resolve(difference.getMinuend());
-        }
-        if (geometry instanceof IntersectionGeometryData intersection) {
-            return BoundingBoxData.intersection(resolve(intersection.left()), resolve(intersection.right()));
-        }
-        if (geometry instanceof BoxGeometryData box) {
-            return resolveBox(box);
-        }
-        if (geometry instanceof ConeGeometryData cone) {
-            return resolveCone(cone);
-        }
-        if (geometry instanceof FrustumConeGeometryData frustum) {
-            return resolveFrustum(frustum);
-        }
-        if (geometry instanceof CylinderGeometryData cylinder) {
-            return resolveCylinder(cylinder);
-        }
-        if (geometry instanceof EllipsoidGeometryData ellipsoid) {
-            return resolveEllipsoid(ellipsoid);
-        }
-        if (geometry instanceof HemisphereGeometryData hemisphere) {
-            return resolveHemisphere(hemisphere);
-        }
-        if (geometry instanceof OctahedronGeometryData octahedron) {
-            return fromPoints(octahedron.getVertices());
-        }
-        if (geometry instanceof IcosahedronGeometryData icosahedron) {
-            return fromPoints(icosahedron.getVertices());
-        }
-        if (geometry instanceof DodecahedronGeometryData dodecahedron) {
-            return fromPoints(dodecahedron.getVertices());
-        }
-        if (geometry instanceof PrismGeometryData prism) {
-            return resolvePrism(prism);
-        }
-        if (geometry instanceof SquarePyramidGeometryData pyramid) {
-            return resolveSquarePyramid(pyramid);
-        }
-        if (geometry instanceof SphereData sphere) {
-            return resolveSphere(sphere);
-        }
-        if (geometry instanceof SdfGeometryData sdf) {
-            return BoundingBoxData.create(sdf.min(), sdf.max());
-        }
-        if (geometry instanceof TetrahedronGeometryData tetrahedron) {
-            return fromPoints(tetrahedron.getVertices());
-        }
-        if (geometry instanceof TorusGeometryData torus) {
-            return resolveTorus(torus);
-        }
-        return null;
+        return switch (geometry) {
+            case null -> null;
+            case CompositeGeometryData composite -> resolveComposite(composite);
+            case DifferenceGeometryData difference ->
+                // A - B cannot extend beyond A; keep continuous envelope on the minuend.
+                    resolve(difference.getMinuend());
+            case IntersectionGeometryData intersection ->
+                    BoundingBoxData.intersection(resolve(intersection.left()), resolve(intersection.right()));
+            case BoxGeometryData box -> resolveBox(box);
+            case ConeGeometryData cone -> resolveCone(cone);
+            case FrustumConeGeometryData frustum -> resolveFrustum(frustum);
+            case CylinderGeometryData cylinder -> resolveCylinder(cylinder);
+            case EllipsoidGeometryData ellipsoid -> resolveEllipsoid(ellipsoid);
+            case HemisphereGeometryData hemisphere -> resolveHemisphere(hemisphere);
+            case OctahedronGeometryData octahedron -> fromPoints(octahedron.getVertices());
+            case IcosahedronGeometryData icosahedron -> fromPoints(icosahedron.getVertices());
+            case DodecahedronGeometryData dodecahedron -> fromPoints(dodecahedron.getVertices());
+            case PrismGeometryData prism -> resolvePrism(prism);
+            case SquarePyramidGeometryData pyramid -> resolveSquarePyramid(pyramid);
+            case SphereData sphere -> resolveSphere(sphere);
+            case SdfGeometryData sdf -> BoundingBoxData.create(sdf.min(), sdf.max());
+            case TetrahedronGeometryData tetrahedron -> fromPoints(tetrahedron.getVertices());
+            case TorusGeometryData torus -> resolveTorus(torus);
+            default -> null;
+        };
     }
 
     private static @Nullable BoundingBoxData resolveComposite(CompositeGeometryData composite) {
@@ -303,7 +269,7 @@ public final class GeometryBoundsResolver {
         double maxZ = Double.NEGATIVE_INFINITY;
         boolean any = false;
         for (Vector3d point : points) {
-            if (point == null || !BoundingBoxData.isFinite(point)) {
+            if (!BoundingBoxData.isFinite(point)) {
                 return null;
             }
             any = true;
