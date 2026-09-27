@@ -49,10 +49,12 @@ class FlowControlNodeTest {
     }
 
     @Test
-    void branchClearsBothOutputsWhenSignalIsMissing() {
+    void branchRoutesExecWhenSignalIsMissing() {
         BranchNode branch = new BranchNode();
         Map<String, Object> outputs = branch.compute(Map.of("input_condition", true));
 
+        assertEquals(Boolean.TRUE, outputs.get("output_valid"));
+        assertEquals(Set.of("exec_true"), branch.getActiveExecOutputPortIds());
         assertNull(outputs.get("output_true"));
         assertNull(outputs.get("output_false"));
     }
@@ -108,9 +110,10 @@ class FlowControlNodeTest {
     }
 
     @Test
-    void doOnceBlocksSecondPassWithinSameExecutionContext() {
+    void doOnceBlocksSecondPassWithinSameExecutionRun() {
         DoOnceNode gate = new DoOnceNode();
         ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new com.nodecraft.nodesystem.execution.ExecutionRunGuard());
 
         Map<String, Object> first = gate.compute(Map.of("input_signal", "once"), context);
         assertEquals("once", first.get("output_first_pass"));
@@ -139,12 +142,15 @@ class FlowControlNodeTest {
     @Test
     void doOnceRoutesExecOutputsByGateState() {
         DoOnceNode gate = new DoOnceNode();
-        gate.compute(Map.of("input_signal", "once"));
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new com.nodecraft.nodesystem.execution.ExecutionRunGuard());
+
+        gate.compute(Map.of("input_signal", "once"), context);
 
         assertEquals(Set.of("exec_out"), gate.getActiveExecOutputPortIds());
         assertEquals(Boolean.TRUE, gate.getOutput("exec_out"));
 
-        gate.compute(Map.of("input_signal", "once"));
+        gate.compute(Map.of("input_signal", "once"), context);
         assertEquals(Set.of("exec_blocked"), gate.getActiveExecOutputPortIds());
         assertEquals(Boolean.TRUE, gate.getOutput("exec_blocked"));
     }

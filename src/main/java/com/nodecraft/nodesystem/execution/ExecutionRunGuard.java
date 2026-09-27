@@ -1,15 +1,22 @@
 package com.nodecraft.nodesystem.execution;
 
 import com.nodecraft.core.exception.NodeExecutionException;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * Tracks per-run execution budget and aborts runaway graphs.
+ * Tracks per-run execution budget and run-local control-flow flags (e.g. Do Once).
  */
 public final class ExecutionRunGuard {
+
+    private static final ThreadLocal<ExecutionRunGuard> CURRENT_RUN = new ThreadLocal<>();
 
     private final ExecutionRunLimits limits;
     private final long startedAtMs;
     private long steps;
+    private final Map<String, Boolean> runLocalFlags = new HashMap<>();
 
     public ExecutionRunGuard() {
         this(ExecutionRunLimits.defaults());
@@ -18,6 +25,24 @@ public final class ExecutionRunGuard {
     public ExecutionRunGuard(ExecutionRunLimits limits) {
         this.limits = limits == null ? ExecutionRunLimits.defaults() : limits;
         this.startedAtMs = System.currentTimeMillis();
+    }
+
+    /** Bind the active guard for this thread for the duration of a NodeExecutor run. */
+    public static void bindCurrent(@Nullable ExecutionRunGuard guard) {
+        if (guard == null) {
+            CURRENT_RUN.remove();
+        } else {
+            CURRENT_RUN.set(guard);
+        }
+    }
+
+    public static void clearCurrent() {
+        CURRENT_RUN.remove();
+    }
+
+    /** Active run guard for this thread, or null outside an executor run. */
+    public static @Nullable ExecutionRunGuard current() {
+        return CURRENT_RUN.get();
     }
 
     public long steps() {
@@ -44,6 +69,31 @@ public final class ExecutionRunGuard {
             throw new NodeExecutionException(
                     "Graph execution exceeded max duration (" + limits.maxDurationMs() + " ms, elapsed=" + elapsed + " ms)"
             );
+        }
+    }
+
+    /** Run-local boolean flag (Do Once gate, etc.). Absent → {@code false}. */
+    public boolean getRunLocalFlag(String key) {
+        if (key == null) {
+            return false;
+        }
+        return Boolean.TRUE.equals(runLocalFlags.get(key));
+    }
+
+    public void setRunLocalFlag(String key, boolean value) {
+        if (key == null) {
+            return;
+        }
+        if (value) {
+            runLocalFlags.put(key, true);
+        } else {
+            runLocalFlags.remove(key);
+        }
+    }
+
+    public void clearRunLocalFlag(String key) {
+        if (key != null) {
+            runLocalFlags.remove(key);
         }
     }
 }

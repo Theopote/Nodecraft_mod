@@ -38,6 +38,7 @@ Last updated: 2026-09-25
 | World Selection | [`node-language-v1-world-selection.md`](./node-language-v1-world-selection.md) **(PASSED / FROZEN, V62)** |
 | World Terrain | [`node-language-v1-world-terrain.md`](./node-language-v1-world-terrain.md) **(PASSED / FROZEN, V63)** |
 | World Write | [`node-language-v1-world-write.md`](./node-language-v1-world-write.md) **(PASSED / FROZEN, V64)** |
+| Flow Control | [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) **(PASSED / FROZEN, V65)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -73,6 +74,7 @@ Last updated: 2026-09-25
 | World Selection v1 | **PASSED / FROZEN** | V62 |
 | World Terrain / Terrain Field v1 | **PASSED / FROZEN** | V63 |
 | World Write v1 | **PASSED / FROZEN** | V64 |
+| Flow Control v1 | **PASSED / FROZEN** | V65 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.

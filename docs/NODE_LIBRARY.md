@@ -74,9 +74,9 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Branch | `flow.control.branch` | Routes data and exec flow by condition. Wire exec_true/exec_false for branch skipping; legacy data outputs still work in dataflow graphs. | `BranchNode` |
-| Sequence | `flow.control.sequence` | Replicates a signal across steps. Wire exec_step_N for ordered step-by-step execution; legacy data outputs remain for dataflow graphs. | `SequenceNode` |
-| Do Once | `flow.control.do_once` | Passes exec/data once per run unless reset. Wire exec_out for first pass and exec_blocked for repeats. | `DoOnceNode` |
+| Branch | `flow.control.branch` | Routes exec by Condition. Signal is optional passthrough T and never gates exec routing. | `BranchNode` |
+| Sequence | `flow.control.sequence` | Fires Exec Step 1..N in order. Signal is optional passthrough T; Step Count is exact INTEGER 1..8. | `SequenceNode` |
+| Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset. Signal is optional passthrough T and never gates exec. | `DoOnceNode` |
 
 ## flow.loop (3)
 

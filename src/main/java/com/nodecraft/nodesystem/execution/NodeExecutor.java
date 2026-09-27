@@ -332,6 +332,7 @@ public class NodeExecutor {
                 context.setSharedExecutionRunGuard(activeSharedExecutionRunGuard);
             }
         }
+        ExecutionRunGuard.bindCurrent(activeSharedExecutionRunGuard);
 
         try {
             GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
@@ -352,6 +353,7 @@ public class NodeExecutor {
             forcedExecRecomputeNodeIds.clear();
             execFrontierSnapshot = ExecFrontierSnapshot.EMPTY;
             activeSharedExecutionRunGuard = null;
+            ExecutionRunGuard.clearCurrent();
             if (context != null && ownsSharedExecutionRunGuard) {
                 context.clearSharedExecutionRunGuard();
             }

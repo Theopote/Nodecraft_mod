@@ -74,9 +74,9 @@ class WorldWriteLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV64() {
+    void currentGraphFormatIsAtLeastV64() {
         assertEquals(64, GraphFormatVersion.V64);
-        assertEquals(GraphFormatVersion.V64, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V64);
     }
 
     @Test
@@ -225,7 +225,7 @@ class WorldWriteLanguageContractTest {
         graph.connections.add(wire("c", "output_stub", "sb", "input_coordinates"));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V64, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
 
         List<String> kept = migrated.connections.stream()
                 .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)

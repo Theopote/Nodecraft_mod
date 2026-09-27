@@ -11,7 +11,7 @@ The comprehensive review is **directionally correct**: NodeCraft is still primar
 | Branch/While cannot skip branches | **Still true for dataflow nodes**; exec scheduler is the path to fix this |
 | Cycles fail immediately | **Data cycles still fail**; exec cycles are bounded by `ExecutionRunGuard` |
 
-Existing flow nodes (`flow.control.branch`, `flow.control.sequence`, `flow.loop.*`) remain **dataflow helpers**. Their `@NodeInfo` descriptions already say Branch does not skip downstream nodes.
+Existing flow nodes (`flow.control.branch`, `flow.control.sequence`, `flow.loop.*`) remain **dataflow helpers** when used without exec wires. With exec wires, Branch / Sequence / Do Once route execution (see Graph **V65** Flow Control language freeze: [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md)).
 
 Reference roadmap: `docs/node-system-完善版路线图-2026-04-26.md` (P0-A / P0-B).
 
@@ -108,9 +108,9 @@ None for P0 exec-flow control. Future: richer exec-only upstream scope when leaf
 
 Recommended patterns today:
 
-- `flow.control.branch` with **exec_true/exec_false** for conditional side effects
+- `flow.control.branch` with **exec_true/exec_false** for conditional side effects (Signal optional; does not gate exec)
 - `flow.control.sequence` with **exec_step_N** for ordered side-effect chains
-- `flow.control.do_once` with **exec_out/exec_blocked** for once-per-run gates
+- `flow.control.do_once` with **exec_out/exec_blocked** for once-per-run gates (run-local on `ExecutionRunGuard`)
 - `flow.loop.for_each` with **exec_body** for per-item side effects
 - `flow.loop.while` with **exec_body** loop-back to **exec_in** for conditional loops
 - `math.logic.if` for **value** selection in dataflow-only graphs

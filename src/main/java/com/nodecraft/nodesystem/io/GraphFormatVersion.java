@@ -399,8 +399,14 @@ public final class GraphFormatVersion {
      */
     public static final int V64 = 64;
 
+    /**
+     * Flow Control v1: exec-first Branch/Do Once, typed passthrough T, strict BOOLEAN/INTEGER,
+     * Do Once CONTEXT_WRITE with run-local gate (never SavedGraph).
+     */
+    public static final int V65 = 65;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V64;
+    public static final int CURRENT = V65;
 
     private GraphFormatVersion() {
     }

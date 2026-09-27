@@ -123,6 +123,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V61 -> migrateV61ToV62(graph);
             case GraphFormatVersion.V62 -> migrateV62ToV63(graph);
             case GraphFormatVersion.V63 -> migrateV63ToV64(graph);
+            case GraphFormatVersion.V64 -> migrateV64ToV65(graph);
             default -> graph;
         };
     }
@@ -4678,6 +4679,38 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    /**
+     * Flow Control v1: strip persisted Do Once fallbackExecuted from SavedGraph state.
+     */
+    private static SavedGraph migrateV64ToV65(SavedGraph graph) {
+        applyFlowControlV65ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyFlowControlV65ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyFlowControlV65ToGraph(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || !"flow.control.do_once".equals(node.typeId)) {
+                continue;
+            }
+            if (!(node.state instanceof Map<?, ?>)) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> state = (Map<String, Object>) node.state;
+            state.remove("fallbackExecuted");
+        }
     }
 
     private static final Set<String> WORLD_WRITE_MUTATOR_TYPES = Set.of(
