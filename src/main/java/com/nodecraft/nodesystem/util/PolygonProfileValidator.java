@@ -64,7 +64,7 @@ public final class PolygonProfileValidator {
         }
 
         for (Vector3d point : canonical) {
-            if (point == null || !FrameUtils.isFinite(point)) {
+            if (!FrameUtils.isFinite(point)) {
                 return "Polygon profile contains non-finite coordinates";
             }
             if (Math.abs(normalizedPlane.signedDistanceTo(point)) > COPLANAR_EPS) {
@@ -87,7 +87,7 @@ public final class PolygonProfileValidator {
                 return "Polygon profile contains consecutive duplicate vertices";
             }
         }
-        if (uniqueCount >= 2 && canonical.get(uniqueCount - 1).distanceSquared(canonical.getFirst()) <= DISTINCT_EPS_SQ) {
+        if (canonical.get(uniqueCount - 1).distanceSquared(canonical.getFirst()) <= DISTINCT_EPS_SQ) {
             return "Polygon profile contains consecutive duplicate vertices";
         }
 
