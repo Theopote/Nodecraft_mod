@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.transform.orientation;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -13,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -23,7 +21,7 @@ import java.util.UUID;
     category = "transform.orientation",
     order = 0
 )
-public class ProjectPointToPlaneNode extends BaseNode {
+public class ProjectPointToPlaneNode extends AbstractOrientationNode {
 
     private static final String INPUT_POINT_ID = "input_point";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -31,10 +29,9 @@ public class ProjectPointToPlaneNode extends BaseNode {
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_SIGNED_DISTANCE_ID = "output_signed_distance";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ProjectPointToPlaneNode() {
-        super(UUID.randomUUID(), "transform.orientation.project_to_plane");
+        super("transform.orientation.project_to_plane");
 
         addInputPort(new BasePort(INPUT_POINT_ID, "Point",
             "Point to project onto the plane",
@@ -49,8 +46,7 @@ public class ProjectPointToPlaneNode extends BaseNode {
             "Absolute distance from the input point to the plane", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIGNED_DISTANCE_ID, "Signed Distance",
             "Signed distance from the input point to the plane", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when both point and plane inputs are valid", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -67,26 +63,18 @@ public class ProjectPointToPlaneNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_ID));
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
+        PlaneData plane = planeObj instanceof PlaneData p ? p : null;
 
-        if (point == null
-            || !isFinite(point)
-            || !(planeObj instanceof PlaneData plane)
-            || !OrientationUtils.isUsablePlane(plane)) {
-            outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        OrientationUtils.PointProjection projection = OrientationUtils.projectPoint(plane, point);
+        if (projection == null) {
+            writeInvalid("Missing or invalid point or plane");
             return;
         }
 
-        Vector3d projected = plane.projectPoint(point);
-        double signedDistance = plane.signedDistanceTo(point);
-        double distance = Math.abs(signedDistance);
-
-        outputValues.put(OUTPUT_POINT_ID, new PointData(projected));
-        outputValues.put(OUTPUT_DISTANCE_ID, distance);
-        outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, signedDistance);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_POINT_ID, new PointData(projection.projected()));
+        outputValues.put(OUTPUT_DISTANCE_ID, projection.distance());
+        outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, projection.signedDistance());
+        markSuccess();
     }
 
     @Override
@@ -99,7 +87,9 @@ public class ProjectPointToPlaneNode extends BaseNode {
         // stateless
     }
 
-    private boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
+    private void writeInvalid(String error) {
+        putNullOutputs(OUTPUT_POINT_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_DISTANCE_ID, OUTPUT_SIGNED_DISTANCE_ID);
+        markInvalid(error);
     }
 }

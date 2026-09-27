@@ -135,6 +135,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V73 -> migrateV73ToV74(graph);
             case GraphFormatVersion.V74 -> migrateV74ToV75(graph);
             case GraphFormatVersion.V75 -> migrateV75ToV76(graph);
+            case GraphFormatVersion.V76 -> migrateV76ToV77(graph);
             default -> graph;
         };
     }
@@ -228,7 +229,7 @@ public final class GraphMigrationRegistry {
             "pattern.linear.path_frames",
             "pattern.linear.curve_array",
             "geometry.architectural_primitives.array_along_curve",
-            "transform.orientation.project_curve_to_plane",
+            "transform.orientation.project_path_to_plane",
             "reference.points.project_to_polyline",
             "reference.points.closest_point_to_object",
             "geometry.curves.closest_point_on_path",
@@ -4868,6 +4869,113 @@ public final class GraphMigrationRegistry {
             case "output_coordinates" -> "output_block_positions";
             default -> portId;
         };
+    }
+
+    private static final String LEGACY_PROJECT_CURVE_TO_PLANE_TYPE = "transform.orientation.project_curve_to_plane";
+    private static final String PROJECT_PATH_TO_PLANE_TYPE = "transform.orientation.project_path_to_plane";
+    private static final String ALIGN_TO_SURFACE_TYPE = "transform.orientation.align_to_surface";
+
+    /**
+     * Orientation Language v1: project_curve_to_plane → project_path_to_plane,
+     * CURVE/POLYLINE outputs → output_path, strip sampleCurve / useShortestList state.
+     */
+    private static SavedGraph migrateV76ToV77(SavedGraph graph) {
+        applyOrientationV77ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyOrientationV77ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyOrientationV77ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_PROJECT_CURVE_TO_PLANE_TYPE.equals(node.typeId)) {
+                    node.typeId = PROJECT_PATH_TO_PLANE_TYPE;
+                }
+                stripOrientationV77State(node);
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            if (isOrientationV77ProjectPathType(sourceType)) {
+                connection.sourcePortId = remapOrientationV77SourcePort(connection.sourcePortId);
+            }
+
+            String dedupeKey = connection.sourceNodeId + "|"
+                + connection.sourcePortId + "|"
+                + connection.targetNodeId + "|"
+                + connection.targetPortId;
+            if (!seen.add(dedupeKey)) {
+                LOGGER.debug("Dropped duplicate orientation V77 connection {}", dedupeKey);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static boolean isOrientationV77ProjectPathType(@Nullable String typeId) {
+        return PROJECT_PATH_TO_PLANE_TYPE.equals(typeId)
+            || LEGACY_PROJECT_CURVE_TO_PLANE_TYPE.equals(typeId);
+    }
+
+    private static String remapOrientationV77SourcePort(@Nullable String portId) {
+        if (portId == null) {
+            return null;
+        }
+        return switch (portId) {
+            case "output_curve", "output_polyline" -> "output_path";
+            default -> portId;
+        };
+    }
+
+    private static void stripOrientationV77State(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        String type = node.typeId == null ? "" : node.typeId;
+        boolean isProjectPath = PROJECT_PATH_TO_PLANE_TYPE.equals(type)
+            || LEGACY_PROJECT_CURVE_TO_PLANE_TYPE.equals(type);
+        boolean isAlign = ALIGN_TO_SURFACE_TYPE.equals(type);
+        if (!isProjectPath && !isAlign) {
+            return;
+        }
+
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            String keyLower = key.toLowerCase(Locale.ROOT);
+            if (isProjectPath && "samplecurve".equals(keyLower)) {
+                LOGGER.debug("Stripped sampleCurve from {}", node.nodeId);
+                continue;
+            }
+            if (isAlign && "useshortestlist".equals(keyLower)) {
+                LOGGER.debug("Stripped useShortestList from {}", node.nodeId);
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned;
     }
 
     /**

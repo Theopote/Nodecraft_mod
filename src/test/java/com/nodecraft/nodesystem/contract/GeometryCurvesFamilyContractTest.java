@@ -63,7 +63,7 @@ class GeometryCurvesFamilyContractTest {
             "geometry.curves.fillet_polyline_corners",
             "pattern.linear.curve_array",
             "geometry.architectural_primitives.array_along_curve",
-            "transform.orientation.project_curve_to_plane",
+            "transform.orientation.project_path_to_plane",
             "output.preview.preview_curves",
             "math.fields.curve_attractor_field",
             "transform.deformations.curve_attract"
@@ -173,7 +173,7 @@ class GeometryCurvesFamilyContractTest {
         assertFalse(hasInputPort("pattern.linear.path_frames", "input_mode"));
         assertPortType("pattern.linear.curve_array", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.array_along_curve", "input_path", true, NodeDataType.PATH);
-        assertPortType("transform.orientation.project_curve_to_plane", "input_path", true, NodeDataType.PATH);
+        assertPortType("transform.orientation.project_path_to_plane", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.curves.closest_point_on_path", "input_path", true, NodeDataType.PATH);
         assertPortType("output.preview.preview_curves", "input_path", true, NodeDataType.PATH);
         assertPortType("math.fields.curve_attractor_field", "input_path", true, NodeDataType.PATH);

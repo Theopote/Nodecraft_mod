@@ -160,6 +160,48 @@ public final class FrameUtils {
         return FrameData.orthonormal(origin, x, y, z);
     }
 
+    /**
+     * Like {@link #fromNormal} but requires a usable projected {@code xHint} — no cardinal fallback.
+     */
+    public static @Nullable FrameData fromNormalRequireHint(
+            @Nullable Vector3d origin,
+            @Nullable Vector3d normal,
+            @Nullable Vector3d xHint
+    ) {
+        if (!isFinite(origin) || !isUsableAxis(normal) || !isUsableAxis(xHint)) {
+            return null;
+        }
+        Vector3d z = new Vector3d(normal).normalize();
+        Vector3d x = projectOntoPlane(new Vector3d(xHint), z);
+        if (!isUsableAxis(x)) {
+            return null;
+        }
+        x.normalize();
+        Vector3d y = new Vector3d(z).cross(x);
+        if (!isUsableAxis(y)) {
+            return null;
+        }
+        y.normalize();
+        return FrameData.orthonormal(origin, x, y, z);
+    }
+
+    /**
+     * Projects {@code hint} onto the plane perpendicular to {@code normal}.
+     * Returns null when the projection is zero-length.
+     */
+    public static @Nullable Vector3d projectOntoTangentPlane(@Nullable Vector3d hint, @Nullable Vector3d normal) {
+        if (!isUsableAxis(hint) || !isUsableAxis(normal)) {
+            return null;
+        }
+        Vector3d z = new Vector3d(normal).normalize();
+        Vector3d projected = projectOntoPlane(new Vector3d(hint), z);
+        if (!isUsableAxis(projected)) {
+            return null;
+        }
+        projected.normalize();
+        return projected;
+    }
+
     private static @Nullable Vector3d resolveHint(@Nullable Vector3d xHint) {
         if (xHint != null && isUsableAxis(xHint)) {
             return new Vector3d(xHint);

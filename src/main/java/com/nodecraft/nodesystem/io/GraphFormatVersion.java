@@ -482,8 +482,14 @@ public final class GraphFormatVersion {
      */
     public static final int V76 = 76;
 
+    /**
+     * Orientation Language v1: Valid+Error on 6 nodes, PATH canonical projection,
+     * strict POINT/VECTOR lists, DOUBLE_LIST distances, OptionalPortDrive on Rotate/Forward Hint.
+     */
+    public static final int V77 = 77;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V76;
+    public static final int CURRENT = V77;
 
     private GraphFormatVersion() {
     }

@@ -63,6 +63,7 @@ class TransformFamilyContractTest {
         assertPortType("transform.orientation.rotate_vector", "input_axis", true, NodeDataType.VECTOR);
         assertPortType("transform.orientation.rotate_vector", "input_angle", true, NodeDataType.DOUBLE);
         assertPortType("transform.orientation.rotate_vector", "output_rotated_vector", false, NodeDataType.VECTOR);
+        assertPortType("transform.orientation.rotate_vector", "output_error", false, NodeDataType.STRING);
 
         INode created = NodeRegistry.getInstance().createNodeInstance("transform.orientation.rotate_vector");
         BaseNode node = assertInstanceOf(BaseNode.class, created);

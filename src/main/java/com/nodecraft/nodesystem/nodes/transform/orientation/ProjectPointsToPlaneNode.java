@@ -3,17 +3,17 @@ package com.nodecraft.nodesystem.nodes.transform.orientation;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -23,7 +23,7 @@ import java.util.UUID;
     category = "transform.orientation",
     order = 3
 )
-public class ProjectPointsToPlaneNode extends BaseNode {
+public class ProjectPointsToPlaneNode extends AbstractOrientationNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -32,19 +32,18 @@ public class ProjectPointsToPlaneNode extends BaseNode {
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
     private static final String OUTPUT_SIGNED_DISTANCES_ID = "output_signed_distances";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ProjectPointsToPlaneNode() {
-        super(UUID.randomUUID(), "transform.orientation.project_points_to_plane");
+        super("transform.orientation.project_points_to_plane");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to project", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target plane for projection", NodeDataType.PLANE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Projected points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Absolute distances from source points to the plane", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SIGNED_DISTANCES_ID, "Signed Distances", "Signed distances from source points to the plane", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Absolute distances from source points to the plane", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SIGNED_DISTANCES_ID, "Signed Distances", "Signed distances from source points to the plane", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of projected points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when points were projected", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -54,10 +53,17 @@ public class ProjectPointsToPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> sourcePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> sourcePoints = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_LIST_ELEMENTS
+        );
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        if (sourcePoints.isEmpty() || !(planeObj instanceof PlaneData plane) || !OrientationUtils.isUsablePlane(plane)) {
-            writeInvalid();
+        PlaneData plane = planeObj instanceof PlaneData p ? p : null;
+        PlaneData normalized = OrientationUtils.resolveNormalizedPlane(plane);
+        if (sourcePoints == null || normalized == null) {
+            writeInvalid(sourcePoints == null
+                ? "Point list is missing, empty, invalid, or exceeds MAX_LIST_ELEMENTS"
+                : "Plane is missing or invalid");
             return;
         }
 
@@ -66,26 +72,21 @@ public class ProjectPointsToPlaneNode extends BaseNode {
         List<Double> signedDistances = new ArrayList<>(sourcePoints.size());
 
         for (Vector3d point : sourcePoints) {
-            if (!OrientationUtils.isFinite(point)) {
-                continue;
+            OrientationUtils.PointProjection projection = OrientationUtils.projectPoint(normalized, point);
+            if (projection == null) {
+                writeInvalid("Point list contains a non-finite point");
+                return;
             }
-            Vector3d projected = plane.projectPoint(point);
-            double signedDistance = plane.signedDistanceTo(point);
-            projectedPoints.add(projected);
-            distances.add(Math.abs(signedDistance));
-            signedDistances.add(signedDistance);
-        }
-
-        if (projectedPoints.isEmpty()) {
-            writeInvalid();
-            return;
+            projectedPoints.add(projection.projected());
+            distances.add(projection.distance());
+            signedDistances.add(projection.signedDistance());
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projectedPoints));
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_SIGNED_DISTANCES_ID, List.copyOf(signedDistances));
         outputValues.put(OUTPUT_COUNT_ID, projectedPoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     @Override
@@ -98,11 +99,9 @@ public class ProjectPointsToPlaneNode extends BaseNode {
         // stateless
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_SIGNED_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_DISTANCES_ID, OUTPUT_SIGNED_DISTANCES_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }
