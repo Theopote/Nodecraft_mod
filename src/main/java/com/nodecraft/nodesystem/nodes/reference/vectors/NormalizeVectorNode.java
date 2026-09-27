@@ -29,6 +29,7 @@ public class NormalizeVectorNode extends BaseNode {
 
     private static final String OUTPUT_NORMALIZED_ID = "output_normalized_vector";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public NormalizeVectorNode() {
         super(UUID.randomUUID(), "reference.vectors.normalize_vector");
@@ -38,6 +39,8 @@ public class NormalizeVectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_NORMALIZED_ID, "Normalized", "Normalized vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the input vector can be normalized",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -53,13 +56,25 @@ public class NormalizeVectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
-        if (!VectorUtils.isFinite(vector) || vector.lengthSquared() < VectorUtils.EPS_SQ) {
-            outputValues.put(OUTPUT_NORMALIZED_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!VectorUtils.isFinite(vector)) {
+            writeInvalid("Vector must be a finite VECTOR");
             return;
         }
 
-        outputValues.put(OUTPUT_NORMALIZED_ID, VectorUtils.toVectorPort(vector.normalize()));
+        Vector3d normalized = VectorUtils.safeNormalize(vector);
+        if (normalized == null) {
+            writeInvalid("Vector must be non-zero and normalizable");
+            return;
+        }
+
+        outputValues.put(OUTPUT_NORMALIZED_ID, VectorUtils.toVectorPort(normalized));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_NORMALIZED_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

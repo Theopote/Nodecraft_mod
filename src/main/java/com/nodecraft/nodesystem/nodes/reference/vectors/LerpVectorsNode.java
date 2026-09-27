@@ -5,7 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -28,6 +30,7 @@ public class LerpVectorsNode extends BaseNode {
 
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public LerpVectorsNode() {
         super(UUID.randomUUID(), "reference.vectors.lerp_vectors");
@@ -38,6 +41,8 @@ public class LerpVectorsNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Interpolated vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether interpolation input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -54,26 +59,36 @@ public class LerpVectorsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
-        Object tObj = inputValues.get(INPUT_T_ID);
-        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b) || !(tObj instanceof Number tNumber)) {
-            outputValues.put(OUTPUT_RESULT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Double t = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_T_ID));
+
+        if (!VectorUtils.isFinite(a)) {
+            writeInvalid("Vector A must be a finite VECTOR");
+            return;
+        }
+        if (!VectorUtils.isFinite(b)) {
+            writeInvalid("Vector B must be a finite VECTOR");
+            return;
+        }
+        if (t == null) {
+            writeInvalid("T must be exact finite DOUBLE");
             return;
         }
 
-        double t = tNumber.doubleValue();
-        if (!VectorUtils.isFinite(t)) {
-            outputValues.put(OUTPUT_RESULT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d result = VectorUtils.safeLerp(a, b, t);
+        VectorData output = VectorUtils.toVectorPort(result);
+        if (output == null) {
+            writeInvalid("Lerp result is not finite");
             return;
         }
 
-        Vector3d result = new Vector3d(
-            a.x + (b.x - a.x) * t,
-            a.y + (b.y - a.y) * t,
-            a.z + (b.z - a.z) * t
-        );
-        outputValues.put(OUTPUT_RESULT_ID, VectorUtils.toVectorPort(result));
+        outputValues.put(OUTPUT_RESULT_ID, output);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_RESULT_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

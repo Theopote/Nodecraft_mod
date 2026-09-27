@@ -12,9 +12,6 @@ import org.joml.Vector3d;
 
 import java.util.UUID;
 
-/**
- * Computes the dot product of two vectors (A dot B).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "reference.vectors.dot_product",
@@ -30,6 +27,7 @@ public class DotProductNode extends BaseNode {
 
     private static final String OUTPUT_DOT_PRODUCT_ID = "output_dot_product";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DotProductNode() {
         super(UUID.randomUUID(), "reference.vectors.dot_product");
@@ -40,6 +38,8 @@ public class DotProductNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_DOT_PRODUCT_ID, "Dot Product", "Result A dot B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether both input vectors are valid",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -56,13 +56,29 @@ public class DotProductNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
-        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
-            outputValues.put(OUTPUT_DOT_PRODUCT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!VectorUtils.isFinite(a)) {
+            writeInvalid("Vector A must be a finite VECTOR");
+            return;
+        }
+        if (!VectorUtils.isFinite(b)) {
+            writeInvalid("Vector B must be a finite VECTOR");
             return;
         }
 
-        outputValues.put(OUTPUT_DOT_PRODUCT_ID, a.dot(b));
+        double dot = VectorUtils.safeDot(a, b);
+        if (!VectorUtils.isFinite(dot)) {
+            writeInvalid("Dot product is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_DOT_PRODUCT_ID, dot);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_DOT_PRODUCT_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

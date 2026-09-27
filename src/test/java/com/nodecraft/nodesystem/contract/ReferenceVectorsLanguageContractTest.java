@@ -344,9 +344,11 @@ class ReferenceVectorsLanguageContractTest {
     }
 
     @Test
-    void vector2InputEmitsVectorOnly() {
+    void vector2InputEmitsVectorValidAndError() {
         Vector2InputNode node = new Vector2InputNode();
         assertEquals(NodeDataType.VECTOR, findPort(node, "output_vector").getDataType());
+        assertEquals(NodeDataType.BOOLEAN, findPort(node, "output_valid").getDataType());
+        assertEquals(NodeDataType.STRING, findPort(node, "output_error").getDataType());
         assertFalse(hasPort(node, "output_x"));
         assertFalse(hasPort(node, "output_y"));
         assertFalse(hasPort(node, "output_uv"));

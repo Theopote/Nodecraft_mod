@@ -1,13 +1,14 @@
 # Node Language v1 — Reference Vectors
 
-**Status: PASSED / FROZEN** (Graph **V51**)
+**Status: PASSED / FROZEN** (Graph **V51**; superseded by v2 at **V88**)
 
 Language unification for the seventeen canonical `reference.vectors.*` nodes: finite VECTOR
 semantics (zero vector valid), connected-vs-unconnected optional inputs, null invalid outputs,
 Slerp geodesic (including antiparallel semicircle), shared `VectorUtils`, typed `VectorData`
 payloads, and unique node ordering 0–16.
 
-Related: [`node-language-v1-reference-points.md`](./node-language-v1-reference-points.md),
+Related: [`node-language-v2-reference-vectors.md`](./node-language-v2-reference-vectors.md),
+[`node-language-v1-reference-points.md`](./node-language-v1-reference-points.md),
 [`node-language-v1-reference-planes.md`](./node-language-v1-reference-planes.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 

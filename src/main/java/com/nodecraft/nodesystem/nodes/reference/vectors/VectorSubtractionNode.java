@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
@@ -12,9 +13,6 @@ import org.joml.Vector3d;
 
 import java.util.UUID;
 
-/**
- * Subtracts vector B from vector A (A - B).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "reference.vectors.vector_subtraction",
@@ -30,6 +28,7 @@ public class VectorSubtractionNode extends BaseNode {
 
     private static final String OUTPUT_DIFFERENCE_ID = "output_vector_difference";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorSubtractionNode() {
         super(UUID.randomUUID(), "reference.vectors.vector_subtraction");
@@ -40,6 +39,8 @@ public class VectorSubtractionNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_DIFFERENCE_ID, "Difference Vector", "Result A - B", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether both input vectors are valid",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -56,13 +57,30 @@ public class VectorSubtractionNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
-        if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
-            outputValues.put(OUTPUT_DIFFERENCE_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!VectorUtils.isFinite(a)) {
+            writeInvalid("Vector A must be a finite VECTOR");
+            return;
+        }
+        if (!VectorUtils.isFinite(b)) {
+            writeInvalid("Vector B must be a finite VECTOR");
             return;
         }
 
-        outputValues.put(OUTPUT_DIFFERENCE_ID, VectorUtils.toVectorPort(a.sub(b, new Vector3d())));
+        Vector3d result = VectorUtils.safeSubtract(a, b);
+        VectorData output = VectorUtils.toVectorPort(result);
+        if (output == null) {
+            writeInvalid("Vector difference is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_DIFFERENCE_ID, output);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_DIFFERENCE_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

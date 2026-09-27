@@ -6,7 +6,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -35,6 +37,7 @@ public class SlerpVectorsNode extends BaseNode {
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_ANGLE_ID = "output_angle";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SlerpVectorsNode() {
         super(UUID.randomUUID(), "reference.vectors.slerp");
@@ -47,6 +50,8 @@ public class SlerpVectorsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_ANGLE_ID, "Angle",
             "Unsigned angle in degrees between normalized A and B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether slerp input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -63,75 +68,144 @@ public class SlerpVectorsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d aRaw = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
         Vector3d bRaw = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
-        Object tObj = inputValues.get(INPUT_T_ID);
-        if (!VectorUtils.isFinite(aRaw) || !VectorUtils.isFinite(bRaw) || !(tObj instanceof Number tNumber)) {
-            writeInvalid();
+        Double t = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_T_ID));
+
+        if (!VectorUtils.isFinite(aRaw)) {
+            writeInvalid("Vector A must be a finite VECTOR");
             return;
         }
-        if (aRaw.lengthSquared() < VectorUtils.EPS_SQ || bRaw.lengthSquared() < VectorUtils.EPS_SQ) {
-            writeInvalid();
+        if (!VectorUtils.isFinite(bRaw)) {
+            writeInvalid("Vector B must be a finite VECTOR");
+            return;
+        }
+        if (t == null) {
+            writeInvalid("T must be exact finite DOUBLE");
             return;
         }
 
-        double t = tNumber.doubleValue();
-        if (!VectorUtils.isFinite(t)) {
-            writeInvalid();
+        double lenA = VectorUtils.safeLength(aRaw);
+        double lenB = VectorUtils.safeLength(bRaw);
+        if (!VectorUtils.isFinite(lenA) || lenA <= VectorUtils.EPS) {
+            writeInvalid("Vector A must be non-zero");
+            return;
+        }
+        if (!VectorUtils.isFinite(lenB) || lenB <= VectorUtils.EPS) {
+            writeInvalid("Vector B must be non-zero");
             return;
         }
 
-        Vector3d a = new Vector3d(aRaw).normalize();
-        Vector3d b = new Vector3d(bRaw).normalize();
+        Vector3d a = VectorUtils.normalizeByLength(aRaw, lenA);
+        Vector3d b = VectorUtils.normalizeByLength(bRaw, lenB);
+        if (a == null || b == null) {
+            writeInvalid("Normalized direction vectors are not finite");
+            return;
+        }
 
-        double dot = Math.max(-1.0d, Math.min(1.0d, a.dot(b)));
+        double dot = VectorUtils.safeDot(a, b);
+        if (!VectorUtils.isFinite(dot)) {
+            writeInvalid("Slerp dot product is not finite");
+            return;
+        }
+        dot = Math.max(-1.0d, Math.min(1.0d, dot));
         double angle = Math.acos(dot);
+        if (!VectorUtils.isFinite(angle)) {
+            writeInvalid("Slerp angle is not finite");
+            return;
+        }
 
-        // Geodesic on the unit sphere: A*cos(θT) + perp*sin(θT), where perp is the
-        // component of B orthogonal to A. Linear-lerp normalize is NOT used for the
-        // antiparallel case — it collapses to A for T<0.5 and B for T>0.5.
-        Vector3d perp = new Vector3d(b).fma(-dot, a);
+        Vector3d perp = VectorUtils.safeSubtract(b, VectorUtils.safeScale(a, dot));
         Vector3d direction;
-        if (perp.lengthSquared() >= VectorUtils.EPS_SQ) {
-            perp.normalize();
-            direction = sphericalCombination(a, perp, angle, t);
+        if (perp != null && VectorUtils.safeLength(perp) > VectorUtils.EPS) {
+            Vector3d perpUnit = VectorUtils.safeNormalize(perp);
+            if (perpUnit == null) {
+                writeInvalid("Slerp perpendicular axis is not finite");
+                return;
+            }
+            direction = sphericalCombination(a, perpUnit, angle, t);
         } else if (dot > 0.0d) {
-            // Nearly parallel — θ≈0; lerp is numerically stable here.
-            direction = new Vector3d(a).lerp(b, t).normalize();
+            direction = VectorUtils.safeLerp(a, b, t);
+            if (direction == null) {
+                writeInvalid("Parallel slerp lerp is not finite");
+                return;
+            }
+            direction = VectorUtils.safeNormalize(direction);
         } else {
-            // Exact / near antiparallel — deterministic semicircle through orthogonal(A).
-            direction = sphericalCombination(a, orthogonalAxis(a), Math.PI, t);
+            Vector3d axis = orthogonalAxis(a);
+            if (axis == null) {
+                writeInvalid("Antiparallel slerp axis is not finite");
+                return;
+            }
+            direction = sphericalCombination(a, axis, Math.PI, t);
             angle = Math.PI;
         }
 
-        if (preserveMagnitude) {
-            double length = aRaw.length() + (bRaw.length() - aRaw.length()) * t;
-            direction.mul(length);
+        if (direction == null) {
+            writeInvalid("Slerp direction is not finite");
+            return;
         }
 
-        outputValues.put(OUTPUT_RESULT_ID, VectorUtils.toVectorPort(direction));
-        outputValues.put(OUTPUT_ANGLE_ID, Math.toDegrees(angle));
+        if (preserveMagnitude) {
+            double length = VectorUtils.safeScalarLerp(lenA, lenB, t);
+            if (!VectorUtils.isFinite(length)) {
+                writeInvalid("Slerp magnitude is not finite");
+                return;
+            }
+            direction = VectorUtils.safeScale(direction, length);
+            if (direction == null) {
+                writeInvalid("Slerp result magnitude scaling is not finite");
+                return;
+            }
+        }
+
+        VectorData output = VectorUtils.toVectorPort(direction);
+        if (output == null) {
+            writeInvalid("Slerp result is not finite");
+            return;
+        }
+
+        double angleDeg = Math.toDegrees(angle);
+        if (!VectorUtils.isFinite(angleDeg)) {
+            writeInvalid("Slerp angle in degrees is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_RESULT_ID, output);
+        outputValues.put(OUTPUT_ANGLE_ID, angleDeg);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     /** Unit result: {@code a * cos(theta * t) + perp * sin(theta * t)}. */
-    private static Vector3d sphericalCombination(Vector3d a, Vector3d perp, double theta, double t) {
+    private static @Nullable Vector3d sphericalCombination(Vector3d a, Vector3d perp, double theta, double t) {
         double angleT = theta * t;
-        Vector3d direction = new Vector3d(a).mul(Math.cos(angleT));
-        direction.add(new Vector3d(perp).mul(Math.sin(angleT)));
-        return direction.normalize();
-    }
-
-    private static Vector3d orthogonalAxis(Vector3d a) {
-        Vector3d axis = new Vector3d(a).cross(0.0d, 1.0d, 0.0d);
-        if (axis.lengthSquared() < VectorUtils.EPS_SQ) {
-            axis = new Vector3d(a).cross(0.0d, 0.0d, 1.0d);
+        if (!VectorUtils.isFinite(angleT)) {
+            return null;
         }
-        return axis.normalize();
+        double cos = Math.cos(angleT);
+        double sin = Math.sin(angleT);
+        if (!VectorUtils.isFinite(cos) || !VectorUtils.isFinite(sin)) {
+            return null;
+        }
+        Vector3d direction = VectorUtils.safeAdd(
+            VectorUtils.safeScale(a, cos),
+            VectorUtils.safeScale(perp, sin)
+        );
+        return VectorUtils.safeNormalize(direction);
     }
 
-    private void writeInvalid() {
+    private static @Nullable Vector3d orthogonalAxis(Vector3d a) {
+        Vector3d axis = VectorUtils.safeCross(a, new Vector3d(0.0d, 1.0d, 0.0d));
+        if (axis == null || VectorUtils.safeLength(axis) <= VectorUtils.EPS) {
+            axis = VectorUtils.safeCross(a, new Vector3d(0.0d, 0.0d, 1.0d));
+        }
+        return VectorUtils.safeNormalize(axis);
+    }
+
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_RESULT_ID, null);
         outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

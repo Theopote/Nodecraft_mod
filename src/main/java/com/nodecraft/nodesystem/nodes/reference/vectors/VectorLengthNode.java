@@ -29,6 +29,7 @@ public class VectorLengthNode extends BaseNode {
 
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorLengthNode() {
         super(UUID.randomUUID(), "reference.vectors.vector_length");
@@ -37,6 +38,8 @@ public class VectorLengthNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Length of the vector", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the input vector is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -53,12 +56,24 @@ public class VectorLengthNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
         if (!VectorUtils.isFinite(vector)) {
-            outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid("Vector must be a finite VECTOR");
             return;
         }
 
-        outputValues.put(OUTPUT_LENGTH_ID, vector.length());
+        double length = VectorUtils.safeLength(vector);
+        if (!VectorUtils.isFinite(length)) {
+            writeInvalid("Vector length is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

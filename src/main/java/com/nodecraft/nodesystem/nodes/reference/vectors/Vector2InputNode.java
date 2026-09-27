@@ -11,7 +11,6 @@ import com.nodecraft.nodesystem.util.VectorUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +28,8 @@ import java.util.function.DoubleConsumer;
 public class Vector2InputNode extends BaseCustomUINode {
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "X", category = "Value", order = 1)
     private double x = 0.0d;
@@ -43,6 +44,8 @@ public class Vector2InputNode extends BaseCustomUINode {
     public Vector2InputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector2_input");
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "2D vector as Vector3d(x,y,0)", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when X and Y are finite", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
         updateOutput();
     }
 
@@ -80,9 +83,9 @@ public class Vector2InputNode extends BaseCustomUINode {
 
             l.addVerticalSpacing(getMediumPadding());
 
-            changed |= renderComponentInput("X", availableWidth, l, x, this::setX, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("X", availableWidth, l, getResolvedX(), this::setX, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
-            changed |= renderComponentInput("Y", availableWidth, l, y, this::setY, baseCursorX, edgeMargin);
+            changed |= renderComponentInput("Y", availableWidth, l, getResolvedY(), this::setY, baseCursorX, edgeMargin);
 
             l.addVerticalSpacing(getSmallPadding());
             return changed;
@@ -113,8 +116,33 @@ public class Vector2InputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new Vector3d(x, y, 0.0d)));
+        if (!VectorUtils.isFinite(x) || !VectorUtils.isFinite(y)) {
+            if (!VectorUtils.isFinite(x)) {
+                writeInvalid("X must be finite DOUBLE");
+            } else {
+                writeInvalid("Y must be finite DOUBLE");
+            }
+        } else {
+            outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new org.joml.Vector3d(x, y, 0.0d)));
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
+            syncOutputPorts();
+        }
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_VECTOR_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
         syncOutputPorts();
+    }
+
+    private double getResolvedX() {
+        return VectorUtils.isFinite(x) ? x : 0.0d;
+    }
+
+    private double getResolvedY() {
+        return VectorUtils.isFinite(y) ? y : 0.0d;
     }
 
     public double getX() {
@@ -122,6 +150,11 @@ public class Vector2InputNode extends BaseCustomUINode {
     }
 
     public void setX(double x) {
+        if (!VectorUtils.isFinite(x)) {
+            writeInvalid("X must be finite DOUBLE");
+            markDirty();
+            return;
+        }
         if (Double.compare(this.x, x) != 0) {
             this.x = x;
             updateOutput();
@@ -134,6 +167,11 @@ public class Vector2InputNode extends BaseCustomUINode {
     }
 
     public void setY(double y) {
+        if (!VectorUtils.isFinite(y)) {
+            writeInvalid("Y must be finite DOUBLE");
+            markDirty();
+            return;
+        }
         if (Double.compare(this.y, y) != 0) {
             this.y = y;
             updateOutput();
@@ -168,10 +206,10 @@ public class Vector2InputNode extends BaseCustomUINode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("x") instanceof Number n) {
+        if (map.get("x") instanceof Number n && VectorUtils.isFinite(n.doubleValue())) {
             x = n.doubleValue();
         }
-        if (map.get("y") instanceof Number n) {
+        if (map.get("y") instanceof Number n && VectorUtils.isFinite(n.doubleValue())) {
             y = n.doubleValue();
         }
         if (map.get("precision") instanceof Number precisionValue) {

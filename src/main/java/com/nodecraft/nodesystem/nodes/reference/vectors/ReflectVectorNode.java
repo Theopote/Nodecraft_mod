@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
@@ -27,6 +28,7 @@ public class ReflectVectorNode extends BaseNode {
 
     private static final String OUTPUT_REFLECTED_ID = "output_reflected";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ReflectVectorNode() {
         super(UUID.randomUUID(), "reference.vectors.reflect");
@@ -36,6 +38,8 @@ public class ReflectVectorNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_REFLECTED_ID, "Reflected", "Reflected vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether reflection input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -52,17 +56,49 @@ public class ReflectVectorNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d v = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
         Vector3d n = VectorUtils.toVector(inputValues.get(INPUT_NORMAL_ID));
-        if (!VectorUtils.isFinite(v) || !VectorUtils.isFinite(n) || n.lengthSquared() < VectorUtils.EPS_SQ) {
-            outputValues.put(OUTPUT_REFLECTED_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+
+        if (!VectorUtils.isFinite(v)) {
+            writeInvalid("Vector must be a finite VECTOR");
+            return;
+        }
+        if (!VectorUtils.isFinite(n)) {
+            writeInvalid("Normal must be a finite VECTOR");
             return;
         }
 
-        Vector3d nn = new Vector3d(n).normalize();
-        double scale = 2.0d * v.dot(nn);
-        Vector3d reflected = new Vector3d(v).sub(new Vector3d(nn).mul(scale));
+        Vector3d nn = VectorUtils.safeNormalize(n);
+        if (nn == null) {
+            writeInvalid("Normal must be non-zero and normalizable");
+            return;
+        }
 
-        outputValues.put(OUTPUT_REFLECTED_ID, VectorUtils.toVectorPort(reflected));
+        double dot = VectorUtils.safeDot(v, nn);
+        if (!VectorUtils.isFinite(dot)) {
+            writeInvalid("Reflection dot product is not finite");
+            return;
+        }
+
+        double scale = 2.0d * dot;
+        if (!VectorUtils.isFinite(scale)) {
+            writeInvalid("Reflection scale is not finite");
+            return;
+        }
+
+        Vector3d reflected = VectorUtils.safeSubtract(v, VectorUtils.safeScale(nn, scale));
+        VectorData output = VectorUtils.toVectorPort(reflected);
+        if (output == null) {
+            writeInvalid("Reflected vector is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_REFLECTED_ID, output);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_REFLECTED_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

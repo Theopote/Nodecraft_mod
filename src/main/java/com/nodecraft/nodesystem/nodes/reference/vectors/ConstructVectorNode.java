@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -28,6 +29,7 @@ public class ConstructVectorNode extends BaseNode {
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ConstructVectorNode() {
         super(UUID.randomUUID(), "reference.vectors.construct_vector");
@@ -39,6 +41,8 @@ public class ConstructVectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "Constructed vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether all resolved components are finite numbers",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -53,19 +57,31 @@ public class ConstructVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double x = toDouble(inputValues.get(INPUT_X_ID));
-        double y = toDouble(inputValues.get(INPUT_Y_ID));
-        double z = toDouble(inputValues.get(INPUT_Z_ID));
-        boolean valid = Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z);
+        Double x = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_X_ID));
+        Double y = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_Y_ID));
+        Double z = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_Z_ID));
 
-        outputValues.put(OUTPUT_VECTOR_ID, valid ? VectorUtils.toVectorPort(new Vector3d(x, y, z)) : null);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        if (x == null) {
+            writeInvalid("X must be exact finite DOUBLE");
+            return;
+        }
+        if (y == null) {
+            writeInvalid("Y must be exact finite DOUBLE");
+            return;
+        }
+        if (z == null) {
+            writeInvalid("Z must be exact finite DOUBLE");
+            return;
+        }
+
+        outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new Vector3d(x, y, z)));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private double toDouble(Object value) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return Double.NaN;
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_VECTOR_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

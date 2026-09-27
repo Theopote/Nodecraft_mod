@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import imgui.ImGui;
 import imgui.type.ImDouble;
@@ -34,6 +35,7 @@ public class VectorInputNode extends BaseCustomUINode {
 
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X component")
     private double x = 0.0;
@@ -60,6 +62,7 @@ public class VectorInputNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when all components resolved to finite numbers", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
         updateOutput();
     }
 
@@ -146,50 +149,62 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        Double resolvedX = resolveComponent(INPUT_X_ID, x);
-        Double resolvedY = resolveComponent(INPUT_Y_ID, y);
-        Double resolvedZ = resolveComponent(INPUT_Z_ID, z);
+        Double resolvedX = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_X_ID, x);
+        Double resolvedY = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Y_ID, y);
+        Double resolvedZ = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Z_ID, z);
 
-        if (resolvedX == null || resolvedY == null || resolvedZ == null) {
-            outputValues.put(OUTPUT_VECTOR_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
-        } else {
-            outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new Vector3d(resolvedX, resolvedY, resolvedZ)));
-            outputValues.put(OUTPUT_VALID_ID, true);
+        if (resolvedX == null) {
+            writeInvalid(resolveAxisError("X", INPUT_X_ID));
+            syncOutputPorts();
+            return;
         }
+        if (resolvedY == null) {
+            writeInvalid(resolveAxisError("Y", INPUT_Y_ID));
+            syncOutputPorts();
+            return;
+        }
+        if (resolvedZ == null) {
+            writeInvalid(resolveAxisError("Z", INPUT_Z_ID));
+            syncOutputPorts();
+            return;
+        }
+
+        outputValues.put(OUTPUT_VECTOR_ID, VectorUtils.toVectorPort(new Vector3d(resolvedX, resolvedY, resolvedZ)));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
         syncOutputPorts();
     }
 
+    private String resolveAxisError(String axis, String inputPortId) {
+        if (OptionalPortDrive.isConnected(this, inputPortId)) {
+            return axis + " connected but not exact DOUBLE";
+        }
+        return axis + " must be finite DOUBLE";
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_VECTOR_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
     private double getResolvedX() {
-        Double resolved = resolveComponent(INPUT_X_ID, x);
+        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_X_ID, x);
         return resolved != null ? resolved : x;
     }
 
     private double getResolvedY() {
-        Double resolved = resolveComponent(INPUT_Y_ID, y);
+        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Y_ID, y);
         return resolved != null ? resolved : y;
     }
 
     private double getResolvedZ() {
-        Double resolved = resolveComponent(INPUT_Z_ID, z);
+        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Z_ID, z);
         return resolved != null ? resolved : z;
     }
 
-    private @Nullable Double resolveComponent(String inputPortId, double fallback) {
-        if (isInputConnected(inputPortId)) {
-            Object value = inputValues.get(inputPortId);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
-        }
-        return Double.isFinite(fallback) ? fallback : null;
-    }
-
     private boolean isInputConnected(String inputPortId) {
-        return inputPorts.stream()
-            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
+        return OptionalPortDrive.isConnected(this, inputPortId);
     }
 
     public double getX() {

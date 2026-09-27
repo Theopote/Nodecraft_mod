@@ -52,6 +52,21 @@ public final class OptionalPortDrive {
     }
 
     /**
+     * Optional strict DOUBLE drive. Connected ports require exact finite {@link Double}.
+     * Returns {@code null} when connected but invalid (fail closed).
+     */
+    public static @Nullable Double resolveOptionalStrictDouble(
+            BaseNode node,
+            String portId,
+            double propertyFallback
+    ) {
+        if (isConnected(node, portId)) {
+            return StrictDoubleUtils.requireExactFiniteDouble(node.getInput(portId));
+        }
+        return Double.isFinite(propertyFallback) ? propertyFallback : null;
+    }
+
+    /**
      * Optional DOUBLE drive. Returns {@code null} when connected but invalid (fail closed).
      */
     public static @Nullable Double resolveOptionalDouble(

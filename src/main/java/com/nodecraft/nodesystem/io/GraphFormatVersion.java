@@ -315,14 +315,16 @@ public final class GraphFormatVersion {
     public static final int V49 = 49;
 
     /**
-     * Reference Vectors v1: Slerp geodesic fix, zero-vector validity, connected-vs-unconnected inputs,
-     * null invalid VECTOR outputs, VectorUtils util, unique order 0-17.
+     * Reference Vectors v1 (historical milestone): Slerp geodesic fix, zero-vector validity,
+     * connected-vs-unconnected inputs, null invalid VECTOR outputs, VectorUtils util,
+     * unique order 0-17. Superseded by {@link #V88}.
      */
     public static final int V50 = 50;
 
     /**
-     * Reference Vectors P1: VectorData layer, SpatialTolerance EPS/EPS_SQ, strict INTEGER_LIST,
-     * Component Min/Max moved to math.vector.
+     * Reference Vectors P1 (historical milestone): VectorData layer, SpatialTolerance EPS/EPS_SQ,
+     * strict INTEGER_LIST, Component Min/Max moved to math.vector.
+     * Superseded by {@link #V88}.
      */
     public static final int V51 = 51;
 
@@ -577,8 +579,15 @@ public final class GraphFormatVersion {
      */
     public static final int V87 = 87;
 
+    /**
+     * Reference Vectors Language v2 (PASSED / FROZEN): Valid+Error on all 17 nodes, finite-result fences
+     * on vector arithmetic, safeLength/safeNormalize/safeLerp, strict exact-Double inputs, unit-axis Project,
+     * zero VECTOR valid. V50/V51 remain the historical Reference Vectors v1 fences.
+     */
+    public static final int V88 = 88;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V87;
+    public static final int CURRENT = V88;
 
     private GraphFormatVersion() {
     }

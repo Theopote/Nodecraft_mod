@@ -31,6 +31,7 @@ public class DeconstructVectorNode extends BaseNode {
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructVectorNode() {
         super(UUID.randomUUID(), "reference.vectors.deconstruct_vector");
@@ -41,6 +42,8 @@ public class DeconstructVectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_Y_ID, "Y", "Y component", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the input vector is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -61,6 +64,7 @@ public class DeconstructVectorNode extends BaseNode {
             outputValues.put(OUTPUT_Y_ID, Double.NaN);
             outputValues.put(OUTPUT_Z_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Vector must be a finite VECTOR");
             return;
         }
 
@@ -68,5 +72,6 @@ public class DeconstructVectorNode extends BaseNode {
         outputValues.put(OUTPUT_Y_ID, vector.y);
         outputValues.put(OUTPUT_Z_ID, vector.z);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }
