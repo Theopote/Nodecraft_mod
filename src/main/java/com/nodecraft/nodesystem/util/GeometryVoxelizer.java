@@ -230,7 +230,7 @@ public final class GeometryVoxelizer {
             return null;
         }
 
-        return new BoundingBoxData(
+        return BoundingBoxData.create(
             new Vector3d(minCorner.getX(), minCorner.getY(), minCorner.getZ()),
             new Vector3d(maxCorner.getX() + 1.0d, maxCorner.getY() + 1.0d, maxCorner.getZ() + 1.0d)
         );

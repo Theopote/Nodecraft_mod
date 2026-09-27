@@ -40,6 +40,7 @@ Last updated: 2026-09-25
 | World Write | [`node-language-v1-world-write.md`](./node-language-v1-world-write.md) **(PASSED / FROZEN, V64)** |
 | Flow Control | [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) **(PASSED / FROZEN, V65)** |
 | Flow Loop | [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md) **(PASSED / FROZEN, V66)** |
+| Geometry Analysis | [`node-language-v1-geometry-analysis.md`](./node-language-v1-geometry-analysis.md) **(PASSED / FROZEN, V67)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -77,6 +78,7 @@ Last updated: 2026-09-25
 | World Write v1 | **PASSED / FROZEN** | V64 |
 | Flow Control v1 | **PASSED / FROZEN** | V65 |
 | Flow Loop v1 | **PASSED / FROZEN** | V66 |
+| Geometry Analysis v1 | **PASSED / FROZEN** | V67 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.
@@ -550,8 +552,8 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 
 - **Difference bounds** = minuend (base) only — no longer union with cutter (tighter voxel scan).
 - Library categories: `geometry.combine` (Combine), `geometry.boolean` (Difference / Intersection),
-  `geometry.sdf` (SDF primitives + ops + To Geometry), `geometry.analysis` (Bounding Box / Geometry Bounds).
-  Node type ids unchanged for Bounds/SDF (category move only).
+  `geometry.sdf` (SDF primitives + ops + To Geometry), `geometry.analysis` (Block Bounds / Geometry Bounds).
+  Analysis node ids: Graph **V67** (`geometry.analysis.*`) — see [`node-language-v1-geometry-analysis.md`](./node-language-v1-geometry-analysis.md).
 - SDF nodes use `SpatialValueResolver.resolvePoint` / `resolveVector` (strict roles).
 
 **Next (Batch 5 P3):** Auto Seam Alignment; PATH_LIST; voxelization cache; Combine single-input pass-through.

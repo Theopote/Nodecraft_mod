@@ -89,8 +89,8 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Bounding Box | `geometry.boolean.bounding_box` | Calculates an axis-aligned bounding box from a block list or region | `BoundingBoxNode` |
-| Geometry Bounds | `geometry.boolean.geometry_bounds` | Calculates an axis-aligned bounding box from any supported geometry | `GeometryBoundsNode` |
+| Block Bounds | `geometry.analysis.block_bounds` | Calculates a continuous AABB from a block list or region cell envelope | `BlockBoundsNode` |
+| Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
 
 ## geometry.architectural_primitives（20）
 

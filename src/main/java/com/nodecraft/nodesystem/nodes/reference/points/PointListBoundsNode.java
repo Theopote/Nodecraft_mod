@@ -95,7 +95,12 @@ public class PointListBoundsNode extends BaseNode {
         double sizeY = max.y - min.y;
         double sizeZ = max.z - min.z;
 
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, new BoundingBoxData(min, max));
+        BoundingBoxData boundingBox = BoundingBoxData.create(min, max);
+        if (boundingBox == null) {
+            writeInvalid();
+            return;
+        }
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
         outputValues.put(OUTPUT_MIN_POINT_ID, new PointData(min));
         outputValues.put(OUTPUT_MAX_POINT_ID, new PointData(max));
         outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));

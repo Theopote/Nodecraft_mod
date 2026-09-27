@@ -149,9 +149,9 @@ class BooleanFamilyContractTest {
         assertEquals("geometry.sdf",
             NodeRegistry.getInstance().getNodeInfo("geometry.boolean.sdf_sphere").getCategoryId());
         assertEquals("geometry.analysis",
-            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.bounding_box").getCategoryId());
+            NodeRegistry.getInstance().getNodeInfo("geometry.analysis.block_bounds").getCategoryId());
         assertEquals("geometry.analysis",
-            NodeRegistry.getInstance().getNodeInfo("geometry.boolean.geometry_bounds").getCategoryId());
+            NodeRegistry.getInstance().getNodeInfo("geometry.analysis.geometry_bounds").getCategoryId());
     }
 
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {

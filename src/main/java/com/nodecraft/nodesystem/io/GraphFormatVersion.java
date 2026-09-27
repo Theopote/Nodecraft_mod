@@ -411,8 +411,14 @@ public final class GraphFormatVersion {
      */
     public static final int V66 = 66;
 
+    /**
+     * Geometry Analysis v1: continuous BOUNDING_BOX vs discrete REGION/BLOCK_POS,
+     * rename analysis nodes, GeometryBoundsResolver (no voxelizer).
+     */
+    public static final int V67 = 67;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V66;
+    public static final int CURRENT = V67;
 
     private GraphFormatVersion() {
     }

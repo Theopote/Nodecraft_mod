@@ -125,6 +125,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V63 -> migrateV63ToV64(graph);
             case GraphFormatVersion.V64 -> migrateV64ToV65(graph);
             case GraphFormatVersion.V65 -> migrateV65ToV66(graph);
+            case GraphFormatVersion.V66 -> migrateV66ToV67(graph);
             default -> graph;
         };
     }
@@ -4727,6 +4728,95 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    /**
+     * Geometry Analysis v1: rename analysis nodes, remap Block Bounds ports,
+     * drop discrete Geometry Bounds ports.
+     */
+    private static SavedGraph migrateV66ToV67(SavedGraph graph) {
+        applyGeometryAnalysisV67ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyGeometryAnalysisV67ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final String LEGACY_BLOCK_BOUNDS_TYPE = "geometry.boolean.bounding_box";
+    private static final String LEGACY_GEOMETRY_BOUNDS_TYPE = "geometry.boolean.geometry_bounds";
+    private static final String BLOCK_BOUNDS_TYPE = "geometry.analysis.block_bounds";
+    private static final String GEOMETRY_BOUNDS_TYPE = "geometry.analysis.geometry_bounds";
+
+    private static final Set<String> GEOMETRY_BOUNDS_DEAD_PORTS = Set.of(
+            "output_region",
+            "output_min_corner",
+            "output_max_corner",
+            "output_center"
+    );
+
+    private static void applyGeometryAnalysisV67ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_BLOCK_BOUNDS_TYPE.equals(node.typeId)) {
+                    node.typeId = BLOCK_BOUNDS_TYPE;
+                } else if (LEGACY_GEOMETRY_BOUNDS_TYPE.equals(node.typeId)) {
+                    node.typeId = GEOMETRY_BOUNDS_TYPE;
+                }
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String targetType = typeIdOf(graph, connection.targetNodeId);
+            String sourcePort = normalizePortId(connection.sourcePortId);
+            String targetPort = normalizePortId(connection.targetPortId);
+
+            if (isDeadGeometryBoundsPort(sourceType, sourcePort)
+                    || isDeadGeometryBoundsPort(targetType, targetPort)) {
+                continue;
+            }
+
+            if (BLOCK_BOUNDS_TYPE.equals(sourceType)) {
+                connection.sourcePortId = remapBlockBoundsPort(sourcePort);
+            }
+            if (BLOCK_BOUNDS_TYPE.equals(targetType)) {
+                connection.targetPortId = remapBlockBoundsPort(targetPort);
+            }
+
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static boolean isDeadGeometryBoundsPort(@Nullable String typeId, @Nullable String portId) {
+        return GEOMETRY_BOUNDS_TYPE.equals(typeId) && portId != null && GEOMETRY_BOUNDS_DEAD_PORTS.contains(portId);
+    }
+
+    private static String remapBlockBoundsPort(@Nullable String portId) {
+        if (portId == null) {
+            return null;
+        }
+        return switch (portId) {
+            case "input_coordinates" -> "input_blocks";
+            case "output_min_corner" -> "output_min_block";
+            case "output_max_corner" -> "output_max_block";
+            default -> portId;
+        };
     }
 
     private static final Set<String> FLOW_LOOP_FOREACH_DEAD_PORTS = Set.of(
