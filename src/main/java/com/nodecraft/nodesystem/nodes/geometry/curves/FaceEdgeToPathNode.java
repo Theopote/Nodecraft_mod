@@ -12,7 +12,6 @@ import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(

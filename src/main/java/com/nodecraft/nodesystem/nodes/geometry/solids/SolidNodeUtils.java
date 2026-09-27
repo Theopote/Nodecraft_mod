@@ -2,7 +2,6 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.core.exception.GeometryException;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -54,8 +53,8 @@ final class SolidNodeUtils {
         if (value instanceof Vec3d vector) {
             return new Vector3d(vector.x, vector.y, vector.z);
         }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
+        if (value instanceof Vector3(float x, float y, float z)) {
+            return new Vector3d(x, y, z);
         }
         return null;
     }
