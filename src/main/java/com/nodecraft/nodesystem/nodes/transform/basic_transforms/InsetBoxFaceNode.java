@@ -3,11 +3,10 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.VectorUtils;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +21,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 8
 )
-public class InsetBoxFaceNode extends BaseNode {
+public class InsetBoxFaceNode extends AbstractBasicTransformNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -30,7 +29,6 @@ public class InsetBoxFaceNode extends BaseNode {
     private static final String INPUT_DISTANCE_ID = "input_distance";
 
     private static final String OUTPUT_FACE_ID = "output_face";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public InsetBoxFaceNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.inset_face");
@@ -39,7 +37,7 @@ public class InsetBoxFaceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Required signed inset distance; negative values expand the face outward", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Inset reference face", NodeDataType.BOX_FACE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a valid inset face was produced", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -50,35 +48,30 @@ public class InsetBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
+        if (!(faceObj instanceof BoxFaceData face)) {
+            writeInvalid("Box face is required");
+            return;
+        }
 
-        if (!(faceObj instanceof BoxFaceData face) || !(distanceObj instanceof Number number)) {
-            writeInvalid();
+        String faceError = BoxFaceValidator.validate(face);
+        if (faceError != null) {
+            writeInvalid(faceError);
+            return;
+        }
+
+        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
+        if (!(distanceObj instanceof Number number)) {
+            writeInvalid("Distance is required");
             return;
         }
 
         double distance = number.doubleValue();
         if (!Double.isFinite(distance)) {
-            writeInvalid();
+            writeInvalid("Distance must be finite");
             return;
         }
 
         List<Vector3d> corners = face.getCorners();
-        if (corners.size() != 4) {
-            writeInvalid();
-            return;
-        }
-        for (Vector3d corner : corners) {
-            if (!VectorUtils.isFinite(corner)) {
-                writeInvalid();
-                return;
-            }
-        }
-        if (!VectorUtils.isFinite(face.getCenter())) {
-            writeInvalid();
-            return;
-        }
-
         Vector3d c0 = corners.get(0);
         Vector3d c1 = corners.get(1);
         Vector3d c3 = corners.get(3);
@@ -89,13 +82,13 @@ public class InsetBoxFaceNode extends BaseNode {
         double height = vAxis.length();
 
         if (width <= EPS || height <= EPS) {
-            writeInvalid();
+            writeInvalid("Box face is degenerate");
             return;
         }
 
         // Positive inset must leave a non-degenerate interior; outset (negative) is unrestricted.
         if (distance >= Math.min(width, height) * 0.5d) {
-            writeInvalid();
+            writeInvalid("Inset distance exceeds half the smallest face dimension");
             return;
         }
 
@@ -116,11 +109,6 @@ public class InsetBoxFaceNode extends BaseNode {
         insetCenter.div(4.0d);
 
         Vector3d normal = new Vector3d(face.getNormal());
-        if (!VectorUtils.isFinite(normal) || !VectorUtils.isNonZero(normal)) {
-            writeInvalid();
-            return;
-        }
-
         outputValues.put(OUTPUT_FACE_ID, new BoxFaceData(
             face.getIndex(),
             face.getName(),
@@ -129,11 +117,11 @@ public class InsetBoxFaceNode extends BaseNode {
             insetCenter,
             normal
         ));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_FACE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putNullOutputs(OUTPUT_FACE_ID);
+        markInvalid(error);
     }
 }

@@ -185,15 +185,17 @@ class BasicTransformsLanguageContractTest {
     }
 
     @Test
-    void faceNodesAreSlimFacePlusValid() {
+    void faceNodesAreSlimFacePlusValidAndError() {
         assertPortType("transform.basic_transforms.offset_face", "output_face", false, NodeDataType.BOX_FACE);
         assertPortType("transform.basic_transforms.offset_face", "output_valid", false, NodeDataType.BOOLEAN);
+        assertPortType("transform.basic_transforms.offset_face", "output_error", false, NodeDataType.STRING);
         assertFalse(hasOutputPort("transform.basic_transforms.offset_face", "output_center"));
         assertFalse(hasOutputPort("transform.basic_transforms.offset_face", "output_normal"));
         assertFalse(hasOutputPort("transform.basic_transforms.offset_face", "output_polyline"));
 
         assertPortType("transform.basic_transforms.inset_face", "output_face", false, NodeDataType.BOX_FACE);
         assertPortType("transform.basic_transforms.inset_face", "output_valid", false, NodeDataType.BOOLEAN);
+        assertPortType("transform.basic_transforms.inset_face", "output_error", false, NodeDataType.STRING);
         assertFalse(hasOutputPort("transform.basic_transforms.inset_face", "output_effective_distance"));
         assertFalse(hasOutputPort("transform.basic_transforms.inset_face", "output_edges"));
     }

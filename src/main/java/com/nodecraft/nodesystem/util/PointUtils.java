@@ -60,4 +60,21 @@ public final class PointUtils {
         }
         return List.copyOf(points);
     }
+
+    /**
+     * Strict POINT_LIST with a hard size budget. Size is checked before allocating the result.
+     * Oversized collections return {@code null} (fail closed; no truncation).
+     */
+    public static @Nullable List<Vector3d> resolveStrictPointListBounded(
+            @Nullable Object value,
+            int maxElements
+    ) {
+        if (!(value instanceof Collection<?> collection) || collection.isEmpty()) {
+            return null;
+        }
+        if (maxElements < 1 || collection.size() > maxElements) {
+            return null;
+        }
+        return resolveStrictPointList(value);
+    }
 }

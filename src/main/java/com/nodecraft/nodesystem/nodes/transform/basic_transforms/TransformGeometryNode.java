@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -31,7 +30,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 3
 )
-public class TransformGeometryNode extends BaseNode implements GizmoTransformTarget {
+public class TransformGeometryNode extends AbstractBasicTransformNode implements GizmoTransformTarget {
 
     @NodeProperty(displayName = "Translation X", category = "Transform", order = 1)
     private double translationX = 0.0d;
@@ -64,8 +63,6 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
     private static final String INPUT_SCALE_ID = "input_scale";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
-    private static final String OUTPUT_ERROR_ID = "output_error";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TransformGeometryNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.transform_geometry");
@@ -78,8 +75,7 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Transformed geometry", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when transform fails", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when transform succeeded", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -97,7 +93,7 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geomObj instanceof GeometryData geometry)) {
             hideGizmoPreview();
-            writeResult(null, false, "Missing geometry input");
+            writeResult(null, "Missing geometry input");
             return;
         }
 
@@ -109,22 +105,22 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
 
         if (translation == null) {
             hideGizmoPreview();
-            writeResult(null, false, "Translation connected but invalid, or property translation invalid");
+            writeResult(null, "Translation connected but invalid, or property translation invalid");
             return;
         }
         if (rx == null || ry == null || rz == null) {
             hideGizmoPreview();
-            writeResult(null, false, "Rotation connected but invalid, or property rotation invalid");
+            writeResult(null, "Rotation connected but invalid, or property rotation invalid");
             return;
         }
         if (s == null || s <= 1.0e-9d) {
             hideGizmoPreview();
-            writeResult(null, false, "Scale must be greater than zero. Use Mirror for reflection.");
+            writeResult(null, "Scale must be greater than zero. Use Mirror for reflection.");
             return;
         }
 
         GeometryData transformed = GeometryTransform.transform(geometry, translation, rx, ry, rz, s);
-        writeResult(transformed, transformed != null, transformed == null ? "Unsupported geometry transform" : "");
+        writeResult(transformed, transformed == null ? "Unsupported geometry transform" : "");
         updateGizmoPreview();
     }
 
@@ -283,9 +279,12 @@ public class TransformGeometryNode extends BaseNode implements GizmoTransformTar
         if (map.get("gizmoMode") instanceof String value) gizmoMode = value;
     }
 
-    private void writeResult(@Nullable GeometryData geometry, boolean valid, String error) {
+    private void writeResult(@Nullable GeometryData geometry, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        if (error == null || error.isEmpty()) {
+            markSuccess();
+        } else {
+            markInvalid(error);
+        }
     }
 }

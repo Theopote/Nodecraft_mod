@@ -3,11 +3,10 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.VectorUtils;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,13 +22,12 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 7
 )
-public class OffsetBoxFaceNode extends BaseNode {
+public class OffsetBoxFaceNode extends AbstractBasicTransformNode {
 
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_DISTANCE_ID = "input_distance";
 
     private static final String OUTPUT_FACE_ID = "output_face";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetBoxFaceNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.offset_face");
@@ -38,7 +36,7 @@ public class OffsetBoxFaceNode extends BaseNode {
         addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Required signed offset distance along the face normal", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Offset face", NodeDataType.BOX_FACE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a valid offset face was produced", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -49,34 +47,35 @@ public class OffsetBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
+        if (!(faceObj instanceof BoxFaceData face)) {
+            writeInvalid("Box face is required");
+            return;
+        }
 
-        if (!(faceObj instanceof BoxFaceData face) || !(distanceObj instanceof Number number)) {
-            writeInvalid();
+        String faceError = BoxFaceValidator.validate(face);
+        if (faceError != null) {
+            writeInvalid(faceError);
+            return;
+        }
+
+        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
+        if (!(distanceObj instanceof Number number)) {
+            writeInvalid("Distance is required");
             return;
         }
 
         double distance = number.doubleValue();
-        Vector3d normal = new Vector3d(face.getNormal());
-        if (!Double.isFinite(distance) || !VectorUtils.isFinite(normal) || !VectorUtils.isNonZero(normal)) {
-            writeInvalid();
+        if (!Double.isFinite(distance)) {
+            writeInvalid("Distance must be finite");
             return;
         }
-        normal.normalize();
+
+        Vector3d normal = new Vector3d(face.getNormal()).normalize();
         Vector3d offset = new Vector3d(normal).mul(distance);
 
         List<Vector3d> sourceCorners = face.getCorners();
-        if (sourceCorners.size() < 3) {
-            writeInvalid();
-            return;
-        }
-
         List<Vector3d> shiftedCorners = new ArrayList<>(sourceCorners.size());
         for (Vector3d corner : sourceCorners) {
-            if (!VectorUtils.isFinite(corner)) {
-                writeInvalid();
-                return;
-            }
             shiftedCorners.add(new Vector3d(corner).add(offset));
         }
 
@@ -89,11 +88,11 @@ public class OffsetBoxFaceNode extends BaseNode {
             shiftedCenter,
             normal
         ));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_FACE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putNullOutputs(OUTPUT_FACE_ID);
+        markInvalid(error);
     }
 }

@@ -133,6 +133,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V71 -> migrateV71ToV72(graph);
             case GraphFormatVersion.V72 -> migrateV72ToV73(graph);
             case GraphFormatVersion.V73 -> migrateV73ToV74(graph);
+            case GraphFormatVersion.V74 -> migrateV74ToV75(graph);
             default -> graph;
         };
     }
@@ -4772,6 +4773,13 @@ public final class GraphMigrationRegistry {
      * Geometry Boolean v1: format bump only (Error ports additive; orders are catalog metadata).
      */
     private static SavedGraph migrateV68ToV69(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Basic Transforms Language v2: format bump only (Error ports additive; budgets/validators are runtime).
+     */
+    private static SavedGraph migrateV74ToV75(SavedGraph graph) {
         return graph;
     }
 

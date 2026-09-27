@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -28,7 +27,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 1
 )
-public class RotateGeometryAroundAxisNode extends BaseNode {
+public class RotateGeometryAroundAxisNode extends AbstractBasicTransformNode {
 
     @NodeProperty(displayName = "Default Angle", category = "Rotation", order = 1)
     private double defaultAngle = 90.0d;
@@ -41,8 +40,6 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_EFFECTIVE_AXIS_ID = "output_effective_axis";
     private static final String OUTPUT_EFFECTIVE_ANGLE_ID = "output_effective_angle";
-    private static final String OUTPUT_ERROR_ID = "output_error";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RotateGeometryAroundAxisNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.rotate_geometry_axis");
@@ -55,8 +52,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Rotated geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_AXIS_ID, "Effective Axis", "Normalized rotation axis actually used", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_ANGLE_ID, "Effective Angle", "Rotation angle actually used in degrees", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when rotation fails", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was rotated", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -68,7 +64,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, null, Double.NaN, false, "Missing geometry input");
+            writeResult(null, null, Double.NaN, "Missing geometry input");
             return;
         }
 
@@ -76,7 +72,7 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         Vector3d axis = OptionalPortDrive.resolveOptionalVector(this, INPUT_AXIS_ID, new Vector3d(0.0d, 1.0d, 0.0d));
         Double angle = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_ID, defaultAngle);
         if (center == null || axis == null || angle == null || !VectorUtils.isNonZero(axis)) {
-            writeResult(null, null, Double.NaN, false, "Center, axis, or angle is invalid");
+            writeResult(null, null, Double.NaN, "Center, axis, or angle is invalid");
             return;
         }
 
@@ -84,7 +80,11 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
         Quaterniond quaternion = new Quaterniond(new AxisAngle4d(Math.toRadians(angle), axis.x, axis.y, axis.z));
         Matrix3d rotation = new Matrix3d().set(quaternion);
         GeometryData rotated = GeometryTransform.transformAround(geometry, center, rotation, 1.0d);
-        writeResult(rotated, axis, angle, rotated != null, rotated == null ? "Unsupported geometry rotation" : "");
+        if (rotated == null) {
+            writeResult(null, null, Double.NaN, "Unsupported geometry rotation");
+            return;
+        }
+        writeResult(rotated, axis, angle, "");
     }
 
     public double getDefaultAngle() {
@@ -114,13 +114,15 @@ public class RotateGeometryAroundAxisNode extends BaseNode {
             @Nullable GeometryData geometry,
             @Nullable Vector3d effectiveAxis,
             double effectiveAngle,
-            boolean valid,
             String error
     ) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, VectorUtils.toVectorPort(effectiveAxis));
-        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, valid ? effectiveAngle : Double.NaN);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, error == null || error.isEmpty() ? effectiveAngle : Double.NaN);
+        if (error == null || error.isEmpty()) {
+            markSuccess();
+        } else {
+            markInvalid(error);
+        }
     }
 }

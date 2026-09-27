@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -25,7 +24,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 0
 )
-public class MoveGeometryNode extends BaseNode {
+public class MoveGeometryNode extends AbstractBasicTransformNode {
 
     @NodeProperty(displayName = "X", category = "Translation", order = 1)
     private double x = 0.0d;
@@ -41,8 +40,6 @@ public class MoveGeometryNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_EFFECTIVE_TRANSLATION_ID = "output_effective_translation";
-    private static final String OUTPUT_ERROR_ID = "output_error";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MoveGeometryNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.move_geometry");
@@ -52,8 +49,7 @@ public class MoveGeometryNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Moved geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_TRANSLATION_ID, "Effective Translation", "Translation vector actually applied", NodeDataType.VECTOR, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when move fails", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was moved", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -65,17 +61,21 @@ public class MoveGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, null, false, "Missing geometry input");
+            writeResult(null, null, "Missing geometry input");
             return;
         }
 
         Vector3d translation = OptionalPortDrive.resolveOptionalVector(this, INPUT_TRANSLATION_ID, new Vector3d(x, y, z));
         if (translation == null) {
-            writeResult(null, null, false, "Translation connected but invalid, or property translation invalid");
+            writeResult(null, null, "Translation connected but invalid, or property translation invalid");
             return;
         }
         GeometryData moved = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, 1.0d);
-        writeResult(moved, translation, moved != null, moved == null ? "Unsupported geometry move" : "");
+        if (moved == null) {
+            writeResult(null, null, "Unsupported geometry move");
+            return;
+        }
+        writeResult(moved, translation, "");
     }
 
     public double getX() {
@@ -126,10 +126,13 @@ public class MoveGeometryNode extends BaseNode {
         if (map.get("z") instanceof Number value) setZ(value.doubleValue());
     }
 
-    private void writeResult(@Nullable GeometryData geometry, @Nullable Vector3d effectiveTranslation, boolean valid, String error) {
+    private void writeResult(@Nullable GeometryData geometry, @Nullable Vector3d effectiveTranslation, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_EFFECTIVE_TRANSLATION_ID, VectorUtils.toVectorPort(effectiveTranslation));
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        if (error == null || error.isEmpty()) {
+            markSuccess();
+        } else {
+            markInvalid(error);
+        }
     }
 }

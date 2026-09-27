@@ -467,8 +467,15 @@ public final class GraphFormatVersion {
      */
     public static final int V74 = 74;
 
+    /**
+     * Basic Transforms Language v2: Valid+Error on 9 nodes, Frames×Points / POINT_LIST budgets,
+     * BoxFaceValidator (exactly 4 corners), Offset/Inset fail-closed, TRS Scale→RotateXYZ→Translate,
+     * orders 0–8. V52 remains the historical Basic Transforms v1 milestone.
+     */
+    public static final int V75 = 75;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V74;
+    public static final int CURRENT = V75;
 
     private GraphFormatVersion() {
     }

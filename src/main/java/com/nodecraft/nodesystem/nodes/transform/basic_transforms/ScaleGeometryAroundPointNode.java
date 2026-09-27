@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -24,7 +23,7 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 2
 )
-public class ScaleGeometryAroundPointNode extends BaseNode {
+public class ScaleGeometryAroundPointNode extends AbstractBasicTransformNode {
 
     private static final double EPS = 1.0e-9d;
 
@@ -37,7 +36,6 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_EFFECTIVE_SCALE_ID = "output_effective_scale";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScaleGeometryAroundPointNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.scale_geometry_point");
@@ -48,7 +46,7 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Scaled geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale factor actually applied", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry was scaled", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -60,20 +58,28 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeResult(null, Double.NaN, false);
+            writeFailure("Geometry input is required");
             return;
         }
 
         Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
         Double scale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_SCALE_ID, defaultScale);
-        if (center == null || scale == null || scale <= EPS) {
-            writeResult(null, Double.NaN, false);
+        if (center == null) {
+            writeFailure("Center input is invalid");
+            return;
+        }
+        if (scale == null || scale <= EPS) {
+            writeFailure("Scale must be finite and > 0");
             return;
         }
 
         Vector3d translation = new Vector3d(center).mul(1.0d - scale);
         GeometryData scaled = GeometryTransform.transform(geometry, translation, 0.0d, 0.0d, 0.0d, scale);
-        writeResult(scaled, scale, scaled != null);
+        if (scaled == null) {
+            writeFailure("Unsupported geometry scale");
+            return;
+        }
+        writeSuccess(scaled, scale);
     }
 
     public double getDefaultScale() {
@@ -99,9 +105,15 @@ public class ScaleGeometryAroundPointNode extends BaseNode {
         }
     }
 
-    private void writeResult(@Nullable GeometryData geometry, double effectiveScale, boolean valid) {
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_GEOMETRY_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_EFFECTIVE_SCALE_ID);
+        markInvalid(error);
+    }
+
+    private void writeSuccess(GeometryData geometry, double effectiveScale) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, valid ? effectiveScale : Double.NaN);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_EFFECTIVE_SCALE_ID, effectiveScale);
+        markSuccess();
     }
 }

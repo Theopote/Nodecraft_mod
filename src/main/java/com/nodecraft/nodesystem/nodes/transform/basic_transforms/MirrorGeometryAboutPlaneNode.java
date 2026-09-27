@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.transform.basic_transforms;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -21,14 +20,12 @@ import java.util.UUID;
     category = "transform.basic_transforms",
     order = 4
 )
-public class MirrorGeometryAboutPlaneNode extends BaseNode {
+public class MirrorGeometryAboutPlaneNode extends AbstractBasicTransformNode {
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_PLANE_ID = "input_plane";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
-    private static final String OUTPUT_ERROR_ID = "output_error";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MirrorGeometryAboutPlaneNode() {
         super(UUID.randomUUID(), "transform.basic_transforms.mirror_geometry_plane");
@@ -43,12 +40,7 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry",
             "Mirrored geometry",
             NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
-            "Error message when mirroring fails",
-            NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-            "True when mirroring succeeded",
-            NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -66,25 +58,28 @@ public class MirrorGeometryAboutPlaneNode extends BaseNode {
         Object geomObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object planeObj = inputValues.get(INPUT_PLANE_ID);
         if (!(geomObj instanceof GeometryData geometry) || !(planeObj instanceof PlaneData planeRaw)) {
-            writeResult(null, false, "Missing geometry or plane input");
+            writeResult(null, "Missing geometry or plane input");
             return;
         }
         PlaneData plane = planeRaw.normalized();
         if (plane == null) {
-            writeResult(null, false, "Invalid mirror plane");
+            writeResult(null, "Invalid mirror plane");
             return;
         }
         GeometryData mirrored = GeometryMirror.mirror(geometry, plane);
         if (mirrored == null) {
-            writeResult(null, false, "Unsupported geometry type or invalid mirror plane");
+            writeResult(null, "Unsupported geometry type or invalid mirror plane");
             return;
         }
-        writeResult(mirrored, true, "");
+        writeResult(mirrored, "");
     }
 
-    private void writeResult(@Nullable GeometryData geometry, boolean valid, String error) {
+    private void writeResult(@Nullable GeometryData geometry, String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        if (error == null || error.isEmpty()) {
+            markSuccess();
+        } else {
+            markInvalid(error);
+        }
     }
 }
