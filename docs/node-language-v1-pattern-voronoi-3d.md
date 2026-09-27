@@ -1,6 +1,7 @@
 # Node Language v1 — Pattern Voronoi 3D
 
-**Status: PASSED / FROZEN** (Graph **V45**)
+**Status: PASSED / FROZEN** (Graph **V45**; superseded by Language v2 at Graph **V83** —
+see [`node-language-v2-pattern-voronoi-3d.md`](./node-language-v2-pattern-voronoi-3d.md))
 
 Language unification for the single canonical `pattern.voronoi_3d.*` node: grid-approximated
 Lloyd relaxation inside an axis-aligned 3D box — aligned with Pattern Linear/Grid/Radial/Surface
@@ -14,8 +15,8 @@ Related: [`node-language-v1-pattern-radial.md`](./node-language-v1-pattern-radia
 
 1. **Corner A / Corner B are positions** — `POINT` ports resolved via `SpatialValueResolver.resolvePoint()`.
    Component-wise min/max normalization is order-independent.
-2. **Strict Integer** — `Cells` and `Iterations` accept `Integer` only; non-Integer wired values
-   use node property fallback (default 24 / 4).
+2. **Strict Integer** — `Cells` and `Iterations` accept `Integer` only. *(v1 historically used
+   property fallback for non-Integer wires; Language v2 / V83 fails closed instead.)*
 3. **Finite validation** — all corners and all sites must be finite; otherwise `Valid=false`, empty output.
 4. **Non-degenerate 3D bounds** — after normalization, span on each axis must exceed epsilon;
    zero-thickness boxes are invalid (no implicit 2D/1D fallback).

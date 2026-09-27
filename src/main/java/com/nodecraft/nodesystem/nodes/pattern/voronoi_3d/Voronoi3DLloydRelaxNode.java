@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.Voronoi3DGridLloyd;
 import org.jetbrains.annotations.Nullable;
@@ -23,7 +24,7 @@ import java.util.UUID;
     displayName = "Lloyd Relax 3D",
     description = "Approximates Lloyd relaxation inside an axis-aligned 3D box using a uniform sampling grid. Not an exact Voronoi diagram.",
     category = "pattern.voronoi_3d",
-    order = 1
+    order = 0
 )
 public class Voronoi3DLloydRelaxNode extends BaseNode {
 
@@ -46,6 +47,7 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
     private static final String OUTPUT_SITES_ID = "output_sites";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public Voronoi3DLloydRelaxNode() {
         super(UUID.randomUUID(), "pattern.voronoi_3d.lloyd_relax");
@@ -54,11 +56,12 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CORNER_A_ID, "Corner A", "First corner of the axis-aligned bounds box", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_CORNER_B_ID, "Corner B", "Second corner of the axis-aligned bounds box", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_CELLS_ID, "Cells", "Grid cells per axis (optional override)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Lloyd rounds (optional override)", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_ITERATIONS_ID, "Iterations", "Lloyd rounds (optional override; 0 = exact passthrough)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_SITES_ID, "Sites", "Relaxed site positions", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of sites", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when relaxation succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -77,12 +80,16 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         Vector3d cornerB = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CORNER_B_ID));
         List<Vector3d> sites = resolveValidatedPointList(inputValues.get(INPUT_SITES_ID));
 
-        if (cornerA == null || cornerB == null || sites == null) {
-            writeInvalid();
+        if (cornerA == null || cornerB == null) {
+            writeInvalid("Missing or invalid Corner A/B");
+            return;
+        }
+        if (sites == null) {
+            writeInvalid("Missing or invalid Sites");
             return;
         }
         if (!isFinite(cornerA) || !isFinite(cornerB)) {
-            writeInvalid();
+            writeInvalid("Corner A/B must be finite");
             return;
         }
 
@@ -91,65 +98,106 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         normalizeBounds(min, max);
 
         if (max.x - min.x <= BOUNDS_EPS || max.y - min.y <= BOUNDS_EPS || max.z - min.z <= BOUNDS_EPS) {
-            writeInvalid();
+            writeInvalid("Bounds must be non-degenerate in 3D");
             return;
         }
 
         if (sites.size() > GenerationLimits.MAX_VORONOI_LLOYD_SITES) {
-            writeInvalid();
+            writeInvalid("Site count exceeds MAX_VORONOI_LLOYD_SITES");
             return;
         }
         if (!sitesInsideBounds(sites, min, max)) {
-            writeInvalid();
+            writeInvalid("All sites must lie inside bounds");
             return;
         }
         if (hasDuplicateSites(sites)) {
-            writeInvalid();
+            writeInvalid("Duplicate or near-duplicate sites are not allowed");
             return;
         }
 
-        int cells = getInputInteger(INPUT_CELLS_ID, cellsPerAxis);
-        int iters = getInputInteger(INPUT_ITERATIONS_ID, iterations);
+        Integer cells = OptionalPortDrive.resolveOptionalInteger(this, INPUT_CELLS_ID, cellsPerAxis);
+        if (cells == null) {
+            writeInvalid("Cells connected but invalid");
+            return;
+        }
+        Integer iters = OptionalPortDrive.resolveOptionalInteger(this, INPUT_ITERATIONS_ID, iterations);
+        if (iters == null) {
+            writeInvalid("Iterations connected but invalid");
+            return;
+        }
         if (cells < GenerationLimits.MIN_VORONOI_LLOYD_CELLS_PER_AXIS
-                || cells > GenerationLimits.MAX_VORONOI_LLOYD_CELLS_PER_AXIS
-                || iters < 0
-                || iters > GenerationLimits.MAX_VORONOI_LLOYD_ITERATIONS) {
-            writeInvalid();
+                || cells > GenerationLimits.MAX_VORONOI_LLOYD_CELLS_PER_AXIS) {
+            writeInvalid("Cells must be in ["
+                + GenerationLimits.MIN_VORONOI_LLOYD_CELLS_PER_AXIS + ", "
+                + GenerationLimits.MAX_VORONOI_LLOYD_CELLS_PER_AXIS + "]");
+            return;
+        }
+        if (iters < 0 || iters > GenerationLimits.MAX_VORONOI_LLOYD_ITERATIONS) {
+            writeInvalid("Iterations must be in [0, "
+                + GenerationLimits.MAX_VORONOI_LLOYD_ITERATIONS + "]");
             return;
         }
         if (GenerationLimits.exceedsLloydWorkBudget(cells, sites.size(), iters)) {
-            writeInvalid();
+            writeInvalid("Lloyd work budget exceeded");
             return;
         }
 
         if (iters == 0) {
-            writeSuccess(copySites(sites));
+            if (!commitRelaxed(sites, sites, min, max)) {
+                return;
+            }
             return;
         }
 
         List<Vector3d> relaxed = Voronoi3DGridLloyd.relax(min, max, sites, cells, iters);
-        if (relaxed.isEmpty()) {
-            writeInvalid();
+        if (relaxed == null || relaxed.isEmpty()) {
+            writeInvalid("Lloyd relaxation failed");
             return;
         }
+        commitRelaxed(sites, relaxed, min, max);
+    }
+
+    /**
+     * Transactional publish fence: cardinality, finite sites, inside bounds.
+     *
+     * @return true when outputs were written successfully
+     */
+    private boolean commitRelaxed(
+        List<Vector3d> inputSites,
+        List<Vector3d> relaxed,
+        Vector3d min,
+        Vector3d max
+    ) {
+        if (relaxed == null || relaxed.size() != inputSites.size()) {
+            writeInvalid("Relaxed site cardinality mismatch");
+            return false;
+        }
+        for (Vector3d site : relaxed) {
+            if (site == null || !isFinite(site)) {
+                writeInvalid("Relaxed sites must be finite");
+                return false;
+            }
+        }
+        if (!sitesInsideBounds(relaxed, min, max)) {
+            writeInvalid("Relaxed sites must remain inside bounds");
+            return false;
+        }
         writeSuccess(relaxed);
+        return true;
     }
 
     private void writeSuccess(List<Vector3d> sites) {
         outputValues.put(OUTPUT_SITES_ID, SpatialValueResolver.toPointDataList(sites));
         outputValues.put(OUTPUT_COUNT_ID, sites.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_SITES_ID, List.of());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private int getInputInteger(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Integer i ? i : fallback;
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private static void normalizeBounds(Vector3d min, Vector3d max) {
@@ -210,14 +258,6 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
             }
         }
         return false;
-    }
-
-    private static List<Vector3d> copySites(List<Vector3d> sites) {
-        List<Vector3d> copied = new ArrayList<>(sites.size());
-        for (Vector3d site : sites) {
-            copied.add(new Vector3d(site));
-        }
-        return copied;
     }
 
     private static @Nullable List<Vector3d> resolveValidatedPointList(@Nullable Object value) {

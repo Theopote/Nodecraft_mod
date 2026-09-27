@@ -1,12 +1,15 @@
 package com.nodecraft.nodesystem.contract;
 
+import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.voronoi_3d.Voronoi3DLloydRelaxNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -25,15 +28,25 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern Voronoi 3D v1 language fence (Graph V45).
- * OptionalPortDrive / Error semantics are owned by Pattern Voronoi 3D Language v2 (V83).
+ * Language fence for Pattern Voronoi 3D Language v2 (Graph V83).
  */
-class PatternVoronoi3DLanguageContractTest {
+class PatternVoronoi3DLanguageV2ContractTest {
 
     private static final String LLOYD_RELAX_ID = "pattern.voronoi_3d.lloyd_relax";
+
+    private static final Set<NodeDataType> FORBIDDEN_PORT_TYPES = Set.of(
+        NodeDataType.ANY,
+        NodeDataType.LIST,
+        NodeDataType.LINE,
+        NodeDataType.POLYLINE,
+        NodeDataType.CURVE,
+        NodeDataType.BLOCK_LIST,
+        NodeDataType.FILE_PATH
+    );
 
     private static NodeRegistry registry;
 
@@ -46,38 +59,110 @@ class PatternVoronoi3DLanguageContractTest {
     }
 
     @Test
-    void voronoi3DFreezeVersionIsV45() {
-        assertEquals(45, GraphFormatVersion.V45);
+    void currentGraphFormatIsAtLeastV83() {
+        assertEquals(83, GraphFormatVersion.V83);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V83);
     }
 
     @Test
-    void exactlyOneCanonicalVoronoi3DNodeRegistered() {
+    void exactlyOneNodeOrderZeroPure() {
         List<String> ids = registry.getAllNodeIds().stream()
-                .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("pattern.voronoi_3d."))
-                .sorted()
-                .toList();
+            .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("pattern.voronoi_3d."))
+            .sorted()
+            .toList();
         assertEquals(1, ids.size(), "Expected 1 pattern.voronoi_3d node: " + ids);
-        assertEquals(Set.of(LLOYD_RELAX_ID), Set.copyOf(ids));
+        assertEquals(LLOYD_RELAX_ID, ids.getFirst());
+
+        NodeInfo info = registry.getNodeInfo(LLOYD_RELAX_ID);
+        assertNotNull(info);
+        assertEquals(0, info.getOrder());
+        assertEquals("pattern.voronoi_3d", info.getCategoryId());
+        INode node = registry.createNodeInstance(LLOYD_RELAX_ID);
+        assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(node.getClass(), LLOYD_RELAX_ID));
     }
 
     @Test
-    void lloydRelaxUsesTypedSpatialPorts() {
-        assertPortType(LLOYD_RELAX_ID, "input_sites", true, NodeDataType.POINT_LIST);
-        assertPortType(LLOYD_RELAX_ID, "input_corner_a", true, NodeDataType.POINT);
-        assertPortType(LLOYD_RELAX_ID, "input_corner_b", true, NodeDataType.POINT);
-        assertPortType(LLOYD_RELAX_ID, "input_cells", true, NodeDataType.INTEGER);
-        assertPortType(LLOYD_RELAX_ID, "input_iterations", true, NodeDataType.INTEGER);
-        assertPortType(LLOYD_RELAX_ID, "output_sites", false, NodeDataType.POINT_LIST);
-        assertPortType(LLOYD_RELAX_ID, "output_count", false, NodeDataType.INTEGER);
-        assertPortType(LLOYD_RELAX_ID, "output_valid", false, NodeDataType.BOOLEAN);
-        assertFalse(hasPort(LLOYD_RELAX_ID, "input_min", true));
-        assertFalse(hasPort(LLOYD_RELAX_ID, "input_max", true));
+    void exposesValidAndError() {
+        INode node = registry.createNodeInstance(LLOYD_RELAX_ID);
+        assertTrue(hasPort(node, "output_valid"));
+        assertTrue(hasPort(node, "output_error"));
+        assertPortType(LLOYD_RELAX_ID, "output_error", false, NodeDataType.STRING);
     }
 
     @Test
-    void zeroIterationsPassthroughPreservesSites() {
-        BaseNode node = createLloydRelax();
-        List<PointData> sites = defaultSites();
+    void publicPortsForbidLegacyLooseTypes() {
+        INode node = registry.createNodeInstance(LLOYD_RELAX_ID);
+        for (IPort port : node.getInputPorts()) {
+            assertFalse(FORBIDDEN_PORT_TYPES.contains(port.getDataType()),
+                "input " + port.getId() + " has forbidden type " + port.getDataType());
+        }
+        for (IPort port : node.getOutputPorts()) {
+            assertFalse(FORBIDDEN_PORT_TYPES.contains(port.getDataType()),
+                "output " + port.getId() + " has forbidden type " + port.getDataType());
+        }
+    }
+
+    @Test
+    void cellsConnectedNonExactIntegerFails() {
+        LloydProbe probe = new LloydProbe();
+        seedValidGeometry(probe);
+        probe.connectInput("input_cells", NodeDataType.INTEGER);
+        probe.putRawInput("input_cells", 3.8d);
+        probe.setNodeState(Map.of("iterations", 0));
+        probe.processNode(null);
+        assertInvalid(probe);
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("cells"));
+    }
+
+    @Test
+    void iterationsConnectedNonExactIntegerFails() {
+        LloydProbe probe = new LloydProbe();
+        seedValidGeometry(probe);
+        probe.connectInput("input_iterations", NodeDataType.INTEGER);
+        probe.putRawInput("input_iterations", 1.5d);
+        probe.processNode(null);
+        assertInvalid(probe);
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("iterations"));
+    }
+
+    @Test
+    void cellsBelowMinimumFailClosed() {
+        BaseNode node = createLloyd();
+        seedValidGeometry(node);
+        node.setNodeState(Map.of("cellsPerAxis", 3, "iterations", 0));
+        node.processNode(null);
+        assertInvalid(node);
+    }
+
+    @Test
+    void cellsAboveMaximumFailClosed() {
+        BaseNode node = createLloyd();
+        seedValidGeometry(node);
+        node.setNodeState(Map.of(
+            "cellsPerAxis", GenerationLimits.MAX_VORONOI_LLOYD_CELLS_PER_AXIS + 1,
+            "iterations", 0
+        ));
+        node.processNode(null);
+        assertInvalid(node);
+    }
+
+    @Test
+    void negativeIterationsFailClosed() {
+        BaseNode node = createLloyd();
+        seedValidGeometry(node);
+        node.setNodeState(Map.of("iterations", -1));
+        node.processNode(null);
+        assertInvalid(node);
+    }
+
+    @Test
+    void zeroIterationsPassthroughPreservesIndexIdentity() {
+        BaseNode node = createLloyd();
+        List<PointData> sites = List.of(
+            new PointData(2, 2, 2),
+            new PointData(5, 5, 5),
+            new PointData(8, 3, 7)
+        );
         node.setInput("input_sites", sites);
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
@@ -85,6 +170,7 @@ class PatternVoronoi3DLanguageContractTest {
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals("", node.getOutput("output_error"));
         assertEquals(3, node.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<PointData> out = assertInstanceOf(List.class, node.getOutput("output_sites"));
@@ -95,12 +181,10 @@ class PatternVoronoi3DLanguageContractTest {
     }
 
     @Test
-    void outputCountMatchesInputSiteCount() {
-        BaseNode node = createLloydRelax();
-        node.setInput("input_sites", defaultSites());
-        node.setInput("input_corner_a", new PointData(0, 0, 0));
-        node.setInput("input_corner_b", new PointData(10, 10, 10));
-        node.setNodeState(Map.of("iterations", 1, "cellsPerAxis", 4));
+    void outputCardinalityMatchesInput() {
+        BaseNode node = createLloyd();
+        seedValidGeometry(node);
+        node.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 1));
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
@@ -108,46 +192,34 @@ class PatternVoronoi3DLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<PointData> out = assertInstanceOf(List.class, node.getOutput("output_sites"));
         assertEquals(3, out.size());
-    }
-
-    @Test
-    void passthroughPreservesIndexIdentityWhenOneSiteMoves() {
-        BaseNode node = createLloydRelax();
-        List<PointData> sites = List.of(
-                new PointData(2, 2, 2),
-                new PointData(5, 5, 5),
-                new PointData(8, 3, 7)
-        );
-        node.setInput("input_sites", sites);
-        node.setInput("input_corner_a", new PointData(0, 0, 0));
-        node.setInput("input_corner_b", new PointData(10, 10, 10));
-        node.setNodeState(Map.of("iterations", 0));
-        node.processNode(null);
-
-        @SuppressWarnings("unchecked")
-        List<PointData> out = assertInstanceOf(List.class, node.getOutput("output_sites"));
-        assertPointEquals(sites.get(0), out.get(0));
-        assertPointEquals(sites.get(2), out.get(2));
+        for (PointData site : out) {
+            assertTrue(Double.isFinite(site.position().x));
+            assertTrue(Double.isFinite(site.position().y));
+            assertTrue(Double.isFinite(site.position().z));
+            assertTrue(site.position().x >= 0 && site.position().x <= 10);
+            assertTrue(site.position().y >= 0 && site.position().y <= 10);
+            assertTrue(site.position().z >= 0 && site.position().z <= 10);
+        }
     }
 
     @Test
     void reversedCornersMatchOrderedBounds() {
         List<PointData> sites = defaultSites();
-        BaseNode ordered = createLloydRelax();
+        BaseNode ordered = createLloyd();
         ordered.setInput("input_sites", sites);
         ordered.setInput("input_corner_a", new PointData(0, 0, 0));
         ordered.setInput("input_corner_b", new PointData(10, 10, 10));
-        ordered.setNodeState(Map.of("iterations", 1, "cellsPerAxis", 4));
+        ordered.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 1));
         ordered.processNode(null);
 
-        BaseNode reversed = createLloydRelax();
+        BaseNode reversed = createLloyd();
         reversed.setInput("input_sites", sites);
         reversed.setInput("input_corner_a", new PointData(10, 10, 10));
         reversed.setInput("input_corner_b", new PointData(0, 0, 0));
-        reversed.setNodeState(Map.of("iterations", 1, "cellsPerAxis", 4));
+        reversed.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 1));
         reversed.processNode(null);
 
-        assertEquals(ordered.getOutput("output_valid"), reversed.getOutput("output_valid"));
+        assertEquals(Boolean.TRUE, ordered.getOutput("output_valid"));
         assertEquals(ordered.getOutput("output_count"), reversed.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<PointData> orderedOut = assertInstanceOf(List.class, ordered.getOutput("output_sites"));
@@ -161,117 +233,57 @@ class PatternVoronoi3DLanguageContractTest {
 
     @Test
     void nanCornerFailsClosed() {
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         node.setInput("input_sites", defaultSites());
         node.setInput("input_corner_a", new PointData(Double.NaN, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
         assertInvalid(node);
     }
 
     @Test
     void nanSiteFailsClosed() {
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(Double.NaN, 5, 5)));
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
         assertInvalid(node);
     }
 
     @Test
     void degenerateBoundsFailClosed() {
-        BaseNode flatZ = createLloydRelax();
-        flatZ.setInput("input_sites", defaultSites());
-        flatZ.setInput("input_corner_a", new PointData(0, 0, 0));
-        flatZ.setInput("input_corner_b", new PointData(10, 10, 0));
-        flatZ.processNode(null);
-        assertInvalid(flatZ);
+        BaseNode node = createLloyd();
+        node.setInput("input_sites", defaultSites());
+        node.setInput("input_corner_a", new PointData(0, 0, 0));
+        node.setInput("input_corner_b", new PointData(10, 10, 0));
+        node.setNodeState(Map.of("iterations", 0));
+        node.processNode(null);
+        assertInvalid(node);
     }
 
     @Test
     void siteOutsideBoundsFailsClosed() {
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(11, 5, 5)));
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
         assertInvalid(node);
     }
 
     @Test
     void duplicateSitesFailClosed() {
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(2, 2, 2)));
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
         assertInvalid(node);
-    }
-
-    @Test
-    void cellsBelowMinimumFailClosed() {
-        BaseNode node = createLloydRelax();
-        node.setInput("input_sites", defaultSites());
-        node.setInput("input_corner_a", new PointData(0, 0, 0));
-        node.setInput("input_corner_b", new PointData(10, 10, 10));
-        node.setNodeState(Map.of("cellsPerAxis", 3));
-        node.processNode(null);
-        assertInvalid(node);
-    }
-
-    @Test
-    void connectedNonExactIntegerCellsFailsClosed() {
-        LloydProbe probe = new LloydProbe();
-        probe.setInput("input_sites", defaultSites());
-        probe.setInput("input_corner_a", new PointData(0, 0, 0));
-        probe.setInput("input_corner_b", new PointData(10, 10, 10));
-        probe.connectInput("input_cells", NodeDataType.INTEGER);
-        probe.putRawInput("input_cells", 3.8d);
-        probe.setNodeState(Map.of("iterations", 0));
-        probe.processNode(null);
-
-        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
-        assertEquals(0, probe.getOutput("output_count"));
-    }
-
-    @Test
-    void negativeIterationsFailClosed() {
-        BaseNode node = createLloydRelax();
-        node.setInput("input_sites", defaultSites());
-        node.setInput("input_corner_a", new PointData(0, 0, 0));
-        node.setInput("input_corner_b", new PointData(10, 10, 10));
-        node.setNodeState(Map.of("iterations", -1));
-        node.processNode(null);
-        assertInvalid(node);
-    }
-
-    @Test
-    void processingIsDeterministic() {
-        BaseNode first = createLloydRelax();
-        first.setInput("input_sites", defaultSites());
-        first.setInput("input_corner_a", new PointData(0, 0, 0));
-        first.setInput("input_corner_b", new PointData(10, 10, 10));
-        first.setNodeState(Map.of("iterations", 2, "cellsPerAxis", 6));
-        first.processNode(null);
-
-        BaseNode second = createLloydRelax();
-        second.setInput("input_sites", defaultSites());
-        second.setInput("input_corner_a", new PointData(0, 0, 0));
-        second.setInput("input_corner_b", new PointData(10, 10, 10));
-        second.setNodeState(Map.of("iterations", 2, "cellsPerAxis", 6));
-        second.processNode(null);
-
-        assertEquals(first.getOutput("output_valid"), second.getOutput("output_valid"));
-        assertEquals(first.getOutput("output_count"), second.getOutput("output_count"));
-        @SuppressWarnings("unchecked")
-        List<PointData> firstOut = assertInstanceOf(List.class, first.getOutput("output_sites"));
-        @SuppressWarnings("unchecked")
-        List<PointData> secondOut = assertInstanceOf(List.class, second.getOutput("output_sites"));
-        assertEquals(firstOut.size(), secondOut.size());
-        for (int i = 0; i < firstOut.size(); i++) {
-            assertPointEquals(firstOut.get(i), secondOut.get(i));
-        }
     }
 
     @Test
@@ -280,7 +292,7 @@ class PatternVoronoi3DLanguageContractTest {
         for (int i = 0; i <= GenerationLimits.MAX_VORONOI_LLOYD_SITES; i++) {
             sites.add(new PointData(i * 1.0e-6d, 1, 1));
         }
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         node.setInput("input_sites", sites);
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
@@ -293,13 +305,12 @@ class PatternVoronoi3DLanguageContractTest {
     void workBudgetExceededFailsClosed() {
         assertTrue(GenerationLimits.exceedsLloydWorkBudget(40, 100, 20));
 
-        BaseNode node = createLloydRelax();
+        BaseNode node = createLloyd();
         List<PointData> sites = new ArrayList<>(100);
         for (int i = 0; i < 100; i++) {
             double x = 0.5d + (i % 10) * 0.9d;
             double y = 0.5d + ((i / 10) % 10) * 0.9d;
-            double z = 5.0d;
-            sites.add(new PointData(x, y, z));
+            sites.add(new PointData(x, y, 5.0d));
         }
         node.setInput("input_sites", sites);
         node.setInput("input_corner_a", new PointData(0, 0, 0));
@@ -309,15 +320,45 @@ class PatternVoronoi3DLanguageContractTest {
         assertInvalid(node);
     }
 
-    private static BaseNode createLloydRelax() {
+    @Test
+    void processingIsDeterministic() {
+        BaseNode first = createLloyd();
+        seedValidGeometry(first);
+        first.setNodeState(Map.of("cellsPerAxis", 6, "iterations", 2));
+        first.processNode(null);
+
+        BaseNode second = createLloyd();
+        seedValidGeometry(second);
+        second.setNodeState(Map.of("cellsPerAxis", 6, "iterations", 2));
+        second.processNode(null);
+
+        assertEquals(Boolean.TRUE, first.getOutput("output_valid"));
+        assertEquals(first.getOutput("output_count"), second.getOutput("output_count"));
+        @SuppressWarnings("unchecked")
+        List<PointData> firstOut = assertInstanceOf(List.class, first.getOutput("output_sites"));
+        @SuppressWarnings("unchecked")
+        List<PointData> secondOut = assertInstanceOf(List.class, second.getOutput("output_sites"));
+        assertEquals(firstOut.size(), secondOut.size());
+        for (int i = 0; i < firstOut.size(); i++) {
+            assertPointEquals(firstOut.get(i), secondOut.get(i));
+        }
+    }
+
+    private static BaseNode createLloyd() {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(LLOYD_RELAX_ID));
+    }
+
+    private static void seedValidGeometry(BaseNode node) {
+        node.setInput("input_sites", defaultSites());
+        node.setInput("input_corner_a", new PointData(0, 0, 0));
+        node.setInput("input_corner_b", new PointData(10, 10, 10));
     }
 
     private static List<PointData> defaultSites() {
         return List.of(
-                new PointData(2, 2, 2),
-                new PointData(5, 5, 5),
-                new PointData(8, 3, 7)
+            new PointData(2, 2, 2),
+            new PointData(5, 5, 5),
+            new PointData(8, 3, 7)
         );
     }
 
@@ -327,6 +368,8 @@ class PatternVoronoi3DLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<?> sites = assertInstanceOf(List.class, node.getOutput("output_sites"));
         assertTrue(sites.isEmpty());
+        assertNotNull(node.getOutput("output_error"));
+        assertFalse(String.valueOf(node.getOutput("output_error")).isBlank());
     }
 
     private static void assertPointEquals(PointData expected, PointData actual) {
@@ -340,25 +383,24 @@ class PatternVoronoi3DLanguageContractTest {
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {
         INode node = registry.createNodeInstance(typeId);
         IPort port = (input ? node.getInputPorts() : node.getOutputPorts()).stream()
-                .filter(candidate -> candidate.getId().equals(portId))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError(typeId + " missing port " + portId));
+            .filter(candidate -> candidate.getId().equals(portId))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(typeId + " missing port " + portId));
         assertEquals(expected, port.getDataType(), typeId + "." + portId);
     }
 
-    private static boolean hasPort(String typeId, String portId, boolean input) {
-        INode node = registry.createNodeInstance(typeId);
-        return (input ? node.getInputPorts() : node.getOutputPorts()).stream()
-                .anyMatch(port -> port.getId().equals(portId));
+    private static boolean hasPort(INode node, String portId) {
+        return node.getOutputPorts().stream().anyMatch(port -> port.getId().equals(portId))
+            || node.getInputPorts().stream().anyMatch(port -> port.getId().equals(portId));
     }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);
         BasePort output = (BasePort) stub.getOutputPorts().getFirst();
         BasePort input = (BasePort) target.getInputPorts().stream()
-                .filter(port -> inputPortId.equals(port.getId()))
-                .findFirst()
-                .orElseThrow();
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
         assertTrue(output.connectTo(input));
     }
 
@@ -368,7 +410,7 @@ class PatternVoronoi3DLanguageContractTest {
         }
 
         void connectInput(String portId, NodeDataType outputType) {
-            PatternVoronoi3DLanguageContractTest.connectInput(this, portId, outputType);
+            PatternVoronoi3DLanguageV2ContractTest.connectInput(this, portId, outputType);
         }
     }
 
