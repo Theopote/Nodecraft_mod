@@ -505,7 +505,7 @@ public final class GraphFormatVersion {
     public static final int V79 = 79;
 
     /**
-     * Pattern Grid Language v2: Valid+Error on 5 nodes, no raw LIST geometry outputs,
+     * Pattern Grid Language v2 (PASSED / FROZEN): Valid+Error on 5 nodes, no raw LIST geometry outputs,
      * OptionalPortDrive / fail-closed grid products (no silent clamp), BoxFaceValidator on Facade,
      * sourceLeaves×gridCount budget, transactional copies, finite layout outputs.
      * V42 remains the historical Pattern Grid v1 fence.
