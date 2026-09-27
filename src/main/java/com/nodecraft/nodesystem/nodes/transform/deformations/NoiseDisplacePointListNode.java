@@ -4,12 +4,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -18,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -28,7 +26,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 4
 )
-public class NoiseDisplacePointListNode extends BaseNode {
+public class NoiseDisplacePointListNode extends AbstractDeformationNode {
 
     @NodeProperty(displayName = "Amplitude", category = "Noise", order = 1)
     private double amplitude = 1.0d;
@@ -57,12 +55,8 @@ public class NoiseDisplacePointListNode extends BaseNode {
     private static final String INPUT_SEED_ID = "input_seed";
     private static final String INPUT_OFFSET_ID = "input_offset";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public NoiseDisplacePointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.noise_displace");
+        super("transform.deformations.noise_displace");
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to displace", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_AMPLITUDE_ID, "Amplitude", "Optional displacement amplitude override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_FREQUENCY_ID, "Frequency", "Optional noise frequency override", NodeDataType.DOUBLE, this));
@@ -70,7 +64,7 @@ public class NoiseDisplacePointListNode extends BaseNode {
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Optional noise-space offset override", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Displaced point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the displaced output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when displacement was applied", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -80,20 +74,35 @@ public class NoiseDisplacePointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Double resolvedAmplitude = OptionalPortDrive.resolveOptionalDouble(this, INPUT_AMPLITUDE_ID, amplitude);
         Double resolvedFrequency = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FREQUENCY_ID, frequency);
         Integer resolvedSeed = OptionalPortDrive.resolveOptionalInteger(this, INPUT_SEED_ID, seed);
         Vector3d resolvedOffset = OptionalPortDrive.resolveOptionalVector(this, INPUT_OFFSET_ID, offset);
 
-        if (pointsInput == null
-                || resolvedAmplitude == null
-                || resolvedFrequency == null
-                || resolvedFrequency < 0.0d
-                || resolvedSeed == null
-                || resolvedOffset == null
-                || !VectorUtils.isFinite(new Vector3d(axisWeightX, axisWeightY, axisWeightZ))) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (resolvedAmplitude == null || !Double.isFinite(resolvedAmplitude)) {
+            failPointList("Invalid amplitude");
+            return;
+        }
+        if (resolvedFrequency == null || resolvedFrequency < 0.0d) {
+            failPointList("Frequency must be non-negative");
+            return;
+        }
+        if (resolvedSeed == null) {
+            failPointList("Invalid seed");
+            return;
+        }
+        if (resolvedOffset == null || !PointUtils.isFinite(resolvedOffset)) {
+            failPointList("Invalid offset");
+            return;
+        }
+        if (!VectorUtils.isFinite(new Vector3d(axisWeightX, axisWeightY, axisWeightZ))) {
+            failPointList("Invalid axis weights");
             return;
         }
 
@@ -112,9 +121,7 @@ public class NoiseDisplacePointListNode extends BaseNode {
             ));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(displaced));
-        outputValues.put(OUTPUT_COUNT_ID, displaced.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(displaced);
     }
 
     @Override
@@ -164,12 +171,6 @@ public class NoiseDisplacePointListNode extends BaseNode {
         if (map.get("axisWeightZ") instanceof Number value && Double.isFinite(value.doubleValue())) {
             axisWeightZ = value.doubleValue();
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private double noise(double x, double y, double z, double freq, int seedValue) {

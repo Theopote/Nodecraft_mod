@@ -4,9 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialTolerance;
@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -29,7 +28,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 1
 )
-public class BendPointListNode extends BaseNode {
+public class BendPointListNode extends AbstractDeformationNode {
 
     public enum ClampMode {CLAMP, REPEAT, UNBOUNDED}
     public enum BendPlaneMode {AUTO, XY, XZ, YZ, CUSTOM}
@@ -53,12 +52,8 @@ public class BendPointListNode extends BaseNode {
     private static final String INPUT_BEND_DEGREES_ID = "input_bend_degrees";
     private static final String INPUT_BEND_LENGTH_ID = "input_bend_length";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public BendPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.bend");
+        super("transform.deformations.bend");
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to bend", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the bend axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction vector of the bend axis", NodeDataType.VECTOR, this));
@@ -67,7 +62,7 @@ public class BendPointListNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BEND_LENGTH_ID, "Bend Length", "Optional length over which the bend is distributed", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Bent point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the bent output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -77,44 +72,56 @@ public class BendPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
         Vector3d axisDirection = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_DIRECTION_ID));
         Double resolvedBendDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BEND_DEGREES_ID, bendDegrees);
         Double resolvedBendLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BEND_LENGTH_ID, bendLength);
 
-        if (pointsInput == null
-                || axisOrigin == null
-                || !VectorUtils.isNonZero(axisDirection)
-                || resolvedBendDegrees == null
-                || resolvedBendLength == null
-                || resolvedBendLength <= 0.0d) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (axisOrigin == null) {
+            failPointList("Invalid axis origin");
+            return;
+        }
+        if (!VectorUtils.isNonZero(axisDirection)) {
+            failPointList("Axis direction must be non-zero");
+            return;
+        }
+        if (resolvedBendDegrees == null) {
+            failPointList("Invalid bend angle");
+            return;
+        }
+        if (resolvedBendLength == null || resolvedBendLength <= 0.0d) {
+            failPointList("Bend length must be positive");
             return;
         }
 
         Vector3d axis = new Vector3d(axisDirection).normalize();
         Vector3d normal = resolveBendNormal(axis);
         if (normal == null) {
-            writeInvalid();
+            failPointList("Invalid bend normal");
             return;
         }
         normal.sub(new Vector3d(axis).mul(normal.dot(axis)));
         if (!VectorUtils.isNonZero(normal)) {
             if (bendPlaneMode == BendPlaneMode.CUSTOM) {
-                writeInvalid();
+                failPointList("Invalid bend normal");
                 return;
             }
             normal = defaultNormal(axis);
         }
         if (!VectorUtils.isNonZero(normal)) {
-            writeInvalid();
+            failPointList("Invalid bend normal");
             return;
         }
         normal.normalize();
         Vector3d binormal = new Vector3d(axis).cross(normal);
         if (!VectorUtils.isNonZero(binormal)) {
-            writeInvalid();
+            failPointList("Degenerate bend frame");
             return;
         }
         binormal.normalize();
@@ -147,9 +154,7 @@ public class BendPointListNode extends BaseNode {
             bentPoints.add(centerline.add(rotatedRadial));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(bentPoints));
-        outputValues.put(OUTPUT_COUNT_ID, bentPoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(bentPoints);
     }
 
     @Override
@@ -187,12 +192,6 @@ public class BendPointListNode extends BaseNode {
                 bendPlaneMode = BendPlaneMode.AUTO;
             }
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private double applyClampMode(double normalizedDistance) {

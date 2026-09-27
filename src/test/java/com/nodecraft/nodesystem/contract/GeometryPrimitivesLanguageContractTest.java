@@ -60,9 +60,9 @@ class GeometryPrimitivesLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV74() {
+    void currentGraphFormatIsAtLeastV74() {
         assertEquals(74, GraphFormatVersion.V74);
-        assertEquals(GraphFormatVersion.V74, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V74);
     }
 
     @Test
@@ -316,7 +316,8 @@ class GeometryPrimitivesLanguageContractTest {
         graph.connections = new ArrayList<>(List.of(drop, remap, keep));
 
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V74, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        assertTrue(migrated.formatVersion >= GraphFormatVersion.V74);
         assertEquals(2, migrated.connections.size());
 
         boolean foundRemap = false;

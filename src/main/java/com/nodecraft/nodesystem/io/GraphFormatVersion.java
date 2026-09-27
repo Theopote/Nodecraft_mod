@@ -328,8 +328,8 @@ public final class GraphFormatVersion {
     public static final int V52 = 52;
 
     /**
-     * Deformations v1: strict POINT_LIST/VECTOR_LIST, OptionalPortDrive, exact INTEGER,
-     * Length/Radius fail-closed, unique order 0-10, GenerationLimits budgets.
+     * Deformations v1 (historical milestone): strict POINT_LIST/VECTOR_LIST, OptionalPortDrive,
+     * exact INTEGER, Length/Radius fail-closed, unique order 0-10. Superseded by V78.
      */
     public static final int V53 = 53;
 
@@ -476,20 +476,27 @@ public final class GraphFormatVersion {
     public static final int V75 = 75;
 
     /**
-     * Placement Language v2: Valid+Error on 8 nodes, block port canonicalize,
+     * Placement Language v2 (PASSED / FROZEN): Valid+Error on 8 nodes, block port canonicalize,
      * sourceLeaves×frameCount budget, BLOCK_LIST cap, strict XOR inputs,
      * PlacementBlockUtils safe arithmetic/snap, Scale connection XOR (no useUniformScaling).
      */
     public static final int V76 = 76;
 
     /**
-     * Orientation Language v1: Valid+Error on 6 nodes, PATH canonical projection,
-     * strict POINT/VECTOR lists, DOUBLE_LIST distances, OptionalPortDrive on Rotate/Forward Hint.
+     * Orientation Language v1 (PASSED / FROZEN): Valid+Error on 6 nodes, PATH canonical projection,
+     * strict POINT/VECTOR lists, DOUBLE_LIST distances, OptionalPortDrive on Rotate/Forward Hint,
+     * Align equal cardinality, project_path_to_plane, orders 0–5.
      */
     public static final int V77 = 77;
 
+    /**
+     * Deformations Language v2: SDF-only Twist/Bend, Valid+Error on all 11 nodes,
+     * bounded POINT_LIST, finite output validation, Path Attract workload cap, orders 0–10.
+     */
+    public static final int V78 = 78;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V77;
+    public static final int CURRENT = V78;
 
     private GraphFormatVersion() {
     }

@@ -730,8 +730,8 @@
 | Path Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
 | Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed) | `RelaxPointListNode` |
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
-| Twist Geometry | `transform.deformations.twist_geometry` | Applies an axial twist domain deformation to SDF or geometry, outputting a twisted SDF-backed Geometry | `TwistGeometryNode` |
-| Bend Geometry | `transform.deformations.bend_geometry` | Applies an axial bend domain deformation to SDF or geometry before voxelization | `BendGeometryNode` |
+| Twist SDF | `transform.deformations.twist_sdf` | Applies an axial twist domain deformation to a signed distance field | `TwistSdfNode` |
+| Bend SDF | `transform.deformations.bend_sdf` | Applies an axial bend domain deformation to a signed distance field | `BendSdfNode` |
 
 ## transform.orientation（6）
 

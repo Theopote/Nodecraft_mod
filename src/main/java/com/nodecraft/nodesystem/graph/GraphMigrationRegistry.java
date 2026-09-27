@@ -136,6 +136,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V74 -> migrateV74ToV75(graph);
             case GraphFormatVersion.V75 -> migrateV75ToV76(graph);
             case GraphFormatVersion.V76 -> migrateV76ToV77(graph);
+            case GraphFormatVersion.V77 -> migrateV77ToV78(graph);
             default -> graph;
         };
     }
@@ -4831,10 +4832,10 @@ public final class GraphMigrationRegistry {
             }
             String sourceType = typeIdOf(graph, connection.sourceNodeId);
             String targetType = typeIdOf(graph, connection.targetNodeId);
-            if (PLACEMENT_V76_BLOCK_TYPES.contains(sourceType)) {
+            if (sourceType != null && PLACEMENT_V76_BLOCK_TYPES.contains(sourceType)) {
                 connection.sourcePortId = remapPlacementV76Port(connection.sourcePortId);
             }
-            if (PLACEMENT_V76_BLOCK_TYPES.contains(targetType)) {
+            if (targetType != null && PLACEMENT_V76_BLOCK_TYPES.contains(targetType)) {
                 connection.targetPortId = remapPlacementV76Port(connection.targetPortId);
             }
         }
@@ -4976,6 +4977,136 @@ public final class GraphMigrationRegistry {
             cleaned.put(key, entry.getValue());
         }
         node.state = cleaned;
+    }
+
+    private static final String LEGACY_TWIST_GEOMETRY_TYPE = "transform.deformations.twist_geometry";
+    private static final String LEGACY_BEND_GEOMETRY_TYPE = "transform.deformations.bend_geometry";
+    private static final String TWIST_SDF_TYPE = "transform.deformations.twist_sdf";
+    private static final String BEND_SDF_TYPE = "transform.deformations.bend_sdf";
+
+    private static final Set<String> DEFORMATIONS_V78_REMOVED_STATE_KEYS = Set.of(
+        "fillsourcegeometry"
+    );
+
+    /**
+     * Deformations Language v2: twist_geometry/bend_geometry → twist_sdf/bend_sdf,
+     * drop unsafe geometry/iso/approximate wires, strip fillSourceGeometry state.
+     */
+    private static SavedGraph migrateV77ToV78(SavedGraph graph) {
+        applyDeformationsV78ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyDeformationsV78ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyDeformationsV78ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_TWIST_GEOMETRY_TYPE.equals(node.typeId)) {
+                    node.typeId = TWIST_SDF_TYPE;
+                } else if (LEGACY_BEND_GEOMETRY_TYPE.equals(node.typeId)) {
+                    node.typeId = BEND_SDF_TYPE;
+                }
+                stripDeformationsV78State(node);
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String targetType = typeIdOf(graph, connection.targetNodeId);
+            if (shouldDropDeformationsV78Connection(connection, sourceType, targetType)) {
+                LOGGER.debug("Dropped Deformations V78 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static boolean isDeformationsV78NodeType(@Nullable String typeId) {
+        if (typeId == null) {
+            return false;
+        }
+        return LEGACY_TWIST_GEOMETRY_TYPE.equals(typeId)
+            || LEGACY_BEND_GEOMETRY_TYPE.equals(typeId)
+            || TWIST_SDF_TYPE.equals(typeId)
+            || BEND_SDF_TYPE.equals(typeId);
+    }
+
+    private static boolean shouldDropDeformationsV78Connection(
+        SavedConnection connection,
+        @Nullable String sourceType,
+        @Nullable String targetType
+    ) {
+        if (isDeformationsV78NodeType(sourceType)
+                && isDeformationsV78RemovedSourcePort(connection.sourcePortId)) {
+            return true;
+        }
+        return isDeformationsV78NodeType(targetType)
+            && isDeformationsV78RemovedTargetPort(connection.targetPortId);
+    }
+
+    private static boolean isDeformationsV78RemovedSourcePort(@Nullable String portId) {
+        if (portId == null) {
+            return false;
+        }
+        String normalized = portId.toLowerCase(Locale.ROOT);
+        return "output_geometry".equals(normalized)
+            || "output_approximate".equals(normalized)
+            || "output_source_voxels".equals(normalized);
+    }
+
+    private static boolean isDeformationsV78RemovedTargetPort(@Nullable String portId) {
+        if (portId == null) {
+            return false;
+        }
+        String normalized = portId.toLowerCase(Locale.ROOT);
+        return "input_geometry".equals(normalized)
+            || "input_iso".equals(normalized);
+    }
+
+    private static void stripDeformationsV78State(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        String type = node.typeId == null ? "" : node.typeId.toLowerCase(Locale.ROOT);
+        boolean isTwistOrBend = TWIST_SDF_TYPE.equals(type)
+            || BEND_SDF_TYPE.equals(type)
+            || LEGACY_TWIST_GEOMETRY_TYPE.equals(type)
+            || LEGACY_BEND_GEOMETRY_TYPE.equals(type);
+        if (!isTwistOrBend) {
+            return;
+        }
+
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if (DEFORMATIONS_V78_REMOVED_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Stripped Deformations V78 obsolete state {} from {}", key, node.nodeId);
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned.isEmpty() ? null : cleaned;
     }
 
     /**

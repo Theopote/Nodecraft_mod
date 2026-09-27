@@ -4,14 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialTolerance;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -29,7 +27,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 6
 )
-public class CurveAttractPointListNode extends BaseNode {
+public class CurveAttractPointListNode extends AbstractDeformationNode {
 
     public enum DisplacementMode {
         /** Straight toward the closest point on the path */
@@ -56,12 +54,8 @@ public class CurveAttractPointListNode extends BaseNode {
     private static final String INPUT_STRENGTH_ID = "input_strength";
     private static final String INPUT_RADIUS_ID = "input_radius";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public CurveAttractPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.curve_attract");
+        super("transform.deformations.curve_attract");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Target path (line, polyline, or curve)", NodeDataType.PATH, this));
@@ -70,7 +64,7 @@ public class CurveAttractPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when inputs resolved", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -85,17 +79,30 @@ public class CurveAttractPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         List<Vector3d> poly = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
         Double str = OptionalPortDrive.resolveOptionalDouble(this, INPUT_STRENGTH_ID, strength);
         Double rad = OptionalPortDrive.resolveOptionalDouble(this, INPUT_RADIUS_ID, radius);
 
-        if (pointsInput == null || poly == null || poly.size() < 2 || str == null || rad == null || rad <= 0.0d) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (poly == null || poly.size() < 2) {
+            failPointList("Invalid path");
+            return;
+        }
+        if (!GenerationLimits.isDeformationPathWorkWithinBudget(pointsInput.size(), poly.size())) {
+            failPointList("Path attract workload exceeds budget");
+            return;
+        }
+        if (str == null || rad == null || rad <= 0.0d) {
+            failPointList("Invalid strength or radius");
             return;
         }
         if (str < 0.0d || str > 1.0d) {
-            writeInvalid();
+            failPointList("Strength must be between 0 and 1");
             return;
         }
         DisplacementMode mode = displacementMode == null ? DisplacementMode.TOWARD_POINT : displacementMode;
@@ -115,7 +122,7 @@ public class CurveAttractPointListNode extends BaseNode {
 
             Vector3d toCurve = new Vector3d(closest).sub(p);
             if (!tangentResolved && mode != DisplacementMode.TOWARD_POINT) {
-                writeInvalid();
+                failPointList("Degenerate path tangent");
                 return;
             }
 
@@ -132,9 +139,7 @@ public class CurveAttractPointListNode extends BaseNode {
             out.add(new Vector3d(p).add(delta));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
-        outputValues.put(OUTPUT_COUNT_ID, out.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(out);
     }
 
     /**
@@ -209,11 +214,5 @@ public class CurveAttractPointListNode extends BaseNode {
                 displacementMode = DisplacementMode.TOWARD_POINT;
             }
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

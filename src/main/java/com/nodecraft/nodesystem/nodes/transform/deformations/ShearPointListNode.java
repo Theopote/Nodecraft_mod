@@ -4,12 +4,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -17,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -27,7 +25,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 3
 )
-public class ShearPointListNode extends BaseNode {
+public class ShearPointListNode extends AbstractDeformationNode {
 
     public enum ShearAxis {
         X,
@@ -49,12 +47,8 @@ public class ShearPointListNode extends BaseNode {
     private static final String INPUT_FACTOR_U_ID = "input_factor_u";
     private static final String INPUT_FACTOR_V_ID = "input_factor_v";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public ShearPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.shear_point_list");
+        super("transform.deformations.shear_point_list");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points to shear", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Shear origin", NodeDataType.POINT, this));
@@ -63,7 +57,7 @@ public class ShearPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sheared point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when shear was applied", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -78,17 +72,22 @@ public class ShearPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> points = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> points = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         if (points == null) {
-            writeInvalid();
+            failPointList("Invalid or oversized point list");
             return;
         }
 
         Vector3d origin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_ORIGIN_ID, new Vector3d());
         Double kU = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FACTOR_U_ID, factorU);
         Double kV = OptionalPortDrive.resolveOptionalDouble(this, INPUT_FACTOR_V_ID, factorV);
-        if (origin == null || kU == null || kV == null) {
-            writeInvalid();
+        if (origin == null) {
+            failPointList("Invalid origin");
+            return;
+        }
+        if (kU == null || kV == null) {
+            failPointList("Invalid shear factors");
             return;
         }
 
@@ -97,9 +96,7 @@ public class ShearPointListNode extends BaseNode {
             out.add(applyShear(point, origin, kU, kV));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
-        outputValues.put(OUTPUT_COUNT_ID, out.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(out);
     }
 
     private Vector3d applyShear(Vector3d point, Vector3d origin, double kU, double kV) {
@@ -118,12 +115,6 @@ public class ShearPointListNode extends BaseNode {
             case Z -> sz = rz + kU * rx + kV * ry;
         }
         return new Vector3d(origin.x + sx, origin.y + sy, origin.z + sz);
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     @Override

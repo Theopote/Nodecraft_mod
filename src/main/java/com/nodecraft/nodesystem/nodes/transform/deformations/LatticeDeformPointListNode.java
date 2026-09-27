@@ -4,9 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -27,7 +26,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 8
 )
-public class LatticeDeformPointListNode extends BaseNode {
+public class LatticeDeformPointListNode extends AbstractDeformationNode {
 
     @NodeProperty(displayName = "Grid X", category = "Lattice", order = 1,
         description = "Number of cells along X (control points = cells + 1); must be 1..8")
@@ -44,12 +43,8 @@ public class LatticeDeformPointListNode extends BaseNode {
     private static final String INPUT_MAX_ID = "input_max";
     private static final String INPUT_OFFSETS_ID = "input_offsets";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public LatticeDeformPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.lattice_deform");
+        super("transform.deformations.lattice_deform");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to deform", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Lattice box minimum corner", NodeDataType.POINT, this));
@@ -60,7 +55,7 @@ public class LatticeDeformPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Deformed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when deformation succeeded", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -75,21 +70,30 @@ public class LatticeDeformPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Vector3d min = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MIN_ID));
         Vector3d max = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MAX_ID));
         List<Vector3d> controls = VectorUtils.resolveStrictVectorList(inputValues.get(INPUT_OFFSETS_ID));
 
-        if (pointsInput == null || min == null || max == null || controls == null) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)) {
+            failPointList("Invalid lattice bounds");
+            return;
+        }
+        if (controls == null) {
+            failPointList("Invalid control offsets");
             return;
         }
         if (!(min.x < max.x && min.y < max.y && min.z < max.z)) {
-            writeInvalid();
+            failPointList("Lattice min must be less than max");
             return;
         }
         if (!isValidGrid(gridX) || !isValidGrid(gridY) || !isValidGrid(gridZ)) {
-            writeInvalid();
+            failPointList("Grid dimensions out of range");
             return;
         }
 
@@ -101,7 +105,7 @@ public class LatticeDeformPointListNode extends BaseNode {
         int cz = nz + 1;
         int expected = cx * cy * cz;
         if (controls.size() != expected) {
-            writeInvalid();
+            failPointList("Control count mismatch");
             return;
         }
 
@@ -112,9 +116,7 @@ public class LatticeDeformPointListNode extends BaseNode {
             out.add(new Vector3d(p).add(delta));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(out));
-        outputValues.put(OUTPUT_COUNT_ID, out.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(out);
     }
 
     private static Vector3d sampleLatticeDelta(
@@ -171,12 +173,6 @@ public class LatticeDeformPointListNode extends BaseNode {
 
     private static double clamp01(double v) {
         return Math.max(0.0d, Math.min(1.0d, v));
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     public void setGridX(int gridX) {

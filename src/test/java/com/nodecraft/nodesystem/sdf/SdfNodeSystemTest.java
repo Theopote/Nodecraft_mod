@@ -5,7 +5,7 @@ import com.nodecraft.nodesystem.datatypes.BentSdfData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
-import com.nodecraft.nodesystem.nodes.transform.deformations.BendGeometryNode;
+import com.nodecraft.nodesystem.nodes.transform.deformations.BendSdfNode;
 import com.nodecraft.nodesystem.nodes.output.execute.SdfToBlocksNode;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
@@ -76,8 +76,8 @@ class SdfNodeSystemTest {
     }
 
     @Test
-    void bendGeometryOutputsContinuousSdfGeometry() {
-        BendGeometryNode node = new BendGeometryNode();
+    void bendSdfOutputsContinuousSdf() {
+        BendSdfNode node = new BendSdfNode();
         SignedDistanceFieldData sdf = new SphereSdfData(new Vector3d(0.0d, 0.0d, 0.0d), 1.0d);
 
         Map<String, Object> outputs = node.compute(Map.of(
@@ -90,10 +90,8 @@ class SdfNodeSystemTest {
         ));
 
         assertEquals(true, outputs.get("output_valid"));
-        assertEquals(false, outputs.get("output_approximate"));
+        assertEquals("", outputs.get("output_error"));
         assertInstanceOf(BentSdfData.class, outputs.get("output_sdf"));
-        SdfGeometryData geometry = assertInstanceOf(SdfGeometryData.class, outputs.get("output_geometry"));
-        assertInstanceOf(BentSdfData.class, geometry.sdf());
         assertNotNull(outputs.get("output_bounds_min"));
         assertNotNull(outputs.get("output_bounds_max"));
     }

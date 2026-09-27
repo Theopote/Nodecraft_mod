@@ -4,11 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.transform.deformations.TwistGeometryNode;
+import com.nodecraft.nodesystem.nodes.transform.deformations.TwistSdfNode;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -27,12 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class BlockPosCellCenterCoercionContractTest {
 
     @Test
-    void twistGeometryAxisOriginBlockPosMatchesCellCenterPoint() {
-        SdfGeometryData geometry = sampleSphereGeometry();
+    void twistSdfAxisOriginBlockPosMatchesCellCenterPoint() {
+        SphereSdfData sdf = new SphereSdfData(new Vector3d(0.5, 0.5, 0.5), 1.0d);
 
-        TwistProbe fromBlock = twistWithConnectedOrigin(geometry, new BlockPos(0, 0, 0));
-        TwistProbe fromCenter = twistWithConnectedOrigin(geometry, new PointData(BlockSpace.cellCenter(0, 0, 0)));
-        TwistProbe fromCorner = twistWithConnectedOrigin(geometry, new PointData(0, 0, 0));
+        TwistProbe fromBlock = twistWithConnectedOrigin(sdf, new BlockPos(0, 0, 0));
+        TwistProbe fromCenter = twistWithConnectedOrigin(sdf, new PointData(BlockSpace.cellCenter(0, 0, 0)));
+        TwistProbe fromCorner = twistWithConnectedOrigin(sdf, new PointData(0, 0, 0));
 
         assertEquals(Boolean.TRUE, fromBlock.getOutput("output_valid"));
         assertEquals(Boolean.TRUE, fromCenter.getOutput("output_valid"));
@@ -53,19 +52,9 @@ class BlockPosCellCenterCoercionContractTest {
             "BlockPos coercion must not match integer min-corner origin under twist");
     }
 
-    private static SdfGeometryData sampleSphereGeometry() {
-        SphereSdfData sphere = new SphereSdfData(new Vector3d(0.5, 0.5, 0.5), 1.0d);
-        return new SdfGeometryData(
-            sphere,
-            new Vector3d(-1, -1, -1),
-            new Vector3d(2, 2, 2),
-            0.0d
-        );
-    }
-
-    private static TwistProbe twistWithConnectedOrigin(SdfGeometryData geometry, Object origin) {
+    private static TwistProbe twistWithConnectedOrigin(SphereSdfData sdf, Object origin) {
         TwistProbe node = new TwistProbe();
-        connectAndSet(node, "input_geometry", NodeDataType.GEOMETRY, geometry);
+        connectAndSet(node, "input_sdf", NodeDataType.SDF, sdf);
         connectAndSet(node, "input_axis_origin", NodeDataType.POINT, origin);
         connectAndSet(node, "input_axis_direction", NodeDataType.VECTOR, new VectorData(0, 1, 0));
         connectAndSet(node, "input_angle_degrees", NodeDataType.DOUBLE, 90.0d);
@@ -86,7 +75,7 @@ class BlockPosCellCenterCoercionContractTest {
         ((TwistProbe) target).putInput(portId, value);
     }
 
-    private static final class TwistProbe extends TwistGeometryNode {
+    private static final class TwistProbe extends TwistSdfNode {
         void putInput(String portId, Object value) {
             inputValues.put(portId, value);
         }

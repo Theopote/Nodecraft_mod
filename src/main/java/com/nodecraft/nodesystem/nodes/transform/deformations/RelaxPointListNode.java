@@ -4,14 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointListKnn3d;
 import com.nodecraft.nodesystem.util.PointUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,7 +17,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -29,9 +26,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 7
 )
-public class RelaxPointListNode extends BaseNode {
-
-    private static final int MAX_ITERATIONS = 64;
+public class RelaxPointListNode extends AbstractDeformationNode {
 
     @NodeProperty(displayName = "Neighbors K", category = "Relax", order = 1,
         description = "Number of nearest neighbors to average (excluding self)")
@@ -49,12 +44,8 @@ public class RelaxPointListNode extends BaseNode {
     private static final String INPUT_ITERATIONS_ID = "input_iterations";
     private static final String INPUT_BLEND_ID = "input_blend";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public RelaxPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.relax_points");
+        super("transform.deformations.relax_points");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to smooth", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_K_ID, "K", "Neighbor count override", NodeDataType.INTEGER, this));
@@ -63,7 +54,7 @@ public class RelaxPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Smoothed point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when smoothing succeeded", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -80,11 +71,11 @@ public class RelaxPointListNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> pts = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
         if (pts == null || pts.size() < 2) {
-            writeInvalid();
+            failPointList("Invalid point list");
             return;
         }
         if (pts.size() > GenerationLimits.MAX_RELAX_POINTS) {
-            writeInvalid();
+            failPointList("Point list exceeds relax budget");
             return;
         }
 
@@ -92,11 +83,20 @@ public class RelaxPointListNode extends BaseNode {
         Integer iters = OptionalPortDrive.resolveOptionalInteger(this, INPUT_ITERATIONS_ID, iterations);
         Double lambda = OptionalPortDrive.resolveOptionalDouble(this, INPUT_BLEND_ID, blend);
 
-        if (k == null || iters == null || lambda == null
-                || k < 1 || k > pts.size() - 1
-                || iters < 1 || iters > MAX_ITERATIONS
-                || lambda < 0.0d || lambda > 1.0d) {
-            writeInvalid();
+        if (k == null || iters == null || lambda == null) {
+            failPointList("Invalid relax parameters");
+            return;
+        }
+        if (k < 1 || k > pts.size() - 1) {
+            failPointList("K out of range");
+            return;
+        }
+        if (iters < 1 || iters > GenerationLimits.MAX_RELAX_ITERATIONS) {
+            failPointList("Iterations out of range");
+            return;
+        }
+        if (lambda < 0.0d || lambda > 1.0d) {
+            failPointList("Blend must be between 0 and 1");
             return;
         }
 
@@ -127,15 +127,7 @@ public class RelaxPointListNode extends BaseNode {
             current = next;
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(current));
-        outputValues.put(OUTPUT_COUNT_ID, current.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        commitPointList(current);
     }
 
     @Override
@@ -155,7 +147,7 @@ public class RelaxPointListNode extends BaseNode {
         if (map.get("neighborsK") instanceof Integer value && value >= 1) {
             neighborsK = value;
         }
-        if (map.get("iterations") instanceof Integer value && value >= 1 && value <= MAX_ITERATIONS) {
+        if (map.get("iterations") instanceof Integer value && value >= 1 && value <= GenerationLimits.MAX_RELAX_ITERATIONS) {
             iterations = value;
         }
         if (map.get("blend") instanceof Number value) {

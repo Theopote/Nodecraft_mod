@@ -28,8 +28,20 @@ public final class GenerationLimits {
     public static final int MAX_RELAX_POINTS = 8192;
 
     /**
-     * Hard cap for Twist/Bend Geometry voxelization of non-SDF geometry sources.
+     * Hard cap for Relax Point List iteration count.
      */
+    public static final int MAX_RELAX_ITERATIONS = 64;
+
+    /**
+     * Hard cap for Path Attract closest-segment work ({@code points × (pathVertices - 1)}).
+     */
+    public static final long MAX_DEFORMATION_PATH_WORK = MAX_LIST_ELEMENTS;
+
+    /**
+     * Hard cap for Twist/Bend Geometry voxelization of non-SDF geometry sources.
+     * @deprecated V78 removes implicit geometry voxelization from deformation nodes; retained for historical migrations.
+     */
+    @Deprecated
     public static final int MAX_DEFORM_SOURCE_VOXELS = 32768;
 
     /**
@@ -348,6 +360,14 @@ public final class GenerationLimits {
             return false;
         }
         return pathCount * samplesPerPath <= MAX_CURVE_TOTAL_SAMPLES;
+    }
+
+    /** Graph-facing validation: Path Attract closest-segment workload (points × segments). */
+    public static boolean isDeformationPathWorkWithinBudget(int pointCount, int pathVertexCount) {
+        if (pointCount < 1 || pathVertexCount < 2) {
+            return false;
+        }
+        return (long) pointCount * (pathVertexCount - 1L) <= MAX_DEFORMATION_PATH_WORK;
     }
 
     /**

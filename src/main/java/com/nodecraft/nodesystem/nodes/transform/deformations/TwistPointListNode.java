@@ -4,9 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -28,7 +27,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 0
 )
-public class TwistPointListNode extends BaseNode {
+public class TwistPointListNode extends AbstractDeformationNode {
 
     public enum ClampMode {
         CLAMP,
@@ -51,12 +50,8 @@ public class TwistPointListNode extends BaseNode {
     private static final String INPUT_ANGLE_DEGREES_ID = "input_angle_degrees";
     private static final String INPUT_TWIST_LENGTH_ID = "input_twist_length";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public TwistPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.twist");
+        super("transform.deformations.twist");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to twist", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the twist axis", NodeDataType.POINT, this));
@@ -66,7 +61,7 @@ public class TwistPointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Twisted point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the twisted output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -76,19 +71,31 @@ public class TwistPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
         Vector3d axisDirection = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_DIRECTION_ID));
         Double resolvedAngleDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_DEGREES_ID, angleDegrees);
         Double resolvedTwistLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_TWIST_LENGTH_ID, twistLength);
 
-        if (pointsInput == null
-                || axisOrigin == null
-                || !VectorUtils.isNonZero(axisDirection)
-                || resolvedAngleDegrees == null
-                || resolvedTwistLength == null
-                || resolvedTwistLength <= 0.0d) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (axisOrigin == null) {
+            failPointList("Invalid axis origin");
+            return;
+        }
+        if (!VectorUtils.isNonZero(axisDirection)) {
+            failPointList("Axis direction must be non-zero");
+            return;
+        }
+        if (resolvedAngleDegrees == null) {
+            failPointList("Invalid angle");
+            return;
+        }
+        if (resolvedTwistLength == null || resolvedTwistLength <= 0.0d) {
+            failPointList("Twist length must be positive");
             return;
         }
 
@@ -109,9 +116,7 @@ public class TwistPointListNode extends BaseNode {
             twistedPoints.add(new Vector3d(axisOrigin).add(axialComponent).add(rotatedRadial));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(twistedPoints));
-        outputValues.put(OUTPUT_COUNT_ID, twistedPoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(twistedPoints);
     }
 
     @Override
@@ -141,12 +146,6 @@ public class TwistPointListNode extends BaseNode {
                 clampMode = ClampMode.CLAMP;
             }
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private double applyClampMode(double normalizedDistance) {

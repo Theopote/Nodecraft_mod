@@ -4,9 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -28,7 +27,7 @@ import java.util.UUID;
     category = "transform.deformations",
     order = 2
 )
-public class TaperPointListNode extends BaseNode {
+public class TaperPointListNode extends AbstractDeformationNode {
 
     public enum ClampMode {CLAMP, REPEAT, UNBOUNDED}
 
@@ -51,12 +50,8 @@ public class TaperPointListNode extends BaseNode {
     private static final String INPUT_END_SCALE_ID = "input_end_scale";
     private static final String INPUT_TAPER_LENGTH_ID = "input_taper_length";
 
-    private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
-
     public TaperPointListNode() {
-        super(UUID.randomUUID(), "transform.deformations.taper");
+        super("transform.deformations.taper");
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Point list to taper", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Origin point of the taper axis", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Direction vector of the taper axis", NodeDataType.VECTOR, this));
@@ -65,7 +60,7 @@ public class TaperPointListNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TAPER_LENGTH_ID, "Taper Length", "Optional taper length override", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Tapered point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of points in the tapered output", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the inputs were resolved", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -75,23 +70,36 @@ public class TaperPointListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> pointsInput = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> pointsInput = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
         Vector3d axisDirection = SpatialValueResolver.resolveVector(inputValues.get(INPUT_AXIS_DIRECTION_ID));
         Double resolvedStartScale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_START_SCALE_ID, startScale);
         Double resolvedEndScale = OptionalPortDrive.resolveOptionalDouble(this, INPUT_END_SCALE_ID, endScale);
         Double resolvedLength = OptionalPortDrive.resolveOptionalDouble(this, INPUT_TAPER_LENGTH_ID, taperLength);
 
-        if (pointsInput == null
-                || axisOrigin == null
-                || !VectorUtils.isNonZero(axisDirection)
-                || resolvedStartScale == null
-                || resolvedEndScale == null
-                || resolvedLength == null
-                || resolvedLength <= 0.0d
-                || resolvedStartScale < 0.0d
-                || resolvedEndScale < 0.0d) {
-            writeInvalid();
+        if (pointsInput == null) {
+            failPointList("Invalid or oversized point list");
+            return;
+        }
+        if (axisOrigin == null) {
+            failPointList("Invalid axis origin");
+            return;
+        }
+        if (!VectorUtils.isNonZero(axisDirection)) {
+            failPointList("Axis direction must be non-zero");
+            return;
+        }
+        if (resolvedStartScale == null || resolvedEndScale == null) {
+            failPointList("Invalid scale");
+            return;
+        }
+        if (resolvedLength == null || resolvedLength <= 0.0d) {
+            failPointList("Taper length must be positive");
+            return;
+        }
+        if (resolvedStartScale < 0.0d || resolvedEndScale < 0.0d) {
+            failPointList("Scale must be non-negative");
             return;
         }
 
@@ -111,9 +119,7 @@ public class TaperPointListNode extends BaseNode {
             taperedPoints.add(new Vector3d(axisOrigin).add(axialComponent).add(radialComponent.mul(scale)));
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(taperedPoints));
-        outputValues.put(OUTPUT_COUNT_ID, taperedPoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        commitPointList(taperedPoints);
     }
 
     @Override
@@ -147,12 +153,6 @@ public class TaperPointListNode extends BaseNode {
                 clampMode = ClampMode.CLAMP;
             }
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private double applyClampMode(double normalizedDistance) {
