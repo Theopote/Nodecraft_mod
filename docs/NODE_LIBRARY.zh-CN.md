@@ -584,7 +584,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Grid Array | `pattern.grid.grid_array` | Creates rectangular or box arrays of geometry using X, Y, and optional Z directions | `GridArrayNode` |
+| Grid Array | `pattern.grid.grid_array` | Creates rectangular or box arrays of geometry using first/second/third array axes | `GridArrayNode` |
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
 | Staggered Grid | `pattern.grid.staggered_grid` | Generates staggered grid anchor points with parity-controlled row offsets | `StaggeredGridNode` |
 | Hex Grid | `pattern.grid.hex_grid` | Generates hexagonal lattice anchor points on the X/Z plane | `HexGridNode` |

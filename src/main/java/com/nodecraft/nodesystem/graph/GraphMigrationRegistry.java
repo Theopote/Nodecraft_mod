@@ -138,6 +138,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V76 -> migrateV76ToV77(graph);
             case GraphFormatVersion.V77 -> migrateV77ToV78(graph);
             case GraphFormatVersion.V78 -> migrateV78ToV79(graph);
+            case GraphFormatVersion.V79 -> migrateV79ToV80(graph);
             default -> graph;
         };
     }
@@ -4993,6 +4994,7 @@ public final class GraphMigrationRegistry {
     private static final String INSTANCE_BLOCK_PLACEMENTS_TYPE = "pattern.linear.instance_block_placements";
     private static final String LINEAR_ARRAY_TYPE = "pattern.linear.linear_array";
     private static final String CURVE_ARRAY_TYPE = "pattern.linear.curve_array";
+    private static final String GRID_ARRAY_TYPE = "pattern.grid.grid_array";
 
     private static final Set<String> PATTERN_LINEAR_V79_REMOVED_STATE_KEYS = Set.of(
         "maxinstances"
@@ -5215,6 +5217,44 @@ public final class GraphMigrationRegistry {
             cleaned.put(key, entry.getValue());
         }
         node.state = cleaned.isEmpty() ? null : cleaned;
+    }
+
+    /**
+     * Pattern Grid Language v2: drop raw LIST geometry wires from Grid Array.
+     */
+    private static SavedGraph migrateV79ToV80(SavedGraph graph) {
+        applyPatternGridV80ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyPatternGridV80ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyPatternGridV80ToGraph(SavedGraph graph) {
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            if (GRID_ARRAY_TYPE.equals(sourceType)
+                    && "output_geometries".equals(
+                        connection.sourcePortId == null ? null : connection.sourcePortId.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Dropped Pattern Grid V80 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
     }
 
     /**

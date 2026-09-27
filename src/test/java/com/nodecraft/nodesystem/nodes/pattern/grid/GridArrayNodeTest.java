@@ -7,24 +7,28 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GridArrayNodeTest {
 
     @Test
-    void hugeGridCountsAreClampedBeforeGeneration() {
+    void hugeGridCountsFailClosedWithoutClamp() {
         GridArrayNode node = new GridArrayNode();
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 0.5d);
-
-        Map<String, Object> outputs = node.compute(Map.of(
-            "input_geometry", sphere,
-            "input_x_count", Integer.MAX_VALUE,
-            "input_y_count", Integer.MAX_VALUE,
-            "input_z_count", Integer.MAX_VALUE
+        node.setInput("input_geometry", sphere);
+        node.setNodeState(Map.of(
+            "xCount", Integer.MAX_VALUE,
+            "yCount", Integer.MAX_VALUE,
+            "zCount", Integer.MAX_VALUE
         ));
+        node.processNode(null);
 
-        @SuppressWarnings("unchecked")
-        java.util.List<Object> geometries = (java.util.List<Object>) outputs.get("output_geometries");
-        assertTrue(geometries.size() <= GenerationLimits.MAX_GEOMETRY_INSTANCES);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(0, node.getOutput("output_count"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase().contains("budget")
+            || String.valueOf(node.getOutput("output_error")).toLowerCase().contains("overflow")
+            || String.valueOf(node.getOutput("output_error")).toLowerCase().contains("count"));
+        assertTrue(GenerationLimits.MAX_GEOMETRY_INSTANCES > 0);
     }
 }

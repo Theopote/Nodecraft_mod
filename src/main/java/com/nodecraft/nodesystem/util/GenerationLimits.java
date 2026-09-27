@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * Shared hard limits for nodes that materialize collections from user-supplied counts.
  */
@@ -439,6 +441,39 @@ public final class GenerationLimits {
      */
     public static GridAxisCounts clampExclusiveGeometryGridCounts(int xCount, int yCount, int zCount) {
         return clampExclusiveGridCounts(xCount, yCount, zCount, 1, MAX_GEOMETRY_INSTANCES);
+    }
+
+    /**
+     * Fail-closed 2D grid product check (axes a×b).
+     *
+     * @return {@code null} when valid; otherwise an error message (never adjusts counts)
+     */
+    public static @Nullable String validateGridProduct(int a, int b, long limit) {
+        return validateGridProduct(a, b, 1, limit);
+    }
+
+    /**
+     * Fail-closed 3D grid product check (axes a×b×c).
+     *
+     * @return {@code null} when valid; otherwise an error message (never adjusts counts)
+     */
+    public static @Nullable String validateGridProduct(int a, int b, int c, long limit) {
+        if (a <= 0 || b <= 0 || c <= 0) {
+            return "Grid counts must be >= 1";
+        }
+        if (limit <= 0L) {
+            return "Grid product exceeds budget";
+        }
+        long product;
+        try {
+            product = Math.multiplyExact(Math.multiplyExact((long) a, (long) b), (long) c);
+        } catch (ArithmeticException overflow) {
+            return "Grid product overflows";
+        }
+        if (product > limit) {
+            return "Grid product exceeds budget";
+        }
+        return null;
     }
 
     private static GridAxisCounts clampExclusiveGridCounts(

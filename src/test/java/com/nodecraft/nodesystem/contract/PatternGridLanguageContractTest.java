@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern Grid v1 language fence (Graph V42).
+ * Pattern Grid v1 language fence (Graph V42), updated for V80 fail-closed semantics.
  */
 class PatternGridLanguageContractTest {
 
@@ -86,13 +87,11 @@ class PatternGridLanguageContractTest {
                 registry.createNodeInstance("pattern.grid.grid_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         grid.setInput("input_geometry", sphere);
-        grid.setInput("input_x_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_x_distance", 2.0d);
-        grid.setInput("input_x_count", 3);
-        grid.setInput("input_y_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_y_distance", 2.0d);
-        grid.setInput("input_y_count", 5);
-        grid.setInput("input_z_count", 1);
+        grid.setNodeState(Map.of(
+                "xDistance", 2.0d, "xCount", 3,
+                "yDistance", 2.0d, "yCount", 5,
+                "zDistance", 1.0d, "zCount", 1
+        ));
         grid.processNode(null);
 
         assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
@@ -106,9 +105,7 @@ class PatternGridLanguageContractTest {
                 registry.createNodeInstance("pattern.grid.grid_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         grid.setInput("input_geometry", sphere);
-        grid.setInput("input_x_count", 0);
-        grid.setInput("input_y_count", 3);
-        grid.setInput("input_z_count", 1);
+        grid.setNodeState(Map.of("xCount", 0, "yCount", 3, "zCount", 1));
         grid.processNode(null);
 
         assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
@@ -122,9 +119,7 @@ class PatternGridLanguageContractTest {
                 registry.createNodeInstance("pattern.grid.grid_array"));
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 1.0d);
         grid.setInput("input_geometry", sphere);
-        grid.setInput("input_x_count", 1);
-        grid.setInput("input_y_count", 1);
-        grid.setInput("input_z_count", 1);
+        grid.setNodeState(Map.of("xCount", 1, "yCount", 1, "zCount", 1));
         grid.processNode(null);
 
         assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
@@ -148,8 +143,7 @@ class PatternGridLanguageContractTest {
                 new Vector3d(10.0d, 5.0d, 8.0d)
         ), "Front");
         facade.setInput("input_face", face);
-        facade.setInput("input_columns", 0);
-        facade.setInput("input_rows", 3);
+        facade.setNodeState(Map.of("columns", 0, "rows", 3));
         facade.processNode(null);
 
         assertEquals(Boolean.FALSE, facade.getOutput("output_valid"));
@@ -165,9 +159,7 @@ class PatternGridLanguageContractTest {
                 new Vector3d(10.0d, 5.0d, 8.0d)
         ), "Front");
         facade.setInput("input_face", face);
-        facade.setInput("input_columns", 3);
-        facade.setInput("input_rows", 3);
-        facade.setInput("input_margin_x", Double.NaN);
+        facade.setNodeState(Map.of("columns", 3, "rows", 3, "marginX", Double.NaN));
         facade.processNode(null);
 
         assertEquals(Boolean.FALSE, facade.getOutput("output_valid"));
@@ -182,8 +174,7 @@ class PatternGridLanguageContractTest {
                 new Vector3d(10.0d, 5.0d, 8.0d)
         ), "Front");
         facade.setInput("input_face", face);
-        facade.setInput("input_columns", 3);
-        facade.setInput("input_rows", 2);
+        facade.setNodeState(Map.of("columns", 3, "rows", 2));
         facade.processNode(null);
 
         assertEquals(Boolean.TRUE, facade.getOutput("output_valid"));
@@ -200,12 +191,10 @@ class PatternGridLanguageContractTest {
     void staggeredGridCountMeansTotalEmittedPoints() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.staggered_grid"));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_distance", 1.0d);
-        grid.setInput("input_row_distance", 1.0d);
-        grid.setInput("input_step_count", 5);
-        grid.setInput("input_row_count", 3);
+        grid.setNodeState(Map.of(
+                "stepDistance", 1.0d, "rowDistance", 1.0d,
+                "stepCount", 5, "rowCount", 3
+        ));
         grid.processNode(null);
 
         assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
@@ -219,10 +208,7 @@ class PatternGridLanguageContractTest {
     void staggeredGridZeroCountProducesEmpty() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.staggered_grid"));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_count", 0);
-        grid.setInput("input_row_count", 3);
+        grid.setNodeState(Map.of("stepCount", 0, "rowCount", 3));
         grid.processNode(null);
 
         assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
@@ -233,28 +219,25 @@ class PatternGridLanguageContractTest {
     }
 
     @Test
-    void staggeredGridRespectsMaxListElements() {
+    void staggeredGridOverBudgetFailsClosed() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.staggered_grid"));
-        grid.setInput("input_step_direction", new Vector3d(1, 0, 0));
-        grid.setInput("input_row_direction", new Vector3d(0, 0, 1));
-        grid.setInput("input_step_count", 2048);
-        grid.setInput("input_row_count", 2048);
+        grid.setNodeState(Map.of("stepCount", 2048, "rowCount", 2048));
         grid.processNode(null);
 
+        assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, grid.getOutput("output_points"));
-        assertTrue(points.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
-        assertTrue(points.size() < 2048 * 2048);
+        assertTrue(points.isEmpty());
+        assertTrue(points.size() < GenerationLimits.MAX_LAYOUT_INSTANCES
+                || points.isEmpty());
     }
 
     @Test
     void hexGridCountMeansTotalEmittedPoints() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.hex_grid"));
-        grid.setInput("input_radius", 1.0d);
-        grid.setInput("input_q_count", 4);
-        grid.setInput("input_r_count", 4);
+        grid.setNodeState(Map.of("radius", 1.0d, "qCount", 4, "rCount", 4));
         grid.processNode(null);
 
         assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
@@ -265,25 +248,23 @@ class PatternGridLanguageContractTest {
     }
 
     @Test
-    void hexGridRespectsMaxListElements() {
+    void hexGridOverBudgetFailsClosed() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.hex_grid"));
-        grid.setInput("input_q_count", 1024);
-        grid.setInput("input_r_count", 1024);
+        grid.setNodeState(Map.of("qCount", 1024, "rCount", 1024));
         grid.processNode(null);
 
+        assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, grid.getOutput("output_points"));
-        assertTrue(points.size() <= GenerationLimits.MAX_LIST_ELEMENTS);
+        assertTrue(points.isEmpty());
     }
 
     @Test
     void triangularGridCountMeansTotalEmittedPoints() {
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.triangular_grid"));
-        grid.setInput("input_side_length", 2.0d);
-        grid.setInput("input_u_count", 8);
-        grid.setInput("input_v_count", 8);
+        grid.setNodeState(Map.of("sideLength", 2.0d, "uCount", 8, "vCount", 8));
         grid.processNode(null);
 
         assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
@@ -300,8 +281,7 @@ class PatternGridLanguageContractTest {
 
         BaseNode grid = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.grid.triangular_grid"));
-        grid.setInput("input_u_count", 2);
-        grid.setInput("input_v_count", 2);
+        grid.setNodeState(Map.of("uCount", 2, "vCount", 2));
         grid.processNode(null);
 
         @SuppressWarnings("unchecked")

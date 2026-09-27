@@ -261,8 +261,9 @@ public final class GraphFormatVersion {
     public static final int V41 = 41;
 
     /**
-     * Pattern Grid v1: five canonical grid nodes; geometry-first Grid Array;
+     * Pattern Grid v1 (historical milestone): five canonical grid nodes; geometry-first Grid Array;
      * layout producers emit POINT_LIST; typed spatial ports; Count semantics unified.
+     * Superseded by {@link #V80}.
      */
     public static final int V42 = 42;
 
@@ -503,8 +504,16 @@ public final class GraphFormatVersion {
      */
     public static final int V79 = 79;
 
+    /**
+     * Pattern Grid Language v2: Valid+Error on 5 nodes, no raw LIST geometry outputs,
+     * OptionalPortDrive / fail-closed grid products (no silent clamp), BoxFaceValidator on Facade,
+     * sourceLeaves×gridCount budget, transactional copies, finite layout outputs.
+     * V42 remains the historical Pattern Grid v1 fence.
+     */
+    public static final int V80 = 80;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V79;
+    public static final int CURRENT = V80;
 
     private GraphFormatVersion() {
     }
