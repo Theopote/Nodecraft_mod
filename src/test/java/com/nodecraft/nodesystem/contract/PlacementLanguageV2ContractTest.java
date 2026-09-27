@@ -24,6 +24,7 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryStructureUtils;
+import com.nodecraft.nodesystem.util.PlacementBlockUtils;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -290,6 +291,30 @@ class PlacementLanguageV2ContractTest {
         offset.processNode(null);
         assertEquals(Boolean.FALSE, offset.getOutput("output_valid"));
         assertNull(offset.getOutput("output_block_position"));
+    }
+
+    @Test
+    void trySnapCellCenterRejectsHugeFiniteCoordinates() {
+        assertNull(PlacementBlockUtils.trySnapCellCenter(new Vector3d(1e300, 0, 0)));
+        assertNull(PlacementBlockUtils.trySnapCellCenter(new Vector3d(0, 1e300, 0)));
+        assertNull(PlacementBlockUtils.trySnapCellCenter(new Vector3d(0, 0, 1e300)));
+    }
+
+    @Test
+    void scaleHugeFiniteResultFailsClosed() {
+        ScaleProbe scale = new ScaleProbe();
+        BlockPosList input = new BlockPosList();
+        input.add(new BlockPos(1, 0, 0));
+        scale.setInput("input_block_positions", input);
+        scale.setInput("input_center", new PointData(0, 0, 0));
+        scale.connectInput("input_scale_factor", NodeDataType.DOUBLE);
+        scale.setInput("input_scale_factor", 1e300);
+        scale.processNode(null);
+        assertEquals(Boolean.FALSE, scale.getOutput("output_valid"));
+        assertFalse(String.valueOf(scale.getOutput("output_error")).isBlank());
+        BlockPosList out = assertInstanceOf(BlockPosList.class, scale.getOutput("output_block_positions"));
+        assertTrue(out.isEmpty());
+        assertEquals(0, scale.getOutput("output_count"));
     }
 
     @Test

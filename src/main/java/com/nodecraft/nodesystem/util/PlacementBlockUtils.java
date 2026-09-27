@@ -45,7 +45,8 @@ public final class PlacementBlockUtils {
     }
 
     /**
-     * Snaps a transformed cell-center point back to BLOCK_POS; rejects non-finite input.
+     * Snaps a transformed cell-center point back to BLOCK_POS; rejects non-finite or
+     * non-representable floor coordinates (finite but outside int / BlockPos range).
      */
     public static @Nullable BlockPos trySnapCellCenter(Vector3d continuousPoint) {
         if (continuousPoint == null
@@ -54,7 +55,16 @@ public final class PlacementBlockUtils {
             || !Double.isFinite(continuousPoint.z)) {
             return null;
         }
+        if (!isBlockPosRepresentable(Math.floor(continuousPoint.x))
+            || !isBlockPosRepresentable(Math.floor(continuousPoint.y))
+            || !isBlockPosRepresentable(Math.floor(continuousPoint.z))) {
+            return null;
+        }
         return BlockSpace.snapCellCenter(continuousPoint);
+    }
+
+    private static boolean isBlockPosRepresentable(double flooredAxis) {
+        return flooredAxis >= Integer.MIN_VALUE && flooredAxis <= Integer.MAX_VALUE;
     }
 
     /**
