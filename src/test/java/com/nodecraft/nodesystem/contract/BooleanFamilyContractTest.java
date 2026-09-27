@@ -5,11 +5,13 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Vector3d;
@@ -17,6 +19,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -128,12 +131,36 @@ class BooleanFamilyContractTest {
         assertNotNull(combine);
         BoxGeometryData a = new BoxGeometryData(new Vector3d(1, 1, 1), new Vector3d(1, 1, 1));
         BoxGeometryData b = new BoxGeometryData(new Vector3d(4, 1, 1), new Vector3d(1, 1, 1));
+        connectInput(combine, "input_geometry_0", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_1", NodeDataType.GEOMETRY);
         combine.setInput("input_geometry_0", a);
         combine.setInput("input_geometry_1", b);
         combine.processNode(null);
         assertInstanceOf(CompositeGeometryData.class, combine.getOutput("output_geometry"));
         assertEquals(2, combine.getOutput("output_count"));
         assertEquals(Boolean.TRUE, combine.getOutput("output_valid"));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+        target.getInput(inputPortId);
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 
     @Test

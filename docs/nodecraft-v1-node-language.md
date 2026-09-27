@@ -43,6 +43,7 @@ Last updated: 2026-09-25
 | Geometry Analysis | [`node-language-v1-geometry-analysis.md`](./node-language-v1-geometry-analysis.md) **(PASSED / FROZEN, V67)** |
 | Architectural Primitives | [`node-language-v1-architectural-primitives.md`](./node-language-v1-architectural-primitives.md) **(PASSED / FROZEN, V68)** |
 | Geometry Boolean | [`node-language-v1-geometry-boolean.md`](./node-language-v1-geometry-boolean.md) **(PASSED / FROZEN, V69)** |
+| Geometry Combine | [`node-language-v1-geometry-combine.md`](./node-language-v1-geometry-combine.md) **(PASSED / FROZEN, V70)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -83,6 +84,7 @@ Last updated: 2026-09-25
 | Geometry Analysis v1 | **PASSED / FROZEN** | V67 |
 | Architectural Primitives v1 | **PASSED / FROZEN** | V68 |
 | Geometry Boolean v1 | **PASSED / FROZEN** | V69 |
+| Geometry Combine v1 | **PASSED / FROZEN** | V70 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.
@@ -545,7 +547,7 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 
 | Layer | Nodes | Behavior |
 |-------|-------|----------|
-| **Combine** | `geometry.combine.geometry` (Combine Geometry) | Structural `CompositeGeometryData`; bake = block set-union. **Not** analytic BRep union. Legacy id `geometry.boolean.union` → V6. |
+| **Combine** | `geometry.combine.geometry` (Combine Geometry) | Structural `CompositeGeometryData`; bake = block set-union. **Not** analytic BRep union. Legacy id `geometry.boolean.union` → V6. **V70 (PASSED / FROZEN):** order 0; connection-aware; Valid+Error; 0/1/N `packGeometry`; leaf Count; Composite null rejection. See [`node-language-v1-geometry-combine.md`](./node-language-v1-geometry-combine.md). |
 | **Voxel Boolean** | Difference / Intersection | Deferred `DifferenceGeometryData` / `IntersectionGeometryData`; evaluated on the Minecraft block grid at voxelize/bake. |
 | **SDF Boolean** | SDF Boolean (+ SDF primitives) | Continuous signed-distance ops (incl. Smooth K). `GEOMETRY` ⇄ `SDF` stays unsupported without explicit SDF To Geometry. |
 

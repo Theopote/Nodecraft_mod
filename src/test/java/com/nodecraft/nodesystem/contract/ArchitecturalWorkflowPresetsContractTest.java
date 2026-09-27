@@ -2,7 +2,9 @@ package com.nodecraft.nodesystem.contract;
 
 import com.google.gson.Gson;
 import com.nodecraft.gui.preset.GraphPresetRules;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
@@ -13,6 +15,7 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingN
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,6 +26,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -94,6 +98,8 @@ class ArchitecturalWorkflowPresetsContractTest {
         assertInstanceOf(List.class, beams.getOutput("output_center_lines"));
 
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
+        connectInput(combine, "input_geometry_0", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_1", NodeDataType.GEOMETRY);
         combine.setInput("input_geometry_0", slab.getOutput("output_geometry"));
         combine.setInput("input_geometry_1", beams.getOutput("output_geometry"));
         combine.processNode(null);
@@ -175,6 +181,28 @@ class ArchitecturalWorkflowPresetsContractTest {
                     workflowId + " should prefer Roof Base"
                 );
             }
+        }
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
+        assertTrue(output.connectTo(input), inputPortId + " connect failed");
+        target.getInput(inputPortId);
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
         }
     }
 

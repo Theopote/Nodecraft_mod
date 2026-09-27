@@ -126,7 +126,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Combine Geometry | `geometry.combine.geometry` | Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union. | `GeometryUnionNode` |
+| Combine Geometry | `geometry.combine.geometry` | Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union. | `CombineGeometryNode` |
 
 ## geometry.curves（28）
 

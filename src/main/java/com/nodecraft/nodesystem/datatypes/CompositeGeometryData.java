@@ -7,28 +7,40 @@ import java.util.Objects;
 
 /**
  * Composite geometry that groups multiple geometry objects into one value.
+ * Structurally flat: nested composites are recursively flattened.
+ * Null members are rejected (fail closed).
  */
 public class CompositeGeometryData implements GeometryData {
 
     private final List<GeometryData> geometries;
 
     public CompositeGeometryData(List<GeometryData> geometries) {
-        List<GeometryData> flattened = new ArrayList<>();
-        if (geometries != null) {
-            for (GeometryData geometry : geometries) {
-                appendGeometry(flattened, geometry);
-            }
-        }
-        this.geometries = Collections.unmodifiableList(flattened);
+        this.geometries = Collections.unmodifiableList(flattenLeaves(geometries));
     }
 
-    private static void appendGeometry(List<GeometryData> target, GeometryData geometry) {
-        if (geometry == null) {
-            return;
+    /**
+     * Flattens a list of roots into leaf geometries (nested composites expanded).
+     * Rejects null members.
+     */
+    public static List<GeometryData> flattenLeaves(List<GeometryData> roots) {
+        List<GeometryData> flattened = new ArrayList<>();
+        if (roots != null) {
+            for (GeometryData geometry : roots) {
+                appendLeaves(flattened, geometry);
+            }
         }
+        return List.copyOf(flattened);
+    }
+
+    /**
+     * Appends leaf geometries from {@code geometry} into {@code target}, flattening nested composites.
+     * Rejects null.
+     */
+    public static void appendLeaves(List<GeometryData> target, GeometryData geometry) {
+        Objects.requireNonNull(geometry, "Composite geometry member must not be null");
         if (geometry instanceof CompositeGeometryData composite) {
             for (GeometryData child : composite.getGeometries()) {
-                appendGeometry(target, child);
+                appendLeaves(target, child);
             }
             return;
         }

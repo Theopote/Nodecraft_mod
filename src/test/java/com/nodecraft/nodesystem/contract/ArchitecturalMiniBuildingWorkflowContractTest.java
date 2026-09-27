@@ -135,8 +135,12 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertNotNull(roof.getOutput("output_eave_path"));
         assertNotNull(roof.getOutput("output_ridge_path"));
 
-        // Combine â?Voxelize (PURE, no world write)
+        // Combine → Voxelize (PURE, no world write)
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
+        connectInput(combine, "input_geometry_0", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_1", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_2", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_3", NodeDataType.GEOMETRY);
         combine.setInput("input_geometry_0", floorGeom);
         combine.setInput("input_geometry_1", wallGeom);
         combine.setInput("input_geometry_2", windowGeom);

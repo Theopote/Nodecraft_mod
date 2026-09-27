@@ -426,14 +426,22 @@ public final class GraphFormatVersion {
     public static final int V68 = 68;
 
     /**
-     * Geometry Boolean v1: Difference/Intersection Valid+Error + orders 0–1,
+     * Geometry Boolean v1 (PASSED / FROZEN): Difference/Intersection Valid+Error + orders 0–1,
      * strict GeometryVoxelizationResult (empty SUCCESS ≠ FAILURE), transactional
-     * Composite/Diff/Inter voxelization, GenerationLimits.MAX_GEOMETRY_VOXELS.
+     * Composite/Diff/Inter voxelization, GenerationLimits.MAX_GEOMETRY_VOXELS,
+     * Boolean Preview via voxelizeStrict.
      */
     public static final int V69 = 69;
 
+    /**
+     * Geometry Combine v1 (PASSED / FROZEN): Combine Geometry order 0, Valid+Error,
+     * connection-aware transactional combine, canonical 0/1/N packGeometry, leaf Count,
+     * CompositeGeometryData null rejection + nested flatten.
+     */
+    public static final int V70 = 70;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V69;
+    public static final int CURRENT = V70;
 
     private GraphFormatVersion() {
     }

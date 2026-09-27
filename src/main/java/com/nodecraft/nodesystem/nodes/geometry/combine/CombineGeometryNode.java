@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.geometry.boolops;
+package com.nodecraft.nodesystem.nodes.geometry.combine;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -27,15 +29,16 @@ import java.util.UUID;
     displayName = "Combine Geometry",
     description = "Structural grouping of geometries into a composite. Bake/voxelize merges blocks (set union); not an analytic BRep union or SDF smooth union.",
     category = "geometry.combine",
-    order = 1
+    order = 0
 )
-public class GeometryUnionNode extends BaseNode {
+public class CombineGeometryNode extends BaseNode {
 
     private static final int MIN_INPUT_COUNT = 2;
     private static final int MAX_INPUT_COUNT = 16;
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(
         displayName = "Input Count",
@@ -45,12 +48,16 @@ public class GeometryUnionNode extends BaseNode {
     )
     private int inputCount = 4;
 
-    public GeometryUnionNode() {
+    public CombineGeometryNode() {
         super(UUID.randomUUID(), "geometry.combine.geometry");
         rebuildInputPorts();
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry (structural container)", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of geometry inputs that were merged", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one geometry input was resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry",
+            "Combined geometry (raw when one leaf, composite when multiple)", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
+            "Number of leaf geometries in the output", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when at least one connected geometry input was combined", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -65,19 +72,43 @@ public class GeometryUnionNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<GeometryData> geometries = new ArrayList<>();
+        List<GeometryData> leaves = new ArrayList<>();
 
         for (int i = 0; i < inputCount; i++) {
-            Object value = inputValues.get(inputPortId(i));
-            if (value instanceof GeometryData geometry) {
-                geometries.add(geometry);
+            String portId = inputPortId(i);
+            if (!OptionalPortDrive.isConnected(this, portId)) {
+                continue;
             }
+            Object value = inputValues.get(portId);
+            if (!(value instanceof GeometryData geometry)) {
+                writeInvalid("Geometry " + (i + 1) + " is connected but invalid");
+                return;
+            }
+            CompositeGeometryData.appendLeaves(leaves, geometry);
         }
 
-        CompositeGeometryData result = geometries.isEmpty() ? null : new CompositeGeometryData(geometries);
-        outputValues.put(OUTPUT_GEOMETRY_ID, result);
-        outputValues.put(OUTPUT_COUNT_ID, geometries.size());
-        outputValues.put(OUTPUT_VALID_ID, !geometries.isEmpty());
+        if (leaves.isEmpty()) {
+            writeInvalid("No geometry inputs are connected");
+            return;
+        }
+
+        GeometryData packed = GeometryOutputUtils.packGeometry(leaves);
+        if (packed == null) {
+            writeInvalid("Unable to combine geometry inputs");
+            return;
+        }
+
+        outputValues.put(OUTPUT_GEOMETRY_ID, packed);
+        outputValues.put(OUTPUT_COUNT_ID, leaves.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private void rebuildInputPorts() {
