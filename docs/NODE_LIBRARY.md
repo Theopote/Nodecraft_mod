@@ -248,7 +248,7 @@
 |---|---|---|---|
 | Extrude | `geometry.solids.extrude` | Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude) | `ExtrudeProfileNode` |
 | Extrude Point List | `geometry.solids.extrude_from_points` | Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments | `ExtrudePointListNode` |
-| Prism By Base Points Vector | `geometry.solids.extrude_profile_from_points` | Constructs prism geometry from an ordered base polygon and an extrusion vector | `PrismByBasePointsVectorNode` |
+| Prism By Points | `geometry.solids.extrude_profile_from_points` | Constructs prism geometry from an ordered base polygon and an extrusion vector | `PrismByBasePointsVectorNode` |
 | Extrude Box Face | `geometry.solids.extrude_box_face` | Extrudes a box face into a new box segment and returns a composite geometry | `ExtrudeBoxFaceNode` |
 | Push/Pull Box Face | `geometry.solids.push_pull_face` | Moves one box face along its normal and outputs a new box geometry | `PushPullBoxFaceNode` |
 | Loft Surface | `geometry.solids.loft` | Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Resamples when vertex counts differ per Match Sections mode. | `LoftProfilesNode` |

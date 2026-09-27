@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -27,11 +28,13 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -193,11 +196,35 @@ class GeometrySolidsLanguageContractTest {
 
     @Test
     void pushPullRejectsCollapsingBox() {
-        PushPullBoxFaceNode push = new PushPullBoxFaceNode();
-        // Minimal smoke: missing inputs → invalid with error
-        push.processNode(null);
-        assertEquals(Boolean.FALSE, push.getOutput("output_valid"));
-        assertNotNull(push.getOutput("output_error"));
+        // Box full size Y=10 (halfExtent=5); face 1 = +Y.
+        // distance=-10 → newHalf=0 → collapse; distance=-9 → newHalf=0.5 → valid.
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(5, 5, 5));
+
+        PushPullBoxFaceNode collapse = new PushPullBoxFaceNode();
+        connectInput(collapse, "input_distance", NodeDataType.DOUBLE);
+        collapse.setInput("input_box_geometry", box);
+        collapse.setInput("input_face_index", 1);
+        collapse.setInput("input_distance", -10.0d);
+        collapse.processNode(null);
+        assertEquals(Boolean.FALSE, collapse.getOutput("output_valid"));
+        assertNull(collapse.getOutput("output_box_geometry"));
+        assertNull(collapse.getOutput("output_geometry"));
+        assertNotNull(collapse.getOutput("output_error"));
+        assertFalse(String.valueOf(collapse.getOutput("output_error")).isBlank());
+        assertTrue(String.valueOf(collapse.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("collapse") || String.valueOf(collapse.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("invert"));
+
+        PushPullBoxFaceNode keep = new PushPullBoxFaceNode();
+        connectInput(keep, "input_distance", NodeDataType.DOUBLE);
+        keep.setInput("input_box_geometry", box);
+        keep.setInput("input_face_index", 1);
+        keep.setInput("input_distance", -9.0d);
+        keep.processNode(null);
+        assertEquals(Boolean.TRUE, keep.getOutput("output_valid"));
+        assertInstanceOf(BoxGeometryData.class, keep.getOutput("output_box_geometry"));
+        BoxGeometryData result = (BoxGeometryData) keep.getOutput("output_box_geometry");
+        assertEquals(0.5d, result.getHalfExtents().y, 1.0e-9d);
     }
 
     @Test

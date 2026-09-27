@@ -56,9 +56,9 @@ class GeometryBooleanLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV69() {
+    void graphFormatIncludesV69BooleanLanguage() {
         assertEquals(69, GraphFormatVersion.V69);
-        assertEquals(GraphFormatVersion.V69, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V69);
     }
 
     @Test

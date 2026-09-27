@@ -77,6 +77,10 @@ public class PushPullBoxFaceNode extends AbstractSolidNode {
         }
 
         BoxGeometryData result = pushPullFace(geometry, faceIndex, distanceObj);
+        if (result == null) {
+            invalidate("Push/pull would collapse or invert box");
+            return;
+        }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, result);
         outputValues.put(OUTPUT_BOX_GEOMETRY_ID, result);
@@ -85,7 +89,7 @@ public class PushPullBoxFaceNode extends AbstractSolidNode {
         markSuccess();
     }
 
-    private BoxGeometryData pushPullFace(BoxGeometryData geometry, int faceIndex, double distance) {
+    private @Nullable BoxGeometryData pushPullFace(BoxGeometryData geometry, int faceIndex, double distance) {
         Vector3d center = geometry.getCenter();
         Vector3d halfExtents = geometry.getHalfExtents();
         Matrix3d orientation = geometry.getOrientationMatrix();
@@ -93,7 +97,10 @@ public class PushPullBoxFaceNode extends AbstractSolidNode {
         SolidNodeUtils.BoxFaceMapping mapping = SolidNodeUtils.resolveBoxFaceMapping(faceIndex);
 
         double oldHalfExtent = SolidNodeUtils.getAxisValue(halfExtents, mapping.axis());
-        double newHalfExtent = Math.max(0.0d, oldHalfExtent + (distance / 2.0d));
+        double newHalfExtent = oldHalfExtent + (distance / 2.0d);
+        if (!Double.isFinite(newHalfExtent) || newHalfExtent <= SolidNodeUtils.EPSILON) {
+            return null;
+        }
         double appliedHalfDelta = newHalfExtent - oldHalfExtent;
 
         SolidNodeUtils.setAxisValue(halfExtents, mapping.axis(), newHalfExtent);
