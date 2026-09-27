@@ -268,8 +268,9 @@ public final class GraphFormatVersion {
     public static final int V42 = 42;
 
     /**
-     * Pattern Radial v1: three canonical radial nodes; geometry-first Polar Array;
+     * Pattern Radial v1 (historical milestone): three canonical radial nodes; geometry-first Polar Array;
      * Spiral/Phyllotaxis layout producers emit POINT_LIST + VECTOR_LIST + FRAME_LIST.
+     * Superseded by {@link #V81}.
      */
     public static final int V43 = 43;
 
@@ -512,8 +513,16 @@ public final class GraphFormatVersion {
      */
     public static final int V80 = 80;
 
+    /**
+     * Pattern Radial Language v2: Valid+Error on 3 nodes, drop Polar Array raw LIST geometry output,
+     * OptionalPortDrive / fail-closed Count budgets (no silent clamp), sourceLeaves×Count preflight,
+     * transactional Polar copies, aligned layout commit for Spiral/Phyllotaxis, degenerate tangent fail-closed.
+     * V43 remains the historical Pattern Radial v1 fence.
+     */
+    public static final int V81 = 81;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V80;
+    public static final int CURRENT = V81;
 
     private GraphFormatVersion() {
     }

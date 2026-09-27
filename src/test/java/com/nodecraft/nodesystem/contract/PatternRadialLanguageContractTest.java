@@ -4,9 +4,12 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.radial.PolarArrayNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -17,7 +20,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,7 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern Radial v1 language fence (Graph V43).
+ * Pattern Radial v1 language fence (Graph V43) — historical inventory / seam / Include End.
+ * Count budget and OptionalPortDrive strictness are owned by Pattern Radial Language v2 (V81).
  */
 class PatternRadialLanguageContractTest {
 
@@ -77,7 +83,7 @@ class PatternRadialLanguageContractTest {
     void polarArrayCountZeroProducesEmpty() {
         BaseNode polar = createPolarArray();
         polar.setInput("input_geometry", new SphereData(new Vector3d(0, 0, 0), 1.0d));
-        polar.setInput("input_count", 0);
+        polar.setNodeState(Map.of("count", 0));
         polar.processNode(null);
 
         assertEquals(Boolean.FALSE, polar.getOutput("output_valid"));
@@ -90,7 +96,7 @@ class PatternRadialLanguageContractTest {
         BaseNode polar = createPolarArray();
         SphereData sphere = new SphereData(new Vector3d(2, 0, 0), 0.5d);
         polar.setInput("input_geometry", sphere);
-        polar.setInput("input_count", 1);
+        polar.setNodeState(Map.of("count", 1));
         polar.processNode(null);
 
         assertEquals(Boolean.TRUE, polar.getOutput("output_valid"));
@@ -103,16 +109,13 @@ class PatternRadialLanguageContractTest {
         BaseNode polar = createPolarArray();
         SphereData sphere = new SphereData(new Vector3d(2, 0, 0), 0.5d);
         polar.setInput("input_geometry", sphere);
-        polar.setInput("input_center", new PointData(0, 0, 0));
-        polar.setInput("input_axis", new Vector3d(0, 1, 0));
-        polar.setInput("input_count", 4);
-        polar.setInput("input_total_angle", 360.0d);
+        polar.setNodeState(Map.of("count", 4, "totalAngle", 360.0d));
         polar.processNode(null);
 
         assertEquals(Boolean.TRUE, polar.getOutput("output_valid"));
         assertEquals(4, polar.getOutput("output_count"));
-        @SuppressWarnings("unchecked")
-        List<Object> copies = assertInstanceOf(List.class, polar.getOutput("output_geometries"));
+        CompositeGeometryData composite = assertInstanceOf(CompositeGeometryData.class, polar.getOutput("output_geometry"));
+        List<com.nodecraft.nodesystem.datatypes.GeometryData> copies = composite.geometries();
         assertEquals(4, copies.size());
 
         SphereData first = assertInstanceOf(SphereData.class, copies.get(0));
@@ -128,18 +131,14 @@ class PatternRadialLanguageContractTest {
         BaseNode polar = createPolarArray();
         SphereData sphere = new SphereData(new Vector3d(2, 0, 0), 0.5d);
         polar.setInput("input_geometry", sphere);
-        polar.setInput("input_center", new PointData(0, 0, 0));
-        polar.setInput("input_axis", new Vector3d(0, 1, 0));
-        polar.setInput("input_count", 5);
-        polar.setInput("input_total_angle", 720.0d);
+        polar.setNodeState(Map.of("count", 5, "totalAngle", 720.0d));
         polar.processNode(null);
 
         assertEquals(Boolean.TRUE, polar.getOutput("output_valid"));
         assertEquals(5, polar.getOutput("output_count"));
-        @SuppressWarnings("unchecked")
-        List<Object> copies = assertInstanceOf(List.class, polar.getOutput("output_geometries"));
-        SphereData first = assertInstanceOf(SphereData.class, copies.get(0));
-        SphereData last = assertInstanceOf(SphereData.class, copies.get(4));
+        CompositeGeometryData composite = assertInstanceOf(CompositeGeometryData.class, polar.getOutput("output_geometry"));
+        SphereData first = assertInstanceOf(SphereData.class, composite.geometries().get(0));
+        SphereData last = assertInstanceOf(SphereData.class, composite.geometries().get(4));
         assertNotEquals(first.center().x, last.center().x, 1.0e-6d);
     }
 
@@ -148,27 +147,19 @@ class PatternRadialLanguageContractTest {
         PolarArrayNode inclusive = (PolarArrayNode) registry.createNodeInstance("pattern.radial.polar_array");
         inclusive.setIncludeEnd(true);
         inclusive.setInput("input_geometry", new SphereData(new Vector3d(2, 0, 0), 0.5d));
-        inclusive.setInput("input_center", new PointData(0, 0, 0));
-        inclusive.setInput("input_axis", new Vector3d(0, 1, 0));
-        inclusive.setInput("input_count", 4);
-        inclusive.setInput("input_total_angle", 180.0d);
+        inclusive.setNodeState(Map.of("count", 4, "totalAngle", 180.0d, "includeEnd", true));
         inclusive.processNode(null);
 
         PolarArrayNode exclusive = (PolarArrayNode) registry.createNodeInstance("pattern.radial.polar_array");
         exclusive.setIncludeEnd(false);
         exclusive.setInput("input_geometry", new SphereData(new Vector3d(2, 0, 0), 0.5d));
-        exclusive.setInput("input_center", new PointData(0, 0, 0));
-        exclusive.setInput("input_axis", new Vector3d(0, 1, 0));
-        exclusive.setInput("input_count", 4);
-        exclusive.setInput("input_total_angle", 180.0d);
+        exclusive.setNodeState(Map.of("count", 4, "totalAngle", 180.0d, "includeEnd", false));
         exclusive.processNode(null);
 
-        @SuppressWarnings("unchecked")
-        List<Object> inclusiveCopies = assertInstanceOf(List.class, inclusive.getOutput("output_geometries"));
-        @SuppressWarnings("unchecked")
-        List<Object> exclusiveCopies = assertInstanceOf(List.class, exclusive.getOutput("output_geometries"));
-        SphereData inclusiveLast = assertInstanceOf(SphereData.class, inclusiveCopies.get(3));
-        SphereData exclusiveLast = assertInstanceOf(SphereData.class, exclusiveCopies.get(3));
+        CompositeGeometryData inclusiveComposite = assertInstanceOf(CompositeGeometryData.class, inclusive.getOutput("output_geometry"));
+        CompositeGeometryData exclusiveComposite = assertInstanceOf(CompositeGeometryData.class, exclusive.getOutput("output_geometry"));
+        SphereData inclusiveLast = assertInstanceOf(SphereData.class, inclusiveComposite.geometries().get(3));
+        SphereData exclusiveLast = assertInstanceOf(SphereData.class, exclusiveComposite.geometries().get(3));
         assertEquals(-2.0d, inclusiveLast.center().x, 1.0e-6d);
         assertEquals(-1.4142135d, exclusiveLast.center().x, 1.0e-3d);
     }
@@ -178,8 +169,7 @@ class PatternRadialLanguageContractTest {
         BaseNode polar = createPolarArray();
         SphereData sphere = new SphereData(new Vector3d(2, 0, 0), 0.5d);
         polar.setInput("input_geometry", sphere);
-        polar.setInput("input_count", 5);
-        polar.setInput("input_total_angle", 0.0d);
+        polar.setNodeState(Map.of("count", 5, "totalAngle", 0.0d));
         polar.processNode(null);
 
         assertEquals(Boolean.TRUE, polar.getOutput("output_valid"));
@@ -188,18 +178,20 @@ class PatternRadialLanguageContractTest {
 
     @Test
     void polarArrayIntegerPortIsStrict() {
-        BaseNode polar = createPolarArray();
-        polar.setInput("input_geometry", new SphereData(new Vector3d(2, 0, 0), 0.5d));
-        polar.setInput("input_count", 3.8d);
-        polar.processNode(null);
+        PolarProbe probe = new PolarProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(2, 0, 0), 0.5d));
+        probe.connectInput("input_count", NodeDataType.INTEGER);
+        probe.putRawInput("input_count", 3.8d);
+        probe.processNode(null);
 
-        assertEquals(1, polar.getOutput("output_count"));
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertEquals(0, probe.getOutput("output_count"));
     }
 
     @Test
     void spiralCountZeroProducesEmpty() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_count", 0);
+        spiral.setNodeState(Map.of("count", 0));
         spiral.processNode(null);
 
         assertEquals(Boolean.FALSE, spiral.getOutput("output_valid"));
@@ -209,8 +201,7 @@ class PatternRadialLanguageContractTest {
     @Test
     void spiralNegativeTurnsIsLegal() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_turns", -2.0d);
-        spiral.setInput("input_count", 4);
+        spiral.setNodeState(Map.of("turns", -2.0d, "count", 4));
         spiral.processNode(null);
 
         assertEquals(Boolean.TRUE, spiral.getOutput("output_valid"));
@@ -220,9 +211,7 @@ class PatternRadialLanguageContractTest {
     @Test
     void spiralOutputsStayIndexAligned() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_count", 6);
-        spiral.setInput("input_radius_step", 0.17d);
-        spiral.setInput("input_height_step", 0.31d);
+        spiral.setNodeState(Map.of("count", 6, "radiusStep", 0.17d, "heightStep", 0.31d));
         spiral.processNode(null);
 
         assertEquals(Boolean.TRUE, spiral.getOutput("output_valid"));
@@ -241,10 +230,12 @@ class PatternRadialLanguageContractTest {
     @Test
     void spiralUsesContinuousCoordinates() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_count", 4);
-        spiral.setInput("input_start_radius", 2.0d);
-        spiral.setInput("input_radius_step", 0.15d);
-        spiral.setInput("input_height_step", 0.25d);
+        spiral.setNodeState(Map.of(
+            "count", 4,
+            "startRadius", 2.0d,
+            "radiusStep", 0.15d,
+            "heightStep", 0.25d
+        ));
         spiral.processNode(null);
 
         @SuppressWarnings("unchecked")
@@ -256,19 +247,20 @@ class PatternRadialLanguageContractTest {
 
     @Test
     void spiralNonFiniteTurnsFailClosed() {
-        BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_turns", Double.NaN);
-        spiral.setInput("input_count", 4);
-        spiral.processNode(null);
+        SpiralProbe probe = new SpiralProbe();
+        probe.setNodeState(Map.of("count", 4));
+        probe.connectInput("input_turns", NodeDataType.DOUBLE);
+        probe.putRawInput("input_turns", Double.NaN);
+        probe.processNode(null);
 
-        assertEquals(Boolean.FALSE, spiral.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
     }
 
     @Test
     void phyllotaxisCountMatchesAlignedOutputs() {
         BaseNode phyllotaxis = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.radial.phyllotaxis"));
-        phyllotaxis.setInput("input_count", 8);
+        phyllotaxis.setNodeState(Map.of("count", 8));
         phyllotaxis.processNode(null);
 
         assertEquals(Boolean.TRUE, phyllotaxis.getOutput("output_valid"));
@@ -288,8 +280,7 @@ class PatternRadialLanguageContractTest {
     void phyllotaxisUsesContinuousCoordinates() {
         BaseNode phyllotaxis = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.radial.phyllotaxis"));
-        phyllotaxis.setInput("input_count", 4);
-        phyllotaxis.setInput("input_radius_scale", 0.75d);
+        phyllotaxis.setNodeState(Map.of("count", 4, "radiusScale", 0.75d));
         phyllotaxis.processNode(null);
 
         @SuppressWarnings("unchecked")
@@ -303,8 +294,7 @@ class PatternRadialLanguageContractTest {
     void phyllotaxisNegativeRadialExponentFailClosed() {
         BaseNode phyllotaxis = assertInstanceOf(BaseNode.class,
                 registry.createNodeInstance("pattern.radial.phyllotaxis"));
-        phyllotaxis.setInput("input_count", 4);
-        phyllotaxis.setInput("input_radial_exponent", -0.5d);
+        phyllotaxis.setNodeState(Map.of("count", 4, "radialExponent", -0.5d));
         phyllotaxis.processNode(null);
 
         assertEquals(Boolean.FALSE, phyllotaxis.getOutput("output_valid"));
@@ -324,16 +314,59 @@ class PatternRadialLanguageContractTest {
     @Test
     void layoutProducersRespectLayoutInstanceCap() {
         BaseNode spiral = assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.spiral"));
-        spiral.setInput("input_count", Integer.MAX_VALUE);
+        spiral.setNodeState(Map.of("count", Integer.MAX_VALUE));
         spiral.processNode(null);
 
+        assertEquals(Boolean.FALSE, spiral.getOutput("output_valid"));
+        assertEquals(0, spiral.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
+        assertTrue(points.isEmpty());
         assertTrue(points.size() <= GenerationLimits.MAX_LAYOUT_INSTANCES);
-        assertEquals(GenerationLimits.MAX_LAYOUT_INSTANCES, spiral.getOutput("output_count"));
     }
 
     private static BaseNode createPolarArray() {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance("pattern.radial.polar_array"));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class PolarProbe extends PolarArrayNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            PatternRadialLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class SpiralProbe extends com.nodecraft.nodesystem.nodes.pattern.radial.SpiralNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            PatternRadialLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 }

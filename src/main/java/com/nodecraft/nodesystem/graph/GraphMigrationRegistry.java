@@ -139,6 +139,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V77 -> migrateV77ToV78(graph);
             case GraphFormatVersion.V78 -> migrateV78ToV79(graph);
             case GraphFormatVersion.V79 -> migrateV79ToV80(graph);
+            case GraphFormatVersion.V80 -> migrateV80ToV81(graph);
             default -> graph;
         };
     }
@@ -4995,6 +4996,7 @@ public final class GraphMigrationRegistry {
     private static final String LINEAR_ARRAY_TYPE = "pattern.linear.linear_array";
     private static final String CURVE_ARRAY_TYPE = "pattern.linear.curve_array";
     private static final String GRID_ARRAY_TYPE = "pattern.grid.grid_array";
+    private static final String POLAR_ARRAY_TYPE = "pattern.radial.polar_array";
 
     private static final Set<String> PATTERN_LINEAR_V79_REMOVED_STATE_KEYS = Set.of(
         "maxinstances"
@@ -5249,6 +5251,44 @@ public final class GraphMigrationRegistry {
                     && "output_geometries".equals(
                         connection.sourcePortId == null ? null : connection.sourcePortId.toLowerCase(Locale.ROOT))) {
                 LOGGER.debug("Dropped Pattern Grid V80 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    /**
+     * Pattern Radial Language v2: drop raw LIST geometry wires from Polar Array.
+     */
+    private static SavedGraph migrateV80ToV81(SavedGraph graph) {
+        applyPatternRadialV81ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyPatternRadialV81ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyPatternRadialV81ToGraph(SavedGraph graph) {
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            if (POLAR_ARRAY_TYPE.equals(sourceType)
+                    && "output_geometries".equals(
+                        connection.sourcePortId == null ? null : connection.sourcePortId.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Dropped Pattern Radial V81 removed-port connection {} -> {}",
                     connection.sourcePortId, connection.targetPortId);
                 continue;
             }
