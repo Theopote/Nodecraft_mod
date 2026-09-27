@@ -286,6 +286,40 @@ class ReferencePointsLanguageV2ContractTest {
     }
 
     @Test
+    void pointListCenterHugeSameSignFiniteValuesStayFinite() {
+        BaseNode center = node("reference.points.point_list_center");
+        center.setInput("input_points", List.of(
+            new PointData(1e308d, 0, 0),
+            new PointData(1e308d, 0, 0),
+            new PointData(1e308d, 0, 0)
+        ));
+        center.processNode(null);
+        assertValid(center);
+        assertEquals(3, center.getOutput("output_count"));
+        PointData result = assertInstanceOf(PointData.class, center.getOutput("output_center_point"));
+        assertEquals(1e308d, result.position().x, 1e300d);
+        assertEquals(0.0d, result.position().y, 1.0e-9d);
+        assertEquals(0.0d, result.position().z, 1.0e-9d);
+    }
+
+    @Test
+    void pointListCenterMixedHugeValuesStayFiniteWhenRepresentable() {
+        BaseNode center = node("reference.points.point_list_center");
+        center.setInput("input_points", List.of(
+            new PointData(1e308d, 0, 0),
+            new PointData(1e308d, 0, 0),
+            new PointData(-1e308d, 0, 0)
+        ));
+        center.processNode(null);
+        assertValid(center);
+        assertEquals(3, center.getOutput("output_count"));
+        PointData result = assertInstanceOf(PointData.class, center.getOutput("output_center_point"));
+        assertTrue(Double.isFinite(result.position().x));
+        assertTrue(Double.isFinite(result.position().y));
+        assertTrue(Double.isFinite(result.position().z));
+    }
+
+    @Test
     void pointListBoundsCenterAndSizeStayFinite() {
         BaseNode bounds = node("reference.points.point_list_bounds");
         bounds.setInput("input_points", List.of(

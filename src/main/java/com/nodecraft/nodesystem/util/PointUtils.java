@@ -91,7 +91,9 @@ public final class PointUtils {
     }
 
     /**
-     * Numerically stable list center using incremental mean.
+     * Numerically stable list center using incremental weighted mean
+     * ({@code mean * (n-1)/n + point/n} with weights computed first so finite
+     * magnitudes are never scaled above 1).
      * Returns null when empty, any entry non-finite, or result non-finite.
      */
     public static @Nullable Vector3d safeListCenter(@Nullable List<Vector3d> points) {
@@ -108,9 +110,11 @@ public final class PointUtils {
                 return null;
             }
             double n = i + 1.0d;
-            mean.x = mean.x * (n - 1.0d) / n + point.x / n;
-            mean.y = mean.y * (n - 1.0d) / n + point.y / n;
-            mean.z = mean.z * (n - 1.0d) / n + point.z / n;
+            double oldWeight = (n - 1.0d) / n;
+            double newWeight = 1.0d / n;
+            mean.x = mean.x * oldWeight + point.x * newWeight;
+            mean.y = mean.y * oldWeight + point.y * newWeight;
+            mean.z = mean.z * oldWeight + point.z * newWeight;
             if (!isFinite(mean)) {
                 return null;
             }

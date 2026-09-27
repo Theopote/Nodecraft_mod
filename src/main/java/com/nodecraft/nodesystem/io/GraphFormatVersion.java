@@ -570,10 +570,10 @@ public final class GraphFormatVersion {
     public static final int V86 = 86;
 
     /**
-     * Reference Points Language v2: Valid+Error on all 19 nodes, finite-result fences on point arithmetic,
-     * bounded POINT_LIST, BoxFaceValidator on topology boundaries, query Valid+Found+Error semantics,
-     * StrictDoubleUtils for required DOUBLE inputs, OptionalPortDrive on Block Position Input.
-     * V49 remains the historical Reference Points v1 fence.
+     * Reference Points Language v2 (PASSED / FROZEN): Valid+Error on all 19 nodes, finite-result fences
+     * on point arithmetic, bounded POINT_LIST, overflow-safe safeListCenter, BoxFaceValidator on topology
+     * boundaries, query Valid+Found+Error semantics, StrictDoubleUtils for required DOUBLE inputs,
+     * OptionalPortDrive on Block Position Input. V49 remains the historical Reference Points v1 fence.
      */
     public static final int V87 = 87;
 

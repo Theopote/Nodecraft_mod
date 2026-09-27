@@ -31,7 +31,9 @@ publish. Overflow or non-finite results → `Valid=false` + non-blank `Error`
 (and NaN on numeric outputs where v1 used NaN sentinels).
 
 Shared helpers: `PointUtils.safeDistance`, `safeMidpoint`, `safeDisplacement`,
-`safeListCenter`, `requireFinitePoint`; `StrictDoubleUtils.requireExactFiniteDouble`.
+`safeListCenter` (weighted incremental mean: `mean * (n-1)/n + point/n` with
+weights precomputed to avoid scaling finite values to Infinity),
+`requireFinitePoint`; `StrictDoubleUtils.requireExactFiniteDouble`.
 
 ## Inventory (orders 0–18)
 
