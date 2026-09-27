@@ -172,6 +172,10 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
 
         GeometryData wallGeometry = createWall(frame, wallThickness);
         List<GeometryData> openings = buildOpenings(layout, openingDepth);
+        if (openings == null) {
+            writeInvalid("Failed to generate array geometry");
+            return;
+        }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, wallGeometry);
         outputValues.put(OUTPUT_OPENINGS_ID, GeometryOutputUtils.packGeometry(openings));
@@ -191,7 +195,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
         return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());
     }
 
-    private List<GeometryData> buildOpenings(FaceArrayLayout layout, double openingDepth) {
+    private @Nullable List<GeometryData> buildOpenings(FaceArrayLayout layout, double openingDepth) {
         Vector3d inwardNormal = new Vector3d(layout.frame().zAxis()).mul(openingDepth / 2.0d);
         return buildFaceArray(layout, placement -> {
             Vector3d center = placement.centerOnFace().add(inwardNormal);

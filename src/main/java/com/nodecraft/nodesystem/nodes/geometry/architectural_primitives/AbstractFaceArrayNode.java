@@ -88,17 +88,21 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         return List.copyOf(placements);
     }
 
-    protected <T extends GeometryData> List<T> buildFaceArray(FaceArrayLayout layout, FaceArrayGeometryFactory<T> factory) {
+    protected @Nullable <T extends GeometryData> List<T> buildFaceArray(
+        FaceArrayLayout layout,
+        FaceArrayGeometryFactory<T> factory
+    ) {
         int capacity = GeometryOutputUtils.architecturalInstanceCount(layout.columns(), layout.rows());
         if (capacity < 0) {
-            return List.of();
+            return null;
         }
         List<T> results = new ArrayList<>(capacity);
         for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
             T geometry = factory.create(placement);
-            if (geometry != null) {
-                results.add(geometry);
+            if (geometry == null) {
+                return null;
             }
+            results.add(geometry);
         }
         return List.copyOf(results);
     }

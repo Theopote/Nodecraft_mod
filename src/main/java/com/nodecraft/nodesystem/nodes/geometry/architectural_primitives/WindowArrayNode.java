@@ -137,6 +137,10 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         }
 
         List<BoxGeometryData> openings = buildOpeningBoxes(layout, depth);
+        if (openings == null) {
+            writeInvalid("Failed to generate array geometry");
+            return;
+        }
         List<FrameData> frames = buildPlacementFrames(layout);
         List<PointData> centers = buildCenters(layout);
 
@@ -148,7 +152,7 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
+    private @Nullable List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
         return buildFaceArray(layout, placement -> {
             Vector3d center = placement.centerOnFace().fma(-depth / 2.0d, layout.frame().zAxis());
             Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, depth / 2.0d);

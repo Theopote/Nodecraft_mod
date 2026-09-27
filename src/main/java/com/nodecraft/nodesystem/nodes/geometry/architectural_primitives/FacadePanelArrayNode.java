@@ -128,13 +128,17 @@ public class FacadePanelArrayNode extends AbstractFaceArrayNode {
         }
 
         List<BoxGeometryData> panels = buildPanels(layout, thickness, offset);
+        if (panels == null) {
+            writeInvalid("Failed to generate array geometry");
+            return;
+        }
         outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(panels));
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private List<BoxGeometryData> buildPanels(
+    private @Nullable List<BoxGeometryData> buildPanels(
         FaceArrayLayout layout,
         double thickness,
         double offset

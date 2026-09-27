@@ -142,6 +142,10 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         }
 
         List<GeometryData> columnsGeometry = buildColumns(layout, radius, height, topScale, shape);
+        if (columnsGeometry == null) {
+            writeInvalid("Failed to generate array geometry");
+            return;
+        }
         List<FrameData> frames = buildPlacementFrames(layout);
         List<PointData> basePoints = buildCenters(layout);
         List<PointData> topPoints = buildTopPoints(layout, height);
@@ -164,7 +168,7 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         return List.copyOf(tops);
     }
 
-    private List<GeometryData> buildColumns(
+    private @Nullable List<GeometryData> buildColumns(
         FaceArrayLayout layout,
         double radius,
         double height,

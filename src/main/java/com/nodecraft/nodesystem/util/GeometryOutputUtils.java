@@ -9,7 +9,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Frozen 0/1/N geometry packing: empty → null, single → raw, many → Composite.
+ * Frozen 0/1/N geometry packing: empty/null collection → null, single → raw, many → Composite.
+ * Null members are rejected (returns null) — no silent filter / partial Composite.
  */
 public final class GeometryOutputUtils {
 
@@ -22,12 +23,10 @@ public final class GeometryOutputUtils {
         }
         List<GeometryData> list = new ArrayList<>(pieces.size());
         for (GeometryData piece : pieces) {
-            if (piece != null) {
-                list.add(piece);
+            if (piece == null) {
+                return null;
             }
-        }
-        if (list.isEmpty()) {
-            return null;
+            list.add(piece);
         }
         if (list.size() == 1) {
             return list.getFirst();

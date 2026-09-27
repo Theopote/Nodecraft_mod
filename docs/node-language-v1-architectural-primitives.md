@@ -51,7 +51,7 @@ Face arrays / grids: long-first `columns × rows` before allocation. Over budget
 
 ## Geometry packing
 
-[`GeometryOutputUtils.packGeometry`](../src/main/java/com/nodecraft/nodesystem/util/GeometryOutputUtils.java): `0→null`, `1→raw`, `2+→Composite`.
+[`GeometryOutputUtils.packGeometry`](../src/main/java/com/nodecraft/nodesystem/util/GeometryOutputUtils.java): `0→null`, `1→raw`, `2+→Composite`. Null members → `null` (fail closed; no silent filter). Face-array factories that return null abort the whole array (`Valid=false`).
 
 ## High-signal node rules
 
@@ -70,6 +70,7 @@ Remove nodes of types `floor_slab_with_beams` / `deconstruct_opening` and incide
 
 ```text
 ./gradlew.bat test --tests "com.nodecraft.nodesystem.contract.ArchitecturalPrimitivesLanguageContractTest"
+./gradlew.bat test --tests "com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FaceArrayTransactionalContractTest"
 ./gradlew.bat test --tests "com.nodecraft.nodesystem.contract.ArchitecturalFamilyContractTest"
 ./gradlew.bat test --tests "com.nodecraft.nodesystem.contract.GraphFormatVersionContractTest"
 ```

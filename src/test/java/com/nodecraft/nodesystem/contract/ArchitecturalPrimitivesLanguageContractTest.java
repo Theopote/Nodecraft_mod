@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
@@ -270,6 +271,17 @@ class ArchitecturalPrimitivesLanguageContractTest {
         BoxGeometryData one = new BoxGeometryData(new Vector3d(), new Vector3d(1, 1, 1));
         assertEquals(one, GeometryOutputUtils.packGeometry(List.of(one)));
         assertTrue(GeometryOutputUtils.packGeometry(List.of(one, one)) instanceof com.nodecraft.nodesystem.datatypes.CompositeGeometryData);
+    }
+
+    @Test
+    void packGeometryRejectsNullMembers() {
+        BoxGeometryData one = new BoxGeometryData(new Vector3d(), new Vector3d(1, 1, 1));
+        List<GeometryData> withNull = new ArrayList<>();
+        withNull.add(one);
+        withNull.add(null);
+        withNull.add(one);
+        assertNull(GeometryOutputUtils.packGeometry(withNull));
+        assertNull(GeometryOutputUtils.packGeometry(java.util.Collections.singletonList(null)));
     }
 
     @Test
