@@ -7,7 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.StrictIntegerUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImGui;
 import imgui.type.ImInt;
 import net.minecraft.util.math.BlockPos;
@@ -40,6 +40,7 @@ public class CoordinateInputNode extends BaseCustomUINode {
 
     private static final String OUTPUT_BLOCK_POS_ID = "output_block_pos";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "X", category = "Components", order = 1, description = "X block coordinate")
     private int x = 0;
@@ -57,6 +58,7 @@ public class CoordinateInputNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all components resolved to valid integers", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
         updateOutput();
     }
 
@@ -138,45 +140,62 @@ public class CoordinateInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        Integer resolvedX = resolveComponent(INPUT_X_ID, x);
-        Integer resolvedY = resolveComponent(INPUT_Y_ID, y);
-        Integer resolvedZ = resolveComponent(INPUT_Z_ID, z);
+        Integer resolvedX = OptionalPortDrive.resolveOptionalInteger(this, INPUT_X_ID, x);
+        Integer resolvedY = OptionalPortDrive.resolveOptionalInteger(this, INPUT_Y_ID, y);
+        Integer resolvedZ = OptionalPortDrive.resolveOptionalInteger(this, INPUT_Z_ID, z);
 
-        if (resolvedX == null || resolvedY == null || resolvedZ == null) {
-            outputValues.put(OUTPUT_BLOCK_POS_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
-        } else {
-            outputValues.put(OUTPUT_BLOCK_POS_ID, new BlockPos(resolvedX, resolvedY, resolvedZ));
-            outputValues.put(OUTPUT_VALID_ID, true);
+        if (resolvedX == null) {
+            writeInvalid(resolveAxisError("X", INPUT_X_ID));
+            syncOutputPorts();
+            return;
         }
+        if (resolvedY == null) {
+            writeInvalid(resolveAxisError("Y", INPUT_Y_ID));
+            syncOutputPorts();
+            return;
+        }
+        if (resolvedZ == null) {
+            writeInvalid(resolveAxisError("Z", INPUT_Z_ID));
+            syncOutputPorts();
+            return;
+        }
+
+        outputValues.put(OUTPUT_BLOCK_POS_ID, new BlockPos(resolvedX, resolvedY, resolvedZ));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
         syncOutputPorts();
     }
 
+    private String resolveAxisError(String axis, String inputPortId) {
+        if (OptionalPortDrive.isConnected(this, inputPortId)) {
+            return axis + " connected but not exact INTEGER";
+        }
+        return axis + " must be exact INTEGER";
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_BLOCK_POS_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
     private int getResolvedX() {
-        Integer resolved = resolveComponent(INPUT_X_ID, x);
+        Integer resolved = OptionalPortDrive.resolveOptionalInteger(this, INPUT_X_ID, x);
         return resolved != null ? resolved : x;
     }
 
     private int getResolvedY() {
-        Integer resolved = resolveComponent(INPUT_Y_ID, y);
+        Integer resolved = OptionalPortDrive.resolveOptionalInteger(this, INPUT_Y_ID, y);
         return resolved != null ? resolved : y;
     }
 
     private int getResolvedZ() {
-        Integer resolved = resolveComponent(INPUT_Z_ID, z);
+        Integer resolved = OptionalPortDrive.resolveOptionalInteger(this, INPUT_Z_ID, z);
         return resolved != null ? resolved : z;
     }
 
-    private @Nullable Integer resolveComponent(String inputPortId, int fallback) {
-        if (isInputConnected(inputPortId)) {
-            return StrictIntegerUtils.requireExactInteger(inputValues.get(inputPortId));
-        }
-        return fallback;
-    }
-
     private boolean isInputConnected(String inputPortId) {
-        return inputPorts.stream()
-            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
+        return OptionalPortDrive.isConnected(this, inputPortId);
     }
 
     public int getX() {

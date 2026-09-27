@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,6 +28,7 @@ public class ConstructCoordinateNode extends BaseNode {
 
     private static final String OUTPUT_BLOCK_POS_ID = "output_block_pos";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ConstructCoordinateNode() {
         super(UUID.randomUUID(), "reference.points.construct_coordinate");
@@ -39,6 +41,8 @@ public class ConstructCoordinateNode extends BaseNode {
             "Constructed block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether all inputs are valid finite numbers",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -53,26 +57,31 @@ public class ConstructCoordinateNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Integer x = toInt(inputValues.get(INPUT_X_ID));
-        Integer y = toInt(inputValues.get(INPUT_Y_ID));
-        Integer z = toInt(inputValues.get(INPUT_Z_ID));
+        Integer x = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_X_ID));
+        Integer y = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_Y_ID));
+        Integer z = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_Z_ID));
 
-        if (x == null || y == null || z == null) {
-            writeInvalid();
+        if (x == null) {
+            writeInvalid("X must be exact INTEGER");
+            return;
+        }
+        if (y == null) {
+            writeInvalid("Y must be exact INTEGER");
+            return;
+        }
+        if (z == null) {
+            writeInvalid("Z must be exact INTEGER");
             return;
         }
 
-        BlockPos blockPos = new BlockPos(x, y, z);
-        outputValues.put(OUTPUT_BLOCK_POS_ID, blockPos);
+        outputValues.put(OUTPUT_BLOCK_POS_ID, new BlockPos(x, y, z));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_BLOCK_POS_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Integer toInt(Object value) {
-        return value instanceof Integer i ? i : null;
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

@@ -9,6 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -42,6 +45,8 @@ public class GetFaceEdgeNode extends BaseNode {
     private static final String OUTPUT_EDGE_ID = "output_edge";
     private static final String OUTPUT_FOUND_ID = "output_found";
     private static final String OUTPUT_RESOLVED_INDEX_ID = "output_resolved_index";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GetFaceEdgeNode() {
         super(UUID.randomUUID(), "reference.points.get_face_edge");
@@ -52,6 +57,8 @@ public class GetFaceEdgeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EDGE_ID, "Edge", "Resolved face edge", NodeDataType.LINE, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the edge index resolved successfully", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_INDEX_ID, "Resolved Index", "Resolved edge index after negative/wrap handling", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether query inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -62,42 +69,77 @@ public class GetFaceEdgeNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
 
-        LineData edge = null;
-        boolean found = false;
-        Integer resolvedIndex = null;
-
-        if (faceObj instanceof BoxFaceData face && indexObj instanceof Integer indexValue) {
-            List<Vector3d> corners = face.getCorners();
-            int index = indexValue;
-            int edgeCount = corners.size();
-
-            if (edgeCount > 0) {
-                if (index < 0 && allowNegativeIndex) {
-                    index = edgeCount + index;
-                }
-
-                if (wrapIndex) {
-                    index = ((index % edgeCount) + edgeCount) % edgeCount;
-                }
-
-                if (index >= 0 && index < edgeCount) {
-                    Vector3d start = corners.get(index);
-                    Vector3d end = corners.get((index + 1) % edgeCount);
-                    edge = new LineData(
-                        new Vec3d(start.x, start.y, start.z),
-                        new Vec3d(end.x, end.y, end.z)
-                    );
-                    found = true;
-                    resolvedIndex = index;
-                }
-            }
+        if (!(faceObj instanceof BoxFaceData face)) {
+            writeInvalid("Face must be BOX_FACE");
+            return;
         }
 
+        String faceError = BoxFaceValidator.validate(face);
+        if (faceError != null) {
+            writeInvalid(faceError);
+            return;
+        }
+
+        Integer index = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_INDEX_ID));
+        if (index == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_INDEX_ID)) {
+                writeInvalid("Edge Index connected but not exact INTEGER");
+            } else {
+                writeInvalid("Edge Index is required");
+            }
+            return;
+        }
+
+        List<Vector3d> corners = face.getCorners();
+        int edgeCount = corners.size();
+        if (edgeCount <= 0) {
+            writeNotFound();
+            return;
+        }
+
+        int resolved = index;
+        if (resolved < 0 && allowNegativeIndex) {
+            resolved = edgeCount + resolved;
+        }
+
+        if (wrapIndex) {
+            resolved = ((resolved % edgeCount) + edgeCount) % edgeCount;
+        }
+
+        if (resolved < 0 || resolved >= edgeCount) {
+            writeNotFound();
+            return;
+        }
+
+        Vector3d start = corners.get(resolved);
+        Vector3d end = corners.get((resolved + 1) % edgeCount);
+        LineData edge = new LineData(
+            new Vec3d(start.x, start.y, start.z),
+            new Vec3d(end.x, end.y, end.z)
+        );
+
         outputValues.put(OUTPUT_EDGE_ID, edge);
-        outputValues.put(OUTPUT_FOUND_ID, found);
-        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolved);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_EDGE_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private void writeNotFound() {
+        outputValues.put(OUTPUT_EDGE_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public boolean isAllowNegativeIndex() {

@@ -31,6 +31,7 @@ public class DeconstructPointNode extends BaseNode {
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructPointNode() {
         super(UUID.randomUUID(), "reference.points.deconstruct_point");
@@ -44,6 +45,8 @@ public class DeconstructPointNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z component", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the point input is valid",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -64,6 +67,7 @@ public class DeconstructPointNode extends BaseNode {
             outputValues.put(OUTPUT_Y_ID, Double.NaN);
             outputValues.put(OUTPUT_Z_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Point must be a finite POINT");
             return;
         }
 
@@ -71,5 +75,6 @@ public class DeconstructPointNode extends BaseNode {
         outputValues.put(OUTPUT_Y_ID, point.y);
         outputValues.put(OUTPUT_Z_ID, point.z);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }

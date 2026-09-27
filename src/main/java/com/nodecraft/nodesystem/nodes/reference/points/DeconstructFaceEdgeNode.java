@@ -35,6 +35,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructFaceEdgeNode() {
         super(UUID.randomUUID(), "reference.points.deconstruct_edge");
@@ -48,6 +49,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "Full edge displacement vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Edge length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the edge input is valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,7 +62,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         Object edgeObj = inputValues.get(INPUT_EDGE_ID);
 
         if (!(edgeObj instanceof LineData edge)) {
-            writeInvalid();
+            writeInvalid("Edge input must be LINE");
             return;
         }
 
@@ -69,30 +71,45 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         Vector3d startVec = new Vector3d(start.x, start.y, start.z);
         Vector3d endVec = new Vector3d(end.x, end.y, end.z);
         if (!FrameUtils.isFinite(startVec) || !FrameUtils.isFinite(endVec)) {
-            writeInvalid();
+            writeInvalid("Edge endpoints must be finite");
             return;
         }
 
-        double lengthSquared = start.squaredDistanceTo(end);
-        if (lengthSquared <= PointUtils.EPS_SQ) {
-            writeInvalid();
+        Vector3d vector = PointUtils.safeDisplacement(startVec, endVec);
+        if (vector == null) {
+            writeInvalid("Edge displacement vector is not finite");
             return;
         }
 
-        Vec3d direction = edge.getDirection();
-        Vec3d vector = edge.getVector();
-        Vec3d midpoint = start.add(end).multiply(0.5d);
+        double length = PointUtils.safeDistance(startVec, endVec);
+        if (!PointUtils.isFinite(length) || length <= PointUtils.EPS) {
+            writeInvalid("Edge length must be finite and greater than zero");
+            return;
+        }
+
+        Vector3d direction = new Vector3d(vector).div(length);
+        if (!PointUtils.isFinite(direction)) {
+            writeInvalid("Edge direction is not finite");
+            return;
+        }
+
+        Vector3d midpoint = PointUtils.safeMidpoint(startVec, endVec);
+        if (midpoint == null) {
+            writeInvalid("Edge midpoint is not finite");
+            return;
+        }
 
         outputValues.put(OUTPUT_START_ID, new PointData(start.x, start.y, start.z));
         outputValues.put(OUTPUT_END_ID, new PointData(end.x, end.y, end.z));
-        outputValues.put(OUTPUT_MIDPOINT_ID, new PointData(midpoint.x, midpoint.y, midpoint.z));
-        outputValues.put(OUTPUT_DIRECTION_ID, new Vector3d(direction.x, direction.y, direction.z));
-        outputValues.put(OUTPUT_VECTOR_ID, new Vector3d(vector.x, vector.y, vector.z));
-        outputValues.put(OUTPUT_LENGTH_ID, edge.getLength());
+        outputValues.put(OUTPUT_MIDPOINT_ID, new PointData(midpoint));
+        outputValues.put(OUTPUT_DIRECTION_ID, direction);
+        outputValues.put(OUTPUT_VECTOR_ID, vector);
+        outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_START_ID, null);
         outputValues.put(OUTPUT_END_ID, null);
         outputValues.put(OUTPUT_MIDPOINT_ID, null);
@@ -100,5 +117,6 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         outputValues.put(OUTPUT_VECTOR_ID, null);
         outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

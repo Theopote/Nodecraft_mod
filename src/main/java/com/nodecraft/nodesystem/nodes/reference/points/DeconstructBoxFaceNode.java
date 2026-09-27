@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -39,6 +40,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
     private static final String OUTPUT_EDGES_ID = "output_edges";
     private static final String OUTPUT_CORNER_INDICES_ID = "output_corner_indices";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructBoxFaceNode() {
         super(UUID.randomUUID(), "reference.points.deconstruct_face");
@@ -54,6 +56,7 @@ public class DeconstructBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EDGES_ID, "Edges", "Face edge segments", NodeDataType.LINE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Indices into the parent box corner list", NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when face input is a valid box face", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -65,7 +68,13 @@ public class DeconstructBoxFaceNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
         if (!(faceObj instanceof BoxFaceData face)) {
-            writeInvalid();
+            writeInvalid("Face must be BOX_FACE");
+            return;
+        }
+
+        String validationError = BoxFaceValidator.validate(face);
+        if (validationError != null) {
+            writeInvalid(validationError);
             return;
         }
 
@@ -89,9 +98,10 @@ public class DeconstructBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_EDGES_ID, List.copyOf(edges));
         outputValues.put(OUTPUT_CORNER_INDICES_ID, List.copyOf(face.getCornerIndices()));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_NAME_ID, null);
         outputValues.put(OUTPUT_INDEX_ID, null);
         outputValues.put(OUTPUT_CORNERS_ID, List.of());
@@ -101,5 +111,6 @@ public class DeconstructBoxFaceNode extends BaseNode {
         outputValues.put(OUTPUT_EDGES_ID, List.of());
         outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

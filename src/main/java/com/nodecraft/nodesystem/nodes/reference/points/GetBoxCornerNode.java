@@ -9,6 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -41,6 +44,8 @@ public class GetBoxCornerNode extends BaseNode {
     private static final String OUTPUT_CORNER_ID = "output_corner";
     private static final String OUTPUT_FOUND_ID = "output_found";
     private static final String OUTPUT_RESOLVED_INDEX_ID = "output_resolved_index";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GetBoxCornerNode() {
         super(UUID.randomUUID(), "reference.points.get_box_corner");
@@ -52,6 +57,8 @@ public class GetBoxCornerNode extends BaseNode {
             "Resolved box corner as geometric point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the corner index resolved successfully", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_INDEX_ID, "Resolved Index", "Resolved corner index after negative/wrap handling", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether query inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -62,37 +69,70 @@ public class GetBoxCornerNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
 
-        Vector3d corner = null;
-        boolean found = false;
-        Integer resolvedIndex = null;
-
-        if (geometryObj instanceof BoxGeometryData boxGeometry && indexObj instanceof Integer indexValue) {
-            List<Vector3d> corners = boxGeometry.getCorners();
-            int index = indexValue;
-            int cornerCount = corners.size();
-
-            if (cornerCount > 0) {
-                if (index < 0 && allowNegativeIndex) {
-                    index = cornerCount + index;
-                }
-
-                if (wrapIndex) {
-                    index = ((index % cornerCount) + cornerCount) % cornerCount;
-                }
-
-                if (index >= 0 && index < cornerCount) {
-                    corner = new Vector3d(corners.get(index));
-                    found = true;
-                    resolvedIndex = index;
-                }
-            }
+        if (!(geometryObj instanceof BoxGeometryData boxGeometry)) {
+            writeInvalid("Box Geometry must be BOX_GEOMETRY");
+            return;
         }
 
-        outputValues.put(OUTPUT_CORNER_ID, corner == null ? null : new PointData(corner));
-        outputValues.put(OUTPUT_FOUND_ID, found);
-        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
+        Integer index = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_INDEX_ID));
+        if (index == null) {
+            if (OptionalPortDrive.isConnected(this, INPUT_INDEX_ID)) {
+                writeInvalid("Corner Index connected but not exact INTEGER");
+            } else {
+                writeInvalid("Corner Index is required");
+            }
+            return;
+        }
+
+        List<Vector3d> corners = boxGeometry.getCorners();
+        int cornerCount = corners.size();
+        if (cornerCount <= 0) {
+            writeNotFound();
+            return;
+        }
+
+        int resolved = index;
+        if (resolved < 0 && allowNegativeIndex) {
+            resolved = cornerCount + resolved;
+        }
+
+        if (wrapIndex) {
+            resolved = ((resolved % cornerCount) + cornerCount) % cornerCount;
+        }
+
+        if (resolved < 0 || resolved >= cornerCount) {
+            writeNotFound();
+            return;
+        }
+
+        Vector3d corner = new Vector3d(corners.get(resolved));
+        if (!PointUtils.isFinite(corner)) {
+            writeInvalid("Box corner is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_CORNER_ID, new PointData(corner));
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolved);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_CORNER_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private void writeNotFound() {
+        outputValues.put(OUTPUT_CORNER_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public boolean isAllowNegativeIndex() {

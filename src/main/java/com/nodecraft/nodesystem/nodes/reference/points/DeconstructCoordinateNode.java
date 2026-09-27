@@ -30,6 +30,7 @@ public class DeconstructCoordinateNode extends BaseNode {
     private static final String OUTPUT_Y_ID = "output_y";
     private static final String OUTPUT_Z_ID = "output_z";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DeconstructCoordinateNode() {
         super(UUID.randomUUID(), "reference.points.deconstruct_block_position");
@@ -43,6 +44,8 @@ public class DeconstructCoordinateNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_Z_ID, "Z", "Z block coordinate", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position input is valid",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -64,6 +67,7 @@ public class DeconstructCoordinateNode extends BaseNode {
             outputValues.put(OUTPUT_Y_ID, 0);
             outputValues.put(OUTPUT_Z_ID, 0);
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Block Pos must be BLOCK_POS");
             return;
         }
 
@@ -71,5 +75,6 @@ public class DeconstructCoordinateNode extends BaseNode {
         outputValues.put(OUTPUT_Y_ID, coordinate.getY());
         outputValues.put(OUTPUT_Z_ID, coordinate.getZ());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }

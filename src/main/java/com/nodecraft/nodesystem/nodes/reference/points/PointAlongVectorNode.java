@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -30,6 +31,7 @@ public class PointAlongVectorNode extends BaseNode {
 
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public PointAlongVectorNode() {
         super(UUID.randomUUID(), "reference.points.point_along_vector");
@@ -48,6 +50,8 @@ public class PointAlongVectorNode extends BaseNode {
             "Resulting point after moving along the direction", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when point, direction, and distance inputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -64,32 +68,42 @@ public class PointAlongVectorNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         Vector3d direction = SpatialValueResolver.resolveVector(inputValues.get(INPUT_VECTOR_ID));
-        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
+        Double distance = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_DISTANCE_ID));
 
-        if (!PointUtils.isFinite(point) || !PointUtils.isFinite(direction)
-            || !(distanceObj instanceof Number number)) {
-            outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!PointUtils.isFinite(point)) {
+            writeInvalid("Point must be a finite POINT");
+            return;
+        }
+        if (!PointUtils.isFinite(direction)) {
+            writeInvalid("Direction must be a finite VECTOR");
+            return;
+        }
+        if (distance == null) {
+            writeInvalid("Distance must be an exact finite DOUBLE");
             return;
         }
 
-        direction = new Vector3d(direction);
-        if (direction.lengthSquared() <= PointUtils.EPS_SQ) {
-            outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d unitDirection = new Vector3d(direction);
+        if (unitDirection.lengthSquared() <= PointUtils.EPS_SQ) {
+            writeInvalid("Direction must be non-zero");
             return;
         }
-        direction.normalize();
+        unitDirection.normalize();
 
-        double distance = number.doubleValue();
-        if (!PointUtils.isFinite(distance)) {
-            outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d result = new Vector3d(point).fma(distance, unitDirection);
+        if (!PointUtils.isFinite(result)) {
+            writeInvalid("Resulting point is not finite");
             return;
         }
 
-        Vector3d result = new Vector3d(point).fma(distance, direction);
         outputValues.put(OUTPUT_POINT_ID, new PointData(result));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_POINT_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

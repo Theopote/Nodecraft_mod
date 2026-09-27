@@ -1,6 +1,6 @@
 # Node Language v1 — Reference Points
 
-**Status: PASSED / FROZEN** (Graph **V49**)
+**Status: PASSED / FROZEN** (Graph **V49**; superseded by v2 at **V87**)
 
 Language unification for the nineteen canonical `reference.points.*` nodes: strict INTEGER
 semantics, strict POINT_LIST fail-closed, unified `SpatialValueResolver`, typed box topology

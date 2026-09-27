@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -35,6 +36,7 @@ public class ClosestPointNode extends BaseNode {
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_INDEX_ID = "output_index";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ClosestPointNode() {
         super(UUID.randomUUID(), "reference.points.closest_point");
@@ -54,6 +56,8 @@ public class ClosestPointNode extends BaseNode {
             "Index of the closest valid point in the input collection", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a closest point was found", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -70,40 +74,50 @@ public class ClosestPointNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d reference = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (!PointUtils.isFinite(reference)) {
-            writeInvalid();
+            writeInvalid("Point must be a finite POINT");
             return;
         }
 
-        List<Vector3d> candidates = PointUtils.resolveStrictPointList(inputValues.get(INPUT_COORDINATES_ID));
+        List<Vector3d> candidates = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_COORDINATES_ID),
+            GenerationLimits.MAX_LIST_ELEMENTS
+        );
         if (candidates == null) {
-            writeInvalid();
+            writeInvalid("Points must be a non-empty POINT_LIST within MAX_LIST_ELEMENTS");
             return;
         }
 
-        double minDistanceSquared = Double.MAX_VALUE;
+        double minDistance = Double.POSITIVE_INFINITY;
         Vector3d closest = null;
         int closestIndex = -1;
 
         for (int index = 0; index < candidates.size(); index++) {
             Vector3d candidate = candidates.get(index);
-            double distanceSquared = PointUtils.distanceSquared(reference, candidate);
-            if (distanceSquared < minDistanceSquared) {
-                minDistanceSquared = distanceSquared;
+            double distance = PointUtils.safeDistance(reference, candidate);
+            if (PointUtils.isFinite(distance) && distance < minDistance) {
+                minDistance = distance;
                 closest = candidate;
                 closestIndex = index;
             }
         }
 
-        outputValues.put(OUTPUT_CLOSEST_POINT_ID, new PointData(closest));
-        outputValues.put(OUTPUT_DISTANCE_ID, Math.sqrt(minDistanceSquared));
+        if (closest == null || !PointUtils.isFinite(minDistance)) {
+            writeInvalid("No candidate with a finite distance was found");
+            return;
+        }
+
+        outputValues.put(OUTPUT_CLOSEST_POINT_ID, new PointData(new Vector3d(closest)));
+        outputValues.put(OUTPUT_DISTANCE_ID, minDistance);
         outputValues.put(OUTPUT_INDEX_ID, closestIndex);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_CLOSEST_POINT_ID, null);
         outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
         outputValues.put(OUTPUT_INDEX_ID, -1);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

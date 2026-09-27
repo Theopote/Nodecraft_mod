@@ -29,6 +29,7 @@ public class TranslatePointNode extends BaseNode {
 
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public TranslatePointNode() {
         super(UUID.randomUUID(), "reference.points.translate_point");
@@ -44,6 +45,8 @@ public class TranslatePointNode extends BaseNode {
             "Translated geometric point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when point and offset inputs are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -61,14 +64,29 @@ public class TranslatePointNode extends BaseNode {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         Vector3d offset = SpatialValueResolver.resolveVector(inputValues.get(INPUT_OFFSET_ID));
 
-        if (!PointUtils.isFinite(point) || !PointUtils.isFinite(offset)) {
-            outputValues.put(OUTPUT_POINT_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!PointUtils.isFinite(point)) {
+            writeInvalid("Point must be a finite POINT");
+            return;
+        }
+        if (!PointUtils.isFinite(offset)) {
+            writeInvalid("Offset must be a finite VECTOR");
             return;
         }
 
         Vector3d result = new Vector3d(point).add(offset);
+        if (!PointUtils.isFinite(result)) {
+            writeInvalid("Translated point is not finite");
+            return;
+        }
+
         outputValues.put(OUTPUT_POINT_ID, new PointData(result));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_POINT_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

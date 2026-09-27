@@ -28,6 +28,7 @@ public class VectorBetweenPointsNode extends BaseNode {
     private static final String OUTPUT_VECTOR_ID = "output_vector";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorBetweenPointsNode() {
         super(UUID.randomUUID(), "reference.points.vector_between_points");
@@ -45,6 +46,8 @@ public class VectorBetweenPointsNode extends BaseNode {
             "Distance between From and To", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when both input points are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -62,16 +65,37 @@ public class VectorBetweenPointsNode extends BaseNode {
         Vector3d from = PointUtils.toPointPosition(inputValues.get(INPUT_FROM_ID));
         Vector3d to = PointUtils.toPointPosition(inputValues.get(INPUT_TO_ID));
 
-        if (!PointUtils.isFinite(from) || !PointUtils.isFinite(to)) {
-            outputValues.put(OUTPUT_VECTOR_ID, null);
-            outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!PointUtils.isFinite(from)) {
+            writeInvalid("From must be a finite POINT");
+            return;
+        }
+        if (!PointUtils.isFinite(to)) {
+            writeInvalid("To must be a finite POINT");
             return;
         }
 
-        Vector3d vector = new Vector3d(to).sub(from);
+        Vector3d vector = PointUtils.safeDisplacement(from, to);
+        if (vector == null) {
+            writeInvalid("Displacement vector is not finite");
+            return;
+        }
+
+        double length = PointUtils.safeDistance(from, to);
+        if (!PointUtils.isFinite(length)) {
+            writeInvalid("Vector length is not finite");
+            return;
+        }
+
         outputValues.put(OUTPUT_VECTOR_ID, vector);
-        outputValues.put(OUTPUT_LENGTH_ID, vector.length());
+        outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_VECTOR_ID, null);
+        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

@@ -30,6 +30,7 @@ public class BlockToPointNode extends BaseNode {
 
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     /** Prefer block center when feeding geometry Center ports (see {@link BlockSpace}). */
     private boolean useBlockCenter = true;
@@ -45,6 +46,8 @@ public class BlockToPointNode extends BaseNode {
             "Converted geometric point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when the input coordinate was available", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -63,20 +66,17 @@ public class BlockToPointNode extends BaseNode {
         if (!(coordinateObj instanceof BlockPos blockPos)) {
             outputValues.put(OUTPUT_POINT_ID, null);
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Coordinate must be BLOCK_POS");
             return;
         }
 
         Vector3d vector = useBlockCenter
             ? BlockSpace.cellCenter(blockPos)
             : BlockSpace.cellMinCorner(blockPos);
-        double x = vector.x;
-        double y = vector.y;
-        double z = vector.z;
 
-        PointData point = new PointData(x, y, z);
-
-        outputValues.put(OUTPUT_POINT_ID, point);
+        outputValues.put(OUTPUT_POINT_ID, new PointData(vector.x, vector.y, vector.z));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public boolean isUseBlockCenter() {

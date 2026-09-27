@@ -187,6 +187,7 @@ class ReferencePointsLanguageContractTest {
         corner.setInput("input_box_geometry", box);
         corner.setInput("input_index", 1.9d);
         corner.processNode(null);
+        assertEquals(Boolean.FALSE, corner.getOutput("output_valid"));
         assertEquals(Boolean.FALSE, corner.getOutput("output_found"));
     }
 
@@ -225,6 +226,7 @@ class ReferencePointsLanguageContractTest {
         face.putRawInput("input_face_name", "not-a-face");
         face.putRawInput("input_index", 0);
         face.processNode(null);
+        assertEquals(Boolean.TRUE, face.getOutput("output_valid"));
         assertEquals(Boolean.FALSE, face.getOutput("output_found"));
         assertNull(face.getOutput("output_face"));
     }
@@ -240,6 +242,7 @@ class ReferencePointsLanguageContractTest {
         face.putRawInput("input_face_name", null);
         face.putRawInput("input_index", 0);
         face.processNode(null);
+        assertEquals(Boolean.FALSE, face.getOutput("output_valid"));
         assertEquals(Boolean.FALSE, face.getOutput("output_found"));
         assertNull(face.getOutput("output_face"));
     }

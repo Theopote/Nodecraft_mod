@@ -27,6 +27,7 @@ public class DistanceNode extends BaseNode {
 
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DistanceNode() {
         super(UUID.randomUUID(), "reference.points.distance_between_points");
@@ -42,6 +43,8 @@ public class DistanceNode extends BaseNode {
             "Distance between point A and point B", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when both input points are valid", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -54,13 +57,29 @@ public class DistanceNode extends BaseNode {
         Vector3d pointA = PointUtils.toPointPosition(inputValues.get(INPUT_A_ID));
         Vector3d pointB = PointUtils.toPointPosition(inputValues.get(INPUT_B_ID));
 
-        if (!PointUtils.isFinite(pointA) || !PointUtils.isFinite(pointB)) {
-            outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!PointUtils.isFinite(pointA)) {
+            writeInvalid("Point A must be a finite POINT");
+            return;
+        }
+        if (!PointUtils.isFinite(pointB)) {
+            writeInvalid("Point B must be a finite POINT");
             return;
         }
 
-        outputValues.put(OUTPUT_DISTANCE_ID, pointA.distance(pointB));
+        double distance = PointUtils.safeDistance(pointA, pointB);
+        if (!PointUtils.isFinite(distance)) {
+            writeInvalid("Distance is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_DISTANCE_ID, distance);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

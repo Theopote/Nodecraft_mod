@@ -39,6 +39,85 @@ public final class PointUtils {
         return a.distanceSquared(b);
     }
 
+    /** Returns a copy when finite; otherwise null (graph publish guard). */
+    public static @Nullable Vector3d requireFinitePoint(@Nullable Vector3d point) {
+        if (!isFinite(point)) {
+            return null;
+        }
+        return new Vector3d(point);
+    }
+
+    /**
+     * Overflow-safe Euclidean distance using chained {@link Math#hypot}.
+     * Returns {@link Double#NaN} when inputs are non-finite or distance is non-finite.
+     */
+    public static double safeDistance(@Nullable Vector3d a, @Nullable Vector3d b) {
+        if (!isFinite(a) || !isFinite(b)) {
+            return Double.NaN;
+        }
+        double dx = b.x - a.x;
+        double dy = b.y - a.y;
+        double dz = b.z - a.z;
+        double distance = Math.hypot(Math.hypot(dx, dy), dz);
+        return isFinite(distance) ? distance : Double.NaN;
+    }
+
+    /**
+     * Overflow-safe midpoint: per-component {@code 0.5*a + 0.5*b}.
+     * Returns null when inputs or result are non-finite.
+     */
+    public static @Nullable Vector3d safeMidpoint(@Nullable Vector3d a, @Nullable Vector3d b) {
+        if (!isFinite(a) || !isFinite(b)) {
+            return null;
+        }
+        Vector3d midpoint = new Vector3d(
+            a.x * 0.5d + b.x * 0.5d,
+            a.y * 0.5d + b.y * 0.5d,
+            a.z * 0.5d + b.z * 0.5d
+        );
+        return isFinite(midpoint) ? midpoint : null;
+    }
+
+    /**
+     * Displacement {@code to - from} with finite-result fence.
+     * Returns null when inputs or result are non-finite.
+     */
+    public static @Nullable Vector3d safeDisplacement(@Nullable Vector3d from, @Nullable Vector3d to) {
+        if (!isFinite(from) || !isFinite(to)) {
+            return null;
+        }
+        Vector3d displacement = new Vector3d(to).sub(from);
+        return isFinite(displacement) ? displacement : null;
+    }
+
+    /**
+     * Numerically stable list center using incremental mean.
+     * Returns null when empty, any entry non-finite, or result non-finite.
+     */
+    public static @Nullable Vector3d safeListCenter(@Nullable List<Vector3d> points) {
+        if (points == null || points.isEmpty()) {
+            return null;
+        }
+        Vector3d mean = new Vector3d(points.getFirst());
+        if (!isFinite(mean)) {
+            return null;
+        }
+        for (int i = 1; i < points.size(); i++) {
+            Vector3d point = points.get(i);
+            if (!isFinite(point)) {
+                return null;
+            }
+            double n = i + 1.0d;
+            mean.x = mean.x * (n - 1.0d) / n + point.x / n;
+            mean.y = mean.y * (n - 1.0d) / n + point.y / n;
+            mean.z = mean.z * (n - 1.0d) / n + point.z / n;
+            if (!isFinite(mean)) {
+                return null;
+            }
+        }
+        return new Vector3d(mean);
+    }
+
     /**
      * Strict POINT_LIST resolution: null/empty/non-Collection → null;
      * any non-PointData or non-finite entry → null; otherwise full list (no filtering).

@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,6 +49,8 @@ public class GetBoxFaceNode extends BaseNode {
     private static final String OUTPUT_FOUND_ID = "output_found";
     private static final String OUTPUT_NAME_ID = "output_name";
     private static final String OUTPUT_RESOLVED_INDEX_ID = "output_resolved_index";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GetBoxFaceNode() {
         super(UUID.randomUUID(), "reference.points.get_box_face");
@@ -59,6 +63,8 @@ public class GetBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the face index resolved successfully", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Resolved face name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_INDEX_ID, "Resolved Index", "Resolved face index after negative/wrap handling", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether query inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -69,68 +75,100 @@ public class GetBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        boolean faceNameConnected = isInputConnected(INPUT_FACE_NAME_ID);
-        boolean indexConnected = isInputConnected(INPUT_INDEX_ID);
+        boolean faceNameConnected = OptionalPortDrive.isConnected(this, INPUT_FACE_NAME_ID);
+        boolean indexConnected = OptionalPortDrive.isConnected(this, INPUT_INDEX_ID);
 
+        if (!(geometryObj instanceof BoxGeometryData boxGeometry)) {
+            writeInvalid("Box Geometry must be BOX_GEOMETRY");
+            return;
+        }
+
+        List<BoxFaceData> faces = boxGeometry.getFaces();
         BoxFaceData face = null;
-        boolean found = false;
-        String name = null;
-        Integer resolvedIndex = null;
 
-        if (geometryObj instanceof BoxGeometryData boxGeometry) {
-            List<BoxFaceData> faces = boxGeometry.getFaces();
-
-            if (faceNameConnected) {
-                face = resolveBySemanticName(faces, inputValues.get(INPUT_FACE_NAME_ID));
-                if (face != null) {
-                    found = true;
-                    name = face.getName();
-                    resolvedIndex = face.getIndex();
-                }
-            } else if (indexConnected) {
-                Integer index = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_INDEX_ID));
-                if (index != null) {
-                    face = resolveByIndex(faces, index);
-                    if (face != null) {
-                        found = true;
-                        name = face.getName();
-                        resolvedIndex = face.getIndex();
-                    }
-                }
-            } else if (!defaultFaceName.isBlank()) {
-                face = resolveBySemanticName(faces, defaultFaceName);
-                if (face != null) {
-                    found = true;
-                    name = face.getName();
-                    resolvedIndex = face.getIndex();
-                }
+        if (faceNameConnected) {
+            String rawName = OptionalPortDrive.resolveOptionalString(this, INPUT_FACE_NAME_ID, null);
+            if (rawName == null) {
+                writeInvalid("Face Name connected but null or invalid");
+                return;
             }
+            String normalized = normalizeFaceName(rawName);
+            if (normalized == null) {
+                writeNotFound();
+                return;
+            }
+            face = resolveBySemanticName(faces, normalized);
+            if (face == null) {
+                writeNotFound();
+                return;
+            }
+        } else if (indexConnected) {
+            Integer index = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_INDEX_ID));
+            if (index == null) {
+                writeInvalid("Face Index connected but not exact INTEGER");
+                return;
+            }
+            face = resolveByIndex(faces, index);
+            if (face == null) {
+                writeNotFound();
+                return;
+            }
+        } else if (!defaultFaceName.isBlank()) {
+            String normalized = normalizeFaceName(defaultFaceName);
+            if (normalized == null) {
+                writeNotFound();
+                return;
+            }
+            face = resolveBySemanticName(faces, normalized);
+            if (face == null) {
+                writeNotFound();
+                return;
+            }
+        } else {
+            writeInvalid("Face Name or Face Index is required");
+            return;
         }
 
+        String validationError = BoxFaceValidator.validate(face);
+        if (validationError != null) {
+            writeInvalid(validationError);
+            return;
+        }
+
+        writeSuccess(face);
+    }
+
+    private void writeSuccess(BoxFaceData face) {
         outputValues.put(OUTPUT_FACE_ID, face);
-        outputValues.put(OUTPUT_FOUND_ID, found);
-        outputValues.put(OUTPUT_NAME_ID, name);
-        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, resolvedIndex);
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_NAME_ID, face.getName());
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, face.getIndex());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private boolean isInputConnected(String inputPortId) {
-        return inputPorts.stream()
-            .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FACE_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_NAME_ID, null);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    private BoxFaceData resolveBySemanticName(List<BoxFaceData> faces, Object faceNameObj) {
-        if (!(faceNameObj instanceof String rawName) || rawName.isBlank()) {
-            return null;
-        }
+    private void writeNotFound() {
+        outputValues.put(OUTPUT_FACE_ID, null);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        outputValues.put(OUTPUT_NAME_ID, null);
+        outputValues.put(OUTPUT_RESOLVED_INDEX_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
 
-        String normalized = normalizeFaceName(rawName);
-        if (normalized == null) {
-            return null;
-        }
-
-        for (BoxFaceData face : faces) {
-            if (normalized.equals(normalizeFaceName(face.getName()))) {
-                return face;
+    private BoxFaceData resolveBySemanticName(List<BoxFaceData> faces, String normalized) {
+        for (BoxFaceData candidate : faces) {
+            if (normalized.equals(normalizeFaceName(candidate.getName()))) {
+                return candidate;
             }
         }
         return null;
