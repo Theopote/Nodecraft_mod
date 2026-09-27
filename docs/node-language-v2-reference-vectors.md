@@ -30,7 +30,8 @@ add/sub/mul/div, lerp/slerp, reflect, and project operation passes a
 finite-result fence before publish.
 
 Shared helpers: `VectorUtils.safeLength`, `safeNormalize`, `safeAdd`,
-`safeSubtract`, `safeScale`, `safeDot`, `safeCross`, `safeLerp`;
+`safeSubtract`, `safeScale`, `safeDot`, `safeCross`, `safeLerp`, `safeScalarLerp`
+(FMA formulation: `Math.fma(t, b, Math.fma(-t, a, a))` for extrapolation stability);
 `StrictDoubleUtils.requireExactFiniteDouble`; `OptionalPortDrive.resolveOptionalStrictDouble`.
 
 ## Inventory (orders 0–16)

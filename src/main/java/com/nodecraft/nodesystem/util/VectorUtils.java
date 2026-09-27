@@ -127,31 +127,29 @@ public final class VectorUtils {
     }
 
     /**
-     * Weighted linear combination {@code a*(1-t) + b*t} with finite-result fence.
-     * Does not clamp T (extrapolation allowed).
+     * Linear combination {@code a + t(b-a)} with finite-result fence.
+     * Uses fused multiply-add for extrapolation stability. Does not clamp T.
      */
     public static @Nullable Vector3d safeLerp(@Nullable Vector3d a, @Nullable Vector3d b, double t) {
         if (!isFinite(a) || !isFinite(b) || !isFinite(t)) {
             return null;
         }
-        double oneMinusT = 1.0d - t;
-        Vector3d result = new Vector3d(
-            a.x * oneMinusT + b.x * t,
-            a.y * oneMinusT + b.y * t,
-            a.z * oneMinusT + b.z * t
-        );
+        double x = Math.fma(t, b.x, Math.fma(-t, a.x, a.x));
+        double y = Math.fma(t, b.y, Math.fma(-t, a.y, a.y));
+        double z = Math.fma(t, b.z, Math.fma(-t, a.z, a.z));
+        Vector3d result = new Vector3d(x, y, z);
         return isFinite(result) ? result : null;
     }
 
     /**
      * Scalar linear interpolation with finite-result fence. Does not clamp T.
+     * Uses fused multiply-add to avoid avoidable intermediate overflow on extrapolation.
      */
     public static double safeScalarLerp(double a, double b, double t) {
         if (!isFinite(a) || !isFinite(b) || !isFinite(t)) {
             return Double.NaN;
         }
-        double oneMinusT = 1.0d - t;
-        double result = a * oneMinusT + b * t;
+        double result = Math.fma(t, b, Math.fma(-t, a, a));
         return isFinite(result) ? result : Double.NaN;
     }
 

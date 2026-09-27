@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.vectors.AngleBetweenVectorsNode;
+import com.nodecraft.nodesystem.nodes.reference.vectors.SlerpVectorsNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.Vector2InputNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.VectorInputNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -267,6 +268,36 @@ class ReferenceVectorsLanguageV2ContractTest {
         lerp.processNode(null);
         assertValid(lerp);
         assertVectorEquals(new Vector3d(2, 0, 0), requireVector(lerp.getOutput("output_result")), 1.0e-9d);
+    }
+
+    @Test
+    void lerpHugeEqualVectorsExtrapolationStaysFinite() {
+        BaseNode lerp = node("reference.vectors.lerp_vectors");
+        lerp.setInput("input_a", new Vector3d(1e308d, 0, 0));
+        lerp.setInput("input_b", new Vector3d(1e308d, 0, 0));
+        lerp.setInput("input_t", 2.0d);
+        lerp.processNode(null);
+        assertValid(lerp);
+        assertVectorEquals(new Vector3d(1e308d, 0, 0), requireVector(lerp.getOutput("output_result")), 1.0e300d);
+    }
+
+    @Test
+    void slerpPreserveMagnitudeHugeEqualMagnitudesExtrapolationStaysFinite() {
+        SlerpVectorsNode slerp = new SlerpVectorsNode();
+        slerp.setNodeState(java.util.Map.of("preserveMagnitude", true));
+        slerp.setInput("input_a", new Vector3d(1e308d, 0, 0));
+        slerp.setInput("input_b", new Vector3d(1e308d, 0, 0));
+        slerp.setInput("input_t", 2.0d);
+        slerp.processNode(null);
+        assertValid(slerp);
+        Vector3d result = requireVector(slerp.getOutput("output_result"));
+        assertVectorEquals(new Vector3d(1e308d, 0, 0), result, 1.0e300d);
+        assertEquals(1e308d, VectorUtils.safeLength(result), 1.0e300d);
+    }
+
+    @Test
+    void safeScalarLerpHugeEqualMagnitudesExtrapolationStaysFinite() {
+        assertEquals(1e308d, VectorUtils.safeScalarLerp(1e308d, 1e308d, 2.0d), 1.0e300d);
     }
 
     @Test
