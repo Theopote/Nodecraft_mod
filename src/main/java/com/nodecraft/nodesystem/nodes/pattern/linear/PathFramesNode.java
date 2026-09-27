@@ -3,11 +3,12 @@ package com.nodecraft.nodesystem.nodes.pattern.linear;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
@@ -17,6 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Generates parallel-transport frames at path vertices.
+ * <p>
+ * Output Points/Count reflect path-frame sampling cleanup (continuous dedupe),
+ * not the raw PATH vertex count.
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.linear.path_frames",
@@ -25,10 +32,9 @@ import java.util.UUID;
     category = "pattern.linear",
     order = 1
 )
-public class PathFramesNode extends BaseNode {
+public class PathFramesNode extends AbstractPatternLinearNode {
 
     private static final double DEDUPE_EPSILON = PathUtils.CLOSED_DISTANCE_EPSILON;
-    private static final double EPSILON = 1.0e-9d;
 
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_UP_VECTOR_ID = "input_up_vector";
@@ -38,7 +44,6 @@ public class PathFramesNode extends BaseNode {
     private static final String OUTPUT_TANGENTS_ID = "output_tangents";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PathFramesNode() {
         super(UUID.randomUUID(), "pattern.linear.path_frames");
@@ -47,11 +52,11 @@ public class PathFramesNode extends BaseNode {
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for frame construction", NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Parallel-transport frames along the path", NodeDataType.FRAME_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Frame origin points", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Frame origin points (after sampling cleanup)", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TANGENTS_ID, "Tangents", "Path direction at each frame", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of generated frames", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of generated frames (deduplicated samples)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Total path length", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame generation succeeds", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -63,13 +68,13 @@ public class PathFramesNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
         if (verts == null || verts.size() < 2) {
-            writeInvalid();
+            writeInvalid("Missing or invalid Path");
             return;
         }
 
         List<Vector3d> samples = deduplicateContinuous(new ArrayList<>(verts), DEDUPE_EPSILON);
         if (samples.size() < 2) {
-            writeInvalid();
+            writeInvalid("Path has fewer than 2 samples after cleanup");
             return;
         }
 
@@ -77,7 +82,19 @@ public class PathFramesNode extends BaseNode {
         List<Vector3d> vertices = closedVerts.vertices();
         boolean closed = closedVerts.closed();
         if (vertices.size() < 2) {
-            writeInvalid();
+            writeInvalid("Path has fewer than 2 unique vertices");
+            return;
+        }
+        if (vertices.size() > GenerationLimits.MAX_LAYOUT_INSTANCES) {
+            writeInvalid("Path sample count exceeds MAX_LAYOUT_INSTANCES");
+            return;
+        }
+
+        Vector3d up = resolveOptionalUpVector(this, INPUT_UP_VECTOR_ID);
+        if (up == null) {
+            writeInvalid(OptionalPortDrive.isConnected(this, INPUT_UP_VECTOR_ID)
+                ? "Up Vector connected but invalid or zero"
+                : "Up Vector is invalid");
             return;
         }
 
@@ -89,10 +106,9 @@ public class PathFramesNode extends BaseNode {
             tangents.add(PathFrameUtils.computeTangent(vertices, i, closed));
         }
 
-        Vector3d up = resolveUp(inputValues.get(INPUT_UP_VECTOR_ID));
         List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(vertices, tangents, up);
         if (frames.isEmpty()) {
-            writeInvalid();
+            writeInvalid("Failed to construct path frames");
             return;
         }
 
@@ -104,18 +120,16 @@ public class PathFramesNode extends BaseNode {
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(vertices));
         outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(tangentCopy));
-        outputValues.put(OUTPUT_COUNT_ID, frames.size());
+        putIntOutputs(frames.size(), OUTPUT_COUNT_ID);
         outputValues.put(OUTPUT_LENGTH_ID, total);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_FRAMES_ID, List.of());
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TANGENTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
+    private void writeInvalid(String error) {
+        markInvalid(error);
+        putEmptyListOutputs(OUTPUT_FRAMES_ID, OUTPUT_POINTS_ID, OUTPUT_TANGENTS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
         outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     private static List<Vector3d> deduplicateContinuous(List<Vector3d> points, double epsilon) {
@@ -129,14 +143,6 @@ public class PathFramesNode extends BaseNode {
             }
         }
         return filtered;
-    }
-
-    private Vector3d resolveUp(Object value) {
-        Vector3d resolved = SpatialValueResolver.resolveVector(value);
-        if (resolved != null && resolved.lengthSquared() > EPSILON) {
-            return new Vector3d(resolved).normalize();
-        }
-        return new Vector3d(0.0d, 1.0d, 0.0d);
     }
 
     @Override

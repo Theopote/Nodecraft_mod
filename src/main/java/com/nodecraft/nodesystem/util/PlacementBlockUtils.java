@@ -45,6 +45,25 @@ public final class PlacementBlockUtils {
     }
 
     /**
+     * Subtracts {@code origin} from {@code pos} with overflow checks
+     * (including {@code Integer.MIN_VALUE} negation).
+     */
+    public static @Nullable BlockPos subtractBlockPos(BlockPos pos, BlockPos origin) {
+        if (pos == null || origin == null) {
+            return null;
+        }
+        long x = (long) pos.getX() - origin.getX();
+        long y = (long) pos.getY() - origin.getY();
+        long z = (long) pos.getZ() - origin.getZ();
+        if (x < Integer.MIN_VALUE || x > Integer.MAX_VALUE
+            || y < Integer.MIN_VALUE || y > Integer.MAX_VALUE
+            || z < Integer.MIN_VALUE || z > Integer.MAX_VALUE) {
+            return null;
+        }
+        return new BlockPos((int) x, (int) y, (int) z);
+    }
+
+    /**
      * Snaps a transformed cell-center point back to BLOCK_POS; rejects non-finite or
      * non-representable floor coordinates (finite but outside int / BlockPos range).
      */

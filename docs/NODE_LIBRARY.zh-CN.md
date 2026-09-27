@@ -596,7 +596,7 @@
 |---|---|---|---|
 | Linear Array | `pattern.linear.linear_array` | Creates repeated geometry copies along a direction vector | `LinearArrayNode` |
 | Path Frames | `pattern.linear.path_frames` | Generates parallel-transport frames at path vertices. | `PathFramesNode` |
-| Instance on Points | `pattern.linear.instance_on_points` | Instances a block-placement template at each input point. | `InstanceOnPointsNode` |
+| Instance Block Placements | `pattern.linear.instance_block_placements` | Instances a block-placement template at each block anchor. | `InstanceBlockPlacementsNode` |
 | Curve Array | `pattern.linear.curve_array` | Creates repeated geometry copies along a curve using parallel-transport frames and placement | `CurveArrayNode` |
 
 ## pattern.lsystem（3）

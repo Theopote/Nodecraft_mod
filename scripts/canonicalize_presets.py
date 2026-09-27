@@ -34,11 +34,12 @@ NODE_TYPE_ALIASES = {
     "output.bake.geometry_to_blocks": "geometry.voxel.voxelize_geometry",
     "output.execute.bake_geometry_to_blocks": "geometry.voxel.voxelize_geometry",
     "output.preview.block_preview": "output.preview.preview_blocks",
-    "pattern.instances.place_instances_at_points": "pattern.linear.instance_on_points",
-    "pattern.instances.orient_instances_to_frames": "pattern.linear.instance_on_points",
-    "patterns.instances.instance_on_points": "pattern.linear.instance_on_points",
+    "pattern.instances.place_instances_at_points": "pattern.linear.instance_block_placements",
+    "pattern.instances.orient_instances_to_frames": "pattern.linear.instance_block_placements",
+    "patterns.instances.instance_on_points": "pattern.linear.instance_block_placements",
     "patterns.array.linear": "pattern.linear.linear_array",
-    "patterns.instances.instance_geometry_to_points": "pattern.linear.instance_on_points",
+    "patterns.instances.instance_geometry_to_points": "pattern.linear.instance_block_placements",
+    "pattern.linear.instance_on_points": "pattern.linear.instance_block_placements",
 }
 
 

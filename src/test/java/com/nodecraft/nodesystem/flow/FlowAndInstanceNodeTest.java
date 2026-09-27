@@ -1,10 +1,11 @@
 package com.nodecraft.nodesystem.flow;
 
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
-import com.nodecraft.nodesystem.nodes.pattern.linear.InstanceOnPointsNode;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.nodes.pattern.linear.InstanceBlockPlacementsNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterPointsByRuleNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.BlockPosList;
 import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.Test;
 
@@ -18,16 +19,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FlowAndInstanceNodeTest {
 
     @Test
-    void instanceOnPointsCopiesTemplateAtEveryAnchor() {
-        InstanceOnPointsNode node = new InstanceOnPointsNode();
-        List<PointData> anchors = List.of(new PointData(10, 64, 10), new PointData(20, 64, 20));
+    void instanceBlockPlacementsCopiesTemplateAtEveryAnchor() {
+        InstanceBlockPlacementsNode node = new InstanceBlockPlacementsNode();
+        BlockPosList anchors = new BlockPosList(List.of(new BlockPos(10, 64, 10), new BlockPos(20, 64, 20)));
         List<BlockPlacementData> template = List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_fence"),
                 new BlockPlacementData(new BlockPos(0, 1, 0), "minecraft:lantern")
         );
 
         Map<String, Object> outputs = node.compute(Map.of(
-                "input_points", anchors,
+                "input_anchors", anchors,
                 "input_template_placements", template
         ));
 

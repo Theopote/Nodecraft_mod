@@ -137,6 +137,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V75 -> migrateV75ToV76(graph);
             case GraphFormatVersion.V76 -> migrateV76ToV77(graph);
             case GraphFormatVersion.V77 -> migrateV77ToV78(graph);
+            case GraphFormatVersion.V78 -> migrateV78ToV79(graph);
             default -> graph;
         };
     }
@@ -4988,6 +4989,15 @@ public final class GraphMigrationRegistry {
         "fillsourcegeometry"
     );
 
+    private static final String LEGACY_INSTANCE_ON_POINTS_TYPE = "pattern.linear.instance_on_points";
+    private static final String INSTANCE_BLOCK_PLACEMENTS_TYPE = "pattern.linear.instance_block_placements";
+    private static final String LINEAR_ARRAY_TYPE = "pattern.linear.linear_array";
+    private static final String CURVE_ARRAY_TYPE = "pattern.linear.curve_array";
+
+    private static final Set<String> PATTERN_LINEAR_V79_REMOVED_STATE_KEYS = Set.of(
+        "maxinstances"
+    );
+
     /**
      * Deformations Language v2: twist_geometry/bend_geometry → twist_sdf/bend_sdf,
      * drop unsafe geometry/iso/approximate wires, strip fillSourceGeometry state.
@@ -5102,6 +5112,104 @@ public final class GraphMigrationRegistry {
             }
             if (DEFORMATIONS_V78_REMOVED_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
                 LOGGER.debug("Stripped Deformations V78 obsolete state {} from {}", key, node.nodeId);
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned.isEmpty() ? null : cleaned;
+    }
+
+    /**
+     * Pattern Linear Language v2: rename Instance on Points → Instance Block Placements,
+     * drop POINT_LIST / Max Instances / raw LIST geometry wires, strip maxInstances state.
+     */
+    private static SavedGraph migrateV78ToV79(SavedGraph graph) {
+        applyPatternLinearV79ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyPatternLinearV79ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applyPatternLinearV79ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (LEGACY_INSTANCE_ON_POINTS_TYPE.equals(node.typeId)) {
+                    node.typeId = INSTANCE_BLOCK_PLACEMENTS_TYPE;
+                }
+                stripPatternLinearV79State(node);
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String targetType = typeIdOf(graph, connection.targetNodeId);
+            if (shouldDropPatternLinearV79Connection(connection, sourceType, targetType)) {
+                LOGGER.debug("Dropped Pattern Linear V79 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static boolean isPatternLinearArrayType(@Nullable String typeId) {
+        return LINEAR_ARRAY_TYPE.equals(typeId) || CURVE_ARRAY_TYPE.equals(typeId);
+    }
+
+    private static boolean isInstanceBlockPlacementsType(@Nullable String typeId) {
+        return INSTANCE_BLOCK_PLACEMENTS_TYPE.equals(typeId)
+            || LEGACY_INSTANCE_ON_POINTS_TYPE.equals(typeId);
+    }
+
+    private static boolean shouldDropPatternLinearV79Connection(
+        SavedConnection connection,
+        @Nullable String sourceType,
+        @Nullable String targetType
+    ) {
+        if (isPatternLinearArrayType(sourceType)
+                && "output_geometries".equals(
+                    connection.sourcePortId == null ? null : connection.sourcePortId.toLowerCase(Locale.ROOT))) {
+            return true;
+        }
+        if (!isInstanceBlockPlacementsType(targetType) || connection.targetPortId == null) {
+            return false;
+        }
+        String targetPort = connection.targetPortId.toLowerCase(Locale.ROOT);
+        return "input_points".equals(targetPort) || "input_max_instances".equals(targetPort);
+    }
+
+    private static void stripPatternLinearV79State(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        if (!isInstanceBlockPlacementsType(node.typeId)) {
+            return;
+        }
+
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if (PATTERN_LINEAR_V79_REMOVED_STATE_KEYS.contains(key.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Stripped Pattern Linear V79 obsolete state {} from {}", key, node.nodeId);
                 continue;
             }
             cleaned.put(key, entry.getValue());
