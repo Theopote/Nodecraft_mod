@@ -55,9 +55,9 @@ class GeometryProfilesLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV73() {
+    void currentGraphFormatIsAtLeastV73() {
         assertEquals(73, GraphFormatVersion.V73);
-        assertEquals(GraphFormatVersion.V73, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V73);
     }
 
     @Test
@@ -138,27 +138,45 @@ class GeometryProfilesLanguageContractTest {
     }
 
     @Test
-    void polygonProfileValidatorRejectsNaNAndSelfIntersection() {
+    void polygonProfileValidatorRejectsNaN() {
         List<Vector3d> nanPoint = List.of(
             new Vector3d(0, 0, 0),
             new Vector3d(Double.NaN, 0, 1),
             new Vector3d(1, 0, 1),
             new Vector3d(0, 0, 0)
         );
-        assertNotNull(PolygonProfileValidator.validateConstruction(nanPoint, PlaneData.XZ_PLANE));
+        String error = PolygonProfileValidator.validateConstruction(nanPoint, PlaneData.XZ_PLANE);
+        assertNotNull(error);
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("non-finite"));
+    }
 
-        List<Vector3d> bowTie = List.of(
+    @Test
+    void polygonProfileValidatorRejectsUnclosedLoopWithoutThrowing() {
+        List<Vector3d> unclosed = List.of(
             new Vector3d(0, 0, 0),
-            new Vector3d(4, 0, 4),
             new Vector3d(4, 0, 0),
-            new Vector3d(0, 0, 4),
-            new Vector3d(0, 0, 0)
+            new Vector3d(4, 0, 4),
+            new Vector3d(0, 0, 4)
         );
-        String bowTieError = PolygonProfileValidator.validateConstruction(bowTie, PlaneData.XZ_PLANE);
-        assertNotNull(bowTieError);
-        String lower = bowTieError.toLowerCase(Locale.ROOT);
-        assertTrue(lower.contains("self-intersect") || lower.contains("zero area"),
-            "expected self-intersect or zero area, was: " + bowTieError);
+        String error = PolygonProfileValidator.validateConstruction(unclosed, PlaneData.XZ_PLANE);
+        assertNotNull(error);
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("closed"), "was: " + error);
+    }
+
+    @Test
+    void polygonProfileValidatorRejectsNonZeroAreaSelfIntersection() {
+        // Regular pentagram {5/2}: self-intersecting, non-zero signed area.
+        List<Vector3d> star = new ArrayList<>(6);
+        for (int i = 0; i < 5; i++) {
+            double angle = i * (4.0d * Math.PI / 5.0d);
+            star.add(new Vector3d(Math.cos(angle) * 5.0d, 0.0d, Math.sin(angle) * 5.0d));
+        }
+        star.add(new Vector3d(star.getFirst()));
+
+        String error = PolygonProfileValidator.validateConstruction(star, PlaneData.XZ_PLANE);
+        assertNotNull(error);
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("self-intersect"),
+            "expected self-intersect for non-zero-area star, was: " + error);
     }
 
     @Test

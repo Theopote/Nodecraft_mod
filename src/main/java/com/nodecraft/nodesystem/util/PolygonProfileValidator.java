@@ -9,6 +9,8 @@ import org.joml.Vector3d;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.valid.IsValidOp;
+import org.locationtech.jts.operation.valid.TopologyValidationError;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +55,15 @@ public final class PolygonProfileValidator {
             return "Polygon profile requires at least 3 unique vertices plus closure";
         }
 
+        Vector3d first = closedPoints.getFirst();
+        Vector3d last = closedPoints.getLast();
+        if (first == null || last == null || !FrameUtils.isFinite(first) || !FrameUtils.isFinite(last)) {
+            return "Polygon profile contains non-finite coordinates";
+        }
+        if (first.distanceSquared(last) > CLOSURE_EPS * CLOSURE_EPS) {
+            return "Polygon profile must be closed";
+        }
+
         List<Vector3d> canonical = canonicalizeClosedPoints(closedPoints);
         if (canonical.size() < 4) {
             return "Polygon profile requires at least 3 unique vertices plus closure";
@@ -64,7 +75,7 @@ public final class PolygonProfileValidator {
         }
 
         for (Vector3d point : canonical) {
-            if (!FrameUtils.isFinite(point)) {
+            if (point == null || !FrameUtils.isFinite(point)) {
                 return "Polygon profile contains non-finite coordinates";
             }
             if (Math.abs(normalizedPlane.signedDistanceTo(point)) > COPLANAR_EPS) {
@@ -100,8 +111,9 @@ public final class PolygonProfileValidator {
             return "Polygon profile has zero area";
         }
 
-        if (!isSimpleLoop(canonical, normalizedPlane)) {
-            return "Polygon profile is self-intersecting";
+        String topologyError = validateSimpleLoopTopology(canonical, normalizedPlane);
+        if (topologyError != null) {
+            return topologyError;
         }
 
         return null;
@@ -109,6 +121,7 @@ public final class PolygonProfileValidator {
 
     /**
      * Returns a defensive copy with canonical exact repeated first vertex at closure.
+     * Caller must ensure the loop is already closed within {@link #CLOSURE_EPS}.
      */
     public static List<Vector3d> canonicalizeClosedPoints(List<Vector3d> closedPoints) {
         List<Vector3d> copied = new ArrayList<>(closedPoints.size());
@@ -167,14 +180,44 @@ public final class PolygonProfileValidator {
         return area2 * 0.5d;
     }
 
-    private static boolean isSimpleLoop(List<Vector3d> closedPoints, PlaneData plane) {
+    /**
+     * @return null when the loop is a valid simple polygon; otherwise an actionable error
+     */
+    private static @Nullable String validateSimpleLoopTopology(List<Vector3d> closedPoints, PlaneData plane) {
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         Coordinate[] coords = new Coordinate[closedPoints.size()];
         for (int i = 0; i < closedPoints.size(); i++) {
             Vector2d uv = axes.to2d(closedPoints.get(i));
             coords[i] = new Coordinate(uv.x, uv.y);
         }
-        Polygon polygon = new GeometryFactory().createPolygon(coords);
-        return polygon.isSimple();
+        try {
+            Polygon polygon = new GeometryFactory().createPolygon(coords);
+            IsValidOp validOp = new IsValidOp(polygon);
+            if (validOp.isValid()) {
+                return null;
+            }
+            TopologyValidationError error = validOp.getValidationError();
+            if (error != null) {
+                int errorType = error.getErrorType();
+                if (errorType == TopologyValidationError.SELF_INTERSECTION
+                        || errorType == TopologyValidationError.RING_SELF_INTERSECTION) {
+                    return "Polygon profile is self-intersecting";
+                }
+                if (errorType == TopologyValidationError.TOO_FEW_POINTS) {
+                    return "Polygon profile requires at least 3 unique vertices";
+                }
+                String message = error.getMessage();
+                if (message != null && !message.isBlank()) {
+                    return "Polygon profile is invalid: " + message;
+                }
+            }
+            return "Polygon profile is self-intersecting";
+        } catch (IllegalArgumentException ex) {
+            String message = ex.getMessage();
+            if (message != null && !message.isBlank()) {
+                return "Polygon profile is invalid: " + message;
+            }
+            return "Polygon profile is invalid";
+        }
     }
 }
