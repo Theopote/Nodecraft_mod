@@ -77,24 +77,58 @@ public class BoundingBoxData {
         return new Vector3d(max);
     }
 
-    /** Midpoint of the continuous AABB. */
+    /**
+     * Midpoint of the continuous AABB.
+     * <p>
+     * Uses {@code min*0.5 + max*0.5} to reduce overflow vs {@code (min+max)*0.5}.
+     * Derived values may still be non-finite for extreme finite corners — use
+     * {@link #finiteCenter()} at graph-facing boundaries.
+     */
     public Vector3d center() {
         return new Vector3d(
-            (min.x + max.x) * 0.5d,
-            (min.y + max.y) * 0.5d,
-            (min.z + max.z) * 0.5d
+            min.x * 0.5d + max.x * 0.5d,
+            min.y * 0.5d + max.y * 0.5d,
+            min.z * 0.5d + max.z * 0.5d
         );
     }
 
-    /** Axis extents {@code max - min} (zero-thickness allowed). */
+    /** Axis extents {@code max - min} (zero-thickness allowed; may be non-finite). */
     public Vector3d size() {
         return new Vector3d(max.x - min.x, max.y - min.y, max.z - min.z);
     }
 
-    /** Product of axis extents (may be 0 for a degenerate box). */
+    /** Product of axis extents (may be 0 or non-finite). */
     public double volume() {
         Vector3d s = size();
         return s.x * s.y * s.z;
+    }
+
+    /**
+     * Graph-facing midpoint: {@code null} when any component is non-finite.
+     */
+    public @Nullable Vector3d finiteCenter() {
+        Vector3d c = center();
+        return isFinite(c) ? c : null;
+    }
+
+    /**
+     * Graph-facing size: {@code null} when any axis extent is non-finite.
+     */
+    public @Nullable Vector3d finiteSize() {
+        Vector3d s = size();
+        return isFinite(s) ? s : null;
+    }
+
+    /**
+     * Graph-facing volume: {@code null} when size or product is non-finite.
+     */
+    public @Nullable Double finiteVolume() {
+        Vector3d s = finiteSize();
+        if (s == null) {
+            return null;
+        }
+        double v = s.x * s.y * s.z;
+        return Double.isFinite(v) ? v : null;
     }
 
     /**

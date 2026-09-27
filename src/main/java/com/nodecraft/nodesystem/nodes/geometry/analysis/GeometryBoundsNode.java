@@ -88,18 +88,22 @@ public class GeometryBoundsNode extends BaseNode {
             return;
         }
 
-        Vector3d min = box.getMin();
-        Vector3d max = box.getMax();
-        Vector3d size = box.size();
+        Vector3d center = box.finiteCenter();
+        Vector3d size = box.finiteSize();
+        Double volume = box.finiteVolume();
+        if (center == null || size == null || volume == null) {
+            writeInvalid("Bounding box derived metrics are non-finite");
+            return;
+        }
 
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, box);
-        outputValues.put(OUTPUT_MIN_POINT_ID, new PointData(min));
-        outputValues.put(OUTPUT_MAX_POINT_ID, new PointData(max));
-        outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(box.center()));
+        outputValues.put(OUTPUT_MIN_POINT_ID, new PointData(box.getMin()));
+        outputValues.put(OUTPUT_MAX_POINT_ID, new PointData(box.getMax()));
+        outputValues.put(OUTPUT_CENTER_POINT_ID, new PointData(center));
         outputValues.put(OUTPUT_SIZE_X_ID, size.x);
         outputValues.put(OUTPUT_SIZE_Y_ID, size.y);
         outputValues.put(OUTPUT_SIZE_Z_ID, size.z);
-        outputValues.put(OUTPUT_VOLUME_ID, box.volume());
+        outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

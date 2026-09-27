@@ -21,6 +21,7 @@ Core rule: `BOUNDING_BOX` is a **continuous** geometric AABB; `REGION` / `BLOCK_
 - Factory `create(min, max)` → `null` when null / non-finite / inverted (`min > max` on any axis).
 - Closed-interval membership `[min, max]`.
 - Helpers: `center()`, `size()`, `volume()`, `union()`, `intersection()` (non-overlap → `null`).
+- Graph-facing derived metrics: `finiteCenter()` / `finiteSize()` / `finiteVolume()` → `null` when any derived double is non-finite (finite corners do not imply finite size/center/volume).
 
 ## Block Bounds
 
@@ -43,6 +44,7 @@ Rules:
 - Strict `BlockListUtils.resolveStrictBlockList` (not `instanceof BlockPosList` alone).
 - Cell envelope: block `(x,y,z)` → continuous `[x,y,z]→[x+1,y+1,z+1]`.
 - Size axes fail closed if span not representable in `int`.
+- Center / volume fail closed when derived continuous metrics are non-finite.
 
 ## Geometry Bounds
 
@@ -59,8 +61,10 @@ Rules:
 
 - Resolves via `GeometryBoundsResolver` only — **no** `GeometryVoxelizer` / BlockPos flooring.
 - Zero-thickness AABB (size axis 0, volume 0) allowed when finite.
-- Boolops: Composite = AABB union; Difference = minuend (conservative); Intersection = AABB ∩ AABB (non-overlap → invalid).
+- Boolops: Composite = AABB union (**transactional**: any child that fails to resolve → whole composite `null` / `Valid=false`; empty composite → invalid). Difference = minuend (conservative). Intersection = AABB ∩ AABB (non-overlap → invalid).
+- Before `Valid=true`, Center / Size / Volume must all be finite; otherwise `Valid=false` with Error mentioning non-finite derived metrics.
 - No Region / BLOCK_POS / INTEGER size ports.
+- Bounds may be **conservative** for some oriented / implicit shapes (cylinder, cone, hemisphere, torus, oriented ellipsoid, etc.); analysis guarantees a finite enclosing AABB, not the analytically tightest bound for every primitive.
 
 ## Migration (V66 → V67)
 

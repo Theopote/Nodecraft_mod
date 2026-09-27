@@ -102,7 +102,15 @@ public final class GeometryBoundsResolver {
     private static @Nullable BoundingBoxData resolveComposite(CompositeGeometryData composite) {
         BoundingBoxData merged = null;
         for (GeometryData child : composite.getGeometries()) {
-            merged = BoundingBoxData.union(merged, resolve(child));
+            BoundingBoxData childBounds = resolve(child);
+            if (childBounds == null) {
+                // Transactional: any unresolvable child fails the whole composite.
+                return null;
+            }
+            merged = merged == null ? childBounds : BoundingBoxData.union(merged, childBounds);
+            if (merged == null) {
+                return null;
+            }
         }
         return merged;
     }
@@ -110,7 +118,8 @@ public final class GeometryBoundsResolver {
     private static @Nullable BoundingBoxData resolveBox(BoxGeometryData box) {
         Vector3d center = box.getCenter();
         Vector3d half = box.getHalfExtents();
-        if (!BoundingBoxData.isFinite(center) || !BoundingBoxData.isFinite(half)) {
+        if (!BoundingBoxData.isFinite(center) || !BoundingBoxData.isFinite(half)
+            || half.x < 0.0d || half.y < 0.0d || half.z < 0.0d) {
             return null;
         }
         if (box.isOriented()) {
@@ -170,8 +179,8 @@ public final class GeometryBoundsResolver {
 
     private static @Nullable BoundingBoxData resolveHemisphere(HemisphereGeometryData geometry) {
         Vector3d center = geometry.center();
-        double radius = Math.max(0.0d, geometry.radius());
-        if (!BoundingBoxData.isFinite(center) || !Double.isFinite(radius)) {
+        double radius = geometry.radius();
+        if (!BoundingBoxData.isFinite(center) || !Double.isFinite(radius) || radius < 0.0d) {
             return null;
         }
         return BoundingBoxData.create(
@@ -196,7 +205,8 @@ public final class GeometryBoundsResolver {
         Vector3d baseCenter = geometry.getBaseCenter();
         Vector3d apex = geometry.getApex();
         double radius = geometry.getBaseRadius();
-        if (!BoundingBoxData.isFinite(baseCenter) || !BoundingBoxData.isFinite(apex) || !Double.isFinite(radius)) {
+        if (!BoundingBoxData.isFinite(baseCenter) || !BoundingBoxData.isFinite(apex)
+            || !Double.isFinite(radius) || radius < 0.0d) {
             return null;
         }
         return BoundingBoxData.create(
@@ -219,7 +229,8 @@ public final class GeometryBoundsResolver {
         double br = geometry.getBaseRadius();
         double tr = geometry.getTopRadius();
         if (!BoundingBoxData.isFinite(base) || !BoundingBoxData.isFinite(top)
-            || !Double.isFinite(br) || !Double.isFinite(tr)) {
+            || !Double.isFinite(br) || !Double.isFinite(tr)
+            || br < 0.0d || tr < 0.0d) {
             return null;
         }
         return BoundingBoxData.create(
@@ -239,8 +250,9 @@ public final class GeometryBoundsResolver {
     private static @Nullable BoundingBoxData resolveCylinder(CylinderGeometryData geometry) {
         Vector3d start = geometry.getStart();
         Vector3d end = geometry.getEnd();
-        double radius = Math.max(0.0d, geometry.getRadius());
-        if (!BoundingBoxData.isFinite(start) || !BoundingBoxData.isFinite(end) || !Double.isFinite(radius)) {
+        double radius = geometry.getRadius();
+        if (!BoundingBoxData.isFinite(start) || !BoundingBoxData.isFinite(end)
+            || !Double.isFinite(radius) || radius < 0.0d) {
             return null;
         }
         return BoundingBoxData.create(
@@ -260,7 +272,8 @@ public final class GeometryBoundsResolver {
     private static @Nullable BoundingBoxData resolveEllipsoid(EllipsoidGeometryData geometry) {
         Vector3d center = geometry.getCenter();
         Vector3d radii = geometry.getRadii();
-        if (!BoundingBoxData.isFinite(center) || !BoundingBoxData.isFinite(radii)) {
+        if (!BoundingBoxData.isFinite(center) || !BoundingBoxData.isFinite(radii)
+            || radii.x < 0.0d || radii.y < 0.0d || radii.z < 0.0d) {
             return null;
         }
         return orientedCornerHull(center, radii, geometry.getOrientationMatrix());

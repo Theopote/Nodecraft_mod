@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
@@ -245,6 +246,47 @@ class GeometryAnalysisLanguageContractTest {
         assertNotNull(overlap);
         assertEquals(-0.5d, overlap.getMin().x, 1e-12);
         assertEquals(1.0d, overlap.getMax().x, 1e-12);
+    }
+
+    @Test
+    void compositeWithUnresolvableChildFailsClosed() {
+        BoxGeometryData valid = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(1, 1, 1));
+        GeometryData unsupported = new GeometryData() {
+        };
+        CompositeGeometryData composite = new CompositeGeometryData(List.of(valid, unsupported));
+
+        assertNull(GeometryBoundsResolver.resolve(composite));
+
+        GeometryBoundsNode node = new GeometryBoundsNode();
+        Map<String, Object> outputs = node.compute(Map.of("input_geometry", composite));
+        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        assertNull(outputs.get("output_bounding_box"));
+
+        assertNull(GeometryBoundsResolver.resolve(new CompositeGeometryData(List.of())));
+    }
+
+    @Test
+    void derivedCenterSizeVolumeMustBeFinite() {
+        BoundingBoxData extreme = BoundingBoxData.create(
+                new Vector3d(-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE),
+                new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE));
+        assertNotNull(extreme);
+        assertNull(extreme.finiteSize());
+        assertNull(extreme.finiteVolume());
+
+        GeometryBoundsNode node = new GeometryBoundsNode();
+        SdfGeometryData sdf = new SdfGeometryData(
+                point -> -1.0d,
+                new Vector3d(-Double.MAX_VALUE, 0.0d, 0.0d),
+                new Vector3d(Double.MAX_VALUE, 1.0d, 1.0d),
+                0.0d
+        );
+        Map<String, Object> outputs = node.compute(Map.of("input_geometry", sdf));
+        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        assertTrue(String.valueOf(outputs.get("output_error")).toLowerCase(Locale.ROOT).contains("non-finite"));
+        assertNull(outputs.get("output_bounding_box"));
+        Object sizeX = outputs.get("output_size_x");
+        assertTrue(sizeX instanceof Double && Double.isNaN((Double) sizeX));
     }
 
     @Test

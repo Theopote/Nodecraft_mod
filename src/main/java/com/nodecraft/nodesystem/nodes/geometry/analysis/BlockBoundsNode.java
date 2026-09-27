@@ -153,10 +153,21 @@ public class BlockBoundsNode extends BaseNode {
             return;
         }
 
+        Vector3d center = boundingBox.finiteCenter();
+        Double continuousVolume = boundingBox.finiteVolume();
+        if (center == null || continuousVolume == null) {
+            writeInvalid("Bounding box derived metrics are non-finite");
+            return;
+        }
+
         int sizeX = (int) sizeXLong;
         int sizeY = (int) sizeYLong;
         int sizeZ = (int) sizeZLong;
         double volume = (double) sizeXLong * (double) sizeYLong * (double) sizeZLong;
+        if (!Double.isFinite(volume)) {
+            writeInvalid("Bounding box derived metrics are non-finite");
+            return;
+        }
 
         outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
         outputValues.put(OUTPUT_REGION_ID, region);
@@ -166,7 +177,7 @@ public class BlockBoundsNode extends BaseNode {
         outputValues.put(OUTPUT_SIZE_Y_ID, sizeY);
         outputValues.put(OUTPUT_SIZE_Z_ID, sizeZ);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_CENTER_ID, new PointData(boundingBox.center()));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
