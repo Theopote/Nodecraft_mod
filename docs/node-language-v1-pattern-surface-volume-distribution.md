@@ -1,6 +1,7 @@
 # Node Language v1 — Surface / Volume Distribution
 
-**Status: PASSED / FROZEN** (Graph **V44**)
+**Status: HISTORICAL** (Graph **V44**; superseded by Graph **V82** — see
+[`node-language-v2-pattern-surface-volume-distribution.md`](./node-language-v2-pattern-surface-volume-distribution.md))
 
 Language unification for the six canonical `pattern.surface_volume_distribution.*`
 nodes: continuous spatial sampling producers aligned with Pattern Linear/Grid/Radial

@@ -25,6 +25,67 @@ public final class GenerationLimits {
     public static final int MAX_LAYOUT_INSTANCES = 16_384;
 
     /**
+     * Candidate oversampling factor per target for surface/volume scatter preflight.
+     */
+    public static final int SCATTER_CANDIDATES_PER_TARGET = 32;
+
+    /**
+     * Hard cap on candidate generation for surface/volume scatter ({@code target × factor}).
+     */
+    public static final long MAX_SCATTER_CANDIDATES = (long) MAX_LAYOUT_INSTANCES * SCATTER_CANDIDATES_PER_TARGET;
+
+    /**
+     * Hard cap on Poisson / min-distance pairwise distance tests
+     * (approx {@code attempts × accepted}).
+     */
+    public static final long MAX_SCATTER_DISTANCE_TESTS = MAX_LIST_ELEMENTS;
+
+    /**
+     * Fail-closed candidate budget for scatter oversampling.
+     *
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateScatterCandidateBudget(int targetCount, int candidatesPerTarget) {
+        if (targetCount <= 0) {
+            return "Target Count must be >= 1";
+        }
+        if (candidatesPerTarget <= 0) {
+            return "Candidate factor must be >= 1";
+        }
+        long product;
+        try {
+            product = Math.multiplyExact((long) targetCount, (long) candidatesPerTarget);
+        } catch (ArithmeticException overflow) {
+            return "Scatter candidate budget overflows";
+        }
+        if (product > MAX_SCATTER_CANDIDATES) {
+            return "Scatter candidate budget exceeds MAX_SCATTER_CANDIDATES";
+        }
+        return null;
+    }
+
+    /**
+     * Fail-closed distance-test workload preflight for Poisson-style rejection.
+     *
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateScatterDistanceTests(long attempts, int targetCount) {
+        if (attempts < 0L || targetCount < 0) {
+            return "Scatter distance-test budget invalid";
+        }
+        long product;
+        try {
+            product = Math.multiplyExact(attempts, (long) Math.max(1, targetCount));
+        } catch (ArithmeticException overflow) {
+            return "Scatter distance-test budget overflows";
+        }
+        if (product > MAX_SCATTER_DISTANCE_TESTS) {
+            return "Scatter distance-test budget exceeds MAX_SCATTER_DISTANCE_TESTS";
+        }
+        return null;
+    }
+
+    /**
      * Hard cap for Relax Point List input size (implementation safety budget).
      */
     public static final int MAX_RELAX_POINTS = 8192;

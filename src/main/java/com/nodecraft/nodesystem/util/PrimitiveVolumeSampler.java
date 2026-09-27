@@ -1,28 +1,30 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
-import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 
 /**
- * Continuous volume sampling for supported primitive geometry types.
+ * Continuous volume sampling for supported primitive geometry types (Graph V82).
+ * Uses continuous AABB bounds only — never GeometryVoxelizer / RegionData / BlockPos.
  */
 public final class PrimitiveVolumeSampler {
 
     private static final int MAX_REJECTION_ATTEMPTS = 256;
+    private static final double EPS = 1.0e-12d;
 
     private PrimitiveVolumeSampler() {
     }
@@ -31,36 +33,116 @@ public final class PrimitiveVolumeSampler {
         return PrimitiveGeometrySurfaceSampler.isSupported(geometry);
     }
 
-    public static List<Vector3d> scatter(
+    /**
+     * @return null when geometry is invalid/degenerate or candidate budget fails;
+     *         otherwise accepted points (may be under-target / empty)
+     */
+    public static @Nullable List<Vector3d> scatter(
         GeometryData geometry,
         int targetCount,
         int seed,
         double minDistance,
         MinDistanceScatterSelector.DistributionMode mode
     ) {
-        if (!isSupported(geometry) || targetCount <= 0) {
-            return List.of();
+        String validation = validatePrimitive(geometry);
+        if (validation != null || targetCount <= 0) {
+            return null;
+        }
+        String budgetError = GenerationLimits.validateScatterCandidateBudget(
+            targetCount, GenerationLimits.SCATTER_CANDIDATES_PER_TARGET);
+        if (budgetError != null) {
+            return null;
         }
 
         Random random = new Random(seed);
-        int candidateBudget = Math.max(targetCount * MAX_REJECTION_ATTEMPTS, targetCount);
-        List<Vector3d> candidates = new ArrayList<>(candidateBudget);
+        long candidateBudgetLong = (long) targetCount * MAX_REJECTION_ATTEMPTS;
+        int candidateBudget = (int) Math.min(candidateBudgetLong, Integer.MAX_VALUE);
+        long fillCapLong = (long) targetCount * 8L;
+        int fillCap = (int) Math.min(fillCapLong, Integer.MAX_VALUE);
+        List<Vector3d> candidates = new ArrayList<>(Math.min(candidateBudget, fillCap));
 
-        for (int attempt = 0; attempt < candidateBudget && candidates.size() < targetCount * 8; attempt++) {
+        for (int attempt = 0; attempt < candidateBudget && candidates.size() < fillCap; attempt++) {
             Vector3d sample = sampleRandomInteriorPoint(geometry, random);
-            if (sample != null) {
-                candidates.add(sample);
+            if (sample == null) {
+                return null;
             }
+            candidates.add(sample);
         }
 
         return MinDistanceScatterSelector.select(candidates, targetCount, minDistance, mode, random);
     }
 
-    private static Vector3d sampleRandomInteriorPoint(GeometryData geometry, Random random) {
+    public static @Nullable String validatePrimitive(@Nullable GeometryData geometry) {
+        if (geometry == null || !isSupported(geometry)) {
+            return "Unsupported or missing volume geometry";
+        }
+        if (geometry instanceof SphereData sphere) {
+            if (!PointUtils.isFinite(sphere.center()) || !Double.isFinite(sphere.radius()) || sphere.radius() <= 0.0d) {
+                return "Sphere volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof BoxGeometryData box) {
+            Vector3d half = box.getHalfExtents();
+            if (!PointUtils.isFinite(box.getCenter()) || !PointUtils.isFinite(half)
+                    || half.x <= EPS || half.y <= EPS || half.z <= EPS) {
+                return "Box volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof CylinderGeometryData cylinder) {
+            Vector3d axis = new Vector3d(cylinder.getEnd()).sub(cylinder.getStart());
+            if (!PointUtils.isFinite(cylinder.getStart()) || !PointUtils.isFinite(cylinder.getEnd())
+                    || !Double.isFinite(cylinder.getRadius()) || cylinder.getRadius() <= 0.0d
+                    || axis.lengthSquared() <= EPS) {
+                return "Cylinder volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof TorusGeometryData torus) {
+            if (!PointUtils.isFinite(torus.center()) || !VectorUtils.isNonZero(torus.axis())
+                    || !Double.isFinite(torus.majorRadius()) || !Double.isFinite(torus.minorRadius())
+                    || torus.majorRadius() <= 0.0d || torus.minorRadius() <= 0.0d) {
+                return "Torus volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof ConeGeometryData cone) {
+            Vector3d axis = new Vector3d(cone.getBaseCenter()).sub(cone.getApex());
+            if (!PointUtils.isFinite(cone.getApex()) || !PointUtils.isFinite(cone.getBaseCenter())
+                    || !Double.isFinite(cone.getBaseRadius()) || cone.getBaseRadius() <= 0.0d
+                    || axis.lengthSquared() <= EPS) {
+                return "Cone volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof EllipsoidGeometryData ellipsoid) {
+            Vector3d radii = ellipsoid.getRadii();
+            if (!PointUtils.isFinite(ellipsoid.getCenter()) || !PointUtils.isFinite(radii)
+                    || radii.x <= EPS || radii.y <= EPS || radii.z <= EPS) {
+                return "Ellipsoid volume is degenerate";
+            }
+            return null;
+        }
+        if (geometry instanceof HemisphereGeometryData hemisphere) {
+            if (!PointUtils.isFinite(hemisphere.center()) || !VectorUtils.isNonZero(hemisphere.axis())
+                    || !Double.isFinite(hemisphere.radius()) || hemisphere.radius() <= 0.0d) {
+                return "Hemisphere volume is degenerate";
+            }
+            return null;
+        }
+        return "Unsupported volume geometry";
+    }
+
+    private static @Nullable Vector3d sampleRandomInteriorPoint(GeometryData geometry, Random random) {
         if (geometry instanceof SphereData sphere) {
             Vector3d direction = SphereSurfaceSampling.sampleRandomUnitNormal(random);
+            Vector3d unit = SphereSurfaceSampling.normalizeStrict(direction);
+            if (unit == null) {
+                return null;
+            }
             double r = sphere.radius() * Math.cbrt(random.nextDouble());
-            return new Vector3d(direction).mul(r).add(sphere.center());
+            return new Vector3d(unit).mul(r).add(sphere.center());
         }
         if (geometry instanceof BoxGeometryData box) {
             return sampleBoxInterior(box, random);
@@ -96,36 +178,50 @@ public final class PrimitiveVolumeSampler {
         return local;
     }
 
-    private static Vector3d sampleCylinderInterior(CylinderGeometryData cylinder, Random random) {
+    private static @Nullable Vector3d sampleCylinderInterior(CylinderGeometryData cylinder, Random random) {
         Vector3d start = cylinder.getStart();
         Vector3d end = cylinder.getEnd();
         Vector3d axis = new Vector3d(end).sub(start);
         double height = axis.length();
-        if (height <= 1.0e-12d) {
-            return new Vector3d(start);
+        if (height <= EPS) {
+            return null;
         }
         axis.div(height);
         double t = random.nextDouble();
         double r = cylinder.getRadius() * Math.sqrt(random.nextDouble());
         Vector3d tangent = orthonormalTangent(axis, random);
-        Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();
+        if (tangent == null) {
+            return null;
+        }
+        Vector3d bitangent = new Vector3d(axis).cross(tangent);
+        if (bitangent.lengthSquared() <= EPS) {
+            return null;
+        }
+        bitangent.normalize();
         double angle = random.nextDouble() * Math.PI * 2.0d;
         Vector3d radial = new Vector3d(tangent).mul(Math.cos(angle)).add(new Vector3d(bitangent).mul(Math.sin(angle)));
         return new Vector3d(start).add(new Vector3d(axis).mul(height * t)).add(radial.mul(r));
     }
 
-    private static Vector3d sampleTorusInterior(TorusGeometryData torus, Random random) {
-        RegionData region = GeometryVoxelizer.createBoundingRegion(torus);
-        if (region == null || !region.isComplete()) {
+    private static @Nullable Vector3d sampleTorusInterior(TorusGeometryData torus, Random random) {
+        BoundingBoxData bounds = GeometryBoundsResolver.resolve(torus);
+        if (bounds == null) {
             return null;
         }
-        Vector3d min = vectorFromBlockPos(Objects.requireNonNull(region.getMinCorner()));
-        Vector3d max = vectorFromBlockPos(Objects.requireNonNull(region.getMaxCorner()));
+        Vector3d min = bounds.getMin();
+        Vector3d max = bounds.getMax();
+        double sx = max.x - min.x;
+        double sy = max.y - min.y;
+        double sz = max.z - min.z;
+        if (!Double.isFinite(sx) || !Double.isFinite(sy) || !Double.isFinite(sz)
+                || sx <= 0.0d || sy <= 0.0d || sz <= 0.0d) {
+            return null;
+        }
         for (int attempt = 0; attempt < MAX_REJECTION_ATTEMPTS; attempt++) {
             Vector3d candidate = new Vector3d(
-                min.x + random.nextDouble() * (max.x - min.x),
-                min.y + random.nextDouble() * (max.y - min.y),
-                min.z + random.nextDouble() * (max.z - min.z)
+                min.x + random.nextDouble() * sx,
+                min.y + random.nextDouble() * sy,
+                min.z + random.nextDouble() * sz
             );
             if (containsPoint(torus, candidate)) {
                 return candidate;
@@ -134,26 +230,36 @@ public final class PrimitiveVolumeSampler {
         return null;
     }
 
-    private static Vector3d sampleConeInterior(ConeGeometryData cone, Random random) {
+    private static @Nullable Vector3d sampleConeInterior(ConeGeometryData cone, Random random) {
         Vector3d apex = cone.getApex();
         Vector3d baseCenter = cone.getBaseCenter();
         Vector3d axis = new Vector3d(baseCenter).sub(apex);
         double height = axis.length();
-        if (height <= 1.0e-12d) {
-            return new Vector3d(apex);
+        if (height <= EPS) {
+            return null;
         }
         axis.div(height);
         double t = Math.cbrt(random.nextDouble());
         double r = cone.getBaseRadius() * t * Math.sqrt(random.nextDouble());
         Vector3d tangent = orthonormalTangent(axis, random);
-        Vector3d bitangent = new Vector3d(axis).cross(tangent).normalize();
+        if (tangent == null) {
+            return null;
+        }
+        Vector3d bitangent = new Vector3d(axis).cross(tangent);
+        if (bitangent.lengthSquared() <= EPS) {
+            return null;
+        }
+        bitangent.normalize();
         double angle = random.nextDouble() * Math.PI * 2.0d;
         Vector3d radial = new Vector3d(tangent).mul(Math.cos(angle)).add(new Vector3d(bitangent).mul(Math.sin(angle)));
         return new Vector3d(apex).add(new Vector3d(axis).mul(height * t)).add(radial.mul(r));
     }
 
-    private static Vector3d sampleEllipsoidInterior(EllipsoidGeometryData ellipsoid, Random random) {
-        Vector3d direction = SphereSurfaceSampling.sampleRandomUnitNormal(random);
+    private static @Nullable Vector3d sampleEllipsoidInterior(EllipsoidGeometryData ellipsoid, Random random) {
+        Vector3d direction = SphereSurfaceSampling.normalizeStrict(SphereSurfaceSampling.sampleRandomUnitNormal(random));
+        if (direction == null) {
+            return null;
+        }
         double r = Math.cbrt(random.nextDouble());
         Vector3d radii = ellipsoid.getRadii();
         Vector3d local = new Vector3d(direction.x * radii.x * r, direction.y * radii.y * r, direction.z * radii.z * r);
@@ -163,9 +269,12 @@ public final class PrimitiveVolumeSampler {
         return local;
     }
 
-    private static Vector3d sampleHemisphereInterior(HemisphereGeometryData hemisphere, Random random) {
+    private static @Nullable Vector3d sampleHemisphereInterior(HemisphereGeometryData hemisphere, Random random) {
         for (int attempt = 0; attempt < MAX_REJECTION_ATTEMPTS; attempt++) {
-            Vector3d direction = SphereSurfaceSampling.sampleRandomUnitNormal(random);
+            Vector3d direction = SphereSurfaceSampling.normalizeStrict(SphereSurfaceSampling.sampleRandomUnitNormal(random));
+            if (direction == null) {
+                return null;
+            }
             double r = hemisphere.radius() * Math.cbrt(random.nextDouble());
             Vector3d point = new Vector3d(direction).mul(r).add(hemisphere.center());
             if (containsPoint(hemisphere, point)) {
@@ -218,8 +327,8 @@ public final class PrimitiveVolumeSampler {
         Vector3d start = cylinder.getStart();
         Vector3d axis = new Vector3d(cylinder.getEnd()).sub(start);
         double height = axis.length();
-        if (height <= 1.0e-12d) {
-            return point.distanceSquared(start) <= cylinder.getRadius() * cylinder.getRadius() + 1.0e-9d;
+        if (height <= EPS) {
+            return false;
         }
         axis.div(height);
         Vector3d offset = new Vector3d(point).sub(start);
@@ -232,7 +341,7 @@ public final class PrimitiveVolumeSampler {
     }
 
     private static boolean containsTorusPoint(TorusGeometryData torus, Vector3d point) {
-        Vector3d axis = torus.axis();
+        Vector3d axis = new Vector3d(torus.axis()).normalize();
         Vector3d offset = new Vector3d(point).sub(torus.center());
         Vector3d axial = new Vector3d(axis).mul(offset.dot(axis));
         Vector3d radial = new Vector3d(offset).sub(axial);
@@ -248,8 +357,8 @@ public final class PrimitiveVolumeSampler {
         Vector3d apex = cone.getApex();
         Vector3d axis = new Vector3d(cone.getBaseCenter()).sub(apex);
         double height = axis.length();
-        if (height <= 1.0e-12d) {
-            return point.distanceSquared(apex) <= 1.0e-9d;
+        if (height <= EPS) {
+            return false;
         }
         axis.div(height);
         Vector3d offset = new Vector3d(point).sub(apex);
@@ -273,16 +382,13 @@ public final class PrimitiveVolumeSampler {
         return (nx * nx + ny * ny + nz * nz) <= 1.0d + 1.0e-9d;
     }
 
-    private static Vector3d orthonormalTangent(Vector3d axis, Random random) {
+    private static @Nullable Vector3d orthonormalTangent(Vector3d axis, Random random) {
         Vector3d reference = Math.abs(axis.y) < 0.9d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d tangent = new Vector3d(axis).cross(reference);
-        if (tangent.lengthSquared() < 1.0e-12d) {
+        if (tangent.lengthSquared() < EPS) {
             tangent.set(random.nextDouble(), random.nextDouble(), random.nextDouble());
+            tangent.sub(new Vector3d(axis).mul(tangent.dot(axis)));
         }
-        return tangent.normalize();
-    }
-
-    private static Vector3d vectorFromBlockPos(net.minecraft.util.math.BlockPos pos) {
-        return new Vector3d(pos.getX(), pos.getY(), pos.getZ());
+        return SphereSurfaceSampling.normalizeStrict(tangent);
     }
 }

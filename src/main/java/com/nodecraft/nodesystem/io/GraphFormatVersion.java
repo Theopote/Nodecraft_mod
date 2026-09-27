@@ -275,8 +275,9 @@ public final class GraphFormatVersion {
     public static final int V43 = 43;
 
     /**
-     * Surface / Volume Distribution v1: six canonical scatter/sampling nodes;
+     * Surface / Volume Distribution v1 (historical milestone): six canonical scatter/sampling nodes;
      * continuous POINT_LIST outputs; deterministic seeds; no BLOCK_LIST mirrors.
+     * Superseded by {@link #V82}.
      */
     public static final int V44 = 44;
 
@@ -514,15 +515,25 @@ public final class GraphFormatVersion {
     public static final int V80 = 80;
 
     /**
-     * Pattern Radial Language v2: Valid+Error on 3 nodes, drop Polar Array raw LIST geometry output,
-     * OptionalPortDrive / fail-closed Count budgets (no silent clamp), sourceLeaves×Count preflight,
-     * transactional Polar copies, aligned layout commit for Spiral/Phyllotaxis, degenerate tangent fail-closed.
+     * Pattern Radial Language v2 (PASSED / FROZEN): Valid+Error on 3 nodes, drop Polar Array raw LIST
+     * geometry output, OptionalPortDrive / fail-closed Count budgets (no silent clamp),
+     * sourceLeaves×Count preflight, transactional Polar copies, aligned layout commit for
+     * Spiral/Phyllotaxis, degenerate tangent fail-closed.
      * V43 remains the historical Pattern Radial v1 fence.
      */
     public static final int V81 = 81;
 
+    /**
+     * Surface / Volume Distribution Language v2: Valid+Error+Complete on 6 nodes,
+     * OptionalPortDrive / fail-closed Count budgets (no silent clamp), contiguous orders 0–5,
+     * continuous volume AABB (no GeometryVoxelizer/BlockPos), strict Image density protocol
+     * (exact Width×Height, no FILE_PATH), under-target scatter Valid=true Complete=false.
+     * V44 remains the historical Surface / Volume Distribution v1 fence.
+     */
+    public static final int V82 = 82;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V81;
+    public static final int CURRENT = V82;
 
     private GraphFormatVersion() {
     }

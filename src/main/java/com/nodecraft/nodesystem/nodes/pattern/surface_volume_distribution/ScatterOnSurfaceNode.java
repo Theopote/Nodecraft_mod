@@ -4,15 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
 import com.nodecraft.nodesystem.util.PrimitiveGeometrySurfaceSampler;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -26,11 +23,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.scatter_surface",
     displayName = "Scatter On Surface",
-    description = "Scatters points on supported primitive geometry surfaces with random or blue-noise distribution",
+    description = "Scatters points on supported primitive geometry surfaces with random or approximate blue-noise distribution (lateral-only for Cylinder/Cone; analytic continuous sampling)",
     category = "pattern.surface_volume_distribution",
-    order = 2
+    order = 1
 )
-public class ScatterOnSurfaceNode extends BaseNode {
+public class ScatterOnSurfaceNode extends AbstractSurfaceVolumeDistributionNode {
 
     public enum DistributionMode {
         RANDOM,
@@ -46,7 +43,8 @@ public class ScatterOnSurfaceNode extends BaseNode {
     @NodeProperty(displayName = "Min Distance", category = "Scatter", order = 3)
     private double minDistance = 0.0d;
 
-    @NodeProperty(displayName = "Distribution", category = "Scatter", order = 4)
+    @NodeProperty(displayName = "Distribution", category = "Scatter", order = 4,
+        description = "BLUE_NOISE uses an approximate blue-noise selector (not Bridson Poisson-disk)")
     private DistributionMode distributionMode = DistributionMode.BLUE_NOISE;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -57,53 +55,56 @@ public class ScatterOnSurfaceNode extends BaseNode {
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_NORMALS_ID = "output_normals";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScatterOnSurfaceNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.scatter_surface");
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Primitive geometry to scatter on", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points (>= 0)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered surface points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_NORMALS_ID, "Normals", "Outward surface normals aligned with points", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Actual number of accepted points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry input is valid and supported", NodeDataType.BOOLEAN, this));
+        addValidErrorAndCompleteOutputs();
     }
 
     @Override
     public String getDescription() {
-        return "Scatters points on supported primitive geometry surfaces with random or blue-noise distribution";
+        return "Scatters points on supported primitive geometry surfaces with random or approximate blue-noise distribution";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        if (!(geometryObj instanceof GeometryData geometry) || !PrimitiveGeometrySurfaceSampler.isSupported(geometry)) {
-            writeEmpty();
+        if (!(geometryObj instanceof GeometryData geometry)) {
+            writeFail("Missing or invalid Geometry");
+            return;
+        }
+        String validation = PrimitiveGeometrySurfaceSampler.validatePrimitive(geometry);
+        if (validation != null) {
+            writeFail(validation);
             return;
         }
 
-        int requestedCount = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), targetCount);
-        if (requestedCount <= 0) {
-            writeEmpty();
+        Integer resolvedCount = resolveLayoutCount(INPUT_TARGET_COUNT_ID, targetCount);
+        if (resolvedCount == null) {
+            writeFail(countFailureReason(INPUT_TARGET_COUNT_ID, targetCount));
             return;
         }
 
-        double minDist = inputValues.get(INPUT_MIN_DISTANCE_ID) instanceof Number n ? n.doubleValue() : minDistance;
-        if (!Double.isFinite(minDist) || minDist < 0.0d) {
-            writeEmpty();
+        Double minDist = resolveNonNegativeFinite(INPUT_MIN_DISTANCE_ID, minDistance);
+        if (minDist == null) {
+            writeFail("Min Distance connected but invalid (must be finite and >= 0)");
             return;
         }
 
-        int resolvedCount = GenerationLimits.clampLayoutInstanceCount(requestedCount);
-        if (resolvedCount <= 0) {
-            writeEmpty();
+        Integer resolvedSeed = resolveSeed(INPUT_SEED_ID, seed);
+        if (resolvedSeed == null) {
+            writeFail("Seed connected but invalid");
             return;
         }
 
-        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
         MinDistanceScatterSelector.DistributionMode mode = distributionMode == DistributionMode.RANDOM
             ? MinDistanceScatterSelector.DistributionMode.RANDOM
             : MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX;
@@ -115,8 +116,8 @@ public class ScatterOnSurfaceNode extends BaseNode {
             minDist,
             mode
         );
-        if (samples.isEmpty()) {
-            writeEmpty();
+        if (samples == null) {
+            writeFail("Surface scatter failed");
             return;
         }
 
@@ -127,17 +128,17 @@ public class ScatterOnSurfaceNode extends BaseNode {
             normals.add(sample.normal());
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_NORMALS_ID, List.copyOf(normals));
-        outputValues.put(OUTPUT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        boolean complete = points.size() == resolvedCount;
+        commitPointNormalLists(
+            OUTPUT_POINTS_ID, OUTPUT_NORMALS_ID, OUTPUT_COUNT_ID,
+            points, normals, complete
+        );
     }
 
-    private void writeEmpty() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_NORMALS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFail(String error) {
+        markInvalid(error);
+        putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_NORMALS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
     }
 
     public DistributionMode getDistributionMode() {
@@ -167,7 +168,7 @@ public class ScatterOnSurfaceNode extends BaseNode {
     }
 
     public void setTargetCount(int targetCount) {
-        this.targetCount = Math.max(1, targetCount);
+        this.targetCount = targetCount;
         markDirty();
     }
 

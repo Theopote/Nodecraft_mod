@@ -4,15 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
 import com.nodecraft.nodesystem.util.PrimitiveVolumeSampler;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,11 +22,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "pattern.surface_volume_distribution.scatter_volume",
     displayName = "Scatter In Volume",
-    description = "Scatters points inside supported primitive geometry volumes with random or blue-noise distribution",
+    description = "Scatters points inside supported primitive geometry volumes with random or approximate blue-noise distribution",
     category = "pattern.surface_volume_distribution",
-    order = 6
+    order = 4
 )
-public class ScatterInVolumeNode extends BaseNode {
+public class ScatterInVolumeNode extends AbstractSurfaceVolumeDistributionNode {
 
     public enum DistributionMode {
         RANDOM,
@@ -45,7 +42,8 @@ public class ScatterInVolumeNode extends BaseNode {
     @NodeProperty(displayName = "Min Distance", category = "Scatter", order = 3)
     private double minDistance = 0.0d;
 
-    @NodeProperty(displayName = "Distribution", category = "Scatter", order = 4)
+    @NodeProperty(displayName = "Distribution", category = "Scatter", order = 4,
+        description = "BLUE_NOISE uses an approximate blue-noise selector (not Bridson Poisson-disk)")
     private DistributionMode distributionMode = DistributionMode.BLUE_NOISE;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -55,71 +53,74 @@ public class ScatterInVolumeNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScatterInVolumeNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.scatter_volume");
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Primitive geometry volume to scatter inside", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points (>= 0)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered volume points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Actual number of accepted points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when geometry input is valid and supported", NodeDataType.BOOLEAN, this));
+        addValidErrorAndCompleteOutputs();
     }
 
     @Override
     public String getDescription() {
-        return "Scatters points inside supported primitive geometry volumes with random or blue-noise distribution";
+        return "Scatters points inside supported primitive geometry volumes with random or approximate blue-noise distribution";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        if (!(geometryObj instanceof GeometryData geometry) || !PrimitiveVolumeSampler.isSupported(geometry)) {
-            writeEmpty();
+        if (!(geometryObj instanceof GeometryData geometry)) {
+            writeFail("Missing or invalid Geometry");
+            return;
+        }
+        String validation = PrimitiveVolumeSampler.validatePrimitive(geometry);
+        if (validation != null) {
+            writeFail(validation);
             return;
         }
 
-        int requestedCount = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), targetCount);
-        if (requestedCount <= 0) {
-            writeEmpty();
+        Integer resolvedCount = resolveLayoutCount(INPUT_TARGET_COUNT_ID, targetCount);
+        if (resolvedCount == null) {
+            writeFail(countFailureReason(INPUT_TARGET_COUNT_ID, targetCount));
             return;
         }
 
-        double minDist = inputValues.get(INPUT_MIN_DISTANCE_ID) instanceof Number n ? n.doubleValue() : minDistance;
-        if (!Double.isFinite(minDist) || minDist < 0.0d) {
-            writeEmpty();
+        Double minDist = resolveNonNegativeFinite(INPUT_MIN_DISTANCE_ID, minDistance);
+        if (minDist == null) {
+            writeFail("Min Distance connected but invalid (must be finite and >= 0)");
             return;
         }
 
-        int resolvedCount = GenerationLimits.clampLayoutInstanceCount(requestedCount);
-        if (resolvedCount <= 0) {
-            writeEmpty();
+        Integer resolvedSeed = resolveSeed(INPUT_SEED_ID, seed);
+        if (resolvedSeed == null) {
+            writeFail("Seed connected but invalid");
             return;
         }
 
-        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
         MinDistanceScatterSelector.DistributionMode mode = distributionMode == DistributionMode.RANDOM
             ? MinDistanceScatterSelector.DistributionMode.RANDOM
             : MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX;
 
-        List<Vector3d> points = PrimitiveVolumeSampler.scatter(geometry, resolvedCount, resolvedSeed, minDist, mode);
-        if (points.isEmpty()) {
-            writeEmpty();
+        List<Vector3d> points = PrimitiveVolumeSampler.scatter(
+            geometry, resolvedCount, resolvedSeed, minDist, mode);
+        if (points == null) {
+            writeFail("Volume scatter failed");
             return;
         }
 
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        boolean complete = points.size() == resolvedCount;
+        commitPointList(OUTPUT_POINTS_ID, OUTPUT_COUNT_ID, points, complete);
     }
 
-    private void writeEmpty() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFail(String error) {
+        markInvalid(error);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
     }
 
     public DistributionMode getDistributionMode() {
@@ -149,7 +150,7 @@ public class ScatterInVolumeNode extends BaseNode {
     }
 
     public void setTargetCount(int targetCount) {
-        this.targetCount = Math.max(1, targetCount);
+        this.targetCount = targetCount;
         markDirty();
     }
 

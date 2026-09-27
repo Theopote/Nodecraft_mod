@@ -620,11 +620,11 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Sample Sphere Surface | `pattern.surface_volume_distribution.sample_sphere_surface` | Samples points and normals on a sphere surface for scattering and growth workflows | `SampleSphereSurfaceNode` |
-| Scatter On Surface | `pattern.surface_volume_distribution.scatter_surface` | Scatters points on supported primitive geometry surfaces with random or blue-noise distribution | `ScatterOnSurfaceNode` |
+| Scatter On Surface | `pattern.surface_volume_distribution.scatter_surface` | Scatters points on supported primitive geometry surfaces with random or approximate blue-noise distribution (lateral-only for Cylinder/Cone; analytic continuous sampling) | `ScatterOnSurfaceNode` |
 | Poisson Disk On Plane | `pattern.surface_volume_distribution.poisson_disk_plane` | Samples points on a plane inside a UV rectangle with minimum separation using rejection sampling | `PoissonDiskOnPlaneNode` |
 | Scatter On Surface Strip | `pattern.surface_volume_distribution.scatter_surface_strip` | Scatters points on a surface strip by area-weighted quad sampling with optional spacing | `ScatterOnSurfaceStripNode` |
-| Scatter In Volume | `pattern.surface_volume_distribution.scatter_volume` | Scatters points inside supported primitive geometry volumes with random or blue-noise distribution | `ScatterInVolumeNode` |
-| Image Scatter | `pattern.surface_volume_distribution.image_scatter` | Scatters points using image density maps on a plane or world XZ | `ImageBasedScatterNode` |
+| Scatter In Volume | `pattern.surface_volume_distribution.scatter_volume` | Scatters points inside supported primitive geometry volumes with random or approximate blue-noise distribution | `ScatterInVolumeNode` |
+| Image Scatter | `pattern.surface_volume_distribution.image_scatter` | Scatters points using an exact-size density map on a plane or world XZ (file images via Read Image upstream) | `ImageBasedScatterNode` |
 
 ## pattern.voronoi_3d（1）
 

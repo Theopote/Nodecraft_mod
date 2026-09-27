@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -50,6 +51,20 @@ public final class SphereSurfaceSampling {
             return new Vector3d(0.0d, 1.0d, 0.0d);
         }
         return normalized.normalize();
+    }
+
+    /**
+     * Strict normalize for graph-facing samplers (Graph V82): zero/non-finite → null (no world-Up repair).
+     */
+    public static @Nullable Vector3d normalizeStrict(@Nullable Vector3d value) {
+        if (value == null
+                || !Double.isFinite(value.x)
+                || !Double.isFinite(value.y)
+                || !Double.isFinite(value.z)
+                || value.lengthSquared() < 1.0e-12d) {
+            return null;
+        }
+        return new Vector3d(value).normalize();
     }
 
     private static List<Vector3d> sampleFibonacci(int count) {

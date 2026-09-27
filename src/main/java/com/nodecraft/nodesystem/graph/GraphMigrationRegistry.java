@@ -140,6 +140,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V78 -> migrateV78ToV79(graph);
             case GraphFormatVersion.V79 -> migrateV79ToV80(graph);
             case GraphFormatVersion.V80 -> migrateV80ToV81(graph);
+            case GraphFormatVersion.V81 -> migrateV81ToV82(graph);
             default -> graph;
         };
     }
@@ -4997,6 +4998,7 @@ public final class GraphMigrationRegistry {
     private static final String CURVE_ARRAY_TYPE = "pattern.linear.curve_array";
     private static final String GRID_ARRAY_TYPE = "pattern.grid.grid_array";
     private static final String POLAR_ARRAY_TYPE = "pattern.radial.polar_array";
+    private static final String IMAGE_SCATTER_TYPE = "pattern.surface_volume_distribution.image_scatter";
 
     private static final Set<String> PATTERN_LINEAR_V79_REMOVED_STATE_KEYS = Set.of(
         "maxinstances"
@@ -5289,6 +5291,52 @@ public final class GraphMigrationRegistry {
                     && "output_geometries".equals(
                         connection.sourcePortId == null ? null : connection.sourcePortId.toLowerCase(Locale.ROOT))) {
                 LOGGER.debug("Dropped Pattern Radial V81 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    /**
+     * Surface / Volume Distribution Language v2: drop Image Scatter FILE_PATH wires.
+     */
+    private static SavedGraph migrateV81ToV82(SavedGraph graph) {
+        applySurfaceVolumeV82ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applySurfaceVolumeV82ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static void applySurfaceVolumeV82ToGraph(SavedGraph graph) {
+        if (graph.connections == null) {
+            return;
+        }
+
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String targetType = typeIdOf(graph, connection.targetNodeId);
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null
+                ? null : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            String targetPort = connection.targetPortId == null
+                ? null : connection.targetPortId.toLowerCase(Locale.ROOT);
+            if (IMAGE_SCATTER_TYPE.equals(targetType) && "input_image_path".equals(targetPort)) {
+                LOGGER.debug("Dropped Surface Volume V82 removed-port connection {} -> {}",
+                    connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            if (IMAGE_SCATTER_TYPE.equals(sourceType) && "input_image_path".equals(sourcePort)) {
+                LOGGER.debug("Dropped Surface Volume V82 removed-port connection {} -> {}",
                     connection.sourcePortId, connection.targetPortId);
                 continue;
             }

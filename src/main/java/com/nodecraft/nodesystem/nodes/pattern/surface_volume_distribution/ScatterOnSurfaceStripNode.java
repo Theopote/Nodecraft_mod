@@ -4,14 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.DeterministicSeedUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MinDistanceScatterSelector;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.SurfaceStripSampling;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -29,9 +27,9 @@ import java.util.UUID;
     displayName = "Scatter On Surface Strip",
     description = "Scatters points on a surface strip by area-weighted quad sampling with optional spacing",
     category = "pattern.surface_volume_distribution",
-    order = 4
+    order = 3
 )
-public class ScatterOnSurfaceStripNode extends BaseNode {
+public class ScatterOnSurfaceStripNode extends AbstractSurfaceVolumeDistributionNode {
 
     @NodeProperty(displayName = "Target Count", category = "Scatter", order = 1)
     private int targetCount = 128;
@@ -49,18 +47,17 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ScatterOnSurfaceStripNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.scatter_surface_strip");
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to scatter points on", NodeDataType.SURFACE_STRIP, this));
         addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points (>= 0)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered points on the strip surface", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Actual number of accepted points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the surface strip is valid", NodeDataType.BOOLEAN, this));
+        addValidErrorAndCompleteOutputs();
     }
 
     @Override
@@ -72,44 +69,54 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object stripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(stripObj instanceof SurfaceStripData strip)) {
-            writeEmpty();
+            writeFail("Missing or invalid Surface Strip");
             return;
         }
 
         if (!SurfaceStripSampling.hasValidTopology(strip.sections())) {
-            writeEmpty();
+            writeFail("Surface Strip topology is invalid");
             return;
         }
 
-        int requestedCount = DeterministicSeedUtils.resolveStrictInteger(inputValues.get(INPUT_TARGET_COUNT_ID), targetCount);
-        if (requestedCount <= 0) {
-            writeEmpty();
+        Integer resolvedCount = resolveLayoutCount(INPUT_TARGET_COUNT_ID, targetCount);
+        if (resolvedCount == null) {
+            writeFail(countFailureReason(INPUT_TARGET_COUNT_ID, targetCount));
             return;
         }
 
-        double minDist = inputValues.get(INPUT_MIN_DISTANCE_ID) instanceof Number n ? n.doubleValue() : minDistance;
-        if (!Double.isFinite(minDist) || minDist < 0.0d) {
-            writeEmpty();
+        Double minDist = resolveNonNegativeFinite(INPUT_MIN_DISTANCE_ID, minDistance);
+        if (minDist == null) {
+            writeFail("Min Distance connected but invalid (must be finite and >= 0)");
             return;
         }
 
-        int resolvedCount = GenerationLimits.clampLayoutInstanceCount(requestedCount);
-        if (resolvedCount <= 0) {
-            writeEmpty();
+        Integer resolvedSeed = resolveSeed(INPUT_SEED_ID, seed);
+        if (resolvedSeed == null) {
+            writeFail("Seed connected but invalid");
             return;
         }
 
-        int resolvedSeed = DeterministicSeedUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seed);
+        String budgetError = GenerationLimits.validateScatterCandidateBudget(
+            resolvedCount, GenerationLimits.SCATTER_CANDIDATES_PER_TARGET);
+        if (budgetError != null) {
+            writeFail(budgetError);
+            return;
+        }
+
         Random random = new Random(resolvedSeed);
         SurfaceStripSampling.QuadCatalog quadCatalog = SurfaceStripSampling.QuadCatalog.from(strip);
         if (quadCatalog.size() == 0) {
-            writeEmpty();
+            writeFail("Surface Strip has no sampleable quads");
             return;
         }
 
-        List<Vector3d> candidates = new ArrayList<>(Math.max(resolvedCount * 32, resolvedCount));
-        int maxAttempts = Math.max(resolvedCount * 32, 128);
-        for (int attempt = 0; attempt < maxAttempts && candidates.size() < resolvedCount * 8; attempt++) {
+        long maxAttemptsLong = Math.max((long) resolvedCount * GenerationLimits.SCATTER_CANDIDATES_PER_TARGET, 128L);
+        int maxAttempts = (int) Math.min(maxAttemptsLong, Integer.MAX_VALUE);
+        long fillCapLong = (long) resolvedCount * 8L;
+        int fillCap = (int) Math.min(fillCapLong, Integer.MAX_VALUE);
+
+        List<Vector3d> candidates = new ArrayList<>(Math.min(maxAttempts, fillCap));
+        for (int attempt = 0; attempt < maxAttempts && candidates.size() < fillCap; attempt++) {
             candidates.add(quadCatalog.sample(random));
         }
 
@@ -121,20 +128,14 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
             random
         );
 
-        if (points.isEmpty()) {
-            writeEmpty();
-            return;
-        }
-
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(OUTPUT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        boolean complete = points.size() == resolvedCount;
+        commitPointList(OUTPUT_POINTS_ID, OUTPUT_COUNT_ID, points, complete);
     }
 
-    private void writeEmpty() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFail(String error) {
+        markInvalid(error);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
     }
 
     public int getTargetCount() {
@@ -142,7 +143,7 @@ public class ScatterOnSurfaceStripNode extends BaseNode {
     }
 
     public void setTargetCount(int targetCount) {
-        this.targetCount = Math.max(1, targetCount);
+        this.targetCount = targetCount;
         markDirty();
     }
 
