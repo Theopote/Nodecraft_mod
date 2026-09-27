@@ -418,8 +418,10 @@ public final class GraphFormatVersion {
     public static final int V67 = 67;
 
     /**
-     * Architectural Primitives v1: 18 canonical nodes, strict inputs, Valid/Error,
-     * architecture instance/path/profile hard caps.
+     * Architectural Primitives v1 (PASSED / FROZEN): 18 canonical nodes (order 0–17),
+     * strict inputs / enums / Column XOR, Valid+Error, architecture hard caps,
+     * Roof Base vs Generator split, 0/1/N packGeometry (null members fail closed),
+     * transactional face-array generation (no partial output).
      */
     public static final int V68 = 68;
 
