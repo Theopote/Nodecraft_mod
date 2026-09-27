@@ -490,7 +490,7 @@ public final class GraphFormatVersion {
     public static final int V77 = 77;
 
     /**
-     * Deformations Language v2: SDF-only Twist/Bend, Valid+Error on all 11 nodes,
+     * Deformations Language v2 (PASSED / FROZEN): SDF-only Twist/Bend, Valid+Error on all 11 nodes,
      * bounded POINT_LIST, finite output validation, Path Attract workload cap, orders 0–10.
      */
     public static final int V78 = 78;
