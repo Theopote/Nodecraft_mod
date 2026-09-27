@@ -128,3 +128,7 @@ Use **Join Paths** after **Blend Paths** instead of a built-in joined output.
 - **Extend Path** is tangent linear extension only.
 - **Shatter Path** not yet implemented (awaiting Numeric/List language).
 - **Path Frames** axis outputs not yet trimmed.
+
+## Downstream (Solids / Surface)
+
+Solid and surface nodes that consume paths use graph-facing **PATH** / **PATH_LIST** only (Graph **V72**). See [`node-language-v1-geometry-solids.md`](./node-language-v1-geometry-solids.md).

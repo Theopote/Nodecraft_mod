@@ -4,15 +4,17 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.DataTreeData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
-import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -29,9 +31,9 @@ import java.util.UUID;
     displayName = "Sweep Surface",
     description = "Sweeps a polygon profile along a path into a SURFACE_STRIP (surface topology, not a solid). Use Surface Strip To Lattice for wireframe preview geometry.",
     category = "geometry.solids",
-    order = 5
+    order = 8
 )
-public class SweepProfileAlongPathNode extends BaseNode {
+public class SweepProfileAlongPathNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Orient To Path", category = "Sweep", order = 1)
     private boolean orientToPath = true;
@@ -68,21 +70,19 @@ public class SweepProfileAlongPathNode extends BaseNode {
     private static final String OUTPUT_SECTION_POINTS_TREE_ID = "output_section_points_tree";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SweepProfileAlongPathNode() {
         super(UUID.randomUUID(), "geometry.solids.sweep");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_PATH_ID, "Path",
-            "Spine path (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Spine path (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.DOUBLE_LIST, this));
+        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.DOUBLE_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the path", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_TREE_ID, "Section Profiles Tree", "Section profiles keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary polylines for each swept section", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary paths for each swept section", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
@@ -90,6 +90,7 @@ public class SweepProfileAlongPathNode extends BaseNode {
             "Primary output: swept surface topology (not a solid body)", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections along the spine", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and spine were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -105,16 +106,37 @@ public class SweepProfileAlongPathNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        List<Vector3d> spinePoints = resolveSpinePoints();
+        List<Vector3d> spinePoints = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID));
 
-        if (!(profileObj instanceof PolygonProfileData profile) || spinePoints.size() < 2) {
-            writeEmptyOutputs();
+        if (!(profileObj instanceof PolygonProfileData profile)) {
+            invalidate("Profile is missing or invalid");
+            return;
+        }
+        if (spinePoints.size() < 2) {
+            invalidate("Path is missing or requires at least two vertices");
+            return;
+        }
+        if (!GenerationLimits.isWithinSurfaceSections(spinePoints.size())) {
+            invalidate("Section count exceeds limit (" + GenerationLimits.MAX_SURFACE_SECTIONS + ")");
             return;
         }
 
         List<Vector3d> baseUniquePoints = profile.getUniquePoints();
         if (baseUniquePoints.size() < 3) {
-            writeEmptyOutputs();
+            invalidate("Profile must have at least 3 vertices");
+            return;
+        }
+        if (!SurfaceInputUtils.isWithinSurfaceWorkload(spinePoints.size(), baseUniquePoints.size())) {
+            invalidate("Sweep workload exceeds limit (" + GenerationLimits.MAX_SURFACE_TOTAL_POINTS + " total points)");
+            return;
+        }
+
+        List<Double> scaleValues = resolveScaleField();
+        if (scaleValues == null) {
+            return;
+        }
+        List<Double> rotationValues = resolveRotationField();
+        if (rotationValues == null) {
             return;
         }
 
@@ -123,10 +145,9 @@ public class SweepProfileAlongPathNode extends BaseNode {
             localOffsets = new ArrayList<>(localOffsets);
             Collections.reverse(localOffsets);
         }
-        List<Double> scaleValues = resolveNumberList(inputValues.get(INPUT_SCALE_VALUES_ID));
-        List<Double> rotationValues = resolveNumberList(inputValues.get(INPUT_ROTATION_VALUES_ID));
-        List<Object> sectionProfiles = new ArrayList<>(spinePoints.size());
-        List<Object> sectionPaths = new ArrayList<>(spinePoints.size());
+
+        List<PolygonProfileData> sectionProfiles = new ArrayList<>(spinePoints.size());
+        List<PathData> sectionPaths = new ArrayList<>(spinePoints.size());
         List<Vector3d> allPoints = new ArrayList<>(localOffsets.size() * spinePoints.size());
         List<List<Vector3d>> stripSections = new ArrayList<>(spinePoints.size());
         List<Boolean> sectionClosedFlags = new ArrayList<>(spinePoints.size());
@@ -138,9 +159,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
         for (int i = 0; i < spinePoints.size(); i++) {
             Vector3d spinePoint = spinePoints.get(i);
             PathFrameUtils.Frame frame = frames.get(i);
-            double t = spinePoints.size() <= 1 ? 0.0d : (double) i / (double) (spinePoints.size() - 1);
-            double scale = resolveScalarAt(scaleValues, t, startScale, endScale);
-            double rotationRadians = Math.toRadians(resolveScalarAt(rotationValues, t, startRotationDegrees, endRotationDegrees));
+            double scale = scaleValues.get(i);
+            double rotationRadians = Math.toRadians(rotationValues.get(i));
 
             List<Vector3d> uniqueSectionPoints = new ArrayList<>(localOffsets.size());
             for (Vector3d localOffset : localOffsets) {
@@ -158,15 +178,36 @@ public class SweepProfileAlongPathNode extends BaseNode {
                 PlaneData sectionPlane = new PlaneData(spinePoint, frame.zAxis());
                 PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
                 sectionProfiles.add(sectionProfile);
-                sectionPaths.add(sectionProfile.getBoundary());
+                PathData boundary = SolidNodeUtils.toPath(sectionProfile.getBoundary());
+                if (boundary == null) {
+                    invalidate("Section path at index " + i + " is invalid");
+                    return;
+                }
+                sectionPaths.add(boundary);
             } else {
-                sectionPaths.add(SolidNodeUtils.createPolyline(uniqueSectionPoints, false));
+                PathData openPath = SolidNodeUtils.toPath(SolidNodeUtils.createPolyline(uniqueSectionPoints, false));
+                if (openPath == null) {
+                    invalidate("Section path at index " + i + " is invalid");
+                    return;
+                }
+                sectionPaths.add(openPath);
             }
             stripSections.add(List.copyOf(uniqueSectionPoints));
             sectionClosedFlags.add(closeProfile);
         }
 
-        SurfaceStripData surfaceStrip = new SurfaceStripData(stripSections, sectionClosedFlags);
+        SurfaceStripData surfaceStrip;
+        try {
+            surfaceStrip = new SurfaceStripData(stripSections, sectionClosedFlags);
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_SPINE_POINTS_ID, SpatialValueResolver.toPointDataList(spinePoints));
         outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.copyOf(sectionProfiles));
@@ -177,7 +218,42 @@ public class SweepProfileAlongPathNode extends BaseNode {
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(stripSections));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, stripSections.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private @Nullable List<Double> resolveScaleField() {
+        List<Double> connected = SurfaceInputUtils.resolveStrictFiniteDoubleList(inputValues.get(INPUT_SCALE_VALUES_ID));
+        if (SurfaceInputUtils.isConnected(this, INPUT_SCALE_VALUES_ID) && connected == null) {
+            invalidate("Scale values are connected but invalid (must be a finite double list)");
+            return null;
+        }
+        int sectionCount = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID)).size();
+        if (connected != null && !connected.isEmpty()) {
+            return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startScale);
+        }
+        return interpolateField(sectionCount, startScale, endScale);
+    }
+
+    private @Nullable List<Double> resolveRotationField() {
+        List<Double> connected = SurfaceInputUtils.resolveStrictFiniteDoubleList(inputValues.get(INPUT_ROTATION_VALUES_ID));
+        if (SurfaceInputUtils.isConnected(this, INPUT_ROTATION_VALUES_ID) && connected == null) {
+            invalidate("Rotation values are connected but invalid (must be a finite double list)");
+            return null;
+        }
+        int sectionCount = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID)).size();
+        if (connected != null && !connected.isEmpty()) {
+            return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startRotationDegrees);
+        }
+        return interpolateField(sectionCount, startRotationDegrees, endRotationDegrees);
+    }
+
+    private static List<Double> interpolateField(int sectionCount, double start, double end) {
+        List<Double> values = new ArrayList<>(sectionCount);
+        for (int i = 0; i < sectionCount; i++) {
+            double t = sectionCount <= 1 ? 0.0d : (double) i / (double) (sectionCount - 1);
+            values.add(start + (end - start) * t);
+        }
+        return List.copyOf(values);
     }
 
     public boolean isOrientToPath() {
@@ -185,8 +261,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setOrientToPath(boolean orientToPath) {
+        markDirtyIfChanged(this.orientToPath, orientToPath);
         this.orientToPath = orientToPath;
-        markDirty();
     }
 
     public boolean isCloseProfile() {
@@ -194,10 +270,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setCloseProfile(boolean closeProfile) {
-        if (this.closeProfile != closeProfile) {
-            this.closeProfile = closeProfile;
-            markDirty();
-        }
+        markDirtyIfChanged(this.closeProfile, closeProfile);
+        this.closeProfile = closeProfile;
     }
 
     public boolean isFlipProfile() {
@@ -205,10 +279,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setFlipProfile(boolean flipProfile) {
-        if (this.flipProfile != flipProfile) {
-            this.flipProfile = flipProfile;
-            markDirty();
-        }
+        markDirtyIfChanged(this.flipProfile, flipProfile);
+        this.flipProfile = flipProfile;
     }
 
     public double getStartScale() {
@@ -216,10 +288,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setStartScale(double startScale) {
-        if (Double.compare(this.startScale, startScale) != 0) {
-            this.startScale = startScale;
-            markDirty();
-        }
+        markDirtyIfChanged(this.startScale, startScale);
+        this.startScale = startScale;
     }
 
     public double getEndScale() {
@@ -227,10 +297,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setEndScale(double endScale) {
-        if (Double.compare(this.endScale, endScale) != 0) {
-            this.endScale = endScale;
-            markDirty();
-        }
+        markDirtyIfChanged(this.endScale, endScale);
+        this.endScale = endScale;
     }
 
     public double getStartRotationDegrees() {
@@ -238,10 +306,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setStartRotationDegrees(double startRotationDegrees) {
-        if (Double.compare(this.startRotationDegrees, startRotationDegrees) != 0) {
-            this.startRotationDegrees = startRotationDegrees;
-            markDirty();
-        }
+        markDirtyIfChanged(this.startRotationDegrees, startRotationDegrees);
+        this.startRotationDegrees = startRotationDegrees;
     }
 
     public double getEndRotationDegrees() {
@@ -249,10 +315,8 @@ public class SweepProfileAlongPathNode extends BaseNode {
     }
 
     public void setEndRotationDegrees(double endRotationDegrees) {
-        if (Double.compare(this.endRotationDegrees, endRotationDegrees) != 0) {
-            this.endRotationDegrees = endRotationDegrees;
-            markDirty();
-        }
+        markDirtyIfChanged(this.endRotationDegrees, endRotationDegrees);
+        this.endRotationDegrees = endRotationDegrees;
     }
 
     @Override
@@ -273,58 +337,28 @@ public class SweepProfileAlongPathNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("orientToPath") instanceof Boolean value) orientToPath = value;
-        if (map.get("closeProfile") instanceof Boolean value) closeProfile = value;
-        if (map.get("flipProfile") instanceof Boolean value) flipProfile = value;
-        if (map.get("startScale") instanceof Number value) startScale = value.doubleValue();
-        if (map.get("endScale") instanceof Number value) endScale = value.doubleValue();
-        if (map.get("startRotationDegrees") instanceof Number value) startRotationDegrees = value.doubleValue();
-        if (map.get("endRotationDegrees") instanceof Number value) endRotationDegrees = value.doubleValue();
+        if (map.get("orientToPath") instanceof Boolean value) {
+            orientToPath = value;
+        }
+        if (map.get("closeProfile") instanceof Boolean value) {
+            closeProfile = value;
+        }
+        if (map.get("flipProfile") instanceof Boolean value) {
+            flipProfile = value;
+        }
+        if (map.get("startScale") instanceof Number value) {
+            startScale = value.doubleValue();
+        }
+        if (map.get("endScale") instanceof Number value) {
+            endScale = value.doubleValue();
+        }
+        if (map.get("startRotationDegrees") instanceof Number value) {
+            startRotationDegrees = value.doubleValue();
+        }
+        if (map.get("endRotationDegrees") instanceof Number value) {
+            endRotationDegrees = value.doubleValue();
+        }
         markDirty();
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SPINE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PROFILES_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<Vector3d> resolveSpinePoints() {
-        return SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID));
-    }
-
-    private List<Double> resolveNumberList(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return List.of();
-        }
-        List<Double> numbers = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Number number) {
-                numbers.add(number.doubleValue());
-            }
-        }
-        return List.copyOf(numbers);
-    }
-
-    private double resolveScalarAt(List<Double> values, double t, double start, double end) {
-        if (values.isEmpty()) {
-            return start + (end - start) * t;
-        }
-        if (values.size() == 1) {
-            return values.getFirst();
-        }
-        double scaled = Math.max(0.0d, Math.min(1.0d, t)) * (values.size() - 1);
-        int i = (int) Math.floor(scaled);
-        int next = Math.min(values.size() - 1, i + 1);
-        double localT = scaled - i;
-        return values.get(i) + (values.get(next) - values.get(i)) * localT;
     }
 
     private Vector3d transformLocalProfilePoint(Vector3d local, double scale, double rotationRadians) {
@@ -337,5 +371,15 @@ public class SweepProfileAlongPathNode extends BaseNode {
             scaledX * sin + scaledY * cos,
             local.z * scale
         );
+    }
+
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_SPINE_POINTS_ID, OUTPUT_SECTION_PROFILES_ID, OUTPUT_SECTION_PATHS_ID, OUTPUT_ALL_POINTS_ID);
+        outputValues.put(OUTPUT_SECTION_PROFILES_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
+        putNullOutputs(OUTPUT_SURFACE_STRIP_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID);
+        markInvalid(error);
     }
 }

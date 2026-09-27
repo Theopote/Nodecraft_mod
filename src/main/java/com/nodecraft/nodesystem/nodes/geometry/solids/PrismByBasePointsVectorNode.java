@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -19,12 +18,12 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.extrude_profile_from_points",
-    displayName = "Prism By Base Points Vector",
+    displayName = "Prism By Points",
     description = "Constructs prism geometry from an ordered base polygon and an extrusion vector",
     category = "geometry.solids",
-    order = 10
+    order = 2
 )
-public class PrismByBasePointsVectorNode extends BaseNode {
+public class PrismByBasePointsVectorNode extends AbstractSolidNode {
 
     private static final String INPUT_BASE_POINTS_ID = "input_base_points";
     private static final String INPUT_EXTRUSION_VECTOR_ID = "input_extrusion_vector";
@@ -36,7 +35,6 @@ public class PrismByBasePointsVectorNode extends BaseNode {
     private static final String OUTPUT_TOP_POINTS_ID = "output_top_points";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
     private static final String OUTPUT_SIDE_COUNT_ID = "output_side_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PrismByBasePointsVectorNode() {
         super(UUID.randomUUID(), "geometry.solids.extrude_profile_from_points");
@@ -52,6 +50,7 @@ public class PrismByBasePointsVectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Prism extrusion length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Side Count", "Number of prism side faces", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a prism could be constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -62,29 +61,39 @@ public class PrismByBasePointsVectorNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> basePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_BASE_POINTS_ID));
-        Vector3d extrusionVector = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_EXTRUSION_VECTOR_ID));
+        Vector3d extrusionVector = resolveDirection(INPUT_EXTRUSION_VECTOR_ID);
 
-        if (extrusionVector == null) {
-            writeEmptyOutputs();
+        if (basePoints.size() < 3) {
+            invalidate("Base polygon requires at least three points");
+            return;
+        }
+        if (extrusionVector == null || extrusionVector.lengthSquared() <= SolidNodeUtils.EPSILON * SolidNodeUtils.EPSILON) {
+            invalidate("Extrusion vector is missing, invalid, or zero-length");
             return;
         }
 
         double height = extrusionVector.length();
-        if (basePoints.size() < 3 || height <= 1.0e-9d) {
-            writeEmptyOutputs();
-            return;
-        }
-
         List<Vector3d> topPoints = new ArrayList<>(basePoints.size());
         for (Vector3d basePoint : basePoints) {
             topPoints.add(new Vector3d(basePoint).add(extrusionVector));
         }
 
         PrismGeometryData prism = new PrismGeometryData(basePoints, extrusionVector);
-        SurfaceStripData surfaceStrip = new SurfaceStripData(
-            List.of(List.copyOf(basePoints), List.copyOf(topPoints)),
-            List.of(true, true)
-        );
+        SurfaceStripData surfaceStrip;
+        try {
+            surfaceStrip = new SurfaceStripData(
+                List.of(List.copyOf(basePoints), List.copyOf(topPoints)),
+                List.of(true, true)
+            );
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Side surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_PRISM_ID, prism);
         outputValues.put(OUTPUT_GEOMETRY_ID, prism);
@@ -93,18 +102,14 @@ public class PrismByBasePointsVectorNode extends BaseNode {
         outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, basePoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_PRISM_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_SIDE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PRISM_ID, OUTPUT_GEOMETRY_ID, OUTPUT_SURFACE_STRIP_ID);
+        putEmptyListOutputs(OUTPUT_BASE_POINTS_ID, OUTPUT_TOP_POINTS_ID);
+        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID);
+        putIntOutputs(0, OUTPUT_SIDE_COUNT_ID);
+        markInvalid(error);
     }
-
 }

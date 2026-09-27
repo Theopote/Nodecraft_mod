@@ -4,13 +4,14 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -30,26 +31,17 @@ import java.util.UUID;
     category = "geometry.solids",
     order = 21
 )
-public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
+public class ShrinkwrapPointsToVoxelGeometryNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Fill Solid", category = "Voxel", order = 1,
         description = "When enabled, all interior voxels are included; when disabled, only the outer shell is used where supported")
     private boolean fillSolid = false;
-
-    @NodeProperty(displayName = "Max Voxels", category = "Voxel", order = 2,
-        description = "Safety cap on voxel count; increase for larger shapes (nearest search is O(queries × voxels))")
-    private int maxVoxels = 65536;
-
-    @NodeProperty(displayName = "Max Queries", category = "Voxel", order = 3,
-        description = "Maximum number of query points processed (extra points are ignored)")
-    private int maxQueries = 4096;
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ShrinkwrapPointsToVoxelGeometryNode() {
         super(UUID.randomUUID(), "geometry.solids.shrinkwrap_points_voxel_geometry");
@@ -66,10 +58,11 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
             NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances",
             "Per-point distances from query to projected center",
-            NodeDataType.LIST, this));
+            NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when projection succeeded",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -86,39 +79,31 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         if (!(geometryObj instanceof GeometryData geometry)) {
-            writeInvalid();
+            invalidate("Geometry is missing or invalid");
             return;
         }
 
         List<Vector3d> queries = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (queries.isEmpty()) {
-            writeInvalid();
+            invalidate("Query point list is empty");
             return;
         }
 
-        int qCap = Math.max(1, maxQueries);
-        if (queries.size() > qCap) {
-            queries = new ArrayList<>(queries.subList(0, qCap));
+        GeometryVoxelizationResult voxelResult = GeometryVoxelizer.voxelizeStrict(geometry, fillSolid);
+        if (!voxelResult.success()) {
+            invalidate(voxelError(voxelResult));
+            return;
         }
 
-        BlockPosList voxels = GeometryVoxelizer.voxelize(geometry, fillSolid);
+        BlockPosList voxels = voxelResult.blocks();
         if (voxels.isEmpty()) {
-            writeInvalid();
+            invalidate("Voxelization produced no blocks");
             return;
         }
 
-        int vCap = Math.max(1, maxVoxels);
-        List<BlockPos> voxelList = new ArrayList<>(Math.min(voxels.size(), vCap));
-        int i = 0;
+        List<BlockPos> voxelList = new ArrayList<>(voxels.size());
         for (BlockPos p : voxels) {
-            if (i++ >= vCap) {
-                break;
-            }
             voxelList.add(p);
-        }
-        if (voxelList.isEmpty()) {
-            writeInvalid();
-            return;
         }
 
         List<Vector3d> projected = new ArrayList<>(queries.size());
@@ -135,7 +120,7 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
                 }
             }
             if (best == null) {
-                writeInvalid();
+                invalidate("Nearest voxel could not be resolved");
                 return;
             }
             projected.add(blockCenter(best));
@@ -143,18 +128,26 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projected));
-        outputValues.put(OUTPUT_DISTANCES_ID, distances);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
+        markSuccess();
     }
 
     private static Vector3d blockCenter(BlockPos bp) {
         return new Vector3d(bp.getX() + 0.5d, bp.getY() + 0.5d, bp.getZ() + 0.5d);
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private static String voxelError(GeometryVoxelizationResult result) {
+        if (result.error() != null && !result.error().isBlank()) {
+            return result.error();
+        }
+        VoxelizationStatus status = result.status();
+        return switch (status) {
+            case OVER_BUDGET -> "Voxelization exceeded budget";
+            case UNSUPPORTED -> "Voxelization unsupported for geometry";
+            case INVALID_BOUNDS -> "Voxelization bounds are invalid";
+            case CHILD_FAILURE -> "Voxelization failed for geometry child";
+            default -> "Voxelization failed";
+        };
     }
 
     public boolean isFillSolid() {
@@ -162,43 +155,13 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
     }
 
     public void setFillSolid(boolean fillSolid) {
-        if (this.fillSolid != fillSolid) {
-            this.fillSolid = fillSolid;
-            markDirty();
-        }
-    }
-
-    public int getMaxVoxels() {
-        return maxVoxels;
-    }
-
-    public void setMaxVoxels(int maxVoxels) {
-        int v = Math.max(1, maxVoxels);
-        if (this.maxVoxels != v) {
-            this.maxVoxels = v;
-            markDirty();
-        }
-    }
-
-    public int getMaxQueries() {
-        return maxQueries;
-    }
-
-    public void setMaxQueries(int maxQueries) {
-        int v = Math.max(1, maxQueries);
-        if (this.maxQueries != v) {
-            this.maxQueries = v;
-            markDirty();
-        }
+        markDirtyIfChanged(this.fillSolid, fillSolid);
+        this.fillSolid = fillSolid;
     }
 
     @Override
     public Object getNodeState() {
-        return java.util.Map.of(
-            "fillSolid", fillSolid,
-            "maxVoxels", maxVoxels,
-            "maxQueries", maxQueries
-        );
+        return java.util.Map.of("fillSolid", fillSolid);
     }
 
     @Override
@@ -209,11 +172,10 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends BaseNode {
         if (map.get("fillSolid") instanceof Boolean b) {
             setFillSolid(b);
         }
-        if (map.get("maxVoxels") instanceof Number n) {
-            setMaxVoxels(n.intValue());
-        }
-        if (map.get("maxQueries") instanceof Number n) {
-            setMaxQueries(n.intValue());
-        }
+    }
+
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_DISTANCES_ID);
+        markInvalid(error);
     }
 }

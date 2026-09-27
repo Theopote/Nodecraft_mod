@@ -56,6 +56,8 @@ public enum NodeDataType {
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
     SPHERE("sphere", "Sphere", SphereData.class),
     SURFACE_STRIP("surface_strip", "Surface Strip", SurfaceStripData.class),
+    /** Ordered surface strips (shell layers, cap collections). */
+    SURFACE_STRIP_LIST("surface_strip_list", "Surface Strip List", List.class, ListElementKind.SURFACE_STRIP),
     LINE("line", "Line", LineData.class),
     POLYLINE("polyline", "Polyline", PolylineData.class),
     CURVE("curve", "Curve", Curve.class),
@@ -209,6 +211,7 @@ public enum NodeDataType {
             case LINE -> LINE;
             case TREE_PATH -> TREE_PATH;
             case POLYGON_PROFILE -> POLYGON_PROFILE;
+            case SURFACE_STRIP -> SURFACE_STRIP;
             case REGION -> REGION;
             case BLOCK_INFO -> BLOCK_INFO;
             case PLANT_STRUCTURE -> PLANT_STRUCTURE;
@@ -334,6 +337,7 @@ public enum NodeDataType {
             case LINE -> value instanceof LineData;
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
+            case SURFACE_STRIP -> value instanceof SurfaceStripData;
             case REGION -> value instanceof RegionData;
             case PLANT_STRUCTURE -> value instanceof PlantStructure;
             case L_SYSTEM_RULE -> value instanceof LSystemRule;

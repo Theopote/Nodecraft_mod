@@ -20,6 +20,7 @@ public enum ListElementKind {
     LINE,
     TREE_PATH,
     POLYGON_PROFILE,
+    SURFACE_STRIP,
     REGION,
     BLOCK_INFO,
     BLOCK_PLACEMENT,

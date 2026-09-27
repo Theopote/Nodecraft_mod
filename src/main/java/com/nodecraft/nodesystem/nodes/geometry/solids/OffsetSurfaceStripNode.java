@@ -4,9 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -24,28 +22,20 @@ import java.util.UUID;
     category = "geometry.solids",
     order = 13
 )
-public class OffsetSurfaceStripNode extends BaseNode {
+public class OffsetSurfaceStripNode extends AbstractSolidNode {
 
     private static final double EPSILON = 1.0e-9d;
 
     @NodeProperty(displayName = "Default Distance", category = "Offset", order = 1)
     private double defaultDistance = 1.0d;
 
-    @NodeProperty(displayName = "Geometry Radius", category = "Geometry", order = 2)
-    private double geometryRadius = 0.25d;
-
-    @NodeProperty(displayName = "Longitudinal Steps", category = "Geometry", order = 3)
-    private int longitudinalSteps = 4;
-
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
     private static final String INPUT_DISTANCE_ID = "input_distance";
 
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
-    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_DISTANCE_ID = "output_distance";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetSurfaceStripNode() {
         super(UUID.randomUUID(), "geometry.solids.offset_surface_strip");
@@ -54,11 +44,11 @@ public class OffsetSurfaceStripNode extends BaseNode {
         addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed offset distance", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Single offset surface strip", NodeDataType.SURFACE_STRIP, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Cylinder-sampled approximation of the offset strip", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the offset strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance", "Resolved signed offset distance", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of sections in the offset strip", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when an offset surface was generated", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -70,18 +60,28 @@ public class OffsetSurfaceStripNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(surfaceStripObj instanceof SurfaceStripData surfaceStrip)) {
-            writeEmptyOutputs();
+            invalidate("Surface strip is missing");
             return;
         }
 
-        double distance = getInputDouble(INPUT_DISTANCE_ID, defaultDistance);
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
+
+        Double distance = resolveFiniteDouble(INPUT_DISTANCE_ID, defaultDistance);
+        if (distance == null) {
+            invalidate("Distance is connected but invalid (must be finite)");
+            return;
+        }
+
         if (Math.abs(distance) <= EPSILON) {
             outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
-            outputValues.put(OUTPUT_GEOMETRY_ID, SurfaceShellBuilder.buildGeometry(List.of(surfaceStrip), longitudinalSteps, geometryRadius));
             outputValues.put(OUTPUT_REGION_ID, SurfaceShellBuilder.createBoundingRegion(List.of(surfaceStrip)));
             outputValues.put(OUTPUT_DISTANCE_ID, 0.0d);
             outputValues.put(OUTPUT_SECTION_COUNT_ID, surfaceStrip.getSectionCount());
-            outputValues.put(OUTPUT_VALID_ID, true);
+            markSuccess();
             return;
         }
 
@@ -91,17 +91,22 @@ public class OffsetSurfaceStripNode extends BaseNode {
             distance > 0.0d ? SurfaceShellBuilder.OffsetMode.OUTSIDE : SurfaceShellBuilder.OffsetMode.INSIDE
         );
         if (shell == null) {
-            writeEmptyOutputs();
+            invalidate("Offset surface could not be generated");
             return;
         }
 
         SurfaceStripData offsetSurface = distance > 0.0d ? shell.outerSurface() : shell.innerSurface();
+        String offsetError = validateSurfaceStrip(offsetSurface);
+        if (offsetError != null) {
+            invalidate(offsetError);
+            return;
+        }
+
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, offsetSurface);
-        outputValues.put(OUTPUT_GEOMETRY_ID, SurfaceShellBuilder.buildGeometry(List.of(offsetSurface), longitudinalSteps, geometryRadius));
         outputValues.put(OUTPUT_REGION_ID, SurfaceShellBuilder.createBoundingRegion(List.of(offsetSurface)));
         outputValues.put(OUTPUT_DISTANCE_ID, distance);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, offsetSurface.getSectionCount());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public double getDefaultDistance() {
@@ -115,37 +120,9 @@ public class OffsetSurfaceStripNode extends BaseNode {
         }
     }
 
-    public double getGeometryRadius() {
-        return geometryRadius;
-    }
-
-    public void setGeometryRadius(double geometryRadius) {
-        double resolved = Math.max(0.0d, geometryRadius);
-        if (Double.compare(this.geometryRadius, resolved) != 0) {
-            this.geometryRadius = resolved;
-            markDirty();
-        }
-    }
-
-    public int getLongitudinalSteps() {
-        return longitudinalSteps;
-    }
-
-    public void setLongitudinalSteps(int longitudinalSteps) {
-        int resolved = Math.max(1, longitudinalSteps);
-        if (this.longitudinalSteps != resolved) {
-            this.longitudinalSteps = resolved;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
-        return java.util.Map.of(
-            "defaultDistance", defaultDistance,
-            "geometryRadius", geometryRadius,
-            "longitudinalSteps", longitudinalSteps
-        );
+        return java.util.Map.of("defaultDistance", defaultDistance);
     }
 
     @Override
@@ -156,25 +133,12 @@ public class OffsetSurfaceStripNode extends BaseNode {
         if (map.get("defaultDistance") instanceof Number value) {
             setDefaultDistance(value.doubleValue());
         }
-        if (map.get("geometryRadius") instanceof Number value) {
-            setGeometryRadius(value.doubleValue());
-        }
-        if (map.get("longitudinalSteps") instanceof Number value) {
-            setLongitudinalSteps(value.intValue());
-        }
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_DISTANCE_ID, 0.0d);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_SURFACE_STRIP_ID, OUTPUT_REGION_ID);
+        putDoubleOutputs(0.0d, OUTPUT_DISTANCE_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID);
+        markInvalid(error);
     }
 }

@@ -4,9 +4,9 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
@@ -23,12 +23,12 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.revolve",
-    displayName = "Revolve Profile",
+    displayName = "Revolve Surface",
     description = "Revolves a polygon profile around an axis and emits section profiles plus a side surface strip",
     category = "geometry.solids",
-    order = 7
+    order = 11
 )
-public class RevolveProfileNode extends BaseNode {
+public class RevolveProfileNode extends AbstractSolidNode {
 
     private static final double EPSILON = 1.0e-9d;
 
@@ -47,8 +47,6 @@ public class RevolveProfileNode extends BaseNode {
     private static final String OUTPUT_ALL_POINTS_ID = "output_all_points";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
-    private static final String OUTPUT_ANGLE_RADIANS_ID = "output_angle_radians";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public RevolveProfileNode() {
         super(UUID.randomUUID(), "geometry.solids.revolve");
@@ -60,13 +58,13 @@ public class RevolveProfileNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ANGLE_DEGREES_ID, "Angle Degrees", "Revolution angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_STEPS_ID, "Steps", "Number of rotational sections to generate", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the revolution", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary polylines for each revolved section", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the revolution", NodeDataType.POLYGON_PROFILE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary paths for each revolved section", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all revolved section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of revolved sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of generated rotational sections", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ANGLE_RADIANS_ID, "Angle Radians", "Resolved revolution angle in radians", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and axis were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,44 +73,62 @@ public class RevolveProfileNode extends BaseNode {
     }
 
     @Override
+    public String getDisplayName() {
+        return "Revolve Surface";
+    }
+
+    @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
         if (!(profileObj instanceof PolygonProfileData profile)) {
-            writeEmptyOutputs();
+            invalidate("Profile is missing or invalid");
             return;
         }
 
         Axis axis = resolveAxis();
         if (axis == null) {
-            writeEmptyOutputs();
+            invalidate("Axis is missing or invalid");
             return;
         }
 
         List<Vector3d> baseUniquePoints = profile.getUniquePoints();
         if (baseUniquePoints.size() < 3) {
-            writeEmptyOutputs();
+            invalidate("Profile must have at least 3 vertices");
             return;
         }
 
-        double angleDegrees = getInputDouble(INPUT_ANGLE_DEGREES_ID, 360.0d);
+        Double angleDegreesObj = resolveFiniteDouble(INPUT_ANGLE_DEGREES_ID, 360.0d);
+        if (angleDegreesObj == null) {
+            invalidate("Angle Degrees is connected but invalid (must be finite)");
+            return;
+        }
+        double angleDegrees = angleDegreesObj;
         double angleRadians = Math.toRadians(angleDegrees);
         if (Math.abs(angleRadians) <= EPSILON) {
-            writeEmptyOutputs();
+            invalidate("Revolution angle must be non-zero");
+            return;
+        }
+
+        Integer stepsObj = resolvePositiveInteger(INPUT_STEPS_ID, defaultSteps);
+        if (stepsObj == null) {
+            invalidate("Steps is connected but invalid (must be a positive integer)");
+            return;
+        }
+        int steps = stepsObj;
+        if (steps < 2) {
+            invalidate("Steps must be at least 2");
+            return;
+        }
+        if (!GenerationLimits.isWithinSurfaceSections(steps + 1)) {
+            invalidate("Section count exceeds limit (" + GenerationLimits.MAX_SURFACE_SECTIONS + ")");
             return;
         }
 
         boolean closedRevolution = Math.abs(Math.abs(angleDegrees) - 360.0d) <= 1.0e-6d;
-        int steps = GenerationLimits.clampSegments(2, getInputInt(INPUT_STEPS_ID, defaultSteps));
         int sectionCount = closedRevolution ? steps : steps + 1;
-        sectionCount = GenerationLimits.clampSectionCountForProfile(
-            closedRevolution ? 2 : 3,
-            sectionCount,
-            baseUniquePoints.size()
-        );
-        steps = closedRevolution ? sectionCount : sectionCount - 1;
 
-        List<Object> sectionProfiles = new ArrayList<>(sectionCount);
-        List<Object> sectionPaths = new ArrayList<>(sectionCount);
+        List<PolygonProfileData> sectionProfiles = new ArrayList<>(sectionCount);
+        List<PathData> sectionPaths = new ArrayList<>(sectionCount);
         List<Vector3d> allPoints = new ArrayList<>(baseUniquePoints.size() * sectionCount);
         List<List<Vector3d>> stripSections = new ArrayList<>(sectionCount);
         List<Boolean> sectionClosedFlags = new ArrayList<>(sectionCount);
@@ -146,20 +162,35 @@ public class RevolveProfileNode extends BaseNode {
             PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
 
             sectionProfiles.add(sectionProfile);
-            sectionPaths.add(sectionProfile.getBoundary());
+            PathData boundary = SolidNodeUtils.toPath(sectionProfile.getBoundary());
+            if (boundary == null) {
+                invalidate("Section path at index " + i + " is invalid");
+                return;
+            }
+            sectionPaths.add(boundary);
             stripSections.add(List.copyOf(uniqueSectionPoints));
             sectionClosedFlags.add(true);
         }
 
-        SurfaceStripData surfaceStrip = new SurfaceStripData(stripSections, sectionClosedFlags);
+        SurfaceStripData surfaceStrip;
+        try {
+            surfaceStrip = new SurfaceStripData(stripSections, sectionClosedFlags);
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.copyOf(sectionProfiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
         outputValues.put(OUTPUT_ALL_POINTS_ID, SpatialValueResolver.toPointDataList(allPoints));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, sectionCount);
-        outputValues.put(OUTPUT_ANGLE_RADIANS_ID, angleRadians);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public int getDefaultSteps() {
@@ -167,18 +198,8 @@ public class RevolveProfileNode extends BaseNode {
     }
 
     public void setDefaultSteps(int defaultSteps) {
-        this.defaultSteps = GenerationLimits.clampSegments(2, defaultSteps);
-        markDirty();
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SECTION_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_ANGLE_RADIANS_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        markDirtyIfChanged(this.defaultSteps, defaultSteps);
+        this.defaultSteps = defaultSteps;
     }
 
     private @Nullable Axis resolveAxis() {
@@ -200,14 +221,11 @@ public class RevolveProfileNode extends BaseNode {
         return new Axis(origin, direction.normalize());
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_SECTION_PROFILES_ID, OUTPUT_SECTION_PATHS_ID, OUTPUT_ALL_POINTS_ID);
+        putNullOutputs(OUTPUT_SURFACE_STRIP_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID);
+        markInvalid(error);
     }
 
     private record Axis(Vector3d origin, Vector3d direction) {

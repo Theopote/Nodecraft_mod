@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -19,9 +18,9 @@ import java.util.UUID;
     displayName = "Push/Pull Box Face",
     description = "Moves one box face along its normal and outputs a new box geometry",
     category = "geometry.solids",
-    order = 8
+    order = 4
 )
-public class PushPullBoxFaceNode extends BaseNode {
+public class PushPullBoxFaceNode extends AbstractSolidNode {
 
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_FACE_ID = "input_face";
@@ -45,6 +44,8 @@ public class PushPullBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Modified box geometry", NodeDataType.BOX_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the requested face was resolved", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_FACE_INDEX_ID, "Resolved Face Index", "Resolved face index used for the operation", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when push/pull succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -55,28 +56,33 @@ public class PushPullBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object faceIndexObj = inputValues.get(INPUT_FACE_INDEX_ID);
-        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
-
-        BoxGeometryData result = null;
-        boolean found = false;
-        Integer resolvedFaceIndex = null;
-
-        if (geometryObj instanceof BoxGeometryData geometry) {
-            int faceIndex = SolidNodeUtils.resolveBoxFaceIndex(faceObj, faceIndexObj);
-            if (faceIndex >= 0 && faceIndex <= 5) {
-                double distance = distanceObj instanceof Number number ? number.doubleValue() : 0.0d;
-                result = pushPullFace(geometry, faceIndex, distance);
-                found = true;
-                resolvedFaceIndex = faceIndex;
-            }
+        if (!(geometryObj instanceof BoxGeometryData geometry)) {
+            invalidate("Box geometry is missing or invalid");
+            return;
         }
+
+        int faceIndex = SolidNodeUtils.resolveBoxFaceIndex(
+            inputValues.get(INPUT_FACE_ID),
+            inputValues.get(INPUT_FACE_INDEX_ID)
+        );
+        if (faceIndex < 0 || faceIndex > 5) {
+            invalidate("Face index must be between 0 and 5");
+            return;
+        }
+
+        Double distanceObj = resolveFiniteDouble(INPUT_DISTANCE_ID, 0.0d);
+        if (distanceObj == null) {
+            invalidate("Distance is connected but invalid (must be finite)");
+            return;
+        }
+
+        BoxGeometryData result = pushPullFace(geometry, faceIndex, distanceObj);
 
         outputValues.put(OUTPUT_GEOMETRY_ID, result);
         outputValues.put(OUTPUT_BOX_GEOMETRY_ID, result);
-        outputValues.put(OUTPUT_FOUND_ID, found);
-        outputValues.put(OUTPUT_RESOLVED_FACE_INDEX_ID, resolvedFaceIndex);
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_RESOLVED_FACE_INDEX_ID, faceIndex);
+        markSuccess();
     }
 
     private BoxGeometryData pushPullFace(BoxGeometryData geometry, int faceIndex, double distance) {
@@ -98,5 +104,12 @@ public class PushPullBoxFaceNode extends BaseNode {
         center.add(localCenterOffset);
 
         return new BoxGeometryData(center, halfExtents, orientation, geometry.isOriented());
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_BOX_GEOMETRY_ID);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        putIntOutputs(-1, OUTPUT_RESOLVED_FACE_INDEX_ID);
+        markInvalid(error);
     }
 }

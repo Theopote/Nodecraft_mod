@@ -3,18 +3,21 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.solids.SectionContourUtils.SectionResult;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
+import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,17 +28,14 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.section_cut",
-    displayName = "Section Cut",
+    displayName = "Voxel Section",
     description = "Cuts geometry by one or more planes and traces voxel slice contours as section profiles, boundaries, blocks, and tree-grouped data.",
     category = "geometry.solids",
-    order = 10
+    order = 18
 )
-public class SectionCutNode extends BaseNode {
+public class SectionCutNode extends AbstractSolidNode {
+
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
-    private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
-    private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
-    private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
-    private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_PLANES_ID = "input_planes";
     private static final String INPUT_THICKNESS_ID = "input_thickness";
@@ -50,30 +50,26 @@ public class SectionCutNode extends BaseNode {
     private static final String OUTPUT_SLICE_POINTS_ID = "output_slice_points";
     private static final String OUTPUT_SLICE_BLOCKS_TREE_ID = "output_slice_blocks_tree";
     private static final String OUTPUT_SLICE_POINTS_TREE_ID = "output_slice_points_tree";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SectionCutNode() {
         super(UUID.randomUUID(), "geometry.solids.section_cut");
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry fallback", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry fallback", NodeDataType.CYLINDER_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry fallback", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry fallback", NodeDataType.TORUS_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to section", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Section plane", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_PLANES_ID, "Planes", "Optional list of section planes. When connected, each plane outputs one section branch", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_PLANES_ID, "Planes", "Optional list of section planes. When connected, each plane outputs one section branch", NodeDataType.PLANE_LIST, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary traced section profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Primary traced section boundary polyline", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles for all planes", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARIES_ID, "Boundaries", "Resolved section boundary polylines for all planes", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Primary traced section boundary path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles for all planes", NodeDataType.POLYGON_PROFILE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARIES_ID, "Boundaries", "Resolved section boundary paths for all planes", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_TREE_ID, "Profiles Tree", "Section profiles keyed by plane and contour index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARIES_TREE_ID, "Boundaries Tree", "Section boundary polylines keyed by plane and contour index", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARIES_TREE_ID, "Boundaries Tree", "Section boundary paths keyed by plane and contour index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_BLOCKS_ID, "Slice Blocks", "Voxel blocks intersecting the section slab", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_POINTS_ID, "Slice Points", "Projected section sample points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_BLOCKS_TREE_ID, "Slice Blocks Tree", "Slice blocks keyed by plane index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_POINTS_TREE_ID, "Slice Points Tree", "Projected section sample points keyed by plane index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when section profile is resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -82,26 +78,51 @@ public class SectionCutNode extends BaseNode {
     }
 
     @Override
+    public String getDisplayName() {
+        return "Voxel Section";
+    }
+
+    @Override
     public void processNode(@Nullable ExecutionContext context) {
-        GeometryData geometry = GeometryVoxelizer.resolveGeometry(
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-        );
-        if (geometry == null) {
-            writeInvalid();
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (!(geometryObj instanceof GeometryData geometry)) {
+            invalidate("Geometry is missing or invalid");
             return;
         }
 
-        List<PlaneData> planes = resolvePlanes(inputValues.get(INPUT_PLANES_ID), inputValues.get(INPUT_PLANE_ID));
-        writeResults(GeometryVoxelizer.voxelize(geometry, true), planes, Math.max(0.1d, getDouble(INPUT_THICKNESS_ID, 1.0d)));
+        List<PlaneData> planes = resolvePlanes();
+        if (planes.isEmpty()) {
+            invalidate("At least one section plane is required");
+            return;
+        }
+
+        Double thicknessObj = resolvePositiveDouble(INPUT_THICKNESS_ID, 1.0d);
+        if (thicknessObj == null) {
+            invalidate("Thickness is connected but invalid (must be finite and > 0)");
+            return;
+        }
+
+        GeometryVoxelizationResult voxelResult = GeometryVoxelizer.voxelizeStrict(geometry, true);
+        if (!voxelResult.success()) {
+            invalidate(voxelError(voxelResult));
+            return;
+        }
+
+        writeResults(voxelResult.blocks(), planes, thicknessObj);
+    }
+
+    private List<PlaneData> resolvePlanes() {
+        if (SurfaceInputUtils.isConnected(this, INPUT_PLANES_ID)) {
+            List<PlaneData> planes = SurfaceInputUtils.resolveStrictPlaneList(inputValues.get(INPUT_PLANES_ID));
+            return planes == null ? List.of() : planes;
+        }
+        PlaneData plane = resolvePlane(INPUT_PLANE_ID, PlaneData.XY_PLANE);
+        return plane == null ? List.of() : List.of(plane);
     }
 
     private void writeResults(BlockPosList filled, List<PlaneData> planes, double thickness) {
         List<PolygonProfileData> profiles = new ArrayList<>();
-        List<PolylineData> boundaries = new ArrayList<>();
+        List<PathData> boundaries = new ArrayList<>();
         BlockPosList allSliceBlocks = new BlockPosList();
         List<Vector3d> allSlicePoints = new ArrayList<>();
         List<DataTreeData.Branch> profileBranches = new ArrayList<>();
@@ -121,9 +142,18 @@ public class SectionCutNode extends BaseNode {
                 profileBranches.add(new DataTreeData.Branch(List.of(planeIndex), List.of()));
             }
             if (!result.boundaries().isEmpty()) {
-                boundaries.addAll(result.boundaries());
+                for (PolylineData boundary : result.boundaries()) {
+                    PathData path = pathFromPolyline(boundary);
+                    if (path != null) {
+                        boundaries.add(path);
+                    }
+                }
                 for (int contourIndex = 0; contourIndex < result.boundaries().size(); contourIndex++) {
-                    boundaryBranches.add(new DataTreeData.Branch(List.of(planeIndex, contourIndex), List.of(result.boundaries().get(contourIndex))));
+                    PathData path = pathFromPolyline(result.boundaries().get(contourIndex));
+                    boundaryBranches.add(new DataTreeData.Branch(
+                        List.of(planeIndex, contourIndex),
+                        path == null ? List.of() : List.of(path)
+                    ));
                 }
             } else {
                 boundaryBranches.add(new DataTreeData.Branch(List.of(planeIndex), List.of()));
@@ -137,8 +167,13 @@ public class SectionCutNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_PROFILE_ID, firstValid != null ? firstValid.primaryProfile() : null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, firstValid != null ? firstValid.primaryBoundary() : null);
+        if (firstValid == null) {
+            invalidate("No section contours were traced");
+            return;
+        }
+
+        outputValues.put(OUTPUT_PROFILE_ID, firstValid.primaryProfile());
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromPolyline(firstValid.primaryBoundary()));
         outputValues.put(OUTPUT_PROFILES_ID, List.copyOf(profiles));
         outputValues.put(OUTPUT_BOUNDARIES_ID, List.copyOf(boundaries));
         outputValues.put(OUTPUT_PROFILES_TREE_ID, new DataTreeData(profileBranches));
@@ -147,40 +182,31 @@ public class SectionCutNode extends BaseNode {
         outputValues.put(OUTPUT_SLICE_POINTS_ID, SpatialValueResolver.toPointDataList(allSlicePoints));
         outputValues.put(OUTPUT_SLICE_BLOCKS_TREE_ID, new DataTreeData(blockBranches));
         outputValues.put(OUTPUT_SLICE_POINTS_TREE_ID, new DataTreeData(pointBranches));
-        outputValues.put(OUTPUT_VALID_ID, firstValid != null);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_BOUNDARIES_ID, List.of());
+    private static String voxelError(GeometryVoxelizationResult result) {
+        if (result.error() != null && !result.error().isBlank()) {
+            return result.error();
+        }
+        VoxelizationStatus status = result.status();
+        return switch (status) {
+            case OVER_BUDGET -> "Voxelization exceeded budget";
+            case UNSUPPORTED -> "Voxelization unsupported for geometry";
+            case INVALID_BOUNDS -> "Voxelization bounds are invalid";
+            case CHILD_FAILURE -> "Voxelization failed for geometry child";
+            default -> "Voxelization failed";
+        };
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID, OUTPUT_BOUNDARIES_ID, OUTPUT_SLICE_POINTS_ID);
         outputValues.put(OUTPUT_PROFILES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_BOUNDARIES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SLICE_BLOCKS_ID, new BlockPosList());
-        outputValues.put(OUTPUT_SLICE_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SLICE_BLOCKS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SLICE_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private List<PlaneData> resolvePlanes(@Nullable Object planesObj, @Nullable Object planeObj) {
-        if (planesObj instanceof List<?> list) {
-            List<PlaneData> planes = new ArrayList<>();
-            for (Object item : list) {
-                if (item instanceof PlaneData plane) {
-                    planes.add(plane);
-                }
-            }
-            if (!planes.isEmpty()) {
-                return List.copyOf(planes);
-            }
-        }
-        return List.of(planeObj instanceof PlaneData plane ? plane : PlaneData.XY_PLANE);
-    }
-
-    private double getDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number n ? n.doubleValue() : fallback;
+        markInvalid(error);
     }
 }

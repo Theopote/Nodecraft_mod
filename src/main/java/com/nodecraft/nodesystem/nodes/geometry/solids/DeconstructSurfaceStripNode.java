@@ -3,10 +3,10 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -24,9 +24,9 @@ import java.util.UUID;
     displayName = "Deconstruct Surface Strip",
     description = "Breaks a surface strip into section paths, flattened points, and rail segments",
     category = "geometry.solids",
-    order = 11
+    order = 16
 )
-public class DeconstructSurfaceStripNode extends BaseNode {
+public class DeconstructSurfaceStripNode extends AbstractSolidNode {
 
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
 
@@ -39,23 +39,23 @@ public class DeconstructSurfaceStripNode extends BaseNode {
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
     private static final String OUTPUT_POINTS_PER_SECTION_ID = "output_points_per_section";
     private static final String OUTPUT_ALL_CLOSED_ID = "output_all_closed";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructSurfaceStripNode() {
         super(UUID.randomUUID(), "geometry.solids.deconstruct_surface_strip");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to deconstruct", NodeDataType.SURFACE_STRIP, this));
 
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Polyline for each section", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section polylines keyed by section index", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Path for each section", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened ordered section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding points between sections", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding points between sections", NodeDataType.LINE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of sections in the strip", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_PER_SECTION_ID, "Points Per Section", "Number of points stored in each section", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ALL_CLOSED_ID, "All Closed", "True when every section is marked closed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a surface strip was provided", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -67,20 +67,32 @@ public class DeconstructSurfaceStripNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(surfaceStripObj instanceof SurfaceStripData surfaceStrip)) {
-            writeEmptyOutputs();
+            invalidate("Surface strip is missing");
+            return;
+        }
+
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
             return;
         }
 
         List<List<Vector3d>> sections = surfaceStrip.sections();
         List<Boolean> closedFlags = surfaceStrip.sectionClosedFlags();
-        List<Object> sectionPaths = new ArrayList<>(sections.size());
+        List<PathData> sectionPaths = new ArrayList<>(sections.size());
         List<LineData> railSegments = new ArrayList<>();
         List<DataTreeData.Branch> sectionPathBranches = new ArrayList<>(sections.size());
         List<DataTreeData.Branch> sectionPointBranches = new ArrayList<>(sections.size());
         List<DataTreeData.Branch> railSegmentBranches = new ArrayList<>(Math.max(0, sections.size() - 1));
 
         for (int sectionIndex = 0; sectionIndex < sections.size(); sectionIndex++) {
-            Object sectionPath = SolidNodeUtils.createPolyline(sections.get(sectionIndex), closedFlags.get(sectionIndex));
+            PathData sectionPath = SolidNodeUtils.toPath(
+                SolidNodeUtils.createPolyline(sections.get(sectionIndex), closedFlags.get(sectionIndex))
+            );
+            if (sectionPath == null) {
+                invalidate("Section path at index " + sectionIndex + " is invalid");
+                return;
+            }
             sectionPaths.add(sectionPath);
             sectionPathBranches.add(new DataTreeData.Branch(List.of(sectionIndex), List.of(sectionPath)));
             sectionPointBranches.add(new DataTreeData.Branch(List.of(sectionIndex), new ArrayList<>(sections.get(sectionIndex))));
@@ -113,20 +125,16 @@ public class DeconstructSurfaceStripNode extends BaseNode {
         outputValues.put(OUTPUT_SECTION_COUNT_ID, surfaceStrip.getSectionCount());
         outputValues.put(OUTPUT_POINTS_PER_SECTION_ID, surfaceStrip.getPointsPerSection());
         outputValues.put(OUTPUT_ALL_CLOSED_ID, surfaceStrip.areAllSectionsClosed());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_SECTION_PATHS_ID, OUTPUT_ALL_POINTS_ID, OUTPUT_RAIL_SEGMENTS_ID);
         outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_POINTS_PER_SECTION_ID, 0);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID, OUTPUT_POINTS_PER_SECTION_ID);
         outputValues.put(OUTPUT_ALL_CLOSED_ID, false);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        markInvalid(error);
     }
-
 }

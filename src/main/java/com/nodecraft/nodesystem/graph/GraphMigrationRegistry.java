@@ -130,6 +130,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V68 -> migrateV68ToV69(graph);
             case GraphFormatVersion.V69 -> migrateV69ToV70(graph);
             case GraphFormatVersion.V70 -> migrateV70ToV71(graph);
+            case GraphFormatVersion.V71 -> migrateV71ToV72(graph);
             default -> graph;
         };
     }
@@ -4870,6 +4871,149 @@ public final class GraphMigrationRegistry {
                     if (entry.getKey() instanceof String key && !"clampT".equals(key)) {
                         copy.put(key, entry.getValue());
                     }
+                }
+                node.state = copy;
+            }
+        }
+    }
+
+    private static final String LEGACY_SHELL_TYPE = "geometry.solids.shell";
+    private static final String THICKEN_SURFACE_TYPE = "geometry.solids.thicken_surface";
+
+    /**
+     * Geometry Solids / Surface Modeling v1: retire duplicates, typed list ports, PATH not POLYLINE.
+     */
+    private static SavedGraph migrateV71ToV72(SavedGraph graph) {
+        applySolidsV72NodeTypeMigration(graph);
+        applySolidsV72PortMigration(graph);
+        applySolidsV72NodeStateMigration(graph);
+        return graph;
+    }
+
+    private static void applySolidsV72NodeTypeMigration(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_PRISM_EXTRUDE_TYPE.equals(node.typeId)) {
+                node.typeId = EXTRUDE_TYPE;
+            } else if (LEGACY_SHELL_TYPE.equals(node.typeId)) {
+                node.typeId = THICKEN_SURFACE_TYPE;
+            }
+        }
+    }
+
+    private static void applySolidsV72PortMigration(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return;
+        }
+
+        java.util.Map<String, String> nodeTypes = new java.util.HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypes.put(node.nodeId, node.typeId);
+            }
+        }
+
+        java.util.List<SavedConnection> kept = new java.util.ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypes.get(connection.sourceNodeId);
+            String targetType = nodeTypes.get(connection.targetNodeId);
+            String sourcePort = connection.sourcePortId;
+            String targetPort = connection.targetPortId;
+            if (sourcePort == null || targetPort == null) {
+                continue;
+            }
+
+            String remappedSource = remapSolidsV72SourcePort(sourceType, sourcePort);
+            String remappedTarget = remapSolidsV72TargetPort(targetType, targetPort);
+            if (remappedSource == null || remappedTarget == null) {
+                continue;
+            }
+
+            connection.sourcePortId = remappedSource;
+            connection.targetPortId = remappedTarget;
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static @Nullable String remapSolidsV72SourcePort(@Nullable String sourceType, String sourcePort) {
+        if (sourceType == null || !sourceType.startsWith("geometry.solids.")) {
+            return sourcePort;
+        }
+
+        if (LEGACY_PRISM_EXTRUDE_TYPE.equals(sourceType) || EXTRUDE_TYPE.equals(sourceType)) {
+            if ("output_surface_strip".equals(sourcePort)) {
+                return "output_side_surface";
+            }
+        }
+
+        if (LEGACY_SHELL_TYPE.equals(sourceType) || THICKEN_SURFACE_TYPE.equals(sourceType)) {
+            return switch (sourcePort) {
+                case "output_outer_surface" -> "output_front_surface";
+                case "output_inner_surface" -> "output_back_surface";
+                case "output_geometry" -> null;
+                default -> sourcePort;
+            };
+        }
+
+        return switch (sourcePort) {
+            case "output_angle_radians" -> null;
+            case "output_geometry" -> THICKEN_SURFACE_TYPE.equals(sourceType)
+                || LEGACY_SHELL_TYPE.equals(sourceType)
+                || "geometry.solids.offset_surface_strip".equals(sourceType)
+                ? null
+                : sourcePort;
+            default -> sourcePort;
+        };
+    }
+
+    private static @Nullable String remapSolidsV72TargetPort(@Nullable String targetType, String targetPort) {
+        if (targetType == null || !targetType.startsWith("geometry.solids.")) {
+            return targetPort;
+        }
+
+        if (LEGACY_PRISM_EXTRUDE_TYPE.equals(targetType)) {
+            return switch (targetPort) {
+                case "input_extrusion_vector" -> "input_direction";
+                default -> targetPort;
+            };
+        }
+
+        return switch (targetPort) {
+            case "input_box_geometry", "input_cylinder_geometry", "input_sphere_geometry", "input_torus_geometry" -> null;
+            default -> targetPort;
+        };
+    }
+
+    private static void applySolidsV72NodeStateMigration(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.state == null || node.typeId == null) {
+                continue;
+            }
+            if (!node.typeId.startsWith("geometry.solids.")) {
+                continue;
+            }
+            if (node.state instanceof java.util.Map<?, ?> map) {
+                java.util.Map<String, Object> copy = new java.util.HashMap<>();
+                for (java.util.Map.Entry<?, ?> entry : map.entrySet()) {
+                    if (!(entry.getKey() instanceof String key)) {
+                        continue;
+                    }
+                    if ("maxVoxels".equals(key) || "maxQueries".equals(key) || "rangeMode".equals(key)) {
+                        continue;
+                    }
+                    copy.put(key, entry.getValue());
                 }
                 node.state = copy;
             }

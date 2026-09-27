@@ -32,6 +32,9 @@ public record SurfaceStripData(List<List<Vector3d>> sections, List<Boolean> sect
 
             List<Vector3d> copiedSection = new ArrayList<>(section.size());
             for (Vector3d point : section) {
+                if (point == null || !Double.isFinite(point.x) || !Double.isFinite(point.y) || !Double.isFinite(point.z)) {
+                    throw new IllegalArgumentException("Surface strip points must be finite");
+                }
                 copiedSection.add(new Vector3d(point));
             }
             copiedSections.add(List.copyOf(copiedSection));

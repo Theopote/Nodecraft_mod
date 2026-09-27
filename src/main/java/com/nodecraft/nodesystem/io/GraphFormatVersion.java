@@ -447,8 +447,15 @@ public final class GraphFormatVersion {
      */
     public static final int V71 = 71;
 
+    /**
+     * Geometry Solids / Surface Modeling Language v1 (PASSED / FROZEN): Valid+Error on 22 nodes,
+     * SURFACE_STRIP canonical surface type, typed list ports, PATH not POLYLINE, strict inputs/workloads,
+     * delete extrude_profile + shell duplicates, orders 0–21.
+     */
+    public static final int V72 = 72;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V71;
+    public static final int CURRENT = V72;
 
     private GraphFormatVersion() {
     }

@@ -203,6 +203,21 @@ public final class GenerationLimits {
     /** Maximum total sample workload: output paths × samples per path. */
     public static final long MAX_CURVE_TOTAL_SAMPLES = MAX_LIST_ELEMENTS;
 
+    /** Maximum section count (U direction) for surface strip topology. */
+    public static final int MAX_SURFACE_SECTIONS = MAX_SEGMENTS;
+
+    /** Maximum points per section (V direction) for surface strip topology. */
+    public static final int MAX_SURFACE_POINTS_PER_SECTION = MAX_SEGMENTS;
+
+    /** Maximum total surface points: sections × points per section. */
+    public static final long MAX_SURFACE_TOTAL_POINTS = MAX_LIST_ELEMENTS;
+
+    /** Maximum shrinkwrap query points. */
+    public static final int MAX_SURFACE_PROJECTION_QUERIES = MAX_GEOMETRY_INSTANCES;
+
+    /** Maximum shrinkwrap workload: queries × triangles. */
+    public static final long MAX_SURFACE_PROJECTION_WORK = MAX_LIST_ELEMENTS;
+
     /** Hard safety ceiling for world.write SNBT / NBT String input length. */
     public static final int MAX_WORLD_WRITE_SNBT_CHARS = 65_536;
 
@@ -258,6 +273,24 @@ public final class GenerationLimits {
     /** Graph-facing validation: multi-path output count within curve budget. */
     public static boolean isWithinCurveOutputPaths(int count) {
         return count >= 1 && count <= MAX_CURVE_OUTPUT_PATHS;
+    }
+
+    /** Graph-facing validation: section count within surface budget. */
+    public static boolean isWithinSurfaceSections(int sectionCount) {
+        return sectionCount >= 2 && sectionCount <= MAX_SURFACE_SECTIONS;
+    }
+
+    /** Graph-facing validation: points per section within surface budget. */
+    public static boolean isWithinSurfacePointsPerSection(int pointsPerSection) {
+        return pointsPerSection >= 2 && pointsPerSection <= MAX_SURFACE_POINTS_PER_SECTION;
+    }
+
+    /** Graph-facing validation: total surface point workload (sections × points). */
+    public static boolean isWithinSurfaceWorkload(int sectionCount, int pointsPerSection) {
+        if (sectionCount < 2 || pointsPerSection < 2) {
+            return false;
+        }
+        return (long) sectionCount * pointsPerSection <= MAX_SURFACE_TOTAL_POINTS;
     }
 
     /** Graph-facing validation: total curve sample workload (paths × samples). */

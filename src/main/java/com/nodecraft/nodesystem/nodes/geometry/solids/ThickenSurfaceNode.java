@@ -4,9 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -21,11 +19,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.solids.thicken_surface",
     displayName = "Thicken Surface",
-    description = "Thickens a surface strip into two offset layers with optional cap strips and a reusable geometry approximation",
+    description = "Thickens a surface strip into two offset layers with optional cap strips",
     category = "geometry.solids",
-    order = 9
+    order = 14
 )
-public class ThickenSurfaceNode extends BaseNode {
+public class ThickenSurfaceNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Default Thickness", category = "Thickness", order = 1)
     private double defaultThickness = 1.0d;
@@ -36,12 +34,6 @@ public class ThickenSurfaceNode extends BaseNode {
     @NodeProperty(displayName = "Include Caps", category = "Thickness", order = 3)
     private boolean includeCaps = true;
 
-    @NodeProperty(displayName = "Geometry Radius", category = "Geometry", order = 4)
-    private double geometryRadius = 0.25d;
-
-    @NodeProperty(displayName = "Longitudinal Steps", category = "Geometry", order = 5)
-    private int longitudinalSteps = 4;
-
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
     private static final String INPUT_THICKNESS_ID = "input_thickness";
 
@@ -49,11 +41,9 @@ public class ThickenSurfaceNode extends BaseNode {
     private static final String OUTPUT_BACK_SURFACE_ID = "output_back_surface";
     private static final String OUTPUT_SIDE_CAPS_ID = "output_side_caps";
     private static final String OUTPUT_ALL_SURFACES_ID = "output_all_surfaces";
-    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_LAYER_COUNT_ID = "output_layer_count";
     private static final String OUTPUT_THICKNESS_ID = "output_thickness";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ThickenSurfaceNode() {
         super(UUID.randomUUID(), "geometry.solids.thicken_surface");
@@ -63,49 +53,60 @@ public class ThickenSurfaceNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_FRONT_SURFACE_ID, "Front Surface", "Primary offset surface layer", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_BACK_SURFACE_ID, "Back Surface", "Secondary offset surface layer", NodeDataType.SURFACE_STRIP, this));
-        addOutputPort(new BasePort(OUTPUT_SIDE_CAPS_ID, "Side Caps", "Cap surfaces closing the thickened strip ends", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_ALL_SURFACES_ID, "All Surfaces", "All generated thickened strip surfaces", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Lattice Geometry",
-            "Cylinder-lattice approximation of thickened strip (not a filled solid)", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_SIDE_CAPS_ID, "Side Caps", "Cap surfaces closing the thickened strip ends", NodeDataType.SURFACE_STRIP_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ALL_SURFACES_ID, "All Surfaces", "All generated thickened strip surfaces", NodeDataType.SURFACE_STRIP_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the thickened strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_LAYER_COUNT_ID, "Layer Count", "Generated surface layer count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_THICKNESS_ID, "Thickness", "Resolved thickening distance", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the strip was thickened", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Thickens a surface strip into two offset layers with optional cap strips and a reusable geometry approximation";
+        return "Thickens a surface strip into two offset layers with optional cap strips";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(surfaceStripObj instanceof SurfaceStripData surfaceStrip)) {
-            writeEmptyOutputs();
+            invalidate("Surface strip is missing");
             return;
         }
 
-        double thickness = Math.max(0.0d, getInputDouble(INPUT_THICKNESS_ID, defaultThickness));
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
+
+        Double thicknessObj = resolveNonNegativeDouble(INPUT_THICKNESS_ID, defaultThickness);
+        if (thicknessObj == null) {
+            invalidate("Thickness is connected but invalid (must be finite and non-negative)");
+            return;
+        }
+        double thickness = thicknessObj;
+
         SurfaceShellBuilder.ShellResult shell = SurfaceShellBuilder.buildShell(surfaceStrip, thickness, offsetMode);
         if (shell == null) {
-            writeEmptyOutputs();
+            invalidate("Surface strip could not be thickened");
             return;
         }
 
-        List<SurfaceStripData> allSurfaces = new ArrayList<>(includeCaps ? shell.allSurfaces() : List.of(shell.outerSurface(), shell.innerSurface()));
-        GeometryData geometry = SurfaceShellBuilder.buildGeometry(allSurfaces, longitudinalSteps, geometryRadius);
+        List<SurfaceStripData> allSurfaces = new ArrayList<>(
+            includeCaps ? shell.allSurfaces() : List.of(shell.outerSurface(), shell.innerSurface())
+        );
         RegionData region = SurfaceShellBuilder.createBoundingRegion(allSurfaces);
 
         outputValues.put(OUTPUT_FRONT_SURFACE_ID, shell.outerSurface());
         outputValues.put(OUTPUT_BACK_SURFACE_ID, shell.innerSurface());
         outputValues.put(OUTPUT_SIDE_CAPS_ID, includeCaps ? shell.capSurfaces() : List.of());
         outputValues.put(OUTPUT_ALL_SURFACES_ID, List.copyOf(allSurfaces));
-        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_LAYER_COUNT_ID, allSurfaces.size());
         outputValues.put(OUTPUT_THICKNESS_ID, shell.thickness());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public double getDefaultThickness() {
@@ -113,11 +114,8 @@ public class ThickenSurfaceNode extends BaseNode {
     }
 
     public void setDefaultThickness(double defaultThickness) {
-        double resolved = Math.max(0.0d, defaultThickness);
-        if (Double.compare(this.defaultThickness, resolved) != 0) {
-            this.defaultThickness = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.defaultThickness, defaultThickness);
+        this.defaultThickness = defaultThickness;
     }
 
     public SurfaceShellBuilder.OffsetMode getOffsetMode() {
@@ -126,10 +124,8 @@ public class ThickenSurfaceNode extends BaseNode {
 
     public void setOffsetMode(SurfaceShellBuilder.OffsetMode offsetMode) {
         SurfaceShellBuilder.OffsetMode resolved = offsetMode == null ? SurfaceShellBuilder.OffsetMode.CENTERED : offsetMode;
-        if (this.offsetMode != resolved) {
-            this.offsetMode = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.offsetMode, resolved);
+        this.offsetMode = resolved;
     }
 
     public void setOffsetModeString(String offsetMode) {
@@ -149,34 +145,8 @@ public class ThickenSurfaceNode extends BaseNode {
     }
 
     public void setIncludeCaps(boolean includeCaps) {
-        if (this.includeCaps != includeCaps) {
-            this.includeCaps = includeCaps;
-            markDirty();
-        }
-    }
-
-    public double getGeometryRadius() {
-        return geometryRadius;
-    }
-
-    public void setGeometryRadius(double geometryRadius) {
-        double resolved = Math.max(0.0d, geometryRadius);
-        if (Double.compare(this.geometryRadius, resolved) != 0) {
-            this.geometryRadius = resolved;
-            markDirty();
-        }
-    }
-
-    public int getLongitudinalSteps() {
-        return longitudinalSteps;
-    }
-
-    public void setLongitudinalSteps(int longitudinalSteps) {
-        int resolved = Math.max(1, longitudinalSteps);
-        if (this.longitudinalSteps != resolved) {
-            this.longitudinalSteps = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.includeCaps, includeCaps);
+        this.includeCaps = includeCaps;
     }
 
     @Override
@@ -184,9 +154,7 @@ public class ThickenSurfaceNode extends BaseNode {
         return java.util.Map.of(
             "defaultThickness", defaultThickness,
             "offsetMode", offsetMode.name(),
-            "includeCaps", includeCaps,
-            "geometryRadius", geometryRadius,
-            "longitudinalSteps", longitudinalSteps
+            "includeCaps", includeCaps
         );
     }
 
@@ -204,28 +172,13 @@ public class ThickenSurfaceNode extends BaseNode {
         if (map.get("includeCaps") instanceof Boolean value) {
             setIncludeCaps(value);
         }
-        if (map.get("geometryRadius") instanceof Number value) {
-            setGeometryRadius(value.doubleValue());
-        }
-        if (map.get("longitudinalSteps") instanceof Number value) {
-            setLongitudinalSteps(value.intValue());
-        }
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_FRONT_SURFACE_ID, null);
-        outputValues.put(OUTPUT_BACK_SURFACE_ID, null);
-        outputValues.put(OUTPUT_SIDE_CAPS_ID, List.of());
-        outputValues.put(OUTPUT_ALL_SURFACES_ID, List.of());
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_LAYER_COUNT_ID, 0);
-        outputValues.put(OUTPUT_THICKNESS_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_FRONT_SURFACE_ID, OUTPUT_BACK_SURFACE_ID, OUTPUT_REGION_ID);
+        putEmptyListOutputs(OUTPUT_SIDE_CAPS_ID, OUTPUT_ALL_SURFACES_ID);
+        putIntOutputs(0, OUTPUT_LAYER_COUNT_ID);
+        putDoubleOutputs(0.0d, OUTPUT_THICKNESS_ID);
+        markInvalid(error);
     }
 }

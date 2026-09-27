@@ -4,13 +4,14 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -27,9 +28,9 @@ import java.util.UUID;
     displayName = "Multi-Section Loft Surface",
     description = "Lofts multiple polygon sections into one SURFACE_STRIP (surface topology, not a solid) with close, flip, seam, and resample options.",
     category = "geometry.solids",
-    order = 11
+    order = 7
 )
-public class MultiSectionLoftNode extends BaseNode {
+public class MultiSectionLoftNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Close Sections", category = "Loft", order = 1,
         description = "Treat each section as closed when building the surface strip")
@@ -47,13 +48,13 @@ public class MultiSectionLoftNode extends BaseNode {
         description = "Rotates each section's point order by this many vertices")
     private int seamOffset = 0;
 
-    @NodeProperty(displayName = "Auto Resample", category = "Compatibility", order = 10,
-        description = "Resample sections to a shared point count when their vertex counts differ")
-    private boolean autoResample = true;
+    @NodeProperty(displayName = "Match Sections", category = "Compatibility", order = 10,
+        description = "STRICT requires equal counts; RESAMPLE_MAX uses the largest count; RESAMPLE_COUNT uses Resample Count")
+    private MatchSectionsMode matchSectionsMode = MatchSectionsMode.STRICT;
 
-    @NodeProperty(displayName = "Target Section Points", category = "Compatibility", order = 11,
-        description = "Target point count for auto resampling. Use 0 to use the largest section count.")
-    private int targetSectionPoints = 0;
+    @NodeProperty(displayName = "Resample Count", category = "Compatibility", order = 11,
+        description = "Target vertex count when Match Sections is RESAMPLE_COUNT (minimum 3)")
+    private int resampleCount = 0;
 
     private static final String INPUT_PROFILES_ID = "input_profiles";
 
@@ -66,7 +67,6 @@ public class MultiSectionLoftNode extends BaseNode {
     private static final String OUTPUT_RAILS_TREE_ID = "output_rails_tree";
     private static final String OUTPUT_SIDE_SURFACE_ID = "output_side_surface";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MultiSectionLoftNode() {
         super(UUID.randomUUID(), "geometry.solids.loft_multi_section");
@@ -74,14 +74,15 @@ public class MultiSectionLoftNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "Resolved section profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_TREE_ID, "Profiles Tree", "Resolved section profiles keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary path for each section", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary path for each section", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_RAILS_ID, "Rails", "Polyline rails connecting corresponding vertices across sections", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAILS_ID, "Rails", "Paths connecting corresponding vertices across sections", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAILS_TREE_ID, "Rails Tree", "Loft rails keyed by vertex index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface", "Lofted side strip across all sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of loft sections", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when multi-section loft succeeds", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -96,23 +97,13 @@ public class MultiSectionLoftNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object profilesObj = inputValues.get(INPUT_PROFILES_ID);
-        if (!(profilesObj instanceof List<?> list)) {
-            writeInvalid();
-            return;
-        }
-
-        List<PolygonProfileData> profiles = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof PolygonProfileData p) {
-                profiles.add(p);
-            }
-        }
-        if (profiles.size() < 2) {
-            writeInvalid();
+        List<PolygonProfileData> profiles = SurfaceInputUtils.resolveStrictProfileList(inputValues.get(INPUT_PROFILES_ID));
+        if (profiles == null || profiles.size() < 2) {
+            invalidate("Profiles input requires at least two polygon profiles");
             return;
         }
         if (reverseSectionOrder) {
+            profiles = new ArrayList<>(profiles);
             Collections.reverse(profiles);
         }
 
@@ -120,22 +111,22 @@ public class MultiSectionLoftNode extends BaseNode {
         for (PolygonProfileData profile : profiles) {
             List<Vector3d> unique = prepareSection(profile.getUniquePoints());
             if (unique.size() < 3) {
-                writeInvalid();
+                invalidate("Each section must have at least 3 vertices");
                 return;
             }
             stripSections.add(List.copyOf(unique));
         }
 
-        if (autoResample) {
-            int target = resolveTargetPointCount(profiles);
-            stripSections = resampleSections(stripSections, target, closeSections);
-        } else if (!allSameSize(stripSections)) {
-            writeInvalid();
-            return;
+        if (!allSameSize(stripSections)) {
+            Integer targetCount = resolveTargetPointCount(stripSections);
+            if (targetCount == null) {
+                return;
+            }
+            stripSections = resampleSections(stripSections, targetCount, closeSections);
         }
 
         if (!allSameSize(stripSections) || stripSections.getFirst().isEmpty()) {
-            writeInvalid();
+            invalidate("Loft sections could not be matched to a common point count");
             return;
         }
 
@@ -144,19 +135,43 @@ public class MultiSectionLoftNode extends BaseNode {
         for (int i = 0; i < profiles.size(); i++) {
             closedFlags.add(closeSections);
         }
-        List<Object> sectionPaths = rebuildSectionPaths(stripSections);
-
-        List<PolylineData> rails = new ArrayList<>(expected);
-        for (int i = 0; i < expected; i++) {
-            List<net.minecraft.util.math.Vec3d> railPts = new ArrayList<>(profiles.size());
-            for (List<Vector3d> section : stripSections) {
-                Vector3d p = section.get(i);
-                railPts.add(SolidNodeUtils.toVec3d(p));
+        List<PathData> sectionPaths = new ArrayList<>(stripSections.size());
+        for (int s = 0; s < stripSections.size(); s++) {
+            PathData path = SolidNodeUtils.toPath(SolidNodeUtils.createPolyline(stripSections.get(s), closeSections));
+            if (path == null) {
+                invalidate("Section path at index " + s + " is invalid");
+                return;
             }
-            rails.add(new PolylineData(railPts));
+            sectionPaths.add(path);
         }
 
-        SurfaceStripData surface = new SurfaceStripData(stripSections, closedFlags);
+        List<PathData> rails = new ArrayList<>(expected);
+        for (int i = 0; i < expected; i++) {
+            List<Vector3d> railPoints = new ArrayList<>(profiles.size());
+            for (List<Vector3d> section : stripSections) {
+                railPoints.add(section.get(i));
+            }
+            PathData rail = PathUtils.toPathData(railPoints);
+            if (rail == null) {
+                invalidate("Rail path at vertex index " + i + " is invalid");
+                return;
+            }
+            rails.add(rail);
+        }
+
+        SurfaceStripData surface;
+        try {
+            surface = new SurfaceStripData(stripSections, closedFlags);
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surface);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
+
         outputValues.put(OUTPUT_PROFILES_ID, List.copyOf(profiles));
         outputValues.put(OUTPUT_PROFILES_TREE_ID, SolidDataTreeUtils.indexedValueTree(profiles));
         outputValues.put(OUTPUT_SECTION_PATHS_ID, List.copyOf(sectionPaths));
@@ -166,7 +181,35 @@ public class MultiSectionLoftNode extends BaseNode {
         outputValues.put(OUTPUT_RAILS_TREE_ID, SolidDataTreeUtils.indexedValueTree(rails));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, surface);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, profiles.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private @Nullable Integer resolveTargetPointCount(List<List<Vector3d>> sections) {
+        return switch (matchSectionsMode) {
+            case STRICT -> {
+                invalidate("All sections must have the same point count (Match Sections is STRICT)");
+                yield null;
+            }
+            case RESAMPLE_MAX -> {
+                int max = 0;
+                for (List<Vector3d> section : sections) {
+                    max = Math.max(max, section.size());
+                }
+                yield Math.max(3, max);
+            }
+            case RESAMPLE_COUNT -> {
+                int count = resampleCount >= 3 ? resampleCount : 0;
+                if (count < 3) {
+                    invalidate("Resample Count must be at least 3 when Match Sections is RESAMPLE_COUNT");
+                    yield null;
+                }
+                if (!SurfaceInputUtils.isWithinSurfacePointsPerSection(count)) {
+                    invalidate("Resample Count exceeds limit (" + com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_POINTS_PER_SECTION + ")");
+                    yield null;
+                }
+                yield count;
+            }
+        };
     }
 
     private List<Vector3d> prepareSection(List<Vector3d> source) {
@@ -195,17 +238,6 @@ public class MultiSectionLoftNode extends BaseNode {
         return rotated;
     }
 
-    private int resolveTargetPointCount(List<PolygonProfileData> profiles) {
-        if (targetSectionPoints >= 3) {
-            return targetSectionPoints;
-        }
-        int max = 0;
-        for (PolygonProfileData profile : profiles) {
-            max = Math.max(max, profile.getUniquePoints().size());
-        }
-        return Math.max(3, max);
-    }
-
     private List<List<Vector3d>> resampleSections(List<List<Vector3d>> sections, int targetCount, boolean closed) {
         List<List<Vector3d>> result = new ArrayList<>(sections.size());
         for (List<Vector3d> section : sections) {
@@ -227,25 +259,47 @@ public class MultiSectionLoftNode extends BaseNode {
         return true;
     }
 
-    private List<Object> rebuildSectionPaths(List<List<Vector3d>> sections) {
-        List<Object> paths = new ArrayList<>(sections.size());
-        for (List<Vector3d> section : sections) {
-            paths.add(SolidNodeUtils.createPolyline(section, closeSections));
-        }
-        return paths;
+    /** @deprecated use {@link #getMatchSectionsMode()} */
+    @Deprecated
+    public boolean isAutoResample() {
+        return matchSectionsMode != MatchSectionsMode.STRICT;
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_PROFILES_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_RAILS_ID, List.of());
-        outputValues.put(OUTPUT_RAILS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SIDE_SURFACE_ID, null);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    /** @deprecated use {@link #setMatchSectionsMode(MatchSectionsMode)} */
+    @Deprecated
+    public void setAutoResample(boolean autoResample) {
+        setMatchSectionsMode(autoResample ? MatchSectionsMode.RESAMPLE_MAX : MatchSectionsMode.STRICT);
+    }
+
+    public MatchSectionsMode getMatchSectionsMode() {
+        return matchSectionsMode;
+    }
+
+    public void setMatchSectionsMode(MatchSectionsMode matchSectionsMode) {
+        MatchSectionsMode resolved = matchSectionsMode == null ? MatchSectionsMode.STRICT : matchSectionsMode;
+        markDirtyIfChanged(this.matchSectionsMode, resolved);
+        this.matchSectionsMode = resolved;
+    }
+
+    public int getResampleCount() {
+        return resampleCount;
+    }
+
+    public void setResampleCount(int resampleCount) {
+        markDirtyIfChanged(this.resampleCount, resampleCount);
+        this.resampleCount = resampleCount;
+    }
+
+    /** @deprecated use {@link #getResampleCount()} */
+    @Deprecated
+    public int getTargetSectionPoints() {
+        return resampleCount;
+    }
+
+    /** @deprecated use {@link #setResampleCount(int)} */
+    @Deprecated
+    public void setTargetSectionPoints(int targetSectionPoints) {
+        setResampleCount(targetSectionPoints);
     }
 
     public boolean isCloseSections() {
@@ -253,10 +307,8 @@ public class MultiSectionLoftNode extends BaseNode {
     }
 
     public void setCloseSections(boolean closeSections) {
-        if (this.closeSections != closeSections) {
-            this.closeSections = closeSections;
-            markDirty();
-        }
+        markDirtyIfChanged(this.closeSections, closeSections);
+        this.closeSections = closeSections;
     }
 
     public boolean isFlipSections() {
@@ -264,10 +316,8 @@ public class MultiSectionLoftNode extends BaseNode {
     }
 
     public void setFlipSections(boolean flipSections) {
-        if (this.flipSections != flipSections) {
-            this.flipSections = flipSections;
-            markDirty();
-        }
+        markDirtyIfChanged(this.flipSections, flipSections);
+        this.flipSections = flipSections;
     }
 
     public boolean isReverseSectionOrder() {
@@ -275,10 +325,8 @@ public class MultiSectionLoftNode extends BaseNode {
     }
 
     public void setReverseSectionOrder(boolean reverseSectionOrder) {
-        if (this.reverseSectionOrder != reverseSectionOrder) {
-            this.reverseSectionOrder = reverseSectionOrder;
-            markDirty();
-        }
+        markDirtyIfChanged(this.reverseSectionOrder, reverseSectionOrder);
+        this.reverseSectionOrder = reverseSectionOrder;
     }
 
     public int getSeamOffset() {
@@ -286,33 +334,8 @@ public class MultiSectionLoftNode extends BaseNode {
     }
 
     public void setSeamOffset(int seamOffset) {
-        if (this.seamOffset != seamOffset) {
-            this.seamOffset = seamOffset;
-            markDirty();
-        }
-    }
-
-    public boolean isAutoResample() {
-        return autoResample;
-    }
-
-    public void setAutoResample(boolean autoResample) {
-        if (this.autoResample != autoResample) {
-            this.autoResample = autoResample;
-            markDirty();
-        }
-    }
-
-    public int getTargetSectionPoints() {
-        return targetSectionPoints;
-    }
-
-    public void setTargetSectionPoints(int targetSectionPoints) {
-        int resolved = Math.max(0, targetSectionPoints);
-        if (this.targetSectionPoints != resolved) {
-            this.targetSectionPoints = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.seamOffset, seamOffset);
+        this.seamOffset = seamOffset;
     }
 
     @Override
@@ -322,8 +345,8 @@ public class MultiSectionLoftNode extends BaseNode {
         state.put("flipSections", flipSections);
         state.put("reverseSectionOrder", reverseSectionOrder);
         state.put("seamOffset", seamOffset);
-        state.put("autoResample", autoResample);
-        state.put("targetSectionPoints", targetSectionPoints);
+        state.put("matchSectionsMode", matchSectionsMode.key());
+        state.put("resampleCount", resampleCount);
         return state;
     }
 
@@ -344,12 +367,29 @@ public class MultiSectionLoftNode extends BaseNode {
         if (map.get("seamOffset") instanceof Number value) {
             seamOffset = value.intValue();
         }
-        if (map.get("autoResample") instanceof Boolean value) {
-            autoResample = value;
+        if (map.get("matchSectionsMode") instanceof String value) {
+            if (MatchSectionsMode.KEYS.contains(value.toLowerCase())) {
+                matchSectionsMode = MatchSectionsMode.fromKey(value);
+            }
+        } else if (map.get("autoResample") instanceof Boolean autoResample) {
+            setAutoResample(autoResample);
         }
-        if (map.get("targetSectionPoints") instanceof Number value) {
-            targetSectionPoints = Math.max(0, value.intValue());
+        if (map.get("resampleCount") instanceof Number value) {
+            resampleCount = value.intValue();
+        } else if (map.get("targetSectionPoints") instanceof Number value) {
+            resampleCount = value.intValue();
         }
         markDirty();
+    }
+
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_PROFILES_ID, OUTPUT_SECTION_PATHS_ID, OUTPUT_RAILS_ID);
+        outputValues.put(OUTPUT_PROFILES_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_RAILS_TREE_ID, DataTreeData.empty());
+        putNullOutputs(OUTPUT_SIDE_SURFACE_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID);
+        markInvalid(error);
     }
 }

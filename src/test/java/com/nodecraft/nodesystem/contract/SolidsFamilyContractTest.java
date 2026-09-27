@@ -52,11 +52,9 @@ class SolidsFamilyContractTest {
     }
 
     @Test
-    void prismByProfileVectorIsLegacyAdvanced() {
-        INode prism = NodeRegistry.getInstance().createNodeInstance("geometry.solids.extrude_profile");
-        assertInstanceOf(INode.class, prism);
-        assertTrue(prism.getDescription().toLowerCase().contains("legacy")
-                || prism.getDescription().toLowerCase().contains("prefer extrude"));
+    void prismByProfileVectorIsRemovedInV72() {
+        assertEquals(null, NodeRegistry.getInstance().getNodeInfo("geometry.solids.extrude_profile"));
+        assertEquals(null, NodeRegistry.getInstance().getNodeInfo("geometry.solids.shell"));
     }
 
     @Test
@@ -124,20 +122,29 @@ class SolidsFamilyContractTest {
     }
 
     @Test
-    void loftUsesProfileListAndAutoResampleDefaults() {
+    void loftUsesProfileListAndMatchSectionsDefaults() {
         assertPortType("geometry.solids.loft_multi_section", "input_profiles", true, NodeDataType.POLYGON_PROFILE_LIST);
         assertPortType("geometry.solids.loft_multi_section", "output_profiles", false, NodeDataType.POLYGON_PROFILE_LIST);
+        assertPortType("geometry.solids.loft_multi_section", "output_rails", false, NodeDataType.PATH_LIST);
 
-        INode loft = NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft");
-        assertInstanceOf(INode.class, loft);
-        assertTrue(loft.getDescription().toLowerCase().contains("auto-resample")
-                || loft.getDescription().toLowerCase().contains("auto resample")
-                || loft.getDescription().toLowerCase().contains("resample"));
+        var loft = (com.nodecraft.nodesystem.nodes.geometry.solids.LoftProfilesNode)
+            NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft");
+        assertTrue(loft.getDescription().toLowerCase().contains("resample")
+                || loft.getDescription().toLowerCase().contains("match sections"));
+        assertEquals(
+            com.nodecraft.nodesystem.nodes.geometry.solids.MatchSectionsMode.STRICT,
+            loft.getMatchSectionsMode()
+        );
 
-        INode multi = NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft_multi_section");
-        assertInstanceOf(com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode.class, multi);
-        assertTrue(((com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode) multi).isAutoResample());
-        assertTrue(((com.nodecraft.nodesystem.nodes.geometry.solids.LoftProfilesNode) loft).isAutoResample());
+        var multi = (com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode)
+            NodeRegistry.getInstance().createNodeInstance("geometry.solids.loft_multi_section");
+        assertEquals(
+            com.nodecraft.nodesystem.nodes.geometry.solids.MatchSectionsMode.STRICT,
+            multi.getMatchSectionsMode()
+        );
+
+        assertPortType("geometry.solids.loft_from_points", "output_source_path", false, NodeDataType.PATH);
+        assertPortType("geometry.solids.loft_from_points", "output_rail_segments", false, NodeDataType.PATH_LIST);
     }
 
     @Test

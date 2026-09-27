@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -19,24 +18,16 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.solids.extract_surface_strip_range",
     displayName = "Extract Surface Strip Range",
-    description = "Extracts a contiguous section range from a surface strip as a smaller surface strip",
+    description = "Extracts a contiguous normalized-U section range from a surface strip as a smaller surface strip",
     category = "geometry.solids",
-    order = 12
+    order = 15
 )
-public class ExtractSurfaceStripRangeNode extends BaseNode {
+public class ExtractSurfaceStripRangeNode extends AbstractSolidNode {
 
-    public enum RangeMode {
-        INDEX,
-        NORMALIZED
-    }
-
-    @NodeProperty(displayName = "Range Mode", category = "Range", order = 1)
-    private RangeMode rangeMode = RangeMode.INDEX;
-
-    @NodeProperty(displayName = "Default Start", category = "Range", order = 2)
+    @NodeProperty(displayName = "Default Start", category = "Range", order = 1)
     private double defaultStart = 0.0d;
 
-    @NodeProperty(displayName = "Default End", category = "Range", order = 3)
+    @NodeProperty(displayName = "Default End", category = "Range", order = 2)
     private double defaultEnd = 1.0d;
 
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
@@ -48,14 +39,13 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
     private static final String OUTPUT_POINTS_PER_SECTION_ID = "output_points_per_section";
     private static final String OUTPUT_START_SECTION_ID = "output_start_section";
     private static final String OUTPUT_END_SECTION_ID = "output_end_section";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtractSurfaceStripRangeNode() {
         super(UUID.randomUUID(), "geometry.solids.extract_surface_strip_range");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to extract from", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "Start section index or normalized range value", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "End section index or normalized range value", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "Normalized start U in [0, 1]", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "Normalized end U in [0, 1]", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Extracted surface strip", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of extracted sections", NodeDataType.INTEGER, this));
@@ -63,39 +53,51 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_START_SECTION_ID, "Start Section", "Resolved inclusive start section index", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_END_SECTION_ID, "End Section", "Resolved inclusive end section index", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a range was extracted", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Extracts a contiguous section range from a surface strip as a smaller surface strip";
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object surfaceStripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(surfaceStripObj instanceof SurfaceStripData surfaceStrip)) {
-            writeEmptyOutputs();
+            invalidate("Surface strip is missing");
+            return;
+        }
+
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
             return;
         }
 
         int sourceSectionCount = surfaceStrip.getSectionCount();
-        if (sourceSectionCount < 2) {
-            writeEmptyOutputs();
+        Double startU = resolveNormalizedU(INPUT_START_ID, defaultStart);
+        if (startU == null) {
+            invalidate("Start is connected but invalid (must be finite and in [0, 1])");
+            return;
+        }
+        Double endU = resolveNormalizedU(INPUT_END_ID, defaultEnd);
+        if (endU == null) {
+            invalidate("End is connected but invalid (must be finite and in [0, 1])");
+            return;
+        }
+        if (startU >= endU) {
+            invalidate("Start must be less than end on normalized U");
             return;
         }
 
-        double startValue = getInputDouble(INPUT_START_ID, defaultStart);
-        double endValue = getInputDouble(INPUT_END_ID, defaultEnd);
-        int startIndex = resolveSectionIndex(startValue, sourceSectionCount);
-        int endIndex = resolveSectionIndex(endValue, sourceSectionCount);
+        int lastIndex = sourceSectionCount - 1;
+        int startIndex = (int) Math.round(startU * lastIndex);
+        int endIndex = (int) Math.round(endU * lastIndex);
+        startIndex = Math.max(0, Math.min(lastIndex, startIndex));
+        endIndex = Math.max(0, Math.min(lastIndex, endIndex));
         if (startIndex > endIndex) {
             int swap = startIndex;
             startIndex = endIndex;
             endIndex = swap;
         }
-
         if (endIndex - startIndex + 1 < 2) {
-            writeEmptyOutputs();
+            invalidate("Extracted range must include at least two sections");
             return;
         }
 
@@ -109,37 +111,20 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
             extractedClosedFlags.add(sourceClosedFlags.get(sectionIndex));
         }
 
-        SurfaceStripData extracted = new SurfaceStripData(extractedSections, extractedClosedFlags);
+        SurfaceStripData extracted;
+        try {
+            extracted = new SurfaceStripData(extractedSections, extractedClosedFlags);
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Extracted surface strip is invalid" : ex.getMessage());
+            return;
+        }
+
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, extracted);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, extracted.getSectionCount());
         outputValues.put(OUTPUT_POINTS_PER_SECTION_ID, extracted.getPointsPerSection());
         outputValues.put(OUTPUT_START_SECTION_ID, startIndex);
         outputValues.put(OUTPUT_END_SECTION_ID, endIndex);
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    public RangeMode getRangeMode() {
-        return rangeMode;
-    }
-
-    public void setRangeMode(RangeMode rangeMode) {
-        RangeMode resolved = rangeMode == null ? RangeMode.INDEX : rangeMode;
-        if (this.rangeMode != resolved) {
-            this.rangeMode = resolved;
-            markDirty();
-        }
-    }
-
-    public void setRangeModeString(String rangeMode) {
-        if (rangeMode == null || rangeMode.isBlank()) {
-            setRangeMode(RangeMode.INDEX);
-            return;
-        }
-        try {
-            setRangeMode(RangeMode.valueOf(rangeMode.trim().toUpperCase()));
-        } catch (IllegalArgumentException ignored) {
-            setRangeMode(RangeMode.INDEX);
-        }
+        markSuccess();
     }
 
     public double getDefaultStart() {
@@ -147,10 +132,8 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
     }
 
     public void setDefaultStart(double defaultStart) {
-        if (Double.compare(this.defaultStart, defaultStart) != 0) {
-            this.defaultStart = defaultStart;
-            markDirty();
-        }
+        markDirtyIfChanged(this.defaultStart, defaultStart);
+        this.defaultStart = defaultStart;
     }
 
     public double getDefaultEnd() {
@@ -158,16 +141,13 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
     }
 
     public void setDefaultEnd(double defaultEnd) {
-        if (Double.compare(this.defaultEnd, defaultEnd) != 0) {
-            this.defaultEnd = defaultEnd;
-            markDirty();
-        }
+        markDirtyIfChanged(this.defaultEnd, defaultEnd);
+        this.defaultEnd = defaultEnd;
     }
 
     @Override
     public Object getNodeState() {
         return java.util.Map.of(
-            "rangeMode", rangeMode.name(),
             "defaultStart", defaultStart,
             "defaultEnd", defaultEnd
         );
@@ -178,9 +158,6 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("rangeMode") instanceof String value) {
-            setRangeModeString(value);
-        }
         if (map.get("defaultStart") instanceof Number value) {
             setDefaultStart(value.doubleValue());
         }
@@ -189,30 +166,10 @@ public class ExtractSurfaceStripRangeNode extends BaseNode {
         }
     }
 
-    private int resolveSectionIndex(double value, int sectionCount) {
-        int lastIndex = sectionCount - 1;
-        int index = switch (rangeMode) {
-            case INDEX -> (int) Math.round(value);
-            case NORMALIZED -> (int) Math.round(clamp(value, 0.0d, 1.0d) * lastIndex);
-        };
-        return Math.max(0, Math.min(lastIndex, index));
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_POINTS_PER_SECTION_ID, 0);
-        outputValues.put(OUTPUT_START_SECTION_ID, 0);
-        outputValues.put(OUTPUT_END_SECTION_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_SURFACE_STRIP_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID, OUTPUT_POINTS_PER_SECTION_ID,
+            OUTPUT_START_SECTION_ID, OUTPUT_END_SECTION_ID);
+        markInvalid(error);
     }
 }

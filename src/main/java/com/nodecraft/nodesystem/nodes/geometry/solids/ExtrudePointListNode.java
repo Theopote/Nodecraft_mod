@@ -4,12 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -29,7 +29,7 @@ import java.util.UUID;
     category = "geometry.solids",
     order = 1
 )
-public class ExtrudePointListNode extends BaseNode {
+public class ExtrudePointListNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Close Path", category = "Extrude", order = 1)
     private boolean closePath = true;
@@ -44,7 +44,6 @@ public class ExtrudePointListNode extends BaseNode {
     private static final String OUTPUT_SIDE_SEGMENTS_ID = "output_side_segments";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtrudePointListNode() {
         super(UUID.randomUUID(), "geometry.solids.extrude_from_points");
@@ -54,26 +53,26 @@ public class ExtrudePointListNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Original ordered point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_EXTRUDED_POINTS_ID, "Extruded Points", "Extruded ordered point list", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SOURCE_PATH_ID, "Source Path", "Polyline describing the source contour", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_EXTRUDED_PATH_ID, "Extruded Path", "Polyline describing the extruded contour", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_SIDE_SEGMENTS_ID, "Side Segments", "List of line segments connecting source and extruded points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SOURCE_PATH_ID, "Source Path", "Path describing the source contour", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_EXTRUDED_PATH_ID, "Extruded Path", "Path describing the extruded contour", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_SIDE_SEGMENTS_ID, "Side Segments", "Line segments connecting source and extruded points", NodeDataType.LINE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface connecting source and extruded sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of source points used for the extrusion", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid point list and direction were resolved", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Extrudes an ordered point list by a direction vector and emits source path, top path, and side segments";
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> resolvedPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
+        Vector3d direction = resolveDirection(INPUT_DIRECTION_ID);
 
-        if (resolvedPoints.size() < 2 || direction == null || direction.lengthSquared() <= 1.0e-12d) {
-            writeEmptyOutputs();
+        if (resolvedPoints.size() < 2) {
+            invalidate("Point list requires at least two points");
+            return;
+        }
+        if (direction == null || direction.lengthSquared() <= SolidNodeUtils.EPSILON * SolidNodeUtils.EPSILON) {
+            invalidate("Direction is missing, invalid, or zero-length");
             return;
         }
 
@@ -92,12 +91,32 @@ public class ExtrudePointListNode extends BaseNode {
             ));
         }
 
-        PolylineData sourcePath = SolidNodeUtils.createPolyline(sourcePoints, closePath);
-        PolylineData extrudedPath = SolidNodeUtils.createPolyline(extrudedPoints, closePath);
-        SurfaceStripData surfaceStrip = new SurfaceStripData(
-            List.of(List.copyOf(sourcePoints), List.copyOf(extrudedPoints)),
-            List.of(closePath, closePath)
-        );
+        PathData sourcePath = PathUtils.toPathData(sourcePoints);
+        if (sourcePath == null) {
+            invalidate("Source path is invalid");
+            return;
+        }
+        PathData extrudedPath = PathUtils.toPathData(extrudedPoints);
+        if (extrudedPath == null) {
+            invalidate("Extruded path is invalid");
+            return;
+        }
+
+        SurfaceStripData surfaceStrip;
+        try {
+            surfaceStrip = new SurfaceStripData(
+                List.of(List.copyOf(sourcePoints), List.copyOf(extrudedPoints)),
+                List.of(closePath, closePath)
+            );
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_SOURCE_POINTS_ID, SpatialValueResolver.toPointDataList(sourcePoints));
         outputValues.put(OUTPUT_EXTRUDED_POINTS_ID, SpatialValueResolver.toPointDataList(extrudedPoints));
@@ -106,7 +125,7 @@ public class ExtrudePointListNode extends BaseNode {
         outputValues.put(OUTPUT_SIDE_SEGMENTS_ID, List.copyOf(sideSegments));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_COUNT_ID, sourcePoints.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public boolean isClosePath() {
@@ -114,8 +133,8 @@ public class ExtrudePointListNode extends BaseNode {
     }
 
     public void setClosePath(boolean closePath) {
+        markDirtyIfChanged(this.closePath, closePath);
         this.closePath = closePath;
-        markDirty();
     }
 
     @Override
@@ -132,15 +151,10 @@ public class ExtrudePointListNode extends BaseNode {
         }
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_EXTRUDED_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SOURCE_PATH_ID, null);
-        outputValues.put(OUTPUT_EXTRUDED_PATH_ID, null);
-        outputValues.put(OUTPUT_SIDE_SEGMENTS_ID, List.of());
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_SOURCE_POINTS_ID, OUTPUT_EXTRUDED_POINTS_ID, OUTPUT_SIDE_SEGMENTS_ID);
+        putNullOutputs(OUTPUT_SOURCE_PATH_ID, OUTPUT_EXTRUDED_PATH_ID, OUTPUT_SURFACE_STRIP_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
-
 }

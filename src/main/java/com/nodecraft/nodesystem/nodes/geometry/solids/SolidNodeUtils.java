@@ -2,8 +2,11 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 
 import com.nodecraft.core.exception.GeometryException;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
@@ -203,6 +206,37 @@ final class SolidNodeUtils {
 
     static Vec3d toVec3d(Vector3d point) {
         return new Vec3d(point.x, point.y, point.z);
+    }
+
+    static @Nullable PathData toPath(@Nullable Object value) {
+        return PathData.wrap(value);
+    }
+
+    static List<PathData> toPathList(@Nullable Collection<?> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<PathData> paths = new ArrayList<>(values.size());
+        for (Object value : values) {
+            PathData path = toPath(value);
+            if (path != null) {
+                paths.add(path);
+            }
+        }
+        return List.copyOf(paths);
+    }
+
+    static List<SurfaceStripData> toSurfaceStripList(@Nullable Collection<?> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<SurfaceStripData> strips = new ArrayList<>(values.size());
+        for (Object value : values) {
+            if (value instanceof SurfaceStripData strip) {
+                strips.add(strip);
+            }
+        }
+        return List.copyOf(strips);
     }
 
     static int resolveBoxFaceIndex(@Nullable Object faceObj, @Nullable Object faceIndexObj) {

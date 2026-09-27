@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
@@ -13,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import com.nodecraft.nodesystem.util.SurfaceStripBridge;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,9 +28,9 @@ import java.util.UUID;
     displayName = "Surface Strip To Lattice",
     description = "Approximates a surface strip as a cylinder lattice (section edges + rails). Not a filled solid or closed shell.",
     category = "geometry.solids",
-    order = 7
+    order = 17
 )
-public class SurfaceStripToGeometryNode extends BaseNode {
+public class SurfaceStripToGeometryNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Radius", category = "Lattice", order = 1)
     private double radius = 0.35d;
@@ -48,7 +48,6 @@ public class SurfaceStripToGeometryNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_TREE_ID = "output_geometry_tree";
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SurfaceStripToGeometryNode() {
         super(UUID.randomUUID(), "geometry.solids.surface_strip_to_lattice");
@@ -65,6 +64,7 @@ public class SurfaceStripToGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the generated lattice", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated lattice segment count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when lattice geometry was generated", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -93,6 +93,11 @@ public class SurfaceStripToGeometryNode extends BaseNode {
                 List<GeometryData> branchGeometries = new ArrayList<>();
                 for (Object item : branch.items()) {
                     if (item instanceof SurfaceStripData surfaceStrip) {
+                        String stripError = validateSurfaceStrip(surfaceStrip);
+                        if (stripError != null) {
+                            invalidate(stripError);
+                            return;
+                        }
                         GeometryData branchGeometry = SurfaceStripBridge.toGeometry(surfaceStrip, longitudinalSteps, mode, radius);
                         if (branchGeometry != null) {
                             branchGeometries.add(branchGeometry);
@@ -111,19 +116,36 @@ public class SurfaceStripToGeometryNode extends BaseNode {
                 region = GeometryVoxelizer.createBoundingRegion(geometry);
             }
         } else if (surfaceStripObj instanceof SurfaceStripData surfaceStrip) {
+            String stripError = validateSurfaceStrip(surfaceStrip);
+            if (stripError != null) {
+                invalidate(stripError);
+                return;
+            }
             geometry = SurfaceStripBridge.toGeometry(surfaceStrip, longitudinalSteps, mode, radius);
             count = SurfaceStripBridge.estimateGeometrySegmentCount(surfaceStrip, longitudinalSteps, mode);
             if (geometry != null) {
                 geometryTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), List.of(geometry))));
                 region = GeometryVoxelizer.createBoundingRegion(geometry);
             }
+        } else if (SurfaceInputUtils.isConnected(this, INPUT_SURFACE_STRIP_ID)
+            || SurfaceInputUtils.isConnected(this, INPUT_SURFACE_STRIP_TREE_ID)) {
+            invalidate("Surface strip input is connected but invalid");
+            return;
+        } else {
+            invalidate("Surface strip is missing");
+            return;
+        }
+
+        if (geometry == null) {
+            invalidate("Lattice geometry could not be generated");
+            return;
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, geometryTree);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, geometry != null);
+        markSuccess();
     }
 
     public SurfaceStripBridge.BridgeMode getMode() {
@@ -132,10 +154,8 @@ public class SurfaceStripToGeometryNode extends BaseNode {
 
     public void setMode(SurfaceStripBridge.BridgeMode mode) {
         SurfaceStripBridge.BridgeMode resolved = mode == null ? SurfaceStripBridge.BridgeMode.LATTICE : mode;
-        if (this.mode != resolved) {
-            this.mode = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.mode, resolved);
+        this.mode = resolved;
     }
 
     public void setModeString(String mode) {
@@ -156,10 +176,8 @@ public class SurfaceStripToGeometryNode extends BaseNode {
 
     public void setRadius(double radius) {
         double resolved = Math.max(0.0d, radius);
-        if (Double.compare(this.radius, resolved) != 0) {
-            this.radius = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.radius, resolved);
+        this.radius = resolved;
     }
 
     public int getLongitudinalSteps() {
@@ -168,10 +186,8 @@ public class SurfaceStripToGeometryNode extends BaseNode {
 
     public void setLongitudinalSteps(int longitudinalSteps) {
         int resolved = Math.max(1, longitudinalSteps);
-        if (this.longitudinalSteps != resolved) {
-            this.longitudinalSteps = resolved;
-            markDirty();
-        }
+        markDirtyIfChanged(this.longitudinalSteps, resolved);
+        this.longitudinalSteps = resolved;
     }
 
     @Override
@@ -207,5 +223,12 @@ public class SurfaceStripToGeometryNode extends BaseNode {
         if (map.get("longitudinalSteps") instanceof Number value) {
             setLongitudinalSteps(value.intValue());
         }
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_REGION_ID);
+        outputValues.put(OUTPUT_GEOMETRY_TREE_ID, DataTreeData.empty());
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }

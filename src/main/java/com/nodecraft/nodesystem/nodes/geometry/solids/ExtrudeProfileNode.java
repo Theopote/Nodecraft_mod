@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
@@ -26,7 +25,7 @@ import java.util.UUID;
     category = "geometry.solids",
     order = 0
 )
-public class ExtrudeProfileNode extends BaseNode {
+public class ExtrudeProfileNode extends AbstractSolidNode {
 
     private static final String INPUT_PROFILE_ID = "input_profile";
     private static final String INPUT_DIRECTION_ID = "input_direction";
@@ -39,7 +38,6 @@ public class ExtrudeProfileNode extends BaseNode {
     private static final String OUTPUT_TOP_POINTS_ID = "output_top_points";
     private static final String OUTPUT_SIDE_SURFACE_ID = "output_side_surface";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtrudeProfileNode() {
         super(UUID.randomUUID(), "geometry.solids.extrude");
@@ -58,37 +56,32 @@ public class ExtrudeProfileNode extends BaseNode {
             NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Extrusion vector length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid profile and direction were provided", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Extrudes a polygon profile by a direction vector into prism geometry (canonical Extrude)";
-    }
-
-    @Override
-    public String getDisplayName() {
-        return "Extrude";
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_DIRECTION_ID));
+        Vector3d direction = resolveDirection(INPUT_DIRECTION_ID);
 
-        if (!(profileObj instanceof PolygonProfileData baseProfile) || direction == null) {
-            writeEmptyOutputs();
+        if (!(profileObj instanceof PolygonProfileData baseProfile)) {
+            invalidate("Profile is missing or invalid");
+            return;
+        }
+        if (direction == null || direction.lengthSquared() <= SolidNodeUtils.EPSILON * SolidNodeUtils.EPSILON) {
+            invalidate("Direction is missing, invalid, or zero-length");
             return;
         }
 
         List<Vector3d> baseUniquePoints = baseProfile.getUniquePoints();
         if (baseUniquePoints.size() < 3) {
-            writeEmptyOutputs();
+            invalidate("Profile must have at least 3 vertices");
             return;
         }
 
         double height = direction.length();
-        if (height <= 1.0e-9d) {
-            writeEmptyOutputs();
+        if (height <= SolidNodeUtils.EPSILON) {
+            invalidate("Extrusion direction must have non-zero length");
             return;
         }
 
@@ -106,10 +99,16 @@ public class ExtrudeProfileNode extends BaseNode {
         PolygonProfileData topProfile = new PolygonProfileData(topClosedPoints, topPlane);
         PrismGeometryData prism = new PrismGeometryData(baseUniquePoints, direction);
 
-        SurfaceStripData sideSurface = new SurfaceStripData(
-            List.of(baseProfile.getUniquePoints(), topProfile.getUniquePoints()),
-            List.of(true, true)
-        );
+        SurfaceStripData sideSurface;
+        try {
+            sideSurface = new SurfaceStripData(
+                List.of(baseProfile.getUniquePoints(), topProfile.getUniquePoints()),
+                List.of(true, true)
+            );
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Side surface is invalid" : ex.getMessage());
+            return;
+        }
 
         outputValues.put(OUTPUT_PRISM_ID, prism);
         outputValues.put(OUTPUT_GEOMETRY_ID, prism);
@@ -119,19 +118,14 @@ public class ExtrudeProfileNode extends BaseNode {
         outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topClosedPoints));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, sideSurface);
         outputValues.put(OUTPUT_HEIGHT_ID, height);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_PRISM_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_BASE_PROFILE_ID, null);
-        outputValues.put(OUTPUT_TOP_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TOP_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SIDE_SURFACE_ID, null);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PRISM_ID, OUTPUT_GEOMETRY_ID, OUTPUT_BASE_PROFILE_ID, OUTPUT_TOP_PROFILE_ID,
+            OUTPUT_SIDE_SURFACE_ID);
+        putEmptyListOutputs(OUTPUT_BASE_POINTS_ID, OUTPUT_TOP_POINTS_ID);
+        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID);
+        markInvalid(error);
     }
-
 }

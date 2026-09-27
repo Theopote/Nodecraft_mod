@@ -3,11 +3,11 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -26,7 +26,7 @@ import java.util.UUID;
     category = "geometry.solids",
     order = 20
 )
-public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
+public class ShrinkwrapPointsOnSurfaceStripNode extends AbstractSolidNode {
 
     private static final double EPS = 1.0e-12d;
 
@@ -35,7 +35,6 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
 
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ShrinkwrapPointsOnSurfaceStripNode() {
         super(UUID.randomUUID(), "geometry.solids.shrinkwrap_points_surface_strip");
@@ -52,10 +51,11 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
             NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances",
             "Per-point distances from query to projected location",
-            NodeDataType.LIST, this));
+            NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when projection succeeded",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -72,19 +72,32 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object stripObj = inputValues.get(INPUT_SURFACE_STRIP_ID);
         if (!(stripObj instanceof SurfaceStripData strip)) {
-            writeInvalid();
+            invalidate("Surface strip is missing");
+            return;
+        }
+
+        String stripError = validateSurfaceStrip(strip);
+        if (stripError != null) {
+            invalidate(stripError);
             return;
         }
 
         List<Vector3d> queries = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (queries.isEmpty()) {
-            writeInvalid();
+            invalidate("Query point list is empty");
             return;
         }
 
         List<Triangle> triangles = buildTriangles(strip);
         if (triangles.isEmpty()) {
-            writeInvalid();
+            invalidate("Surface strip triangle mesh is empty");
+            return;
+        }
+
+        long queryCount = queries.size();
+        long triangleCount = triangles.size();
+        if (!SurfaceInputUtils.isWithinProjectionWorkload(queryCount, triangleCount)) {
+            invalidate("Projection workload exceeds limit (" + com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_PROJECTION_WORK + ")");
             return;
         }
 
@@ -102,7 +115,7 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
                 }
             }
             if (best == null) {
-                writeInvalid();
+                invalidate("Nearest surface point could not be resolved");
                 return;
             }
             projected.add(best);
@@ -110,14 +123,13 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projected));
-        outputValues.put(OUTPUT_DISTANCES_ID, distances);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_DISTANCES_ID);
+        markInvalid(error);
     }
 
     private static List<Triangle> buildTriangles(SurfaceStripData strip) {
@@ -153,9 +165,6 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends BaseNode {
     private record Triangle(Vector3d a, Vector3d b, Vector3d c) {
     }
 
-    /**
-     * Closest point on triangle ABC to point P (Real-Time Collision Detection, Christer Ericson).
-     */
     private static Vector3d closestOnTriangle(Vector3d p, Vector3d a, Vector3d b, Vector3d c) {
         Vector3d ab = new Vector3d(b).sub(a);
         Vector3d ac = new Vector3d(c).sub(a);

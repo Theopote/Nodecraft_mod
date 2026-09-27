@@ -4,15 +4,16 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -30,9 +31,9 @@ import java.util.UUID;
     displayName = "Sweep 2 Rails",
     description = "Sweeps a profile between two guide rails with optional scale and rotation controls",
     category = "geometry.solids",
-    order = 7
+    order = 10
 )
-public class SweepTwoRailsNode extends BaseNode {
+public class SweepTwoRailsNode extends AbstractSolidNode {
 
     @NodeProperty(displayName = "Section Count", category = "Sweep", order = 1)
     private int sectionCount = 24;
@@ -75,31 +76,29 @@ public class SweepTwoRailsNode extends BaseNode {
     private static final String OUTPUT_RAIL_SEGMENTS_TREE_ID = "output_rail_segments_tree";
     private static final String OUTPUT_SURFACE_STRIP_ID = "output_surface_strip";
     private static final String OUTPUT_SECTION_COUNT_ID = "output_section_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SweepTwoRailsNode() {
         super(UUID.randomUUID(), "geometry.solids.sweep_two_rails");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Optional polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_PROFILE_POINTS_ID, "Profile Points", "Optional ordered point profile fallback", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_RAIL_A_PATH_ID, "Rail A Path",
-            "First guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_RAIL_B_PATH_ID, "Rail B Path",
-            "Second guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the rails", NodeDataType.LIST, this));
-        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the rails", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_RAIL_A_PATH_ID, "Rail A Path", "First guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_RAIL_B_PATH_ID, "Rail B Path", "Second guide rail (line, polyline, or curve)", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the rails", NodeDataType.DOUBLE_LIST, this));
+        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the rails", NodeDataType.DOUBLE_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_RAIL_A_POINTS_ID, "Rail A Points", "Resampled first guide rail points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_B_POINTS_ID, "Rail B Points", "Resampled second guide rail points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "List of swept section polylines", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Paths for each swept section", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_TREE_ID, "Section Paths Tree", "Section paths keyed by section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_ALL_POINTS_ID, "All Points", "Flattened list of all swept section points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Section points keyed by section index", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Line segments connecting corresponding section points", NodeDataType.LINE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Rail segments grouped by source section index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Reusable strip surface made of swept sections", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of swept sections between the rails", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a profile and both rails were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -113,35 +112,57 @@ public class SweepTwoRailsNode extends BaseNode {
         List<Vector3d> rawRailA = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_A_PATH_ID));
         List<Vector3d> rawRailB = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_B_PATH_ID));
 
-        if (profilePoints.size() < 2 || rawRailA.size() < 2 || rawRailB.size() < 2) {
-            writeEmptyOutputs();
+        if (profilePoints.size() < 2) {
+            invalidate("Profile requires at least two points");
             return;
         }
+        if (rawRailA.size() < 2 || rawRailB.size() < 2) {
+            invalidate("Both rail paths require at least two vertices");
+            return;
+        }
+        if (sectionCount < 2) {
+            invalidate("Section Count must be at least 2");
+            return;
+        }
+        if (!GenerationLimits.isWithinSurfaceSections(sectionCount)) {
+            invalidate("Section Count exceeds limit (" + GenerationLimits.MAX_SURFACE_SECTIONS + ")");
+            return;
+        }
+        if (!SurfaceInputUtils.isWithinSurfaceWorkload(sectionCount, profilePoints.size())) {
+            invalidate("Sweep workload exceeds limit (" + GenerationLimits.MAX_SURFACE_TOTAL_POINTS + " total points)");
+            return;
+        }
+
         if (flipProfile) {
             profilePoints = new ArrayList<>(profilePoints);
             Collections.reverse(profilePoints);
         }
 
-        int resolvedSectionCount = GenerationLimits.clampSectionCountForProfile(2, sectionCount, profilePoints.size());
-        List<Vector3d> railA = resamplePath(rawRailA, resolvedSectionCount);
-        List<Vector3d> railB = resamplePath(rawRailB, resolvedSectionCount);
+        List<Double> scaleValues = resolveScaleField(sectionCount);
+        if (scaleValues == null) {
+            return;
+        }
+        List<Double> rotationValues = resolveRotationField(sectionCount);
+        if (rotationValues == null) {
+            return;
+        }
+
+        List<Vector3d> railA = resamplePath(rawRailA, sectionCount);
+        List<Vector3d> railB = resamplePath(rawRailB, sectionCount);
         List<Vector3d> centers = computeCenters(railA, railB);
         Vector3d profileOrigin = SolidNodeUtils.computeCenter(profilePoints);
         double profileWidth = computeProfileWidth(profilePoints);
-        List<Double> scaleValues = resolveNumberList(inputValues.get(INPUT_SCALE_VALUES_ID));
-        List<Double> rotationValues = resolveNumberList(inputValues.get(INPUT_ROTATION_VALUES_ID));
 
-        List<List<Vector3d>> sections = new ArrayList<>(resolvedSectionCount);
-        List<Object> sectionPaths = new ArrayList<>(resolvedSectionCount);
-        List<Vector3d> allPoints = new ArrayList<>(profilePoints.size() * resolvedSectionCount);
+        List<List<Vector3d>> sections = new ArrayList<>(sectionCount);
+        List<PathData> sectionPaths = new ArrayList<>(sectionCount);
+        List<Vector3d> allPoints = new ArrayList<>(profilePoints.size() * sectionCount);
 
-        for (int i = 0; i < resolvedSectionCount; i++) {
+        for (int i = 0; i < sectionCount; i++) {
             Vector3d railPointA = railA.get(i);
             Vector3d railPointB = railB.get(i);
             Vector3d center = centers.get(i);
-            double t = resolvedSectionCount <= 1 ? 0.0d : (double) i / (double) (resolvedSectionCount - 1);
-            double scale = resolveScalarAt(scaleValues, t, startScale, endScale);
-            double rotationRadians = Math.toRadians(resolveScalarAt(rotationValues, t, startRotationDegrees, endRotationDegrees));
+            double scale = scaleValues.get(i);
+            double rotationRadians = Math.toRadians(rotationValues.get(i));
             double railWidth = railPointA.distance(railPointB);
             SolidNodeUtils.Frame frame = orientToRails
                 ? buildRailFrame(center, railPointA, railPointB, centers, i)
@@ -156,7 +177,12 @@ public class SweepTwoRailsNode extends BaseNode {
                 allPoints.add(worldPoint);
             }
             sections.add(section);
-            sectionPaths.add(SolidNodeUtils.createPolyline(section, closeProfile));
+            PathData sectionPath = SolidNodeUtils.toPath(SolidNodeUtils.createPolyline(section, closeProfile));
+            if (sectionPath == null) {
+                invalidate("Section path at index " + i + " is invalid");
+                return;
+            }
+            sectionPaths.add(sectionPath);
         }
 
         List<List<LineData>> railSegmentRows = buildRailSegmentRows(sections);
@@ -165,7 +191,18 @@ public class SweepTwoRailsNode extends BaseNode {
         for (int i = 0; i < sections.size(); i++) {
             sectionClosedFlags.add(closeProfile);
         }
-        SurfaceStripData surfaceStrip = new SurfaceStripData(sections, sectionClosedFlags);
+        SurfaceStripData surfaceStrip;
+        try {
+            surfaceStrip = new SurfaceStripData(sections, sectionClosedFlags);
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(surfaceStrip);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_RAIL_A_POINTS_ID, SpatialValueResolver.toPointDataList(railA));
         outputValues.put(OUTPUT_RAIL_B_POINTS_ID, SpatialValueResolver.toPointDataList(railB));
@@ -177,7 +214,40 @@ public class SweepTwoRailsNode extends BaseNode {
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedGroupTree(railSegmentRows));
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, surfaceStrip);
         outputValues.put(OUTPUT_SECTION_COUNT_ID, sections.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private @Nullable List<Double> resolveScaleField(int count) {
+        List<Double> connected = SurfaceInputUtils.resolveStrictFiniteDoubleList(inputValues.get(INPUT_SCALE_VALUES_ID));
+        if (SurfaceInputUtils.isConnected(this, INPUT_SCALE_VALUES_ID) && connected == null) {
+            invalidate("Scale values are connected but invalid (must be a finite double list)");
+            return null;
+        }
+        if (connected != null && !connected.isEmpty()) {
+            return SurfaceInputUtils.sampleFieldAlongU(connected, count, startScale);
+        }
+        return interpolateField(count, startScale, endScale);
+    }
+
+    private @Nullable List<Double> resolveRotationField(int count) {
+        List<Double> connected = SurfaceInputUtils.resolveStrictFiniteDoubleList(inputValues.get(INPUT_ROTATION_VALUES_ID));
+        if (SurfaceInputUtils.isConnected(this, INPUT_ROTATION_VALUES_ID) && connected == null) {
+            invalidate("Rotation values are connected but invalid (must be a finite double list)");
+            return null;
+        }
+        if (connected != null && !connected.isEmpty()) {
+            return SurfaceInputUtils.sampleFieldAlongU(connected, count, startRotationDegrees);
+        }
+        return interpolateField(count, startRotationDegrees, endRotationDegrees);
+    }
+
+    private static List<Double> interpolateField(int sectionCount, double start, double end) {
+        List<Double> values = new ArrayList<>(sectionCount);
+        for (int i = 0; i < sectionCount; i++) {
+            double t = sectionCount <= 1 ? 0.0d : (double) i / (double) (sectionCount - 1);
+            values.add(start + (end - start) * t);
+        }
+        return List.copyOf(values);
     }
 
     @Override
@@ -199,14 +269,30 @@ public class SweepTwoRailsNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("sectionCount") instanceof Number value) sectionCount = GenerationLimits.clampSegments(2, value.intValue());
-        if (map.get("closeProfile") instanceof Boolean value) closeProfile = value;
-        if (map.get("flipProfile") instanceof Boolean value) flipProfile = value;
-        if (map.get("orientToRails") instanceof Boolean value) orientToRails = value;
-        if (map.get("startScale") instanceof Number value) startScale = value.doubleValue();
-        if (map.get("endScale") instanceof Number value) endScale = value.doubleValue();
-        if (map.get("startRotationDegrees") instanceof Number value) startRotationDegrees = value.doubleValue();
-        if (map.get("endRotationDegrees") instanceof Number value) endRotationDegrees = value.doubleValue();
+        if (map.get("sectionCount") instanceof Number value) {
+            setSectionCount(value.intValue());
+        }
+        if (map.get("closeProfile") instanceof Boolean value) {
+            closeProfile = value;
+        }
+        if (map.get("flipProfile") instanceof Boolean value) {
+            flipProfile = value;
+        }
+        if (map.get("orientToRails") instanceof Boolean value) {
+            orientToRails = value;
+        }
+        if (map.get("startScale") instanceof Number value) {
+            startScale = value.doubleValue();
+        }
+        if (map.get("endScale") instanceof Number value) {
+            endScale = value.doubleValue();
+        }
+        if (map.get("startRotationDegrees") instanceof Number value) {
+            startRotationDegrees = value.doubleValue();
+        }
+        if (map.get("endRotationDegrees") instanceof Number value) {
+            endRotationDegrees = value.doubleValue();
+        }
         markDirty();
     }
 
@@ -215,8 +301,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setSectionCount(int sectionCount) {
-        this.sectionCount = GenerationLimits.clampSegments(2, sectionCount);
-        markDirty();
+        markDirtyIfChanged(this.sectionCount, sectionCount);
+        this.sectionCount = sectionCount;
     }
 
     public boolean isCloseProfile() {
@@ -224,8 +310,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setCloseProfile(boolean closeProfile) {
+        markDirtyIfChanged(this.closeProfile, closeProfile);
         this.closeProfile = closeProfile;
-        markDirty();
     }
 
     public boolean isFlipProfile() {
@@ -233,8 +319,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setFlipProfile(boolean flipProfile) {
+        markDirtyIfChanged(this.flipProfile, flipProfile);
         this.flipProfile = flipProfile;
-        markDirty();
     }
 
     public boolean isOrientToRails() {
@@ -242,8 +328,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setOrientToRails(boolean orientToRails) {
+        markDirtyIfChanged(this.orientToRails, orientToRails);
         this.orientToRails = orientToRails;
-        markDirty();
     }
 
     public double getStartScale() {
@@ -251,8 +337,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setStartScale(double startScale) {
+        markDirtyIfChanged(this.startScale, startScale);
         this.startScale = startScale;
-        markDirty();
     }
 
     public double getEndScale() {
@@ -260,8 +346,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setEndScale(double endScale) {
+        markDirtyIfChanged(this.endScale, endScale);
         this.endScale = endScale;
-        markDirty();
     }
 
     public double getStartRotationDegrees() {
@@ -269,8 +355,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setStartRotationDegrees(double startRotationDegrees) {
+        markDirtyIfChanged(this.startRotationDegrees, startRotationDegrees);
         this.startRotationDegrees = startRotationDegrees;
-        markDirty();
     }
 
     public double getEndRotationDegrees() {
@@ -278,8 +364,8 @@ public class SweepTwoRailsNode extends BaseNode {
     }
 
     public void setEndRotationDegrees(double endRotationDegrees) {
+        markDirtyIfChanged(this.endRotationDegrees, endRotationDegrees);
         this.endRotationDegrees = endRotationDegrees;
-        markDirty();
     }
 
     private List<Vector3d> resolveProfilePoints() {
@@ -394,33 +480,6 @@ public class SweepTwoRailsNode extends BaseNode {
         return width <= SolidNodeUtils.EPSILON ? 1.0d : width;
     }
 
-    private List<Double> resolveNumberList(Object value) {
-        if (!(value instanceof List<?> list)) {
-            return List.of();
-        }
-        List<Double> numbers = new ArrayList<>();
-        for (Object item : list) {
-            if (item instanceof Number number) {
-                numbers.add(number.doubleValue());
-            }
-        }
-        return List.copyOf(numbers);
-    }
-
-    private double resolveScalarAt(List<Double> values, double t, double start, double end) {
-        if (values.isEmpty()) {
-            return start + (end - start) * t;
-        }
-        if (values.size() == 1) {
-            return values.getFirst();
-        }
-        double scaled = Math.max(0.0d, Math.min(1.0d, t)) * (values.size() - 1);
-        int i = (int) Math.floor(scaled);
-        int next = Math.min(values.size() - 1, i + 1);
-        double localT = scaled - i;
-        return values.get(i) + (values.get(next) - values.get(i)) * localT;
-    }
-
     private Vector3d transformLocalProfilePoint(Vector3d local,
                                                 double scale,
                                                 double rotationRadians,
@@ -464,17 +523,14 @@ public class SweepTwoRailsNode extends BaseNode {
         return railSegments;
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_RAIL_A_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_RAIL_B_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_SECTION_PATHS_ID, List.of());
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_RAIL_A_POINTS_ID, OUTPUT_RAIL_B_POINTS_ID, OUTPUT_SECTION_PATHS_ID,
+            OUTPUT_ALL_POINTS_ID, OUTPUT_RAIL_SEGMENTS_ID);
         outputValues.put(OUTPUT_SECTION_PATHS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_ALL_POINTS_ID, List.of());
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SURFACE_STRIP_ID, null);
-        outputValues.put(OUTPUT_SECTION_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        putNullOutputs(OUTPUT_SURFACE_STRIP_ID);
+        putIntOutputs(0, OUTPUT_SECTION_COUNT_ID);
+        markInvalid(error);
     }
 }

@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.LineData;
@@ -12,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -26,19 +26,19 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.solids.loft",
     displayName = "Loft Surface",
-    description = "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Auto-resamples when vertex counts differ.",
+    description = "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Resamples when vertex counts differ per Match Sections mode.",
     category = "geometry.solids",
-    order = 3
+    order = 5
 )
-public class LoftProfilesNode extends BaseNode {
+public class LoftProfilesNode extends AbstractSolidNode {
 
-    @NodeProperty(displayName = "Auto Resample", category = "Compatibility", order = 10,
-        description = "Resample both profiles to a shared point count when vertex counts differ")
-    private boolean autoResample = true;
+    @NodeProperty(displayName = "Match Sections", category = "Compatibility", order = 10,
+        description = "STRICT requires equal counts; RESAMPLE_MAX uses the larger count; RESAMPLE_COUNT uses Resample Count")
+    private MatchSectionsMode matchSectionsMode = MatchSectionsMode.STRICT;
 
-    @NodeProperty(displayName = "Target Section Points", category = "Compatibility", order = 11,
-        description = "Target point count for auto resampling. Use 0 to use the larger profile count.")
-    private int targetSectionPoints = 0;
+    @NodeProperty(displayName = "Resample Count", category = "Compatibility", order = 11,
+        description = "Target vertex count when Match Sections is RESAMPLE_COUNT (minimum 3)")
+    private int resampleCount = 0;
 
     private static final String INPUT_SOURCE_PROFILE_ID = "input_source_profile";
     private static final String INPUT_TARGET_PROFILE_ID = "input_target_profile";
@@ -52,7 +52,6 @@ public class LoftProfilesNode extends BaseNode {
     private static final String OUTPUT_RAIL_SEGMENTS_TREE_ID = "output_rail_segments_tree";
     private static final String OUTPUT_SIDE_SURFACE_ID = "output_side_surface";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public LoftProfilesNode() {
         super(UUID.randomUUID(), "geometry.solids.loft");
@@ -65,18 +64,19 @@ public class LoftProfilesNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_SOURCE_POINTS_ID, "Source Points", "Closed source polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TARGET_POINTS_ID, "Target Points", "Closed target polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_POINTS_TREE_ID, "Section Points Tree", "Source and target section points keyed as {0} and {1}", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Segments connecting corresponding source and target vertices", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_ID, "Rail Segments", "Segments connecting corresponding source and target vertices", NodeDataType.LINE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RAIL_SEGMENTS_TREE_ID, "Rail Segments Tree", "Loft rail segments keyed by rail index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_SURFACE_ID, "Side Surface",
             "Primary output: lofted surface topology between the two profiles (not a solid)",
             NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of loft rails", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both profiles are compatible for lofting", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Auto-resamples when vertex counts differ.";
+        return "Lofts two polygon profiles into a SURFACE_STRIP (surface topology, not a solid). Resamples when vertex counts differ per Match Sections mode.";
     }
 
     @Override
@@ -90,27 +90,26 @@ public class LoftProfilesNode extends BaseNode {
         Object targetObj = inputValues.get(INPUT_TARGET_PROFILE_ID);
 
         if (!(sourceObj instanceof PolygonProfileData sourceProfile) || !(targetObj instanceof PolygonProfileData targetProfile)) {
-            writeEmptyOutputs();
+            invalidate("Source and target profiles are required");
             return;
         }
 
         List<Vector3d> sourceUniquePoints = sourceProfile.getUniquePoints();
         List<Vector3d> targetUniquePoints = targetProfile.getUniquePoints();
         if (sourceUniquePoints.size() < 3 || targetUniquePoints.size() < 3) {
-            writeEmptyOutputs();
+            invalidate("Each profile must have at least 3 vertices");
             return;
         }
 
         if (sourceUniquePoints.size() != targetUniquePoints.size()) {
-            if (!autoResample) {
-                writeEmptyOutputs();
+            Integer targetCount = resolveTargetPointCount(sourceUniquePoints.size(), targetUniquePoints.size());
+            if (targetCount == null) {
                 return;
             }
-            int targetCount = resolveTargetPointCount(sourceUniquePoints.size(), targetUniquePoints.size());
             sourceUniquePoints = SolidNodeUtils.resampleSection(sourceUniquePoints, targetCount, true);
             targetUniquePoints = SolidNodeUtils.resampleSection(targetUniquePoints, targetCount, true);
             if (sourceUniquePoints.size() < 3 || sourceUniquePoints.size() != targetUniquePoints.size()) {
-                writeEmptyOutputs();
+                invalidate("Profile resampling failed");
                 return;
             }
             sourceProfile = rebuildProfile(sourceProfile, sourceUniquePoints);
@@ -127,10 +126,21 @@ public class LoftProfilesNode extends BaseNode {
             ));
         }
 
-        SurfaceStripData sideSurface = new SurfaceStripData(
-            List.of(sourceUniquePoints, targetUniquePoints),
-            List.of(true, true)
-        );
+        SurfaceStripData sideSurface;
+        try {
+            sideSurface = new SurfaceStripData(
+                List.of(sourceUniquePoints, targetUniquePoints),
+                List.of(true, true)
+            );
+        } catch (IllegalArgumentException ex) {
+            invalidate(ex.getMessage() == null ? "Loft surface strip is invalid" : ex.getMessage());
+            return;
+        }
+        String stripError = validateSurfaceStrip(sideSurface);
+        if (stripError != null) {
+            invalidate(stripError);
+            return;
+        }
 
         outputValues.put(OUTPUT_SOURCE_PROFILE_ID, sourceProfile);
         outputValues.put(OUTPUT_TARGET_PROFILE_ID, targetProfile);
@@ -141,37 +151,69 @@ public class LoftProfilesNode extends BaseNode {
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, SolidDataTreeUtils.indexedValueTree(railSegments));
         outputValues.put(OUTPUT_SIDE_SURFACE_ID, sideSurface);
         outputValues.put(OUTPUT_COUNT_ID, railSegments.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
+    public MatchSectionsMode getMatchSectionsMode() {
+        return matchSectionsMode;
+    }
+
+    public void setMatchSectionsMode(MatchSectionsMode matchSectionsMode) {
+        MatchSectionsMode resolved = matchSectionsMode == null ? MatchSectionsMode.STRICT : matchSectionsMode;
+        markDirtyIfChanged(this.matchSectionsMode, resolved);
+        this.matchSectionsMode = resolved;
+    }
+
+    public void setMatchSectionsModeString(String key) {
+        if (key == null || key.isBlank()) {
+            setMatchSectionsMode(MatchSectionsMode.STRICT);
+            return;
+        }
+        if (!MatchSectionsMode.KEYS.contains(key.toLowerCase())) {
+            setMatchSectionsMode(MatchSectionsMode.STRICT);
+            return;
+        }
+        setMatchSectionsMode(MatchSectionsMode.fromKey(key));
+    }
+
+    public int getResampleCount() {
+        return resampleCount;
+    }
+
+    public void setResampleCount(int resampleCount) {
+        markDirtyIfChanged(this.resampleCount, resampleCount);
+        this.resampleCount = resampleCount;
+    }
+
+    /** @deprecated use {@link #getMatchSectionsMode()} */
+    @Deprecated
     public boolean isAutoResample() {
-        return autoResample;
+        return matchSectionsMode != MatchSectionsMode.STRICT;
     }
 
+    /** @deprecated use {@link #setMatchSectionsMode(MatchSectionsMode)} */
+    @Deprecated
     public void setAutoResample(boolean autoResample) {
-        if (this.autoResample != autoResample) {
-            this.autoResample = autoResample;
-            markDirty();
-        }
+        setMatchSectionsMode(autoResample ? MatchSectionsMode.RESAMPLE_MAX : MatchSectionsMode.STRICT);
     }
 
+    /** @deprecated use {@link #getResampleCount()} */
+    @Deprecated
     public int getTargetSectionPoints() {
-        return targetSectionPoints;
+        return resampleCount;
     }
 
+    /** @deprecated use {@link #setResampleCount(int)} */
+    @Deprecated
     public void setTargetSectionPoints(int targetSectionPoints) {
-        int clamped = Math.max(0, targetSectionPoints);
-        if (this.targetSectionPoints != clamped) {
-            this.targetSectionPoints = clamped;
-            markDirty();
-        }
+        setResampleCount(targetSectionPoints);
     }
 
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
-        state.put("autoResample", autoResample);
-        state.put("targetSectionPoints", targetSectionPoints);
+        state.put("matchSectionsMode", matchSectionsMode.key());
+        state.put("resampleCount", resampleCount);
         return state;
     }
 
@@ -180,20 +222,38 @@ public class LoftProfilesNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("autoResample") instanceof Boolean value) {
-            autoResample = value;
+        if (map.get("matchSectionsMode") instanceof String value) {
+            setMatchSectionsModeString(value);
+        } else if (map.get("autoResample") instanceof Boolean autoResample) {
+            setAutoResample(autoResample);
         }
-        if (map.get("targetSectionPoints") instanceof Number value) {
-            targetSectionPoints = Math.max(0, value.intValue());
+        if (map.get("resampleCount") instanceof Number value) {
+            setResampleCount(value.intValue());
+        } else if (map.get("targetSectionPoints") instanceof Number value) {
+            setResampleCount(value.intValue());
         }
-        markDirty();
     }
 
-    private int resolveTargetPointCount(int sourceCount, int targetCount) {
-        if (targetSectionPoints >= 3) {
-            return targetSectionPoints;
-        }
-        return Math.max(3, Math.max(sourceCount, targetCount));
+    private @Nullable Integer resolveTargetPointCount(int sourceCount, int targetCount) {
+        return switch (matchSectionsMode) {
+            case STRICT -> {
+                invalidate("Profiles must have matching vertex counts (Match Sections is STRICT)");
+                yield null;
+            }
+            case RESAMPLE_MAX -> Math.max(3, Math.max(sourceCount, targetCount));
+            case RESAMPLE_COUNT -> {
+                int count = resampleCount >= 3 ? resampleCount : 0;
+                if (count < 3) {
+                    invalidate("Resample Count must be at least 3 when Match Sections is RESAMPLE_COUNT");
+                    yield null;
+                }
+                if (!SurfaceInputUtils.isWithinSurfacePointsPerSection(count)) {
+                    invalidate("Resample Count exceeds limit (" + com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_POINTS_PER_SECTION + ")");
+                    yield null;
+                }
+                yield count;
+            }
+        };
     }
 
     private static PolygonProfileData rebuildProfile(PolygonProfileData original, List<Vector3d> uniquePoints) {
@@ -207,16 +267,12 @@ public class LoftProfilesNode extends BaseNode {
         return new PolygonProfileData(closed, original.plane());
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_SOURCE_PROFILE_ID, null);
-        outputValues.put(OUTPUT_TARGET_PROFILE_ID, null);
-        outputValues.put(OUTPUT_SOURCE_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_TARGET_POINTS_ID, List.of());
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_SOURCE_PROFILE_ID, OUTPUT_TARGET_PROFILE_ID, OUTPUT_SIDE_SURFACE_ID);
+        putEmptyListOutputs(OUTPUT_SOURCE_POINTS_ID, OUTPUT_TARGET_POINTS_ID, OUTPUT_RAIL_SEGMENTS_ID);
         outputValues.put(OUTPUT_SECTION_POINTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_RAIL_SEGMENTS_ID, List.of());
         outputValues.put(OUTPUT_RAIL_SEGMENTS_TREE_ID, DataTreeData.empty());
-        outputValues.put(OUTPUT_SIDE_SURFACE_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }

@@ -3,7 +3,7 @@
 Design freeze: player-facing and AI-facing **graph language** for ports, numeric types,
 angles, and spatial concepts.
 
-Last updated: 2026-09-27
+Last updated: 2026-09-27 (V72 Solids)
 
 ## Authority
 
@@ -45,6 +45,7 @@ Last updated: 2026-09-27
 | Geometry Boolean | [`node-language-v1-geometry-boolean.md`](./node-language-v1-geometry-boolean.md) **(PASSED / FROZEN, V69)** |
 | Geometry Combine | [`node-language-v1-geometry-combine.md`](./node-language-v1-geometry-combine.md) **(PASSED / FROZEN, V70)** |
 | Geometry Curves / PATH v2 | [`node-language-v1-geometry-curves.md`](./node-language-v1-geometry-curves.md) **(PASSED / FROZEN, V71)** |
+| Geometry Solids / Surface v1 | [`node-language-v1-geometry-solids.md`](./node-language-v1-geometry-solids.md) **(PASSED / FROZEN, V72)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -87,6 +88,7 @@ Last updated: 2026-09-27
 | Geometry Boolean v1 | **PASSED / FROZEN** | V69 |
 | Geometry Combine v1 | **PASSED / FROZEN** | V70 |
 | Geometry Curves / PATH v2 | **PASSED / FROZEN** | V71 |
+| Geometry Solids / Surface v1 | **PASSED / FROZEN** | V72 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.

@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.solids;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
@@ -22,9 +21,9 @@ import java.util.UUID;
     displayName = "Extrude Box Face",
     description = "Extrudes a box face into a new box segment and returns a composite geometry",
     category = "geometry.solids",
-    order = 2
+    order = 3
 )
-public class ExtrudeBoxFaceNode extends BaseNode {
+public class ExtrudeBoxFaceNode extends AbstractSolidNode {
 
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
     private static final String INPUT_FACE_ID = "input_face";
@@ -48,6 +47,8 @@ public class ExtrudeBoxFaceNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EXTRUDED_BOX_ID, "Extruded Box", "The generated extrusion segment as box geometry", NodeDataType.BOX_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the requested face was resolved", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_RESOLVED_FACE_INDEX_ID, "Resolved Face Index", "Resolved face index used for the extrusion", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when extrusion succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -58,34 +59,36 @@ public class ExtrudeBoxFaceNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object faceIndexObj = inputValues.get(INPUT_FACE_INDEX_ID);
-        Object distanceObj = inputValues.get(INPUT_DISTANCE_ID);
-
-        GeometryData resultGeometry = null;
-        BoxGeometryData extrudedBox = null;
-        boolean found = false;
-        Integer resolvedFaceIndex = null;
-
-        if (geometryObj instanceof BoxGeometryData sourceGeometry) {
-            int faceIndex = SolidNodeUtils.resolveBoxFaceIndex(faceObj, faceIndexObj);
-            if (faceIndex >= 0 && faceIndex <= 5) {
-                double distance = distanceObj instanceof Number number ? number.doubleValue() : 0.0d;
-                extrudedBox = createExtrudedBox(sourceGeometry, faceIndex, distance);
-                if (extrudedBox != null) {
-                    resultGeometry = new CompositeGeometryData(List.of(sourceGeometry, extrudedBox));
-                } else {
-                    resultGeometry = sourceGeometry;
-                }
-                found = true;
-                resolvedFaceIndex = faceIndex;
-            }
+        if (!(geometryObj instanceof BoxGeometryData sourceGeometry)) {
+            invalidate("Box geometry is missing or invalid");
+            return;
         }
+
+        int faceIndex = SolidNodeUtils.resolveBoxFaceIndex(
+            inputValues.get(INPUT_FACE_ID),
+            inputValues.get(INPUT_FACE_INDEX_ID)
+        );
+        if (faceIndex < 0 || faceIndex > 5) {
+            invalidate("Face index must be between 0 and 5");
+            return;
+        }
+
+        Double distanceObj = resolveFiniteDouble(INPUT_DISTANCE_ID, 0.0d);
+        if (distanceObj == null) {
+            invalidate("Distance is connected but invalid (must be finite)");
+            return;
+        }
+
+        BoxGeometryData extrudedBox = createExtrudedBox(sourceGeometry, faceIndex, distanceObj);
+        GeometryData resultGeometry = extrudedBox != null
+            ? new CompositeGeometryData(List.of(sourceGeometry, extrudedBox))
+            : sourceGeometry;
 
         outputValues.put(OUTPUT_GEOMETRY_ID, resultGeometry);
         outputValues.put(OUTPUT_EXTRUDED_BOX_ID, extrudedBox);
-        outputValues.put(OUTPUT_FOUND_ID, found);
-        outputValues.put(OUTPUT_RESOLVED_FACE_INDEX_ID, resolvedFaceIndex);
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_RESOLVED_FACE_INDEX_ID, faceIndex);
+        markSuccess();
     }
 
     private BoxGeometryData createExtrudedBox(BoxGeometryData geometry, int faceIndex, double distance) {
@@ -114,5 +117,12 @@ public class ExtrudeBoxFaceNode extends BaseNode {
 
         Vector3d extrudedCenter = new Vector3d(sourceCenter).add(localCenterOffset);
         return new BoxGeometryData(extrudedCenter, extrudedHalfExtents, orientation, geometry.isOriented());
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_EXTRUDED_BOX_ID);
+        outputValues.put(OUTPUT_FOUND_ID, false);
+        putIntOutputs(-1, OUTPUT_RESOLVED_FACE_INDEX_ID);
+        markInvalid(error);
     }
 }
