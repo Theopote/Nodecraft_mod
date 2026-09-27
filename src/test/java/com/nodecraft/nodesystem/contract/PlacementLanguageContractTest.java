@@ -125,7 +125,7 @@ class PlacementLanguageContractTest {
 
         // Identity transforms: prove cellCenterâfloor round-trips (nearest would map centerâ?1,1,1)).
         BaseNode rotate = node("transform.placement.rotate_block_positions");
-        rotate.setInput("input_coordinates", input);
+        rotate.setInput("input_block_positions", input);
         rotate.setInput("input_center", new PointData(0, 0, 0));
         rotate.setInput("input_angle", 0.0d);
         rotate.processNode(null);
@@ -133,7 +133,7 @@ class PlacementLanguageContractTest {
         assertEquals(new BlockPos(0, 0, 0), firstBlock(rotate));
 
         BaseNode scale = node("transform.placement.scale_block_positions");
-        scale.setInput("input_coordinates", input);
+        scale.setInput("input_block_positions", input);
         scale.setInput("input_center", new PointData(0, 0, 0));
         scale.setInput("input_scale_factor", 1.0d);
         scale.processNode(null);
@@ -141,7 +141,7 @@ class PlacementLanguageContractTest {
         assertEquals(new BlockPos(0, 0, 0), firstBlock(scale));
 
         MirrorProbe mirror = new MirrorProbe();
-        mirror.setInput("input_coordinates", input);
+        mirror.setInput("input_block_positions", input);
         // Plane through cell center â?reflection is identity on that point.
         mirror.connectInput("input_plane", NodeDataType.PLANE);
         mirror.setInput("input_plane", PlaneData.canonical(new Vector3d(0.5d, 0.5d, 0.5d), new Vector3d(0, 1, 0)));
@@ -155,7 +155,7 @@ class PlacementLanguageContractTest {
         ScaleProbe scale = new ScaleProbe();
         BlockPosList input = new BlockPosList();
         input.add(new BlockPos(1, 0, 0));
-        scale.setInput("input_coordinates", input);
+        scale.setInput("input_block_positions", input);
         scale.connectInput("input_scale_factor", NodeDataType.DOUBLE);
         scale.setInput("input_scale_factor", 0.0d);
         scale.processNode(null);
@@ -168,12 +168,12 @@ class PlacementLanguageContractTest {
         BlockPosList input = new BlockPosList();
         input.add(new BlockPos(1, 0, 0));
         input.add(new BlockPos(1, 0, 0));
-        scale.setInput("input_coordinates", input);
+        scale.setInput("input_block_positions", input);
         scale.setInput("input_center", new PointData(0, 0, 0));
         scale.setInput("input_scale_factor", 1.0d);
         scale.processNode(null);
         assertEquals(Boolean.TRUE, scale.getOutput("output_valid"));
-        BlockPosList out = assertInstanceOf(BlockPosList.class, scale.getOutput("output_coordinates"));
+        BlockPosList out = assertInstanceOf(BlockPosList.class, scale.getOutput("output_block_positions"));
         assertEquals(2, out.size());
         assertEquals(new BlockPos(1, 0, 0), out.getPositions().get(0));
         assertEquals(new BlockPos(1, 0, 0), out.getPositions().get(1));
@@ -325,7 +325,7 @@ class PlacementLanguageContractTest {
     }
 
     private static BlockPos firstBlock(BaseNode node) {
-        BlockPosList list = assertInstanceOf(BlockPosList.class, node.getOutput("output_coordinates"));
+        BlockPosList list = assertInstanceOf(BlockPosList.class, node.getOutput("output_block_positions"));
         assertFalse(list.isEmpty());
         return list.getPositions().getFirst();
     }

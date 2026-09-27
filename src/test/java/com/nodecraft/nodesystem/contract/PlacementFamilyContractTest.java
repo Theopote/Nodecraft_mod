@@ -55,11 +55,11 @@ class PlacementFamilyContractTest {
         assertPortType("transform.placement.orient_geometry_to_frame", "input_frame", true, NodeDataType.FRAME);
         assertPortType("transform.placement.orient_geometry_to_frame", "input_pivot", true, NodeDataType.POINT);
 
-        assertPortType("transform.placement.offset_block_position", "input_coordinate", true, NodeDataType.BLOCK_POS);
-        assertPortType("transform.placement.offset_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
-        assertPortType("transform.placement.rotate_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
-        assertPortType("transform.placement.scale_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
-        assertPortType("transform.placement.mirror_block_positions", "input_coordinates", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.offset_block_position", "input_block_position", true, NodeDataType.BLOCK_POS);
+        assertPortType("transform.placement.offset_block_positions", "input_block_positions", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.rotate_block_positions", "input_block_positions", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.scale_block_positions", "input_block_positions", true, NodeDataType.BLOCK_LIST);
+        assertPortType("transform.placement.mirror_block_positions", "input_block_positions", true, NodeDataType.BLOCK_LIST);
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.transform.placement;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
@@ -11,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryStructureUtils;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +19,6 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Places geometry at one or more frames: local axes align to frame X/Y/Z, pivot maps to frame origin.
@@ -32,7 +31,7 @@ import java.util.UUID;
     category = "transform.placement",
     order = 0
 )
-public class PlaceGeometryOnFramesNode extends BaseNode {
+public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_PIVOT_ID = "input_pivot";
@@ -41,11 +40,9 @@ public class PlaceGeometryOnFramesNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_ERROR_ID = "output_error";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PlaceGeometryOnFramesNode() {
-        super(UUID.randomUUID(), "transform.placement.place_geometry_on_frames");
+        super("transform.placement.place_geometry_on_frames");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to place", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "Local pivot point that maps to each frame origin", NodeDataType.POINT, this));
@@ -54,8 +51,7 @@ public class PlaceGeometryOnFramesNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Placed geometry (composite when multiple frames)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of placed copies", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when placement fails", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when placement succeeded for every frame", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -73,10 +69,17 @@ public class PlaceGeometryOnFramesNode extends BaseNode {
 
         List<FrameData> frames = resolveFramesExclusive();
         if (frames == null) {
-            return; // already wrote fail
+            return;
         }
         if (frames.size() > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
             writeFail("Frame count exceeds MAX_GEOMETRY_INSTANCES");
+            return;
+        }
+
+        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
+        long outputLeaves = sourceLeaves * (long) frames.size();
+        if (outputLeaves > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+            writeFail("Placement workload exceeds limit (source leaves × frame count > MAX_GEOMETRY_INSTANCES)");
             return;
         }
 
@@ -160,14 +163,12 @@ public class PlaceGeometryOnFramesNode extends BaseNode {
             outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
         }
         outputValues.put(OUTPUT_COUNT_ID, copies.size());
-        outputValues.put(OUTPUT_ERROR_ID, "");
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     private void writeFail(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        putNullOutputs(OUTPUT_GEOMETRY_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }

@@ -134,6 +134,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V72 -> migrateV72ToV73(graph);
             case GraphFormatVersion.V73 -> migrateV73ToV74(graph);
             case GraphFormatVersion.V74 -> migrateV74ToV75(graph);
+            case GraphFormatVersion.V75 -> migrateV75ToV76(graph);
             default -> graph;
         };
     }
@@ -4781,6 +4782,92 @@ public final class GraphMigrationRegistry {
      */
     private static SavedGraph migrateV74ToV75(SavedGraph graph) {
         return graph;
+    }
+
+    /**
+     * Placement Language v2: type-scoped port remap on 5 block transform nodes,
+     * strip {@code useUniformScaling} from scale node state.
+     */
+    private static SavedGraph migrateV75ToV76(SavedGraph graph) {
+        applyPlacementV76ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyPlacementV76ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final Set<String> PLACEMENT_V76_BLOCK_TYPES = Set.of(
+            OFFSET_BLOCK_POSITION_TYPE,
+            OFFSET_BLOCK_POSITIONS_TYPE,
+            ROTATE_BLOCK_POSITIONS_TYPE,
+            SCALE_BLOCK_POSITIONS_TYPE,
+            MIRROR_BLOCK_POSITIONS_TYPE
+    );
+
+    private static void applyPlacementV76ToGraph(SavedGraph graph) {
+        if (graph.nodes != null) {
+            for (SavedNode node : graph.nodes) {
+                if (node == null || node.typeId == null) {
+                    continue;
+                }
+                if (SCALE_BLOCK_POSITIONS_TYPE.equals(node.typeId)) {
+                    stripUseUniformScalingState(node);
+                }
+            }
+        }
+
+        if (graph.connections == null) {
+            return;
+        }
+
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String targetType = typeIdOf(graph, connection.targetNodeId);
+            if (PLACEMENT_V76_BLOCK_TYPES.contains(sourceType)) {
+                connection.sourcePortId = remapPlacementV76Port(connection.sourcePortId);
+            }
+            if (PLACEMENT_V76_BLOCK_TYPES.contains(targetType)) {
+                connection.targetPortId = remapPlacementV76Port(connection.targetPortId);
+            }
+        }
+    }
+
+    private static void stripUseUniformScalingState(SavedNode node) {
+        if (!(node.state instanceof Map<?, ?> state)) {
+            return;
+        }
+        Map<String, Object> cleaned = new HashMap<>();
+        for (Map.Entry<?, ?> entry : state.entrySet()) {
+            if (!(entry.getKey() instanceof String key)) {
+                continue;
+            }
+            if ("useuniformscaling".equals(key.toLowerCase(Locale.ROOT))) {
+                LOGGER.debug("Stripped useUniformScaling from {}", node.nodeId);
+                continue;
+            }
+            cleaned.put(key, entry.getValue());
+        }
+        node.state = cleaned;
+    }
+
+    private static String remapPlacementV76Port(@Nullable String portId) {
+        if (portId == null) {
+            return null;
+        }
+        return switch (portId) {
+            case "input_coordinate" -> "input_block_position";
+            case "output_coordinate" -> "output_block_position";
+            case "input_coordinates" -> "input_block_positions";
+            case "output_coordinates" -> "output_block_positions";
+            default -> portId;
+        };
     }
 
     /**

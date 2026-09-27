@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -12,14 +11,13 @@ import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.GeometryMirror;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import com.nodecraft.nodesystem.util.VectorUtils;
+import com.nodecraft.nodesystem.util.PlacementBlockUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -29,7 +27,7 @@ import java.util.UUID;
     category = "transform.placement",
     order = 7
 )
-public class MirrorBlockPositionsNode extends BaseNode {
+public class MirrorBlockPositionsNode extends AbstractPlacementNode {
 
     public enum MirrorPlane {
         XY, YZ, XZ
@@ -38,28 +36,27 @@ public class MirrorBlockPositionsNode extends BaseNode {
     @NodeProperty(displayName = "Default Plane", category = "Mirror", order = 1)
     private MirrorPlane mirrorPlane = MirrorPlane.XZ;
 
-    private static final String INPUT_COORDINATES_ID = "input_coordinates";
+    private static final String INPUT_BLOCK_POSITIONS_ID = "input_block_positions";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_POINT_ID = "input_point";
     private static final String INPUT_NORMAL_ID = "input_normal";
 
-    private static final String OUTPUT_COORDINATES_ID = "output_coordinates";
+    private static final String OUTPUT_BLOCK_POSITIONS_ID = "output_block_positions";
     private static final String OUTPUT_INPUT_COUNT_ID = "output_input_count";
     private static final String OUTPUT_OUTPUT_COUNT_ID = "output_output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public MirrorBlockPositionsNode() {
-        super(UUID.randomUUID(), "transform.placement.mirror_block_positions");
+        super("transform.placement.mirror_block_positions");
 
-        addInputPort(new BasePort(INPUT_COORDINATES_ID, "Block Positions", "The block positions to mirror", NodeDataType.BLOCK_LIST, this));
+        addInputPort(new BasePort(INPUT_BLOCK_POSITIONS_ID, "Block Positions", "The block positions to mirror", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Mirror plane override", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Point on mirror plane", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Normal vector of mirror plane", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_COORDINATES_ID, "Block Positions", "Mirrored block positions", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_POSITIONS_ID, "Block Positions", "Mirrored block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_INPUT_COUNT_ID, "Input Count", "Number of input block positions", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_OUTPUT_COUNT_ID, "Output Count", "Number of output block positions", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the block position mirror succeeded", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs();
     }
 
     @Override
@@ -74,61 +71,93 @@ public class MirrorBlockPositionsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object coordinatesObj = inputValues.get(INPUT_COORDINATES_ID);
+        Object coordinatesObj = inputValues.get(INPUT_BLOCK_POSITIONS_ID);
         if (!(coordinatesObj instanceof BlockPosList coordinates)) {
-            writeResult(new BlockPosList(), 0, false);
+            writeInvalid("Missing block position list", 0);
             return;
         }
 
-        PlaneData plane = resolvePlane();
-        if (plane == null) {
-            writeResult(new BlockPosList(), coordinates.size(), false);
+        String listError = PlacementBlockUtils.validateBlockListSize(coordinates);
+        if (listError != null) {
+            writeInvalid(listError, coordinates.size());
+            return;
+        }
+
+        PlaneResolution planeResolution = resolvePlane();
+        if (planeResolution.error() != null) {
+            writeInvalid(planeResolution.error(), coordinates.size());
             return;
         }
 
         BlockPosList result = new BlockPosList();
         for (BlockPos pos : coordinates) {
-            Vector3d mirrored = GeometryMirror.mirrorPoint(BlockSpace.cellCenter(pos), plane);
-            result.add(BlockSpace.snapCellCenter(mirrored));
+            Vector3d mirrored = GeometryMirror.mirrorPoint(BlockSpace.cellCenter(pos), planeResolution.plane());
+            BlockPos snapped = PlacementBlockUtils.trySnapCellCenter(mirrored);
+            if (snapped == null) {
+                writeInvalid("Non-finite mirror result", coordinates.size());
+                return;
+            }
+            result.add(snapped);
         }
 
-        writeResult(result, coordinates.size(), true);
+        outputValues.put(OUTPUT_BLOCK_POSITIONS_ID, result);
+        outputValues.put(OUTPUT_INPUT_COUNT_ID, coordinates.size());
+        outputValues.put(OUTPUT_OUTPUT_COUNT_ID, result.size());
+        markSuccess();
+    }
+
+    private record PlaneResolution(@Nullable PlaneData plane, @Nullable String error) {
     }
 
     /**
-     * Plane resolution: connected Plane → Point+Normal custom path → Default Plane property.
+     * Plane XOR (Point+Normal): connected Plane → plane input; both Point+Normal → custom plane;
+     * partial Point/Normal → fail; none → property default plane.
      */
-    private @Nullable PlaneData resolvePlane() {
-        if (OptionalPortDrive.isConnected(this, INPUT_PLANE_ID)) {
-            return OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
-        }
-
+    private PlaneResolution resolvePlane() {
+        boolean planeConnected = OptionalPortDrive.isConnected(this, INPUT_PLANE_ID);
         boolean pointConnected = OptionalPortDrive.isConnected(this, INPUT_POINT_ID);
         boolean normalConnected = OptionalPortDrive.isConnected(this, INPUT_NORMAL_ID);
-        if (pointConnected || normalConnected) {
-            if (!pointConnected || !normalConnected) {
-                return null;
-            }
-            Vector3d point = OptionalPortDrive.resolveOptionalPoint(this, INPUT_POINT_ID, null);
-            Vector3d normal = OptionalPortDrive.resolveOptionalVector(this, INPUT_NORMAL_ID, null);
-            if (point == null || normal == null || !VectorUtils.isNonZero(normal)) {
-                return null;
-            }
-            return PlaneData.canonical(point, normal);
+
+        if (planeConnected && (pointConnected || normalConnected)) {
+            return new PlaneResolution(null, "Connect Plane or Point+Normal, not both");
+        }
+        if (pointConnected != normalConnected) {
+            return new PlaneResolution(null, "Connect both Point and Normal for a custom mirror plane");
         }
 
-        return switch (mirrorPlane == null ? MirrorPlane.XZ : mirrorPlane) {
+        if (planeConnected) {
+            PlaneData plane = OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+            if (plane == null) {
+                return new PlaneResolution(null, "Plane connected but invalid");
+            }
+            return new PlaneResolution(plane, null);
+        }
+
+        if (pointConnected) {
+            Vector3d point = OptionalPortDrive.resolveOptionalPoint(this, INPUT_POINT_ID, null);
+            Vector3d normal = OptionalPortDrive.resolveOptionalVector(this, INPUT_NORMAL_ID, null);
+            if (point == null || normal == null) {
+                return new PlaneResolution(null, "Point or Normal connected but invalid");
+            }
+            try {
+                return new PlaneResolution(PlaneData.canonical(point, normal), null);
+            } catch (IllegalArgumentException ex) {
+                return new PlaneResolution(null, "Mirror plane normal is zero-length");
+            }
+        }
+
+        return new PlaneResolution(switch (mirrorPlane == null ? MirrorPlane.XZ : mirrorPlane) {
             case XY -> PlaneData.XY_PLANE;
             case YZ -> PlaneData.YZ_PLANE;
             case XZ -> PlaneData.XZ_PLANE;
-        };
+        }, null);
     }
 
-    private void writeResult(BlockPosList result, int inputCount, boolean valid) {
-        outputValues.put(OUTPUT_COORDINATES_ID, result);
-        outputValues.put(OUTPUT_INPUT_COUNT_ID, inputCount);
-        outputValues.put(OUTPUT_OUTPUT_COUNT_ID, result.size());
-        outputValues.put(OUTPUT_VALID_ID, valid);
+    private void writeInvalid(String error, int inputCount) {
+        putEmptyBlockListOutputs(OUTPUT_BLOCK_POSITIONS_ID);
+        putIntOutputs(inputCount, OUTPUT_INPUT_COUNT_ID);
+        putIntOutputs(0, OUTPUT_OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 
     public MirrorPlane getMirrorPlane() {
