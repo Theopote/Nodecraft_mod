@@ -260,11 +260,27 @@ public final class PathFrameUtils {
     /**
      * Tangent at a polyline vertex. When {@code closed}, endpoints use wrap-around neighbors
      * (same rule as polar full-circle: no duplicate seam vertex in the point list).
+     * <p>
+     * Legacy tolerant API: degenerate tangents fall back to world +Z. Prefer
+     * {@link #tryComputeTangent(List, int, boolean)} for fail-closed language nodes.
      */
     public static Vector3d computeTangent(List<Vector3d> points, int index, boolean closed) {
+        Vector3d resolved = tryComputeTangent(points, index, closed);
+        return resolved == null ? new Vector3d(0.0d, 0.0d, 1.0d) : resolved;
+    }
+
+    /**
+     * Fail-closed tangent at a polyline vertex.
+     *
+     * @return normalized tangent, or {@code null} when the neighborhood is missing or degenerate
+     */
+    public static @Nullable Vector3d tryComputeTangent(List<Vector3d> points, int index, boolean closed) {
+        if (points == null) {
+            return null;
+        }
         int n = points.size();
-        if (n < 2) {
-            return new Vector3d(0.0d, 0.0d, 1.0d);
+        if (n < 2 || index < 0 || index >= n) {
+            return null;
         }
         Vector3d tangent;
         if (closed && n >= 3) {
@@ -278,8 +294,7 @@ public final class PathFrameUtils {
         } else {
             tangent = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));
         }
-        Vector3d normalized = normalizeOr(tangent, null);
-        return normalized == null ? new Vector3d(0.0d, 0.0d, 1.0d) : normalized;
+        return normalizeOr(tangent, null);
     }
 
     public static PlaneData fitPlane(List<Vector3d> points, Vector3d center) {

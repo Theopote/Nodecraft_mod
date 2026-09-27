@@ -220,6 +220,23 @@ class PatternLinearLanguageV2ContractTest {
     }
 
     @Test
+    void pathFramesDegenerateInteriorTangentFailsClosed() {
+        // A → B → A → C: at B, (next - prev) = A - A = zero → must fail, not invent +Z.
+        BaseNode pathFrames = node("pattern.linear.path_frames");
+        pathFrames.setInput("input_path", new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(10, 0, 0),
+            new Vec3d(0, 0, 0),
+            new Vec3d(0, 10, 0)
+        )));
+        pathFrames.processNode(null);
+        assertEquals(Boolean.FALSE, pathFrames.getOutput("output_valid"));
+        assertTrue(String.valueOf(pathFrames.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("tangent"));
+        assertEquals(0, pathFrames.getOutput("output_count"));
+        assertTrue(((List<?>) pathFrames.getOutput("output_frames")).isEmpty());
+    }
+
+    @Test
     void curveArrayPathOnly() {
         assertPortType("pattern.linear.curve_array", "input_path", true, NodeDataType.PATH);
         assertPortType("pattern.linear.curve_array", "output_frames", false, NodeDataType.FRAME_LIST);
@@ -333,6 +350,21 @@ class PatternLinearLanguageV2ContractTest {
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
         assertEquals(2, node.getOutput("output_instance_count"));
         assertEquals(4, node.getOutput("output_placement_count"));
+    }
+
+    @Test
+    void instanceBlockPlacementsEnabledConnectedInvalidFailsClosed() {
+        InstanceBlockPlacementsProbe probe = new InstanceBlockPlacementsProbe();
+        probe.setInput("input_anchors", new BlockPosList(List.of(new BlockPos(10, 64, 10))));
+        probe.setInput("input_template_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_fence")
+        ));
+        probe.connectInput("input_enabled", NodeDataType.BOOLEAN);
+        probe.putRawInput("input_enabled", "not-a-boolean");
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("enabled"));
+        assertEquals(0, probe.getOutput("output_placement_count"));
     }
 
     @Test
@@ -452,6 +484,17 @@ class PatternLinearLanguageV2ContractTest {
     }
 
     private static final class CurveArrayProbe extends com.nodecraft.nodesystem.nodes.pattern.linear.CurveArrayNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            PatternLinearLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class InstanceBlockPlacementsProbe
+            extends com.nodecraft.nodesystem.nodes.pattern.linear.InstanceBlockPlacementsNode {
         void putRawInput(String portId, Object value) {
             inputValues.put(portId, value);
         }

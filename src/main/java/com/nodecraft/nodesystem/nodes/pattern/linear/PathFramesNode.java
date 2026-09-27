@@ -103,7 +103,12 @@ public class PathFramesNode extends AbstractPatternLinearNode {
 
         List<Vector3d> tangents = new ArrayList<>(vertices.size());
         for (int i = 0; i < vertices.size(); i++) {
-            tangents.add(PathFrameUtils.computeTangent(vertices, i, closed));
+            Vector3d tangent = PathFrameUtils.tryComputeTangent(vertices, i, closed);
+            if (tangent == null) {
+                writeInvalid("Degenerate path tangent");
+                return;
+            }
+            tangents.add(tangent);
         }
 
         List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(vertices, tangents, up);

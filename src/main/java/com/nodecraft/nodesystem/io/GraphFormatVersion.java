@@ -496,9 +496,10 @@ public final class GraphFormatVersion {
     public static final int V78 = 78;
 
     /**
-     * Pattern Linear Language v2: Valid+Error on 4 nodes, remove raw LIST geometry outputs,
+     * Pattern Linear Language v2 (PASSED / FROZEN): Valid+Error on 4 nodes, remove raw LIST geometry outputs,
      * OptionalPortDrive / fail-closed Count budgets, Instance Block Placements (BLOCK_LIST anchors),
-     * transactional array copies, sourceLeaves×instances preflight. V41 remains the historical v1 fence.
+     * transactional array copies, sourceLeaves×instances preflight, Path Frames degenerate tangent
+     * fail-closed. V41 remains the historical v1 fence.
      */
     public static final int V79 = 79;
 

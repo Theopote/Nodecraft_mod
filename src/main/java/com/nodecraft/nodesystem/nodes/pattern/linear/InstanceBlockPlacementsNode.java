@@ -63,7 +63,12 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (inputValues.get(INPUT_ENABLED_ID) instanceof Boolean enabled && !enabled) {
+        Boolean enabled = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_ENABLED_ID, true);
+        if (enabled == null) {
+            writeFail("Enabled connected but invalid");
+            return;
+        }
+        if (!enabled) {
             writeSuccess(List.of(), new BlockPosList(), 0);
             return;
         }
