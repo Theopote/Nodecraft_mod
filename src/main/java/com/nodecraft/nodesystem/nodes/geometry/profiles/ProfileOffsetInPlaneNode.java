@@ -1,23 +1,17 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector2d;
-import org.joml.Vector3d;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.buffer.BufferOp;
@@ -33,9 +27,9 @@ import java.util.UUID;
     displayName = "Profile Offset In Plane",
     description = "Offsets a polygon profile in its plane by signed distance using 2D buffer logic",
     category = "geometry.profiles",
-    order = 23
+    order = 16
 )
-public class ProfileOffsetInPlaneNode extends BaseNode {
+public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
     @NodeProperty(displayName = "Quadrant Segments", category = "Offset", order = 1)
     private int quadrantSegments = 8;
 
@@ -53,7 +47,6 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ProfileOffsetInPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.offset_profile_plane");
@@ -61,11 +54,12 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary offset profile (largest area)", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All offset polygon profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All offset polygon profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary offset profile", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary offset profile", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of offset profiles produced", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when offset succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,25 +69,28 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        Object offsetObj = inputValues.get(INPUT_OFFSET_ID);
-        if (!(profileObj instanceof PolygonProfileData profile) || !(offsetObj instanceof Number number)) {
-            writeInvalid();
+        PolygonProfileData profile = resolveStrictProfile(INPUT_PROFILE_ID);
+        Double offset = resolveFiniteDouble(INPUT_OFFSET_ID, 0.0d);
+        if (profile == null) {
+            writeFailure("Valid polygon profile is required");
+            return;
+        }
+        if (offset == null) {
+            writeFailure("Offset must be a finite number");
             return;
         }
 
-        double offset = number.doubleValue();
-        if (!Double.isFinite(offset) || Math.abs(offset) < 1.0e-9d) {
-            writeInvalid();
+        if (Math.abs(offset) < 1.0e-12d) {
+            writePassthrough(profile);
             return;
         }
 
         PlaneData plane = profile.plane();
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         GeometryFactory gf = new GeometryFactory();
-        Polygon polygon = toJtsPolygon(profile, axes, gf);
+        Polygon polygon = ProfilePlanarOps.toJtsPolygon(profile, axes, gf);
         if (polygon == null) {
-            writeInvalid();
+            writeFailure("Failed to convert profile for offset operation");
             return;
         }
 
@@ -104,88 +101,54 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
 
         Geometry out = BufferOp.bufferOp(polygon, offset, params);
         List<PolygonProfileData> profiles = new ArrayList<>();
-        appendPolygons(out, axes, plane, profiles);
+        String conversionError = ProfilePlanarOps.appendSimplePolygons(out, axes, plane, profiles);
+        if (conversionError != null) {
+            writeFailure(conversionError);
+            return;
+        }
         if (profiles.isEmpty()) {
-            writeInvalid();
+            writeSuccessEmpty(plane);
             return;
         }
 
-        PolygonProfileData primary = profiles.getFirst();
-        for (PolygonProfileData p : profiles) {
-            if (Math.abs(area2d(p, axes)) > Math.abs(area2d(primary, axes))) {
-                primary = p;
-            }
+        String budgetError = ProfilePlanarOps.validateOutputBudget(profiles);
+        if (budgetError != null) {
+            writeFailure(budgetError);
+            return;
         }
 
+        PolygonProfileData primary = ProfilePlanarOps.selectPrimaryProfile(profiles, axes);
         outputValues.put(OUTPUT_PROFILE_ID, primary);
         outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
         outputValues.put(OUTPUT_PLANE_ID, primary.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
         outputValues.put(OUTPUT_COUNT_ID, profiles.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Polygon toJtsPolygon(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes, GeometryFactory gf) {
-        List<Vector3d> closed = profile.closedPoints();
-        if (closed.size() < 4) {
-            return null;
-        }
-        Coordinate[] coords = new Coordinate[closed.size()];
-        for (int i = 0; i < closed.size(); i++) {
-            Vector2d uv = axes.to2d(closed.get(i));
-            coords[i] = new Coordinate(uv.x, uv.y);
-        }
-        return gf.createPolygon(coords);
+    private void writePassthrough(PolygonProfileData profile) {
+        List<PolygonProfileData> profiles = List.of(profile);
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
+        outputValues.put(OUTPUT_PLANE_ID, profile.plane());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
+        putIntOutputs(1, OUTPUT_COUNT_ID);
+        markSuccess();
     }
 
-    private void appendPolygons(Geometry geometry,
-                                PlaneProjectionUtils.PlaneAxes axes,
-                                PlaneData plane,
-                                List<PolygonProfileData> out) {
-        if (geometry == null || geometry.isEmpty()) {
-            return;
-        }
-        if (geometry instanceof Polygon polygon) {
-            PolygonProfileData profile = toProfile(polygon, axes, plane);
-            if (profile != null) {
-                out.add(profile);
-            }
-            return;
-        }
-        if (geometry instanceof GeometryCollection collection) {
-            for (int i = 0; i < collection.getNumGeometries(); i++) {
-                appendPolygons(collection.getGeometryN(i), axes, plane, out);
-            }
-        }
+    private void writeSuccessEmpty(PlaneData plane) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        outputValues.put(OUTPUT_PLANE_ID, plane);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markSuccess();
     }
 
-    private @Nullable PolygonProfileData toProfile(Polygon polygon,
-                                                   PlaneProjectionUtils.PlaneAxes axes,
-                                                   PlaneData plane) {
-        Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-        if (coords.length < 4) {
-            return null;
-        }
-        List<Vector3d> closed = new ArrayList<>(coords.length);
-        for (Coordinate c : coords) {
-            closed.add(axes.from2d(new Vector2d(c.x, c.y)));
-        }
-        try {
-            return new PolygonProfileData(closed, plane);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
-        List<Vector3d> pts = profile.closedPoints();
-        double area2 = 0.0d;
-        for (int i = 0; i < pts.size() - 1; i++) {
-            Vector2d a = axes.to2d(pts.get(i));
-            Vector2d b = axes.to2d(pts.get(i + 1));
-            area2 += (a.x * b.y - b.x * a.y);
-        }
-        return area2 * 0.5d;
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 
     private int parseJoinStyle(String raw) {
@@ -197,14 +160,5 @@ public class ProfileOffsetInPlaneNode extends BaseNode {
             case "BEVEL" -> BufferParameters.JOIN_BEVEL;
             default -> BufferParameters.JOIN_ROUND;
         };
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

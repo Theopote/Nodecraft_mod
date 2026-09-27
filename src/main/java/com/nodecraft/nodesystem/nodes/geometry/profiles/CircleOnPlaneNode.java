@@ -4,13 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -26,9 +26,9 @@ import java.util.UUID;
     displayName = "Circle On Plane",
     description = "Constructs a circular profile from radius and an optional center/plane (defaults to XZ)",
     category = "geometry.profiles",
-    order = 10
+    order = 3
 )
-public class CircleOnPlaneNode extends BaseNode {
+public class CircleOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_SEGMENTS_ID = "input_segments";
@@ -42,7 +42,6 @@ public class CircleOnPlaneNode extends BaseNode {
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_RADIUS_ID = "output_radius";
     private static final String OUTPUT_SEGMENTS_ID = "output_segments";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Default Radius", category = "Size", order = 1)
     private double radius = 5.0d;
@@ -60,12 +59,13 @@ public class CircleOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed circle points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Circle polygon profile approximation", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed circle boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed circle boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved circle center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Resolved radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SEGMENTS_ID, "Segments", "Resolved segment count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when circle profile was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,20 +75,38 @@ public class CircleOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double resolvedRadius = resolveDouble(inputValues.get(INPUT_RADIUS_ID), radius);
-        int resolvedSegments = resolveSegments();
-        Vector3d preferredAxis = inputValues.get(INPUT_START_DIRECTION_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (!Double.isFinite(resolvedRadius) || resolvedRadius <= 0.0d) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double resolvedRadius = resolvePositiveDouble(INPUT_RADIUS_ID, radius);
+        if (resolvedRadius == null) {
+            writeInvalid("Radius must be a positive finite number");
+            return;
+        }
+        Integer resolvedSegments = resolveBoundedInteger(
+            INPUT_SEGMENTS_ID, segments, 3, GenerationLimits.MAX_PROFILE_VERTICES);
+        if (resolvedSegments == null) {
+            writeInvalid("Segments must be an exact integer from 3 to " + GenerationLimits.MAX_PROFILE_VERTICES);
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferredAxis);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_START_DIRECTION_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_START_DIRECTION_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
+            return;
+        }
+
+        if (!isWithinProfileVertices(resolvedSegments)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
@@ -103,38 +121,23 @@ public class CircleOnPlaneNode extends BaseNode {
         points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADIUS_ID, resolvedRadius);
         outputValues.put(OUTPUT_SEGMENTS_ID, resolvedSegments);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private int resolveSegments() {
-        Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
-        int raw = segmentsObj instanceof Number number ? number.intValue() : segments;
-        return GenerationLimits.clampSegments(3, raw);
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_SEGMENTS_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID);
+        putIntOutputs(0, OUTPUT_SEGMENTS_ID);
+        markInvalid(error);
     }
 
     @Override

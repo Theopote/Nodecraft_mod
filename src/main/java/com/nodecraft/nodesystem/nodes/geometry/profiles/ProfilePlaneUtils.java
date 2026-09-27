@@ -22,27 +22,6 @@ final class ProfilePlaneUtils {
         return SpatialValueResolver.resolveVector3d(value);
     }
 
-    /**
-     * Center override if connected; otherwise plane origin; otherwise world origin.
-     */
-    static Vector3d resolveCenter(@Nullable Object centerValue, PlaneData plane) {
-        Vector3d fromPort = resolvePoint(centerValue);
-        if (fromPort != null) {
-            return fromPort;
-        }
-        if (plane != null) {
-            Vector3d origin = plane.getPoint();
-            if (origin != null) {
-                return new Vector3d(origin);
-            }
-        }
-        return new Vector3d(0.0d, 0.0d, 0.0d);
-    }
-
-    static PlaneData resolvePlane(@Nullable Object planeValue) {
-        return planeValue instanceof PlaneData plane ? plane : DEFAULT_PLANE;
-    }
-
     static List<PointData> toPointList(List<Vector3d> points) {
         List<PointData> out = new ArrayList<>(points.size());
         for (Vector3d point : points) {

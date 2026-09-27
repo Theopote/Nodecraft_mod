@@ -4,12 +4,12 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,9 +25,9 @@ import java.util.UUID;
     displayName = "Rectangle On Plane",
     description = "Constructs a planar rectangle from width, height, and an optional center/plane (defaults to XZ)",
     category = "geometry.profiles",
-    order = 0
+    order = 1
 )
-public class RectangleOnPlaneNode extends BaseNode {
+public class RectangleOnPlaneNode extends AbstractProfileNode {
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_WIDTH_ID = "input_width";
@@ -42,7 +42,6 @@ public class RectangleOnPlaneNode extends BaseNode {
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_WIDTH_ID = "output_width";
     private static final String OUTPUT_HEIGHT_ID = "output_height";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Width", category = "Size", order = 1)
     private double width = 5.0d;
@@ -61,12 +60,13 @@ public class RectangleOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Rectangle corner points in closed order", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rectangle polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed rectangle boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed rectangle boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved rectangle center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_WIDTH_ID, "Width", "Resolved width", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Resolved height", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a rectangle could be constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -76,21 +76,26 @@ public class RectangleOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double resolvedWidth = resolveDouble(inputValues.get(INPUT_WIDTH_ID), width);
-        double resolvedHeight = resolveDouble(inputValues.get(INPUT_HEIGHT_ID), height);
-        Vector3d preferredXAxis = inputValues.get(INPUT_X_AXIS_ID) instanceof Vector3d vector ? new Vector3d(vector) : null;
-
-        if (!Double.isFinite(resolvedWidth) || !Double.isFinite(resolvedHeight)
-                || resolvedWidth <= 0.0d || resolvedHeight <= 0.0d) {
-            writeEmptyOutputs();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double resolvedWidth = resolvePositiveDouble(INPUT_WIDTH_ID, width);
+        Double resolvedHeight = resolvePositiveDouble(INPUT_HEIGHT_ID, height);
+        if (resolvedWidth == null || resolvedHeight == null) {
+            writeInvalid("Width and height must be finite and greater than zero");
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferredXAxis);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_X_AXIS_ID);
         if (basis == null) {
-            writeEmptyOutputs();
+            writeInvalid(isConnectedAxisInvalid() ? "In-plane axis is invalid" : "Failed to create profile basis");
             return;
         }
 
@@ -104,33 +109,32 @@ public class RectangleOnPlaneNode extends BaseNode {
         corners.add(new Vector3d(center).sub(halfX).add(halfY));
         corners.add(new Vector3d(corners.getFirst()));
 
-        PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PlaneData resolvedPlane = PlaneData.canonical(center, basis.normal());
+        if (resolvedPlane == null) {
+            writeInvalid("Failed to create profile plane");
+            return;
+        }
+
+        PolygonProfileData profile = new PolygonProfileData(corners, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(corners));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(corners, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(corners));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_WIDTH_ID, resolvedWidth);
         outputValues.put(OUTPUT_HEIGHT_ID, resolvedHeight);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
+    private boolean isConnectedAxisInvalid() {
+        return ProfileInputUtils.isConnected(this, INPUT_X_AXIS_ID);
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_WIDTH_ID, 0.0d);
-        outputValues.put(OUTPUT_HEIGHT_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putDoubleOutputs(0.0d, OUTPUT_WIDTH_ID, OUTPUT_HEIGHT_ID);
+        markInvalid(error);
     }
 
     @Override

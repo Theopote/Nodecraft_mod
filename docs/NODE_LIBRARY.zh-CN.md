@@ -11,13 +11,13 @@
 |---|---:|
 | `flow.control` | 3 |
 | `flow.loop` | 2 |
-| `geometry.analysis` | 2 |
+| `geometry.analysis` | 3 |
 | `geometry.architectural_primitives` | 18 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
 | `geometry.primitives` | 29 |
-| `geometry.profiles` | 24 |
+| `geometry.profiles` | 23 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 22 |
 | `geometry.voxel` | 1 |
@@ -85,12 +85,13 @@
 | For Each Loop | `flow.loop.for_each` | Iterates a list with exec_body per item. List element type T binds to Item. | `ForEachLoopNode` |
 | While Loop | `flow.loop.while` | Routes exec_body while Condition is true under Max Iterations. | `WhileLoopNode` |
 
-## geometry.analysis（2）
+## geometry.analysis（3）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Block Bounds | `geometry.analysis.block_bounds` | Calculates a continuous AABB from a block list or region cell envelope | `BlockBoundsNode` |
 | Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
+| Convex Hull 3D From Points | `geometry.analysis.convex_hull_3d` | Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
 
 ## geometry.architectural_primitives（18）
 
@@ -195,34 +196,33 @@
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
 
-## geometry.profiles（24）
+## geometry.profiles（23）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Rectangle On Plane | `geometry.profiles.rectangle_profile` | Constructs a planar rectangle from width, height, and an optional center/plane (defaults to XZ) | `RectangleOnPlaneNode` |
-| Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from radius, sides, and an optional center/plane (defaults to XZ) | `RegularPolygonOnPlaneNode` |
 | Polygon By Points | `geometry.profiles.custom_profile` | Constructs a planar polygon profile from an ordered point list | `PolygonByPointsNode` |
-| Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
-| Deconstruct Polygon Profile | `geometry.profiles.deconstruct_profile` | Extracts points, boundary, plane, center, perimeter, and area from a polygon profile | `DeconstructPolygonProfileNode` |
-| Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
-| Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
-| Convex Hull 3D From Points | `geometry.profiles.convex_hull_3d_points` | Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
+| Rectangle On Plane | `geometry.profiles.rectangle_profile` | Constructs a planar rectangle from width, height, and an optional center/plane (defaults to XZ) | `RectangleOnPlaneNode` |
+| Rounded Rectangle On Plane | `geometry.profiles.rounded_rectangle_profile` | Constructs a rounded-rectangle profile from center, width, height, corner radius, and plane (defaults to XZ) | `RoundedRectangleOnPlaneNode` |
 | Circle On Plane | `geometry.profiles.circle_profile` | Constructs a circular profile from radius and an optional center/plane (defaults to XZ) | `CircleOnPlaneNode` |
 | Ellipse On Plane | `geometry.profiles.ellipse_profile` | Constructs an ellipse profile from center, major/minor radii, plane, and segment count (defaults to XZ) | `EllipseOnPlaneNode` |
-| Sector On Plane | `geometry.profiles.sector_profile` | Constructs a circular sector profile from center, radius, start/end angles, and plane | `SectorOnPlaneNode` |
-| Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs annulus boundaries from center, inner/outer radii, plane, and segment count | `AnnulusOnPlaneNode` |
-| Rounded Rectangle On Plane | `geometry.profiles.rounded_rectangle_profile` | Constructs a rounded-rectangle profile from center, width, height, corner radius, and plane (defaults to XZ) | `RoundedRectangleOnPlaneNode` |
+| Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from radius, sides, and an optional center/plane (defaults to XZ) | `RegularPolygonOnPlaneNode` |
 | Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a star polygon profile from center, inner/outer radii, point count, and plane (defaults to XZ) | `StarPolygonOnPlaneNode` |
-| SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count (defaults to XZ) | `SemiCircleOnPlaneNode` |
 | Rhombus On Plane | `geometry.profiles.rhombus_profile` | Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane (defaults to XZ) | `RhombusOnPlaneNode` |
+| Cross On Plane | `geometry.profiles.cross_profile` | Constructs a plus-shaped cross profile from arm length, arm width, center, and plane | `CrossOnPlaneNode` |
 | Capsule On Plane | `geometry.profiles.capsule_profile` | Constructs a capsule (stadium) profile from center, length, radius, and plane | `CapsuleOnPlaneNode` |
 | Heart On Plane | `geometry.profiles.heart_profile` | Constructs a heart profile from center, width, height, plane, and segment count (defaults to XZ) | `HeartOnPlaneNode` |
+| SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count (defaults to XZ) | `SemiCircleOnPlaneNode` |
+| Sector On Plane | `geometry.profiles.sector_profile` | Constructs a circular sector profile from center, radius, start/end angles, and plane | `SectorOnPlaneNode` |
+| Annulus On Plane | `geometry.profiles.annulus_profile` | Outputs outer and inner boundary profiles separately; does not represent a holed planar region | `AnnulusOnPlaneNode` |
 | Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane (defaults to XZ) | `AnnularSectorOnPlaneNode` |
-| Cross On Plane | `geometry.profiles.cross_profile` | Constructs a plus-shaped cross profile from arm length, arm width, center, and plane | `CrossOnPlaneNode` |
-| Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane (defaults to XZ) | `GearOnPlaneNode` |
+| Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
 | Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane by signed distance using 2D buffer logic | `ProfileOffsetInPlaneNode` |
-| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane | `ProfileBoolean2DNode` |
+| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles | `ProfileBoolean2DNode` |
+| Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
+| Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
 | Profile Triangulate 2D | `geometry.profiles.triangulate_2d` | Triangulates a planar polygon profile into triangle profiles using ear clipping | `ProfileTriangulate2DNode` |
+| Deconstruct Polygon Profile | `geometry.profiles.deconstruct_profile` | Extracts points, boundary, plane, center, perimeter, and area from a polygon profile | `DeconstructPolygonProfileNode` |
+| Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane (defaults to XZ) | `GearOnPlaneNode` |
 
 ## geometry.sdf（13）
 

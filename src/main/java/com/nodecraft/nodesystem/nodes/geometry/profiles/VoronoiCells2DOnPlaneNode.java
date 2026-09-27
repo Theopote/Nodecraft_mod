@@ -1,16 +1,15 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -20,7 +19,6 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
 
@@ -31,18 +29,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Builds clipped 2D Voronoi cells in a plane from 3D sites projected into that plane (JTS).
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.profiles.voronoi_cells_plane",
     displayName = "Voronoi Cells 2D On Plane",
     description = "Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane",
     category = "geometry.profiles",
-    order = 6
+    order = 19
 )
-public class VoronoiCells2DOnPlaneNode extends BaseNode {
+public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
 
     private static final double DEDUPE_GRID = 1.0e-6d;
 
@@ -59,7 +54,6 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
 
     private static final String OUTPUT_CELLS_ID = "output_cells";
     private static final String OUTPUT_CELL_COUNT_ID = "output_cell_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public VoronoiCells2DOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.voronoi_cells_plane");
@@ -72,14 +66,15 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
             NodeDataType.PLANE, this));
 
         addOutputPort(new BasePort(OUTPUT_CELLS_ID, "Cells",
-            "List of polygon profiles, one per Voronoi cell (clipped)",
-            NodeDataType.LIST, this));
+            "Polygon profiles, one per Voronoi cell (clipped)",
+            NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CELL_COUNT_ID, "Cell Count",
             "Number of polygon cells emitted",
             NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a diagram was built with at least one cell",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -94,28 +89,40 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeFailure("Plane is invalid");
+            return;
+        }
+        if (!Double.isFinite(clipMargin) || clipMargin < 0.0d) {
+            writeFailure("Clip margin must be a non-negative finite number");
+            return;
+        }
 
         List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_SITES_ID));
         if (world.isEmpty()) {
-            writeInvalid();
+            writeFailure("At least one site is required");
             return;
         }
 
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         List<Vector2d> uvSites = new ArrayList<>();
         for (Vector3d p : world) {
+            if (p == null || !Double.isFinite(p.x) || !Double.isFinite(p.y) || !Double.isFinite(p.z)) {
+                writeFailure("Sites must be finite points");
+                return;
+            }
             Vector3d proj = plane.projectPoint(p);
             uvSites.add(axes.to2d(proj));
         }
 
         List<Vector2d> uniqueUv = dedupeUv(uvSites);
         if (uniqueUv.isEmpty()) {
-            writeInvalid();
+            writeFailure("No unique sites remain after de-duplication");
             return;
         }
-        if (uniqueUv.size() > Math.max(1, maxSites)) {
-            writeInvalid();
+        if (uniqueUv.size() > maxSites) {
+            writeFailure("Site count exceeds max sites (" + maxSites + ")");
             return;
         }
 
@@ -123,11 +130,10 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
         double maxU = uniqueUv.stream().mapToDouble(p -> p.x).max().orElse(0.0d);
         double minV = uniqueUv.stream().mapToDouble(p -> p.y).min().orElse(0.0d);
         double maxV = uniqueUv.stream().mapToDouble(p -> p.y).max().orElse(0.0d);
-        double m = Math.max(0.0d, clipMargin);
-        minU -= m;
-        maxU += m;
-        minV -= m;
-        maxV += m;
+        minU -= clipMargin;
+        maxU += clipMargin;
+        minV -= clipMargin;
+        maxV += clipMargin;
 
         List<Coordinate> coords = new ArrayList<>(uniqueUv.size());
         for (Vector2d uv : uniqueUv) {
@@ -141,77 +147,55 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
         GeometryFactory gf = new GeometryFactory();
         Geometry diagram = builder.getDiagram(gf);
         List<PolygonProfileData> cells = new ArrayList<>();
-
-        appendPolygons(diagram, axes, plane, cells);
-
+        String conversionError = appendPolygons(diagram, axes, plane, cells);
+        if (conversionError != null) {
+            writeFailure(conversionError);
+            return;
+        }
         if (cells.isEmpty()) {
-            writeInvalid();
+            writeFailure("Voronoi diagram produced no cells");
             return;
         }
 
-        List<Object> asObjects = new ArrayList<>(cells.size());
-        asObjects.addAll(cells);
-        outputValues.put(OUTPUT_CELLS_ID, asObjects);
+        String budgetError = ProfilePlanarOps.validateOutputBudget(cells);
+        if (budgetError != null) {
+            writeFailure(budgetError);
+            return;
+        }
+
+        outputValues.put(OUTPUT_CELLS_ID, new ArrayList<>(cells));
         outputValues.put(OUTPUT_CELL_COUNT_ID, cells.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private static void appendPolygons(Geometry geometry,
-                                       PlaneProjectionUtils.PlaneAxes axes,
-                                       PlaneData plane,
-                                       List<PolygonProfileData> out) {
+    private static @Nullable String appendPolygons(
+            Geometry geometry,
+            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneData plane,
+            List<PolygonProfileData> out
+    ) {
         if (geometry == null || geometry.isEmpty()) {
-            return;
+            return null;
         }
         if (geometry instanceof Polygon polygon) {
-            PolygonProfileData cell = toProfile(polygon, axes, plane);
-            if (cell != null) {
-                out.add(cell);
-            }
-            return;
+            return ProfilePlanarOps.fromJtsPolygon(polygon, axes, plane, out);
         }
         if (geometry instanceof GeometryCollection collection) {
             for (int i = 0; i < collection.getNumGeometries(); i++) {
-                appendPolygons(collection.getGeometryN(i), axes, plane, out);
+                String error = appendPolygons(collection.getGeometryN(i), axes, plane, out);
+                if (error != null) {
+                    return error;
+                }
             }
+            return null;
         }
+        return "Voronoi result is not a polygon";
     }
 
-    private static @Nullable PolygonProfileData toProfile(Polygon polygon,
-                                                          PlaneProjectionUtils.PlaneAxes axes,
-                                                          PlaneData plane) {
-        LineString ring = polygon.getExteriorRing();
-        if (ring == null || ring.isEmpty()) {
-            return null;
-        }
-        Coordinate[] coords = ring.getCoordinates();
-        if (coords.length < 4) {
-            return null;
-        }
-
-        List<Vector3d> closed = new ArrayList<>(coords.length);
-        for (Coordinate c : coords) {
-            closed.add(axes.from2d(new Vector2d(c.x, c.y)));
-        }
-        Vector3d first = closed.getFirst();
-        Vector3d last = closed.getLast();
-        if (first.distanceSquared(last) > 1.0e-8d) {
-            closed.add(new Vector3d(first));
-        } else if (closed.size() < 4) {
-            return null;
-        }
-
-        try {
-            return new PolygonProfileData(closed, plane);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_CELLS_ID, List.of());
-        outputValues.put(OUTPUT_CELL_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFailure(String error) {
+        putEmptyListOutputs(OUTPUT_CELLS_ID);
+        putIntOutputs(0, OUTPUT_CELL_COUNT_ID);
+        markInvalid(error);
     }
 
     private static List<Vector2d> dedupeUv(List<Vector2d> input) {
@@ -248,9 +232,8 @@ public class VoronoiCells2DOnPlaneNode extends BaseNode {
     }
 
     public void setMaxSites(int maxSites) {
-        int v = Math.max(1, maxSites);
-        if (this.maxSites != v) {
-            this.maxSites = v;
+        if (maxSites >= 1 && this.maxSites != maxSites) {
+            this.maxSites = maxSites;
             markDirty();
         }
     }

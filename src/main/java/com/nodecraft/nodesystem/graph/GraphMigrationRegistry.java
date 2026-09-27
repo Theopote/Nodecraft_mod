@@ -131,6 +131,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V69 -> migrateV69ToV70(graph);
             case GraphFormatVersion.V70 -> migrateV70ToV71(graph);
             case GraphFormatVersion.V71 -> migrateV71ToV72(graph);
+            case GraphFormatVersion.V72 -> migrateV72ToV73(graph);
             default -> graph;
         };
     }
@@ -5016,6 +5017,32 @@ public final class GraphMigrationRegistry {
                     copy.put(key, entry.getValue());
                 }
                 node.state = copy;
+            }
+        }
+    }
+
+    private static final String LEGACY_CONVEX_HULL_3D_PROFILE_TYPE = "geometry.profiles.convex_hull_3d_points";
+    private static final String CONVEX_HULL_3D_ANALYSIS_TYPE = "geometry.analysis.convex_hull_3d";
+
+    /**
+     * Geometry Profiles / Polygon Profile Language v1: PATH not POLYLINE, typed profile lists,
+     * Convex Hull 3D moved to geometry.analysis.
+     */
+    private static SavedGraph migrateV72ToV73(SavedGraph graph) {
+        applyProfilesV73NodeTypeMigration(graph);
+        return graph;
+    }
+
+    private static void applyProfilesV73NodeTypeMigration(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.typeId == null) {
+                continue;
+            }
+            if (LEGACY_CONVEX_HULL_3D_PROFILE_TYPE.equals(node.typeId)) {
+                node.typeId = CONVEX_HULL_3D_ANALYSIS_TYPE;
             }
         }
     }

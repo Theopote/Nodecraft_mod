@@ -3,7 +3,6 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -21,9 +20,9 @@ import java.util.UUID;
     displayName = "Deconstruct Polygon Profile",
     description = "Extracts points, boundary, plane, center, perimeter, and area from a polygon profile",
     category = "geometry.profiles",
-    order = 4
+    order = 21
 )
-public class DeconstructPolygonProfileNode extends BaseNode {
+public class DeconstructPolygonProfileNode extends AbstractProfileNode {
 
     private static final String INPUT_PROFILE_ID = "input_profile";
 
@@ -35,7 +34,6 @@ public class DeconstructPolygonProfileNode extends BaseNode {
     private static final String OUTPUT_PERIMETER_ID = "output_perimeter";
     private static final String OUTPUT_AREA_ID = "output_area";
     private static final String OUTPUT_NORMAL_ID = "output_normal";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public DeconstructPolygonProfileNode() {
         super(UUID.randomUUID(), "geometry.profiles.deconstruct_profile");
@@ -43,7 +41,7 @@ public class DeconstructPolygonProfileNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to deconstruct", NodeDataType.POLYGON_PROFILE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed polygon points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed polygon boundary", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed polygon boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Polygon plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Average polygon center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edges", "Number of polygon edges", NodeDataType.INTEGER, this));
@@ -51,6 +49,7 @@ public class DeconstructPolygonProfileNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_AREA_ID, "Area", "Polygon area on its plane", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_NORMAL_ID, "Normal", "Polygon plane normal", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a polygon profile was provided", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -60,35 +59,30 @@ public class DeconstructPolygonProfileNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        if (!(profileObj instanceof PolygonProfileData profile)) {
-            writeEmptyOutputs();
+        PolygonProfileData profile = resolveStrictProfile(INPUT_PROFILE_ID);
+        if (profile == null) {
+            writeFailure("Valid polygon profile is required");
             return;
         }
 
         PlaneData plane = profile.plane();
-
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.closedPoints()));
-        outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
+        outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundaryPath());
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, profile.getEdgeCount());
         outputValues.put(OUTPUT_PERIMETER_ID, profile.getBoundary().getLength());
         outputValues.put(OUTPUT_AREA_ID, computeArea(profile));
         outputValues.put(OUTPUT_NORMAL_ID, plane.getNormal());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_EDGE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_PERIMETER_ID, 0.0d);
-        outputValues.put(OUTPUT_AREA_ID, 0.0d);
-        outputValues.put(OUTPUT_NORMAL_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFailure(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID, OUTPUT_NORMAL_ID);
+        putIntOutputs(0, OUTPUT_EDGE_COUNT_ID);
+        putDoubleOutputs(0.0d, OUTPUT_PERIMETER_ID, OUTPUT_AREA_ID);
+        markInvalid(error);
     }
 
     private double computeArea(PolygonProfileData profile) {

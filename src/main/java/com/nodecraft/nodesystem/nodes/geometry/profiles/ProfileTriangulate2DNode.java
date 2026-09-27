@@ -1,15 +1,14 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -24,24 +23,24 @@ import java.util.UUID;
     displayName = "Profile Triangulate 2D",
     description = "Triangulates a planar polygon profile into triangle profiles using ear clipping",
     category = "geometry.profiles",
-    order = 25
+    order = 20
 )
-public class ProfileTriangulate2DNode extends BaseNode {
+public class ProfileTriangulate2DNode extends AbstractProfileNode {
     private static final double EPS = 1.0e-9d;
 
     private static final String INPUT_PROFILE_ID = "input_profile";
 
     private static final String OUTPUT_TRIANGLES_ID = "output_triangles";
     private static final String OUTPUT_TRIANGLE_COUNT_ID = "output_triangle_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ProfileTriangulate2DNode() {
         super(UUID.randomUUID(), "geometry.profiles.triangulate_2d");
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Input polygon profile to triangulate", NodeDataType.POLYGON_PROFILE, this));
 
-        addOutputPort(new BasePort(OUTPUT_TRIANGLES_ID, "Triangles", "List of triangle polygon profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_TRIANGLES_ID, "Triangles", "Triangle polygon profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TRIANGLE_COUNT_ID, "Triangle Count", "Number of triangles produced", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when triangulation succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -51,15 +50,19 @@ public class ProfileTriangulate2DNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        if (!(profileObj instanceof PolygonProfileData profile)) {
-            writeInvalid();
+        PolygonProfileData profile = resolveStrictProfile(INPUT_PROFILE_ID);
+        if (profile == null) {
+            writeFailure("Valid polygon profile is required");
             return;
         }
 
         List<Vector3d> unique3d = profile.getUniquePoints();
         if (unique3d.size() < 3) {
-            writeInvalid();
+            writeFailure("Profile requires at least 3 vertices");
+            return;
+        }
+        if (!GenerationLimits.isWithinProfileTriangulationWork(unique3d.size())) {
+            writeFailure("Triangulation workload exceeds limit (" + GenerationLimits.MAX_PROFILE_TRIANGULATION_WORK + ")");
             return;
         }
 
@@ -70,7 +73,6 @@ public class ProfileTriangulate2DNode extends BaseNode {
             pts2d.add(axes.to2d(p));
         }
 
-        // Ensure CCW orientation for ear clipping.
         if (signedArea(pts2d) < 0.0d) {
             reverseInPlace(pts2d);
             reverseInPlace(unique3d);
@@ -106,7 +108,7 @@ public class ProfileTriangulate2DNode extends BaseNode {
                 break;
             }
             if (!earFound) {
-                writeInvalid();
+                writeFailure("Triangulation failed (non-simple or degenerate polygon)");
                 return;
             }
         }
@@ -121,13 +123,19 @@ public class ProfileTriangulate2DNode extends BaseNode {
         }
 
         if (triangles.isEmpty()) {
-            writeInvalid();
+            writeFailure("Triangulation produced no triangles");
+            return;
+        }
+
+        String budgetError = ProfilePlanarOps.validateOutputBudget(triangles);
+        if (budgetError != null) {
+            writeFailure(budgetError);
             return;
         }
 
         outputValues.put(OUTPUT_TRIANGLES_ID, new ArrayList<>(triangles));
         outputValues.put(OUTPUT_TRIANGLE_COUNT_ID, triangles.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     private PolygonProfileData toTriangle(Vector3d a, Vector3d b, Vector3d c, PlaneData plane) {
@@ -189,9 +197,9 @@ public class ProfileTriangulate2DNode extends BaseNode {
         }
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_TRIANGLES_ID, List.of());
-        outputValues.put(OUTPUT_TRIANGLE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFailure(String error) {
+        putEmptyListOutputs(OUTPUT_TRIANGLES_ID);
+        putIntOutputs(0, OUTPUT_TRIANGLE_COUNT_ID);
+        markInvalid(error);
     }
 }

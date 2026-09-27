@@ -4,12 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,9 +26,9 @@ import java.util.UUID;
     displayName = "Rhombus On Plane",
     description = "Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane (defaults to XZ)",
     category = "geometry.profiles",
-    order = 17
+    order = 7
 )
-public class RhombusOnPlaneNode extends BaseNode {
+public class RhombusOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_DIAGONAL_X_ID = "input_diagonal_x";
     private static final String INPUT_DIAGONAL_Y_ID = "input_diagonal_y";
@@ -39,7 +40,6 @@ public class RhombusOnPlaneNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Diagonal X", category = "Size", order = 1)
     private double diagonalX = 5.0d;
@@ -57,10 +57,11 @@ public class RhombusOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed rhombus points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rhombus polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed rhombus boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed rhombus boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved rhombus center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when rhombus profile was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -70,20 +71,37 @@ public class RhombusOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double dx = resolveDouble(inputValues.get(INPUT_DIAGONAL_X_ID), diagonalX);
-        double dy = resolveDouble(inputValues.get(INPUT_DIAGONAL_Y_ID), diagonalY);
-        Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (!Double.isFinite(dx) || !Double.isFinite(dy) || dx <= 0.0d || dy <= 0.0d) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double dx = resolvePositiveDouble(INPUT_DIAGONAL_X_ID, diagonalX);
+        if (dx == null) {
+            writeInvalid("Diagonal X must be a positive finite number");
+            return;
+        }
+        Double dy = resolvePositiveDouble(INPUT_DIAGONAL_Y_ID, diagonalY);
+        if (dy == null) {
+            writeInvalid("Diagonal Y must be a positive finite number");
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferred);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_AXIS_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_AXIS_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
+            return;
+        }
+
+        if (!isWithinProfileVertices(4)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
@@ -97,19 +115,13 @@ public class RhombusOnPlaneNode extends BaseNode {
         points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
+        markSuccess();
     }
 
     private Vector3d toWorld(Vector3d center, ProfilePlaneUtils.Basis basis, double localX, double localY) {
@@ -118,13 +130,10 @@ public class RhombusOnPlaneNode extends BaseNode {
             .add(new Vector3d(basis.yAxis()).mul(localY));
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        markInvalid(error);
     }
 
     @Override

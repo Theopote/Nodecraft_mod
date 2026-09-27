@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.geometry.profiles;
+package com.nodecraft.nodesystem.nodes.geometry.analysis;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -22,11 +22,11 @@ import java.util.UUID;
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.profiles.convex_hull_3d_points",
+    id = "geometry.analysis.convex_hull_3d",
     displayName = "Convex Hull 3D From Points",
     description = "Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets",
-    category = "geometry.profiles",
-    order = 7
+    category = "geometry.analysis",
+    order = 2
 )
 public class ConvexHull3DFromPointsNode extends BaseNode {
 
@@ -40,9 +40,10 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
     private static final String OUTPUT_FACES_ID = "output_faces";
     private static final String OUTPUT_TRIANGLE_COUNT_ID = "output_triangle_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ConvexHull3DFromPointsNode() {
-        super(UUID.randomUUID(), "geometry.profiles.convex_hull_3d_points");
+        super(UUID.randomUUID(), "geometry.analysis.convex_hull_3d");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
             "Point cloud to hull",
@@ -60,6 +61,9 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when at least one hull triangle was created",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false",
+            NodeDataType.STRING, this));
     }
 
     @Override
@@ -76,18 +80,21 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (world.size() < 4) {
-            writeInvalid();
+            writeFailure("At least 4 points are required");
             return;
         }
-        int cap = Math.max(4, maxPoints);
-        if (world.size() > cap) {
-            writeInvalid();
+        if (maxPoints < 4) {
+            writeFailure("Max points property must be at least 4");
+            return;
+        }
+        if (world.size() > maxPoints) {
+            writeFailure("Point count exceeds max points (" + maxPoints + ")");
             return;
         }
 
         HullResult hull = ConvexHull3d.compute(world);
         if (hull.facetIndices().isEmpty()) {
-            writeInvalid();
+            writeFailure("Points do not form a 3D convex hull with facets");
             return;
         }
 
@@ -108,13 +115,15 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
         outputValues.put(OUTPUT_FACES_ID, faceObjects);
         outputValues.put(OUTPUT_TRIANGLE_COUNT_ID, triangles.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeFailure(String error) {
         outputValues.put(OUTPUT_VERTICES_ID, List.of());
         outputValues.put(OUTPUT_FACES_ID, List.of());
         outputValues.put(OUTPUT_TRIANGLE_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     public int getMaxPoints() {
@@ -122,9 +131,8 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
     }
 
     public void setMaxPoints(int maxPoints) {
-        int v = Math.max(4, maxPoints);
-        if (this.maxPoints != v) {
-            this.maxPoints = v;
+        if (maxPoints >= 4 && this.maxPoints != maxPoints) {
+            this.maxPoints = maxPoints;
             markDirty();
         }
     }

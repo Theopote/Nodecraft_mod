@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -94,6 +96,7 @@ class GeometrySampleLanguageContractTest {
         BaseNode rectangle = (BaseNode) NodeRegistry.getInstance().createNodeInstance("geometry.profiles.rectangle_profile");
         assertNotNull(rectangle);
         PlaneData plane = new PlaneData(new Vector3d(10.0d, 64.0d, 20.0d), new Vector3d(0.0d, 1.0d, 0.0d));
+        connectInput(rectangle, "input_plane", NodeDataType.PLANE);
         rectangle.setInput("input_plane", plane);
         rectangle.processNode(null);
 
@@ -156,5 +159,26 @@ class GeometrySampleLanguageContractTest {
         INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
         assertNotNull(node, typeId);
         return node.getInputPorts().stream().anyMatch(port -> port.getId().equals(portId));
+    }
+
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(com.nodecraft.nodesystem.execution.ExecutionContext context) {
+        }
     }
 }

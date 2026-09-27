@@ -1,16 +1,14 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -23,18 +21,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Builds a planar convex hull polygon from 3D points projected into a plane.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.profiles.convex_hull_plane",
     displayName = "Convex Hull 2D On Plane",
     description = "Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile",
     category = "geometry.profiles",
-    order = 5
+    order = 18
 )
-public class ConvexHull2DOnPlaneNode extends BaseNode {
+public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -44,7 +39,6 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ConvexHull2DOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.convex_hull_plane");
@@ -63,8 +57,8 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
             "Closed convex polygon profile on the plane",
             NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary",
-            "Closed polyline boundary of the hull",
-            NodeDataType.POLYLINE, this));
+            "Closed convex hull boundary path",
+            NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
             "Resolved construction plane",
             NodeDataType.PLANE, this));
@@ -74,6 +68,7 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a hull with at least three vertices was created",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -88,11 +83,15 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeFailure("Plane is invalid");
+            return;
+        }
 
         List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
         if (world.size() < 3) {
-            writeInvalid();
+            writeFailure("At least 3 points are required");
             return;
         }
 
@@ -105,7 +104,12 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
 
         List<Vector2d> hull2d = convexHullMonotoneChain(uvPoints);
         if (hull2d.size() < 3) {
-            writeInvalid();
+            writeFailure("Points do not form a 2D convex hull with at least three vertices");
+            return;
+        }
+
+        if (!isWithinProfileVertices(hull2d.size())) {
+            writeFailure("Polygon profile vertex count exceeds limit");
             return;
         }
 
@@ -121,24 +125,18 @@ public class ConvexHull2DOnPlaneNode extends BaseNode {
         PolygonProfileData profile = new PolygonProfileData(closed, plane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closed));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
-        outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundary());
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFailure(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        markInvalid(error);
     }
 
-    /**
-     * Andrew monotone chain; removes duplicate UVs; collinear boundary points may be simplified.
-     */
     private static List<Vector2d> convexHullMonotoneChain(List<Vector2d> input) {
         Set<String> seen = new LinkedHashSet<>();
         List<Vector2d> points = new ArrayList<>();

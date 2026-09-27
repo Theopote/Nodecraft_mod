@@ -4,12 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,9 +26,9 @@ import java.util.UUID;
     displayName = "Cross On Plane",
     description = "Constructs a plus-shaped cross profile from arm length, arm width, center, and plane",
     category = "geometry.profiles",
-    order = 21
+    order = 8
 )
-public class CrossOnPlaneNode extends BaseNode {
+public class CrossOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_ARM_LENGTH_ID = "input_arm_length";
     private static final String INPUT_ARM_WIDTH_ID = "input_arm_width";
@@ -39,7 +40,6 @@ public class CrossOnPlaneNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Arm Length", category = "Size", order = 1)
     private double armLength = 5.0d;
@@ -57,10 +57,11 @@ public class CrossOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed cross points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Cross polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed cross boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed cross boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved cross center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when cross profile was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -70,21 +71,41 @@ public class CrossOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double resolvedArmLength = resolveDouble(inputValues.get(INPUT_ARM_LENGTH_ID), armLength);
-        double resolvedArmWidth = resolveDouble(inputValues.get(INPUT_ARM_WIDTH_ID), armWidth);
-        Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (!Double.isFinite(resolvedArmLength) || !Double.isFinite(resolvedArmWidth)
-            || resolvedArmLength <= 0.0d || resolvedArmWidth <= 0.0d || resolvedArmWidth >= resolvedArmLength * 2.0d) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double resolvedArmLength = resolvePositiveDouble(INPUT_ARM_LENGTH_ID, armLength);
+        if (resolvedArmLength == null) {
+            writeInvalid("Arm length must be a positive finite number");
+            return;
+        }
+        Double resolvedArmWidth = resolvePositiveDouble(INPUT_ARM_WIDTH_ID, armWidth);
+        if (resolvedArmWidth == null) {
+            writeInvalid("Arm width must be a positive finite number");
+            return;
+        }
+        if (resolvedArmWidth >= resolvedArmLength * 2.0d) {
+            writeInvalid("Arm width must be less than twice the arm length");
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferred);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_AXIS_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_AXIS_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
+            return;
+        }
+
+        if (!isWithinProfileVertices(12)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
@@ -102,12 +123,13 @@ public class CrossOnPlaneNode extends BaseNode {
         points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     private Vector3d toWorld(Vector3d center, ProfilePlaneUtils.Basis basis, double x, double y) {
@@ -116,20 +138,10 @@ public class CrossOnPlaneNode extends BaseNode {
             .add(new Vector3d(basis.yAxis()).mul(y));
     }
 
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        markInvalid(error);
     }
 
     @Override

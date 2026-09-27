@@ -4,13 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -24,11 +24,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.profiles.annulus_profile",
     displayName = "Annulus On Plane",
-    description = "Constructs annulus boundaries from center, inner/outer radii, plane, and segment count",
+    description = "Outputs outer and inner boundary profiles separately; does not represent a holed planar region",
     category = "geometry.profiles",
     order = 13
 )
-public class AnnulusOnPlaneNode extends BaseNode {
+public class AnnulusOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_INNER_RADIUS_ID = "input_inner_radius";
     private static final String INPUT_OUTER_RADIUS_ID = "input_outer_radius";
@@ -44,7 +44,6 @@ public class AnnulusOnPlaneNode extends BaseNode {
     private static final String OUTPUT_INNER_BOUNDARY_ID = "output_inner_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Inner Radius", category = "Size", order = 1)
     private double innerRadius = 2.0d;
@@ -68,64 +67,79 @@ public class AnnulusOnPlaneNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_INNER_POINTS_ID, "Inner Points", "Closed inner ring points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_OUTER_PROFILE_ID, "Outer Profile", "Outer ring profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_INNER_PROFILE_ID, "Inner Profile", "Inner ring profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_OUTER_BOUNDARY_ID, "Outer Boundary", "Closed outer ring boundary", NodeDataType.POLYLINE, this));
-        addOutputPort(new BasePort(OUTPUT_INNER_BOUNDARY_ID, "Inner Boundary", "Closed inner ring boundary", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_OUTER_BOUNDARY_ID, "Outer Boundary", "Closed outer ring boundary path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_INNER_BOUNDARY_ID, "Inner Boundary", "Closed inner ring boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved annulus center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when annulus boundaries were constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Constructs annulus boundaries from center, inner/outer radii, plane, and segment count";
+        return "Outputs outer and inner boundary profiles separately; does not represent a holed planar region";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double inner = resolveDouble(inputValues.get(INPUT_INNER_RADIUS_ID), innerRadius);
-        double outer = resolveDouble(inputValues.get(INPUT_OUTER_RADIUS_ID), outerRadius);
-        int resolvedSegments = resolveSegments();
-        Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (!Double.isFinite(inner) || !Double.isFinite(outer) || inner <= 0.0d || outer <= 0.0d || inner >= outer) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double inner = resolvePositiveDouble(INPUT_INNER_RADIUS_ID, innerRadius);
+        if (inner == null) {
+            writeInvalid("Inner radius must be a positive finite number");
+            return;
+        }
+        Double outer = resolvePositiveDouble(INPUT_OUTER_RADIUS_ID, outerRadius);
+        if (outer == null) {
+            writeInvalid("Outer radius must be a positive finite number");
+            return;
+        }
+        if (inner >= outer) {
+            writeInvalid("Inner radius must be less than outer radius");
+            return;
+        }
+        Integer resolvedSegments = resolveBoundedInteger(
+            INPUT_SEGMENTS_ID, segments, 3, GenerationLimits.MAX_PROFILE_VERTICES);
+        if (resolvedSegments == null) {
+            writeInvalid("Segments must be an exact integer from 3 to " + GenerationLimits.MAX_PROFILE_VERTICES);
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferred);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_AXIS_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_AXIS_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
             return;
         }
 
         List<Vector3d> outerPts = buildRing(center, basis, outer, resolvedSegments, false);
         List<Vector3d> innerPts = buildRing(center, basis, inner, resolvedSegments, true);
-        PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PlaneData resolvedPlane = PlaneData.canonical(center, basis.normal());
+        if (resolvedPlane == null) {
+            writeInvalid("Failed to create profile plane");
+            return;
+        }
 
+        PolygonProfileData outerProfile = new PolygonProfileData(outerPts, resolvedPlane);
+        PolygonProfileData innerProfile = new PolygonProfileData(innerPts, resolvedPlane);
         outputValues.put(OUTPUT_OUTER_POINTS_ID, ProfilePlaneUtils.toPointList(outerPts));
         outputValues.put(OUTPUT_INNER_POINTS_ID, ProfilePlaneUtils.toPointList(innerPts));
-        outputValues.put(OUTPUT_OUTER_PROFILE_ID, new PolygonProfileData(outerPts, resolvedPlane));
-        outputValues.put(OUTPUT_INNER_PROFILE_ID, new PolygonProfileData(innerPts, resolvedPlane));
-        outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(outerPts));
-        outputValues.put(OUTPUT_INNER_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(innerPts));
+        outputValues.put(OUTPUT_OUTER_PROFILE_ID, outerProfile);
+        outputValues.put(OUTPUT_INNER_PROFILE_ID, innerProfile);
+        outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, pathFromProfile(outerProfile));
+        outputValues.put(OUTPUT_INNER_BOUNDARY_ID, pathFromProfile(innerProfile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private int resolveSegments() {
-        Object segmentsObj = inputValues.get(INPUT_SEGMENTS_ID);
-        int raw = segmentsObj instanceof Number number ? number.intValue() : segments;
-        return GenerationLimits.clampSegments(3, raw);
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
+        markSuccess();
     }
 
     private List<Vector3d> buildRing(Vector3d center, ProfilePlaneUtils.Basis basis, double ringRadius, int segmentCount, boolean clockwise) {
@@ -142,16 +156,14 @@ public class AnnulusOnPlaneNode extends BaseNode {
         return points;
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_OUTER_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_INNER_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_OUTER_PROFILE_ID, null);
-        outputValues.put(OUTPUT_INNER_PROFILE_ID, null);
-        outputValues.put(OUTPUT_OUTER_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_INNER_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_OUTER_POINTS_ID, OUTPUT_INNER_POINTS_ID);
+        putNullOutputs(
+            OUTPUT_OUTER_PROFILE_ID, OUTPUT_INNER_PROFILE_ID,
+            OUTPUT_OUTER_BOUNDARY_ID, OUTPUT_INNER_BOUNDARY_ID,
+            OUTPUT_PLANE_ID, OUTPUT_CENTER_ID
+        );
+        markInvalid(error);
     }
 
     @Override

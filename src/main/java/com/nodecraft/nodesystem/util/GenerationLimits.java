@@ -212,6 +212,21 @@ public final class GenerationLimits {
     /** Maximum total surface points: sections × points per section. */
     public static final long MAX_SURFACE_TOTAL_POINTS = MAX_LIST_ELEMENTS;
 
+    /** Maximum unique vertices per polygon profile loop. */
+    public static final int MAX_PROFILE_VERTICES = MAX_SEGMENTS;
+
+    /** Maximum polygon profiles emitted by a single node. */
+    public static final int MAX_PROFILE_OUTPUT_PROFILES = MAX_GEOMETRY_INSTANCES;
+
+    /** Maximum total unique profile vertices across all outputs of one node. */
+    public static final long MAX_PROFILE_TOTAL_VERTICES = MAX_LIST_ELEMENTS;
+
+    /** Maximum combined input vertex count for profile boolean operations. */
+    public static final int MAX_PROFILE_BOOLEAN_VERTICES = MAX_PROFILE_VERTICES;
+
+    /** Maximum O(n²) triangulation workload for profile nodes (vertices²). */
+    public static final long MAX_PROFILE_TRIANGULATION_WORK = MAX_LIST_ELEMENTS;
+
     /** Maximum shrinkwrap query points. */
     public static final int MAX_SURFACE_PROJECTION_QUERIES = MAX_GEOMETRY_INSTANCES;
 
@@ -291,6 +306,34 @@ public final class GenerationLimits {
             return false;
         }
         return (long) sectionCount * pointsPerSection <= MAX_SURFACE_TOTAL_POINTS;
+    }
+
+    /** Graph-facing validation: unique vertices per profile within budget (fail closed when false). */
+    public static boolean isWithinProfileVertices(int vertexCount) {
+        return vertexCount >= 3 && vertexCount <= MAX_PROFILE_VERTICES;
+    }
+
+    /** Graph-facing validation: profile output count within budget. */
+    public static boolean isWithinProfileOutputCount(int count) {
+        return count >= 0 && count <= MAX_PROFILE_OUTPUT_PROFILES;
+    }
+
+    /** Graph-facing validation: total profile vertex workload across outputs. */
+    public static boolean isWithinProfileTotalVertices(long totalVertices) {
+        return totalVertices >= 0L && totalVertices <= MAX_PROFILE_TOTAL_VERTICES;
+    }
+
+    /** Graph-facing validation: combined boolean input vertex count. */
+    public static boolean isWithinProfileBooleanVertices(int totalVertices) {
+        return totalVertices >= 0 && totalVertices <= MAX_PROFILE_BOOLEAN_VERTICES;
+    }
+
+    /** Graph-facing validation: O(n²) profile triangulation workload. */
+    public static boolean isWithinProfileTriangulationWork(int vertexCount) {
+        if (vertexCount < 3) {
+            return false;
+        }
+        return (long) vertexCount * vertexCount <= MAX_PROFILE_TRIANGULATION_WORK;
     }
 
     /** Graph-facing validation: total curve sample workload (paths × samples). */

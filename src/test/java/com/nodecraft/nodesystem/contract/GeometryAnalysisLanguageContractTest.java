@@ -56,7 +56,8 @@ class GeometryAnalysisLanguageContractTest {
 
     private static final Set<String> CANONICAL_IDS = Set.of(
             "geometry.analysis.block_bounds",
-            "geometry.analysis.geometry_bounds"
+            "geometry.analysis.geometry_bounds",
+            "geometry.analysis.convex_hull_3d"
     );
 
     private static NodeRegistry registry;
@@ -76,12 +77,12 @@ class GeometryAnalysisLanguageContractTest {
     }
 
     @Test
-    void exactlyTwoAnalysisNodesRegistered() {
+    void exactlyThreeAnalysisNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("geometry.analysis."))
                 .sorted()
                 .toList();
-        assertEquals(2, ids.size(), ids.toString());
+        assertEquals(3, ids.size(), ids.toString());
         assertEquals(CANONICAL_IDS, Set.copyOf(ids));
         assertFalse(registry.getAllNodeIds().contains("geometry.boolean.bounding_box"));
         assertFalse(registry.getAllNodeIds().contains("geometry.boolean.geometry_bounds"));
@@ -91,6 +92,7 @@ class GeometryAnalysisLanguageContractTest {
     void ordersEffectsAndDisplayNames() {
         assertEquals(0, orderOf("geometry.analysis.block_bounds"));
         assertEquals(1, orderOf("geometry.analysis.geometry_bounds"));
+        assertEquals(2, orderOf("geometry.analysis.convex_hull_3d"));
         assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(
                 registry.createNodeInstance("geometry.analysis.block_bounds").getClass(),
                 "geometry.analysis.block_bounds"));

@@ -4,12 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -27,7 +28,7 @@ import java.util.UUID;
     category = "geometry.profiles",
     order = 22
 )
-public class GearOnPlaneNode extends BaseNode {
+public class GearOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_TOOTH_COUNT_ID = "input_tooth_count";
     private static final String INPUT_ROOT_RADIUS_ID = "input_root_radius";
@@ -40,7 +41,6 @@ public class GearOnPlaneNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Teeth", category = "Size", order = 1)
     private int teeth = 8;
@@ -62,10 +62,11 @@ public class GearOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed gear points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Gear polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed gear boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed gear boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved gear center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when gear profile was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,25 +76,50 @@ public class GearOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        int resolvedTeeth = resolveTeeth();
-        double root = resolveDouble(inputValues.get(INPUT_ROOT_RADIUS_ID), rootRadius);
-        double tip = resolveDouble(inputValues.get(INPUT_TIP_RADIUS_ID), tipRadius);
-        Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (resolvedTeeth < 3 || !Double.isFinite(root) || !Double.isFinite(tip) || root <= 0.0d || tip <= root) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Integer resolvedTeeth = resolveBoundedInteger(INPUT_TOOTH_COUNT_ID, teeth, 3, GenerationLimits.MAX_PROFILE_VERTICES / 4);
+        if (resolvedTeeth == null) {
+            writeInvalid("Teeth must be an exact integer from 3 to " + (GenerationLimits.MAX_PROFILE_VERTICES / 4));
+            return;
+        }
+        Double root = resolvePositiveDouble(INPUT_ROOT_RADIUS_ID, rootRadius);
+        if (root == null) {
+            writeInvalid("Root radius must be a positive finite number");
+            return;
+        }
+        Double tip = resolvePositiveDouble(INPUT_TIP_RADIUS_ID, tipRadius);
+        if (tip == null) {
+            writeInvalid("Tip radius must be a positive finite number");
+            return;
+        }
+        if (tip <= root) {
+            writeInvalid("Tip radius must be greater than root radius");
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferred);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_AXIS_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_AXIS_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
             return;
         }
 
         int totalVertices = resolvedTeeth * 4;
+        if (!isWithinProfileVertices(totalVertices)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
+            return;
+        }
+
         double step = (Math.PI * 2.0d) / totalVertices;
         List<Vector3d> points = new ArrayList<>(totalVertices + 1);
         for (int i = 0; i < totalVertices; i++) {
@@ -105,34 +131,25 @@ public class GearOnPlaneNode extends BaseNode {
         }
         points.add(new Vector3d(points.getFirst()));
 
-        PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PlaneData resolvedPlane = PlaneData.canonical(center, basis.normal());
+        if (resolvedPlane == null) {
+            writeInvalid("Failed to create profile plane");
+            return;
+        }
+
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private int resolveTeeth() {
-        Object toothObj = inputValues.get(INPUT_TOOTH_COUNT_ID);
-        return toothObj instanceof Number number ? Math.max(3, number.intValue()) : teeth;
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        markInvalid(error);
     }
 
     @Override

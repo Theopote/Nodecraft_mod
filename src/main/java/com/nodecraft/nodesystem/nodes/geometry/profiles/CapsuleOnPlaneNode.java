@@ -4,12 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,9 +26,9 @@ import java.util.UUID;
     displayName = "Capsule On Plane",
     description = "Constructs a capsule (stadium) profile from center, length, radius, and plane",
     category = "geometry.profiles",
-    order = 18
+    order = 9
 )
-public class CapsuleOnPlaneNode extends BaseNode {
+public class CapsuleOnPlaneNode extends AbstractProfileNode {
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_LENGTH_ID = "input_length";
     private static final String INPUT_RADIUS_ID = "input_radius";
@@ -40,7 +41,6 @@ public class CapsuleOnPlaneNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Length", category = "Size", order = 1)
     private double length = 10.0d;
@@ -62,10 +62,11 @@ public class CapsuleOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed capsule points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Capsule polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed capsule boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed capsule boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved capsule center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when capsule profile was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,27 +76,52 @@ public class CapsuleOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double resolvedLength = resolveDouble(inputValues.get(INPUT_LENGTH_ID), length);
-        double resolvedRadius = resolveDouble(inputValues.get(INPUT_RADIUS_ID), radius);
-        int resolvedCapSegments = resolveCapSegments();
-        Vector3d preferred = inputValues.get(INPUT_AXIS_ID) instanceof Vector3d v ? new Vector3d(v) : null;
-
-        if (!Double.isFinite(resolvedLength) || !Double.isFinite(resolvedRadius) || resolvedLength <= 0.0d || resolvedRadius <= 0.0d) {
-            writeInvalid();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double resolvedLength = resolvePositiveDouble(INPUT_LENGTH_ID, length);
+        if (resolvedLength == null) {
+            writeInvalid("Length must be a positive finite number");
+            return;
+        }
+        Double resolvedRadius = resolvePositiveDouble(INPUT_RADIUS_ID, radius);
+        if (resolvedRadius == null) {
+            writeInvalid("Radius must be a positive finite number");
+            return;
+        }
+        Integer resolvedCapSegments = resolveBoundedInteger(
+            INPUT_CAP_SEGMENTS_ID, capSegments, 1, GenerationLimits.MAX_PROFILE_VERTICES / 2);
+        if (resolvedCapSegments == null) {
+            writeInvalid("Cap segments must be an exact integer from 1 to " + (GenerationLimits.MAX_PROFILE_VERTICES / 2));
+            return;
+        }
+        if (resolvedLength < 2.0d * resolvedRadius) {
+            writeInvalid("Length must be at least diameter (2 * radius)");
             return;
         }
 
-        double minLength = resolvedRadius * 2.0d;
-        double clampedLength = Math.max(resolvedLength, minLength);
-        double halfRectLength = (clampedLength * 0.5d) - resolvedRadius;
-
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferred);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_AXIS_ID);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_AXIS_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
             return;
         }
+
+        int vertexCount = 2 * resolvedCapSegments;
+        if (!isWithinProfileVertices(vertexCount)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
+            return;
+        }
+
+        double halfRectLength = (resolvedLength * 0.5d) - resolvedRadius;
 
         List<Vector3d> points = new ArrayList<>();
         appendArc(points, center, basis, halfRectLength, 0.0d, -Math.PI * 0.5d, Math.PI * 0.5d, resolvedRadius, resolvedCapSegments, true);
@@ -103,27 +129,13 @@ public class CapsuleOnPlaneNode extends BaseNode {
         points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private int resolveCapSegments() {
-        Object capSegmentsObj = inputValues.get(INPUT_CAP_SEGMENTS_ID);
-        if (capSegmentsObj instanceof Number number) {
-            return Math.max(1, number.intValue());
-        }
-        return capSegments;
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
+        markSuccess();
     }
 
     private void appendArc(List<Vector3d> points, Vector3d center, ProfilePlaneUtils.Basis basis,
@@ -139,13 +151,10 @@ public class CapsuleOnPlaneNode extends BaseNode {
         }
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        markInvalid(error);
     }
 
     @Override

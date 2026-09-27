@@ -4,12 +4,13 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,9 +26,9 @@ import java.util.UUID;
     displayName = "Regular Polygon On Plane",
     description = "Constructs a regular polygon from radius, sides, and an optional center/plane (defaults to XZ)",
     category = "geometry.profiles",
-    order = 1
+    order = 5
 )
-public class RegularPolygonOnPlaneNode extends BaseNode {
+public class RegularPolygonOnPlaneNode extends AbstractProfileNode {
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_RADIUS_ID = "input_radius";
@@ -42,7 +43,6 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_RADIUS_ID = "output_radius";
     private static final String OUTPUT_SIDE_COUNT_ID = "output_side_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     @NodeProperty(displayName = "Radius", category = "Size", order = 1)
     private double radius = 5.0d;
@@ -61,12 +61,13 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed regular polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Regular polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed regular polygon boundary polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed regular polygon boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved polygon center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_RADIUS_ID, "Radius", "Resolved radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Sides", "Resolved side count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a polygon could be constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -76,20 +77,38 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = ProfilePlaneUtils.resolvePlane(inputValues.get(INPUT_PLANE_ID));
-        Vector3d center = ProfilePlaneUtils.resolveCenter(inputValues.get(INPUT_CENTER_ID), plane);
-        double resolvedRadius = resolveDouble(inputValues.get(INPUT_RADIUS_ID), radius);
-        int sideCount = resolveSides();
-        Vector3d preferredAxis = inputValues.get(INPUT_START_DIRECTION_ID) instanceof Vector3d vector ? new Vector3d(vector) : null;
-
-        if (!Double.isFinite(resolvedRadius) || resolvedRadius <= 0.0d || sideCount < 3) {
-            writeEmptyOutputs();
+        PlaneData plane = resolveConstructionPlane(INPUT_PLANE_ID);
+        if (plane == null) {
+            writeInvalid("Plane is invalid");
+            return;
+        }
+        Vector3d center = resolveConstructionCenter(INPUT_CENTER_ID, plane);
+        if (center == null) {
+            writeInvalid("Center is invalid");
+            return;
+        }
+        Double resolvedRadius = resolvePositiveDouble(INPUT_RADIUS_ID, radius);
+        if (resolvedRadius == null) {
+            writeInvalid("Radius must be a positive finite number");
+            return;
+        }
+        Integer sideCount = resolveBoundedInteger(
+            INPUT_SIDE_COUNT_ID, sides, 3, GenerationLimits.MAX_PROFILE_VERTICES);
+        if (sideCount == null) {
+            writeInvalid("Sides must be an exact integer from 3 to " + GenerationLimits.MAX_PROFILE_VERTICES);
             return;
         }
 
-        ProfilePlaneUtils.Basis basis = ProfilePlaneUtils.createBasis(plane, preferredAxis);
+        ProfilePlaneUtils.Basis basis = resolveConstructionBasis(plane, INPUT_START_DIRECTION_ID);
         if (basis == null) {
-            writeEmptyOutputs();
+            writeInvalid(ProfileInputUtils.isConnected(this, INPUT_START_DIRECTION_ID)
+                ? "In-plane axis is invalid"
+                : "Failed to create profile basis");
+            return;
+        }
+
+        if (!isWithinProfileVertices(sideCount)) {
+            writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
@@ -105,40 +124,23 @@ public class RegularPolygonOnPlaneNode extends BaseNode {
         points.add(new Vector3d(points.getFirst()));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
+        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
-        outputValues.put(OUTPUT_PROFILE_ID, new PolygonProfileData(points, resolvedPlane));
-        outputValues.put(OUTPUT_BOUNDARY_ID, ProfilePlaneUtils.toPolyline(points));
+        outputValues.put(OUTPUT_PROFILE_ID, profile);
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));
         outputValues.put(OUTPUT_PLANE_ID, resolvedPlane);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADIUS_ID, resolvedRadius);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, sideCount);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private int resolveSides() {
-        Object sideCountObj = inputValues.get(INPUT_SIDE_COUNT_ID);
-        if (sideCountObj instanceof Number number) {
-            return number.intValue();
-        }
-        return sides;
-    }
-
-    private static double resolveDouble(@Nullable Object value, double fallback) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return fallback;
-    }
-
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_RADIUS_ID, 0.0d);
-        outputValues.put(OUTPUT_SIDE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeInvalid(String error) {
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID);
+        putIntOutputs(0, OUTPUT_SIDE_COUNT_ID);
+        markInvalid(error);
     }
 
     @Override

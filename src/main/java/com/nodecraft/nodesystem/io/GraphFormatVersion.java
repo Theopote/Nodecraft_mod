@@ -454,8 +454,15 @@ public final class GraphFormatVersion {
      */
     public static final int V72 = 72;
 
+    /**
+     * Geometry Profiles / Polygon Profile Language v1 (PASSED / FROZEN): Valid+Error on 23 nodes,
+     * POLYGON_PROFILE canonical invariant, PATH not POLYLINE, typed POLYGON_PROFILE_LIST ports,
+     * strict inputs/workloads, Convex Hull 3D moved to geometry.analysis, orders 0–22.
+     */
+    public static final int V73 = 73;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V72;
+    public static final int CURRENT = V73;
 
     private GraphFormatVersion() {
     }

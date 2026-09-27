@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
@@ -10,7 +11,10 @@ import java.util.Objects;
 
 /**
  * Represents a lightweight planar polygon profile for construct/modeling workflows.
- * The stored point list is ordered and closed: the last point repeats the first point.
+ * <p>
+ * Graph V73 canonical internal representation: ordered closed point list with an exact
+ * repeated first vertex at the end ({@code [p0, p1, ..., pn-1, p0]}).
+ * POLYGON_PROFILE is a simple planar loop without holes.
  */
 public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
     public PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
@@ -21,19 +25,14 @@ public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
             throw new IllegalArgumentException("Polygon profile requires a plane");
         }
 
-        List<Vector3d> copiedPoints = new ArrayList<>(closedPoints.size());
-        for (Vector3d point : closedPoints) {
-            copiedPoints.add(new Vector3d(Objects.requireNonNull(point, "Polygon point cannot be null")));
+        List<Vector3d> canonical = PolygonProfileValidator.canonicalizeClosedPoints(closedPoints);
+        String validationError = PolygonProfileValidator.validateConstruction(canonical, plane);
+        if (validationError != null) {
+            throw new IllegalArgumentException(validationError);
         }
 
-        Vector3d first = copiedPoints.getFirst();
-        Vector3d last = copiedPoints.getLast();
-        if (first.distance(last) > 1.0e-6d) {
-            throw new IllegalArgumentException("Polygon profile points must be closed");
-        }
-
-        this.closedPoints = List.copyOf(copiedPoints);
-        this.plane = plane;
+        this.closedPoints = canonical;
+        this.plane = plane.normalized() != null ? plane.normalized() : plane;
     }
 
     @Override
@@ -59,6 +58,10 @@ public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
             points.add(new Vec3d(point.x, point.y, point.z));
         }
         return new PolylineData(points);
+    }
+
+    public PathData getBoundaryPath() {
+        return PathData.fromPolyline(getBoundary());
     }
 
     public int getEdgeCount() {

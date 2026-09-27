@@ -1,23 +1,19 @@
 package com.nodecraft.nodesystem.nodes.geometry.profiles;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector2d;
-import org.joml.Vector3d;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
 
@@ -29,11 +25,11 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.profiles.boolean_2d",
     displayName = "Profile Boolean 2D",
-    description = "Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane",
+    description = "Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles",
     category = "geometry.profiles",
-    order = 24
+    order = 17
 )
-public class ProfileBoolean2DNode extends BaseNode {
+public class ProfileBoolean2DNode extends AbstractProfileNode {
     @NodeProperty(displayName = "Operation", category = "Boolean", order = 1)
     private String operation = "UNION";
 
@@ -45,7 +41,6 @@ public class ProfileBoolean2DNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ProfileBoolean2DNode() {
         super(UUID.randomUUID(), "geometry.profiles.boolean_2d");
@@ -53,24 +48,36 @@ public class ProfileBoolean2DNode extends BaseNode {
         addInputPort(new BasePort(INPUT_B_ID, "Profile B", "Second polygon profile", NodeDataType.POLYGON_PROFILE, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary output profile (largest area)", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All output profiles", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All output profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary output profile", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary output profile", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output profiles", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when boolean operation produced output", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when boolean operation succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Performs 2D boolean operations (union/intersection/difference) on two polygon profiles in a shared plane";
+        return "Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_A_ID);
-        Object bObj = inputValues.get(INPUT_B_ID);
-        if (!(aObj instanceof PolygonProfileData a) || !(bObj instanceof PolygonProfileData b)) {
-            writeInvalid();
+        PolygonProfileData a = resolveStrictProfile(INPUT_A_ID);
+        PolygonProfileData b = resolveStrictProfile(INPUT_B_ID);
+        if (a == null || b == null) {
+            writeFailure("Valid polygon profiles are required on both inputs");
+            return;
+        }
+
+        int totalVertices = a.getEdgeCount() + b.getEdgeCount();
+        if (!GenerationLimits.isWithinProfileBooleanVertices(totalVertices)) {
+            writeFailure("Combined profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_BOOLEAN_VERTICES + ")");
+            return;
+        }
+
+        if (!PolygonProfileValidator.profilesCoplanar(a, b)) {
+            writeFailure("Profiles must lie on the same plane");
             return;
         }
 
@@ -78,10 +85,10 @@ public class ProfileBoolean2DNode extends BaseNode {
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         GeometryFactory gf = new GeometryFactory();
 
-        Polygon pa = toJtsPolygon(a, axes, gf);
-        Polygon pb = toJtsPolygonProjecting(b, plane, axes, gf);
+        Polygon pa = ProfilePlanarOps.toJtsPolygon(a, axes, gf);
+        Polygon pb = ProfilePlanarOps.toJtsPolygon(b, axes, gf);
         if (pa == null || pb == null) {
-            writeInvalid();
+            writeFailure("Failed to convert profiles for boolean operation");
             return;
         }
 
@@ -92,25 +99,30 @@ public class ProfileBoolean2DNode extends BaseNode {
         };
 
         List<PolygonProfileData> profiles = new ArrayList<>();
-        appendPolygons(out, axes, plane, profiles);
-        if (profiles.isEmpty()) {
-            writeInvalid();
+        String conversionError = ProfilePlanarOps.appendSimplePolygons(out, axes, plane, profiles);
+        if (conversionError != null) {
+            writeFailure(conversionError);
             return;
         }
 
-        PolygonProfileData primary = profiles.getFirst();
-        for (PolygonProfileData p : profiles) {
-            if (Math.abs(area2d(p, axes)) > Math.abs(area2d(primary, axes))) {
-                primary = p;
-            }
+        if (profiles.isEmpty()) {
+            writeSuccessEmpty(plane);
+            return;
         }
 
+        String budgetError = ProfilePlanarOps.validateOutputBudget(profiles);
+        if (budgetError != null) {
+            writeFailure(budgetError);
+            return;
+        }
+
+        PolygonProfileData primary = ProfilePlanarOps.selectPrimaryProfile(profiles, axes);
         outputValues.put(OUTPUT_PROFILE_ID, primary);
         outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
         outputValues.put(OUTPUT_PLANE_ID, primary.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
         outputValues.put(OUTPUT_COUNT_ID, profiles.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     private Operation parseOperation(String raw) {
@@ -124,95 +136,19 @@ public class ProfileBoolean2DNode extends BaseNode {
         };
     }
 
-    private Polygon toJtsPolygon(PolygonProfileData profile,
-                                 PlaneProjectionUtils.PlaneAxes axes,
-                                 GeometryFactory gf) {
-        List<Vector3d> closed = profile.closedPoints();
-        if (closed.size() < 4) {
-            return null;
-        }
-        Coordinate[] coords = new Coordinate[closed.size()];
-        for (int i = 0; i < closed.size(); i++) {
-            Vector2d uv = axes.to2d(closed.get(i));
-            coords[i] = new Coordinate(uv.x, uv.y);
-        }
-        return gf.createPolygon(coords);
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 
-    private Polygon toJtsPolygonProjecting(PolygonProfileData profile,
-                                           PlaneData targetPlane,
-                                           PlaneProjectionUtils.PlaneAxes axes,
-                                           GeometryFactory gf) {
-        List<Vector3d> closed = profile.closedPoints();
-        if (closed.size() < 4) {
-            return null;
-        }
-        Coordinate[] coords = new Coordinate[closed.size()];
-        for (int i = 0; i < closed.size(); i++) {
-            Vector3d projected = targetPlane.projectPoint(closed.get(i));
-            Vector2d uv = axes.to2d(projected);
-            coords[i] = new Coordinate(uv.x, uv.y);
-        }
-        return gf.createPolygon(coords);
-    }
-
-    private void appendPolygons(Geometry geometry,
-                                PlaneProjectionUtils.PlaneAxes axes,
-                                PlaneData plane,
-                                List<PolygonProfileData> out) {
-        if (geometry == null || geometry.isEmpty()) {
-            return;
-        }
-        if (geometry instanceof Polygon polygon) {
-            PolygonProfileData p = toProfile(polygon, axes, plane);
-            if (p != null) {
-                out.add(p);
-            }
-            return;
-        }
-        if (geometry instanceof GeometryCollection collection) {
-            for (int i = 0; i < collection.getNumGeometries(); i++) {
-                appendPolygons(collection.getGeometryN(i), axes, plane, out);
-            }
-        }
-    }
-
-    private @Nullable PolygonProfileData toProfile(Polygon polygon,
-                                                   PlaneProjectionUtils.PlaneAxes axes,
-                                                   PlaneData plane) {
-        Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-        if (coords.length < 4) {
-            return null;
-        }
-        List<Vector3d> closed = new ArrayList<>(coords.length);
-        for (Coordinate c : coords) {
-            closed.add(axes.from2d(new Vector2d(c.x, c.y)));
-        }
-        try {
-            return new PolygonProfileData(closed, plane);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
-        List<Vector3d> pts = profile.closedPoints();
-        double area2 = 0.0d;
-        for (int i = 0; i < pts.size() - 1; i++) {
-            Vector2d a = axes.to2d(pts.get(i));
-            Vector2d b = axes.to2d(pts.get(i + 1));
-            area2 += (a.x * b.y - b.x * a.y);
-        }
-        return area2 * 0.5d;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_PROFILES_ID, List.of());
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeSuccessEmpty(PlaneData plane) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        outputValues.put(OUTPUT_PLANE_ID, plane);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markSuccess();
     }
 
     private enum Operation {

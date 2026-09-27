@@ -3,11 +3,11 @@ package com.nodecraft.nodesystem.nodes.geometry.profiles;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -21,9 +21,9 @@ import java.util.UUID;
     displayName = "Resample Polygon Profile",
     description = "Resamples a polygon profile to a target edge count using perimeter-distance sampling",
     category = "geometry.profiles",
-    order = 3
+    order = 15
 )
-public class ResamplePolygonProfileNode extends BaseNode {
+public class ResamplePolygonProfileNode extends AbstractProfileNode {
 
     private static final double EPSILON = 1.0e-9d;
 
@@ -36,7 +36,6 @@ public class ResamplePolygonProfileNode extends BaseNode {
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_EDGE_COUNT_ID = "output_edge_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ResamplePolygonProfileNode() {
         super(UUID.randomUUID(), "geometry.profiles.resample_profile");
@@ -46,11 +45,12 @@ public class ResamplePolygonProfileNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Resampled polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed resampled polygon points", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Resampled polygon boundary", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Resampled polygon boundary path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Resolved profile center", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_EDGE_COUNT_ID, "Edge Count", "Resolved target edge count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid polygon profile and target count were provided", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when resampling succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -60,29 +60,23 @@ public class ResamplePolygonProfileNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object profileObj = inputValues.get(INPUT_PROFILE_ID);
-        Object edgeCountObj = inputValues.get(INPUT_EDGE_COUNT_ID);
-
-        if (!(profileObj instanceof PolygonProfileData profile) || !(edgeCountObj instanceof Number edgeCountNumber)) {
-            writeEmptyOutputs();
+        PolygonProfileData profile = resolveStrictProfile(INPUT_PROFILE_ID);
+        if (profile == null) {
+            writeFailure("Valid polygon profile is required");
             return;
         }
 
-        int targetEdgeCount = edgeCountNumber.intValue();
-        if (targetEdgeCount < 3) {
-            writeEmptyOutputs();
+        Integer targetEdgeCount = resolveBoundedInteger(
+            INPUT_EDGE_COUNT_ID, 0, 3, GenerationLimits.MAX_PROFILE_VERTICES);
+        if (targetEdgeCount == null) {
+            writeFailure("Edge count must be an exact integer from 3 to " + GenerationLimits.MAX_PROFILE_VERTICES);
             return;
         }
 
         List<Vector3d> sourceClosedPoints = profile.closedPoints();
-        if (sourceClosedPoints.size() < 4) {
-            writeEmptyOutputs();
-            return;
-        }
-
         List<Vector3d> uniqueResampledPoints = resampleClosedPolyline(sourceClosedPoints, targetEdgeCount);
         if (uniqueResampledPoints.size() != targetEdgeCount) {
-            writeEmptyOutputs();
+            writeFailure("Failed to resample polygon profile");
             return;
         }
 
@@ -94,21 +88,18 @@ public class ResamplePolygonProfileNode extends BaseNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, resampledProfile);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedResampledPoints));
-        outputValues.put(OUTPUT_BOUNDARY_ID, resampledProfile.getBoundary());
+        outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(resampledProfile));
         outputValues.put(OUTPUT_PLANE_ID, resampledProfile.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(resampledProfile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, targetEdgeCount);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeEmptyOutputs() {
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(OUTPUT_EDGE_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(0, OUTPUT_EDGE_COUNT_ID);
+        markInvalid(error);
     }
 
     private List<Vector3d> resampleClosedPolyline(List<Vector3d> closedPoints, int targetCount) {
