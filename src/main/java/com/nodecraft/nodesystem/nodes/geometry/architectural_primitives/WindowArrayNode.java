@@ -7,15 +7,14 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +46,7 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
     private static final String OUTPUT_CENTERS_ID = "output_centers";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(
         displayName = "Default Depth",
@@ -72,6 +72,7 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Window center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of opening boxes created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid opening array could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -81,55 +82,88 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-        Object columnsObj = inputValues.get(INPUT_COLUMNS_ID);
-        Object rowsObj = inputValues.get(INPUT_ROWS_ID);
-        Object widthObj = inputValues.get(INPUT_WINDOW_WIDTH_ID);
-        Object heightObj = inputValues.get(INPUT_WINDOW_HEIGHT_ID);
-        Object marginObj = inputValues.get(INPUT_MARGIN_ID);
-        Object depthObj = inputValues.get(INPUT_DEPTH_ID);
-
-        GeometryData geometry = null;
-        List<FrameData> frames = null;
-        List<PointData> centers = null;
-        int count = 0;
-        boolean valid = false;
-
-        if (faceObj instanceof BoxFaceData face) {
-            int columns = ArchitecturalPrimitiveSupport.resolvePositiveInt(columnsObj, 1);
-            int rows = ArchitecturalPrimitiveSupport.resolvePositiveInt(rowsObj, 1);
-            double windowWidth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(widthObj, 1.0d);
-            double windowHeight = ArchitecturalPrimitiveSupport.resolvePositiveDouble(heightObj, 1.0d);
-            double margin = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(marginObj, 0.0d);
-            double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(depthObj, defaultDepth);
-
-            FaceArrayLayout layout = resolveFaceArrayLayout(face, columns, rows, windowWidth, windowHeight, margin, VerticalAnchor.TOP);
-            if (layout != null) {
-                List<BoxGeometryData> openings = buildOpeningBoxes(layout, depth);
-                geometry = new CompositeGeometryData(new ArrayList<>(openings));
-                frames = buildPlacementFrames(layout);
-                centers = buildCenters(layout);
-                count = openings.size();
-                valid = true;
-            }
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid("Face is required");
+            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        Integer columns = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_COLUMNS_ID, 1);
+        if (columns == null) {
+            writeInvalid("Columns must be an exact positive integer");
+            return;
+        }
+
+        Integer rows = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_ROWS_ID, 1);
+        if (rows == null) {
+            writeInvalid("Rows must be an exact positive integer");
+            return;
+        }
+
+        Double windowWidth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_WINDOW_WIDTH_ID, 1.0d);
+        if (windowWidth == null) {
+            writeInvalid("Window Width must be a positive finite number");
+            return;
+        }
+
+        Double windowHeight = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_WINDOW_HEIGHT_ID, 1.0d);
+        if (windowHeight == null) {
+            writeInvalid("Window Height must be a positive finite number");
+            return;
+        }
+
+        Double margin = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_MARGIN_ID, 0.0d);
+        if (margin == null) {
+            writeInvalid("Margin must be a non-negative finite number");
+            return;
+        }
+
+        Double depth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_DEPTH_ID, defaultDepth);
+        if (depth == null) {
+            writeInvalid("Depth must be a positive finite number");
+            return;
+        }
+
+        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+            writeInvalid("Requested instance count exceeds limit");
+            return;
+        }
+
+        FaceArrayLayout layout = resolveFaceArrayLayout(
+            face, columns, rows, windowWidth, windowHeight, margin, VerticalAnchor.TOP);
+        if (layout == null) {
+            writeInvalid("Requested array does not fit on face");
+            return;
+        }
+
+        List<BoxGeometryData> openings = buildOpeningBoxes(layout, depth);
+        List<FrameData> frames = buildPlacementFrames(layout);
+        List<PointData> centers = buildCenters(layout);
+
+        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(openings));
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_CENTERS_ID, centers);
-        outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_COUNT_ID, columns * rows);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private List<BoxGeometryData> buildOpeningBoxes(
-        FaceArrayLayout layout,
-        double depth
-    ) {
+    private List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
         return buildFaceArray(layout, placement -> {
             Vector3d center = placement.centerOnFace().fma(-depth / 2.0d, layout.frame().zAxis());
             Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, depth / 2.0d);
-            return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
+            return ArchitecturalPrimitiveSupport.createOrientedBox(
+                center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
         });
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_FRAMES_ID, null);
+        outputValues.put(OUTPUT_CENTERS_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     public double getDefaultDepth() {

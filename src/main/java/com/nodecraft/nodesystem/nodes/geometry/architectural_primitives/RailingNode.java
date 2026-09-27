@@ -5,10 +5,12 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -41,6 +43,7 @@ public class RailingNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public RailingNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.railing");
@@ -56,6 +59,7 @@ public class RailingNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the railing components", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of railing components created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid railing could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -67,34 +71,85 @@ public class RailingNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         ArchitecturalPathSupport.PathGeometry path =
             ArchitecturalPathSupport.resolve(inputValues.get(INPUT_PATH_ID));
-
-        GeometryData geometry = null;
-        int count = 0;
-        boolean valid = false;
-
-        if (path != null) {
-            int postCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_POST_COUNT_ID), 2);
-            int railCount = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_RAIL_COUNT_ID), 2);
-            double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 1.2d);
-            double postRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_POST_RADIUS_ID), 0.05d);
-            double railRadius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RAIL_RADIUS_ID), postRadius * 0.65d);
-            double offset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OFFSET_ID), 0.0d);
-
-            List<GeometryData> railing = buildRailing(path, postCount, railCount, height, postRadius, railRadius, offset);
-            if (!railing.isEmpty()) {
-                geometry = new CompositeGeometryData(railing);
-                count = railing.size();
-                valid = true;
-            }
+        if (path == null) {
+            writeInvalid(ArchitecturalInputUtils.isConnected(this, INPUT_PATH_ID)
+                ? "Path must be a finite PATH with at least 2 points"
+                : "Path is required");
+            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        Integer postCount = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_POST_COUNT_ID, 2);
+        if (postCount == null) {
+            writeInvalid("Post Count must be an exact positive INTEGER");
+            return;
+        }
+        Integer railCount = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_RAIL_COUNT_ID, 2);
+        if (railCount == null) {
+            writeInvalid("Rail Count must be an exact positive INTEGER");
+            return;
+        }
+        Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 1.2d);
+        if (height == null) {
+            writeInvalid("Height must be a finite positive DOUBLE");
+            return;
+        }
+        Double postRadius = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_POST_RADIUS_ID, 0.05d);
+        if (postRadius == null) {
+            writeInvalid("Post Radius must be a finite positive DOUBLE");
+            return;
+        }
+        Double railRadius = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
+            this, INPUT_RAIL_RADIUS_ID, postRadius * 0.65d);
+        if (railRadius == null) {
+            writeInvalid("Rail Radius must be a finite positive DOUBLE");
+            return;
+        }
+        Double offset = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
+        if (offset == null) {
+            writeInvalid("Offset must be a finite non-negative DOUBLE");
+            return;
+        }
+
+        List<ArchitecturalPathSupport.Segment> segments = ArchitecturalPathSupport.segments(path);
+        if (segments.size() > GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS) {
+            writeInvalid("Path segment count exceeds MAX_ARCHITECTURAL_PATH_SEGMENTS ("
+                + GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS + ")");
+            return;
+        }
+
+        long instanceBudget;
+        try {
+            instanceBudget = Math.addExact(
+                (long) postCount,
+                Math.multiplyExact((long) railCount, (long) segments.size())
+            );
+        } catch (ArithmeticException overflow) {
+            writeInvalid("Requested railing instance count exceeds MAX_ARCHITECTURAL_INSTANCES ("
+                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
+            return;
+        }
+        if (instanceBudget > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
+            writeInvalid("Requested railing instance count exceeds MAX_ARCHITECTURAL_INSTANCES ("
+                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
+            return;
+        }
+
+        List<GeometryData> railing = buildRailing(
+            path, segments, postCount, railCount, height, postRadius, railRadius, offset);
+        if (railing.isEmpty()) {
+            writeInvalid("Unable to generate railing geometry from the given path and parameters");
+            return;
+        }
+
+        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(railing));
+        outputValues.put(OUTPUT_COUNT_ID, railing.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private List<GeometryData> buildRailing(
         ArchitecturalPathSupport.PathGeometry path,
+        List<ArchitecturalPathSupport.Segment> segments,
         int postCount,
         int railCount,
         double height,
@@ -112,7 +167,6 @@ public class RailingNode extends BaseNode {
         }
 
         double railSpacing = railCount > 1 ? height / railCount : height;
-        List<ArchitecturalPathSupport.Segment> segments = ArchitecturalPathSupport.segments(path);
         for (int level = 0; level < railCount; level++) {
             double railHeight = railCount > 1 ? railSpacing * (level + 1) : height;
             for (ArchitecturalPathSupport.Segment segment : segments) {
@@ -132,5 +186,12 @@ public class RailingNode extends BaseNode {
         }
 
         return List.copyOf(results);
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

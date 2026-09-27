@@ -10,14 +10,17 @@ import org.joml.Vector3d;
 
 import java.util.List;
 
-final class ArchitecturalPrimitiveSupport {
+/**
+ * Shared frame / oriented-box helpers for architectural primitives.
+ */
+public final class ArchitecturalPrimitiveSupport {
 
     private static final double EPSILON = 1.0e-9d;
 
     private ArchitecturalPrimitiveSupport() {
     }
 
-    static @Nullable FaceFrame resolveFaceFrame(BoxFaceData face) {
+    public static @Nullable FaceFrame resolveFaceFrame(BoxFaceData face) {
         List<Vector3d> corners = face.getCorners();
         if (corners.size() < 4) {
             return null;
@@ -54,7 +57,7 @@ final class ArchitecturalPrimitiveSupport {
         return new FaceFrame(face.getCenter(), xAxis, yAxis, zAxis, faceWidth, faceHeight);
     }
 
-    static @Nullable LineFrame resolveLineFrame(Vec3d start, Vec3d end) {
+    public static @Nullable LineFrame resolveLineFrame(Vec3d start, Vec3d end) {
         Vector3d direction = new Vector3d(end.x - start.x, end.y - start.y, end.z - start.z);
         double length = direction.length();
         if (length <= EPSILON) {
@@ -97,7 +100,7 @@ final class ArchitecturalPrimitiveSupport {
      * Keep this only for layouts that intentionally need a straight approximation
      * (e.g. spiral/U stair plan orientation).
      */
-    static @Nullable LineFrame resolvePathChordFrame(@Nullable Object pathValue) {
+    public static @Nullable LineFrame resolvePathChordFrame(@Nullable Object pathValue) {
         List<Vector3d> points = PathUtils.resolvePath(pathValue);
         if (points == null || points.size() < 2) {
             return null;
@@ -110,13 +113,12 @@ final class ArchitecturalPrimitiveSupport {
         );
     }
 
-    /** @deprecated Use {@link #resolvePathChordFrame(Object)}. */
     @Deprecated
-    static @Nullable LineFrame resolvePathAsLineFrame(@Nullable Object pathValue) {
+    public static @Nullable LineFrame resolvePathAsLineFrame(@Nullable Object pathValue) {
         return resolvePathChordFrame(pathValue);
     }
 
-    static Matrix3d createOrientation(Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+    public static Matrix3d createOrientation(Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         return new Matrix3d(
             xAxis.x, yAxis.x, zAxis.x,
             xAxis.y, yAxis.y, zAxis.y,
@@ -124,32 +126,11 @@ final class ArchitecturalPrimitiveSupport {
         );
     }
 
-    static BoxGeometryData createOrientedBox(Vector3d center, Vector3d halfExtents, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+    public static BoxGeometryData createOrientedBox(Vector3d center, Vector3d halfExtents, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         return new BoxGeometryData(center, halfExtents, createOrientation(xAxis, yAxis, zAxis), true);
     }
 
-    static int resolvePositiveInt(Object value, int fallback) {
-        if (value instanceof Number number) {
-            return Math.max(1, number.intValue());
-        }
-        return fallback;
-    }
-
-    static double resolvePositiveDouble(Object value, double fallback) {
-        if (value instanceof Number number) {
-            return Math.max(EPSILON, number.doubleValue());
-        }
-        return fallback;
-    }
-
-    static double resolveNonNegativeDouble(Object value, double fallback) {
-        if (value instanceof Number number) {
-            return Math.max(0.0d, number.doubleValue());
-        }
-        return fallback;
-    }
-
-    record FaceFrame(
+    public record FaceFrame(
         Vector3d center,
         Vector3d xAxis,
         Vector3d yAxis,
@@ -159,7 +140,7 @@ final class ArchitecturalPrimitiveSupport {
     ) {
     }
 
-    record LineFrame(
+    public record LineFrame(
         Vector3d start,
         Vector3d end,
         Vector3d runAxis,

@@ -39,7 +39,6 @@ public final class GeometryBoundsResolver {
 
     public static @Nullable BoundingBoxData resolve(@Nullable GeometryData geometry) {
         return switch (geometry) {
-            case null -> null;
             case CompositeGeometryData composite -> resolveComposite(composite);
             case DifferenceGeometryData difference ->
                 // A - B cannot extend beyond A; keep continuous envelope on the minuend.
@@ -61,7 +60,7 @@ public final class GeometryBoundsResolver {
             case SdfGeometryData sdf -> BoundingBoxData.create(sdf.min(), sdf.max());
             case TetrahedronGeometryData tetrahedron -> fromPoints(tetrahedron.getVertices());
             case TorusGeometryData torus -> resolveTorus(torus);
-            default -> null;
+            case null, default -> null;
         };
     }
 

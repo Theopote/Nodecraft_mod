@@ -417,8 +417,14 @@ public final class GraphFormatVersion {
      */
     public static final int V67 = 67;
 
+    /**
+     * Architectural Primitives v1: 18 canonical nodes, strict inputs, Valid/Error,
+     * architecture instance/path/profile hard caps.
+     */
+    public static final int V68 = 68;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V67;
+    public static final int CURRENT = V68;
 
     private GraphFormatVersion() {
     }

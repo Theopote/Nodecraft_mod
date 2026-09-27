@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **526**
+- Total nodes: **524**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -12,7 +12,7 @@
 | `flow.control` | 3 |
 | `flow.loop` | 2 |
 | `geometry.analysis` | 2 |
-| `geometry.architectural_primitives` | 20 |
+| `geometry.architectural_primitives` | 18 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
@@ -92,7 +92,7 @@
 | Block Bounds | `geometry.analysis.block_bounds` | Calculates a continuous AABB from a block list or region cell envelope | `BlockBoundsNode` |
 | Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
 
-## geometry.architectural_primitives (20)
+## geometry.architectural_primitives (18)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -108,9 +108,7 @@
 | Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab and separate opening volumes (use Difference to cut holes) | `WallWithOpeningsNode` |
 | Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
 | Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
-| Deconstruct Architectural Opening | `geometry.architectural_primitives.deconstruct_opening` | Flattens architectural opening geometry into component lists and bounds | `DeconstructArchitecturalOpeningNode` |
 | Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
-| Floor Slab With Beams | `geometry.architectural_primitives.floor_slab_with_beams` | Convenience: floor slab plus support beam grid (prefer Floor Slab + Beam Grid) | `FloorSlabWithBeamsNode` |
 | Beam Grid | `geometry.architectural_primitives.beam_grid` | Generates a support beam grid on a box face footprint | `BeamGridNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
 | Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates continuous wall slabs along a path (line, polyline, or curve) | `WallAlongPathNode` |

@@ -41,6 +41,7 @@ Last updated: 2026-09-25
 | Flow Control | [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) **(PASSED / FROZEN, V65)** |
 | Flow Loop | [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md) **(PASSED / FROZEN, V66)** |
 | Geometry Analysis | [`node-language-v1-geometry-analysis.md`](./node-language-v1-geometry-analysis.md) **(PASSED / FROZEN, V67)** |
+| Architectural Primitives | [`node-language-v1-architectural-primitives.md`](./node-language-v1-architectural-primitives.md) **(PASSED / FROZEN, V68)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -79,6 +80,7 @@ Last updated: 2026-09-25
 | Flow Control v1 | **PASSED / FROZEN** | V65 |
 | Flow Loop v1 | **PASSED / FROZEN** | V66 |
 | Geometry Analysis v1 | **PASSED / FROZEN** | V67 |
+| Architectural Primitives v1 | **PASSED / FROZEN** | V68 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.
@@ -608,17 +610,16 @@ Three distinct mechanisms (do not treat as one “Boolean”):
 
 **Batch 13.1 P2 — Floor / Roof split (2026-09-23):**
 
-- **Floor Slab** + **Beam Grid** are the composable hosts; **Floor Slab With Beams** stays a convenience composite
-  (slab / beams / beam frames / center lines / top / bottom).
-- **Roof Base** owns core types (`flat` / `shed` / `gable`) with **Eave Path** / **Ridge Path**.
+- **Floor Slab** + **Beam Grid** are the composable hosts.
+- **Roof Base** owns core types (`flat` / `shed` / `gable`) with **Primary Eave Path** / **Primary Ridge Path**.
 - **Roof Generator** is the advanced specialty convenience node — do not expand it into more roof types;
   prefer composing Roof Base + future modifiers instead.
+- **V68:** removed convenience composite `floor_slab_with_beams` and `deconstruct_opening`; compose Floor Slab + Beam Grid instead.
 
 **Batch 13.2 / PATH_LIST (2026-09-23):**
 
 - Multi-path architectural outputs use **`PATH_LIST`** (`ListElementKind.PATH`), not bare `LIST`.
-- First consumers: **Beam Grid** `output_center_lines`, **Floor Slab With Beams** `output_beam_center_lines`,
-  **Preview Curves** `input_paths`.
+- First consumers: **Beam Grid** `output_center_lines`, **Preview Curves** `input_paths`.
 - Same typed-list rules as `POINT_LIST` / `FRAME_LIST`: same kind connects; different kinds unsupported;
   unconstrained `LIST` still bridges.
 

@@ -6,11 +6,12 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -31,7 +32,7 @@ import java.util.UUID;
     displayName = "Wall With Openings",
     description = "Generates a wall slab and separate opening volumes (use Difference to cut holes)",
     category = "geometry.architectural_primitives",
-    order = 8
+    order = 9
 )
 public class WallWithOpeningsNode extends AbstractFaceArrayNode {
 
@@ -53,6 +54,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
     private static final String OUTPUT_INTERIOR_FACE_ID = "output_interior_face";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public WallWithOpeningsNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.wall_with_openings");
@@ -82,6 +84,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
             "Interior face of the wall slab", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of opening volumes", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid wall could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -91,52 +94,95 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-        GeometryData wallGeometry = null;
-        GeometryData openingsGeometry = null;
-        PathData topEdge = null;
-        PathData bottomEdge = null;
-        PathData centerLine = null;
-        BoxFaceData exteriorFace = null;
-        BoxFaceData interiorFace = null;
-        int count = 0;
-        boolean valid = false;
-
-        if (faceObj instanceof BoxFaceData face) {
-            ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
-            if (frame != null) {
-                int columns = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_COLUMNS_ID), 3);
-                int rows = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_ROWS_ID), 2);
-                double wallThickness = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_WALL_THICKNESS_ID), 0.4d);
-                double openingWidth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_OPENING_WIDTH_ID), 1.0d);
-                double openingHeight = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_OPENING_HEIGHT_ID), 1.5d);
-                double margin = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_MARGIN_ID), 0.0d);
-                double openingDepth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_OPENING_DEPTH_ID), wallThickness);
-                FaceArrayLayout layout = resolveFaceArrayLayout(frame, columns, rows, openingWidth, openingHeight, margin, VerticalAnchor.BOTTOM);
-
-                wallGeometry = createWall(frame, wallThickness);
-                List<GeometryData> openings = layout != null ? buildOpenings(layout, openingDepth) : List.of();
-                openingsGeometry = openings.isEmpty() ? null : new CompositeGeometryData(openings);
-                count = openings.size();
-
-                topEdge = edgePath(frame, frame.height() / 2.0d);
-                bottomEdge = edgePath(frame, -frame.height() / 2.0d);
-                centerLine = edgePath(frame, 0.0d);
-                exteriorFace = planarFace("exterior", frame, 0.0d, new Vector3d(frame.zAxis()).negate());
-                interiorFace = planarFace("interior", frame, wallThickness, frame.zAxis());
-                valid = true;
-            }
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid("Face is required");
+            return;
         }
 
+        ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
+        if (frame == null) {
+            writeInvalid("Face is required");
+            return;
+        }
+
+        Integer columns = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_COLUMNS_ID, 3);
+        if (columns == null) {
+            writeInvalid("Columns must be an exact positive integer");
+            return;
+        }
+
+        Integer rows = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_ROWS_ID, 2);
+        if (rows == null) {
+            writeInvalid("Rows must be an exact positive integer");
+            return;
+        }
+
+        Double wallThickness = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
+            this, INPUT_WALL_THICKNESS_ID, 0.4d);
+        if (wallThickness == null) {
+            writeInvalid("Wall Thickness must be a positive finite number");
+            return;
+        }
+
+        Double openingWidth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
+            this, INPUT_OPENING_WIDTH_ID, 1.0d);
+        if (openingWidth == null) {
+            writeInvalid("Opening Width must be a positive finite number");
+            return;
+        }
+
+        Double openingHeight = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
+            this, INPUT_OPENING_HEIGHT_ID, 1.5d);
+        if (openingHeight == null) {
+            writeInvalid("Opening Height must be a positive finite number");
+            return;
+        }
+
+        Double margin = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_MARGIN_ID, 0.0d);
+        if (margin == null) {
+            writeInvalid("Margin must be a non-negative finite number");
+            return;
+        }
+
+        final double openingDepth;
+        if (ArchitecturalInputUtils.isConnected(this, INPUT_OPENING_DEPTH_ID)) {
+            Double resolvedDepth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
+                this, INPUT_OPENING_DEPTH_ID, wallThickness);
+            if (resolvedDepth == null) {
+                writeInvalid("Opening Depth must be a positive finite number");
+                return;
+            }
+            openingDepth = resolvedDepth;
+        } else {
+            openingDepth = wallThickness;
+        }
+
+        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+            writeInvalid("Requested instance count exceeds limit");
+            return;
+        }
+
+        FaceArrayLayout layout = resolveFaceArrayLayout(
+            frame, columns, rows, openingWidth, openingHeight, margin, VerticalAnchor.BOTTOM);
+        if (layout == null) {
+            writeInvalid("Requested array does not fit on face");
+            return;
+        }
+
+        GeometryData wallGeometry = createWall(frame, wallThickness);
+        List<GeometryData> openings = buildOpenings(layout, openingDepth);
+
         outputValues.put(OUTPUT_GEOMETRY_ID, wallGeometry);
-        outputValues.put(OUTPUT_OPENINGS_ID, openingsGeometry);
-        outputValues.put(OUTPUT_TOP_EDGE_ID, topEdge);
-        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, bottomEdge);
-        outputValues.put(OUTPUT_CENTER_LINE_ID, centerLine);
-        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, exteriorFace);
-        outputValues.put(OUTPUT_INTERIOR_FACE_ID, interiorFace);
-        outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_OPENINGS_ID, GeometryOutputUtils.packGeometry(openings));
+        outputValues.put(OUTPUT_TOP_EDGE_ID, edgePath(frame, frame.height() / 2.0d));
+        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, edgePath(frame, -frame.height() / 2.0d));
+        outputValues.put(OUTPUT_CENTER_LINE_ID, edgePath(frame, 0.0d));
+        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, planarFace("exterior", frame, 0.0d, new Vector3d(frame.zAxis()).negate()));
+        outputValues.put(OUTPUT_INTERIOR_FACE_ID, planarFace("interior", frame, wallThickness, frame.zAxis()));
+        outputValues.put(OUTPUT_COUNT_ID, columns * rows);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private BoxGeometryData createWall(ArchitecturalPrimitiveSupport.FaceFrame frame, double wallThickness) {
@@ -184,5 +230,18 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
             new Vector3d(center).sub(hx).add(hy)
         );
         return new BoxFaceData(0, name, List.of(0, 1, 2, 3), corners, center, outwardNormal);
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_OPENINGS_ID, null);
+        outputValues.put(OUTPUT_TOP_EDGE_ID, null);
+        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, null);
+        outputValues.put(OUTPUT_CENTER_LINE_ID, null);
+        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, null);
+        outputValues.put(OUTPUT_INTERIOR_FACE_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

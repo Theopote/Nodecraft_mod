@@ -126,6 +126,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V64 -> migrateV64ToV65(graph);
             case GraphFormatVersion.V65 -> migrateV65ToV66(graph);
             case GraphFormatVersion.V66 -> migrateV66ToV67(graph);
+            case GraphFormatVersion.V67 -> migrateV67ToV68(graph);
             default -> graph;
         };
     }
@@ -4744,6 +4745,71 @@ public final class GraphMigrationRegistry {
             }
         }
         return graph;
+    }
+
+    /**
+     * Architectural Primitives v1: remove convenience / pseudo-opening deconstruct nodes.
+     */
+    private static SavedGraph migrateV67ToV68(SavedGraph graph) {
+        applyArchitecturalPrimitivesV68ToGraph(graph);
+        if (graph.subgraphDefinitions != null) {
+            for (SavedGraph definition : graph.subgraphDefinitions.values()) {
+                if (definition != null) {
+                    applyArchitecturalPrimitivesV68ToGraph(definition);
+                }
+            }
+        }
+        return graph;
+    }
+
+    private static final Set<String> ARCHITECTURAL_V68_REMOVED_TYPES = Set.of(
+            "geometry.architectural_primitives.floor_slab_with_beams",
+            "geometry.architectural_primitives.deconstruct_opening"
+    );
+
+    private static void applyArchitecturalPrimitivesV68ToGraph(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+
+        Set<String> removedNodeIds = new HashSet<>();
+        List<SavedNode> keptNodes = new ArrayList<>();
+        for (SavedNode node : graph.nodes) {
+            if (node == null) {
+                continue;
+            }
+            if (node.typeId != null && ARCHITECTURAL_V68_REMOVED_TYPES.contains(node.typeId)) {
+                if (node.nodeId != null) {
+                    removedNodeIds.add(node.nodeId);
+                }
+                continue;
+            }
+            keptNodes.add(node);
+        }
+        graph.nodes = keptNodes;
+
+        if (graph.connections != null) {
+            List<SavedConnection> kept = new ArrayList<>();
+            for (SavedConnection connection : graph.connections) {
+                if (connection == null) {
+                    continue;
+                }
+                if (connection.sourceNodeId != null && removedNodeIds.contains(connection.sourceNodeId)) {
+                    continue;
+                }
+                if (connection.targetNodeId != null && removedNodeIds.contains(connection.targetNodeId)) {
+                    continue;
+                }
+                kept.add(connection);
+            }
+            graph.connections = kept;
+        }
+
+        if (graph.nodePositions != null && !removedNodeIds.isEmpty()) {
+            for (String id : removedNodeIds) {
+                graph.nodePositions.remove(id);
+            }
+        }
     }
 
     private static final String LEGACY_BLOCK_BOUNDS_TYPE = "geometry.boolean.bounding_box";

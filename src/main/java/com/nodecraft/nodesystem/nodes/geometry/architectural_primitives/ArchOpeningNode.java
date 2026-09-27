@@ -6,20 +6,20 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -31,9 +31,11 @@ import java.util.UUID;
     displayName = "Arch Opening",
     description = "Generates a rectangular, round, or pointed arch opening volume",
     category = "geometry.architectural_primitives",
-    order = 7
+    order = 8
 )
 public class ArchOpeningNode extends BaseNode {
+
+    private static final Set<String> ARCH_TYPES = Set.of("rectangle", "round", "pointed");
 
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_WIDTH_ID = "input_width";
@@ -44,6 +46,7 @@ public class ArchOpeningNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ArchOpeningNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.arch_opening");
@@ -55,8 +58,9 @@ public class ArchOpeningNode extends BaseNode {
         addInputPort(new BasePort(INPUT_ARCH_TYPE_ID, "Arch Type", "Arch type: rectangle, round, or pointed", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Curve segments used to approximate the arch", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the opening volume", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Opening volume geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid arch opening could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -66,26 +70,57 @@ public class ArchOpeningNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-        GeometryData geometry = null;
-        boolean valid = false;
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid(ArchitecturalInputUtils.isConnected(this, INPUT_FACE_ID)
+                ? "Face must be a valid BOX_FACE with a resolvable frame"
+                : "Face is required");
+            return;
+        }
 
-        if (faceObj instanceof BoxFaceData face) {
-            ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
-            if (frame != null) {
-                double width = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_WIDTH_ID), 2.0d);
-                double stemHeight = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 2.0d);
-                double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_DEPTH_ID), 1.0d);
-                int segments = GenerationLimits.clampSegments(6, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 12));
-                String archType = resolveArchType(inputValues.get(INPUT_ARCH_TYPE_ID));
+        ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
+        if (frame == null) {
+            writeInvalid("Face must be a valid BOX_FACE with a resolvable frame");
+            return;
+        }
 
-                geometry = buildArchVolume(frame, width, stemHeight, depth, segments, archType);
-                valid = geometry != null;
-            }
+        Double width = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_WIDTH_ID, 2.0d);
+        if (width == null) {
+            writeInvalid("Width must be a finite positive DOUBLE");
+            return;
+        }
+        Double stemHeight = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 2.0d);
+        if (stemHeight == null) {
+            writeInvalid("Height must be a finite positive DOUBLE");
+            return;
+        }
+        Double depth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_DEPTH_ID, 1.0d);
+        if (depth == null) {
+            writeInvalid("Depth must be a finite positive DOUBLE");
+            return;
+        }
+        Integer segments = ArchitecturalInputUtils.resolveOptionalBoundedExactInteger(
+            this, INPUT_SEGMENTS_ID, 12, 6, GenerationLimits.MAX_ARCHITECTURAL_PROFILE_SEGMENTS);
+        if (segments == null) {
+            writeInvalid("Segments must be an exact INTEGER between 6 and MAX_ARCHITECTURAL_PROFILE_SEGMENTS ("
+                + GenerationLimits.MAX_ARCHITECTURAL_PROFILE_SEGMENTS + ")");
+            return;
+        }
+        String archType = ArchitecturalInputUtils.resolveKnownStringEnum(this, INPUT_ARCH_TYPE_ID, "round", ARCH_TYPES);
+        if (archType == null) {
+            writeInvalid("Arch Type must be one of: rectangle, round, pointed");
+            return;
+        }
+
+        GeometryData geometry = buildArchVolume(frame, width, stemHeight, depth, segments, archType);
+        if (geometry == null) {
+            writeInvalid("Unable to generate arch opening geometry for the given parameters");
+            return;
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private GeometryData buildArchVolume(
@@ -101,13 +136,11 @@ public class ArchOpeningNode extends BaseNode {
         Vector3d center = new Vector3d(frame.center());
         Vector3d inward = new Vector3d(frame.zAxis());
 
-        List<GeometryData> geometry = new ArrayList<>();
-
         if ("rectangle".equals(archType)) {
             Vector3d boxCenter = new Vector3d(center).fma((stemHeight / 2.0d) - depth / 2.0d, inward);
             Vector3d halfExtents = new Vector3d(halfWidth, stemHeight / 2.0d, depth / 2.0d);
-            geometry.add(ArchitecturalPrimitiveSupport.createOrientedBox(boxCenter, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis()));
-            return new CompositeGeometryData(geometry);
+            return ArchitecturalPrimitiveSupport.createOrientedBox(
+                boxCenter, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());
         }
 
         List<Vector3d> closedPoints = switch (archType) {
@@ -120,8 +153,9 @@ public class ArchOpeningNode extends BaseNode {
         }
 
         PolygonProfileData profile = new PolygonProfileData(closedPoints, new PlaneData(center, frame.zAxis()));
-        geometry.add(new PrismGeometryData(profile.getUniquePoints(), new Vector3d(frame.zAxis()).mul(depth)));
-        return new CompositeGeometryData(geometry);
+        return GeometryOutputUtils.packGeometry(List.of(
+            new PrismGeometryData(profile.getUniquePoints(), new Vector3d(frame.zAxis()).mul(depth))
+        ));
     }
 
     private List<Vector3d> buildRoundProfile(
@@ -182,10 +216,9 @@ public class ArchOpeningNode extends BaseNode {
         return new Vector3d(center).fma(x, frame.xAxis()).fma(y, frame.yAxis());
     }
 
-    private String resolveArchType(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return stringValue.trim().toLowerCase(Locale.ROOT);
-        }
-        return "round";
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

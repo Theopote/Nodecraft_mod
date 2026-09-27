@@ -6,12 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
-import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -45,6 +44,7 @@ public class BeamGridNode extends BaseNode {
     private static final String OUTPUT_CENTER_LINES_ID = "output_center_lines";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public BeamGridNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.beam_grid");
@@ -59,12 +59,13 @@ public class BeamGridNode extends BaseNode {
             "Optional slab thickness used to hang beams below a Floor Slab", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Margin from the face edge to the beam grid", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite beam solids", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Beam solids", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each beam center", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Beam center points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTER_LINES_ID, "Center Lines", "Beam centerline paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of beams created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one beam was generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -74,43 +75,83 @@ public class BeamGridNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        GeometryData geometry = null;
-        List<FrameData> frames = null;
-        List<PointData> centers = null;
-        List<PathData> centerLines = null;
-        int count = 0;
-        boolean valid = false;
-
-        if (inputValues.get(INPUT_FACE_ID) instanceof BoxFaceData face) {
-            ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
-            if (frame != null) {
-                int columns = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_COLUMNS_ID), 3);
-                int rows = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_ROWS_ID), 3);
-                double beamWidth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_BEAM_WIDTH_ID), 0.25d);
-                double beamDepth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_BEAM_DEPTH_ID), 0.35d);
-                double beamDrop = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_BEAM_DROP_ID), 0.1d);
-                double slabThickness = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(
-                    inputValues.get(INPUT_SLAB_THICKNESS_ID), 0.0d);
-                double margin = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_MARGIN_ID), 0.0d);
-
-                FloorStructureSupport.BeamGridResult result = FloorStructureSupport.buildBeamGrid(
-                    frame, columns, rows, beamWidth, beamDepth, beamDrop, margin, slabThickness);
-                if (!result.beams().isEmpty()) {
-                    geometry = new CompositeGeometryData(result.beams());
-                    frames = result.frames();
-                    centers = result.centers();
-                    centerLines = result.centerLines();
-                    count = result.beams().size();
-                    valid = true;
-                }
-            }
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid("Face is required");
+            return;
+        }
+        ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
+        if (frame == null) {
+            writeInvalid("Face is required (non-degenerate box face)");
+            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_FRAMES_ID, frames);
-        outputValues.put(OUTPUT_CENTERS_ID, centers);
-        outputValues.put(OUTPUT_CENTER_LINES_ID, centerLines);
-        outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        Integer columns = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_COLUMNS_ID, 3);
+        if (columns == null) {
+            writeInvalid("Columns must be an exact positive integer");
+            return;
+        }
+        Integer rows = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_ROWS_ID, 3);
+        if (rows == null) {
+            writeInvalid("Rows must be an exact positive integer");
+            return;
+        }
+        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+            writeInvalid("Requested instance count exceeds limit ("
+                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
+            return;
+        }
+
+        Double beamWidth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_BEAM_WIDTH_ID, 0.25d);
+        if (beamWidth == null) {
+            writeInvalid("Beam Width must be a positive finite number");
+            return;
+        }
+        Double beamDepth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_BEAM_DEPTH_ID, 0.35d);
+        if (beamDepth == null) {
+            writeInvalid("Beam Depth must be a positive finite number");
+            return;
+        }
+        Double beamDrop = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_BEAM_DROP_ID, 0.1d);
+        if (beamDrop == null) {
+            writeInvalid("Beam Drop must be a non-negative finite number");
+            return;
+        }
+        Double slabThickness = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(
+            this, INPUT_SLAB_THICKNESS_ID, 0.0d);
+        if (slabThickness == null) {
+            writeInvalid("Slab Thickness must be a non-negative finite number");
+            return;
+        }
+        Double margin = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_MARGIN_ID, 0.0d);
+        if (margin == null) {
+            writeInvalid("Margin must be a non-negative finite number");
+            return;
+        }
+
+        FloorStructureSupport.BeamGridResult result = FloorStructureSupport.buildBeamGrid(
+            frame, columns, rows, beamWidth, beamDepth, beamDrop, margin, slabThickness);
+        if (result.beams().isEmpty()) {
+            writeInvalid("Requested beam grid does not fit on face");
+            return;
+        }
+
+        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(result.beams()));
+        outputValues.put(OUTPUT_FRAMES_ID, result.frames());
+        outputValues.put(OUTPUT_CENTERS_ID, result.centers());
+        outputValues.put(OUTPUT_CENTER_LINES_ID, result.centerLines());
+        outputValues.put(OUTPUT_COUNT_ID, result.beams().size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_FRAMES_ID, null);
+        outputValues.put(OUTPUT_CENTERS_ID, null);
+        outputValues.put(OUTPUT_CENTER_LINES_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

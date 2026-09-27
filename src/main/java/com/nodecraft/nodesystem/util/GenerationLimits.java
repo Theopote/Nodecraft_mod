@@ -48,6 +48,23 @@ public final class GenerationLimits {
     public static final int MAX_SEGMENTS = 131_072;
 
     /**
+     * Hard cap for architectural instance emitters (face arrays, grids, railings, stairs).
+     * Same scale as {@link #MAX_GEOMETRY_INSTANCES}.
+     */
+    public static final int MAX_ARCHITECTURAL_INSTANCES = MAX_GEOMETRY_INSTANCES;
+
+    /**
+     * Hard cap for path-following architectural segment expansion
+     * (Wall Along Path / Beam Along Path / railing path sampling).
+     */
+    public static final int MAX_ARCHITECTURAL_PATH_SEGMENTS = 4096;
+
+    /**
+     * Hard cap for architectural profile / arch sampling segments.
+     */
+    public static final int MAX_ARCHITECTURAL_PROFILE_SEGMENTS = 2048;
+
+    /**
      * Looser segment cap for shapes that need higher resolution to stay smooth.
      */
     public static final int MAX_HEART_SEGMENTS = 524_288;

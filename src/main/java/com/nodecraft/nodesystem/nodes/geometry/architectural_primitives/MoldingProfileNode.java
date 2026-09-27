@@ -8,18 +8,18 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -31,9 +31,11 @@ import java.util.UUID;
     displayName = "Molding Profile",
     description = "Generates decorative molding cross-section profiles",
     category = "geometry.architectural_primitives",
-    order = 13
+    order = 14
 )
 public class MoldingProfileNode extends BaseNode {
+
+    private static final Set<String> PROFILE_TYPES = Set.of("flat", "step", "cove", "ogee", "bevel");
 
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_PLANE_ID = "input_plane";
@@ -49,6 +51,7 @@ public class MoldingProfileNode extends BaseNode {
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
     private static final String OUTPUT_PLANE_ID = "output_plane";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public MoldingProfileNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.molding_profile");
@@ -67,6 +70,7 @@ public class MoldingProfileNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Closed boundary polyline", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Resolved construction plane", NodeDataType.PLANE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid molding profile could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -77,27 +81,54 @@ public class MoldingProfileNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         PlaneData plane = resolvePlane();
-        Vector3d center = resolveCenter();
-        if (plane == null || center == null) {
-            writeInvalid();
+        if (plane == null) {
+            writeInvalid("Face or Plane is required");
+            return;
+        }
+        Vector3d center = resolveCenter(plane);
+        if (center == null) {
+            writeInvalid("Center must be a finite Point when connected");
             return;
         }
 
         Basis basis = createBasis(plane);
         if (basis == null) {
-            writeInvalid();
+            writeInvalid("Plane normal must be a finite non-zero vector");
             return;
         }
 
-        double width = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_WIDTH_ID), 0.5d);
-        double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 0.5d);
-        double depth = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_DEPTH_ID), 0.1d);
-        int segments = GenerationLimits.clampSegments(4, ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_SEGMENTS_ID), 8));
-        String profileType = resolveProfileType(inputValues.get(INPUT_PROFILE_TYPE_ID));
+        String profileType = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_PROFILE_TYPE_ID, "flat", PROFILE_TYPES);
+        if (profileType == null) {
+            writeInvalid("Profile Type must be one of: flat, step, cove, ogee, bevel");
+            return;
+        }
+        Double width = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_WIDTH_ID, 0.5d);
+        if (width == null) {
+            writeInvalid("Width must be a positive finite number");
+            return;
+        }
+        Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 0.5d);
+        if (height == null) {
+            writeInvalid("Height must be a positive finite number");
+            return;
+        }
+        Double depth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_DEPTH_ID, 0.1d);
+        if (depth == null) {
+            writeInvalid("Depth must be a positive finite number");
+            return;
+        }
+        Integer segments = ArchitecturalInputUtils.resolveOptionalBoundedExactInteger(
+            this, INPUT_SEGMENTS_ID, 8, 4, GenerationLimits.MAX_ARCHITECTURAL_PROFILE_SEGMENTS);
+        if (segments == null) {
+            writeInvalid("Segments must be an exact integer in [4, "
+                + GenerationLimits.MAX_ARCHITECTURAL_PROFILE_SEGMENTS + "]");
+            return;
+        }
 
         List<Vector3d> points = buildProfilePoints(center, basis, profileType, width, height, depth, segments);
         if (points.size() < 4) {
-            writeInvalid();
+            writeInvalid("Could not generate molding profile for the given parameters");
             return;
         }
 
@@ -107,9 +138,18 @@ public class MoldingProfileNode extends BaseNode {
         outputValues.put(OUTPUT_BOUNDARY_ID, PathUtils.createPolylineOrNull(PathUtils.toVec3dList(points, false)));
         outputValues.put(OUTPUT_PLANE_ID, plane);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private List<Vector3d> buildProfilePoints(Vector3d center, Basis basis, String profileType, double width, double height, double depth, int segments) {
+    private List<Vector3d> buildProfilePoints(
+        Vector3d center,
+        Basis basis,
+        String profileType,
+        double width,
+        double height,
+        double depth,
+        int segments
+    ) {
         double halfWidth = width / 2.0d;
         double bottom = -height / 2.0d;
         double top = height / 2.0d;
@@ -172,7 +212,17 @@ public class MoldingProfileNode extends BaseNode {
         return points;
     }
 
-    private void addQuarterArc(List<Vector3d> points, Vector3d center, Basis basis, double cx, double cy, double radius, double startAngle, double endAngle, int segments) {
+    private void addQuarterArc(
+        List<Vector3d> points,
+        Vector3d center,
+        Basis basis,
+        double cx,
+        double cy,
+        double radius,
+        double startAngle,
+        double endAngle,
+        int segments
+    ) {
         List<Vector3d> guide = new ArrayList<>(5);
         for (int i = 0; i <= 4; i++) {
             double t = i / 4.0d;
@@ -182,7 +232,16 @@ public class MoldingProfileNode extends BaseNode {
         appendResampledLocalCurve(points, center, basis, guide, segments);
     }
 
-    private void addSCurve(List<Vector3d> points, Vector3d center, Basis basis, double startX, double startY, double width, double height, int segments) {
+    private void addSCurve(
+        List<Vector3d> points,
+        Vector3d center,
+        Basis basis,
+        double startX,
+        double startY,
+        double width,
+        double height,
+        int segments
+    ) {
         List<Vector3d> guide = new ArrayList<>(5);
         for (int i = 0; i <= 4; i++) {
             double t = i / 4.0d;
@@ -192,7 +251,13 @@ public class MoldingProfileNode extends BaseNode {
         appendResampledLocalCurve(points, center, basis, guide, segments);
     }
 
-    private void appendResampledLocalCurve(List<Vector3d> points, Vector3d center, Basis basis, List<Vector3d> guide, int segments) {
+    private void appendResampledLocalCurve(
+        List<Vector3d> points,
+        Vector3d center,
+        Basis basis,
+        List<Vector3d> guide,
+        int segments
+    ) {
         if (guide.size() < 2) {
             return;
         }
@@ -214,32 +279,35 @@ public class MoldingProfileNode extends BaseNode {
         return new Vector3d(center).fma(x, basis.xAxis()).fma(y, basis.yAxis());
     }
 
-    private PlaneData resolvePlane() {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
+    private @Nullable PlaneData resolvePlane() {
+        Object faceObj = getInput(INPUT_FACE_ID);
         if (faceObj instanceof BoxFaceData face) {
             ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
             if (frame != null) {
                 return new PlaneData(frame.center(), frame.zAxis());
             }
+            if (ArchitecturalInputUtils.isConnected(this, INPUT_FACE_ID)) {
+                return null;
+            }
+        } else if (ArchitecturalInputUtils.isConnected(this, INPUT_FACE_ID)) {
+            return null;
         }
-        if (inputValues.get(INPUT_PLANE_ID) instanceof PlaneData plane) {
-            return plane;
+
+        if (ArchitecturalInputUtils.isConnected(this, INPUT_PLANE_ID)) {
+            return OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
         }
-        return null;
+        Object planeObj = getInput(INPUT_PLANE_ID);
+        return planeObj instanceof PlaneData plane ? plane : null;
     }
 
-    private Vector3d resolveCenter() {
-        Vector3d center = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_CENTER_ID));
-        if (center != null) {
-            return center;
+    private @Nullable Vector3d resolveCenter(PlaneData plane) {
+        if (ArchitecturalInputUtils.isConnected(this, INPUT_CENTER_ID)) {
+            return ArchitecturalInputUtils.resolveRequiredPointData(this, INPUT_CENTER_ID);
         }
-        if (inputValues.get(INPUT_FACE_ID) instanceof BoxFaceData face) {
+        if (getInput(INPUT_FACE_ID) instanceof BoxFaceData face) {
             return face.getCenter();
         }
-        if (inputValues.get(INPUT_PLANE_ID) instanceof PlaneData plane) {
-            return plane.getPoint();
-        }
-        return null;
+        return plane.getPoint();
     }
 
     private Basis createBasis(PlaneData plane) {
@@ -252,7 +320,9 @@ public class MoldingProfileNode extends BaseNode {
         Vector3d reference = Math.abs(normal.z) < 0.99d ? new Vector3d(0.0d, 0.0d, 1.0d) : new Vector3d(0.0d, 1.0d, 0.0d);
         Vector3d xAxis = reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
         if (xAxis.lengthSquared() <= 1.0e-12d) {
-            xAxis = Math.abs(normal.x) < 0.99d ? new Vector3d(1.0d, 0.0d, 0.0d).cross(normal) : new Vector3d(0.0d, 1.0d, 0.0d).cross(normal);
+            xAxis = Math.abs(normal.x) < 0.99d
+                ? new Vector3d(1.0d, 0.0d, 0.0d).cross(normal)
+                : new Vector3d(0.0d, 1.0d, 0.0d).cross(normal);
         }
         if (xAxis.lengthSquared() <= 1.0e-12d) {
             return null;
@@ -267,20 +337,15 @@ public class MoldingProfileNode extends BaseNode {
         return new Basis(xAxis, yAxis, normal);
     }
 
-    private String resolveProfileType(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return stringValue.trim().toLowerCase(Locale.ROOT);
-        }
-        return "flat";
-    }
-
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_PROFILE_ID, null);
         outputValues.put(OUTPUT_POINTS_ID, List.of());
         outputValues.put(OUTPUT_BOUNDARY_ID, null);
         outputValues.put(OUTPUT_PLANE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
-    private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) { }
+    private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) {
+    }
 }

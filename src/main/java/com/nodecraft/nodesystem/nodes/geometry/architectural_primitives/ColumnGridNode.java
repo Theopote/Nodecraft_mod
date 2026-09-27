@@ -5,19 +5,20 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -32,6 +33,8 @@ import java.util.UUID;
     order = 2
 )
 public class ColumnGridNode extends AbstractFaceArrayNode {
+
+    private static final Set<String> ALLOWED_SHAPES = Set.of("cylinder", "box", "frustum");
 
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_COLUMNS_ID = "input_columns";
@@ -48,6 +51,7 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
     private static final String OUTPUT_TOP_POINTS_ID = "output_top_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ColumnGridNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.column_grid");
@@ -67,6 +71,7 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Column top points along the face normal", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of columns created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid column grid could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -76,43 +81,78 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object faceObj = inputValues.get(INPUT_FACE_ID);
-
-        GeometryData geometry = null;
-        List<FrameData> frames = null;
-        List<PointData> basePoints = null;
-        List<PointData> topPoints = null;
-        int count = 0;
-        boolean valid = false;
-
-        if (faceObj instanceof BoxFaceData face) {
-            int columns = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_COLUMNS_ID), 1);
-            int rows = ArchitecturalPrimitiveSupport.resolvePositiveInt(inputValues.get(INPUT_ROWS_ID), 1);
-            double radius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RADIUS_ID), 0.5d);
-            double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 3.0d);
-            double margin = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_MARGIN_ID), 0.0d);
-            double topScale = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_TOP_SCALE_ID), 1.0d);
-            String shape = resolveShape(inputValues.get(INPUT_SHAPE_ID));
-            FaceArrayLayout layout = resolveFaceArrayLayout(face, columns, rows, radius * 2.0d, radius * 2.0d, margin, VerticalAnchor.BOTTOM);
-            if (layout != null) {
-                List<GeometryData> columnsGeometry = buildColumns(layout, radius, height, topScale, shape);
-                if (!columnsGeometry.isEmpty()) {
-                    geometry = new CompositeGeometryData(columnsGeometry);
-                    frames = buildPlacementFrames(layout);
-                    basePoints = buildCenters(layout);
-                    topPoints = buildTopPoints(layout, height);
-                    count = columnsGeometry.size();
-                    valid = true;
-                }
-            }
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid("Face is required");
+            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        Integer columns = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_COLUMNS_ID, 1);
+        if (columns == null) {
+            writeInvalid("Columns must be an exact positive integer");
+            return;
+        }
+
+        Integer rows = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_ROWS_ID, 1);
+        if (rows == null) {
+            writeInvalid("Rows must be an exact positive integer");
+            return;
+        }
+
+        Double radius = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_RADIUS_ID, 0.5d);
+        if (radius == null) {
+            writeInvalid("Radius must be a positive finite number");
+            return;
+        }
+
+        Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 3.0d);
+        if (height == null) {
+            writeInvalid("Height must be a positive finite number");
+            return;
+        }
+
+        Double margin = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_MARGIN_ID, 0.0d);
+        if (margin == null) {
+            writeInvalid("Margin must be a non-negative finite number");
+            return;
+        }
+
+        String shape = ArchitecturalInputUtils.resolveKnownStringEnum(this, INPUT_SHAPE_ID, "cylinder", ALLOWED_SHAPES);
+        if (shape == null) {
+            writeInvalid("Shape must be cylinder, box, or frustum");
+            return;
+        }
+
+        Double topScale = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_TOP_SCALE_ID, 1.0d);
+        if (topScale == null) {
+            writeInvalid("Top Scale must be a positive finite number");
+            return;
+        }
+
+        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+            writeInvalid("Requested instance count exceeds limit");
+            return;
+        }
+
+        FaceArrayLayout layout = resolveFaceArrayLayout(
+            face, columns, rows, radius * 2.0d, radius * 2.0d, margin, VerticalAnchor.BOTTOM);
+        if (layout == null) {
+            writeInvalid("Requested array does not fit on face");
+            return;
+        }
+
+        List<GeometryData> columnsGeometry = buildColumns(layout, radius, height, topScale, shape);
+        List<FrameData> frames = buildPlacementFrames(layout);
+        List<PointData> basePoints = buildCenters(layout);
+        List<PointData> topPoints = buildTopPoints(layout, height);
+
+        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(columnsGeometry));
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_BASE_POINTS_ID, basePoints);
         outputValues.put(OUTPUT_TOP_POINTS_ID, topPoints);
-        outputValues.put(OUTPUT_COUNT_ID, count);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_COUNT_ID, columns * rows);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private List<PointData> buildTopPoints(FaceArrayLayout layout, double height) {
@@ -147,22 +187,24 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         ArchitecturalPrimitiveSupport.FaceFrame frame
     ) {
         Vector3d axis = new Vector3d(top).sub(base);
-        String normalizedShape = shape.toLowerCase(Locale.ROOT);
-        if ("box".equals(normalizedShape)) {
+        if ("box".equals(shape)) {
             Vector3d center = new Vector3d(base).add(top).mul(0.5d);
             Vector3d halfExtents = new Vector3d(radius, axis.length() / 2.0d, radius);
             return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.zAxis(), frame.yAxis());
         }
-        if ("frustum".equals(normalizedShape)) {
+        if ("frustum".equals(shape)) {
             return new FrustumConeGeometryData(base, top, radius, radius * topScale);
         }
         return new CylinderGeometryData(base, top, radius);
     }
 
-    private String resolveShape(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return stringValue.trim();
-        }
-        return "cylinder";
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_FRAMES_ID, null);
+        outputValues.put(OUTPUT_BASE_POINTS_ID, null);
+        outputValues.put(OUTPUT_TOP_POINTS_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

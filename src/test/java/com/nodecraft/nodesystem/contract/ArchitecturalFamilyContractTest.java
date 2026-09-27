@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnGr
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.DoorArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabNode;
-import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabWithBeamsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofGeneratorNode;
@@ -48,7 +47,7 @@ class ArchitecturalFamilyContractTest {
     void coreFiveUseTypedFootprintAndPathPorts() {
         assertPortType(new WallWithOpeningsNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new FloorSlabNode(), "input_face", NodeDataType.BOX_FACE);
-        assertPortType(new FloorSlabWithBeamsNode(), "input_face", NodeDataType.BOX_FACE);
+        assertPortType(new BeamGridNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new RoofBaseNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new RoofGeneratorNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new WindowArrayNode(), "input_face", NodeDataType.BOX_FACE);
@@ -63,9 +62,7 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new WallWithOpeningsNode(), "output_top_edge", NodeDataType.PATH);
         assertPortType(new FloorSlabNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new FloorSlabNode(), "output_top_face", NodeDataType.BOX_FACE);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_geometry", NodeDataType.GEOMETRY);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_slab", NodeDataType.GEOMETRY);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_beams", NodeDataType.GEOMETRY);
+        assertPortType(new BeamGridNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new RoofBaseNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new RoofBaseNode(), "output_eave_path", NodeDataType.PATH);
         assertPortType(new RoofGeneratorNode(), "output_geometry", NodeDataType.GEOMETRY);
@@ -74,7 +71,7 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new StaircaseNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new WallWithOpeningsNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new FloorSlabNode(), "output_valid", NodeDataType.BOOLEAN);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_valid", NodeDataType.BOOLEAN);
+        assertPortType(new BeamGridNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new RoofBaseNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new RoofGeneratorNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new WindowArrayNode(), "output_valid", NodeDataType.BOOLEAN);
@@ -89,8 +86,6 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new BeamGridNode(), "input_face", NodeDataType.BOX_FACE);
         assertPortType(new BeamGridNode(), "output_frames", NodeDataType.FRAME_LIST);
         assertPortType(new BeamGridNode(), "output_center_lines", NodeDataType.PATH_LIST);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_beam_center_lines", NodeDataType.PATH_LIST);
-        assertPortType(new FloorSlabWithBeamsNode(), "output_beam_frames", NodeDataType.FRAME_LIST);
         assertPortType(new RoofBaseNode(), "output_ridge_path", NodeDataType.PATH);
         assertPortType(new RoofGeneratorNode(), "output_ridge_path", NodeDataType.PATH);
     }

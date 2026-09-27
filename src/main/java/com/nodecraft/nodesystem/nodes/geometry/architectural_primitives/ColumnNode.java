@@ -11,10 +11,13 @@ import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.Locale;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -26,9 +29,11 @@ import java.util.UUID;
     displayName = "Column",
     description = "Generates a single column from a frame or base point",
     category = "geometry.architectural_primitives",
-    order = 22
+    order = 17
 )
 public class ColumnNode extends BaseNode {
+
+    private static final Set<String> SHAPES = Set.of("cylinder", "box", "frustum");
 
     private static final String INPUT_FRAME_ID = "input_frame";
     private static final String INPUT_BASE_ID = "input_base";
@@ -42,15 +47,17 @@ public class ColumnNode extends BaseNode {
     private static final String OUTPUT_TOP_ID = "output_top";
     private static final String OUTPUT_FRAME_ID = "output_frame";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ColumnNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.column");
 
         addInputPort(new BasePort(INPUT_FRAME_ID, "Frame",
-            "Optional placement frame (origin = base; Y = up). Overrides Base when connected",
+            "Placement frame (origin = base; Y = up). Exactly one of Frame or Base must be connected",
             NodeDataType.FRAME, this));
         addInputPort(new BasePort(INPUT_BASE_ID, "Base",
-            "Column base point when Frame is unconnected", NodeDataType.POINT, this));
+            "Column base PointData when Frame is unconnected. Exactly one of Frame or Base must be connected",
+            NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Column height along up", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Base column radius or half-width", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SHAPE_ID, "Shape", "Column shape: cylinder, box, or frustum", NodeDataType.STRING, this));
@@ -61,6 +68,7 @@ public class ColumnNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TOP_ID, "Top", "Column top point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Placement frame at the column base", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid column could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -70,52 +78,82 @@ public class ColumnNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        GeometryData geometry = null;
-        PointData baseOut = null;
-        PointData topOut = null;
-        FrameData frameOut = null;
-        boolean valid = false;
+        boolean frameConnected = ArchitecturalInputUtils.isConnected(this, INPUT_FRAME_ID);
+        boolean baseConnected = ArchitecturalInputUtils.isConnected(this, INPUT_BASE_ID);
+        if (frameConnected == baseConnected) {
+            writeInvalid(frameConnected
+                ? "Connect exactly one of Frame or Base Point (not both)"
+                : "Connect exactly one of Frame or Base Point");
+            return;
+        }
 
-        ResolvedBasis basis = resolveBasis();
-        if (basis != null) {
-            double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 3.0d);
-            double radius = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_RADIUS_ID), 0.5d);
-            double topScale = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_TOP_SCALE_ID), 1.0d);
-            String shape = resolveShape(inputValues.get(INPUT_SHAPE_ID));
+        ResolvedBasis basis = frameConnected ? resolveFrameBasis() : resolveBaseBasis();
+        if (basis == null) {
+            return;
+        }
 
-            Vector3d base = basis.base();
-            Vector3d top = new Vector3d(base).fma(height, basis.up());
-            geometry = createColumnGeometry(base, top, radius, topScale, shape, basis);
-            baseOut = new PointData(base);
-            topOut = new PointData(top);
-            frameOut = new FrameData(base, basis.x(), basis.up(), basis.z());
-            valid = true;
+        Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 3.0d);
+        if (height == null) {
+            writeInvalid("Height must be a positive finite number");
+            return;
+        }
+        Double radius = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_RADIUS_ID, 0.5d);
+        if (radius == null) {
+            writeInvalid("Radius must be a positive finite number");
+            return;
+        }
+        Double topScale = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_TOP_SCALE_ID, 1.0d);
+        if (topScale == null) {
+            writeInvalid("Top Scale must be a positive finite number");
+            return;
+        }
+        String shape = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_SHAPE_ID, "cylinder", SHAPES);
+        if (shape == null) {
+            writeInvalid("Shape must be one of: cylinder, box, frustum");
+            return;
+        }
+
+        Vector3d base = basis.base();
+        Vector3d top = new Vector3d(base).fma(height, basis.up());
+        GeometryData geometry = GeometryOutputUtils.packGeometry(List.of(
+            createColumnGeometry(base, top, radius, topScale, shape, basis)));
+        if (geometry == null) {
+            writeInvalid("Could not generate column geometry");
+            return;
         }
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
-        outputValues.put(OUTPUT_BASE_ID, baseOut);
-        outputValues.put(OUTPUT_TOP_ID, topOut);
-        outputValues.put(OUTPUT_FRAME_ID, frameOut);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_BASE_ID, new PointData(base));
+        outputValues.put(OUTPUT_TOP_ID, new PointData(top));
+        outputValues.put(OUTPUT_FRAME_ID, new FrameData(base, basis.x(), basis.up(), basis.z()));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private @Nullable ResolvedBasis resolveBasis() {
-        Object frameObj = inputValues.get(INPUT_FRAME_ID);
-        if (frameObj instanceof FrameData frame) {
-            FrameData orthonormal = frame.orthonormalized();
-            if (orthonormal == null) {
-                return null;
-            }
-            return new ResolvedBasis(
-                orthonormal.getOrigin(),
-                orthonormal.getXAxis(),
-                orthonormal.getYAxis(),
-                orthonormal.getZAxis()
-            );
+    private @Nullable ResolvedBasis resolveFrameBasis() {
+        Object frameObj = getInput(INPUT_FRAME_ID);
+        if (!(frameObj instanceof FrameData frame)) {
+            writeInvalid("Frame must be a valid FRAME when connected");
+            return null;
         }
+        FrameData orthonormal = frame.orthonormalized();
+        if (orthonormal == null) {
+            writeInvalid("Frame must be a non-degenerate FRAME");
+            return null;
+        }
+        return new ResolvedBasis(
+            orthonormal.getOrigin(),
+            orthonormal.getXAxis(),
+            orthonormal.getYAxis(),
+            orthonormal.getZAxis()
+        );
+    }
 
-        Vector3d base = resolveBasePoint(inputValues.get(INPUT_BASE_ID));
+    private @Nullable ResolvedBasis resolveBaseBasis() {
+        Vector3d base = ArchitecturalInputUtils.resolveRequiredPointData(this, INPUT_BASE_ID);
         if (base == null) {
+            writeInvalid("Base must be PointData (bare Vector3d is not accepted)");
             return null;
         }
         Vector3d up = new Vector3d(0.0d, 1.0d, 0.0d);
@@ -128,21 +166,6 @@ public class ColumnNode extends BaseNode {
         return new ResolvedBasis(base, x, up, z);
     }
 
-    private static @Nullable Vector3d resolveBasePoint(Object value) {
-        if (value instanceof PointData point) {
-            Vector3d position = point.position();
-            if (Double.isFinite(position.x) && Double.isFinite(position.y) && Double.isFinite(position.z)) {
-                return new Vector3d(position);
-            }
-            return null;
-        }
-        if (value instanceof Vector3d vector
-            && Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z)) {
-            return new Vector3d(vector);
-        }
-        return null;
-    }
-
     private GeometryData createColumnGeometry(
         Vector3d base,
         Vector3d top,
@@ -151,25 +174,26 @@ public class ColumnNode extends BaseNode {
         String shape,
         ResolvedBasis basis
     ) {
-        String normalized = shape.toLowerCase(Locale.ROOT);
-        if ("box".equals(normalized)) {
+        if ("box".equals(shape)) {
             Vector3d center = new Vector3d(base).add(top).mul(0.5d);
             double height = base.distance(top);
             Vector3d halfExtents = new Vector3d(radius, height / 2.0d, radius);
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, basis.x(), basis.up(), basis.z());
         }
-        if ("frustum".equals(normalized)) {
+        if ("frustum".equals(shape)) {
             return new FrustumConeGeometryData(base, top, radius, radius * topScale);
         }
         return new CylinderGeometryData(base, top, radius);
     }
 
-    private String resolveShape(Object value) {
-        if (value instanceof String stringValue && !stringValue.isBlank()) {
-            return stringValue.trim();
-        }
-        return "cylinder";
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_BASE_ID, null);
+        outputValues.put(OUTPUT_TOP_ID, null);
+        outputValues.put(OUTPUT_FRAME_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private record ResolvedBasis(Vector3d base, Vector3d x, Vector3d up, Vector3d z) {

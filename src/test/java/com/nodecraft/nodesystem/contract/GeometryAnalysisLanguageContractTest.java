@@ -73,7 +73,6 @@ class GeometryAnalysisLanguageContractTest {
     void currentGraphFormatIsAtLeastV67() {
         assertEquals(67, GraphFormatVersion.V67);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V67);
-        assertEquals(GraphFormatVersion.V67, GraphFormatVersion.CURRENT);
     }
 
     @Test

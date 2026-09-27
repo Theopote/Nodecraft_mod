@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -51,6 +52,10 @@ abstract class AbstractFaceArrayNode extends BaseNode {
             return null;
         }
 
+        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+            return null;
+        }
+
         double spacingX = columns > 1 ? (availableWidth - columns * elementWidth) / (columns - 1) : 0.0d;
         double spacingY = rows > 1 ? (availableHeight - rows * elementHeight) / (rows - 1) : 0.0d;
         if (spacingX < -EPSILON || spacingY < -EPSILON) {
@@ -66,7 +71,11 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     }
 
     protected List<FaceArrayPlacement> enumeratePlacements(FaceArrayLayout layout) {
-        List<FaceArrayPlacement> placements = new ArrayList<>(layout.columns() * layout.rows());
+        int capacity = GeometryOutputUtils.architecturalInstanceCount(layout.columns(), layout.rows());
+        if (capacity < 0) {
+            return List.of();
+        }
+        List<FaceArrayPlacement> placements = new ArrayList<>(capacity);
         for (int row = 0; row < layout.rows(); row++) {
             double offsetY = layout.verticalAnchor() == VerticalAnchor.TOP
                 ? layout.startY() - row * (layout.elementHeight() + layout.spacingY())
@@ -80,7 +89,11 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     }
 
     protected <T extends GeometryData> List<T> buildFaceArray(FaceArrayLayout layout, FaceArrayGeometryFactory<T> factory) {
-        List<T> results = new ArrayList<>(layout.columns() * layout.rows());
+        int capacity = GeometryOutputUtils.architecturalInstanceCount(layout.columns(), layout.rows());
+        if (capacity < 0) {
+            return List.of();
+        }
+        List<T> results = new ArrayList<>(capacity);
         for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
             T geometry = factory.create(placement);
             if (geometry != null) {
@@ -104,7 +117,11 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     }
 
     protected List<FrameData> buildPlacementFrames(FaceArrayLayout layout) {
-        List<FrameData> frames = new ArrayList<>(layout.columns() * layout.rows());
+        int capacity = GeometryOutputUtils.architecturalInstanceCount(layout.columns(), layout.rows());
+        if (capacity < 0) {
+            return List.of();
+        }
+        List<FrameData> frames = new ArrayList<>(capacity);
         for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
             frames.add(placementFrame(placement));
         }
@@ -112,7 +129,11 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     }
 
     protected List<PointData> buildCenters(FaceArrayLayout layout) {
-        List<PointData> centers = new ArrayList<>(layout.columns() * layout.rows());
+        int capacity = GeometryOutputUtils.architecturalInstanceCount(layout.columns(), layout.rows());
+        if (capacity < 0) {
+            return List.of();
+        }
+        List<PointData> centers = new ArrayList<>(capacity);
         for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
             centers.add(new PointData(placement.centerOnFace()));
         }

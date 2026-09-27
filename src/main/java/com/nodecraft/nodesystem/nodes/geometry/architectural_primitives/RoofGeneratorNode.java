@@ -6,15 +6,18 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
+import com.nodecraft.nodesystem.util.GeometryOutputUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -27,9 +30,12 @@ import java.util.UUID;
     displayName = "Roof Generator",
     description = "Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable",
     category = "geometry.architectural_primitives",
-    order = 5
+    order = 6
 )
 public class RoofGeneratorNode extends BaseNode {
+
+    private static final Set<String> SPECIALTY_TYPES = Set.of("asymmetric_gable", "hip", "cross_gable", "m");
+    private static final Set<String> RIDGE_DIRECTIONS = Set.of("x", "y");
 
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_ROOF_TYPE_ID = "input_roof_type";
@@ -52,13 +58,14 @@ public class RoofGeneratorNode extends BaseNode {
     private static final String OUTPUT_EAVE_PATH_ID = "output_eave_path";
     private static final String OUTPUT_RIDGE_PATH_ID = "output_ridge_path";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public RoofGeneratorNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.roof_generator");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the roof footprint", NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_ROOF_TYPE_ID, "Roof Type",
-            "Advanced roof type: flat, shed, gable, asymmetric_gable, hip, cross_gable, or m", NodeDataType.STRING, this));
+            "Specialty roof type: asymmetric_gable, hip, cross_gable, or m", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Roof peak height above the footprint", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Thickness used for flat roof slabs", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OVERHANG_ID, "Overhang", "Extra overhang beyond the footprint edges", NodeDataType.DOUBLE, this));
@@ -75,9 +82,10 @@ public class RoofGeneratorNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CROSS_GABLE_OFFSET_ID, "Cross Gable Offset", "Normalized offset for the crossing gable wing along the primary ridge axis (-0.5 to 0.5)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Generated roof geometry", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_EAVE_PATH_ID, "Eave Path", "Primary eave edge path", NodeDataType.PATH, this));
-        addOutputPort(new BasePort(OUTPUT_RIDGE_PATH_ID, "Ridge Path", "Primary ridge path when applicable", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_EAVE_PATH_ID, "Primary Eave Path", "Primary eave edge path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_RIDGE_PATH_ID, "Primary Ridge Path", "Primary ridge path when applicable", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid roof could be generated", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -87,75 +95,148 @@ public class RoofGeneratorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        GeometryData geometry = null;
-        PathData eavePath = null;
-        PathData ridgePath = null;
-        boolean valid = false;
-
-        if (inputValues.get(INPUT_FACE_ID) instanceof BoxFaceData face) {
-            ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
-            if (frame != null) {
-                String roofType = RoofGeometrySupport.resolveRoofType(inputValues.get(INPUT_ROOF_TYPE_ID));
-                double height = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_HEIGHT_ID), 2.0d);
-                double thickness = ArchitecturalPrimitiveSupport.resolvePositiveDouble(inputValues.get(INPUT_THICKNESS_ID), 0.25d);
-                double overhang = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_OVERHANG_ID), 0.0d);
-                String ridgeDirection = RoofGeometrySupport.resolveRidgeDirection(inputValues.get(INPUT_RIDGE_DIRECTION_ID));
-                double ridgeRatio = resolveRidgeRatio(inputValues.get(INPUT_RIDGE_RATIO_ID));
-                double inset = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_INSET_ID), 0.0d);
-                double eaveDrop = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_EAVE_DROP_ID), 0.0d);
-                double mPeakRatio = resolveMPeakRatio(inputValues.get(INPUT_M_PEAK_RATIO_ID));
-                double valleyDrop = ArchitecturalPrimitiveSupport.resolveNonNegativeDouble(inputValues.get(INPUT_VALLEY_DROP_ID), height * 0.5d);
-                double asymmetricLeftHeightRatio = resolveHeightRatio(inputValues.get(INPUT_ASYMMETRIC_LEFT_HEIGHT_RATIO_ID), 1.0d);
-                double asymmetricRightHeightRatio = resolveHeightRatio(inputValues.get(INPUT_ASYMMETRIC_RIGHT_HEIGHT_RATIO_ID), 0.65d);
-                double crossGableRatio = resolveCrossGableRatio(inputValues.get(INPUT_CROSS_GABLE_RATIO_ID));
-                double secondaryHeightRatio = resolveHeightRatio(inputValues.get(INPUT_SECONDARY_HEIGHT_RATIO_ID), 0.85d);
-                double crossGableOffset = resolveCrossGableOffset(inputValues.get(INPUT_CROSS_GABLE_OFFSET_ID));
-
-                double roofWidth = frame.width() + 2.0d * overhang;
-                double roofDepth = frame.height() + 2.0d * overhang;
-                Vector3d eaveCenter = new Vector3d(frame.center()).fma(-eaveDrop, frame.zAxis());
-                eavePath = RoofGeometrySupport.eaveLoop(frame, eaveCenter, roofWidth, roofDepth);
-
-                if ("flat".equals(roofType) || "shed".equals(roofType) || "gable".equals(roofType)) {
-                    RoofGeometrySupport.RoofResult core = RoofGeometrySupport.buildCoreRoof(
-                        new RoofGeometrySupport.RoofLayout(
-                            frame, roofType, height, thickness, overhang, ridgeDirection, eaveDrop));
-                    geometry = core.geometry();
-                    eavePath = core.eavePath();
-                    ridgePath = core.ridgePath();
-                } else {
-                    geometry = buildSpecialtyRoof(
-                        frame,
-                        eaveCenter,
-                        roofWidth,
-                        roofDepth,
-                        roofType,
-                        height,
-                        ridgeDirection,
-                        ridgeRatio,
-                        inset,
-                        mPeakRatio,
-                        valleyDrop,
-                        asymmetricLeftHeightRatio,
-                        asymmetricRightHeightRatio,
-                        crossGableRatio,
-                        secondaryHeightRatio,
-                        crossGableOffset
-                    );
-                    if ("asymmetric_gable".equals(roofType) || "hip".equals(roofType)
-                        || "cross_gable".equals(roofType) || "m".equals(roofType)) {
-                        ridgePath = RoofGeometrySupport.gableRidgePath(
-                            frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
-                    }
-                }
-                valid = geometry != null;
-            }
+        BoxFaceData face = ArchitecturalInputUtils.resolveRequiredFace(this, INPUT_FACE_ID);
+        if (face == null) {
+            writeInvalid("Face is required");
+            return;
         }
+        ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
+        if (frame == null) {
+            writeInvalid("Face is required (non-degenerate box face)");
+            return;
+        }
+
+        String roofType = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_ROOF_TYPE_ID, "hip", SPECIALTY_TYPES);
+        if (roofType == null) {
+            writeInvalid("Roof Type must be one of: asymmetric_gable, hip, cross_gable, m "
+                + "(use Roof Base for flat/shed/gable)");
+            return;
+        }
+        String ridgeDirection = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_RIDGE_DIRECTION_ID, "x", RIDGE_DIRECTIONS);
+        if (ridgeDirection == null) {
+            writeInvalid("Ridge Direction must be one of: x, y");
+            return;
+        }
+
+        Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 2.0d);
+        if (height == null) {
+            writeInvalid("Height must be a positive finite number");
+            return;
+        }
+        Double thickness = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_THICKNESS_ID, 0.25d);
+        if (thickness == null) {
+            writeInvalid("Thickness must be a positive finite number");
+            return;
+        }
+        Double overhang = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_OVERHANG_ID, 0.0d);
+        if (overhang == null) {
+            writeInvalid("Overhang must be a non-negative finite number");
+            return;
+        }
+        Double inset = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_INSET_ID, 0.0d);
+        if (inset == null) {
+            writeInvalid("Inset must be a non-negative finite number");
+            return;
+        }
+        Double eaveDrop = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_EAVE_DROP_ID, 0.0d);
+        if (eaveDrop == null) {
+            writeInvalid("Eave Drop must be a non-negative finite number");
+            return;
+        }
+
+        Double ridgeRatio = resolveBoundedRatio(INPUT_RIDGE_RATIO_ID, 0.5d, 0.1d, 0.9d, "Ridge Ratio");
+        if (ridgeRatio == null) {
+            return;
+        }
+        Double mPeakRatio = resolveBoundedRatio(INPUT_M_PEAK_RATIO_ID, 0.25d, 0.1d, 0.45d, "M Peak Ratio");
+        if (mPeakRatio == null) {
+            return;
+        }
+        Double valleyDrop = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(
+            this, INPUT_VALLEY_DROP_ID, height * 0.5d);
+        if (valleyDrop == null) {
+            writeInvalid("Valley Drop must be a non-negative finite number");
+            return;
+        }
+        Double asymmetricLeft = resolveBoundedRatio(
+            INPUT_ASYMMETRIC_LEFT_HEIGHT_RATIO_ID, 1.0d, 0.25d, 1.5d, "Asymmetric Left Height Ratio");
+        if (asymmetricLeft == null) {
+            return;
+        }
+        Double asymmetricRight = resolveBoundedRatio(
+            INPUT_ASYMMETRIC_RIGHT_HEIGHT_RATIO_ID, 0.65d, 0.25d, 1.5d, "Asymmetric Right Height Ratio");
+        if (asymmetricRight == null) {
+            return;
+        }
+        Double crossGableRatio = resolveBoundedRatio(
+            INPUT_CROSS_GABLE_RATIO_ID, 0.6d, 0.25d, 0.95d, "Cross Gable Ratio");
+        if (crossGableRatio == null) {
+            return;
+        }
+        Double secondaryHeightRatio = resolveBoundedRatio(
+            INPUT_SECONDARY_HEIGHT_RATIO_ID, 0.85d, 0.25d, 1.5d, "Secondary Height Ratio");
+        if (secondaryHeightRatio == null) {
+            return;
+        }
+        Double crossGableOffset = resolveBoundedRatio(
+            INPUT_CROSS_GABLE_OFFSET_ID, 0.0d, -0.5d, 0.5d, "Cross Gable Offset");
+        if (crossGableOffset == null) {
+            return;
+        }
+
+        double roofWidth = frame.width() + 2.0d * overhang;
+        double roofDepth = frame.height() + 2.0d * overhang;
+        Vector3d eaveCenter = new Vector3d(frame.center()).fma(-eaveDrop, frame.zAxis());
+        PathData eavePath = RoofGeometrySupport.eaveLoop(frame, eaveCenter, roofWidth, roofDepth);
+
+        GeometryData geometry = buildSpecialtyRoof(
+            frame,
+            eaveCenter,
+            roofWidth,
+            roofDepth,
+            roofType,
+            height,
+            ridgeDirection,
+            ridgeRatio,
+            inset,
+            mPeakRatio,
+            valleyDrop,
+            asymmetricLeft,
+            asymmetricRight,
+            crossGableRatio,
+            secondaryHeightRatio,
+            crossGableOffset
+        );
+        if (geometry == null) {
+            writeInvalid("Could not generate roof geometry for the given parameters");
+            return;
+        }
+
+        PathData ridgePath = RoofGeometrySupport.gableRidgePath(
+            frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection);
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_EAVE_PATH_ID, eavePath);
         outputValues.put(OUTPUT_RIDGE_PATH_ID, ridgePath);
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable Double resolveBoundedRatio(
+        String portId,
+        double fallback,
+        double minInclusive,
+        double maxInclusive,
+        String label
+    ) {
+        Double value = OptionalPortDrive.resolveOptionalDouble(this, portId, fallback);
+        if (value == null || !(value >= minInclusive) || !(value <= maxInclusive) || !Double.isFinite(value)) {
+            writeInvalid(label + " must be a finite number in [" + minInclusive + ", " + maxInclusive + "]");
+            return null;
+        }
+        return value;
     }
 
     private GeometryData buildSpecialtyRoof(
@@ -178,28 +259,12 @@ public class RoofGeneratorNode extends BaseNode {
     ) {
         return switch (roofType) {
             case "asymmetric_gable" -> buildAsymmetricGableRoof(
-                frame,
-                eaveCenter,
-                roofWidth,
-                roofDepth,
-                height,
-                ridgeDirection,
-                ridgeRatio,
-                asymmetricLeftHeightRatio,
-                asymmetricRightHeightRatio
-            );
+                frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection, ridgeRatio,
+                asymmetricLeftHeightRatio, asymmetricRightHeightRatio);
             case "hip" -> buildHipRoof(frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection, ridgeRatio, inset);
             case "cross_gable" -> buildCrossGableRoof(
-                frame,
-                eaveCenter,
-                roofWidth,
-                roofDepth,
-                height,
-                ridgeDirection,
-                crossGableRatio,
-                secondaryHeightRatio,
-                crossGableOffset
-            );
+                frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection,
+                crossGableRatio, secondaryHeightRatio, crossGableOffset);
             case "m" -> buildMRoof(frame, eaveCenter, roofWidth, roofDepth, height, ridgeDirection, mPeakRatio, valleyDrop);
             default -> null;
         };
@@ -309,7 +374,7 @@ public class RoofGeneratorNode extends BaseNode {
             height * secondaryHeightRatio,
             secondaryDirection
         );
-        return new CompositeGeometryData(List.of(primary, secondary));
+        return GeometryOutputUtils.packGeometry(List.of(primary, secondary));
     }
 
     private GeometryData buildMRoof(
@@ -346,38 +411,11 @@ public class RoofGeneratorNode extends BaseNode {
         return new PrismGeometryData(profile, new Vector3d(frame.xAxis()).mul(roofWidth));
     }
 
-    private double resolveRidgeRatio(Object value) {
-        if (value instanceof Number number) {
-            return Math.max(0.1d, Math.min(0.9d, number.doubleValue()));
-        }
-        return 0.5d;
-    }
-
-    private double resolveMPeakRatio(Object value) {
-        if (value instanceof Number number) {
-            return Math.max(0.1d, Math.min(0.45d, number.doubleValue()));
-        }
-        return 0.25d;
-    }
-
-    private double resolveHeightRatio(Object value, double defaultValue) {
-        if (value instanceof Number number) {
-            return Math.max(0.25d, Math.min(1.5d, number.doubleValue()));
-        }
-        return defaultValue;
-    }
-
-    private double resolveCrossGableRatio(Object value) {
-        if (value instanceof Number number) {
-            return Math.max(0.25d, Math.min(0.95d, number.doubleValue()));
-        }
-        return 0.6d;
-    }
-
-    private double resolveCrossGableOffset(Object value) {
-        if (value instanceof Number number) {
-            return Math.max(-0.5d, Math.min(0.5d, number.doubleValue()));
-        }
-        return 0.0d;
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_EAVE_PATH_ID, null);
+        outputValues.put(OUTPUT_RIDGE_PATH_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }
