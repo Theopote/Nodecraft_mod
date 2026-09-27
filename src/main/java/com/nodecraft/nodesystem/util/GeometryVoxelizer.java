@@ -109,17 +109,21 @@ public final class GeometryVoxelizer {
      * Strict geometry→voxel evaluation. Distinguishes legal empty SUCCESS from FAILURE.
      */
     public static GeometryVoxelizationResult voxelizeStrict(@Nullable GeometryData geometry, boolean fillSolid) {
-        if (geometry == null) {
-            return GeometryVoxelizationResult.fail(VoxelizationStatus.UNSUPPORTED, "Geometry is null");
-        }
-        if (geometry instanceof CompositeGeometryData compositeGeometry) {
-            return voxelizeCompositeStrict(compositeGeometry, fillSolid);
-        }
-        if (geometry instanceof DifferenceGeometryData differenceGeometry) {
-            return voxelizeDifferenceStrict(differenceGeometry, fillSolid);
-        }
-        if (geometry instanceof IntersectionGeometryData intersectionGeometry) {
-            return voxelizeIntersectionStrict(intersectionGeometry, fillSolid);
+        switch (geometry) {
+            case null -> {
+                return GeometryVoxelizationResult.fail(VoxelizationStatus.UNSUPPORTED, "Geometry is null");
+            }
+            case CompositeGeometryData compositeGeometry -> {
+                return voxelizeCompositeStrict(compositeGeometry, fillSolid);
+            }
+            case DifferenceGeometryData differenceGeometry -> {
+                return voxelizeDifferenceStrict(differenceGeometry, fillSolid);
+            }
+            case IntersectionGeometryData intersectionGeometry -> {
+                return voxelizeIntersectionStrict(intersectionGeometry, fillSolid);
+            }
+            default -> {
+            }
         }
         if (!isSupportedLeafType(geometry)) {
             return GeometryVoxelizationResult.fail(
@@ -338,7 +342,7 @@ public final class GeometryVoxelizer {
         boolean fillSolid
     ) {
         Set<BlockPos> mergedPositions = new LinkedHashSet<>();
-        for (GeometryData child : geometry.getGeometries()) {
+        for (GeometryData child : geometry.geometries()) {
             GeometryVoxelizationResult childResult = voxelizeStrict(child, fillSolid);
             if (!childResult.success()) {
                 return GeometryVoxelizationResult.fail(
@@ -429,7 +433,7 @@ public final class GeometryVoxelizer {
 
     public static @Nullable RegionData createCompositeBoundingRegion(CompositeGeometryData geometry) {
         RegionData merged = null;
-        for (GeometryData child : geometry.getGeometries()) {
+        for (GeometryData child : geometry.geometries()) {
             merged = unionBoundingRegions(merged, createBoundingRegion(child));
         }
         return merged;

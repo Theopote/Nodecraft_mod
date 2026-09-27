@@ -183,11 +183,10 @@ public class PreviewGeometryNode extends BaseNode {
             options.particleDensity = Math.max(8, Math.min(64, quality));
 
             if (previewDirty) {
-                List<String> refreshedIds = new ArrayList<>();
-                refreshedIds.addAll(PreviewManager.showGeometrySurfaces(
-                    getId().toString(),
-                    surfaceGeometries,
-                    options
+                List<String> refreshedIds = new ArrayList<>(PreviewManager.showGeometrySurfaces(
+                        getId().toString(),
+                        surfaceGeometries,
+                        options
                 ));
                 VoxelBooleanPreviewOutcome voxelOutcome = refreshVoxelBooleanPreview(context, voxelBooleanGeometries);
                 if (!voxelOutcome.success()) {
@@ -395,35 +394,22 @@ public class PreviewGeometryNode extends BaseNode {
 
     private void collectGeometryInput(@Nullable Object value, List<GeometryData> target) {
         switch (value) {
-            case null -> {
-                return;
-            }
             case CompositeGeometryData composite -> {
-                for (GeometryData child : composite.getGeometries()) {
+                for (GeometryData child : composite.geometries()) {
                     collectGeometryInput(child, target);
                 }
-                return;
             }
 
             // Keep deferred voxel boolean intact — do not expand operands (Preview ≠ Bake bug).
-            case DifferenceGeometryData difference -> {
-                target.add(difference);
-                return;
-            }
-            case IntersectionGeometryData intersection -> {
-                target.add(intersection);
-                return;
-            }
-            case GeometryData geometry -> {
-                target.add(geometry);
-                return;
-            }
+            case DifferenceGeometryData difference -> target.add(difference);
+            case IntersectionGeometryData intersection -> target.add(intersection);
+            case GeometryData geometry -> target.add(geometry);
             case List<?> list -> {
                 for (Object entry : list) {
                     collectGeometryInput(entry, target);
                 }
             }
-            default -> {
+            case null, default -> {
             }
         }
     }

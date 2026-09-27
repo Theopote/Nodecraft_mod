@@ -23,6 +23,7 @@ import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -171,7 +172,7 @@ public final class GeometryTransform {
 
         if (geometry instanceof CompositeGeometryData composite) {
             List<GeometryData> out = new ArrayList<>(composite.size());
-            for (GeometryData child : composite.getGeometries()) {
+            for (GeometryData child : composite.geometries()) {
                 GeometryData transformed = transform0(child, spec);
                 if (transformed == null) {
                     return null;
@@ -180,9 +181,9 @@ public final class GeometryTransform {
             }
             return out.isEmpty() ? null : new CompositeGeometryData(out);
         }
-        if (geometry instanceof IntersectionGeometryData intersection) {
-            GeometryData left = transform0(intersection.left(), spec);
-            GeometryData right = transform0(intersection.right(), spec);
+        if (geometry instanceof IntersectionGeometryData(GeometryData left1, GeometryData right1)) {
+            GeometryData left = transform0(left1, spec);
+            GeometryData right = transform0(right1, spec);
             if (left == null || right == null) {
                 return null;
             }
@@ -337,18 +338,7 @@ public final class GeometryTransform {
                     s
                 )
                 : new TransformedSdfData(sdf, spec.translation(), r, s);
-            Vector3d min = sdfGeom.min();
-            Vector3d max = sdfGeom.max();
-            Vector3d[] corners = {
-                new Vector3d(min.x, min.y, min.z),
-                new Vector3d(max.x, min.y, min.z),
-                new Vector3d(min.x, max.y, min.z),
-                new Vector3d(max.x, max.y, min.z),
-                new Vector3d(min.x, min.y, max.z),
-                new Vector3d(max.x, min.y, max.z),
-                new Vector3d(min.x, max.y, max.z),
-                new Vector3d(max.x, max.y, max.z)
-            };
+            Vector3d[] corners = getVector3ds(sdfGeom);
             Vector3d newMin = new Vector3d(Double.POSITIVE_INFINITY);
             Vector3d newMax = new Vector3d(Double.NEGATIVE_INFINITY);
             for (Vector3d corner : corners) {
@@ -359,6 +349,21 @@ public final class GeometryTransform {
             return new SdfGeometryData(wrapped, newMin, newMax, sdfGeom.isoValue());
         }
         return null;
+    }
+
+    private static Vector3d @NonNull [] getVector3ds(SdfGeometryData sdfGeom) {
+        Vector3d min = sdfGeom.min();
+        Vector3d max = sdfGeom.max();
+        return new Vector3d[]{
+            new Vector3d(min.x, min.y, min.z),
+            new Vector3d(max.x, min.y, min.z),
+            new Vector3d(min.x, max.y, min.z),
+            new Vector3d(max.x, max.y, min.z),
+            new Vector3d(min.x, min.y, max.z),
+            new Vector3d(max.x, min.y, max.z),
+            new Vector3d(min.x, max.y, max.z),
+            new Vector3d(max.x, max.y, max.z)
+        };
     }
 
     private static Vector3d transformPoint(Vector3d point, Vector3d translation, Matrix3d rotation, double scale) {

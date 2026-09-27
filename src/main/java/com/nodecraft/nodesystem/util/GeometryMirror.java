@@ -45,7 +45,7 @@ public final class GeometryMirror {
         switch (geometry) {
             case CompositeGeometryData composite -> {
                 List<GeometryData> mirrored = new ArrayList<>(composite.size());
-                for (GeometryData child : composite.getGeometries()) {
+                for (GeometryData child : composite.geometries()) {
                     GeometryData m = mirror(child, plane);
                     if (m == null) {
                         return null;

@@ -50,7 +50,7 @@ class ArchitecturalPathFollowingContractTest {
         assertEquals(Boolean.TRUE, railing.getOutput("output_valid"));
         CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, railing.getOutput("output_geometry"));
 
-        List<Vector3d> postBases = geometry.getGeometries().stream()
+        List<Vector3d> postBases = geometry.geometries().stream()
             .filter(CylinderGeometryData.class::isInstance)
             .map(CylinderGeometryData.class::cast)
             .filter(cylinder -> Math.abs(cylinder.getEnd().y - cylinder.getStart().y) > 0.5d)
@@ -106,9 +106,9 @@ class ArchitecturalPathFollowingContractTest {
 
         assertEquals(Boolean.TRUE, stair.getOutput("output_valid"));
         CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, stair.getOutput("output_geometry"));
-        assertEquals(10, geometry.getGeometries().size());
+        assertEquals(10, geometry.geometries().size());
 
-        List<Vector3d> centers = geometry.getGeometries().stream()
+        List<Vector3d> centers = geometry.geometries().stream()
             .map(ArchitecturalPathFollowingContractTest::boxCenter)
             .toList();
 

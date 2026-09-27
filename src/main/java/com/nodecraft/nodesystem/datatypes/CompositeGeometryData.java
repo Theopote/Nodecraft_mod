@@ -1,7 +1,8 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import org.jspecify.annotations.NonNull;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -10,12 +11,10 @@ import java.util.Objects;
  * Structurally flat: nested composites are recursively flattened.
  * Null members are rejected (fail closed).
  */
-public class CompositeGeometryData implements GeometryData {
-
-    private final List<GeometryData> geometries;
+public record CompositeGeometryData(List<GeometryData> geometries) implements GeometryData {
 
     public CompositeGeometryData(List<GeometryData> geometries) {
-        this.geometries = Collections.unmodifiableList(flattenLeaves(geometries));
+        this.geometries = flattenLeaves(geometries);
     }
 
     /**
@@ -38,17 +37,13 @@ public class CompositeGeometryData implements GeometryData {
      */
     public static void appendLeaves(List<GeometryData> target, GeometryData geometry) {
         Objects.requireNonNull(geometry, "Composite geometry member must not be null");
-        if (geometry instanceof CompositeGeometryData composite) {
-            for (GeometryData child : composite.getGeometries()) {
+        if (geometry instanceof CompositeGeometryData(List<GeometryData> geometries1)) {
+            for (GeometryData child : geometries1) {
                 appendLeaves(target, child);
             }
             return;
         }
         target.add(geometry);
-    }
-
-    public List<GeometryData> getGeometries() {
-        return geometries;
     }
 
     public int size() {
@@ -62,17 +57,12 @@ public class CompositeGeometryData implements GeometryData {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof CompositeGeometryData that)) return false;
-        return Objects.equals(geometries, that.geometries);
+        if (!(o instanceof CompositeGeometryData(List<GeometryData> geometries1))) return false;
+        return Objects.equals(geometries, geometries1);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(geometries);
-    }
-
-    @Override
-    public String toString() {
+    public @NonNull String toString() {
         return "CompositeGeometryData{size=" + geometries.size() + "}";
     }
 }

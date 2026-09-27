@@ -66,7 +66,7 @@ public final class GeometryBoundsResolver {
 
     private static @Nullable BoundingBoxData resolveComposite(CompositeGeometryData composite) {
         BoundingBoxData merged = null;
-        for (GeometryData child : composite.getGeometries()) {
+        for (GeometryData child : composite.geometries()) {
             BoundingBoxData childBounds = resolve(child);
             if (childBounds == null) {
                 // Transactional: any unresolvable child fails the whole composite.

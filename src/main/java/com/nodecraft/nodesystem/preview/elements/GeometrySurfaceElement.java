@@ -108,30 +108,21 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         }
         quality = Math.max(MIN_QUALITY, Math.min(MAX_QUALITY, quality));
         if (options != null && Boolean.TRUE.equals(options.enableLOD)) {
-            quality = Math.max(MIN_QUALITY, Math.min(quality, 12));
+            quality = Math.min(quality, 12);
         }
         return quality;
     }
 
     private void collectGeometry(Object data, List<GeometryData> target) {
         switch (data) {
-            case null -> {
-                return;
-            }
-            case PreviewGeometryPayload payload -> {
-                collectGeometry(payload.getGeometry(), target);
-                return;
-            }
-            case GeometryData geometry -> {
-                collectSingleGeometry(geometry, target);
-                return;
-            }
+            case PreviewGeometryPayload payload -> collectGeometry(payload.getGeometry(), target);
+            case GeometryData geometry -> collectSingleGeometry(geometry, target);
             case List<?> list -> {
                 for (Object item : list) {
                     collectGeometry(item, target);
                 }
             }
-            default -> {
+            case null, default -> {
             }
         }
 
@@ -141,8 +132,8 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
         if (geometry == null) {
             return;
         }
-        if (geometry instanceof CompositeGeometryData composite) {
-            for (GeometryData child : composite.getGeometries()) {
+        if (geometry instanceof CompositeGeometryData(List<GeometryData> geometries)) {
+            for (GeometryData child : geometries) {
                 collectSingleGeometry(child, target);
             }
             return;
