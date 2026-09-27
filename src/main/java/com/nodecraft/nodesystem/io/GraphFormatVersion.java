@@ -440,8 +440,15 @@ public final class GraphFormatVersion {
      */
     public static final int V70 = 70;
 
+    /**
+     * Geometry Curves / PATH Language v2 (PASSED / FROZEN): Valid+Error on all 28 nodes,
+     * PATH canonical public language, strict INTEGER/finite DOUBLE, connection-aware drives,
+     * normalized arc-length t, curve sampling budgets fail closed, orders 0–27.
+     */
+    public static final int V71 = 71;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V70;
+    public static final int CURRENT = V71;
 
     private GraphFormatVersion() {
     }

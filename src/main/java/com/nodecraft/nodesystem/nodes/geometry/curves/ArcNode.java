@@ -6,9 +6,9 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -25,7 +25,7 @@ import java.util.UUID;
     displayName = "Arc",
     description = "Builds a sampled circular arc from a center point, plane, radius, and start/end angles",
     category = "geometry.curves",
-    order = 2
+    order = 4
 )
 public class ArcNode extends AbstractCurveNode {
 
@@ -61,12 +61,10 @@ public class ArcNode extends AbstractCurveNode {
     private static final String INPUT_END_ANGLE_ID = "input_end_angle";
     private static final String INPUT_SAMPLES_ID = "input_samples";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final String OUTPUT_SWEEP_DEGREES_ID = "output_sweep_degrees";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ArcNode() {
         super(UUID.randomUUID(), "geometry.curves.arc");
@@ -79,12 +77,12 @@ public class ArcNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the arc", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled curve representation of the arc", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Polyline approximation of the arc", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary arc path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled arc points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Analytical arc length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SWEEP_DEGREES_ID, "Sweep Degrees", "Angular sweep from start to end", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the arc inputs resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -96,30 +94,38 @@ public class ArcNode extends AbstractCurveNode {
             inputValues.get(INPUT_NORMAL_ID),
             defaultPlane
         );
-        double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
-        double startDegrees = readDoubleInput(INPUT_START_ANGLE_ID, 0.0d);
-        double endDegrees = readDoubleInput(INPUT_END_ANGLE_ID, 90.0d);
-        int samples = GenerationLimits.clampSegments(2, readIntInput(INPUT_SAMPLES_ID, defaultSamples));
+        Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
+        Double startDegrees = resolveFiniteDouble(INPUT_START_ANGLE_ID, 0.0d);
+        Double endDegrees = resolveFiniteDouble(INPUT_END_ANGLE_ID, 90.0d);
+        Integer samples = resolveBoundedInteger(INPUT_SAMPLES_ID, defaultSamples, 2, GenerationLimits.MAX_CURVE_SAMPLES);
 
         if (normal == null || normal.lengthSquared() <= EPSILON) {
-            writeInvalid();
+            invalidate("Plane or Normal could not be resolved");
             return;
         }
-        if (radius <= EPSILON) {
-            writeInvalid();
+        if (radius == null) {
+            invalidate("Radius must be a finite value greater than 0");
+            return;
+        }
+        if (startDegrees == null || endDegrees == null) {
+            invalidate("Start Angle and End Angle must be finite");
+            return;
+        }
+        if (samples == null) {
+            invalidate("Samples must be an integer from 2 to " + GenerationLimits.MAX_CURVE_SAMPLES);
             return;
         }
 
         var basis = PlaneProjectionUtils.createBasisFromNormal(normal);
         if (basis == null) {
-            writeInvalid();
+            invalidate("Plane basis could not be constructed");
             return;
         }
 
         double sweepDegrees = endDegrees - startDegrees;
         double sweepRadians = Math.toRadians(sweepDegrees);
         if (Math.abs(sweepRadians) <= EPSILON) {
-            writeInvalid();
+            invalidate("Arc sweep must be non-zero");
             return;
         }
 
@@ -137,15 +143,12 @@ public class ArcNode extends AbstractCurveNode {
             sampledVectors.add(point);
         }
 
-        Curve curve = buildLinearCurve(sampledPoints);
-
         PolylineData polyline = new PolylineData(sampledPoints);
-        outputValues.put(OUTPUT_CURVE_ID, curve);
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
         outputValues.put(OUTPUT_LENGTH_ID, Math.abs(sweepRadians) * radius);
         outputValues.put(OUTPUT_SWEEP_DEGREES_ID, sweepDegrees);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public double getDefaultRadius() {
@@ -153,9 +156,9 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setDefaultRadius(double defaultRadius) {
-        double resolved = Math.max(0.0d, defaultRadius);
-        if (Double.compare(this.defaultRadius, resolved) != 0) {
-            this.defaultRadius = resolved;
+        if (defaultRadius > 0.0d && Double.isFinite(defaultRadius)
+                && Double.compare(this.defaultRadius, defaultRadius) != 0) {
+            this.defaultRadius = defaultRadius;
             markDirty();
         }
     }
@@ -165,9 +168,10 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setDefaultSamples(int defaultSamples) {
-        int resolved = GenerationLimits.clampSegments(2, defaultSamples);
-        if (this.defaultSamples != resolved) {
-            this.defaultSamples = resolved;
+        if (defaultSamples >= 2
+                && defaultSamples <= GenerationLimits.MAX_CURVE_SAMPLES
+                && this.defaultSamples != defaultSamples) {
+            this.defaultSamples = defaultSamples;
             markDirty();
         }
     }
@@ -200,7 +204,7 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setCenterX(double centerX) {
-        if (Double.compare(this.centerX, centerX) != 0) {
+        if (Double.isFinite(centerX) && Double.compare(this.centerX, centerX) != 0) {
             this.centerX = centerX;
             markDirty();
         }
@@ -211,7 +215,7 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setCenterY(double centerY) {
-        if (Double.compare(this.centerY, centerY) != 0) {
+        if (Double.isFinite(centerY) && Double.compare(this.centerY, centerY) != 0) {
             this.centerY = centerY;
             markDirty();
         }
@@ -222,7 +226,7 @@ public class ArcNode extends AbstractCurveNode {
     }
 
     public void setCenterZ(double centerZ) {
-        if (Double.compare(this.centerZ, centerZ) != 0) {
+        if (Double.isFinite(centerZ) && Double.compare(this.centerZ, centerZ) != 0) {
             this.centerZ = centerZ;
             markDirty();
         }
@@ -301,10 +305,10 @@ public class ArcNode extends AbstractCurveNode {
         }
     }
 
-    private void writeInvalid() {
-        putNullOutputs(OUTPUT_CURVE_ID, OUTPUT_POLYLINE_ID);
+    private void invalidate(String message) {
+        putNullOutputs(OUTPUT_PATH_ID);
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID, OUTPUT_SWEEP_DEGREES_ID);
-        putBooleanOutputs(false, OUTPUT_VALID_ID);
+        markInvalid(message);
     }
 }

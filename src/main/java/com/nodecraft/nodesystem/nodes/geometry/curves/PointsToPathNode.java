@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -23,19 +24,15 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.curves.points_to_path",
     displayName = "Points To Path",
-    description = "Builds a line or polyline from an ordered point list",
+    description = "Builds a path from an ordered point list",
     category = "geometry.curves",
     order = 0
 )
 public class PointsToPathNode extends AbstractCurveNode {
 
     private static final String INPUT_POINTS_ID = "input_points";
-
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_LINE_ID = "output_line";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     private boolean closePath = false;
 
@@ -49,14 +46,11 @@ public class PointsToPathNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Primary path output (line for 2 points, polyline for 3+)",
             NodeDataType.PATH, this));
-        addOutputPort(new BasePort(OUTPUT_LINE_ID, "Line",
-            "Line output when the path contains exactly 2 points", NodeDataType.LINE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline",
-            "Polyline output when the path contains 2 or more points", NodeDataType.POLYLINE, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
             "Number of valid points used to build the path", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when at least 2 valid points were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,28 +69,31 @@ public class PointsToPathNode extends AbstractCurveNode {
             }
         }
 
-        LineData line = null;
-        PolylineData polyline = null;
-        PathData path = null;
-        boolean valid = points.size() >= 2;
-        if (valid) {
-            if (points.size() == 2) {
-                line = new LineData(points.get(0), points.get(1));
-                path = PathData.fromLine(line);
-            } else {
-                polyline = new PolylineData(points);
-                path = PathData.fromPolyline(polyline);
-            }
-            if (polyline == null) {
-                polyline = new PolylineData(points);
-            }
+        if (points.size() < 2) {
+            putNullOutputs(OUTPUT_PATH_ID);
+            putIntOutputs(points.size(), OUTPUT_COUNT_ID);
+            markInvalid("At least 2 points are required");
+            return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, path);
-        outputValues.put(OUTPUT_LINE_ID, line);
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        PathData path;
+        if (points.size() == 2) {
+            path = PathData.fromLine(new LineData(points.get(0), points.get(1)));
+        } else {
+            path = PathData.fromPolyline(new PolylineData(points));
+        }
+        List<Vector3d> asVectors = PathUtils.resolvePath(path);
+        PathData canonical = PathUtils.toPathData(asVectors);
+        if (canonical == null) {
+            putNullOutputs(OUTPUT_PATH_ID);
+            putIntOutputs(points.size(), OUTPUT_COUNT_ID);
+            markInvalid("Unable to build path from points");
+            return;
+        }
+
+        outputValues.put(OUTPUT_PATH_ID, canonical);
         outputValues.put(OUTPUT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        markSuccess();
     }
 
     public boolean isClosePath() {

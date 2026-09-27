@@ -5,10 +5,10 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -27,7 +27,7 @@ import java.util.UUID;
     displayName = "Helix Curve",
     description = "Builds a sampled helix from center, axis, radius, pitch, turns, and segment count.",
     category = "geometry.curves",
-    order = 17
+    order = 10
 )
 public class HelixCurveNode extends AbstractCurveNode {
 
@@ -80,11 +80,9 @@ public class HelixCurveNode extends AbstractCurveNode {
     private static final String INPUT_SEGMENTS_PER_TURN_ID = "input_segments_per_turn";
     private static final String INPUT_START_ANGLE_ID = "input_start_angle";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public HelixCurveNode() {
         super(UUID.randomUUID(), "geometry.curves.helix");
@@ -96,11 +94,11 @@ public class HelixCurveNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_SEGMENTS_PER_TURN_ID, "Segments Per Turn", "Sampling density per turn", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Initial angle in degrees", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled helix as curve", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled helix polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary helix path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Helix sample points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Approximate polyline length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when helix inputs are valid", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -114,26 +112,54 @@ public class HelixCurveNode extends AbstractCurveNode {
 
         Vector3d axis = new Vector3d(axisIn);
         if (axis.lengthSquared() <= 1.0e-12d) {
-            writeInvalid();
+            invalidate("Axis must be a non-zero vector");
             return;
         }
         axis.normalize();
 
-        double radius = readDoubleInput(INPUT_RADIUS_ID, defaultRadius);
-        double pitch = readDoubleInput(INPUT_PITCH_ID, defaultPitch);
-        double turns = readDoubleInput(INPUT_TURNS_ID, defaultTurns);
-        int segmentsPerTurn = GenerationLimits.clampSegments(6, readIntInput(INPUT_SEGMENTS_PER_TURN_ID, defaultSegmentsPerTurn));
-        double startAngle = Math.toRadians(readDoubleInput(INPUT_START_ANGLE_ID, defaultStartAngle));
-        if (radius <= 0.0d || turns <= 0.0d) {
-            writeInvalid();
+        Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
+        Double pitch = resolveFiniteDouble(INPUT_PITCH_ID, defaultPitch);
+        Double turns = resolvePositiveDouble(INPUT_TURNS_ID, defaultTurns);
+        Integer segmentsPerTurn = resolveBoundedInteger(
+            INPUT_SEGMENTS_PER_TURN_ID,
+            defaultSegmentsPerTurn,
+            6,
+            GenerationLimits.MAX_CURVE_SAMPLES
+        );
+        Double startAngleDegrees = resolveFiniteDouble(INPUT_START_ANGLE_ID, defaultStartAngle);
+
+        if (radius == null) {
+            invalidate("Radius must be a finite value greater than 0");
+            return;
+        }
+        if (pitch == null) {
+            invalidate("Pitch must be finite");
+            return;
+        }
+        if (turns == null) {
+            invalidate("Turns must be a finite value greater than 0");
+            return;
+        }
+        if (segmentsPerTurn == null) {
+            invalidate("Segments Per Turn must be an integer from 6 to " + GenerationLimits.MAX_CURVE_SAMPLES);
+            return;
+        }
+        if (startAngleDegrees == null) {
+            invalidate("Start Angle must be finite");
             return;
         }
 
+        int totalSegments = Math.max(2, (int) Math.ceil(turns * segmentsPerTurn));
+        if (totalSegments + 1 > GenerationLimits.MAX_CURVE_SAMPLES) {
+            invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")");
+            return;
+        }
+
+        double startAngle = Math.toRadians(startAngleDegrees);
         Vector3d basisU = fallbackAxis(axis);
         Vector3d basisV = new Vector3d(axis).cross(basisU).normalize();
         basisU = new Vector3d(basisV).cross(axis).normalize();
 
-        int totalSegments = Math.max(2, (int) Math.ceil(turns * segmentsPerTurn));
         List<Vec3d> pts = new ArrayList<>(totalSegments + 1);
         for (int i = 0; i <= totalSegments; i++) {
             double t = i / (double) totalSegments;
@@ -151,16 +177,16 @@ public class HelixCurveNode extends AbstractCurveNode {
             length += pts.get(i - 1).distanceTo(pts.get(i));
         }
 
-        Curve curve = buildLinearCurve(pts);
-        outputValues.put(OUTPUT_CURVE_ID, curve);
-        outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(pts));
+        PolylineData polyline = new PolylineData(pts);
         List<Vector3d> pointVectors = new ArrayList<>(pts.size());
         for (Vec3d point : pts) {
             pointVectors.add(new Vector3d(point.x, point.y, point.z));
         }
+
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(pointVectors));
         outputValues.put(OUTPUT_LENGTH_ID, length);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     @Override
@@ -220,9 +246,11 @@ public class HelixCurveNode extends AbstractCurveNode {
         }
     }
 
-    private void writeInvalid() {
-        writeInvalidOutputs();
+    private void invalidate(String message) {
+        putNullOutputs(OUTPUT_PATH_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
         putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        markInvalid(message);
     }
 
     private Vector3d fallbackAxis(Vector3d axis) {

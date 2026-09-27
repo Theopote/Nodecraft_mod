@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.InPlanePathOffset;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,7 +23,7 @@ import java.util.UUID;
     displayName = "Offset Path In Plane",
     description = "Offsets a path (line, polyline, or curve) in a work plane by signed distance.",
     category = "geometry.curves",
-    order = 11
+    order = 19
 )
 public class OffsetCurveInPlaneNode extends AbstractCurveNode {
 
@@ -37,7 +38,6 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
     private static final String INPUT_OFFSET_ID = "input_offset";
 
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public OffsetCurveInPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.offset_curve_plane");
@@ -49,36 +49,53 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Offset path in the work plane", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the offset succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (!(inputValues.get(INPUT_PLANE_ID) instanceof PlaneData plane)
-            || !(inputValues.get(INPUT_OFFSET_ID) instanceof Number offsetNumber)) {
-            writeInvalid();
+        PlaneData plane = OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+        if (plane == null) {
+            invalidate("Plane is missing or invalid");
             return;
         }
 
-        double offset = offsetNumber.doubleValue();
-        if (!Double.isFinite(offset) || Math.abs(offset) < EPS) {
-            writeInvalid();
+        Double offset = resolveFiniteDouble(INPUT_OFFSET_ID, 0.0d);
+        if (offset == null) {
+            invalidate("Offset is connected but invalid");
             return;
         }
 
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
+        if (verts == null || verts.size() < 2) {
+            invalidate("Path is missing or invalid");
+            return;
+        }
+
+        if (Math.abs(offset) < EPS) {
+            PathData path = PathUtils.toPathData(verts);
+            if (path == null) {
+                invalidate("Path is missing or invalid");
+                return;
+            }
+            outputValues.put(OUTPUT_PATH_ID, path);
+            markSuccess();
+            return;
+        }
+
         InPlanePathOffset.Result result = InPlanePathOffset.offset(verts, plane, offset, miterLimit);
         if (result == null || result.polyline() == null) {
-            writeInvalid();
+            invalidate("Path offset failed in the work plane");
             return;
         }
 
         outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(result.polyline()));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PATH_ID);
+        markInvalid(error);
     }
 
     public double getMiterLimit() {

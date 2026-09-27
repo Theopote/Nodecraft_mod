@@ -91,7 +91,8 @@ class GraphFormatVersionContractTest {
         assertEquals(68, GraphFormatVersion.V68);
         assertEquals(69, GraphFormatVersion.V69);
         assertEquals(70, GraphFormatVersion.V70);
-        assertEquals(GraphFormatVersion.V70, GraphFormatVersion.CURRENT);
+        assertEquals(71, GraphFormatVersion.V71);
+        assertEquals(GraphFormatVersion.V71, GraphFormatVersion.CURRENT);
     }
 
     @Test

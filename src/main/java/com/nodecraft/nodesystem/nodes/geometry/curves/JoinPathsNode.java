@@ -20,7 +20,7 @@ import java.util.UUID;
     displayName = "Join Paths",
     description = "Joins two paths when Path A end meets Path B start within tolerance. Does not bridge or reverse.",
     category = "geometry.curves",
-    order = 3
+    order = 12
 )
 public class JoinPathsNode extends AbstractCurveNode {
 
@@ -30,10 +30,9 @@ public class JoinPathsNode extends AbstractCurveNode {
 
     private static final String INPUT_PATH_A_ID = "input_path_a";
     private static final String INPUT_PATH_B_ID = "input_path_b";
-
+    private static final String INPUT_TOLERANCE_ID = "input_tolerance";
     private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public JoinPathsNode() {
         super(UUID.randomUUID(), "geometry.curves.join_paths");
@@ -42,6 +41,8 @@ public class JoinPathsNode extends AbstractCurveNode {
             "First path segment (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
             "Second path appended after Path A when endpoints meet", NodeDataType.PATH, this));
+        addInputPort(new BasePort(INPUT_TOLERANCE_ID, "Tolerance",
+            "Maximum endpoint distance for a valid join", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Joined path", NodeDataType.PATH, this));
@@ -49,21 +50,32 @@ public class JoinPathsNode extends AbstractCurveNode {
             "Number of vertices in the joined path", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when join succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> pathA = resolvePathVertices(INPUT_PATH_A_ID);
         List<Vector3d> pathB = resolvePathVertices(INPUT_PATH_B_ID);
-        List<Vector3d> joined = PathUtils.joinPathsStrict(pathA, pathB, joinTolerance);
+        Double tolerance = resolveNonNegativeDouble(INPUT_TOLERANCE_ID, joinTolerance);
+        if (tolerance == null) {
+            putNullOutputs(OUTPUT_PATH_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Tolerance is connected but invalid");
+            return;
+        }
+
+        List<Vector3d> joined = PathUtils.joinPathsStrict(pathA, pathB, tolerance);
         PathData path = PathUtils.toPathData(joined);
         if (path == null) {
-            writeInvalid();
+            putNullOutputs(OUTPUT_PATH_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Paths cannot be joined within tolerance");
             return;
         }
         outputValues.put(OUTPUT_PATH_ID, path);
         outputValues.put(OUTPUT_COUNT_ID, joined.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public double getJoinTolerance() {
@@ -75,11 +87,5 @@ public class JoinPathsNode extends AbstractCurveNode {
             this.joinTolerance = joinTolerance;
             markDirty();
         }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

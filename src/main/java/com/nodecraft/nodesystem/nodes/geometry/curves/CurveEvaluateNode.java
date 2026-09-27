@@ -8,22 +8,21 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Evaluates point and tangent on a path at a normalized parameter.
- */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.curves.evaluate_curve",
     displayName = "Evaluate Path",
-    description = "Evaluates a path at normalized parameter t and outputs point and tangent.",
+    description = "Evaluates a path at normalized arc-length parameter t and outputs point and tangent.",
     category = "geometry.curves",
-    order = 14
+    order = 22
 )
 public class CurveEvaluateNode extends AbstractCurveNode {
 
@@ -32,16 +31,11 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     @NodeProperty(displayName = "Default t", category = "Evaluate", order = 1)
     private double defaultT = 0.0d;
 
-    @NodeProperty(displayName = "Clamp t", category = "Evaluate", order = 2)
-    private boolean clampT = true;
-
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_T_ID = "input_t";
-
     private static final String OUTPUT_POINT_ID = "output_point";
     private static final String OUTPUT_TANGENT_ID = "output_tangent";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public CurveEvaluateNode() {
         super(UUID.randomUUID(), "geometry.curves.evaluate_curve");
@@ -49,7 +43,7 @@ public class CurveEvaluateNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to evaluate (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_T_ID, "t",
-            "Normalized parameter along path (0..1)", NodeDataType.DOUBLE, this));
+            "Normalized arc-length parameter along path (0..1)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_POINT_ID, "Point",
             "Evaluated point on path", NodeDataType.POINT, this));
@@ -59,57 +53,81 @@ public class CurveEvaluateNode extends AbstractCurveNode {
             "Total path length used for parameterization", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when evaluation succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
-            writeInvalid();
+            invalidate("Path is missing or invalid");
             return;
         }
 
         boolean closed = PathUtils.isClosed(verts);
         List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
         if (unique.size() < 2) {
-            writeInvalid();
+            invalidate("Path is missing or invalid");
             return;
         }
 
         double[] cumulative = PathUtils.buildCumulative(unique, closed);
         if (cumulative == null) {
-            writeInvalid();
+            invalidate("Path length could not be computed");
             return;
         }
         double total = cumulative[cumulative.length - 1];
         if (total <= EPS) {
-            writeInvalid();
+            invalidate("Path has zero length");
             return;
         }
 
-        double t = getInputDouble(INPUT_T_ID, defaultT);
-        double normalized = clampT ? clamp(t, 0.0d, 1.0d) : wrap01(t);
+        Double normalized = closed
+            ? CurveInputUtils.resolveNormalizedTClosed(this, INPUT_T_ID, defaultT)
+            : CurveInputUtils.resolveNormalizedTOpen(this, INPUT_T_ID, defaultT);
+        if (normalized == null) {
+            invalidate(closed ? "t is connected but invalid" : "t must be finite and in [0, 1]");
+            return;
+        }
+
         double distance = normalized * total;
         Vector3d point = PathUtils.sampleAtDistance(unique, closed, cumulative, distance);
+        if (!VectorUtils.isFinite(point)) {
+            invalidate("Evaluated point is not finite");
+            return;
+        }
 
         double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
-        double backDistance = clampT ? Math.max(0.0d, distance - delta) : wrapDistance(distance - delta, total);
-        double forwardDistance = clampT ? Math.min(total, distance + delta) : wrapDistance(distance + delta, total);
+        double backDistance = Math.max(0.0d, distance - delta);
+        double forwardDistance = closed
+            ? (distance + delta) % total
+            : Math.min(total, distance + delta);
+        if (closed && forwardDistance < backDistance) {
+            forwardDistance = total;
+        }
 
         Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
         Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
-
         Vector3d tangent = new Vector3d(next).sub(prev);
         if (tangent.lengthSquared() <= EPS) {
-            writeInvalid();
+            invalidate("Tangent is degenerate at t");
             return;
         }
         tangent.normalize();
+        if (!VectorUtils.isFinite(tangent)) {
+            invalidate("Tangent is not finite at t");
+            return;
+        }
 
         outputValues.put(OUTPUT_POINT_ID, new PointData(point.x, point.y, point.z));
         outputValues.put(OUTPUT_TANGENT_ID, tangent);
         outputValues.put(OUTPUT_LENGTH_ID, total);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_POINT_ID, OUTPUT_TANGENT_ID, OUTPUT_LENGTH_ID);
+        markInvalid(error);
     }
 
     public double getDefaultT() {
@@ -123,64 +141,15 @@ public class CurveEvaluateNode extends AbstractCurveNode {
         }
     }
 
-    public boolean isClampT() {
-        return clampT;
-    }
-
-    public void setClampT(boolean clampT) {
-        if (this.clampT != clampT) {
-            this.clampT = clampT;
-            markDirty();
-        }
-    }
-
     @Override
     public Object getNodeState() {
-        return new java.util.HashMap<String, Object>() {{
-            put("defaultT", defaultT);
-            put("clampT", clampT);
-        }};
+        return java.util.Map.of("defaultT", defaultT);
     }
 
     @Override
     public void setNodeState(Object state) {
-        if (!(state instanceof java.util.Map<?, ?> map)) {
-            return;
-        }
-        if (map.get("defaultT") instanceof Number value) {
+        if (state instanceof java.util.Map<?, ?> map && map.get("defaultT") instanceof Number value) {
             setDefaultT(value.doubleValue());
         }
-        if (map.get("clampT") instanceof Boolean value) {
-            setClampT(value);
-        }
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_POINT_ID, null);
-        outputValues.put(OUTPUT_TANGENT_ID, null);
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private double wrap01(double value) {
-        double wrapped = value % 1.0d;
-        return wrapped < 0.0d ? wrapped + 1.0d : wrapped;
-    }
-
-    private double wrapDistance(double value, double length) {
-        if (length <= EPS) {
-            return 0.0d;
-        }
-        double wrapped = value % length;
-        return wrapped < 0.0d ? wrapped + length : wrapped;
     }
 }

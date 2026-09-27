@@ -19,14 +19,12 @@ import java.util.UUID;
     displayName = "Reverse Path",
     description = "Reverses the direction of a path.",
     category = "geometry.curves",
-    order = 4
+    order = 13
 )
 public class ReversePathNode extends AbstractCurveNode {
 
     private static final String INPUT_PATH_ID = "input_path";
-
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ReversePathNode() {
         super(UUID.randomUUID(), "geometry.curves.reverse_path");
@@ -38,6 +36,7 @@ public class ReversePathNode extends AbstractCurveNode {
             "Reversed path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when reversal succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -46,11 +45,11 @@ public class ReversePathNode extends AbstractCurveNode {
         List<Vector3d> reversed = PathUtils.reversePath(verts);
         PathData path = PathUtils.toPathData(reversed);
         if (path == null) {
-            outputValues.put(OUTPUT_PATH_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            putNullOutputs(OUTPUT_PATH_ID);
+            markInvalid("Path is missing or invalid");
             return;
         }
         outputValues.put(OUTPUT_PATH_ID, path);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 }

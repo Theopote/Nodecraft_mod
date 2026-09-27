@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PathSamplingUtils;
 import com.nodecraft.nodesystem.util.SamplingMode;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -18,6 +20,7 @@ import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
@@ -26,9 +29,11 @@ import java.util.UUID;
     displayName = "Resample Path",
     description = "Resamples a path along arc length by Count or Spacing. Primary output is PATH.",
     category = "geometry.curves",
-    order = 12
+    order = 20
 )
 public class ResamplePolylineByLengthNode extends AbstractCurveNode {
+
+    private static final Set<String> RESAMPLE_MODES = Set.of("count", "spacing");
 
     @NodeProperty(displayName = "Sampling Mode", category = "Sampling", order = 1)
     private SamplingMode samplingMode = SamplingMode.COUNT;
@@ -48,7 +53,6 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ResamplePolylineByLengthNode() {
         super(UUID.randomUUID(), "geometry.curves.resample_path");
@@ -80,28 +84,56 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when resampling succeeded",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
-            writeInvalid();
+            invalidate("Path is missing or invalid");
             return;
         }
 
-        SamplingMode mode = resolveResampleMode(inputValues.get(INPUT_MODE_ID));
-        if (mode == null) {
-            writeInvalid();
+        String modeKey = CurveInputUtils.resolveKnownStringEnum(
+            this,
+            INPUT_MODE_ID,
+            samplingMode.name().toLowerCase(Locale.ROOT),
+            RESAMPLE_MODES
+        );
+        if (modeKey == null) {
+            invalidate("Mode is connected but invalid");
             return;
         }
+        SamplingMode mode = SamplingMode.valueOf(modeKey.toUpperCase(Locale.ROOT));
 
-        int count = inputValues.get(INPUT_COUNT_ID) instanceof Number n ? n.intValue() : defaultCount;
-        double spacing = inputValues.get(INPUT_SPACING_ID) instanceof Number n ? n.doubleValue() : defaultSpacing;
+        int count = 0;
+        double spacing = 0.0d;
+        if (mode == SamplingMode.COUNT) {
+            Integer resolvedCount = resolveBoundedInteger(
+                INPUT_COUNT_ID,
+                defaultCount,
+                2,
+                GenerationLimits.MAX_CURVE_SAMPLES
+            );
+            if (resolvedCount == null) {
+                invalidate("Count is connected but invalid (must be >= 2 and <= "
+                    + GenerationLimits.MAX_CURVE_SAMPLES + ")");
+                return;
+            }
+            count = resolvedCount;
+        } else {
+            Double resolvedSpacing = resolvePositiveDouble(INPUT_SPACING_ID, defaultSpacing);
+            if (resolvedSpacing == null) {
+                invalidate("Spacing is connected but invalid (must be finite and > 0)");
+                return;
+            }
+            spacing = resolvedSpacing;
+        }
 
         PathSamplingUtils.PathSampleResult sample = PathSamplingUtils.sample(verts, mode, count, spacing);
         if (!sample.valid() || sample.points().isEmpty()) {
-            writeInvalid();
+            invalidate("Path could not be resampled with the requested parameters");
             return;
         }
 
@@ -109,7 +141,7 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         List<Vec3d> polyPts = PathUtils.toVec3dList(samples, sample.closed());
         PolylineData polyline = PathUtils.createPolylineOrNull(polyPts);
         if (polyline == null) {
-            writeInvalid();
+            invalidate("Resampled path is degenerate");
             return;
         }
 
@@ -117,36 +149,13 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(samples));
         outputValues.put(OUTPUT_COUNT_ID, samples.size());
         outputValues.put(OUTPUT_LENGTH_ID, sample.totalLength());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private @Nullable SamplingMode resolveResampleMode(@Nullable Object rawMode) {
-        if (rawMode == null) {
-            return isResampleModeAllowed(samplingMode) ? samplingMode : null;
-        }
-        if (rawMode instanceof SamplingMode mode) {
-            return isResampleModeAllowed(mode) ? mode : null;
-        }
-        if (rawMode instanceof String text) {
-            try {
-                SamplingMode mode = SamplingMode.valueOf(text.trim().toUpperCase(Locale.ROOT));
-                return isResampleModeAllowed(mode) ? mode : null;
-            } catch (IllegalArgumentException ignored) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private static boolean isResampleModeAllowed(SamplingMode mode) {
-        return mode == SamplingMode.COUNT || mode == SamplingMode.SPACING;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PATH_ID, OUTPUT_LENGTH_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }

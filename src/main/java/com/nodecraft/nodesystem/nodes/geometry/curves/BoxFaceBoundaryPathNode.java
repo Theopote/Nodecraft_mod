@@ -5,8 +5,10 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -27,38 +29,31 @@ import java.util.UUID;
 public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
 
     private static final String INPUT_FACE_ID = "input_face";
-
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_CORNER_INDICES_ID = "output_corner_indices";
     private static final String OUTPUT_NAME_ID = "output_name";
     private static final String OUTPUT_INDEX_ID = "output_index";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public BoxFaceBoundaryPathNode() {
         super(UUID.randomUUID(), "geometry.curves.face_boundary_curve");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face to convert into a closed boundary path", NodeDataType.BOX_FACE, this));
 
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Closed boundary polyline of the face", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Closed boundary path of the face", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ordered point list of the face boundary", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Corner indices in winding order for the face boundary", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CORNER_INDICES_ID, "Corner Indices", "Corner indices in winding order for the face boundary", NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_NAME_ID, "Name", "Face name", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Face index", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether a valid face was provided", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object faceObj = inputValues.get(INPUT_FACE_ID);
-
         if (!(faceObj instanceof BoxFaceData face)) {
-            outputValues.put(OUTPUT_POLYLINE_ID, null);
-            outputValues.put(OUTPUT_POINTS_ID, List.of());
-            outputValues.put(OUTPUT_CORNER_INDICES_ID, List.of());
-            outputValues.put(OUTPUT_NAME_ID, null);
-            outputValues.put(OUTPUT_INDEX_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            invalidate("Face is missing or invalid");
             return;
         }
 
@@ -75,13 +70,27 @@ public class BoxFaceBoundaryPathNode extends AbstractCurveNode {
             polylinePoints.add(new Vec3d(first.x, first.y, first.z));
         }
 
-        PolylineData polyline = polylinePoints.size() >= 2 ? new PolylineData(polylinePoints) : null;
+        if (polylinePoints.size() < 2) {
+            invalidate("Face boundary is degenerate");
+            return;
+        }
 
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        PathData path = PathUtils.toPathData(closedPoints);
+        if (path == null) {
+            path = PathData.fromPolyline(new PolylineData(polylinePoints));
+        }
+
+        outputValues.put(OUTPUT_PATH_ID, path);
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(closedPoints));
         outputValues.put(OUTPUT_CORNER_INDICES_ID, face.getCornerIndices());
         outputValues.put(OUTPUT_NAME_ID, face.getName());
         outputValues.put(OUTPUT_INDEX_ID, face.getIndex());
-        outputValues.put(OUTPUT_VALID_ID, polyline != null);
+        markSuccess();
+    }
+
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PATH_ID, OUTPUT_NAME_ID, OUTPUT_INDEX_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_CORNER_INDICES_ID);
+        markInvalid(error);
     }
 }

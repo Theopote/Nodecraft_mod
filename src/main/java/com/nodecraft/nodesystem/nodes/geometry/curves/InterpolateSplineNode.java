@@ -5,9 +5,9 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -24,7 +24,7 @@ import java.util.UUID;
     displayName = "Interpolate Spline",
     description = "Builds a Catmull-Rom interpolation spline that passes through all resolved input points",
     category = "geometry.curves",
-    order = 10
+    order = 6
 )
 public class InterpolateSplineNode extends AbstractCurveNode {
 
@@ -43,13 +43,11 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     private static final String INPUT_RESOLUTION_ID = "input_resolution";
     private static final String INPUT_ALPHA_ID = "input_alpha";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_CONTROL_POLYGON_ID = "output_control_polygon";
+    private static final String OUTPUT_CONTROL_PATH_ID = "output_control_path";
     private static final String OUTPUT_CONTROL_COUNT_ID = "output_control_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public InterpolateSplineNode() {
         super(UUID.randomUUID(), "geometry.curves.interpolate_spline");
@@ -58,13 +56,13 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Segment", "Samples generated per segment", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ALPHA_ID, "Alpha", "Parameterization alpha: 0.0 uniform, 0.5 centripetal, 1.0 chordal", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled curve representation", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled polyline approximation", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary interpolation path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points on the interpolation spline", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CONTROL_POLYGON_ID, "Control Polygon", "Polyline through interpolation input points", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_CONTROL_PATH_ID, "Control Path", "Path through interpolation input points", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_CONTROL_COUNT_ID, "Control Count", "Number of valid interpolation points", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Sampled spline length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least 2 points were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -75,47 +73,53 @@ public class InterpolateSplineNode extends AbstractCurveNode {
             points.add(new Vec3d(point.x, point.y, point.z));
         }
 
-        double alpha = clamp(getInputDouble(INPUT_ALPHA_ID, defaultAlpha), 0.0d, 1.0d);
+        Double alpha = resolveFiniteDouble(INPUT_ALPHA_ID, defaultAlpha);
+        if (alpha == null || alpha < 0.0d || alpha > 1.0d) {
+            invalidate("Alpha must be finite in [0, 1]", points.size());
+            return;
+        }
 
         if (points.size() < 2) {
-            writeInvalid();
-            outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
+            invalidate("At least 2 points are required", points.size());
+            return;
+        }
+
+        Integer resolutionPerSegment = resolveBoundedInteger(
+            INPUT_RESOLUTION_ID,
+            defaultResolutionPerSegment,
+            2,
+            GenerationLimits.MAX_CURVE_SAMPLES
+        );
+        if (resolutionPerSegment == null) {
+            invalidate("Resolution / Segment must be an integer from 2 to " + GenerationLimits.MAX_CURVE_SAMPLES, points.size());
             return;
         }
 
         int segmentCount = closed ? points.size() : points.size() - 1;
-        int resolutionPerSegment = GenerationLimits.clampResolutionPerUnit(
-            2,
-            getInputInt(INPUT_RESOLUTION_ID, defaultResolutionPerSegment),
-            segmentCount
-        );
-
-        List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
-        if (sampled.size() < 2) {
-            writeInvalid();
-            outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
+        long estimatedSamples = (long) segmentCount * resolutionPerSegment + 1L;
+        if (estimatedSamples > GenerationLimits.MAX_CURVE_SAMPLES) {
+            invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")", points.size());
             return;
         }
 
-        Curve curve = new Curve(Curve.CurveType.LINEAR, 2);
-        for (Vec3d sample : sampled) {
-            curve.addControlPoint(sample);
+        List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
+        if (sampled.size() < 2) {
+            invalidate("Interpolation produced fewer than 2 sample points", points.size());
+            return;
         }
 
         PolylineData polyline = new PolylineData(sampled);
-        PolylineData controlPolygon = new PolylineData(points);
         List<Vector3d> sampledVectors = new ArrayList<>(sampled.size());
         for (Vec3d sample : sampled) {
             sampledVectors.add(new Vector3d(sample.x, sample.y, sample.z));
         }
 
-        outputValues.put(OUTPUT_CURVE_ID, curve);
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_CONTROL_POLYGON_ID, controlPolygon);
+        outputValues.put(OUTPUT_CONTROL_PATH_ID, PathData.fromPolyline(new PolylineData(points)));
         outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
         outputValues.put(OUTPUT_LENGTH_ID, polyline.getLength());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public int getDefaultResolutionPerSegment() {
@@ -123,9 +127,10 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     }
 
     public void setDefaultResolutionPerSegment(int defaultResolutionPerSegment) {
-        int resolved = GenerationLimits.clampSegments(2, defaultResolutionPerSegment);
-        if (this.defaultResolutionPerSegment != resolved) {
-            this.defaultResolutionPerSegment = resolved;
+        if (defaultResolutionPerSegment >= 2
+                && defaultResolutionPerSegment <= GenerationLimits.MAX_CURVE_SAMPLES
+                && this.defaultResolutionPerSegment != defaultResolutionPerSegment) {
+            this.defaultResolutionPerSegment = defaultResolutionPerSegment;
             markDirty();
         }
     }
@@ -135,9 +140,11 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     }
 
     public void setDefaultAlpha(double defaultAlpha) {
-        double resolved = clamp(defaultAlpha, 0.0d, 1.0d);
-        if (Double.compare(this.defaultAlpha, resolved) != 0) {
-            this.defaultAlpha = resolved;
+        if (Double.isFinite(defaultAlpha)
+                && defaultAlpha >= 0.0d
+                && defaultAlpha <= 1.0d
+                && Double.compare(this.defaultAlpha, defaultAlpha) != 0) {
+            this.defaultAlpha = defaultAlpha;
             markDirty();
         }
     }
@@ -178,14 +185,12 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         }
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_CURVE_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_CONTROL_POLYGON_ID, null);
-        outputValues.put(OUTPUT_CONTROL_COUNT_ID, 0);
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String message, int controlCount) {
+        putNullOutputs(OUTPUT_PATH_ID, OUTPUT_CONTROL_PATH_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(controlCount, OUTPUT_CONTROL_COUNT_ID);
+        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        markInvalid(message);
     }
 
     private List<Vec3d> sampleCatmullRom(List<Vec3d> points, int samplesPerSegment, double alpha, boolean closedPath) {
@@ -276,19 +281,5 @@ public class InterpolateSplineNode extends AbstractCurveNode {
     private int floorMod(int value, int modulus) {
         int result = value % modulus;
         return result < 0 ? result + modulus : result;
-    }
-
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
     }
 }

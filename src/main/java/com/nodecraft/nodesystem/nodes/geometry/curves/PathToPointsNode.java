@@ -25,10 +25,8 @@ import java.util.UUID;
 public class PathToPointsNode extends AbstractCurveNode {
 
     private static final String INPUT_PATH_ID = "input_path";
-
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PathToPointsNode() {
         super(UUID.randomUUID(), "geometry.curves.path_to_points");
@@ -43,18 +41,23 @@ public class PathToPointsNode extends AbstractCurveNode {
             "Number of points extracted from the input path", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when the path input was valid", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> vertices = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
-        var points = vertices == null ? List.<com.nodecraft.nodesystem.datatypes.PointData>of()
-            : SpatialValueResolver.toPointDataList(vertices);
+        if (vertices == null || vertices.size() < 2) {
+            putEmptyListOutputs(OUTPUT_POINTS_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Path is missing or invalid");
+            return;
+        }
 
-        boolean valid = !points.isEmpty();
+        var points = SpatialValueResolver.toPointDataList(vertices);
         outputValues.put(OUTPUT_POINTS_ID, points);
         outputValues.put(OUTPUT_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_VALID_ID, valid);
+        markSuccess();
     }
 
     @Override

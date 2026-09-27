@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -145,6 +148,8 @@ class PathLanguageContractTest {
         assertNotNull(PathUtils.trimPathByParameter(open, 0.2d, 0.8d));
 
         BaseNode trim = node("geometry.curves.trim_path");
+        connectInput(trim, "input_start", NodeDataType.DOUBLE);
+        connectInput(trim, "input_end", NodeDataType.DOUBLE);
         trim.setInput("input_path", new LineData(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0)));
         trim.setInput("input_start", 0.2d);
         trim.setInput("input_end", 0.8d);
@@ -167,6 +172,8 @@ class PathLanguageContractTest {
         ));
 
         BaseNode trim = node("geometry.curves.trim_path");
+        connectInput(trim, "input_start", NodeDataType.DOUBLE);
+        connectInput(trim, "input_end", NodeDataType.DOUBLE);
         trim.setInput("input_path", closed);
         trim.setInput("input_start", 0.2d);
         trim.setInput("input_end", 0.8d);
@@ -185,6 +192,8 @@ class PathLanguageContractTest {
         assertEquals(null, PathUtils.trimPathByParameter(open, 0.5d, 0.5d));
 
         BaseNode trim = node("geometry.curves.trim_path");
+        connectInput(trim, "input_start", NodeDataType.DOUBLE);
+        connectInput(trim, "input_end", NodeDataType.DOUBLE);
         trim.setInput("input_path", new LineData(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0)));
         trim.setInput("input_start", 0.5d);
         trim.setInput("input_end", 0.5d);
@@ -249,6 +258,9 @@ class PathLanguageContractTest {
         LineData line = new LineData(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0));
 
         BaseNode resample = node("geometry.curves.resample_path");
+        connectInput(resample, "input_mode", NodeDataType.STRING);
+        connectInput(resample, "input_count", NodeDataType.INTEGER);
+        connectInput(resample, "input_spacing", NodeDataType.DOUBLE);
         resample.setInput("input_path", line);
         resample.setInput("input_mode", "COUNT");
         resample.setInput("input_count", 5);
@@ -350,6 +362,8 @@ class PathLanguageContractTest {
         LineData line = new LineData(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0));
 
         BaseNode extend = node("geometry.curves.extend_path");
+        connectInput(extend, "input_start_length", NodeDataType.DOUBLE);
+        connectInput(extend, "input_end_length", NodeDataType.DOUBLE);
         extend.setInput("input_path", line);
         extend.setInput("input_start_length", -1.0d);
         extend.setInput("input_end_length", 1.0d);
@@ -407,10 +421,32 @@ class PathLanguageContractTest {
         assertPortType("geometry.curves.extend_path", "output_path", false, NodeDataType.PATH);
     }
 
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+        target.getInput(inputPortId);
+    }
+
     private static BaseNode node(String typeId) {
         BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance(typeId);
         assertNotNull(node, typeId);
         return node;
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {

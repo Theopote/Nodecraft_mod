@@ -194,6 +194,15 @@ public final class GenerationLimits {
     /** Hard safety ceiling for world.write Max Count entity mutate budgets. */
     public static final int MAX_WORLD_WRITE_ENTITIES = 4_096;
 
+    /** Maximum sample points along a single curve/path resample or producer output. */
+    public static final int MAX_CURVE_SAMPLES = MAX_SEGMENTS;
+
+    /** Maximum paths emitted by multi-path curve nodes (Tween, Rainbow, Explode). */
+    public static final int MAX_CURVE_OUTPUT_PATHS = MAX_GEOMETRY_INSTANCES;
+
+    /** Maximum total sample workload: output paths × samples per path. */
+    public static final long MAX_CURVE_TOTAL_SAMPLES = MAX_LIST_ELEMENTS;
+
     /** Hard safety ceiling for world.write SNBT / NBT String input length. */
     public static final int MAX_WORLD_WRITE_SNBT_CHARS = 65_536;
 
@@ -239,6 +248,30 @@ public final class GenerationLimits {
 
     public static int clampPositiveCount(int count) {
         return Math.max(1, Math.min(MAX_LIST_ELEMENTS, count));
+    }
+
+    /** Graph-facing validation: sample count within curve budget (fail closed when false). */
+    public static boolean isWithinCurveSamples(int count) {
+        return count >= 2 && count <= MAX_CURVE_SAMPLES;
+    }
+
+    /** Graph-facing validation: multi-path output count within curve budget. */
+    public static boolean isWithinCurveOutputPaths(int count) {
+        return count >= 1 && count <= MAX_CURVE_OUTPUT_PATHS;
+    }
+
+    /** Graph-facing validation: total curve sample workload (paths × samples). */
+    public static boolean isWithinCurveWorkload(long pathCount, long samplesPerPath) {
+        if (pathCount <= 0L || samplesPerPath <= 0L) {
+            return false;
+        }
+        if (pathCount > MAX_CURVE_OUTPUT_PATHS) {
+            return false;
+        }
+        if (samplesPerPath > MAX_CURVE_SAMPLES) {
+            return false;
+        }
+        return pathCount * samplesPerPath <= MAX_CURVE_TOTAL_SAMPLES;
     }
 
     /**

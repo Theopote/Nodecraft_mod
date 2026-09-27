@@ -132,34 +132,34 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Points To Path | `geometry.curves.points_to_path` | Builds a line or polyline from an ordered point list | `PointsToPathNode` |
+| Points To Path | `geometry.curves.points_to_path` | Builds a path from an ordered point list | `PointsToPathNode` |
 | Extract Path Points | `geometry.curves.path_to_points` | Extracts existing vertices/sample points from a path. Does not resample — use Resample Path for that. | `PathToPointsNode` |
-| Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
-| Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into line, polyline, and point outputs for path workflows | `FaceEdgeToPathNode` |
-| Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
+| Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into a path and endpoint outputs for path workflows | `FaceEdgeToPathNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
+| Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
+| Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
+| Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
+| B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
+| NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
+| Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
+| Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
+| Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
 | Join Paths | `geometry.curves.join_paths` | Joins two paths when Path A end meets Path B start within tolerance. Does not bridge or reverse. | `JoinPathsNode` |
 | Reverse Path | `geometry.curves.reverse_path` | Reverses the direction of a path. | `ReversePathNode` |
 | Split Path | `geometry.curves.split_path` | Splits a path at a normalized parameter into two path segments. | `SplitPathNode` |
 | Trim Path | `geometry.curves.trim_path` | Extracts a sub-path between two normalized parameters. | `TrimPathNode` |
 | Explode Path | `geometry.curves.explode_path` | Decomposes a path into per-segment paths as PATH_LIST. | `ExplodePathNode` |
 | Extend Path | `geometry.curves.extend_path` | Linearly extends an open path along start/end tangents by the given lengths. | `ExtendPathNode` |
-| Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
-| B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |
 | Fillet Path Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open path with circular arcs in the work plane | `PolylineCornerFilletNode` |
 | Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance. | `OffsetCurveInPlaneNode` |
-| NURBS Curve | `geometry.curves.nurbs` | Builds a sampled clamped uniform NURBS curve from control points and optional per-point weights | `NurbsCurveNode` |
-| Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset polylines around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Resample Path | `geometry.curves.resample_path` | Resamples a path along arc length by Count or Spacing. Primary output is PATH. | `ResamplePolylineByLengthNode` |
 | Path Length | `geometry.curves.path_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
-| Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized parameter t and outputs point and tangent. | `CurveEvaluateNode` |
+| Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized arc-length parameter t and outputs point and tangent. | `CurveEvaluateNode` |
 | Closest Point On Path | `geometry.curves.closest_point_on_path` | Finds the closest point on a path to a query point. | `ClosestPointOnPathNode` |
-| Parabola On Plane | `geometry.curves.parabola_curve` | Builds a sampled parabola on a plane from vertex, curvature, x-range, and segment count | `ParabolaOnPlaneNode` |
-| Helix Curve | `geometry.curves.helix` | Builds a sampled helix from center, axis, radius, pitch, turns, and segment count. | `HelixCurveNode` |
-| Infinity Curve On Plane | `geometry.curves.infinity_curve` | Builds a sampled figure-eight (lemniscate-like) curve on a plane | `InfinityCurveOnPlaneNode` |
-| Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
+| Rainbow Curve Offset | `geometry.curves.rainbow_curve_offset` | Generates multiple parallel offset paths around a space curve using path frames. | `RainbowCurveOffsetNode` |
 | Blend Paths | `geometry.curves.blend_curves` | Creates a smooth transition path between two path endpoints. | `BlendCurvesNode` |
 | Tween Paths | `geometry.curves.tween_curves` | Creates evenly spaced intermediate paths between two path inputs. | `TweenCurvesNode` |
+| Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
 
 ## geometry.primitives（29）
 

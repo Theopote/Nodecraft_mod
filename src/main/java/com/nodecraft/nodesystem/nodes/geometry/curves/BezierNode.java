@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.Curve;
@@ -24,7 +25,7 @@ import java.util.UUID;
     displayName = "Bezier",
     description = "Builds a sampled Bezier curve from an ordered list of control points",
     category = "geometry.curves",
-    order = 3
+    order = 5
 )
 public class BezierNode extends AbstractCurveNode {
 
@@ -34,13 +35,11 @@ public class BezierNode extends AbstractCurveNode {
     private static final String INPUT_CONTROL_POINTS_ID = "input_control_points";
     private static final String INPUT_SAMPLES_ID = "input_samples";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_CONTROL_POLYGON_ID = "output_control_polygon";
+    private static final String OUTPUT_CONTROL_PATH_ID = "output_control_path";
     private static final String OUTPUT_CONTROL_COUNT_ID = "output_control_count";
     private static final String OUTPUT_LENGTH_ID = "output_length";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public BezierNode() {
         super(UUID.randomUUID(), "geometry.curves.bezier");
@@ -48,13 +47,13 @@ public class BezierNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_CONTROL_POINTS_ID, "Control Points", "Ordered control points for the Bezier curve", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the curve", NodeDataType.INTEGER, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Bezier curve representation", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled polyline approximation", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary Bezier path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points along the Bezier curve", NodeDataType.POINT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_CONTROL_POLYGON_ID, "Control Polygon", "Polyline through the control points", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_CONTROL_PATH_ID, "Control Path", "Path through the control points", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_CONTROL_COUNT_ID, "Control Count", "Number of valid control points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Sampled length of the polyline approximation", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Sampled length of the path approximation", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least 3 control points were resolved", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -65,10 +64,14 @@ public class BezierNode extends AbstractCurveNode {
             controlPoints.add(new Vec3d(point.x, point.y, point.z));
         }
 
-        int samples = GenerationLimits.clampSegments(2, getInputInt(INPUT_SAMPLES_ID, defaultSamples));
+        Integer samples = resolveBoundedInteger(INPUT_SAMPLES_ID, defaultSamples, 2, GenerationLimits.MAX_CURVE_SAMPLES);
+        if (samples == null) {
+            invalidate("Samples must be an integer from 2 to " + GenerationLimits.MAX_CURVE_SAMPLES, controlPoints.size());
+            return;
+        }
+
         if (controlPoints.size() < 3) {
-            writeInvalid();
-            outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
+            invalidate("At least 3 control points are required", controlPoints.size());
             return;
         }
 
@@ -78,20 +81,18 @@ public class BezierNode extends AbstractCurveNode {
         }
 
         List<Vec3d> sampled = curve.getSamplePoints();
-        PolylineData polyline = new PolylineData(sampled);
-        PolylineData controlPolygon = new PolylineData(controlPoints);
+        PolylineData sampledPolyline = new PolylineData(sampled);
         List<Vector3d> sampledVectors = new ArrayList<>(sampled.size());
         for (Vec3d sample : sampled) {
             sampledVectors.add(new Vector3d(sample.x, sample.y, sample.z));
         }
 
-        outputValues.put(OUTPUT_CURVE_ID, curve);
-        outputValues.put(OUTPUT_POLYLINE_ID, polyline);
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromCurve(curve));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_CONTROL_POLYGON_ID, controlPolygon);
+        outputValues.put(OUTPUT_CONTROL_PATH_ID, PathData.fromPolyline(new PolylineData(controlPoints)));
         outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
-        outputValues.put(OUTPUT_LENGTH_ID, polyline.getLength());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_LENGTH_ID, sampledPolyline.getLength());
+        markSuccess();
     }
 
     public int getDefaultSamples() {
@@ -99,9 +100,10 @@ public class BezierNode extends AbstractCurveNode {
     }
 
     public void setDefaultSamples(int defaultSamples) {
-        int resolved = GenerationLimits.clampSegments(2, defaultSamples);
-        if (this.defaultSamples != resolved) {
-            this.defaultSamples = resolved;
+        if (defaultSamples >= 2
+                && defaultSamples <= GenerationLimits.MAX_CURVE_SAMPLES
+                && this.defaultSamples != defaultSamples) {
+            this.defaultSamples = defaultSamples;
             markDirty();
         }
     }
@@ -125,18 +127,11 @@ public class BezierNode extends AbstractCurveNode {
         }
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_CURVE_ID, null);
-        outputValues.put(OUTPUT_POLYLINE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_CONTROL_POLYGON_ID, null);
-        outputValues.put(OUTPUT_CONTROL_COUNT_ID, 0);
-        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
+    private void invalidate(String message, int controlCount) {
+        putNullOutputs(OUTPUT_PATH_ID, OUTPUT_CONTROL_PATH_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        putIntOutputs(controlCount, OUTPUT_CONTROL_COUNT_ID);
+        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        markInvalid(message);
     }
 }

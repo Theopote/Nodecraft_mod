@@ -20,15 +20,13 @@ import java.util.UUID;
     displayName = "Explode Path",
     description = "Decomposes a path into per-segment paths as PATH_LIST.",
     category = "geometry.curves",
-    order = 7
+    order = 16
 )
 public class ExplodePathNode extends AbstractCurveNode {
 
     private static final String INPUT_PATH_ID = "input_path";
-
     private static final String OUTPUT_SEGMENTS_ID = "output_segments";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExplodePathNode() {
         super(UUID.randomUUID(), "geometry.curves.explode_path");
@@ -42,14 +40,30 @@ public class ExplodePathNode extends AbstractCurveNode {
             "Number of segment paths", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when explode succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
+        if (verts == null || verts.size() < 2) {
+            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Path is missing or invalid");
+            return;
+        }
+        if (PathUtils.hasDegenerateSegment(verts)) {
+            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Path contains a degenerate zero-length segment");
+            return;
+        }
+
         List<List<Vector3d>> rawSegments = PathUtils.explodePath(verts);
         if (rawSegments.isEmpty()) {
-            writeInvalid();
+            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Path could not be exploded into segments");
             return;
         }
 
@@ -61,18 +75,14 @@ public class ExplodePathNode extends AbstractCurveNode {
             }
         }
         if (segments.isEmpty()) {
-            writeInvalid();
+            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Path could not be exploded into segments");
             return;
         }
 
         outputValues.put(OUTPUT_SEGMENTS_ID, List.copyOf(segments));
         outputValues.put(OUTPUT_COUNT_ID, segments.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_SEGMENTS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        markSuccess();
     }
 }

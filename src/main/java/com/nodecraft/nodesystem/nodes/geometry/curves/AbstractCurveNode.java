@@ -1,10 +1,13 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -17,8 +20,33 @@ import java.util.UUID;
 
 abstract class AbstractCurveNode extends BaseNode {
 
+    protected static final String OUTPUT_VALID_ID = "output_valid";
+    protected static final String OUTPUT_ERROR_ID = "output_error";
+
     protected AbstractCurveNode(UUID id, String typeName) {
         super(id, typeName);
+    }
+
+    protected final void addErrorOutputPort() {
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false", NodeDataType.STRING, this));
+    }
+
+    /** @deprecated Used only by legacy {@code CurveFrameAlongPathNode}. */
+    @Deprecated
+    protected final double readDoubleInput(String portId, double fallback) {
+        Double value = resolveFiniteDouble(portId, fallback);
+        return value == null ? fallback : value;
+    }
+
+    protected final void markInvalid(String error) {
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    protected final void markSuccess() {
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     protected final void putNullOutputs(String... outputIds) {
@@ -51,20 +79,24 @@ abstract class AbstractCurveNode extends BaseNode {
         }
     }
 
-    protected final void writeInvalidOutputs() {
-        putNullOutputs("output_curve", "output_polyline");
-        putEmptyListOutputs("output_points");
-        putBooleanOutputs(false, "output_valid");
+    protected final @Nullable Integer resolveBoundedInteger(String portId, int fallback, int min, int max) {
+        return CurveInputUtils.resolveOptionalBoundedExactInteger(this, portId, fallback, min, max);
     }
 
-    protected final int readIntInput(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
+    protected final @Nullable Integer resolvePositiveInteger(String portId, int fallback) {
+        return CurveInputUtils.resolveOptionalExactPositiveInteger(this, portId, fallback);
     }
 
-    protected final double readDoubleInput(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    protected final @Nullable Double resolveFiniteDouble(String portId, double fallback) {
+        return CurveInputUtils.resolveOptionalFiniteDouble(this, portId, fallback);
+    }
+
+    protected final @Nullable Double resolvePositiveDouble(String portId, double fallback) {
+        return CurveInputUtils.resolveOptionalPositiveFiniteDouble(this, portId, fallback);
+    }
+
+    protected final @Nullable Double resolveNonNegativeDouble(String portId, double fallback) {
+        return CurveInputUtils.resolveOptionalNonNegativeFiniteDouble(this, portId, fallback);
     }
 
     protected final void markDirtyIfChanged(@Nullable Object oldValue, @Nullable Object newValue) {

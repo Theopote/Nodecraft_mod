@@ -11,7 +11,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
@@ -83,8 +83,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         boundary.setInput("input_face", floorFace);
         boundary.processNode(null);
         assertEquals(Boolean.TRUE, boundary.getOutput("output_valid"));
-        PolylineData perimeter = assertInstanceOf(PolylineData.class, boundary.getOutput("output_polyline"));
-        assertTrue(NodeDataType.isConnectableTo(NodeDataType.POLYLINE, NodeDataType.PATH));
+        PathData perimeter = assertInstanceOf(PathData.class, boundary.getOutput("output_path"));
 
         // Walls â?PATH
         WallAlongPathNode walls = new WallAlongPathNode();
@@ -171,7 +170,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
     void miniBuildingGraphPortsStayTypedWithoutAny() {
         assertPortType("geometry.architectural_primitives.floor_slab", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.curves.face_boundary_curve", "input_face", true, NodeDataType.BOX_FACE);
-        assertPortType("geometry.curves.face_boundary_curve", "output_polyline", false, NodeDataType.POLYLINE);
+        assertPortType("geometry.curves.face_boundary_curve", "output_path", false, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.wall_along_path", "input_path", true, NodeDataType.PATH);
         assertPortType("geometry.architectural_primitives.window_array", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.architectural_primitives.window_array", "output_frames", false, NodeDataType.FRAME_LIST);

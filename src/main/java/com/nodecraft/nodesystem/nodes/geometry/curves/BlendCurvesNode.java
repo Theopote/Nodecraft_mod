@@ -24,7 +24,7 @@ import java.util.UUID;
     displayName = "Blend Paths",
     description = "Creates a smooth transition path between two path endpoints.",
     category = "geometry.curves",
-    order = 22
+    order = 25
 )
 public class BlendCurvesNode extends AbstractCurveNode {
 
@@ -63,7 +63,6 @@ public class BlendCurvesNode extends AbstractCurveNode {
     private static final String OUTPUT_POINTS_ID = "output_points";
     private static final String OUTPUT_START_POINT_ID = "output_start_point";
     private static final String OUTPUT_END_POINT_ID = "output_end_point";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public BlendCurvesNode() {
         super(UUID.randomUUID(), "geometry.curves.blend_curves");
@@ -86,6 +85,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
             "Blend end point", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when the blend was generated", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -98,7 +98,27 @@ public class BlendCurvesNode extends AbstractCurveNode {
         List<Vector3d> pointsA = resolvePathVertices(INPUT_PATH_A_ID, reverseA);
         List<Vector3d> pointsB = resolvePathVertices(INPUT_PATH_B_ID, reverseB);
         if (pointsA == null || pointsB == null || pointsA.size() < 2 || pointsB.size() < 2) {
-            writeInvalid();
+            invalidate("Path A or Path B is missing or invalid");
+            return;
+        }
+
+        Integer segmentsValue = resolveBoundedInteger(
+            INPUT_SEGMENTS_ID,
+            defaultSegments,
+            1,
+            GenerationLimits.MAX_CURVE_SAMPLES
+        );
+        if (segmentsValue == null) {
+            invalidate("Segments is connected but invalid (must be >= 1 and <= "
+                + GenerationLimits.MAX_CURVE_SAMPLES + ")");
+            return;
+        }
+        int segments = segmentsValue;
+
+        Double lengthA = resolveNonNegativeDouble(INPUT_LENGTH_A_ID, defaultLengthA);
+        Double lengthB = resolveNonNegativeDouble(INPUT_LENGTH_B_ID, defaultLengthB);
+        if (lengthA == null || lengthB == null) {
+            invalidate("Length A or Length B is connected but invalid");
             return;
         }
 
@@ -107,20 +127,17 @@ public class BlendCurvesNode extends AbstractCurveNode {
         Vector3d tangentA = endTangent(pointsA);
         Vector3d tangentB = startTangent(pointsB);
         if (start.distanceSquared(end) <= EPS * EPS || tangentA == null || tangentB == null) {
-            writeInvalid();
+            invalidate("Blend endpoints or tangents are degenerate");
             return;
         }
 
-        int segments = GenerationLimits.clampSegments(1, getInputInt(INPUT_SEGMENTS_ID, defaultSegments));
-        double lengthA = Math.max(0.0d, getInputDouble(INPUT_LENGTH_A_ID, defaultLengthA));
-        double lengthB = Math.max(0.0d, getInputDouble(INPUT_LENGTH_B_ID, defaultLengthB));
         List<Vector3d> blendPoints = continuity == Continuity.G0
             ? sampleLinear(start, end, segments)
             : sampleHermite(start, end, tangentA.mul(lengthA), tangentB.mul(lengthB), segments);
 
         PathData blendPath = PathUtils.toPathData(blendPoints);
         if (blendPath == null) {
-            writeInvalid();
+            invalidate("Blend path is degenerate");
             return;
         }
 
@@ -128,7 +145,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(blendPoints));
         outputValues.put(OUTPUT_START_POINT_ID, new PointData(start));
         outputValues.put(OUTPUT_END_POINT_ID, new PointData(end));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     public Continuity getContinuity() {
@@ -206,7 +223,7 @@ public class BlendCurvesNode extends AbstractCurveNode {
     }
 
     public void setDefaultSegments(int defaultSegments) {
-        int resolved = GenerationLimits.clampSegments(1, defaultSegments);
+        int resolved = Math.max(1, defaultSegments);
         if (this.defaultSegments != resolved) {
             this.defaultSegments = resolved;
             markDirty();
@@ -297,21 +314,9 @@ public class BlendCurvesNode extends AbstractCurveNode {
         return points;
     }
 
-    private int getInputInt(String portId, int fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.intValue() : fallback;
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_START_POINT_ID, null);
-        outputValues.put(OUTPUT_END_POINT_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PATH_ID, OUTPUT_START_POINT_ID, OUTPUT_END_POINT_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        markInvalid(error);
     }
 }

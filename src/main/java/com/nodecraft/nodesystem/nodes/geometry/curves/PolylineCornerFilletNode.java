@@ -1,7 +1,5 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -12,6 +10,8 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -30,7 +30,7 @@ import java.util.UUID;
     displayName = "Fillet Path Corners",
     description = "Fillets interior corners of an open path with circular arcs in the work plane",
     category = "geometry.curves",
-    order = 11
+    order = 18
 )
 public class PolylineCornerFilletNode extends AbstractCurveNode {
 
@@ -45,7 +45,6 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
     private static final String INPUT_RADIUS_ID = "input_radius";
 
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public PolylineCornerFilletNode() {
         super(UUID.randomUUID(), "geometry.curves.fillet_polyline_corners");
@@ -66,6 +65,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when a filleted path was produced",
             NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     public int getArcSegments() {
@@ -99,19 +99,22 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> raw = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
-        Object planeObj = inputValues.get(INPUT_PLANE_ID);
-        Object radiusObj = inputValues.get(INPUT_RADIUS_ID);
-        if (raw == null || raw.size() < 3 || PathUtils.isClosed(raw)
-                || !(planeObj instanceof PlaneData plane) || !(radiusObj instanceof Number radNum)) {
-            writeInvalid();
+        List<Vector3d> raw = resolvePathVertices(INPUT_PATH_ID);
+        PlaneData plane = OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+        Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, 0.0d);
+        if (raw == null || raw.size() < 3 || PathUtils.isClosed(raw)) {
+            invalidate("Path must be an open path with at least 3 vertices");
             return;
         }
-        double radius = radNum.doubleValue();
-        if (!(radius > EPS)) {
-            writeInvalid();
+        if (plane == null) {
+            invalidate("Plane is missing or invalid");
             return;
         }
+        if (radius == null) {
+            invalidate("Radius is connected but invalid (must be finite and > 0)");
+            return;
+        }
+
         int segs = Math.min(64, Math.max(1, arcSegments));
 
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
@@ -121,9 +124,9 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             pts.add(axes.to2d(p3));
         }
 
-        List<Vector2d> filleted = filletOpen(pts, radius, segs);
+        List<Vector2d> filleted = filletOpenTransactional(pts, radius, segs);
         if (filleted == null || filleted.size() < 2) {
-            writeInvalid();
+            invalidate("One or more interior corners could not be filleted");
             return;
         }
 
@@ -134,20 +137,20 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
         }
         PolylineData polyline = PathUtils.createPolylineOrNull(out);
         if (polyline == null) {
-            writeInvalid();
+            invalidate("Fillet path is degenerate");
             return;
         }
 
         outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private void invalidate(String error) {
+        putNullOutputs(OUTPUT_PATH_ID);
+        markInvalid(error);
     }
 
-    private static List<Vector2d> filletOpen(List<Vector2d> pts, double radius, int arcSegments) {
+    private static @Nullable List<Vector2d> filletOpenTransactional(List<Vector2d> pts, double radius, int arcSegments) {
         int n = pts.size();
         if (n < 3) {
             return null;
@@ -191,8 +194,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             double l = Math.min(lIdeal, Math.min(edgeIn, edgeOut) * 0.49d);
             double rEff = l * tanHalf;
             if (l < EPS || rEff < EPS) {
-                Polyline2DUtils.appendIfFar(out, b);
-                continue;
+                return null;
             }
 
             Vector2d p1 = new Vector2d(b).sub(new Vector2d(dirAb).mul(l));
@@ -200,28 +202,28 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
 
             Vector2d bis = new Vector2d(dirBc).sub(dirAb);
             if (bis.lengthSquared() < EPS * EPS) {
-                Polyline2DUtils.appendIfFar(out, b);
-                continue;
+                return null;
             }
             bis.normalize();
             double sinHalf = Math.sin(theta * 0.5d);
             if (Math.abs(sinHalf) < EPS) {
-                Polyline2DUtils.appendIfFar(out, b);
-                continue;
+                return null;
             }
             double dCenter = rEff / sinHalf;
             Vector2d center = new Vector2d(b).add(new Vector2d(bis).mul(dCenter));
 
             double rActual = center.distance(p1);
             if (rActual < EPS) {
-                Polyline2DUtils.appendIfFar(out, b);
-                continue;
+                return null;
             }
 
             boolean ccw = Polyline2DUtils.cross2(dirAb, dirBc) > 0.0d;
 
             Polyline2DUtils.appendIfFar(out, p1);
             List<Vector2d> arc = Polyline2DUtils.sampleArc(center, rActual, p1, p2, ccw, arcSegments);
+            if (arc.size() < 2) {
+                return null;
+            }
             for (int k = 1; k < arc.size(); k++) {
                 Polyline2DUtils.appendIfFar(out, arc.get(k));
             }

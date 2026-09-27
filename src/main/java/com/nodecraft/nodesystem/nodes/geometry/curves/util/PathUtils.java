@@ -223,8 +223,9 @@ public final class PathUtils {
     }
 
     /**
-     * Extracts a directed sub-path between normalized arc-length parameters.
-     * Open paths require start &lt; end after clamping; closed paths allow seam wrap when start &gt; end.
+     * Extracts a directed sub-path between normalized arc-length parameters (strict, no clamp).
+     * Open: {@code 0 <= start < end <= 1}. Closed: {@code 0 <= start,end <= 1}, {@code start != end};
+     * {@code start > end} crosses the seam.
      */
     public static @Nullable List<Vector3d> trimPathByParameter(@Nullable List<Vector3d> verts,
                                                                double startT,
@@ -236,13 +237,20 @@ public final class PathUtils {
             return null;
         }
 
-        double t0 = clamp01(startT);
-        double t1 = clamp01(endT);
-        if (Math.abs(t1 - t0) <= EPS) {
+        boolean closed = isClosed(verts);
+        if (closed) {
+            if (startT < 0.0d || startT > 1.0d || endT < 0.0d || endT > 1.0d) {
+                return null;
+            }
+            if (Math.abs(startT - endT) <= EPS) {
+                return null;
+            }
+        } else if (startT < 0.0d || endT > 1.0d || startT >= endT) {
             return null;
         }
 
-        boolean closed = isClosed(verts);
+        double t0 = startT;
+        double t1 = endT;
         List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
         if (unique.size() < 2) {
             return null;
@@ -272,12 +280,11 @@ public final class PathUtils {
     }
 
     public static @Nullable PathSplitResult splitPathByParameter(@Nullable List<Vector3d> verts, double parameter) {
-        if (!Double.isFinite(parameter)) {
+        if (!Double.isFinite(parameter) || parameter <= 0.0d || parameter >= 1.0d) {
             return null;
         }
-        double clamped = clamp01(parameter);
-        List<Vector3d> pathA = trimPathByParameter(verts, 0.0d, clamped);
-        List<Vector3d> pathB = trimPathByParameter(verts, clamped, 1.0d);
+        List<Vector3d> pathA = trimPathByParameter(verts, 0.0d, parameter);
+        List<Vector3d> pathB = trimPathByParameter(verts, parameter, 1.0d);
         if (pathA == null || pathB == null) {
             return null;
         }
@@ -304,11 +311,32 @@ public final class PathUtils {
             Vector3d a = unique.get(i);
             Vector3d b = unique.get((i + 1) % unique.size());
             if (a.distanceSquared(b) <= EPS * EPS) {
-                continue;
+                return List.of();
             }
             segments.add(List.of(new Vector3d(a), new Vector3d(b)));
         }
         return segments;
+    }
+
+    /** Returns true when any geometric segment has zero length. */
+    public static boolean hasDegenerateSegment(@Nullable List<Vector3d> verts) {
+        if (verts == null || verts.size() < 2) {
+            return true;
+        }
+        boolean closed = isClosed(verts);
+        List<Vector3d> unique = closed ? verts.subList(0, verts.size() - 1) : verts;
+        if (unique.size() < 2) {
+            return true;
+        }
+        int segCount = closed ? unique.size() : unique.size() - 1;
+        for (int i = 0; i < segCount; i++) {
+            Vector3d a = unique.get(i);
+            Vector3d b = unique.get((i + 1) % unique.size());
+            if (a.distanceSquared(b) <= EPS * EPS) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

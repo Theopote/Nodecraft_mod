@@ -22,7 +22,7 @@ import java.util.UUID;
     displayName = "Tween Paths",
     description = "Creates evenly spaced intermediate paths between two path inputs.",
     category = "geometry.curves",
-    order = 23
+    order = 26
 )
 public class TweenCurvesNode extends AbstractCurveNode {
 
@@ -50,10 +50,8 @@ public class TweenCurvesNode extends AbstractCurveNode {
     private static final String INPUT_PATH_B_ID = "input_path_b";
     private static final String INPUT_COUNT_ID = "input_count";
     private static final String INPUT_SAMPLES_ID = "input_samples";
-
     private static final String OUTPUT_PATHS_ID = "output_paths";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TweenCurvesNode() {
         super(UUID.randomUUID(), "geometry.curves.tween_curves");
@@ -73,33 +71,45 @@ public class TweenCurvesNode extends AbstractCurveNode {
             "Number of generated paths", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when tween paths were generated", NodeDataType.BOOLEAN, this));
-    }
-
-    @Override
-    public String getDescription() {
-        return "Creates evenly spaced intermediate paths between two path inputs.";
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> pathA = resolvePathVertices(INPUT_PATH_A_ID, reverseA);
         List<Vector3d> pathB = resolvePathVertices(INPUT_PATH_B_ID, reverseB);
-        int count = GenerationLimits.clampPositiveCount(Math.max(0, readIntInput(INPUT_COUNT_ID, defaultCount)));
-        int samples = Math.max(2, readIntInput(INPUT_SAMPLES_ID, defaultSamples));
-        if (pathA == null || pathB == null || count < 1) {
-            writeInvalid();
+        if (pathA == null || pathB == null) {
+            invalidate("Path A or Path B is missing or invalid");
+            return;
+        }
+
+        Integer count = resolveBoundedInteger(INPUT_COUNT_ID, defaultCount, 1, GenerationLimits.MAX_CURVE_OUTPUT_PATHS);
+        if (count == null) {
+            invalidate("Count must be an integer from 1 to " + GenerationLimits.MAX_CURVE_OUTPUT_PATHS);
+            return;
+        }
+
+        Integer samples = resolveBoundedInteger(INPUT_SAMPLES_ID, defaultSamples, 2, GenerationLimits.MAX_CURVE_SAMPLES);
+        if (samples == null) {
+            invalidate("Samples must be an integer from 2 to " + GenerationLimits.MAX_CURVE_SAMPLES);
+            return;
+        }
+
+        long outputPathCount = count + (includeInputs ? 2L : 0L);
+        if (!GenerationLimits.isWithinCurveWorkload(outputPathCount, samples)) {
+            invalidate("Tween workload exceeds maximum (paths × samples <= "
+                + GenerationLimits.MAX_CURVE_TOTAL_SAMPLES + ")");
             return;
         }
 
         ResampledPath sampledA = resample(pathA, samples);
         ResampledPath sampledB = resample(pathB, samples);
         if (sampledA == null || sampledB == null || sampledA.closed != sampledB.closed) {
-            writeInvalid();
+            invalidate("Paths could not be resampled or have mismatched closed/open topology");
             return;
         }
 
-        List<PathData> paths = new ArrayList<>(count + (includeInputs ? 2 : 0));
-
+        List<PathData> paths = new ArrayList<>((int) outputPathCount);
         if (includeInputs) {
             appendTweenPath(sampledA.points, sampledA.closed, paths);
         }
@@ -113,103 +123,19 @@ public class TweenCurvesNode extends AbstractCurveNode {
         }
 
         if (paths.isEmpty()) {
-            writeInvalid();
+            invalidate("No tween paths were generated");
             return;
         }
 
         outputValues.put(OUTPUT_PATHS_ID, List.copyOf(paths));
         outputValues.put(OUTPUT_COUNT_ID, paths.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    public int getDefaultCount() {
-        return defaultCount;
-    }
-
-    public void setDefaultCount(int defaultCount) {
-        int resolved = GenerationLimits.clampPositiveCount(Math.max(0, defaultCount));
-        if (this.defaultCount != resolved) {
-            this.defaultCount = resolved;
-            markDirty();
-        }
-    }
-
-    public int getDefaultSamples() {
-        return defaultSamples;
-    }
-
-    public void setDefaultSamples(int defaultSamples) {
-        int resolved = Math.max(2, defaultSamples);
-        if (this.defaultSamples != resolved) {
-            this.defaultSamples = resolved;
-            markDirty();
-        }
-    }
-
-    public boolean isReverseA() {
-        return reverseA;
-    }
-
-    public void setReverseA(boolean reverseA) {
-        if (this.reverseA != reverseA) {
-            this.reverseA = reverseA;
-            markDirty();
-        }
-    }
-
-    public boolean isReverseB() {
-        return reverseB;
-    }
-
-    public void setReverseB(boolean reverseB) {
-        if (this.reverseB != reverseB) {
-            this.reverseB = reverseB;
-            markDirty();
-        }
-    }
-
-    public boolean isIncludeInputs() {
-        return includeInputs;
-    }
-
-    public void setIncludeInputs(boolean includeInputs) {
-        if (this.includeInputs != includeInputs) {
-            this.includeInputs = includeInputs;
-            markDirty();
-        }
-    }
-
-    @Override
-    public Object getNodeState() {
-        return java.util.Map.of(
-            "defaultCount", defaultCount,
-            "defaultSamples", defaultSamples,
-            "reverseA", reverseA,
-            "reverseB", reverseB,
-            "includeInputs", includeInputs
-        );
-    }
-
-    @Override
-    public void setNodeState(Object state) {
-        if (!(state instanceof java.util.Map<?, ?> map)) {
-            return;
-        }
-        if (map.get("defaultCount") instanceof Number value) {
-            setDefaultCount(value.intValue());
-        }
-        if (map.get("defaultSamples") instanceof Number value) {
-            setDefaultSamples(value.intValue());
-        }
-        if (map.get("reverseA") instanceof Boolean value) {
-            setReverseA(value);
-        }
-        if (map.get("reverseB") instanceof Boolean value) {
-            setReverseB(value);
-        }
-        if (map.get("includeInputs") instanceof Boolean value) {
-            setIncludeInputs(value);
-        }
+    private void invalidate(String error) {
+        putEmptyListOutputs(OUTPUT_PATHS_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 
     private @Nullable ResampledPath resample(List<Vector3d> path, int samples) {
@@ -227,9 +153,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
         List<Vector3d> out = new ArrayList<>(sampleCount);
         double total = cumulative[cumulative.length - 1];
         for (int i = 0; i < sampleCount; i++) {
-            double t = closed
-                ? i / (double) sampleCount
-                : i / (double) (sampleCount - 1);
+            double t = closed ? i / (double) sampleCount : i / (double) (sampleCount - 1);
             out.add(PathUtils.sampleAtDistance(unique, closed, cumulative, total * t));
         }
         return new ResampledPath(List.copyOf(out), closed);
@@ -244,8 +168,7 @@ public class TweenCurvesNode extends AbstractCurveNode {
     }
 
     private void appendTweenPath(List<Vector3d> row, boolean closed, List<PathData> paths) {
-        PathData path = PathUtils.toPathData(closed && !row.isEmpty()
-            ? appendClosingVertex(row) : row);
+        PathData path = PathUtils.toPathData(closed && !row.isEmpty() ? appendClosingVertex(row) : row);
         if (path != null) {
             paths.add(path);
         }
@@ -260,12 +183,48 @@ public class TweenCurvesNode extends AbstractCurveNode {
         return copy;
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATHS_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
+    private record ResampledPath(List<Vector3d> points, boolean closed) {
     }
 
-    private record ResampledPath(List<Vector3d> points, boolean closed) {
+    public int getDefaultCount() { return defaultCount; }
+    public void setDefaultCount(int defaultCount) {
+        if (defaultCount >= 1 && defaultCount <= GenerationLimits.MAX_CURVE_OUTPUT_PATHS && this.defaultCount != defaultCount) {
+            this.defaultCount = defaultCount;
+            markDirty();
+        }
+    }
+    public int getDefaultSamples() { return defaultSamples; }
+    public void setDefaultSamples(int defaultSamples) {
+        if (defaultSamples >= 2 && defaultSamples <= GenerationLimits.MAX_CURVE_SAMPLES && this.defaultSamples != defaultSamples) {
+            this.defaultSamples = defaultSamples;
+            markDirty();
+        }
+    }
+    public boolean isReverseA() { return reverseA; }
+    public void setReverseA(boolean reverseA) { if (this.reverseA != reverseA) { this.reverseA = reverseA; markDirty(); } }
+    public boolean isReverseB() { return reverseB; }
+    public void setReverseB(boolean reverseB) { if (this.reverseB != reverseB) { this.reverseB = reverseB; markDirty(); } }
+    public boolean isIncludeInputs() { return includeInputs; }
+    public void setIncludeInputs(boolean includeInputs) { if (this.includeInputs != includeInputs) { this.includeInputs = includeInputs; markDirty(); } }
+
+    @Override
+    public Object getNodeState() {
+        return java.util.Map.of(
+            "defaultCount", defaultCount,
+            "defaultSamples", defaultSamples,
+            "reverseA", reverseA,
+            "reverseB", reverseB,
+            "includeInputs", includeInputs
+        );
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof java.util.Map<?, ?> map)) return;
+        if (map.get("defaultCount") instanceof Integer value) setDefaultCount(value);
+        if (map.get("defaultSamples") instanceof Integer value) setDefaultSamples(value);
+        if (map.get("reverseA") instanceof Boolean value) setReverseA(value);
+        if (map.get("reverseB") instanceof Boolean value) setReverseB(value);
+        if (map.get("includeInputs") instanceof Boolean value) setIncludeInputs(value);
     }
 }

@@ -129,6 +129,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V67 -> migrateV67ToV68(graph);
             case GraphFormatVersion.V68 -> migrateV68ToV69(graph);
             case GraphFormatVersion.V69 -> migrateV69ToV70(graph);
+            case GraphFormatVersion.V70 -> migrateV70ToV71(graph);
             default -> graph;
         };
     }
@@ -4776,6 +4777,103 @@ public final class GraphMigrationRegistry {
      */
     private static SavedGraph migrateV69ToV70(SavedGraph graph) {
         return graph;
+    }
+
+    /**
+     * Geometry Curves PATH v2: remap removed CURVE/POLYLINE/LINE/LIST mirror ports to PATH typed outputs.
+     */
+    private static SavedGraph migrateV70ToV71(SavedGraph graph) {
+        applyCurvesPathV71PortMigration(graph);
+        applyCurvesPathV71NodeStateMigration(graph);
+        return graph;
+    }
+
+    private static void applyCurvesPathV71PortMigration(SavedGraph graph) {
+        if (graph.connections == null || graph.nodes == null) {
+            return;
+        }
+
+        java.util.Map<String, String> nodeTypes = new java.util.HashMap<>();
+        for (SavedNode node : graph.nodes) {
+            if (node != null && node.nodeId != null && node.typeId != null) {
+                nodeTypes.put(node.nodeId, node.typeId);
+            }
+        }
+
+        java.util.List<SavedConnection> kept = new java.util.ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = nodeTypes.get(connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId;
+            String targetPort = connection.targetPortId;
+
+            if (sourcePort == null || targetPort == null) {
+                continue;
+            }
+
+            String remappedSource = remapCurvesPathV71SourcePort(sourceType, sourcePort);
+            String remappedTarget = remapCurvesPathV71TargetPort(nodeTypes.get(connection.targetNodeId), targetPort);
+
+            if (remappedSource == null || remappedTarget == null) {
+                continue;
+            }
+
+            connection.sourcePortId = remappedSource;
+            connection.targetPortId = remappedTarget;
+            kept.add(connection);
+        }
+        graph.connections = kept;
+    }
+
+    private static @Nullable String remapCurvesPathV71SourcePort(@Nullable String sourceType, String sourcePort) {
+        if (sourceType == null) {
+            return sourcePort;
+        }
+        if (!sourceType.startsWith("geometry.curves.")) {
+            return sourcePort;
+        }
+
+        return switch (sourcePort) {
+            case "output_curve", "output_polyline", "output_line" -> "output_path";
+            case "output_control_polygon" -> "output_control_path";
+            case "output_polylines" -> "output_paths";
+            case "output_center_polyline" -> "output_center_path";
+            case "output_offsets" -> "geometry.curves.rainbow_curve_offset".equals(sourceType) ? "output_offsets" : null;
+            case "output_effective_degree" -> null;
+            default -> sourcePort;
+        };
+    }
+
+    private static @Nullable String remapCurvesPathV71TargetPort(@Nullable String targetType, String targetPort) {
+        if (targetType == null) {
+            return targetPort;
+        }
+        if ("geometry.curves.nurbs".equals(targetType) && "input_weights".equals(targetPort)) {
+            return targetPort;
+        }
+        return targetPort;
+    }
+
+    private static void applyCurvesPathV71NodeStateMigration(SavedGraph graph) {
+        if (graph.nodes == null) {
+            return;
+        }
+        for (SavedNode node : graph.nodes) {
+            if (node == null || node.state == null || !"geometry.curves.evaluate_curve".equals(node.typeId)) {
+                continue;
+            }
+            if (node.state instanceof java.util.Map<?, ?> map) {
+                java.util.Map<String, Object> copy = new java.util.HashMap<>();
+                for (java.util.Map.Entry<?, ?> entry : map.entrySet()) {
+                    if (entry.getKey() instanceof String key && !"clampT".equals(key)) {
+                        copy.put(key, entry.getValue());
+                    }
+                }
+                node.state = copy;
+            }
+        }
     }
 
     private static final Set<String> ARCHITECTURAL_V68_REMOVED_TYPES = Set.of(

@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -156,7 +159,7 @@ class GeometryCurvesFamilyContractTest {
         node.processNode(null);
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
         assertInstanceOf(PathData.class, node.getOutput("output_path"));
-        assertInstanceOf(PolylineData.class, node.getOutput("output_polyline"));
+        assertFalse(hasOutputPort("geometry.curves.points_to_path", "output_polyline"));
     }
 
     @Test
@@ -317,8 +320,7 @@ class GeometryCurvesFamilyContractTest {
         BaseNode helix = node("geometry.curves.helix");
         helix.processNode(null);
         assertEquals(Boolean.TRUE, helix.getOutput("output_valid"));
-        assertInstanceOf(Curve.class, helix.getOutput("output_curve"));
-        assertInstanceOf(PolylineData.class, helix.getOutput("output_polyline"));
+        assertInstanceOf(PathData.class, helix.getOutput("output_path"));
         assertTrue(((List<?>) helix.getOutput("output_points")).size() >= 2);
         assertTrue(((Number) helix.getOutput("output_length")).doubleValue() > 0.0d);
     }
@@ -335,6 +337,8 @@ class GeometryCurvesFamilyContractTest {
         assertValidWithPath("geometry.curves.voxelize_curve", line);
 
         BaseNode offset = node("geometry.curves.offset_curve_plane");
+        connectInput(offset, "input_plane", NodeDataType.PLANE);
+        connectInput(offset, "input_offset", NodeDataType.DOUBLE);
         offset.setInput("input_path", line);
         offset.setInput("input_plane", PlaneData.XZ_PLANE);
         offset.setInput("input_offset", 1.0d);
@@ -361,6 +365,8 @@ class GeometryCurvesFamilyContractTest {
                 new Vec3d(10, 64, 0),
                 new Vec3d(10, 64, 10)));
         BaseNode fillet = node("geometry.curves.fillet_polyline_corners");
+        connectInput(fillet, "input_plane", NodeDataType.PLANE);
+        connectInput(fillet, "input_radius", NodeDataType.DOUBLE);
         fillet.setInput("input_path", elbow);
         fillet.setInput("input_plane", PlaneData.XZ_PLANE);
         fillet.setInput("input_radius", 1.0d);
@@ -382,8 +388,30 @@ class GeometryCurvesFamilyContractTest {
         assertEquals(3, node.getOutput("output_count"));
     }
 
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+        target.getInput(inputPortId);
+    }
+
     private static LineData sampleLine10Blocks() {
         return new LineData(new Vec3d(0, 64, 0), new Vec3d(10, 64, 0));
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(ExecutionContext context) {
+        }
     }
 
     private static BaseNode node(String typeId) {

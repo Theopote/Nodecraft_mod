@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -19,16 +20,20 @@ import java.util.UUID;
     displayName = "Extend Path",
     description = "Linearly extends an open path along start/end tangents by the given lengths.",
     category = "geometry.curves",
-    order = 8
+    order = 17
 )
 public class ExtendPathNode extends AbstractCurveNode {
+
+    @NodeProperty(displayName = "Default Start Length", category = "Extend", order = 1)
+    private double defaultStartLength = 0.0d;
+
+    @NodeProperty(displayName = "Default End Length", category = "Extend", order = 2)
+    private double defaultEndLength = 0.0d;
 
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_START_LENGTH_ID = "input_start_length";
     private static final String INPUT_END_LENGTH_ID = "input_end_length";
-
     private static final String OUTPUT_PATH_ID = "output_path";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public ExtendPathNode() {
         super(UUID.randomUUID(), "geometry.curves.extend_path");
@@ -44,26 +49,28 @@ public class ExtendPathNode extends AbstractCurveNode {
             "Extended path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when extension succeeded", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
-        double startLength = readDoubleInput(INPUT_START_LENGTH_ID, 0.0d);
-        double endLength = readDoubleInput(INPUT_END_LENGTH_ID, 0.0d);
+        Double startLength = resolveNonNegativeDouble(INPUT_START_LENGTH_ID, defaultStartLength);
+        Double endLength = resolveNonNegativeDouble(INPUT_END_LENGTH_ID, defaultEndLength);
+        if (startLength == null || endLength == null) {
+            putNullOutputs(OUTPUT_PATH_ID);
+            markInvalid("Start Length or End Length is connected but invalid");
+            return;
+        }
 
         List<Vector3d> extended = PathUtils.extendPath(verts, startLength, endLength);
         PathData path = PathUtils.toPathData(extended);
         if (path == null) {
-            writeInvalid();
+            putNullOutputs(OUTPUT_PATH_ID);
+            markInvalid("Path is missing, closed, or cannot be extended");
             return;
         }
         outputValues.put(OUTPUT_PATH_ID, path);
-        outputValues.put(OUTPUT_VALID_ID, true);
-    }
-
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_PATH_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        markSuccess();
     }
 }

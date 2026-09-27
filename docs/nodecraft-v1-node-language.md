@@ -3,7 +3,7 @@
 Design freeze: player-facing and AI-facing **graph language** for ports, numeric types,
 angles, and spatial concepts.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-27
 
 ## Authority
 
@@ -44,6 +44,7 @@ Last updated: 2026-09-25
 | Architectural Primitives | [`node-language-v1-architectural-primitives.md`](./node-language-v1-architectural-primitives.md) **(PASSED / FROZEN, V68)** |
 | Geometry Boolean | [`node-language-v1-geometry-boolean.md`](./node-language-v1-geometry-boolean.md) **(PASSED / FROZEN, V69)** |
 | Geometry Combine | [`node-language-v1-geometry-combine.md`](./node-language-v1-geometry-combine.md) **(PASSED / FROZEN, V70)** |
+| Geometry Curves / PATH v2 | [`node-language-v1-geometry-curves.md`](./node-language-v1-geometry-curves.md) **(PASSED / FROZEN, V71)** |
 | Directed Domain / Remap | [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) |
 | **This document** | How new (and remediated) nodes express values: types, port ids, units, overrides |
 
@@ -85,6 +86,7 @@ Last updated: 2026-09-25
 | Architectural Primitives v1 | **PASSED / FROZEN** | V68 |
 | Geometry Boolean v1 | **PASSED / FROZEN** | V69 |
 | Geometry Combine v1 | **PASSED / FROZEN** | V70 |
+| Geometry Curves / PATH v2 | **PASSED / FROZEN** | V71 |
 
 If a node’s current implementation disagrees with this freeze, **treat the gap as debt to
 remediate** (with graph/preset migration). Do not copy the gap into new nodes.
@@ -475,7 +477,7 @@ Arc defaults, Curve Evaluate contract).
 
 **Batch 3 P2 — PATH producers & downstream (2026-09-21):**
 
-- **Points To Path** emits primary **`output_path`** (`PATH`) plus legacy `Line` / `Polyline`.
+- **Points To Path** emits **`output_path`** (`PATH`) only (V71 removed `output_line` / `output_polyline` mirrors).
 - **Offset Path In Plane** (`geometry.curves.offset_curve_plane`) is the canonical in-plane offset;
   shared kernel `InPlanePathOffset`. **Offset Polyline In Plane** kept as legacy (order 99), same algorithm
   without optional resampling — prefer Offset Path In Plane for new graphs.

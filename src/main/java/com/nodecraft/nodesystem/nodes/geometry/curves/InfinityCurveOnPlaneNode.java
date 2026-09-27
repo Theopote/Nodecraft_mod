@@ -3,11 +3,12 @@ package com.nodecraft.nodesystem.nodes.geometry.curves;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -24,19 +25,23 @@ import java.util.UUID;
     displayName = "Infinity Curve On Plane",
     description = "Builds a sampled figure-eight (lemniscate-like) curve on a plane",
     category = "geometry.curves",
-    order = 17
+    order = 11
 )
 public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
+
+    private static final int DEFAULT_SEGMENTS = 64;
+
+    @NodeProperty(displayName = "Default Segments", category = "Infinity", order = 1)
+    private int defaultSegments = DEFAULT_SEGMENTS;
+
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_SIZE_ID = "input_size";
     private static final String INPUT_SEGMENTS_ID = "input_segments";
     private static final String INPUT_PLANE_ID = "input_plane";
     private static final String INPUT_AXIS_ID = "input_x_axis";
 
-    private static final String OUTPUT_CURVE_ID = "output_curve";
-    private static final String OUTPUT_POLYLINE_ID = "output_polyline";
+    private static final String OUTPUT_PATH_ID = "output_path";
     private static final String OUTPUT_POINTS_ID = "output_points";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public InfinityCurveOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.curves.infinity_curve");
@@ -46,10 +51,10 @@ public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XY plane", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane x axis", NodeDataType.VECTOR, this));
 
-        addOutputPort(new BasePort(OUTPUT_CURVE_ID, "Curve", "Sampled infinity curve", NodeDataType.CURVE, this));
-        addOutputPort(new BasePort(OUTPUT_POLYLINE_ID, "Polyline", "Sampled infinity polyline", NodeDataType.POLYLINE, this));
+        addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary infinity path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled infinity points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when infinity curve was constructed", NodeDataType.BOOLEAN, this));
+        addErrorOutputPort();
     }
 
     @Override
@@ -59,19 +64,25 @@ public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
         Object preferredAxisObj = inputValues.get(INPUT_AXIS_ID);
 
         if (center == null) {
-            writeInvalidOutputs();
+            invalidate("Center is missing or invalid");
             return;
         }
-        double size = readDoubleInput(INPUT_SIZE_ID, Double.NaN);
-        int segments = GenerationLimits.clampSegments(8, readIntInput(INPUT_SEGMENTS_ID, 0));
-        if (!Double.isFinite(size) || size <= 0.0d) {
-            writeInvalidOutputs();
+
+        Double size = resolvePositiveDouble(INPUT_SIZE_ID, Double.NaN);
+        Integer segments = resolveBoundedInteger(INPUT_SEGMENTS_ID, defaultSegments, 8, GenerationLimits.MAX_CURVE_SAMPLES);
+
+        if (size == null) {
+            invalidate("Size must be a finite value greater than 0");
+            return;
+        }
+        if (segments == null) {
+            invalidate("Segments must be an integer from 8 to " + GenerationLimits.MAX_CURVE_SAMPLES);
             return;
         }
 
         var basis = resolvePlaneBasis(planeObj, preferredAxisObj, PlaneData.XY_PLANE);
         if (basis == null) {
-            writeInvalidOutputs();
+            invalidate("Plane basis could not be constructed");
             return;
         }
 
@@ -86,14 +97,33 @@ public class InfinityCurveOnPlaneNode extends AbstractCurveNode {
             pts.add(new Vec3d(world.x, world.y, world.z));
         }
 
-        Curve curve = buildLinearCurve(pts);
-        outputValues.put(OUTPUT_CURVE_ID, curve);
-        outputValues.put(OUTPUT_POLYLINE_ID, new PolylineData(pts));
+        PolylineData polyline = new PolylineData(pts);
         List<Vector3d> pointVectors = new ArrayList<>(pts.size());
         for (Vec3d point : pts) {
             pointVectors.add(new Vector3d(point.x, point.y, point.z));
         }
+
+        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(pointVectors));
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    public int getDefaultSegments() {
+        return defaultSegments;
+    }
+
+    public void setDefaultSegments(int defaultSegments) {
+        if (defaultSegments >= 8
+                && defaultSegments <= GenerationLimits.MAX_CURVE_SAMPLES
+                && this.defaultSegments != defaultSegments) {
+            this.defaultSegments = defaultSegments;
+            markDirty();
+        }
+    }
+
+    private void invalidate(String message) {
+        putNullOutputs(OUTPUT_PATH_ID);
+        putEmptyListOutputs(OUTPUT_POINTS_ID);
+        markInvalid(message);
     }
 }
