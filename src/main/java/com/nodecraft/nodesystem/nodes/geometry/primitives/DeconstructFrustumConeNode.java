@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -60,8 +59,8 @@ public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode
         addOutputPort(new BasePort(OUTPUT_LATERAL_AREA_ID, "Lateral Area", "Side surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Total surface area including caps", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addValidAndErrorOutputs();
     }
 
@@ -99,8 +98,11 @@ public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode
         double surfaceArea = lateralArea + baseArea + topArea;
         double volume = (Math.PI * height / 3.0d) * (rb * rb + rb * rt + rt * rt);
 
-        RegionData region = GeometryVoxelizer.createBoundingRegion(frustum);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(frustum);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_BASE_CENTER_ID, new PointData(baseCenter));
         outputValues.put(OUTPUT_TOP_CENTER_ID, new PointData(topCenter));
@@ -115,8 +117,8 @@ public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode
         outputValues.put(OUTPUT_LATERAL_AREA_ID, lateralArea);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         markSuccess();
     }
 

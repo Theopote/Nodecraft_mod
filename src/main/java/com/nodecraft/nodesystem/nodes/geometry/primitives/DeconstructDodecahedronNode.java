@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,8 +45,8 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
         addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "World-space vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Total surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Interior volume", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
         addValidAndErrorOutputs();
     }
@@ -73,8 +72,11 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
 
         double surface = 3.0d * Math.sqrt(25.0d + 10.0d * Math.sqrt(5.0d)) * edgeLength * edgeLength;
         double volume = ((15.0d + 7.0d * Math.sqrt(5.0d)) / 4.0d) * edgeLength * edgeLength * edgeLength;
-        RegionData region = GeometryVoxelizer.createBoundingRegion(dodeca);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(dodeca);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(dodeca.getCenter()));
         outputValues.put(OUTPUT_EDGE_LENGTH_ID, edgeLength);
@@ -82,8 +84,8 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
         outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(dodeca.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         outputValues.put(OUTPUT_ORIENTATION_ID, dodeca.getOrientationMatrix());
         markSuccess();
     }

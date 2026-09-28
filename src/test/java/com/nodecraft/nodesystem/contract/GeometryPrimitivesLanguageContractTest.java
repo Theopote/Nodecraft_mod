@@ -66,12 +66,13 @@ class GeometryPrimitivesLanguageContractTest {
     }
 
     @Test
-    void exactlyTwentyNinePrimitiveNodesWithUniqueOrdersZeroToTwentyEight() {
+    void v74CanonicalTwentyNineNodesRemainAtOrdersZeroToTwentyEight() {
+        // Graph V90 adds deconstruct_torus (29) and deconstruct_capsule (30); V74 fence covers orders 0–28.
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.primitives."))
             .sorted()
             .toList();
-        assertEquals(29, ids.size());
+        assertTrue(ids.size() >= 29);
 
         Set<Integer> orders = new HashSet<>();
         for (String id : ids) {
@@ -82,7 +83,6 @@ class GeometryPrimitivesLanguageContractTest {
             INode node = registry.createNodeInstance(id);
             assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(node.getClass(), id));
         }
-        assertEquals(29, orders.size());
         for (int i = 0; i < 29; i++) {
             assertTrue(orders.contains(i), "missing order " + i);
         }

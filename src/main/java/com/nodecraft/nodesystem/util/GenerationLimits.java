@@ -87,7 +87,7 @@ public final class GenerationLimits {
         }
         long product;
         try {
-            product = Math.multiplyExact((long) targetCount, (long) candidatesPerTarget);
+            product = Math.multiplyExact(targetCount, (long) candidatesPerTarget);
         } catch (ArithmeticException overflow) {
             return "Scatter candidate budget overflows";
         }
@@ -147,7 +147,7 @@ public final class GenerationLimits {
         try {
             if (mode == MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX) {
                 work = Math.multiplyExact(
-                    Math.multiplyExact((long) SCATTER_BLUE_NOISE_PROBES, (long) targetCount),
+                    Math.multiplyExact(SCATTER_BLUE_NOISE_PROBES, (long) targetCount),
                     (long) targetCount
                 );
             } else {
@@ -635,7 +635,7 @@ public final class GenerationLimits {
         }
         long product;
         try {
-            product = Math.multiplyExact(Math.multiplyExact((long) a, (long) b), (long) c);
+            product = Math.multiplyExact(Math.multiplyExact(a, (long) b), (long) c);
         } catch (ArithmeticException overflow) {
             return "Grid product overflows";
         }
@@ -837,7 +837,7 @@ public final class GenerationLimits {
     public static @Nullable String validateFormatOutputBudget(int currentLength, int appendLength) {
         long total;
         try {
-            total = Math.addExact((long) currentLength, (long) appendLength);
+            total = Math.addExact(currentLength, (long) appendLength);
         } catch (ArithmeticException overflow) {
             return "Formatted output exceeds MAX_FORMAT_OUTPUT_CHARS";
         }

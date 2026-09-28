@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**522**
+- **节点总数**：**524**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -16,7 +16,7 @@
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
-| `geometry.primitives` | 29 |
+| `geometry.primitives` | 31 |
 | `geometry.profiles` | 23 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 22 |
@@ -162,7 +162,7 @@
 | Tween Paths | `geometry.curves.tween_curves` | Creates evenly spaced intermediate paths between two path inputs. | `TweenCurvesNode` |
 | Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
 
-## geometry.primitives（29）
+## geometry.primitives（31）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -195,6 +195,8 @@
 | Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
+| Deconstruct Torus | `geometry.primitives.deconstruct_torus` | Extracts center, axis, radii, bounds, and analytical values from ring torus geometry | `DeconstructTorusNode` |
+| Deconstruct Capsule | `geometry.primitives.deconstruct_capsule` | Extracts axis, radius, component geometry, bounds, and analytical values from capsule geometry | `DeconstructCapsuleNode` |
 
 ## geometry.profiles（23）
 

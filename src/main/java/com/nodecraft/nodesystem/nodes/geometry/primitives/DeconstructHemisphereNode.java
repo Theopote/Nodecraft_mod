@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -47,8 +46,8 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
         addOutputPort(new BasePort(OUTPUT_FLAT_AREA_ID, "Flat Area", "Disk area (πR²)", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Curved + flat", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Solid hemisphere volume (2/3 πR³)", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addValidAndErrorOutputs();
     }
 
@@ -78,8 +77,11 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
         double surface = curved + flat;
         double volume = (2.0d / 3.0d) * Math.PI * r * r * r;
 
-        RegionData region = GeometryVoxelizer.createBoundingRegion(hemisphere);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(hemisphere);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_AXIS_ID, axis);
@@ -88,8 +90,8 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
         outputValues.put(OUTPUT_FLAT_AREA_ID, flat);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         markSuccess();
     }
 

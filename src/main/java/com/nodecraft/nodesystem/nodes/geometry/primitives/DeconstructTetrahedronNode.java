@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,8 +45,8 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
         addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved tetrahedron vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Regular tetrahedron surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular tetrahedron volume", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
         addValidAndErrorOutputs();
     }
@@ -73,8 +72,11 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
 
         double surfaceArea = Math.sqrt(3.0d) * edgeLength * edgeLength;
         double volume = (edgeLength * edgeLength * edgeLength) / (6.0d * Math.sqrt(2.0d));
-        RegionData region = GeometryVoxelizer.createBoundingRegion(tetrahedron);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(tetrahedron);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(tetrahedron.getCenter()));
         outputValues.put(OUTPUT_EDGE_ID, edgeLength);
@@ -82,8 +84,8 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
         outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(tetrahedron.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         outputValues.put(OUTPUT_ORIENTATION_ID, tetrahedron.getOrientationMatrix());
         markSuccess();
     }

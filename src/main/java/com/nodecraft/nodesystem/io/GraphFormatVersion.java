@@ -594,8 +594,15 @@ public final class GraphFormatVersion {
      */
     public static final int V89 = 89;
 
+    /**
+     * Primitive Geometry Language v2 (PASSED / FROZEN): continuous deconstruct Bounding Box via
+     * GeometryBoundsResolver, Region from block-space quantization, Deconstruct Torus + Capsule,
+     * orders 0–30. V74 remains the historical Primitive Geometry v1 fence.
+     */
+    public static final int V90 = 90;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V89;
+    public static final int CURRENT = V90;
 
     private GraphFormatVersion() {
     }

@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **522**
+- Total nodes: **524**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -16,7 +16,7 @@
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
-| `geometry.primitives` | 29 |
+| `geometry.primitives` | 31 |
 | `geometry.profiles` | 23 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 22 |
@@ -162,7 +162,7 @@
 | Tween Paths | `geometry.curves.tween_curves` | Creates evenly spaced intermediate paths between two path inputs. | `TweenCurvesNode` |
 | Voxelize Path | `geometry.curves.voxelize_curve` | Converts a path directly into voxel block coordinates using cylindrical path segments. | `VoxelizeCurveNode` |
 
-## geometry.primitives (29)
+## geometry.primitives (31)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -195,6 +195,8 @@
 | Deconstruct Octahedron | `geometry.primitives.deconstruct_octahedron` | Extracts center, size, vertices, bounds, and analytical values from octahedron geometry | `DeconstructOctahedronNode` |
 | Deconstruct Icosahedron | `geometry.primitives.deconstruct_icosahedron` | Extracts center, edge length, vertices, bounds, and analytical values from icosahedron geometry | `DeconstructIcosahedronNode` |
 | Deconstruct Dodecahedron | `geometry.primitives.deconstruct_dodecahedron` | Extracts center, edge length, vertices, bounds, and analytical values from dodecahedron geometry | `DeconstructDodecahedronNode` |
+| Deconstruct Torus | `geometry.primitives.deconstruct_torus` | Extracts center, axis, radii, bounds, and analytical values from ring torus geometry | `DeconstructTorusNode` |
+| Deconstruct Capsule | `geometry.primitives.deconstruct_capsule` | Extracts axis, radius, component geometry, bounds, and analytical values from capsule geometry | `DeconstructCapsuleNode` |
 
 ## geometry.profiles (23)
 

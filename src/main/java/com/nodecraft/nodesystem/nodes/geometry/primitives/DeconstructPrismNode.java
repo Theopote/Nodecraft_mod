@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -47,8 +46,8 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
         addOutputPort(new BasePort(OUTPUT_HEIGHT_ID, "Height", "Prism extrusion length", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SIDE_COUNT_ID, "Side Count", "Number of prism side faces", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Side surface strip between base and top polygons", NodeDataType.SURFACE_STRIP, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addValidAndErrorOutputs();
     }
 
@@ -70,8 +69,11 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
         Vector3d extrusionVector = prism.extrusionVector();
         double height = prism.getHeight();
         int sideCount = prism.getSideCount();
-        RegionData region = GeometryVoxelizer.createBoundingRegion(prism);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(prism);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(basePoints));
         outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
@@ -79,8 +81,8 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, sideCount);
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, prism.getSideSurfaceStrip());
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         markSuccess();
     }
 

@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -43,8 +42,8 @@ public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
         addOutputPort(new BasePort(OUTPUT_DIAMETERS_ID, "Diameters", "Ellipsoid diameters vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Ellipsoid volume", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Approximate ellipsoid surface area", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addValidAndErrorOutputs();
     }
 
@@ -71,16 +70,19 @@ public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
         Vector3d diameters = new Vector3d(radii).mul(2.0d);
         double volume = (4.0d / 3.0d) * Math.PI * radii.x * radii.y * radii.z;
         double surfaceArea = approximateSurfaceArea(radii.x, radii.y, radii.z);
-        RegionData region = GeometryVoxelizer.createBoundingRegion(ellipsoid);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(ellipsoid);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_RADII_ID, radii);
         outputValues.put(OUTPUT_DIAMETERS_ID, diameters);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         markSuccess();
     }
 

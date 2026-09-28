@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,8 +43,8 @@ public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode 
         addOutputPort(new BasePort(OUTPUT_VERTICES_ID, "Vertices", "Resolved octahedron vertices", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SURFACE_AREA_ID, "Surface Area", "Regular octahedron surface area", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VOLUME_ID, "Volume", "Regular octahedron volume", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding block region", NodeDataType.REGION, this));
-        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", "Geometric axis-aligned bounds", NodeDataType.BOUNDING_BOX, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", REGION_PORT_DESCRIPTION, NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BOUNDING_BOX_ID, "Bounding Box", BOUNDING_BOX_PORT_DESCRIPTION, NodeDataType.BOUNDING_BOX, this));
         addOutputPort(new BasePort(OUTPUT_ORIENTATION_ID, "Orientation", "Rotation matrix (local vertex frame -> world)", NodeDataType.MATRIX3, this));
         addValidAndErrorOutputs();
     }
@@ -72,16 +71,19 @@ public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode 
         double edgeLength = size * Math.sqrt(2.0d);
         double surfaceArea = 2.0d * Math.sqrt(3.0d) * edgeLength * edgeLength;
         double volume = (Math.sqrt(2.0d) / 3.0d) * edgeLength * edgeLength * edgeLength;
-        RegionData region = GeometryVoxelizer.createBoundingRegion(octahedron);
-        BoundingBoxData boundingBox = GeometryVoxelizer.createBoundingBox(region);
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(octahedron);
+        if (boundsAndRegion == null) {
+            writeEmptyOutputs("Unable to resolve continuous bounds");
+            return;
+        }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(octahedron.getCenter()));
         outputValues.put(OUTPUT_SIZE_ID, size);
         outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(octahedron.getVertices()));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
-        outputValues.put(OUTPUT_REGION_ID, region);
-        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundingBox);
+        outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
+        outputValues.put(OUTPUT_BOUNDING_BOX_ID, boundsAndRegion.boundingBox());
         outputValues.put(OUTPUT_ORIENTATION_ID, octahedron.getOrientationMatrix());
         markSuccess();
     }
