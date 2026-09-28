@@ -45,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -290,6 +291,24 @@ class GeometryPrimitivesLanguageV2ContractTest {
         assertNotNull(deconstruct.getOutput("output_cylinder"));
         assertNotNull(deconstruct.getOutput("output_start_hemisphere"));
         assertNotNull(deconstruct.getOutput("output_end_hemisphere"));
+    }
+
+    @Test
+    void plainCylinderIsNotAcceptedAsCapsule() {
+        CylinderGeometryData cylinder = new CylinderGeometryData(
+            new Vector3d(0.0d, 0.0d, 0.0d),
+            new Vector3d(0.0d, 5.0d, 0.0d),
+            1.0d
+        );
+
+        DeconstructCapsuleNode node = new DeconstructCapsuleNode();
+        node.setInput("input_geometry", cylinder);
+        node.processNode(null);
+
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_cylinder"));
+        assertNull(node.getOutput("output_start_hemisphere"));
+        assertNull(node.getOutput("output_end_hemisphere"));
     }
 
     @Test

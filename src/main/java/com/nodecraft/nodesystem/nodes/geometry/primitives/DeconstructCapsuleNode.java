@@ -134,15 +134,11 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
     }
 
     private @Nullable CapsuleParts resolveCapsuleParts(GeometryData geometry) {
-        List<GeometryData> leaves;
-        if (geometry instanceof CompositeGeometryData composite) {
-            leaves = composite.geometries();
-        } else if (geometry instanceof CylinderGeometryData cylinder) {
-            return new CapsuleParts(cylinder, null, null);
-        } else {
+        if (!(geometry instanceof CompositeGeometryData composite)) {
             return null;
         }
 
+        List<GeometryData> leaves = composite.geometries();
         if (leaves.size() != 3) {
             return null;
         }
@@ -204,8 +200,8 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
 
     private record CapsuleParts(
         CylinderGeometryData cylinder,
-        @Nullable HemisphereGeometryData startHemisphere,
-        @Nullable HemisphereGeometryData endHemisphere
+        HemisphereGeometryData startHemisphere,
+        HemisphereGeometryData endHemisphere
     ) {
     }
 }
