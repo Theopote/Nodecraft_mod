@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -25,7 +26,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.profiles.boolean_2d",
     displayName = "Profile Boolean 2D",
-    description = "Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles",
+    description = "Performs 2D boolean operations on two coplanar polygon profiles; outputs PLANAR_REGION (supports holes)",
     category = "geometry.profiles",
     order = 17
 )
@@ -36,6 +37,8 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
     private static final String INPUT_A_ID = "input_profile_a";
     private static final String INPUT_B_ID = "input_profile_b";
 
+    private static final String OUTPUT_REGION_ID = "output_region";
+    private static final String OUTPUT_REGIONS_ID = "output_regions";
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
     private static final String OUTPUT_PLANE_ID = "output_plane";
@@ -47,18 +50,24 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
         addInputPort(new BasePort(INPUT_A_ID, "Profile A", "First polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_B_ID, "Profile B", "Second polygon profile", NodeDataType.POLYGON_PROFILE, this));
 
-        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary output profile (largest area)", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All output profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary output profile", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary output profile", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output profiles", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
+            "Primary planar region (largest area; may include holes)", NodeDataType.PLANAR_REGION, this));
+        addOutputPort(new BasePort(OUTPUT_REGIONS_ID, "Regions",
+            "All planar regions from the boolean result", NodeDataType.PLANAR_REGION_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile",
+            "Convenience outer of primary region (not full region when holes exist)", NodeDataType.POLYGON_PROFILE, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles",
+            "Outer profiles of each result region", NodeDataType.POLYGON_PROFILE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary result", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary outer profile", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output regions", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when boolean operation succeeded", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles";
+        return "Performs 2D boolean operations on two coplanar polygon profiles; outputs PLANAR_REGION (supports holes)";
     }
 
     @Override
@@ -98,30 +107,37 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
             case UNION -> pa.union(pb);
         };
 
-        List<PolygonProfileData> profiles = new ArrayList<>();
-        String conversionError = ProfilePlanarOps.appendSimplePolygons(out, axes, plane, profiles);
+        List<PlanarRegionData> regions = new ArrayList<>();
+        String conversionError = ProfilePlanarOps.appendPlanarRegions(out, axes, plane, regions);
         if (conversionError != null) {
             writeFailure(conversionError);
             return;
         }
 
-        if (profiles.isEmpty()) {
+        if (regions.isEmpty()) {
             writeSuccessEmpty(plane);
             return;
         }
 
-        String budgetError = ProfilePlanarOps.validateOutputBudget(profiles);
+        String budgetError = ProfilePlanarOps.validateRegionOutputBudget(regions);
         if (budgetError != null) {
             writeFailure(budgetError);
             return;
         }
 
-        PolygonProfileData primary = ProfilePlanarOps.selectPrimaryProfile(profiles, axes);
-        outputValues.put(OUTPUT_PROFILE_ID, primary);
-        outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
+        PlanarRegionData primary = ProfilePlanarOps.selectPrimaryRegion(regions, axes);
+        List<PolygonProfileData> outers = new ArrayList<>(regions.size());
+        for (PlanarRegionData region : regions) {
+            outers.add(region.outer());
+        }
+
+        outputValues.put(OUTPUT_REGION_ID, primary);
+        outputValues.put(OUTPUT_REGIONS_ID, new ArrayList<>(regions));
+        outputValues.put(OUTPUT_PROFILE_ID, primary.outer());
+        outputValues.put(OUTPUT_PROFILES_ID, outers);
         outputValues.put(OUTPUT_PLANE_ID, primary.plane());
-        outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
-        outputValues.put(OUTPUT_COUNT_ID, profiles.size());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.outer().getCenter()));
+        outputValues.put(OUTPUT_COUNT_ID, regions.size());
         markSuccess();
     }
 
@@ -137,15 +153,15 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
     }
 
     private void writeFailure(String error) {
-        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
-        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putNullOutputs(OUTPUT_REGION_ID, OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_REGIONS_ID, OUTPUT_PROFILES_ID);
         putIntOutputs(0, OUTPUT_COUNT_ID);
         markInvalid(error);
     }
 
     private void writeSuccessEmpty(PlaneData plane) {
-        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
-        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putNullOutputs(OUTPUT_REGION_ID, OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_REGIONS_ID, OUTPUT_PROFILES_ID);
         outputValues.put(OUTPUT_PLANE_ID, plane);
         putIntOutputs(0, OUTPUT_COUNT_ID);
         markSuccess();
@@ -155,5 +171,17 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
         UNION,
         INTERSECTION,
         DIFFERENCE
+    }
+
+    @Override
+    public Object getNodeState() {
+        return java.util.Map.of("operation", operation);
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (state instanceof java.util.Map<?, ?> map && map.get("operation") instanceof String value) {
+            operation = value;
+        }
     }
 }

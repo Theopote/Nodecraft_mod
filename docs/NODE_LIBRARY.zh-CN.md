@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**524**
+- **节点总数**：**525**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -19,7 +19,7 @@
 | `geometry.primitives` | 31 |
 | `geometry.profiles` | 23 |
 | `geometry.sdf` | 13 |
-| `geometry.solids` | 22 |
+| `geometry.solids` | 23 |
 | `geometry.voxel` | 1 |
 | `input.context` | 4 |
 | `input.numeric` | 10 |
@@ -215,11 +215,11 @@
 | Heart On Plane | `geometry.profiles.heart_profile` | Constructs a heart profile from center, width, height, plane, and segment count (defaults to XZ) | `HeartOnPlaneNode` |
 | SemiCircle On Plane | `geometry.profiles.semicircle_profile` | Constructs a semicircle profile from center, radius, plane, and segment count (defaults to XZ) | `SemiCircleOnPlaneNode` |
 | Sector On Plane | `geometry.profiles.sector_profile` | Constructs a circular sector profile from center, radius, start/end angles, and plane | `SectorOnPlaneNode` |
-| Annulus On Plane | `geometry.profiles.annulus_profile` | Outputs outer and inner boundary profiles separately; does not represent a holed planar region | `AnnulusOnPlaneNode` |
+| Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs an annulus planar region (outer + inner hole) plus separate outer/inner profiles | `AnnulusOnPlaneNode` |
 | Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane (defaults to XZ) | `AnnularSectorOnPlaneNode` |
 | Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
-| Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane by signed distance using 2D buffer logic | `ProfileOffsetInPlaneNode` |
-| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations (union/intersection/difference) on two coplanar polygon profiles | `ProfileBoolean2DNode` |
+| Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane; outputs PLANAR_REGION when holes appear | `ProfileOffsetInPlaneNode` |
+| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations on two coplanar polygon profiles; outputs PLANAR_REGION (supports holes) | `ProfileBoolean2DNode` |
 | Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
 | Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
 | Profile Triangulate 2D | `geometry.profiles.triangulate_2d` | Triangulates a planar polygon profile into triangle profiles using ear clipping | `ProfileTriangulate2DNode` |
@@ -244,7 +244,7 @@
 | SDF Blend Material Mask | `geometry.boolean.sdf_blend_material_mask` | Maps SDF distance values to smooth 0..1 blend weights and inside/outside booleans | `SdfBlendMaterialMaskNode` |
 | SDF Domain Warp | `geometry.boolean.sdf_domain_warp` | Applies coordinate-space noise warping before sampling an input SDF | `SdfDomainWarpNode` |
 
-## geometry.solids（22）
+## geometry.solids（23）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -270,6 +270,7 @@
 | Voxel Contours | `geometry.solids.contour` | Generates parallel section planes and traces voxel contour profiles from geometry at regular spacing. | `ContourNode` |
 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` | Projects each query point to the closest location on the surface strip triangle mesh | `ShrinkwrapPointsOnSurfaceStripNode` |
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
+| Extrude Region | `geometry.solids.extrude_region` | Extrudes a planar region (outer + holes) into solid geometry via prism difference | `ExtrudeRegionNode` |
 
 ## geometry.voxel（1）
 

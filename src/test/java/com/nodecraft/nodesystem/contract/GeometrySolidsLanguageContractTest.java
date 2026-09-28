@@ -61,12 +61,13 @@ class GeometrySolidsLanguageContractTest {
     }
 
     @Test
-    void exactlyTwentyTwoSolidNodesWithUniqueOrdersZeroToTwentyOne() {
+    void v72CanonicalTwentyTwoSolidNodesRemainAtOrdersZeroToTwentyOne() {
+        // Graph V91 adds extrude_region at order 22; V72 fence covers orders 0–21.
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.solids."))
             .sorted()
             .toList();
-        assertEquals(22, ids.size());
+        assertTrue(ids.size() >= 22);
         assertFalse(ids.contains("geometry.solids.extrude_profile"));
         assertFalse(ids.contains("geometry.solids.shell"));
 
@@ -79,7 +80,6 @@ class GeometrySolidsLanguageContractTest {
             INode node = registry.createNodeInstance(id);
             assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(node.getClass(), id));
         }
-        assertEquals(22, orders.size());
         for (int i = 0; i < 22; i++) {
             assertTrue(orders.contains(i), "missing order " + i);
         }

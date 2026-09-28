@@ -53,6 +53,10 @@ public enum NodeDataType {
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     /** Ordered polygon profiles (loft sections, sweep section lists). */
     POLYGON_PROFILE_LIST("polygon_profile_list", "Polygon Profile List", List.class, ListElementKind.POLYGON_PROFILE),
+    /** Outer boundary + holes on a plane (Graph V91). Distinct from Minecraft {@link #REGION}. */
+    PLANAR_REGION("planar_region", "Planar Region", PlanarRegionData.class),
+    /** Ordered planar regions (boolean/offset multi-piece results). */
+    PLANAR_REGION_LIST("planar_region_list", "Planar Region List", List.class, ListElementKind.PLANAR_REGION),
     PRISM_GEOMETRY("prism_geometry", "Prism Geometry", PrismGeometryData.class),
     TETRAHEDRON_GEOMETRY("tetrahedron_geometry", "Tetrahedron Geometry", TetrahedronGeometryData.class),
     TORUS_GEOMETRY("torus_geometry", "Torus Geometry", TorusGeometryData.class),
@@ -213,6 +217,7 @@ public enum NodeDataType {
             case LINE -> LINE;
             case TREE_PATH -> TREE_PATH;
             case POLYGON_PROFILE -> POLYGON_PROFILE;
+            case PLANAR_REGION -> PLANAR_REGION;
             case BOX_FACE -> BOX_FACE;
             case SURFACE_STRIP -> SURFACE_STRIP;
             case REGION -> REGION;
@@ -340,6 +345,7 @@ public enum NodeDataType {
             case LINE -> value instanceof LineData;
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;
+            case PLANAR_REGION -> value instanceof PlanarRegionData;
             case BOX_FACE -> value instanceof BoxFaceData;
             case SURFACE_STRIP -> value instanceof SurfaceStripData;
             case REGION -> value instanceof RegionData;

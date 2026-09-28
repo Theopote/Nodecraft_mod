@@ -10,7 +10,9 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import com.nodecraft.nodesystem.util.ProfileInputUtils;
+import com.nodecraft.nodesystem.util.ProfileSweepAngleUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -108,8 +110,9 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
         }
         double start = Math.toRadians(startDegrees);
         double end = Math.toRadians(endDegrees);
-        if (Math.abs(end - start) < 1.0e-9d) {
-            writeInvalid("Start and end angles must differ");
+        String sweepError = ProfileSweepAngleUtils.validateOpenSweepDegrees(startDegrees, endDegrees);
+        if (sweepError != null) {
+            writeInvalid(sweepError);
             return;
         }
         Integer resolvedSegments = resolveBoundedInteger(
@@ -145,7 +148,12 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
         points.add(new Vector3d(center));
 
         PlaneData resolvedPlane = new PlaneData(center, basis.normal());
-        PolygonProfileData profile = new PolygonProfileData(points, resolvedPlane);
+        StringBuilder error = new StringBuilder();
+        PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(points, resolvedPlane, error);
+        if (profile == null) {
+            writeInvalid(error.isEmpty() ? "Failed to create sector profile" : error.toString());
+            return;
+        }
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(points));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));

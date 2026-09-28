@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -84,7 +85,13 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
         closedResampledPoints.addAll(uniqueResampledPoints);
         closedResampledPoints.add(new Vector3d(uniqueResampledPoints.getFirst()));
 
-        PolygonProfileData resampledProfile = new PolygonProfileData(closedResampledPoints, profile.plane());
+        StringBuilder error = new StringBuilder();
+        PolygonProfileData resampledProfile = ProfileConstructionUtils.tryCreateProfile(
+            closedResampledPoints, profile.plane(), error);
+        if (resampledProfile == null) {
+            writeFailure(error.isEmpty() ? "Failed to create resampled profile" : error.toString());
+            return;
+        }
 
         outputValues.put(OUTPUT_PROFILE_ID, resampledProfile);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closedResampledPoints));

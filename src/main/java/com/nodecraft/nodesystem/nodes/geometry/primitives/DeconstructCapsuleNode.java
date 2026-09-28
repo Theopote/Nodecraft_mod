@@ -134,11 +134,10 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
     }
 
     private @Nullable CapsuleParts resolveCapsuleParts(GeometryData geometry) {
-        if (!(geometry instanceof CompositeGeometryData composite)) {
+        if (!(geometry instanceof CompositeGeometryData(List<GeometryData> leaves))) {
             return null;
         }
 
-        List<GeometryData> leaves = composite.geometries();
         if (leaves.size() != 3) {
             return null;
         }

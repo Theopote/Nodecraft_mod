@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
@@ -122,7 +123,12 @@ public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
         closed.addAll(unique3d);
         closed.add(new Vector3d(unique3d.getFirst()));
 
-        PolygonProfileData profile = new PolygonProfileData(closed, plane);
+        StringBuilder error = new StringBuilder();
+        PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(closed, plane, error);
+        if (profile == null) {
+            writeFailure(error.isEmpty() ? "Failed to create convex hull profile" : error.toString());
+            return;
+        }
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(closed));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_BOUNDARY_ID, pathFromProfile(profile));

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -94,13 +95,13 @@ public class PolygonByPointsNode extends AbstractProfileNode {
         List<Vector3d> closedPoints = new ArrayList<>(points);
         closedPoints.add(new Vector3d(points.getFirst()));
 
-        String validationError = PolygonProfileValidator.validateConstruction(closedPoints, plane);
-        if (validationError != null) {
-            writeFailure(validationError);
+        StringBuilder error = new StringBuilder();
+        PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(closedPoints, plane, error);
+        if (profile == null) {
+            writeFailure(error.isEmpty() ? "Failed to create polygon profile" : error.toString());
             return;
         }
 
-        PolygonProfileData profile = new PolygonProfileData(closedPoints, plane);
         Vector3d center = averagePoint(points);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.closedPoints()));
         outputValues.put(OUTPUT_PROFILE_ID, profile);

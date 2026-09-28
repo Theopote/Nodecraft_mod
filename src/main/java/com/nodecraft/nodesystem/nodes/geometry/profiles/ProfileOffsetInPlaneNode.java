@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -25,7 +26,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.profiles.offset_profile_plane",
     displayName = "Profile Offset In Plane",
-    description = "Offsets a polygon profile in its plane by signed distance using 2D buffer logic",
+    description = "Offsets a polygon profile in its plane; outputs PLANAR_REGION when holes appear",
     category = "geometry.profiles",
     order = 16
 )
@@ -42,6 +43,8 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
     private static final String INPUT_PROFILE_ID = "input_profile";
     private static final String INPUT_OFFSET_ID = "input_offset";
 
+    private static final String OUTPUT_REGION_ID = "output_region";
+    private static final String OUTPUT_REGIONS_ID = "output_regions";
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
     private static final String OUTPUT_PLANE_ID = "output_plane";
@@ -53,18 +56,24 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Input polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary offset profile (largest area)", NodeDataType.POLYGON_PROFILE, this));
-        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All offset polygon profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary offset profile", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary offset profile", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of offset profiles produced", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
+            "Primary offset planar region (may include holes)", NodeDataType.PLANAR_REGION, this));
+        addOutputPort(new BasePort(OUTPUT_REGIONS_ID, "Regions",
+            "All offset planar regions", NodeDataType.PLANAR_REGION_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile",
+            "Convenience outer of primary region", NodeDataType.POLYGON_PROFILE, this));
+        addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles",
+            "Outer profiles of each offset region", NodeDataType.POLYGON_PROFILE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary offset region", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary outer profile", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of offset regions produced", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when offset succeeded", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Offsets a polygon profile in its plane by signed distance using 2D buffer logic";
+        return "Offsets a polygon profile in its plane; outputs PLANAR_REGION when holes appear";
     }
 
     @Override
@@ -100,36 +109,46 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
         params.setMitreLimit(Math.max(1.0d, miterLimit));
 
         Geometry out = BufferOp.bufferOp(polygon, offset, params);
-        List<PolygonProfileData> profiles = new ArrayList<>();
-        String conversionError = ProfilePlanarOps.appendSimplePolygons(out, axes, plane, profiles);
+        List<PlanarRegionData> regions = new ArrayList<>();
+        String conversionError = ProfilePlanarOps.appendPlanarRegions(out, axes, plane, regions);
         if (conversionError != null) {
             writeFailure(conversionError);
             return;
         }
-        if (profiles.isEmpty()) {
+        if (regions.isEmpty()) {
             writeSuccessEmpty(plane);
             return;
         }
 
-        String budgetError = ProfilePlanarOps.validateOutputBudget(profiles);
+        String budgetError = ProfilePlanarOps.validateRegionOutputBudget(regions);
         if (budgetError != null) {
             writeFailure(budgetError);
             return;
         }
 
-        PolygonProfileData primary = ProfilePlanarOps.selectPrimaryProfile(profiles, axes);
-        outputValues.put(OUTPUT_PROFILE_ID, primary);
-        outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
+        PlanarRegionData primary = ProfilePlanarOps.selectPrimaryRegion(regions, axes);
+        List<PolygonProfileData> outers = new ArrayList<>(regions.size());
+        for (PlanarRegionData region : regions) {
+            outers.add(region.outer());
+        }
+
+        outputValues.put(OUTPUT_REGION_ID, primary);
+        outputValues.put(OUTPUT_REGIONS_ID, new ArrayList<>(regions));
+        outputValues.put(OUTPUT_PROFILE_ID, primary.outer());
+        outputValues.put(OUTPUT_PROFILES_ID, outers);
         outputValues.put(OUTPUT_PLANE_ID, primary.plane());
-        outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.getCenter()));
-        outputValues.put(OUTPUT_COUNT_ID, profiles.size());
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(primary.outer().getCenter()));
+        outputValues.put(OUTPUT_COUNT_ID, regions.size());
         markSuccess();
     }
 
     private void writePassthrough(PolygonProfileData profile) {
-        List<PolygonProfileData> profiles = List.of(profile);
+        PlanarRegionData region = PlanarRegionData.of(profile);
+        List<PlanarRegionData> regions = List.of(region);
+        outputValues.put(OUTPUT_REGION_ID, region);
+        outputValues.put(OUTPUT_REGIONS_ID, new ArrayList<>(regions));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
-        outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(profiles));
+        outputValues.put(OUTPUT_PROFILES_ID, new ArrayList<>(List.of(profile)));
         outputValues.put(OUTPUT_PLANE_ID, profile.plane());
         outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
         putIntOutputs(1, OUTPUT_COUNT_ID);
@@ -137,16 +156,16 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
     }
 
     private void writeSuccessEmpty(PlaneData plane) {
-        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
-        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putNullOutputs(OUTPUT_REGION_ID, OUTPUT_PROFILE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_REGIONS_ID, OUTPUT_PROFILES_ID);
         outputValues.put(OUTPUT_PLANE_ID, plane);
         putIntOutputs(0, OUTPUT_COUNT_ID);
         markSuccess();
     }
 
     private void writeFailure(String error) {
-        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
-        putEmptyListOutputs(OUTPUT_PROFILES_ID);
+        putNullOutputs(OUTPUT_REGION_ID, OUTPUT_PROFILE_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID);
+        putEmptyListOutputs(OUTPUT_REGIONS_ID, OUTPUT_PROFILES_ID);
         putIntOutputs(0, OUTPUT_COUNT_ID);
         markInvalid(error);
     }
@@ -160,5 +179,30 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
             case "BEVEL" -> BufferParameters.JOIN_BEVEL;
             default -> BufferParameters.JOIN_ROUND;
         };
+    }
+
+    @Override
+    public Object getNodeState() {
+        return java.util.Map.of(
+            "quadrantSegments", quadrantSegments,
+            "joinStyle", joinStyle == null ? "ROUND" : joinStyle,
+            "miterLimit", miterLimit
+        );
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof java.util.Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("quadrantSegments") instanceof Number n) {
+            quadrantSegments = n.intValue();
+        }
+        if (map.get("joinStyle") instanceof String s) {
+            joinStyle = s;
+        }
+        if (map.get("miterLimit") instanceof Number n) {
+            miterLimit = n.doubleValue();
+        }
     }
 }
