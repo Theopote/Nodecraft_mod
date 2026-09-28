@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
-import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,18 +13,18 @@ import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
-    id = "geometry.profiles.boolean_2d",
-    displayName = "Profile Boolean 2D",
-    description = "Convenience: promotes two coplanar profiles to regions, then runs Region Boolean 2D",
+    id = "geometry.profiles.region_boolean_2d",
+    displayName = "Region Boolean 2D",
+    description = "Performs 2D boolean operations on two coplanar planar regions (supports holes)",
     category = "geometry.profiles",
-    order = 17
+    order = 24
 )
-public class ProfileBoolean2DNode extends AbstractProfileNode {
+public class RegionBoolean2DNode extends AbstractProfileNode {
     @NodeProperty(displayName = "Operation", category = "Boolean", order = 1)
     private String operation = "UNION";
 
-    private static final String INPUT_A_ID = "input_profile_a";
-    private static final String INPUT_B_ID = "input_profile_b";
+    private static final String INPUT_A_ID = "input_region_a";
+    private static final String INPUT_B_ID = "input_region_b";
 
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_REGIONS_ID = "output_regions";
@@ -35,44 +34,49 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
     private static final String OUTPUT_CENTER_ID = "output_center";
     private static final String OUTPUT_COUNT_ID = "output_count";
 
-    public ProfileBoolean2DNode() {
-        super(UUID.randomUUID(), "geometry.profiles.boolean_2d");
-        addInputPort(new BasePort(INPUT_A_ID, "Profile A", "First polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_B_ID, "Profile B", "Second polygon profile", NodeDataType.POLYGON_PROFILE, this));
+    public RegionBoolean2DNode() {
+        super(UUID.randomUUID(), "geometry.profiles.region_boolean_2d");
+        addInputPort(new BasePort(INPUT_A_ID, "Region A",
+            "First planar region", NodeDataType.PLANAR_REGION, this));
+        addInputPort(new BasePort(INPUT_B_ID, "Region B",
+            "Second planar region", NodeDataType.PLANAR_REGION, this));
 
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
             "Primary planar region (largest area; may include holes)", NodeDataType.PLANAR_REGION, this));
         addOutputPort(new BasePort(OUTPUT_REGIONS_ID, "Regions",
             "All planar regions from the boolean result", NodeDataType.PLANAR_REGION_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile",
-            "Convenience outer of primary region (not full region when holes exist)", NodeDataType.POLYGON_PROFILE, this));
+            "Convenience outer of primary region (not full region when holes exist)",
+            NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles",
             "Outer profiles of each result region", NodeDataType.POLYGON_PROFILE_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane", "Plane of the primary result", NodeDataType.PLANE, this));
-        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center", "Center of the primary outer profile", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of output regions", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when boolean operation succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_PLANE_ID, "Plane",
+            "Plane of the primary result", NodeDataType.PLANE, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_ID, "Center",
+            "Center of the primary outer profile", NodeDataType.POINT, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
+            "Number of output regions", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when boolean operation succeeded", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
     }
 
     @Override
     public String getDescription() {
-        return "Convenience: promotes two coplanar profiles to regions, then runs Region Boolean 2D";
+        return "Performs 2D boolean operations on two coplanar planar regions (supports holes)";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PolygonProfileData a = resolveStrictProfile(INPUT_A_ID);
-        PolygonProfileData b = resolveStrictProfile(INPUT_B_ID);
+        PlanarRegionData a = resolveStrictRegion(INPUT_A_ID);
+        PlanarRegionData b = resolveStrictRegion(INPUT_B_ID);
         if (a == null || b == null) {
-            writeFailure("Valid polygon profiles are required on both inputs");
+            writeFailure("Valid planar regions are required on both inputs");
             return;
         }
 
         ProfilePlanarOps.RegionOpOutcome outcome = ProfilePlanarOps.booleanRegions(
-            PlanarRegionData.of(a),
-            PlanarRegionData.of(b),
-            ProfilePlanarOps.parseBooleanOp(operation));
+            a, b, ProfilePlanarOps.parseBooleanOp(operation));
         if (outcome.failed()) {
             writeFailure(outcome.error());
             return;

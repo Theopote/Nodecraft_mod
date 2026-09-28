@@ -60,9 +60,9 @@ class GeometryProfilesLanguageV2ContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV91() {
+    void planarRegionLanguageV91FenceRemains() {
         assertEquals(91, GraphFormatVersion.V91);
-        assertEquals(GraphFormatVersion.V91, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V91);
     }
 
     @Test
@@ -70,7 +70,7 @@ class GeometryProfilesLanguageV2ContractTest {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V90;
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V91, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
     }
 
     @Test
@@ -84,12 +84,12 @@ class GeometryProfilesLanguageV2ContractTest {
     }
 
     @Test
-    void exactlyTwentyThreeProfileNodesRemain() {
+    void exactlyTwentySixProfileNodesRemain() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.profiles."))
             .sorted()
             .toList();
-        assertEquals(23, ids.size());
+        assertEquals(26, ids.size());
 
         Set<Integer> orders = new HashSet<>();
         for (String id : ids) {
@@ -100,7 +100,7 @@ class GeometryProfilesLanguageV2ContractTest {
             INode node = registry.createNodeInstance(id);
             assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(node.getClass(), id));
         }
-        for (int i = 0; i < 23; i++) {
+        for (int i = 0; i < 26; i++) {
             assertTrue(orders.contains(i), "missing order " + i);
         }
     }

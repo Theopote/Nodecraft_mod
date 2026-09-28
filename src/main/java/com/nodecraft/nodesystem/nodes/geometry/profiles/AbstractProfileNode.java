@@ -5,12 +5,16 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -115,11 +119,56 @@ abstract class AbstractProfileNode extends BaseNode {
         return ProfileInputUtils.resolveStrictProfile(this, portId);
     }
 
+    protected final @Nullable PlanarRegionData resolveStrictRegion(String portId) {
+        return ProfileInputUtils.resolveStrictRegion(this, portId);
+    }
+
     protected final @Nullable PathData pathFromProfile(@Nullable PolygonProfileData profile) {
         return profile == null ? null : profile.getBoundaryPath();
     }
 
     protected final boolean isWithinProfileVertices(int vertexCount) {
         return GenerationLimits.isWithinProfileVertices(vertexCount);
+    }
+
+    /**
+     * Writes shared region-op outputs (Region / Regions / Profile / Profiles / Plane / Center / Count).
+     */
+    protected final void writeRegionOpSuccess(
+            ProfilePlanarOps.RegionOpOutcome outcome,
+            String regionId,
+            String regionsId,
+            String profileId,
+            String profilesId,
+            String planeId,
+            String centerId,
+            String countId
+    ) {
+        List<PlanarRegionData> regions = outcome.regions();
+        if (regions.isEmpty()) {
+            putNullOutputs(regionId, profileId, centerId);
+            putEmptyListOutputs(regionsId, profilesId);
+            outputValues.put(planeId, outcome.plane());
+            putIntOutputs(0, countId);
+            markSuccess();
+            return;
+        }
+
+        PlaneProjectionUtils.PlaneAxes axes =
+            PlaneProjectionUtils.PlaneAxes.from(regions.getFirst().plane());
+        PlanarRegionData primary = ProfilePlanarOps.selectPrimaryRegion(regions, axes);
+        List<PolygonProfileData> outers = new ArrayList<>(regions.size());
+        for (PlanarRegionData region : regions) {
+            outers.add(region.outer());
+        }
+
+        outputValues.put(regionId, primary);
+        outputValues.put(regionsId, new ArrayList<>(regions));
+        outputValues.put(profileId, primary.outer());
+        outputValues.put(profilesId, outers);
+        outputValues.put(planeId, primary.plane());
+        outputValues.put(centerId, new PointData(primary.outer().getCenter()));
+        putIntOutputs(regions.size(), countId);
+        markSuccess();
     }
 }

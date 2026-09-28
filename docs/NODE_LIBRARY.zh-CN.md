@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**525**
+- **节点总数**：**528**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -17,7 +17,7 @@
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
 | `geometry.primitives` | 31 |
-| `geometry.profiles` | 23 |
+| `geometry.profiles` | 26 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 23 |
 | `geometry.voxel` | 1 |
@@ -198,7 +198,7 @@
 | Deconstruct Torus | `geometry.primitives.deconstruct_torus` | Extracts center, axis, radii, bounds, and analytical values from ring torus geometry | `DeconstructTorusNode` |
 | Deconstruct Capsule | `geometry.primitives.deconstruct_capsule` | Extracts axis, radius, component geometry, bounds, and analytical values from capsule geometry | `DeconstructCapsuleNode` |
 
-## geometry.profiles（23）
+## geometry.profiles（26）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -218,13 +218,16 @@
 | Annulus On Plane | `geometry.profiles.annulus_profile` | Constructs an annulus planar region (outer + inner hole) plus separate outer/inner profiles | `AnnulusOnPlaneNode` |
 | Annular Sector On Plane | `geometry.profiles.annular_sector_profile` | Constructs an annular sector boundary from center, inner/outer radii, angle range, and plane (defaults to XZ) | `AnnularSectorOnPlaneNode` |
 | Resample Polygon Profile | `geometry.profiles.resample_profile` | Resamples a polygon profile to a target edge count using perimeter-distance sampling | `ResamplePolygonProfileNode` |
-| Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Offsets a polygon profile in its plane; outputs PLANAR_REGION when holes appear | `ProfileOffsetInPlaneNode` |
-| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Performs 2D boolean operations on two coplanar polygon profiles; outputs PLANAR_REGION (supports holes) | `ProfileBoolean2DNode` |
+| Profile Offset In Plane | `geometry.profiles.offset_profile_plane` | Convenience: promotes a profile to a region, then runs Region Offset In Plane | `ProfileOffsetInPlaneNode` |
+| Profile Boolean 2D | `geometry.profiles.boolean_2d` | Convenience: promotes two coplanar profiles to regions, then runs Region Boolean 2D | `ProfileBoolean2DNode` |
 | Convex Hull 2D On Plane | `geometry.profiles.convex_hull_plane` | Projects points into a plane, computes their 2D convex hull, and outputs a closed polygon profile | `ConvexHull2DOnPlaneNode` |
 | Voronoi Cells 2D On Plane | `geometry.profiles.voronoi_cells_plane` | Projects sites into a plane, builds a clipped planar Voronoi diagram (JTS), and outputs each cell as a polygon profile on the plane | `VoronoiCells2DOnPlaneNode` |
 | Profile Triangulate 2D | `geometry.profiles.triangulate_2d` | Triangulates a planar polygon profile into triangle profiles using ear clipping | `ProfileTriangulate2DNode` |
 | Deconstruct Polygon Profile | `geometry.profiles.deconstruct_profile` | Extracts points, boundary, plane, center, perimeter, and area from a polygon profile | `DeconstructPolygonProfileNode` |
 | Gear On Plane | `geometry.profiles.gear_profile` | Constructs a gear-like profile from center, tooth count, root/tip radii, and plane (defaults to XZ) | `GearOnPlaneNode` |
+| Profile To Region | `geometry.profiles.profile_to_region` | Wraps a polygon profile as a planar region with no holes | `ProfileToRegionNode` |
+| Region Boolean 2D | `geometry.profiles.region_boolean_2d` | Performs 2D boolean operations on two coplanar planar regions (supports holes) | `RegionBoolean2DNode` |
+| Region Offset In Plane | `geometry.profiles.region_offset_plane` | Offsets a planar region in its plane; preserves hole topology when possible | `RegionOffsetInPlaneNode` |
 
 ## geometry.sdf（13）
 

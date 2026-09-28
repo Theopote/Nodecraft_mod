@@ -1,6 +1,6 @@
 # Node Language v2 — Planar Region / Profiles
 
-**Status: PASSED / FROZEN** (Graph **V91**; V73 remains historical Polygon Profile Language v1)
+**Status: PASSED / FROZEN** (Graph **V92**; V91 = region-output fence; V73 = historical Polygon Profile Language v1)
 
 Type stack for planar modeling under `geometry.profiles` (+ `geometry.solids.extrude_region`):
 
@@ -11,7 +11,27 @@ POLYGON_PROFILE   (simple closed planar loop, no holes — V73 unchanged)
   ↓
 PLANAR_REGION     (outer + 0..N holes + plane — V91)
   ↓
-Extrude Region / Boolean / Offset
+Region Boolean / Region Offset / Extrude Region
+```
+
+## Two-layer language
+
+**Profile layer** — generators (Rectangle, Circle, Polygon, Gear, …) output `POLYGON_PROFILE`.
+
+**Region layer** — modeling ops take/emit `PLANAR_REGION`:
+
+| Node | ID | Role |
+|------|-----|------|
+| Profile To Region | `geometry.profiles.profile_to_region` | `POLYGON_PROFILE` → `PLANAR_REGION` (no holes) |
+| Region Boolean 2D | `geometry.profiles.region_boolean_2d` | `PLANAR_REGION` × 2 → `PLANAR_REGION_LIST` |
+| Region Offset In Plane | `geometry.profiles.region_offset_plane` | `PLANAR_REGION` → `PLANAR_REGION_LIST` |
+
+Profile Boolean / Profile Offset remain as **convenience** nodes: internally `Profile → Region → Region op`.
+
+Composable chain:
+
+```text
+Profile → Region → Boolean → Offset → Boolean → Extrude → Geometry
 ```
 
 ## PLANAR_REGION
@@ -37,19 +57,11 @@ Validated by [`PlanarRegionValidator`](../src/main/java/com/nodecraft/nodesystem
 | Polygon + interior rings | PlanarRegionData with holes |
 | MultiPolygon | PLANAR_REGION_LIST |
 
-`POLYGON_PROFILE` conversion still rejects holes (legacy simple-loop path).
+`POLYGON_PROFILE` conversion still rejects holes (legacy simple-loop path). Shared `booleanRegions` / `offsetRegion` power both Profile convenience and Region nodes.
 
-## Node upgrades (inventory still 23 profiles)
+## Inventory
 
-| Node | V91 change |
-|------|------------|
-| Profile Boolean 2D | `output_region` / `output_regions`; Difference with holes succeeds |
-| Profile Offset In Plane | `output_region` / `output_regions` |
-| Annulus On Plane | `output_region` + `output_area` |
-| Sector / Annular Sector | `0 < \|sweep\| < 360°` |
-| Generators | `ProfileConstructionUtils.tryCreateProfile` fail-closed |
-
-Convenience ports `output_profile` / `output_profiles` remain (outer of primary / outers list).
+`geometry.profiles`: **26** nodes (orders 0–25). New in V92: orders 23–25.
 
 ## Sector sweep language
 
@@ -74,11 +86,13 @@ Existing `geometry.solids.extrude` unchanged (`POLYGON_PROFILE` only).
 
 ## Out of scope (P2)
 
+- `PlanarRegionData` constructor canonical invariant (validate in ctor / private + of/tryCreate)
 - Centroid vs vertex-average Center
 - Triangulate Region
 - Failure numeric `0` vs `NaN` policy
 
 ## Contract tests
 
-- Historical: `GeometryProfilesLanguageContractTest` (V73)
-- v2: `GeometryProfilesLanguageV2ContractTest` (V91)
+- Historical: `GeometryProfilesLanguageContractTest` (V73 inventory)
+- v2: `GeometryProfilesLanguageV2ContractTest` (V91 region outputs)
+- v3: `GeometryProfilesLanguageV3ContractTest` (V92 region modeling composability)

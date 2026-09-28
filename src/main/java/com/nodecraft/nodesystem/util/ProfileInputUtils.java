@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -108,6 +109,20 @@ public final class ProfileInputUtils {
             return null;
         }
         return profile;
+    }
+
+    public static @Nullable PlanarRegionData resolveStrictRegion(
+            BaseNode node,
+            String portId
+    ) {
+        Object value = node.getInput(portId);
+        if (!(value instanceof PlanarRegionData region)) {
+            return null;
+        }
+        if (PlanarRegionValidator.validate(region) != null) {
+            return null;
+        }
+        return region;
     }
 
     public static boolean isConnected(BaseNode node, String portId) {

@@ -61,12 +61,12 @@ class GeometryProfilesLanguageContractTest {
     }
 
     @Test
-    void exactlyTwentyThreeProfileNodesWithUniqueOrdersZeroToTwentyTwo() {
+    void exactlyTwentySixProfileNodesWithUniqueOrdersZeroToTwentyFive() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.profiles."))
             .sorted()
             .toList();
-        assertEquals(23, ids.size());
+        assertEquals(26, ids.size());
         assertFalse(ids.contains("geometry.profiles.convex_hull_3d_points"));
 
         Set<Integer> orders = new HashSet<>();
@@ -78,8 +78,8 @@ class GeometryProfilesLanguageContractTest {
             INode node = registry.createNodeInstance(id);
             assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(node.getClass(), id));
         }
-        assertEquals(23, orders.size());
-        for (int i = 0; i < 23; i++) {
+        assertEquals(26, orders.size());
+        for (int i = 0; i < 26; i++) {
             assertTrue(orders.contains(i), "missing order " + i);
         }
     }

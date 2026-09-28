@@ -602,14 +602,22 @@ public final class GraphFormatVersion {
     public static final int V90 = 90;
 
     /**
-     * Planar Region Language v2 (PASSED / FROZEN): PLANAR_REGION (outer + holes),
+     * Planar Region Language v2 output layer (historical): PLANAR_REGION (outer + holes),
      * Profile Boolean/Offset emit regions, Annulus Region output, Sector sweep &lt; 360°,
      * Extrude Region, ProfileConstructionUtils fail-closed. V73 remains historical Profile v1.
      */
     public static final int V91 = 91;
 
+    /**
+     * Planar Region Modeling Language (PASSED / FROZEN): Profile To Region,
+     * Region Boolean 2D / Region Offset (PLANAR_REGION in/out), Profile Boolean/Offset
+     * as convenience wrappers (Profile → Region → Region op). Closes Region→Boolean/Offset
+     * composability. V91 remains the historical region-output fence.
+     */
+    public static final int V92 = 92;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V91;
+    public static final int CURRENT = V92;
 
     private GraphFormatVersion() {
     }

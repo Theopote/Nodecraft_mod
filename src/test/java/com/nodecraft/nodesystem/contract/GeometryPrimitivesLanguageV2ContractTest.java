@@ -66,9 +66,9 @@ class GeometryPrimitivesLanguageV2ContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV90() {
+    void primitiveGeometryLanguageV90FenceRemains() {
         assertEquals(90, GraphFormatVersion.V90);
-        assertEquals(GraphFormatVersion.V90, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V90);
     }
 
     @Test
@@ -76,7 +76,7 @@ class GeometryPrimitivesLanguageV2ContractTest {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V89;
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V90, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
     }
 
     @Test

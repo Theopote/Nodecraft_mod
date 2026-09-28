@@ -15,18 +15,182 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.buffer.BufferOp;
+import org.locationtech.jts.operation.buffer.BufferParameters;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Shared planar JTS operations for profile boolean/offset nodes (Graph V73/V91).
+ * Shared planar JTS operations for profile/region boolean/offset nodes (Graph V73/V91/V92).
  */
 final class ProfilePlanarOps {
 
+    enum BooleanOp {
+        UNION,
+        INTERSECTION,
+        DIFFERENCE
+    }
+
+    /**
+     * Outcome of a region boolean or offset. {@code error != null} means failure;
+     * empty {@code regions} with null error is a successful empty result.
+     */
+    record RegionOpOutcome(
+        @Nullable String error,
+        List<PlanarRegionData> regions,
+        @Nullable PlaneData plane
+    ) {
+        static RegionOpOutcome fail(String error) {
+            return new RegionOpOutcome(error, List.of(), null);
+        }
+
+        static RegionOpOutcome empty(PlaneData plane) {
+            return new RegionOpOutcome(null, List.of(), plane);
+        }
+
+        static RegionOpOutcome ok(List<PlanarRegionData> regions, PlaneData plane) {
+            return new RegionOpOutcome(null, List.copyOf(regions), plane);
+        }
+
+        boolean failed() {
+            return error != null;
+        }
+    }
+
     private ProfilePlanarOps() {
+    }
+
+    static int regionVertexCount(PlanarRegionData region) {
+        int total = region.outer().getEdgeCount();
+        for (PolygonProfileData hole : region.holes()) {
+            total += hole.getEdgeCount();
+        }
+        return total;
+    }
+
+    static boolean regionsCoplanar(PlanarRegionData a, PlanarRegionData b) {
+        return PolygonProfileValidator.profilesCoplanar(a.outer(), b.outer());
+    }
+
+    static RegionOpOutcome booleanRegions(
+            PlanarRegionData a,
+            PlanarRegionData b,
+            BooleanOp operation
+    ) {
+        String aError = PlanarRegionValidator.validate(a);
+        if (aError != null) {
+            return RegionOpOutcome.fail("Region A: " + aError);
+        }
+        String bError = PlanarRegionValidator.validate(b);
+        if (bError != null) {
+            return RegionOpOutcome.fail("Region B: " + bError);
+        }
+
+        int totalVertices = regionVertexCount(a) + regionVertexCount(b);
+        if (!GenerationLimits.isWithinProfileBooleanVertices(totalVertices)) {
+            return RegionOpOutcome.fail(
+                "Combined region vertex count exceeds limit ("
+                    + GenerationLimits.MAX_PROFILE_BOOLEAN_VERTICES + ")");
+        }
+
+        if (!regionsCoplanar(a, b)) {
+            return RegionOpOutcome.fail("Regions must lie on the same plane");
+        }
+
+        PlaneData plane = a.plane();
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        GeometryFactory gf = new GeometryFactory();
+
+        Polygon pa = toJtsPolygon(a, axes, gf);
+        Polygon pb = toJtsPolygon(b, axes, gf);
+        if (pa == null || pb == null) {
+            return RegionOpOutcome.fail("Failed to convert regions for boolean operation");
+        }
+
+        Geometry out = switch (operation) {
+            case INTERSECTION -> pa.intersection(pb);
+            case DIFFERENCE -> pa.difference(pb);
+            case UNION -> pa.union(pb);
+        };
+
+        return finalizeRegionGeometry(out, axes, plane);
+    }
+
+    static RegionOpOutcome offsetRegion(
+            PlanarRegionData region,
+            double distance,
+            int quadrantSegments,
+            int joinStyle,
+            double miterLimit
+    ) {
+        String regionError = PlanarRegionValidator.validate(region);
+        if (regionError != null) {
+            return RegionOpOutcome.fail(regionError);
+        }
+
+        if (Math.abs(distance) < 1.0e-12d) {
+            return RegionOpOutcome.ok(List.of(region), region.plane());
+        }
+
+        PlaneData plane = region.plane();
+        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        GeometryFactory gf = new GeometryFactory();
+        Polygon polygon = toJtsPolygon(region, axes, gf);
+        if (polygon == null) {
+            return RegionOpOutcome.fail("Failed to convert region for offset operation");
+        }
+
+        BufferParameters params = new BufferParameters();
+        params.setQuadrantSegments(Math.max(1, quadrantSegments));
+        params.setJoinStyle(joinStyle);
+        params.setMitreLimit(Math.max(1.0d, miterLimit));
+
+        Geometry out = BufferOp.bufferOp(polygon, distance, params);
+        return finalizeRegionGeometry(out, axes, plane);
+    }
+
+    private static RegionOpOutcome finalizeRegionGeometry(
+            Geometry out,
+            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneData plane
+    ) {
+        List<PlanarRegionData> regions = new ArrayList<>();
+        String conversionError = appendPlanarRegions(out, axes, plane, regions);
+        if (conversionError != null) {
+            return RegionOpOutcome.fail(conversionError);
+        }
+        if (regions.isEmpty()) {
+            return RegionOpOutcome.empty(plane);
+        }
+        String budgetError = validateRegionOutputBudget(regions);
+        if (budgetError != null) {
+            return RegionOpOutcome.fail(budgetError);
+        }
+        return RegionOpOutcome.ok(regions, plane);
+    }
+
+    static BooleanOp parseBooleanOp(@Nullable String raw) {
+        if (raw == null) {
+            return BooleanOp.UNION;
+        }
+        return switch (raw.trim().toUpperCase()) {
+            case "INTERSECTION" -> BooleanOp.INTERSECTION;
+            case "DIFFERENCE" -> BooleanOp.DIFFERENCE;
+            default -> BooleanOp.UNION;
+        };
+    }
+
+    static int parseJoinStyle(@Nullable String raw) {
+        if (raw == null) {
+            return BufferParameters.JOIN_ROUND;
+        }
+        return switch (raw.trim().toUpperCase()) {
+            case "MITER", "MITRE" -> BufferParameters.JOIN_MITRE;
+            case "BEVEL" -> BufferParameters.JOIN_BEVEL;
+            default -> BufferParameters.JOIN_ROUND;
+        };
     }
 
     static @Nullable Polygon toJtsPolygon(
