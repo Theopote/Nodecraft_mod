@@ -24,7 +24,7 @@ Optional numeric / spatial inputs use connection-aware resolution via [`SdfInput
 | Node | Rules |
 |------|--------|
 | Sphere | finite center; `radius > 0` finite |
-| Box | finite center; half extents **each axis > 0** |
+| Box | finite center; half extents **each axis > 0** (no abs washout) |
 | Capsule | finite endpoints; `radius > 0`; non-zero axis length |
 | Torus | ring torus only: `0 < minor < major` |
 
@@ -32,7 +32,8 @@ Optional numeric / spatial inputs use connection-aware resolution via [`SdfInput
 
 - SDF Boolean: both SDFs required; Smooth K finite `>= 0`
 - SDF Transform: scale finite and `> EPS` in the node (no constructor exception escape)
-- Noise Displace / Domain Warp: Amplitude / Frequency / Seed connection-aware
+- Noise Displace: Amplitude `>= 0`, Frequency `> 0`, Seed exact integer
+- Domain Warp: Warp Amplitude `>= 0`, Warp Frequency `> 0`, Seed exact integer
 
 ## Query / mask
 

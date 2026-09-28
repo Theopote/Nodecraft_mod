@@ -65,11 +65,15 @@ public class SdfDomainWarpNode extends AbstractSdfNode {
             return;
         }
 
-        Double resolvedAmplitude = resolveFiniteDouble(INPUT_WARP_AMPLITUDE_ID, warpAmplitude);
-        Double resolvedFrequency = resolveFiniteDouble(INPUT_WARP_FREQUENCY_ID, warpFrequency);
+        Double resolvedAmplitude = resolveNonNegativeDouble(INPUT_WARP_AMPLITUDE_ID, warpAmplitude);
+        Double resolvedFrequency = resolvePositiveDouble(INPUT_WARP_FREQUENCY_ID, warpFrequency);
         Integer resolvedSeed = resolveOptionalInteger(INPUT_SEED_ID, seed);
-        if (resolvedAmplitude == null || resolvedFrequency == null) {
-            writeFailure("Warp Amplitude and Frequency must be finite");
+        if (resolvedAmplitude == null) {
+            writeFailure("Warp Amplitude must be finite and >= 0");
+            return;
+        }
+        if (resolvedFrequency == null) {
+            writeFailure("Warp Frequency must be finite and > 0");
             return;
         }
         if (resolvedSeed == null) {

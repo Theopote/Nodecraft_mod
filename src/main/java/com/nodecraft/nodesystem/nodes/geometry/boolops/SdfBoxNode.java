@@ -56,20 +56,18 @@ public class SdfBoxNode extends AbstractSdfNode {
             return;
         }
 
-        Vector3d propertyExtents = new Vector3d(Math.abs(halfX), Math.abs(halfY), Math.abs(halfZ));
-        Vector3d extInput = resolveOptionalVector(INPUT_HALF_EXTENTS_ID, propertyExtents);
-        if (extInput == null) {
+        Vector3d propertyExtents = new Vector3d(halfX, halfY, halfZ);
+        Vector3d ext = resolveOptionalVector(INPUT_HALF_EXTENTS_ID, propertyExtents);
+        if (ext == null) {
             writeFailure("Half extents must be a finite vector");
             return;
         }
-
-        Vector3d ext = new Vector3d(Math.abs(extInput.x), Math.abs(extInput.y), Math.abs(extInput.z));
         if (!(ext.x > 0.0d) || !(ext.y > 0.0d) || !(ext.z > 0.0d)) {
-            writeFailure("Box half extents must be > 0 on every axis");
+            writeFailure("Box half extents must be finite and > 0 on every axis");
             return;
         }
 
-        SignedDistanceFieldData sdf = new BoxSdfData(center, ext);
+        SignedDistanceFieldData sdf = new BoxSdfData(center, new Vector3d(ext));
         outputValues.put(OUTPUT_SDF_ID, sdf);
         markSuccess();
     }

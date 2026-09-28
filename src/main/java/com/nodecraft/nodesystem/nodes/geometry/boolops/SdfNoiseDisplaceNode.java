@@ -66,11 +66,15 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
             return;
         }
 
-        Double resolvedAmplitude = resolveFiniteDouble(INPUT_AMPLITUDE_ID, amplitude);
-        Double resolvedFrequency = resolveFiniteDouble(INPUT_FREQUENCY_ID, frequency);
+        Double resolvedAmplitude = resolveNonNegativeDouble(INPUT_AMPLITUDE_ID, amplitude);
+        Double resolvedFrequency = resolvePositiveDouble(INPUT_FREQUENCY_ID, frequency);
         Integer resolvedSeed = resolveOptionalInteger(INPUT_SEED_ID, seed);
-        if (resolvedAmplitude == null || resolvedFrequency == null) {
-            writeFailure("Amplitude and Frequency must be finite");
+        if (resolvedAmplitude == null) {
+            writeFailure("Amplitude must be finite and >= 0");
+            return;
+        }
+        if (resolvedFrequency == null) {
+            writeFailure("Frequency must be finite and > 0");
             return;
         }
         if (resolvedSeed == null) {

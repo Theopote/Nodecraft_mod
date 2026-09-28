@@ -18,6 +18,8 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBlendMaterialMaskNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBoxNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfCapsuleNode;
+import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfDomainWarpNode;
+import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfNoiseDisplaceNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfSamplePointsNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfSphereNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfToGeometryNode;
@@ -148,6 +150,19 @@ class GeometrySdfLanguageContractTest {
     }
 
     @Test
+    void boxRejectsNegativeHalfExtent() {
+        SdfBoxNode box = new SdfBoxNode();
+        connectInput(box, "input_center", NodeDataType.POINT);
+        connectInput(box, "input_half_extents", NodeDataType.VECTOR);
+        box.setInput("input_center", new PointData(0, 0, 0));
+        box.setInput("input_half_extents", new Vector3d(-5.0d, 4.0d, 4.0d));
+        box.processNode(null);
+        assertEquals(Boolean.FALSE, box.getOutput("output_valid"));
+        assertNull(box.getOutput("output_sdf"));
+        assertTrue(String.valueOf(box.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("extent"));
+    }
+
+    @Test
     void capsuleRejectsZeroAxisLength() {
         SdfCapsuleNode capsule = new SdfCapsuleNode();
         connectInput(capsule, "input_start", NodeDataType.POINT);
@@ -224,6 +239,52 @@ class GeometrySdfLanguageContractTest {
         mask.processNode(null);
         assertEquals(Boolean.FALSE, mask.getOutput("output_valid"));
         assertTrue(String.valueOf(mask.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("half"));
+    }
+
+    @Test
+    void noiseDisplaceRejectsNegativeAmplitudeOrFrequency() {
+        SdfSphereNode sphere = validSphere(4.0d);
+
+        SdfNoiseDisplaceNode amp = new SdfNoiseDisplaceNode();
+        connectInput(amp, "input_amplitude", NodeDataType.DOUBLE);
+        amp.setInput("input_sdf", sphere.getOutput("output_sdf"));
+        amp.setInput("input_amplitude", -5.0d);
+        amp.processNode(null);
+        assertEquals(Boolean.FALSE, amp.getOutput("output_valid"));
+        assertNull(amp.getOutput("output_sdf"));
+        assertTrue(String.valueOf(amp.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("amplitude"));
+
+        SdfNoiseDisplaceNode freq = new SdfNoiseDisplaceNode();
+        connectInput(freq, "input_frequency", NodeDataType.DOUBLE);
+        freq.setInput("input_sdf", sphere.getOutput("output_sdf"));
+        freq.setInput("input_frequency", -2.0d);
+        freq.processNode(null);
+        assertEquals(Boolean.FALSE, freq.getOutput("output_valid"));
+        assertNull(freq.getOutput("output_sdf"));
+        assertTrue(String.valueOf(freq.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("frequency"));
+    }
+
+    @Test
+    void domainWarpRejectsNegativeAmplitudeOrFrequency() {
+        SdfSphereNode sphere = validSphere(4.0d);
+
+        SdfDomainWarpNode amp = new SdfDomainWarpNode();
+        connectInput(amp, "input_warp_amplitude", NodeDataType.DOUBLE);
+        amp.setInput("input_sdf", sphere.getOutput("output_sdf"));
+        amp.setInput("input_warp_amplitude", -5.0d);
+        amp.processNode(null);
+        assertEquals(Boolean.FALSE, amp.getOutput("output_valid"));
+        assertNull(amp.getOutput("output_sdf"));
+        assertTrue(String.valueOf(amp.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("amplitude"));
+
+        SdfDomainWarpNode freq = new SdfDomainWarpNode();
+        connectInput(freq, "input_warp_frequency", NodeDataType.DOUBLE);
+        freq.setInput("input_sdf", sphere.getOutput("output_sdf"));
+        freq.setInput("input_warp_frequency", -2.0d);
+        freq.processNode(null);
+        assertEquals(Boolean.FALSE, freq.getOutput("output_valid"));
+        assertNull(freq.getOutput("output_sdf"));
+        assertTrue(String.valueOf(freq.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("frequency"));
     }
 
     @Test
