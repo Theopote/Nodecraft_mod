@@ -33,16 +33,18 @@ typed → ANY = widening sink OK
 
 ## String Format workload caps
 
-Shared limits via `GenerationLimits` + `StringFormatEngine`:
+Shared limits via `GenerationLimits` + streaming `StringFormatEngine`:
 
 | Cap | Value |
 |-----|------:|
 | `MAX_FORMAT_DEPTH` | 32 |
 | `MAX_FORMAT_TEMPLATE_CHARS` | 65_536 |
 | `MAX_FORMAT_OUTPUT_CHARS` | 65_536 |
-| Values list size | `MAX_LIST_ELEMENTS` |
+| `MAX_FORMAT_CONTAINER_ELEMENTS` | 65_536 |
+| `MAX_FORMAT_VISITED_ITEMS` | 65_536 |
+| Top-level Values list size | `MAX_LIST_ELEMENTS` |
 
-Single-pass placeholder scan; identity-based cycle detection on List/Map; no partial output on failure.
+Single-pass placeholder scan; values stream into one budgeted `StringBuilder` (nested List/Map are not fully materialized before output-cap checks); identity-based cycle detection.
 
 **Message vs Error:**
 - missing placeholder → `Valid=false`, semantic `Message`, `Error=""`

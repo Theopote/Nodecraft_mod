@@ -385,6 +385,75 @@ class AssistUtilitiesLanguageV2ContractTest {
     }
 
     @Test
+    void stringFormatTemplateCapFailsClosed() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.connectInput("input_template", NodeDataType.STRING);
+        format.setInput("input_template", "x".repeat(GenerationLimits.MAX_FORMAT_TEMPLATE_CHARS + 1));
+        format.processNode(null);
+        assertInvalid(format);
+        assertTrue(String.valueOf(format.getOutput("output_error")).contains("MAX_FORMAT_TEMPLATE_CHARS"));
+    }
+
+    @Test
+    void stringFormatNestedContainerSizeCapFailsClosed() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.connectInput("input_value_0", NodeDataType.ANY);
+        format.setInput("input_value_0",
+            Collections.nCopies(GenerationLimits.MAX_FORMAT_CONTAINER_ELEMENTS + 1, "x"));
+        format.processNode(null);
+        assertInvalid(format);
+        assertEquals("", format.getOutput("output_text"));
+        assertTrue(String.valueOf(format.getOutput("output_error")).contains("MAX_FORMAT_CONTAINER_ELEMENTS"));
+    }
+
+    @Test
+    void stringFormatNestedListStreamingOutputCapFailsWithoutPartialOutput() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.setNodeState(Map.of("template", "{0}"));
+        format.connectInput("input_value_0", NodeDataType.ANY);
+        format.setInput("input_value_0",
+            Collections.nCopies(8_000, "01234567890123456789"));
+        format.processNode(null);
+        assertInvalid(format);
+        assertEquals("", format.getOutput("output_text"));
+        assertTrue(String.valueOf(format.getOutput("output_error")).contains("MAX_FORMAT_OUTPUT_CHARS"));
+    }
+
+    @Test
+    void stringFormatGraphFailureProducesEmptyText() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.connectInput("input_template", NodeDataType.STRING);
+        format.setInput("input_template", 123);
+        format.processNode(null);
+        assertInvalid(format);
+        assertEquals("", format.getOutput("output_text"));
+        assertEquals("", format.getOutput("output_message"));
+    }
+
+    @Test
+    void signalForkRemoveBranchOnlyRemovesLastPort() {
+        SignalForkNode fork = new SignalForkNode();
+        fork.addOutputBranch();
+        BasePort outA = (BasePort) fork.getOutputPorts().stream()
+            .filter(port -> "output_a".equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        BasePort outC = (BasePort) fork.getOutputPorts().stream()
+            .filter(port -> "output_3".equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+
+        fork.removeLastOutputBranch();
+        assertEquals(2, fork.getOutputBranchCount());
+        assertSame(outA, fork.getOutputPorts().stream()
+            .filter(port -> "output_a".equals(port.getId()))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(fork.getOutputPorts().stream().noneMatch(port -> "output_3".equals(port.getId())));
+        assertTrue(outC.getConnectedPorts().isEmpty() || !fork.getOutputPorts().contains(outC));
+    }
+
+    @Test
     void stringFormatMissingPlaceholderUsesMessageNotError() {
         StringFormatProbe format = new StringFormatProbe();
         format.setNodeState(Map.of("template", "{0} {3}"));

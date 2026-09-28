@@ -6,7 +6,6 @@ import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -16,6 +15,8 @@ import java.util.regex.Pattern;
 
 /**
  * Workload-safe string formatting for {@code utilities.assist.string_format}.
+ * Values are streamed into a single budgeted {@link StringBuilder}; nested containers
+ * are never fully materialized before output-cap checks.
  */
 public final class StringFormatEngine {
 
@@ -73,58 +74,41 @@ public final class StringFormatEngine {
         String resolvedTemplate = template == null ? "" : template;
         int safePrecision = Math.max(0, Math.min(8, precision));
         boolean[] usedIndexes = new boolean[Math.max(0, values.size())];
-        StringBuilder output = new StringBuilder(resolvedTemplate.length());
+        FormatContext context = new FormatContext(new StringBuilder(resolvedTemplate.length()));
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(resolvedTemplate);
         int lastEnd = 0;
 
         while (matcher.find()) {
-            String literal = resolvedTemplate.substring(lastEnd, matcher.start());
-            String literalError = appendSegment(output, literal);
-            if (literalError != null) {
-                return FormatResult.graphFailure(literalError);
+            if (!appendLiteral(context, resolvedTemplate.substring(lastEnd, matcher.start()))) {
+                return FormatResult.graphFailure(context.error);
             }
 
             int index;
             try {
                 index = Integer.parseInt(matcher.group(1));
             } catch (NumberFormatException ignored) {
-                String placeholder = matcher.group();
-                String placeholderError = appendSegment(output, placeholder);
-                if (placeholderError != null) {
-                    return FormatResult.graphFailure(placeholderError);
+                if (!appendLiteral(context, matcher.group())) {
+                    return FormatResult.graphFailure(context.error);
                 }
                 lastEnd = matcher.end();
                 continue;
             }
 
             if (index >= 0 && index < values.size()) {
-                FormatContext context = new FormatContext();
-                String formatted = formatValue(values.get(index), safePrecision, 0, new IdentityHashMap<>(), context);
-                if (formatted == null) {
-                    return FormatResult.graphFailure(
-                        context.error == null ? "Value formatting failed" : context.error
-                    );
-                }
-                String appendError = appendSegment(output, formatted);
-                if (appendError != null) {
-                    return FormatResult.graphFailure(appendError);
+                if (!appendValue(context, values.get(index), safePrecision, 0)) {
+                    return FormatResult.graphFailure(context.error);
                 }
                 if (!usedIndexes[index]) {
                     usedIndexes[index] = true;
                 }
-            } else {
-                String placeholder = matcher.group();
-                String placeholderError = appendSegment(output, placeholder);
-                if (placeholderError != null) {
-                    return FormatResult.graphFailure(placeholderError);
-                }
+            } else if (!appendLiteral(context, matcher.group())) {
+                return FormatResult.graphFailure(context.error);
             }
             lastEnd = matcher.end();
         }
 
-        String tailError = appendSegment(output, resolvedTemplate.substring(lastEnd));
-        if (tailError != null) {
-            return FormatResult.graphFailure(tailError);
+        if (!appendLiteral(context, resolvedTemplate.substring(lastEnd))) {
+            return FormatResult.graphFailure(context.error);
         }
 
         int usedCount = 0;
@@ -137,14 +121,14 @@ public final class StringFormatEngine {
         int missingCount = countMissingPlaceholders(resolvedTemplate, values.size());
         if (missingCount > 0) {
             return FormatResult.semanticFailure(
-                output.toString(),
+                context.output.toString(),
                 usedCount,
                 missingCount,
                 "Missing values for " + missingCount + " placeholder(s)."
             );
         }
 
-        return FormatResult.success(output.toString(), usedCount);
+        return FormatResult.success(context.output.toString(), usedCount);
     }
 
     private static int countMissingPlaceholders(String text, int valueCount) {
@@ -164,108 +148,156 @@ public final class StringFormatEngine {
         return missing;
     }
 
-    private static @Nullable String appendSegment(StringBuilder output, String segment) {
-        if (segment.isEmpty()) {
-            return null;
-        }
-        return GenerationLimits.validateFormatOutputBudget(output.length(), segment.length()) == null
-            ? appendChecked(output, segment)
-            : "Formatted output exceeds MAX_FORMAT_OUTPUT_CHARS";
-    }
-
-    private static @Nullable String appendChecked(StringBuilder output, String segment) {
-        output.append(segment);
-        return null;
-    }
-
     private static final class FormatContext {
+        private final StringBuilder output;
+        private final IdentityHashMap<Object, Boolean> visited = new IdentityHashMap<>();
+        private long visitedItems;
         private @Nullable String error;
+
+        private FormatContext(StringBuilder output) {
+            this.output = output;
+        }
     }
 
-    private static @Nullable String formatValue(
-        Object value,
-        int precision,
-        int depth,
-        IdentityHashMap<Object, Boolean> visited,
-        FormatContext context
-    ) {
+    private static boolean appendLiteral(FormatContext context, String segment) {
+        if (segment.isEmpty()) {
+            return true;
+        }
+        String budgetError = GenerationLimits.validateFormatOutputBudget(context.output.length(), segment.length());
+        if (budgetError != null) {
+            context.error = budgetError;
+            return false;
+        }
+        context.output.append(segment);
+        return true;
+    }
+
+    private static boolean appendValue(FormatContext context, @Nullable Object value, int precision, int depth) {
         if (depth > GenerationLimits.MAX_FORMAT_DEPTH) {
             context.error = "Format depth exceeds MAX_FORMAT_DEPTH";
-            return null;
+            return false;
         }
 
-        switch (value) {
-            case null -> {
-                return "null";
-            }
+        return switch (value) {
+            case null -> appendLiteral(context, "null");
+            case Integer i -> appendLiteral(context, String.valueOf(i.longValue()));
+            case Long l -> appendLiteral(context, String.valueOf(l));
+            case Short s -> appendLiteral(context, String.valueOf(s.longValue()));
+            case Byte b -> appendLiteral(context, String.valueOf(b.longValue()));
             case Number number -> {
-                if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
-                    return String.valueOf(number.longValue());
-                }
                 String format = "%." + precision + "f";
-                return String.format(Locale.ROOT, format, number.doubleValue());
+                yield appendLiteral(context, String.format(Locale.ROOT, format, number.doubleValue()));
             }
-            case Vector3d vector -> {
-                return formatVector3(vector.x, vector.y, vector.z, precision);
-            }
-            case VectorData vectorData -> {
-                return formatVector3(vectorData.x(), vectorData.y(), vectorData.z(), precision);
-            }
-            case PointData pointData -> {
-                return formatValue(pointData.position(), precision, depth, visited, context);
-            }
-            case BlockPos blockPos -> {
-                return "(" + blockPos.getX() + ", " + blockPos.getY() + ", " + blockPos.getZ() + ")";
-            }
-            case List<?> list -> {
-                if (visited.put(list, Boolean.TRUE) != null) {
-                    context.error = "Cyclic list detected during formatting";
-                    return null;
-                }
-                List<String> parts = new ArrayList<>(list.size());
-                for (Object item : list) {
-                    String formatted = formatValue(item, precision, depth + 1, visited, context);
-                    if (formatted == null) {
-                        visited.remove(list);
-                        return null;
-                    }
-                    parts.add(formatted);
-                }
-                visited.remove(list);
-                return "[" + String.join(", ", parts) + "]";
-            }
-            case Map<?, ?> map -> {
-                if (visited.put(map, Boolean.TRUE) != null) {
-                    context.error = "Cyclic map detected during formatting";
-                    return null;
-                }
-                List<String> parts = new ArrayList<>(map.size());
-                for (Map.Entry<?, ?> entry : map.entrySet()) {
-                    String key = formatValue(entry.getKey(), precision, depth + 1, visited, context);
-                    if (key == null) {
-                        visited.remove(map);
-                        return null;
-                    }
-                    String mapValue = formatValue(entry.getValue(), precision, depth + 1, visited, context);
-                    if (mapValue == null) {
-                        visited.remove(map);
-                        return null;
-                    }
-                    parts.add(key + "=" + mapValue);
-                }
-                visited.remove(map);
-                return "{" + String.join(", ", parts) + "}";
-            }
-            default -> {
-            }
-        }
-        return String.valueOf(value);
+            case Vector3d vector -> appendVector3(context, vector.x, vector.y, vector.z, precision);
+            case VectorData vectorData -> appendVector3(context, vectorData.x(), vectorData.y(), vectorData.z(), precision);
+            case PointData pointData -> appendValue(context, pointData.position(), precision, depth);
+            case BlockPos blockPos -> appendLiteral(context,
+                "(" + blockPos.getX() + ", " + blockPos.getY() + ", " + blockPos.getZ() + ")");
+            case List<?> list -> appendList(context, list, precision, depth);
+            case Map<?, ?> map -> appendMap(context, map, precision, depth);
+            default -> appendLiteral(context, String.valueOf(value));
+        };
     }
 
-    private static String formatVector3(double x, double y, double z, int precision) {
+    private static boolean appendVector3(FormatContext context, double x, double y, double z, int precision) {
         String format = "%." + precision + "f";
-        return "(" + String.format(Locale.ROOT, format, x) + ", "
+        return appendLiteral(context, "(" + String.format(Locale.ROOT, format, x) + ", "
             + String.format(Locale.ROOT, format, y) + ", "
-            + String.format(Locale.ROOT, format, z) + ")";
+            + String.format(Locale.ROOT, format, z) + ")");
+    }
+
+    private static boolean appendList(FormatContext context, List<?> list, int precision, int depth) {
+        String containerError = GenerationLimits.validateFormatContainerSize(list.size());
+        if (containerError != null) {
+            context.error = containerError;
+            return false;
+        }
+
+        if (context.visited.put(list, Boolean.TRUE) != null) {
+            context.error = "Cyclic list detected during formatting";
+            return false;
+        }
+
+        if (!appendLiteral(context, "[")) {
+            context.visited.remove(list);
+            return false;
+        }
+
+        boolean first = true;
+        for (Object item : list) {
+            if (!recordVisitedItem(context)) {
+                context.visited.remove(list);
+                return false;
+            }
+            if (!first && !appendLiteral(context, ", ")) {
+                context.visited.remove(list);
+                return false;
+            }
+            first = false;
+            if (!appendValue(context, item, precision, depth + 1)) {
+                context.visited.remove(list);
+                return false;
+            }
+        }
+
+        context.visited.remove(list);
+        return appendLiteral(context, "]");
+    }
+
+    private static boolean appendMap(FormatContext context, Map<?, ?> map, int precision, int depth) {
+        String containerError = GenerationLimits.validateFormatContainerSize(map.size());
+        if (containerError != null) {
+            context.error = containerError;
+            return false;
+        }
+
+        if (context.visited.put(map, Boolean.TRUE) != null) {
+            context.error = "Cyclic map detected during formatting";
+            return false;
+        }
+
+        if (!appendLiteral(context, "{")) {
+            context.visited.remove(map);
+            return false;
+        }
+
+        boolean first = true;
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!recordVisitedItem(context)) {
+                context.visited.remove(map);
+                return false;
+            }
+            if (!first && !appendLiteral(context, ", ")) {
+                context.visited.remove(map);
+                return false;
+            }
+            first = false;
+            if (!appendValue(context, entry.getKey(), precision, depth + 1)) {
+                context.visited.remove(map);
+                return false;
+            }
+            if (!appendLiteral(context, "=")) {
+                context.visited.remove(map);
+                return false;
+            }
+            if (!appendValue(context, entry.getValue(), precision, depth + 1)) {
+                context.visited.remove(map);
+                return false;
+            }
+        }
+
+        context.visited.remove(map);
+        return appendLiteral(context, "}");
+    }
+
+    private static boolean recordVisitedItem(FormatContext context) {
+        long next = context.visitedItems + 1L;
+        String budgetError = GenerationLimits.validateFormatVisitedItems(next);
+        if (budgetError != null) {
+            context.error = budgetError;
+            return false;
+        }
+        context.visitedItems = next;
+        return true;
     }
 }

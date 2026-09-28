@@ -41,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Assist Utilities v1 language fence (Graph V55).
- * CURRENT may advance; this family remains frozen at V55+.
+ * Superseded by {@link AssistUtilitiesLanguageV2ContractTest} at Graph V89+.
  */
 class AssistUtilitiesLanguageContractTest {
 

@@ -28,6 +28,16 @@ public final class GenerationLimits {
     public static final int MAX_FORMAT_OUTPUT_CHARS = 65_536;
 
     /**
+     * Maximum elements in a nested List/Map encountered during String Format value formatting.
+     */
+    public static final int MAX_FORMAT_CONTAINER_ELEMENTS = 65_536;
+
+    /**
+     * Maximum List/Map entries visited while formatting a single String Format invocation.
+     */
+    public static final int MAX_FORMAT_VISITED_ITEMS = 65_536;
+
+    /**
      * Hard cap for GeometryData / CompositeGeometry instance arrays.
      * Much lower than {@link #MAX_LIST_ELEMENTS} because each instance is far heavier than a point or scalar.
      */
@@ -833,6 +843,26 @@ public final class GenerationLimits {
         }
         if (total > MAX_FORMAT_OUTPUT_CHARS) {
             return "Formatted output exceeds MAX_FORMAT_OUTPUT_CHARS";
+        }
+        return null;
+    }
+
+    /**
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateFormatContainerSize(int size) {
+        if (size < 0 || size > MAX_FORMAT_CONTAINER_ELEMENTS) {
+            return "Nested container exceeds MAX_FORMAT_CONTAINER_ELEMENTS";
+        }
+        return null;
+    }
+
+    /**
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateFormatVisitedItems(long visitedItems) {
+        if (visitedItems < 0L || visitedItems > MAX_FORMAT_VISITED_ITEMS) {
+            return "Format workload exceeds MAX_FORMAT_VISITED_ITEMS";
         }
         return null;
     }

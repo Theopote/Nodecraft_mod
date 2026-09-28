@@ -588,7 +588,7 @@ public final class GraphFormatVersion {
     public static final int V88 = 88;
 
     /**
-     * Assist Utilities Language v2 (PASSED / FROZEN): String Format workload caps,
+     * Assist Utilities Language v2 (PASSED / FROZEN): String Format streaming workload caps,
      * incremental dynamic ports, Validate/Coalesce/String Format Error ports,
      * connection-aware optional inputs. V55 remains the historical Assist Utilities v1 fence.
      */
