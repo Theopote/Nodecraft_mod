@@ -8,9 +8,12 @@ import org.joml.Matrix3d;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GeometryVoxelizerTest {
@@ -111,6 +114,22 @@ class GeometryVoxelizerTest {
         assertFalse(strictBox.success());
         GeometryVoxelizationResult strictSdf = GeometryVoxelizer.voxelizeStrict(oversizedSdf, true);
         assertEquals(VoxelizationStatus.OVER_BUDGET, strictSdf.status());
+    }
+
+    @Test
+    void mergeIntoSet_exceedsAggregateBudget() {
+        java.util.Set<BlockPos> merged = new java.util.LinkedHashSet<>();
+        BlockPosList first = new BlockPosList();
+        for (int i = 0; i < GenerationLimits.MAX_GEOMETRY_VOXELS; i++) {
+            first.add(new BlockPos(i, 0, 0));
+        }
+        assertNull(GeometryVoxelizer.mergeIntoSet(merged, first));
+        assertEquals(GenerationLimits.MAX_GEOMETRY_VOXELS, merged.size());
+
+        BlockPosList extra = new BlockPosList(List.of(new BlockPos((int) GenerationLimits.MAX_GEOMETRY_VOXELS, 0, 0)));
+        GeometryVoxelizationResult fail = GeometryVoxelizer.mergeIntoSet(merged, extra);
+        assertNotNull(fail);
+        assertEquals(VoxelizationStatus.OVER_BUDGET, fail.status());
     }
 
     @Test

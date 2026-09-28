@@ -59,6 +59,8 @@ class WorldWriteTriggerContractTest {
                 NodeEffect.PURE,
                 NodeEffectResolver.resolve(VoxelizeGeometryNode.class, "geometry.voxel.voxelize_geometry")
         );
+        assertNotNull(findOutput(node, "output_valid"));
+        assertNotNull(findOutput(node, "output_error"));
     }
 
     @Test
@@ -87,6 +89,15 @@ class WorldWriteTriggerContractTest {
 
     private static IPort findInput(INode node, String portId) {
         for (IPort port : node.getInputPorts()) {
+            if (portId.equals(port.getId())) {
+                return port;
+            }
+        }
+        return null;
+    }
+
+    private static IPort findOutput(INode node, String portId) {
+        for (IPort port : node.getOutputPorts()) {
             if (portId.equals(port.getId())) {
                 return port;
             }

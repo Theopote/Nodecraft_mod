@@ -181,6 +181,8 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertPortType("geometry.architectural_primitives.roof_base", "input_face", true, NodeDataType.BOX_FACE);
         assertPortType("geometry.architectural_primitives.roof_base", "output_eave_path", false, NodeDataType.PATH);
         assertPortType("geometry.voxel.voxelize_geometry", "output_blocks", false, NodeDataType.BLOCK_LIST);
+        assertPortType("geometry.voxel.voxelize_geometry", "output_valid", false, NodeDataType.BOOLEAN);
+        assertPortType("geometry.voxel.voxelize_geometry", "output_error", false, NodeDataType.STRING);
         assertPortType("output.preview.preview_geometry", "input_geometry", true, NodeDataType.GEOMETRY);
 
         assertEquals(

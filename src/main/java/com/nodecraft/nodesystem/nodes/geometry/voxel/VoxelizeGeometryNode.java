@@ -11,7 +11,11 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VoxelInputUtils;
+import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -34,8 +38,12 @@ import java.util.UUID;
 )
 public class VoxelizeGeometryNode extends BaseNode {
 
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+    private static final String OUTPUT_STATUS_ID = "output_status";
+
     @NodeProperty(displayName = "Fill Geometry", category = "Shape", order = 1,
-        description = "When disabled, only the outer shell is generated where supported")
+        description = "When disabled, returns the boundary shell of the final voxelized geometry where supported")
     private boolean fillGeometry = true;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -56,6 +64,9 @@ public class VoxelizeGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped by source geometry tree branch", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the geometry", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when voxelization succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Voxelization status (SUCCESS, OVER_BUDGET, …)", NodeDataType.STRING, this));
     }
 
     @Override
@@ -65,38 +76,68 @@ public class VoxelizeGeometryNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        Object geometryTreeObj = inputValues.get(INPUT_GEOMETRY_TREE_ID);
-        BlockPosList blocks = new BlockPosList();
-        DataTreeData blocksTree = DataTreeData.empty();
-        RegionData region = null;
+        if (OptionalPortDrive.isConnected(this, INPUT_GEOMETRY_TREE_ID)) {
+            processTreePath();
+            return;
+        }
+        processSingleGeometryPath();
+    }
 
-        if (geometryTreeObj instanceof DataTreeData geometryTree && geometryTree.getBranchCount() > 0) {
-            List<DataTreeData.Branch> blockBranches = new ArrayList<>();
-            for (DataTreeData.Branch branch : geometryTree.getBranches()) {
-                BlockPosList branchBlocks = new BlockPosList();
-                for (Object item : branch.items()) {
-                    if (item instanceof GeometryData geometry) {
-                        branchBlocks.addAll(GeometryVoxelizer.voxelize(geometry, fillGeometry).getPositions());
-                        region = GeometryVoxelizer.unionBoundingRegions(region, GeometryVoxelizer.createBoundingRegion(geometry));
-                    }
-                }
-                if (!branchBlocks.isEmpty()) {
-                    blocks.addAll(branchBlocks.getPositions());
-                    blockBranches.add(new DataTreeData.Branch(branch.path(), new ArrayList<>(branchBlocks.getPositions())));
-                }
-            }
-            blocksTree = new DataTreeData(blockBranches);
-        } else if (geometryObj instanceof GeometryData geometry) {
-            blocks = GeometryVoxelizer.voxelize(geometry, fillGeometry);
-            blocksTree = new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<Object>(blocks.getPositions()))));
-            region = GeometryVoxelizer.createBoundingRegion(geometry);
+    private void processTreePath() {
+        Object treeObj = inputValues.get(INPUT_GEOMETRY_TREE_ID);
+        if (!(treeObj instanceof DataTreeData tree)) {
+            invalidate(VoxelizationStatus.UNSUPPORTED, "Geometry Tree is connected but invalid");
+            return;
         }
 
+        VoxelInputUtils.TreeVoxelizationOutcome outcome = VoxelInputUtils.voxelizeGeometryTree(tree, fillGeometry);
+        if (!outcome.success()) {
+            invalidate(outcome.status(), outcome.error());
+            return;
+        }
+
+        writeSuccess(outcome.blocks(), outcome.blocksTree(), outcome.region());
+    }
+
+    private void processSingleGeometryPath() {
+        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        if (!(geometryObj instanceof GeometryData geometry)) {
+            invalidate(VoxelizationStatus.UNSUPPORTED, "Geometry is missing or invalid");
+            return;
+        }
+
+        GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(geometry, fillGeometry);
+        if (!result.success()) {
+            invalidate(result.status(), result.error().isEmpty() ? "Voxelization failed" : result.error());
+            return;
+        }
+
+        BlockPosList blocks = result.blocks();
+        DataTreeData blocksTree = blocks.isEmpty()
+            ? DataTreeData.empty()
+            : new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<>(blocks.getPositions()))));
+        RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
+        writeSuccess(blocks, blocksTree, region);
+    }
+
+    private void writeSuccess(BlockPosList blocks, DataTreeData blocksTree, @Nullable RegionData region) {
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_BLOCKS_TREE_ID, blocksTree);
         outputValues.put(OUTPUT_REGION_ID, region);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+        outputValues.put(OUTPUT_STATUS_ID, VoxelizationStatus.SUCCESS.name());
+    }
+
+    private void invalidate(VoxelizationStatus status, String error) {
+        outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
+        outputValues.put(OUTPUT_BLOCKS_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_REGION_ID, null);
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        outputValues.put(OUTPUT_STATUS_ID, status.name());
     }
 
     public boolean isFillGeometry() {

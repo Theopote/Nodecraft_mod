@@ -22,6 +22,7 @@ import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -257,6 +258,55 @@ class GeometryBooleanLanguageContractTest {
         GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(diff, true);
         assertTrue(result.success());
         assertTrue(result.blocks().isEmpty());
+    }
+
+    @Test
+    void differenceShell_penetratingCut_includesCavityInnerWalls() {
+        BoxGeometryData outer = new BoxGeometryData(new Vector3d(10.5d, 10.5d, 10.5d), new Vector3d(5.0d, 5.0d, 5.0d));
+        BoxGeometryData cutter = new BoxGeometryData(new Vector3d(10.5d, 10.5d, 10.5d), new Vector3d(2.0d, 2.0d, 5.0d));
+        DifferenceGeometryData diff = new DifferenceGeometryData(outer, cutter);
+
+        GeometryVoxelizationResult fixed = GeometryVoxelizer.voxelizeStrict(diff, false);
+        assertTrue(fixed.success(), fixed.error());
+
+        Set<BlockPos> wrongShell = new java.util.LinkedHashSet<>();
+        for (BlockPos pos : GeometryVoxelizer.voxelizeStrict(outer, false).blocks()) {
+            wrongShell.add(pos.toImmutable());
+        }
+        for (BlockPos pos : GeometryVoxelizer.voxelizeStrict(cutter, true).blocks()) {
+            wrongShell.remove(pos.toImmutable());
+        }
+
+        BlockPos innerWall = new BlockPos(7, 10, 10);
+        assertTrue(fixed.blocks().contains(innerWall),
+            "Shell of solid difference should include cavity inner wall");
+        assertFalse(wrongShell.contains(innerWall),
+            "Legacy shell(A)-B must not include cavity inner wall");
+        assertTrue(fixed.blocks().size() > wrongShell.size());
+    }
+
+    @Test
+    void intersectionShell_isNotShellOperandsIntersected() {
+        BoxGeometryData left = new BoxGeometryData(new Vector3d(1.5d, 1.5d, 1.5d), new Vector3d(1.5d, 1.5d, 1.5d));
+        BoxGeometryData right = new BoxGeometryData(new Vector3d(2.5d, 1.5d, 1.5d), new Vector3d(1.5d, 1.5d, 1.5d));
+        IntersectionGeometryData inter = new IntersectionGeometryData(left, right);
+
+        GeometryVoxelizationResult shellInter = GeometryVoxelizer.voxelizeStrict(inter, false);
+        assertTrue(shellInter.success(), shellInter.error());
+
+        Set<BlockPos> wrongShellIntersect = new java.util.HashSet<>();
+        Set<BlockPos> leftShell = new java.util.HashSet<>();
+        for (BlockPos pos : GeometryVoxelizer.voxelizeStrict(left, false).blocks()) {
+            leftShell.add(pos.toImmutable());
+        }
+        for (BlockPos pos : GeometryVoxelizer.voxelizeStrict(right, false).blocks()) {
+            if (leftShell.contains(pos.toImmutable())) {
+                wrongShellIntersect.add(pos.toImmutable());
+            }
+        }
+
+        assertTrue(shellInter.blocks().size() > wrongShellIntersect.size(),
+            "shell(A∩B) must differ from shell(A)∩shell(B) for overlapping boxes");
     }
 
     private static BoxGeometryData unitBox(double cx, double cy, double cz) {

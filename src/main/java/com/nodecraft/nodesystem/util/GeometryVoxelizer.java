@@ -137,6 +137,10 @@ public final class GeometryVoxelizer {
             return budget;
         }
 
+        if (geometry instanceof SdfGeometryData sdfGeometry) {
+            return voxelizeSdfStrict(sdfGeometry, fillSolid);
+        }
+
         BlockPosList blocks = voxelizeLeaf(geometry, fillSolid);
         if (blocks == null) {
             return GeometryVoxelizationResult.fail(
@@ -352,9 +356,17 @@ public final class GeometryVoxelizer {
                         : childResult.error()
                 );
             }
-            for (BlockPos pos : childResult.blocks()) {
-                mergedPositions.add(pos.toImmutable());
+            GeometryVoxelizationResult mergeError = mergeIntoSet(mergedPositions, childResult.blocks());
+            if (mergeError != null) {
+                return mergeError;
             }
+        }
+        if (mergedPositions.size() > GenerationLimits.MAX_GEOMETRY_VOXELS) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.OVER_BUDGET,
+                "Merged voxel output exceeds MAX_GEOMETRY_VOXELS ("
+                    + GenerationLimits.MAX_GEOMETRY_VOXELS + ")"
+            );
         }
         return GeometryVoxelizationResult.ok(new BlockPosList(mergedPositions));
     }
@@ -368,7 +380,8 @@ public final class GeometryVoxelizer {
         DifferenceGeometryData geometry,
         boolean fillSolid
     ) {
-        GeometryVoxelizationResult base = voxelizeStrict(geometry.getMinuend(), fillSolid);
+        // CSG on solid operands; shell extraction applies to the final result only.
+        GeometryVoxelizationResult base = voxelizeStrict(geometry.getMinuend(), true);
         if (!base.success()) {
             return GeometryVoxelizationResult.fail(
                 VoxelizationStatus.CHILD_FAILURE,
@@ -383,14 +396,14 @@ public final class GeometryVoxelizer {
             );
         }
 
-        Set<BlockPos> result = new LinkedHashSet<>();
+        Set<BlockPos> solidResult = new LinkedHashSet<>();
         for (BlockPos pos : base.blocks()) {
-            result.add(pos.toImmutable());
+            solidResult.add(pos.toImmutable());
         }
         for (BlockPos pos : cutter.blocks()) {
-            result.remove(pos);
+            solidResult.remove(pos);
         }
-        return GeometryVoxelizationResult.ok(new BlockPosList(result));
+        return finalizeSolidResult(solidResult, fillSolid);
     }
 
     public static BlockPosList voxelizeIntersection(IntersectionGeometryData geometry, boolean fillSolid) {
@@ -402,14 +415,15 @@ public final class GeometryVoxelizer {
         IntersectionGeometryData geometry,
         boolean fillSolid
     ) {
-        GeometryVoxelizationResult left = voxelizeStrict(geometry.left(), fillSolid);
+        // CSG on solid operands; shell extraction applies to the final result only.
+        GeometryVoxelizationResult left = voxelizeStrict(geometry.left(), true);
         if (!left.success()) {
             return GeometryVoxelizationResult.fail(
                 VoxelizationStatus.CHILD_FAILURE,
                 left.error().isEmpty() ? "Intersection left voxelization failed" : left.error()
             );
         }
-        GeometryVoxelizationResult right = voxelizeStrict(geometry.right(), fillSolid);
+        GeometryVoxelizationResult right = voxelizeStrict(geometry.right(), true);
         if (!right.success()) {
             return GeometryVoxelizationResult.fail(
                 VoxelizationStatus.CHILD_FAILURE,
@@ -422,13 +436,13 @@ public final class GeometryVoxelizer {
             rightSet.add(pos.toImmutable());
         }
 
-        Set<BlockPos> result = new LinkedHashSet<>();
+        Set<BlockPos> solidResult = new LinkedHashSet<>();
         for (BlockPos pos : left.blocks()) {
             if (rightSet.contains(pos)) {
-                result.add(pos.toImmutable());
+                solidResult.add(pos.toImmutable());
             }
         }
-        return GeometryVoxelizationResult.ok(new BlockPosList(result));
+        return finalizeSolidResult(solidResult, fillSolid);
     }
 
     public static @Nullable RegionData createCompositeBoundingRegion(CompositeGeometryData geometry) {
@@ -757,6 +771,97 @@ public final class GeometryVoxelizer {
             ? new Vector3d(1.0d, 0.0d, 0.0d)
             : new Vector3d(0.0d, 1.0d, 0.0d);
         return fallback.sub(new Vector3d(axis).mul(fallback.dot(axis))).normalize();
+    }
+
+    /**
+     * Extracts the 6-connected boundary shell of a solid voxel set.
+     */
+    static BlockPosList extractShell(Set<BlockPos> solidBlocks) {
+        Set<BlockPos> shell = new LinkedHashSet<>();
+        for (BlockPos pos : solidBlocks) {
+            if (isBoundaryBlock(pos, solidBlocks)) {
+                shell.add(pos.toImmutable());
+            }
+        }
+        return new BlockPosList(shell);
+    }
+
+    /**
+     * Merges block positions into {@code target}. Returns a failure result when the merged
+     * set would exceed {@link GenerationLimits#MAX_GEOMETRY_VOXELS}; otherwise {@code null}.
+     */
+    static @Nullable GeometryVoxelizationResult mergeIntoSet(Set<BlockPos> target, BlockPosList blocks) {
+        for (BlockPos pos : blocks) {
+            BlockPos immutable = pos.toImmutable();
+            if (!target.contains(immutable) && target.size() >= GenerationLimits.MAX_GEOMETRY_VOXELS) {
+                return GeometryVoxelizationResult.fail(
+                    VoxelizationStatus.OVER_BUDGET,
+                    "Merged voxel output exceeds MAX_GEOMETRY_VOXELS ("
+                        + GenerationLimits.MAX_GEOMETRY_VOXELS + ")"
+                );
+            }
+            target.add(immutable);
+        }
+        return null;
+    }
+
+    private static GeometryVoxelizationResult finalizeSolidResult(Set<BlockPos> solidResult, boolean fillSolid) {
+        if (solidResult.size() > GenerationLimits.MAX_GEOMETRY_VOXELS) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.OVER_BUDGET,
+                "Voxel output exceeds MAX_GEOMETRY_VOXELS (" + GenerationLimits.MAX_GEOMETRY_VOXELS + ")"
+            );
+        }
+        BlockPosList blocks = fillSolid ? new BlockPosList(solidResult) : extractShell(solidResult);
+        return GeometryVoxelizationResult.ok(blocks);
+    }
+
+    private static GeometryVoxelizationResult voxelizeSdfStrict(SdfGeometryData geometry, boolean fillSolid) {
+        if (exceedsVoxelVolumeLimit(geometry)) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.OVER_BUDGET,
+                "Geometry bounds volume exceeds MAX_GEOMETRY_VOXELS ("
+                    + GenerationLimits.MAX_GEOMETRY_VOXELS + ")"
+            );
+        }
+        RegionData region = createBoundingRegion(geometry);
+        if (region == null || !region.isComplete()) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.INVALID_BOUNDS,
+                "SDF geometry bounds could not be resolved"
+            );
+        }
+
+        BlockPos minCorner = region.getMinCorner();
+        BlockPos maxCorner = region.getMaxCorner();
+        if (minCorner == null || maxCorner == null) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.INVALID_BOUNDS,
+                "SDF geometry bounds incomplete"
+            );
+        }
+
+        Set<BlockPos> solid = new LinkedHashSet<>();
+        double iso = geometry.isoValue();
+        for (int x = minCorner.getX(); x <= maxCorner.getX(); x++) {
+            for (int y = minCorner.getY(); y <= maxCorner.getY(); y++) {
+                for (int z = minCorner.getZ(); z <= maxCorner.getZ(); z++) {
+                    double d = geometry.sdf().sampleDistance(new Vector3d(x + 0.5d, y + 0.5d, z + 0.5d));
+                    if (!Double.isFinite(d)) {
+                        return GeometryVoxelizationResult.fail(
+                            VoxelizationStatus.EVALUATION_FAILURE,
+                            "SDF returned non-finite distance at ("
+                                + (x + 0.5d) + ", " + (y + 0.5d) + ", " + (z + 0.5d) + ")"
+                        );
+                    }
+                    if (d <= iso) {
+                        solid.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+
+        return finalizeSolidResult(solid, fillSolid);
     }
 
     private static boolean isBoundaryBlock(BlockPos pos, Set<BlockPos> solidBlocks) {

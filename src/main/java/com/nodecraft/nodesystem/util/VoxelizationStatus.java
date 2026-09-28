@@ -9,5 +9,7 @@ public enum VoxelizationStatus {
     UNSUPPORTED,
     OVER_BUDGET,
     INVALID_BOUNDS,
-    CHILD_FAILURE
+    CHILD_FAILURE,
+    /** Non-finite procedural evaluation (e.g. SDF sample returned NaN). */
+    EVALUATION_FAILURE
 }

@@ -633,8 +633,16 @@ public final class GraphFormatVersion {
      */
     public static final int V94 = 94;
 
+    /**
+     * Geometry Voxel Language v1 (PASSED / FROZEN): Voxelize Geometry uses voxelizeStrict
+     * with Valid+Error+Status; connection-aware Geometry Tree (transactional, no silent drop);
+     * Boolean shell = solid CSG then extractShell; aggregate output budget on Composite/Tree;
+     * SDF non-finite sample → EVALUATION_FAILURE. V69 remains historical strict voxelizer fence.
+     */
+    public static final int V95 = 95;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V94;
+    public static final int CURRENT = V95;
 
     private GraphFormatVersion() {
     }
