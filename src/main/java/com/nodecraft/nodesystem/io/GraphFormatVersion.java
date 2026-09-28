@@ -625,8 +625,16 @@ public final class GraphFormatVersion {
      */
     public static final int V93 = 93;
 
+    /**
+     * Geometry Solids / Section Topology v2 (PASSED / FROZEN): Voxel Section/Contour
+     * emit PLANAR_REGION with hole topology via containment hierarchy; connection-aware
+     * Plane resolution (no XY washout); strict POINT_LIST on solids consumers (no silent drop).
+     * Inventory remains 23 solids nodes. V72 remains the historical Solids v1 fence.
+     */
+    public static final int V94 = 94;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V93;
+    public static final int CURRENT = V94;
 
     private GraphFormatVersion() {
     }

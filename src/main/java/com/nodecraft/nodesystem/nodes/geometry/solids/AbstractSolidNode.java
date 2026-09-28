@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SurfaceInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -108,11 +109,7 @@ abstract class AbstractSolidNode extends BaseNode {
     }
 
     protected final @Nullable PlaneData resolvePlane(String portId, @Nullable PlaneData fallback) {
-        Object value = inputValues.get(portId);
-        if (value instanceof PlaneData plane) {
-            return plane.normalized();
-        }
-        return fallback;
+        return OptionalPortDrive.resolveOptionalPlane(this, portId, fallback);
     }
 
     protected final @Nullable PathData pathFromPolyline(@Nullable PolylineData polyline) {

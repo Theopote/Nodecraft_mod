@@ -77,8 +77,12 @@ public class LoftPointListsNode extends AbstractSolidNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> sourcePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_SOURCE_POINTS_ID));
-        List<Vector3d> targetPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_TARGET_POINTS_ID));
+        List<Vector3d> sourcePoints = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_SOURCE_POINTS_ID));
+        List<Vector3d> targetPoints = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_TARGET_POINTS_ID));
+        if (sourcePoints == null || targetPoints == null) {
+            invalidate("Source/target point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         if (sourcePoints.size() < 2 || targetPoints.size() < 2) {
             invalidate("Source and target point lists each require at least two points");
             return;

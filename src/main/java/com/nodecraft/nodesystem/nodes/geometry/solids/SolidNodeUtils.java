@@ -75,6 +75,32 @@ final class SolidNodeUtils {
         return point == null ? List.of() : List.of(point);
     }
 
+    /**
+     * Strict POINT_LIST for solids consumers: non-Collection → null;
+     * empty collection → empty list (success empty); any non-{@link PointData}
+     * or non-finite entry → null (fail closed, no filtering / index drift).
+     */
+    static @Nullable List<Vector3d> resolveStrictPointList(@Nullable Object value) {
+        if (!(value instanceof Collection<?> collection)) {
+            return null;
+        }
+        if (collection.isEmpty()) {
+            return List.of();
+        }
+        List<Vector3d> points = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            if (!(entry instanceof PointData pointData)) {
+                return null;
+            }
+            Vector3d position = pointData.position();
+            if (!Double.isFinite(position.x) || !Double.isFinite(position.y) || !Double.isFinite(position.z)) {
+                return null;
+            }
+            points.add(new Vector3d(position));
+        }
+        return List.copyOf(points);
+    }
+
     static PolylineData createPolyline(List<Vector3d> points, boolean closed) {
         List<Vec3d> polylinePoints = new ArrayList<>(points.size() + 1);
         for (Vector3d point : points) {

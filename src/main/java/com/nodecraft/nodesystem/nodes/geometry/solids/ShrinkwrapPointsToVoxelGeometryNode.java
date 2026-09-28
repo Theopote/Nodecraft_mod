@@ -83,9 +83,14 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends AbstractSolidNode {
             return;
         }
 
-        List<Vector3d> queries = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> queries = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        if (queries == null) {
+            invalidate("Query point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         if (queries.isEmpty()) {
-            invalidate("Query point list is empty");
+            putEmptyListOutputs(OUTPUT_POINTS_ID, OUTPUT_DISTANCES_ID);
+            markSuccess();
             return;
         }
 

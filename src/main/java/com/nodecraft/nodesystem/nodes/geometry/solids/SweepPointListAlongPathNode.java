@@ -105,9 +105,13 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> profilePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
+        List<Vector3d> profilePoints = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
         List<Vector3d> spinePoints = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID));
 
+        if (profilePoints == null) {
+            invalidate("Profile point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         if (profilePoints.size() < 2) {
             invalidate("Profile point list requires at least two points");
             return;

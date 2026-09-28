@@ -109,6 +109,10 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> profilePoints = resolveProfilePoints();
+        if (profilePoints == null) {
+            invalidate("Profile point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         List<Vector3d> rawRailA = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_A_PATH_ID));
         List<Vector3d> rawRailB = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_RAIL_B_PATH_ID));
 
@@ -368,12 +372,12 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
         this.endRotationDegrees = endRotationDegrees;
     }
 
-    private List<Vector3d> resolveProfilePoints() {
+    private @Nullable List<Vector3d> resolveProfilePoints() {
         Object profileObj = inputValues.get(INPUT_PROFILE_ID);
         if (profileObj instanceof PolygonProfileData profile) {
             return profile.getUniquePoints();
         }
-        return SpatialValueResolver.resolvePointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
+        return SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_PROFILE_POINTS_ID));
     }
 
     private List<Vector3d> computeCenters(List<Vector3d> railA, List<Vector3d> railB) {

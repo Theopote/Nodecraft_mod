@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
@@ -43,10 +44,13 @@ public class ContourNode extends AbstractSolidNode {
 
     private static final String OUTPUT_PROFILE_ID = "output_profile";
     private static final String OUTPUT_BOUNDARY_ID = "output_boundary";
+    private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
     private static final String OUTPUT_BOUNDARIES_ID = "output_boundaries";
+    private static final String OUTPUT_REGIONS_ID = "output_regions";
     private static final String OUTPUT_PROFILES_TREE_ID = "output_profiles_tree";
     private static final String OUTPUT_BOUNDARIES_TREE_ID = "output_boundaries_tree";
+    private static final String OUTPUT_REGIONS_TREE_ID = "output_regions_tree";
     private static final String OUTPUT_SLICE_BLOCKS_ID = "output_slice_blocks";
     private static final String OUTPUT_SLICE_POINTS_ID = "output_slice_points";
     private static final String OUTPUT_SLICE_BLOCKS_TREE_ID = "output_slice_blocks_tree";
@@ -65,10 +69,13 @@ public class ContourNode extends AbstractSolidNode {
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary traced contour profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Primary traced contour boundary path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Primary traced contour region (outer + holes)", NodeDataType.PLANAR_REGION, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_ID, "Profiles", "All traced contour profiles", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARIES_ID, "Boundaries", "All traced contour boundary paths", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_REGIONS_ID, "Regions", "All traced contour regions", NodeDataType.PLANAR_REGION_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILES_TREE_ID, "Profiles Tree", "Contour profiles keyed by plane and contour index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARIES_TREE_ID, "Boundaries Tree", "Contour boundary paths keyed by plane and contour index", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_REGIONS_TREE_ID, "Regions Tree", "Contour regions keyed by plane and region index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_BLOCKS_ID, "Slice Blocks", "Voxel blocks intersecting contour slabs", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_POINTS_ID, "Slice Points", "Projected section sample points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SLICE_BLOCKS_TREE_ID, "Slice Blocks Tree", "Slice blocks keyed by plane index", NodeDataType.DATA_TREE, this));
@@ -162,10 +169,12 @@ public class ContourNode extends AbstractSolidNode {
     private void writeResults(BlockPosList filled, List<PlaneData> planes, double thickness) {
         List<PolygonProfileData> profiles = new ArrayList<>();
         List<PathData> boundaries = new ArrayList<>();
+        List<PlanarRegionData> regions = new ArrayList<>();
         BlockPosList allSliceBlocks = new BlockPosList();
         List<Vector3d> allSlicePoints = new ArrayList<>();
         List<DataTreeData.Branch> profileBranches = new ArrayList<>();
         List<DataTreeData.Branch> boundaryBranches = new ArrayList<>();
+        List<DataTreeData.Branch> regionBranches = new ArrayList<>();
         List<DataTreeData.Branch> blockBranches = new ArrayList<>();
         List<DataTreeData.Branch> pointBranches = new ArrayList<>();
         SectionResult firstValid = null;
@@ -197,6 +206,17 @@ public class ContourNode extends AbstractSolidNode {
             } else {
                 boundaryBranches.add(new DataTreeData.Branch(List.of(planeIndex), List.of()));
             }
+            if (!result.regions().isEmpty()) {
+                regions.addAll(result.regions());
+                for (int regionIndex = 0; regionIndex < result.regions().size(); regionIndex++) {
+                    regionBranches.add(new DataTreeData.Branch(
+                        List.of(planeIndex, regionIndex),
+                        List.of(result.regions().get(regionIndex))
+                    ));
+                }
+            } else {
+                regionBranches.add(new DataTreeData.Branch(List.of(planeIndex), List.of()));
+            }
             allSliceBlocks.addAll(result.sliceBlocks().getPositions());
             allSlicePoints.addAll(result.projectedPoints());
             blockBranches.add(new DataTreeData.Branch(List.of(planeIndex), new ArrayList<>(result.sliceBlocks().getPositions())));
@@ -213,10 +233,13 @@ public class ContourNode extends AbstractSolidNode {
 
         outputValues.put(OUTPUT_PROFILE_ID, firstValid.primaryProfile());
         outputValues.put(OUTPUT_BOUNDARY_ID, pathFromPolyline(firstValid.primaryBoundary()));
+        outputValues.put(OUTPUT_REGION_ID, firstValid.primaryRegion());
         outputValues.put(OUTPUT_PROFILES_ID, List.copyOf(profiles));
         outputValues.put(OUTPUT_BOUNDARIES_ID, List.copyOf(boundaries));
+        outputValues.put(OUTPUT_REGIONS_ID, List.copyOf(regions));
         outputValues.put(OUTPUT_PROFILES_TREE_ID, new DataTreeData(profileBranches));
         outputValues.put(OUTPUT_BOUNDARIES_TREE_ID, new DataTreeData(boundaryBranches));
+        outputValues.put(OUTPUT_REGIONS_TREE_ID, new DataTreeData(regionBranches));
         outputValues.put(OUTPUT_SLICE_BLOCKS_ID, allSliceBlocks);
         outputValues.put(OUTPUT_SLICE_POINTS_ID, SpatialValueResolver.toPointDataList(allSlicePoints));
         outputValues.put(OUTPUT_SLICE_BLOCKS_TREE_ID, new DataTreeData(blockBranches));
@@ -241,10 +264,11 @@ public class ContourNode extends AbstractSolidNode {
     }
 
     private void invalidate(String error) {
-        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID);
-        putEmptyListOutputs(OUTPUT_PROFILES_ID, OUTPUT_BOUNDARIES_ID, OUTPUT_SLICE_POINTS_ID, OUTPUT_PLANES_ID);
+        putNullOutputs(OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_REGION_ID);
+        putEmptyListOutputs(OUTPUT_PROFILES_ID, OUTPUT_BOUNDARIES_ID, OUTPUT_REGIONS_ID, OUTPUT_SLICE_POINTS_ID, OUTPUT_PLANES_ID);
         outputValues.put(OUTPUT_PROFILES_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_BOUNDARIES_TREE_ID, DataTreeData.empty());
+        outputValues.put(OUTPUT_REGIONS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SLICE_BLOCKS_ID, new BlockPosList());
         outputValues.put(OUTPUT_SLICE_BLOCKS_TREE_ID, DataTreeData.empty());
         outputValues.put(OUTPUT_SLICE_POINTS_TREE_ID, DataTreeData.empty());

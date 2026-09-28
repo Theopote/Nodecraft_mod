@@ -64,9 +64,13 @@ public class ExtrudePointListNode extends AbstractSolidNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> resolvedPoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> resolvedPoints = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
         Vector3d direction = resolveDirection(INPUT_DIRECTION_ID);
 
+        if (resolvedPoints == null) {
+            invalidate("Point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         if (resolvedPoints.size() < 2) {
             invalidate("Point list requires at least two points");
             return;

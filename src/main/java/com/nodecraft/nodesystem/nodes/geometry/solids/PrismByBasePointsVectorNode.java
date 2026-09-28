@@ -60,9 +60,13 @@ public class PrismByBasePointsVectorNode extends AbstractSolidNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> basePoints = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_BASE_POINTS_ID));
+        List<Vector3d> basePoints = SolidNodeUtils.resolveStrictPointList(inputValues.get(INPUT_BASE_POINTS_ID));
         Vector3d extrusionVector = resolveDirection(INPUT_EXTRUSION_VECTOR_ID);
 
+        if (basePoints == null) {
+            invalidate("Base point list is missing or contains non-PointData / non-finite entries");
+            return;
+        }
         if (basePoints.size() < 3) {
             invalidate("Base polygon requires at least three points");
             return;
