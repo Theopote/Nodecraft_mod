@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DomainWarpedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
@@ -24,7 +23,7 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 23
 )
-public class SdfDomainWarpNode extends BaseNode {
+public class SdfDomainWarpNode extends AbstractSdfNode {
     @NodeProperty(displayName = "Warp Amplitude", category = "SDF", order = 1)
     private double warpAmplitude = 1.0d;
 
@@ -41,20 +40,16 @@ public class SdfDomainWarpNode extends BaseNode {
     private static final String INPUT_WARP_AMPLITUDE_ID = "input_warp_amplitude";
     private static final String INPUT_WARP_FREQUENCY_ID = "input_warp_frequency";
     private static final String INPUT_SEED_ID = "input_seed";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfDomainWarpNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_domain_warp");
-
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Source signed distance field", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_WARP_AMPLITUDE_ID, "Warp Amplitude", "Optional warp amplitude override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_WARP_FREQUENCY_ID, "Warp Frequency", "Optional warp frequency override", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Domain-warped SDF", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when domain warp was applied", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when domain warp was applied");
     }
 
     @Override
@@ -66,14 +61,21 @@ public class SdfDomainWarpNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeFailure("SDF input is required");
             return;
         }
 
-        double resolvedAmplitude = resolveDouble(inputValues.get(INPUT_WARP_AMPLITUDE_ID), warpAmplitude);
-        double resolvedFrequency = resolveDouble(inputValues.get(INPUT_WARP_FREQUENCY_ID), warpFrequency);
-        int resolvedSeed = resolveInt(inputValues.get(INPUT_SEED_ID), seed);
+        Double resolvedAmplitude = resolveFiniteDouble(INPUT_WARP_AMPLITUDE_ID, warpAmplitude);
+        Double resolvedFrequency = resolveFiniteDouble(INPUT_WARP_FREQUENCY_ID, warpFrequency);
+        Integer resolvedSeed = resolveOptionalInteger(INPUT_SEED_ID, seed);
+        if (resolvedAmplitude == null || resolvedFrequency == null) {
+            writeFailure("Warp Amplitude and Frequency must be finite");
+            return;
+        }
+        if (resolvedSeed == null) {
+            writeFailure("Seed must be an exact integer");
+            return;
+        }
 
         SignedDistanceFieldData warped = new DomainWarpedSdfData(
             sdf,
@@ -83,7 +85,12 @@ public class SdfDomainWarpNode extends BaseNode {
             offset
         );
         outputValues.put(OUTPUT_SDF_ID, warped);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
     }
 
     @Override
@@ -109,13 +116,5 @@ public class SdfDomainWarpNode extends BaseNode {
         if (map.get("offsetX") instanceof Number value) offset.x = value.doubleValue();
         if (map.get("offsetY") instanceof Number value) offset.y = value.doubleValue();
         if (map.get("offsetZ") instanceof Number value) offset.z = value.doubleValue();
-    }
-
-    private double resolveDouble(Object value, double fallback) {
-        return value instanceof Number number ? number.doubleValue() : fallback;
-    }
-
-    private int resolveInt(Object value, int fallback) {
-        return value instanceof Number number ? number.intValue() : fallback;
     }
 }

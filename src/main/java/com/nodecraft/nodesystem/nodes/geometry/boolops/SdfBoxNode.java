@@ -4,12 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,7 +21,7 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 11
 )
-public class SdfBoxNode extends BaseNode {
+public class SdfBoxNode extends AbstractSdfNode {
     @NodeProperty(displayName = "Half Extent X", category = "SDF", order = 1)
     private double halfX = 4.0d;
     @NodeProperty(displayName = "Half Extent Y", category = "SDF", order = 2)
@@ -33,16 +31,14 @@ public class SdfBoxNode extends BaseNode {
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_HALF_EXTENTS_ID = "input_half_extents";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfBoxNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_box");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Box center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_HALF_EXTENTS_ID, "Half Extents", "Box half extents as vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Box signed distance field", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when center and extents are valid", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when center and extents are valid");
     }
 
     @Override
@@ -52,22 +48,34 @@ public class SdfBoxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        Vector3d extInput = SpatialValueResolver.resolveVector(inputValues.get(INPUT_HALF_EXTENTS_ID));
-        Vector3d ext = extInput != null
-            ? new Vector3d(Math.abs(extInput.x), Math.abs(extInput.y), Math.abs(extInput.z))
-            : new Vector3d(Math.abs(halfX), Math.abs(halfY), Math.abs(halfZ));
-        if (center == null || ext.lengthSquared() <= 0.0d) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d center = resolveOptionalPoint(INPUT_CENTER_ID, null);
+        if (center == null) {
+            writeFailure(isPortConnected(INPUT_CENTER_ID)
+                ? "Center input must be a finite point"
+                : "Box requires a finite center");
             return;
         }
+
+        Vector3d propertyExtents = new Vector3d(Math.abs(halfX), Math.abs(halfY), Math.abs(halfZ));
+        Vector3d extInput = resolveOptionalVector(INPUT_HALF_EXTENTS_ID, propertyExtents);
+        if (extInput == null) {
+            writeFailure("Half extents must be a finite vector");
+            return;
+        }
+
+        Vector3d ext = new Vector3d(Math.abs(extInput.x), Math.abs(extInput.y), Math.abs(extInput.z));
+        if (!(ext.x > 0.0d) || !(ext.y > 0.0d) || !(ext.z > 0.0d)) {
+            writeFailure("Box half extents must be > 0 on every axis");
+            return;
+        }
+
         SignedDistanceFieldData sdf = new BoxSdfData(center, ext);
         outputValues.put(OUTPUT_SDF_ID, sdf);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolvePoint(value);
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
     }
 }

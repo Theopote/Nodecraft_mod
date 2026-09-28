@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BooleanSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
@@ -21,7 +20,7 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 14
 )
-public class SdfBooleanNode extends BaseNode {
+public class SdfBooleanNode extends AbstractSdfNode {
 
     @NodeProperty(displayName = "Operation", category = "SDF", order = 1)
     private String operation = "UNION";
@@ -32,19 +31,15 @@ public class SdfBooleanNode extends BaseNode {
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
     private static final String INPUT_SMOOTH_K_ID = "input_smooth_k";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfBooleanNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_boolean");
-
         addInputPort(new BasePort(INPUT_A_ID, "A", "Left SDF operand", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_B_ID, "B", "Right SDF operand", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_SMOOTH_K_ID, "Smooth K", "Blend radius (0 = hard boolean)", NodeDataType.DOUBLE, this));
-
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Combined SDF output", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when both input SDFs are connected", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when both input SDFs are valid");
     }
 
     @Override
@@ -56,32 +51,55 @@ public class SdfBooleanNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object leftObj = inputValues.get(INPUT_A_ID);
         Object rightObj = inputValues.get(INPUT_B_ID);
-        if (!(leftObj instanceof SignedDistanceFieldData left) || !(rightObj instanceof SignedDistanceFieldData right)) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (!(leftObj instanceof SignedDistanceFieldData left)
+            || !(rightObj instanceof SignedDistanceFieldData right)) {
+            writeFailure("Both SDF inputs A and B are required");
             return;
         }
 
-        double resolvedSmoothK = getInputDouble(INPUT_SMOOTH_K_ID, smoothK);
+        Double resolvedSmoothK = resolveNonNegativeDouble(INPUT_SMOOTH_K_ID, smoothK);
+        if (resolvedSmoothK == null) {
+            writeFailure("Smooth K must be finite and >= 0");
+            return;
+        }
+
         BooleanSdfData.Operation op = parseOperation(operation);
         SignedDistanceFieldData out = new BooleanSdfData(left, right, op, resolvedSmoothK);
         outputValues.put(OUTPUT_SDF_ID, out);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
     private BooleanSdfData.Operation parseOperation(String raw) {
         if (raw == null) {
             return BooleanSdfData.Operation.UNION;
         }
-        try {
-            return BooleanSdfData.Operation.valueOf(raw.trim().toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return BooleanSdfData.Operation.UNION;
-        }
+        return switch (raw.trim().toUpperCase()) {
+            case "INTERSECTION" -> BooleanSdfData.Operation.INTERSECTION;
+            case "DIFFERENCE" -> BooleanSdfData.Operation.DIFFERENCE;
+            default -> BooleanSdfData.Operation.UNION;
+        };
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
+    }
+
+    @Override
+    public Object getNodeState() {
+        return java.util.Map.of("operation", operation, "smoothK", smoothK);
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof java.util.Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("operation") instanceof String value) {
+            operation = value;
+        }
+        if (map.get("smoothK") instanceof Number value) {
+            smoothK = value.doubleValue();
+        }
     }
 }

@@ -3,11 +3,10 @@ package com.nodecraft.nodesystem.nodes.geometry.boolops;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -24,25 +23,24 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 18
 )
-public class SdfSamplePointsNode extends BaseNode {
+public class SdfSamplePointsNode extends AbstractSdfNode {
     private static final String INPUT_SDF_ID = "input_sdf";
     private static final String INPUT_POINTS_ID = "input_points";
 
     private static final String OUTPUT_DISTANCES_ID = "output_distances";
     private static final String OUTPUT_INSIDE_ID = "output_inside";
     private static final String OUTPUT_COUNT_ID = "output_count";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfSamplePointsNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_sample_points");
-
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Signed distance field input", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.LIST, this));
-
-        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances", "Signed distance list aligned with input points", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_INSIDE_ID, "Inside", "Boolean list where true means distance <= 0", NodeDataType.LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved query points", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when SDF and at least one query point are valid", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_DISTANCES_ID, "Distances",
+            "Signed distance list aligned with input points", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_INSIDE_ID, "Inside",
+            "Boolean list where true means distance <= 0", NodeDataType.BOOLEAN_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of query points", NodeDataType.INTEGER, this));
+        addValidAndErrorOutputs("True when SDF and every query point are valid");
     }
 
     @Override
@@ -54,42 +52,48 @@ public class SdfSamplePointsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
         Object pointsObj = inputValues.get(INPUT_POINTS_ID);
-        if (!(sdfObj instanceof SignedDistanceFieldData sdf) || !(pointsObj instanceof Collection<?> collection)) {
-            writeInvalid();
+        if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
+            writeFailure("SDF input is required");
+            return;
+        }
+        if (!(pointsObj instanceof Collection<?> collection)) {
+            writeFailure("Points must be a POINT_LIST");
+            return;
+        }
+        if (collection.isEmpty()) {
+            putEmptyListOutputs(OUTPUT_DISTANCES_ID, OUTPUT_INSIDE_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markSuccess();
             return;
         }
 
-        List<Double> distances = new ArrayList<>();
-        List<Boolean> inside = new ArrayList<>();
-        for (Object entry : collection) {
-            Vector3d point = resolvePoint(entry);
-            if (point == null) {
-                continue;
-            }
+        List<Vector3d> points = PointUtils.resolveStrictPointList(pointsObj);
+        if (points == null) {
+            writeFailure("Every entry in Points must be a finite PointData (no silent drop)");
+            return;
+        }
+
+        List<Double> distances = new ArrayList<>(points.size());
+        List<Boolean> inside = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
             double d = sdf.sampleDistance(point);
+            if (!Double.isFinite(d)) {
+                writeFailure("Sampled distance is not finite");
+                return;
+            }
             distances.add(d);
             inside.add(d <= 0.0d);
         }
 
-        if (distances.isEmpty()) {
-            writeInvalid();
-            return;
-        }
-
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_INSIDE_ID, List.copyOf(inside));
-        outputValues.put(OUTPUT_COUNT_ID, distances.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
+        putIntOutputs(distances.size(), OUTPUT_COUNT_ID);
+        markSuccess();
     }
 
-    private void writeInvalid() {
-        outputValues.put(OUTPUT_DISTANCES_ID, List.of());
-        outputValues.put(OUTPUT_INSIDE_ID, List.of());
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-    }
-
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolvePoint(value);
+    private void writeFailure(String error) {
+        putEmptyListOutputs(OUTPUT_DISTANCES_ID, OUTPUT_INSIDE_ID);
+        putIntOutputs(0, OUTPUT_COUNT_ID);
+        markInvalid(error);
     }
 }

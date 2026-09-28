@@ -142,7 +142,9 @@ public final class SdfBoundsEstimator {
                 AxisAlignedBounds merged = left == null ? null : left.intersect(right);
                 yield merged == null ? null : merged.expanded(blendPad);
             }
-            case DIFFERENCE -> expandUnion(left, right, blendPad);
+            // Hard/smooth difference cannot create solid outside the minuend (A).
+            // Keep minuend-conservative bounds (expand by smoothK for soft blend only).
+            case DIFFERENCE -> left == null ? null : left.expanded(blendPad);
         };
     }
 

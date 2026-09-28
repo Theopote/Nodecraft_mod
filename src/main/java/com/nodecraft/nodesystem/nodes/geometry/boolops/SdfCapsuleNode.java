@@ -4,12 +4,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CapsuleSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,16 +22,14 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 12
 )
-public class SdfCapsuleNode extends BaseNode {
+public class SdfCapsuleNode extends AbstractSdfNode {
     @NodeProperty(displayName = "Default Radius", category = "SDF", order = 1)
     private double defaultRadius = 2.0d;
 
     private static final String INPUT_START_ID = "input_start";
     private static final String INPUT_END_ID = "input_end";
     private static final String INPUT_RADIUS_ID = "input_radius";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfCapsuleNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_capsule");
@@ -40,7 +37,7 @@ public class SdfCapsuleNode extends BaseNode {
         addInputPort(new BasePort(INPUT_END_ID, "End", "Segment end point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Capsule signed distance field", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when endpoints and radius are valid", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when endpoints and radius are valid");
     }
 
     @Override
@@ -50,25 +47,32 @@ public class SdfCapsuleNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d start = resolvePoint(inputValues.get(INPUT_START_ID));
-        Vector3d end = resolvePoint(inputValues.get(INPUT_END_ID));
-        double radius = getInputDouble(INPUT_RADIUS_ID, defaultRadius);
-        if (start == null || end == null || radius <= 0.0d) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d start = resolveOptionalPoint(INPUT_START_ID, null);
+        Vector3d end = resolveOptionalPoint(INPUT_END_ID, null);
+        if (start == null || end == null) {
+            writeFailure("Capsule requires finite axis endpoints");
             return;
         }
+
+        Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
+        if (radius == null) {
+            writeFailure("Capsule radius must be finite and > 0");
+            return;
+        }
+
+        String axisError = PrimitiveGeometryValidator.validateCapsule(start, end, radius);
+        if (axisError != null) {
+            writeFailure(axisError);
+            return;
+        }
+
         SignedDistanceFieldData sdf = new CapsuleSdfData(start, end, radius);
         outputValues.put(OUTPUT_SDF_ID, sdf);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolvePoint(value);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
     }
 }

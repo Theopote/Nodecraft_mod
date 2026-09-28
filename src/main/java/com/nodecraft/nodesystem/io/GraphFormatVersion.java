@@ -616,8 +616,17 @@ public final class GraphFormatVersion {
      */
     public static final int V92 = 92;
 
+    /**
+     * SDF Language v1 (PASSED / FROZEN): Valid+Error on all geometry.sdf nodes,
+     * SdfInputUtils connection-aware resolvers, primitive contracts aligned with
+     * geometry.primitives (ring torus, capsule axis, positive box extents),
+     * typed Sample Points / Blend Mask lists, minuend-conservative Difference bounds.
+     * Type IDs remain {@code geometry.boolean.sdf_*}.
+     */
+    public static final int V93 = 93;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V92;
+    public static final int CURRENT = V93;
 
     private GraphFormatVersion() {
     }

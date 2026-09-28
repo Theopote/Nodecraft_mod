@@ -4,12 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,24 +21,20 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 10
 )
-public class SdfSphereNode extends BaseNode {
+public class SdfSphereNode extends AbstractSdfNode {
     @NodeProperty(displayName = "Default Radius", category = "SDF", order = 1)
     private double defaultRadius = 4.0d;
 
     private static final String INPUT_CENTER_ID = "input_center";
     private static final String INPUT_RADIUS_ID = "input_radius";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfSphereNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_sphere");
-
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
-
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Sphere signed distance field", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when center and radius are valid", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when center and radius are valid");
     }
 
     @Override
@@ -50,24 +44,27 @@ public class SdfSphereNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = resolvePoint(inputValues.get(INPUT_CENTER_ID));
-        double radius = getInputDouble(INPUT_RADIUS_ID, defaultRadius);
-        if (center == null || radius <= 0.0d) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Vector3d center = resolveOptionalPoint(INPUT_CENTER_ID, null);
+        if (center == null) {
+            writeFailure(isPortConnected(INPUT_CENTER_ID)
+                ? "Center input must be a finite point"
+                : "Sphere requires a finite center");
             return;
         }
+
+        Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
+        if (radius == null) {
+            writeFailure("Sphere radius must be finite and > 0");
+            return;
+        }
+
         SignedDistanceFieldData sdf = new SphereSdfData(center, radius);
         outputValues.put(OUTPUT_SDF_ID, sdf);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
     }
 
-    private Vector3d resolvePoint(Object value) {
-        return SpatialValueResolver.resolvePoint(value);
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
     }
 }

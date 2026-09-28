@@ -4,12 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -25,7 +23,8 @@ import java.util.UUID;
     category = "geometry.sdf",
     order = 21
 )
-public class SdfTransformNode extends BaseNode {
+public class SdfTransformNode extends AbstractSdfNode {
+    private static final double SCALE_EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Translation X", category = "Transform", order = 1)
     private double translationX = 0.0d;
@@ -50,22 +49,18 @@ public class SdfTransformNode extends BaseNode {
     private static final String INPUT_ROT_Y_ID = "input_rotation_y";
     private static final String INPUT_ROT_Z_ID = "input_rotation_z";
     private static final String INPUT_SCALE_ID = "input_scale";
-
     private static final String OUTPUT_SDF_ID = "output_sdf";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SdfTransformNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_transform");
-
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Source signed distance field", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_TRANSLATION_ID, "Translation", "Optional translation vector override", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Rotation around X axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Rotation around Y axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Rotation around Z axis in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor", NodeDataType.DOUBLE, this));
-
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Transformed SDF", NodeDataType.SDF, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when transform succeeded", NodeDataType.BOOLEAN, this));
+        addValidAndErrorOutputs("True when transform succeeded");
     }
 
     @Override
@@ -77,23 +72,39 @@ public class SdfTransformNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
-            outputValues.put(OUTPUT_SDF_ID, null);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeFailure("SDF input is required");
             return;
         }
 
-        Vector3d translationResolved = SpatialValueResolver.resolveVector(inputValues.get(INPUT_TRANSLATION_ID));
-        Vector3d translation = translationResolved != null
-            ? translationResolved
-            : new Vector3d(translationX, translationY, translationZ);
-        double rx = getInputDouble(INPUT_ROT_X_ID, rotationX);
-        double ry = getInputDouble(INPUT_ROT_Y_ID, rotationY);
-        double rz = getInputDouble(INPUT_ROT_Z_ID, rotationZ);
-        double s = getInputDouble(INPUT_SCALE_ID, scale);
+        Vector3d propertyTranslation = new Vector3d(translationX, translationY, translationZ);
+        Vector3d translation = resolveOptionalVector(INPUT_TRANSLATION_ID, propertyTranslation);
+        if (translation == null) {
+            writeFailure("Translation must be a finite vector");
+            return;
+        }
+
+        Double rx = resolveFiniteDouble(INPUT_ROT_X_ID, rotationX);
+        Double ry = resolveFiniteDouble(INPUT_ROT_Y_ID, rotationY);
+        Double rz = resolveFiniteDouble(INPUT_ROT_Z_ID, rotationZ);
+        if (rx == null || ry == null || rz == null) {
+            writeFailure("Rotation angles must be finite");
+            return;
+        }
+
+        Double s = resolveFiniteDouble(INPUT_SCALE_ID, scale);
+        if (s == null || !(s > SCALE_EPS)) {
+            writeFailure("Scale must be finite and greater than zero");
+            return;
+        }
 
         SignedDistanceFieldData transformed = new TransformedSdfData(sdf, translation, rx, ry, rz, s);
         outputValues.put(OUTPUT_SDF_ID, transformed);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        markSuccess();
+    }
+
+    private void writeFailure(String error) {
+        putNullOutputs(OUTPUT_SDF_ID);
+        markInvalid(error);
     }
 
     @Override
@@ -121,10 +132,5 @@ public class SdfTransformNode extends BaseNode {
         if (map.get("rotationY") instanceof Number value) rotationY = value.doubleValue();
         if (map.get("rotationZ") instanceof Number value) rotationZ = value.doubleValue();
         if (map.get("scale") instanceof Number value) scale = value.doubleValue();
-    }
-
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }
