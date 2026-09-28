@@ -37,6 +37,7 @@ public class ValidateNode extends BaseNode {
     private static final String OUTPUT_VALUE_ID = "output_value";
     private static final String OUTPUT_MESSAGE_ID = "output_message";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ValidateNode() {
         super(UUID.randomUUID(), "utilities.assist.validate");
@@ -54,17 +55,20 @@ public class ValidateNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_MESSAGE_ID, "Message", "Validation status message", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when condition passed", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Graph input failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Boolean condition = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_CONDITION_ID, defaultCondition);
-        String message = resolveMessage();
-
         if (condition == null) {
-            outputValues.put(OUTPUT_VALUE_ID, null);
-            outputValues.put(OUTPUT_MESSAGE_ID, message);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid("", "Condition must be exact finite BOOLEAN");
+            return;
+        }
+
+        String message = resolveMessage();
+        if (message == null) {
+            writeInvalid("", "Message must be STRING");
             return;
         }
 
@@ -72,20 +76,27 @@ public class ValidateNode extends BaseNode {
             outputValues.put(OUTPUT_VALUE_ID, null);
             outputValues.put(OUTPUT_MESSAGE_ID, message);
             outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "");
             return;
         }
 
         outputValues.put(OUTPUT_VALUE_ID, inputValues.get(INPUT_VALUE_ID));
         outputValues.put(OUTPUT_MESSAGE_ID, "ok");
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private String resolveMessage() {
-        if (OptionalPortDrive.isConnected(this, INPUT_MESSAGE_ID)) {
-            Object value = inputValues.get(INPUT_MESSAGE_ID);
-            return value instanceof String text ? text : "";
-        }
-        return defaultMessage == null ? "" : defaultMessage;
+    private @Nullable String resolveMessage() {
+        return OptionalPortDrive.resolveOptionalStringAllowBlank(
+            this, INPUT_MESSAGE_ID, defaultMessage == null ? "" : defaultMessage
+        );
+    }
+
+    private void writeInvalid(String message, String error) {
+        outputValues.put(OUTPUT_VALUE_ID, null);
+        outputValues.put(OUTPUT_MESSAGE_ID, message == null ? "" : message);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override

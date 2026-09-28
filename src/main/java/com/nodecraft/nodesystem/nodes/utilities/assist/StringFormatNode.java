@@ -6,23 +6,18 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
-import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
-import net.minecraft.util.math.BlockPos;
+import com.nodecraft.nodesystem.util.StringFormatEngine;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -33,8 +28,6 @@ import java.util.regex.Pattern;
     order = 0
 )
 public class StringFormatNode extends BaseNode {
-
-    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\d+)}");
 
     @NodeProperty(displayName = "Template", category = "Format", order = 1)
     private String template = "{0}";
@@ -54,6 +47,7 @@ public class StringFormatNode extends BaseNode {
     private static final String OUTPUT_MISSING_PLACEHOLDER_COUNT_ID = "output_missing_placeholder_count";
     private static final String OUTPUT_MESSAGE_ID = "output_message";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public StringFormatNode() {
         super(UUID.randomUUID(), "utilities.assist.string_format");
@@ -69,47 +63,41 @@ public class StringFormatNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, "Missing Placeholder Count", "Number of placeholders without a matching value", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_MESSAGE_ID, "Message", "Formatting warning or status message", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when formatting produced output", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Graph/runtime failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         String resolvedTemplate = resolveTemplate();
         if (resolvedTemplate == null) {
-            emitFail("Invalid template input.");
+            writeGraphFailure("Template must be STRING");
             return;
         }
 
         List<Object> values = resolveValues();
         if (values == null) {
-            emitFail("Invalid values input.");
+            writeGraphFailure(resolveValuesError());
             return;
         }
 
-        String result = resolvedTemplate;
-        for (int i = 0; i < values.size(); i++) {
-            result = result.replace("{" + i + "}", valueToString(values.get(i)));
-        }
-
-        PlaceholderStats stats = analyzePlaceholders(resolvedTemplate, values.size());
-        String message = stats.missingCount() > 0
-            ? "Missing values for " + stats.missingCount() + " placeholder(s)."
-            : "ok";
-
-        outputValues.put(OUTPUT_TEXT_ID, result);
+        StringFormatEngine.FormatResult result = StringFormatEngine.format(resolvedTemplate, values, precision);
+        outputValues.put(OUTPUT_TEXT_ID, result.text());
         outputValues.put(OUTPUT_LENGTH_ID, result.length());
-        outputValues.put(OUTPUT_USED_VALUE_COUNT_ID, stats.usedCount());
-        outputValues.put(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, stats.missingCount());
-        outputValues.put(OUTPUT_MESSAGE_ID, message);
-        outputValues.put(OUTPUT_VALID_ID, stats.missingCount() == 0);
+        outputValues.put(OUTPUT_USED_VALUE_COUNT_ID, result.usedValueCount());
+        outputValues.put(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, result.missingPlaceholderCount());
+        outputValues.put(OUTPUT_MESSAGE_ID, result.message());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        outputValues.put(OUTPUT_ERROR_ID, result.error());
     }
 
-    private void emitFail(String message) {
+    private void writeGraphFailure(String error) {
         outputValues.put(OUTPUT_TEXT_ID, "");
         outputValues.put(OUTPUT_LENGTH_ID, 0);
         outputValues.put(OUTPUT_USED_VALUE_COUNT_ID, 0);
         outputValues.put(OUTPUT_MISSING_PLACEHOLDER_COUNT_ID, 0);
-        outputValues.put(OUTPUT_MESSAGE_ID, message);
+        outputValues.put(OUTPUT_MESSAGE_ID, "");
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     /**
@@ -124,29 +112,44 @@ public class StringFormatNode extends BaseNode {
         return template == null ? "" : template;
     }
 
+    private @Nullable String resolveValuesError() {
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUES_ID)) {
+            Object value = inputValues.get(INPUT_VALUES_ID);
+            if (!(value instanceof List<?> list)) {
+                return "Values must be LIST";
+            }
+            String sizeError = GenerationLimits.validateFormatValuesSize(list.size());
+            return sizeError == null ? "Invalid values input." : sizeError;
+        }
+        return "Invalid values input.";
+    }
+
     /**
-     * Connected Values must be a List (empty/null/invalid fails).
-     * Unconnected uses Value0-2 via containsKey.
+     * Connected Values must be a List (empty allowed).
+     * Unconnected uses connected Value 0-2 ports only.
      *
      * @return null when connected Values is invalid
      */
     private @Nullable List<Object> resolveValues() {
         if (OptionalPortDrive.isConnected(this, INPUT_VALUES_ID)) {
             Object value = inputValues.get(INPUT_VALUES_ID);
-            if (!(value instanceof List<?> list) || list.isEmpty()) {
+            if (!(value instanceof List<?> list)) {
+                return null;
+            }
+            if (GenerationLimits.validateFormatValuesSize(list.size()) != null) {
                 return null;
             }
             return new ArrayList<>(list);
         }
 
-        List<Object> values = new ArrayList<>();
-        if (inputValues.containsKey(INPUT_VALUE_0_ID)) {
+        List<Object> values = new ArrayList<>(3);
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_0_ID)) {
             values.add(inputValues.get(INPUT_VALUE_0_ID));
         }
-        if (inputValues.containsKey(INPUT_VALUE_1_ID)) {
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_1_ID)) {
             values.add(inputValues.get(INPUT_VALUE_1_ID));
         }
-        if (inputValues.containsKey(INPUT_VALUE_2_ID)) {
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_2_ID)) {
             values.add(inputValues.get(INPUT_VALUE_2_ID));
         }
         return values;
@@ -172,85 +175,5 @@ public class StringFormatNode extends BaseNode {
         if (exactPrecision != null) {
             precision = Math.max(0, Math.min(8, exactPrecision));
         }
-    }
-
-    private PlaceholderStats analyzePlaceholders(String text, int valueCount) {
-        Matcher matcher = PLACEHOLDER_PATTERN.matcher(text == null ? "" : text);
-        int used = 0;
-        int missing = 0;
-        boolean[] usedIndexes = new boolean[Math.max(0, valueCount)];
-        while (matcher.find()) {
-            int index;
-            try {
-                index = Integer.parseInt(matcher.group(1));
-            } catch (NumberFormatException ignored) {
-                continue;
-            }
-            if (index >= 0 && index < valueCount) {
-                if (!usedIndexes[index]) {
-                    usedIndexes[index] = true;
-                    used++;
-                }
-            } else {
-                missing++;
-            }
-        }
-        return new PlaceholderStats(used, missing);
-    }
-
-    private String valueToString(Object value) {
-        switch (value) {
-            case null -> {
-                return "null";
-            }
-            case Number n -> {
-                if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
-                    return String.valueOf(n.longValue());
-                }
-                int p = Math.max(0, Math.min(8, precision));
-                String format = "%." + p + "f";
-                return String.format(Locale.ROOT, format, n.doubleValue());
-            }
-            case Vector3d v -> {
-                return formatVector3(v.x, v.y, v.z);
-            }
-            case VectorData v -> {
-                return formatVector3(v.x(), v.y(), v.z());
-            }
-            case PointData p -> {
-                return valueToString(p.position());
-            }
-            case BlockPos b -> {
-                return "(" + b.getX() + ", " + b.getY() + ", " + b.getZ() + ")";
-            }
-            case List<?> list -> {
-                List<String> out = new ArrayList<>();
-                for (Object item : list) {
-                    out.add(valueToString(item));
-                }
-                return "[" + String.join(", ", out) + "]";
-            }
-            case Map<?, ?> map -> {
-                List<String> out = new ArrayList<>();
-                for (Map.Entry<?, ?> e : map.entrySet()) {
-                    out.add(e.getKey() + "=" + valueToString(e.getValue()));
-                }
-                return "{" + String.join(", ", out) + "}";
-            }
-            default -> {
-            }
-        }
-        return String.valueOf(value);
-    }
-
-    private String formatVector3(double x, double y, double z) {
-        int p = Math.max(0, Math.min(8, precision));
-        String f = "%." + p + "f";
-        return "(" + String.format(Locale.ROOT, f, x) + ", "
-            + String.format(Locale.ROOT, f, y) + ", "
-            + String.format(Locale.ROOT, f, z) + ")";
-    }
-
-    private record PlaceholderStats(int usedCount, int missingCount) {
     }
 }

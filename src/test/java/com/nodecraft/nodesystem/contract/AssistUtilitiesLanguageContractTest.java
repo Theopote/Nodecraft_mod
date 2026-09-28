@@ -260,7 +260,8 @@ class AssistUtilitiesLanguageContractTest {
 
     @Test
     void stringFormatFormatsVectorData() {
-        StringFormatNode format = new StringFormatNode();
+        StringFormatProbe format = new StringFormatProbe();
+        format.connectInput("input_value_0", NodeDataType.ANY);
         format.setInput("input_value_0", new VectorData(1.0d, 2.0d, 3.0d));
         format.processNode(null);
         assertEquals(Boolean.TRUE, format.getOutput("output_valid"));

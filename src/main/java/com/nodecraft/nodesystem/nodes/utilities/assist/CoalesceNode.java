@@ -40,6 +40,7 @@ public class CoalesceNode extends BaseCustomUINode {
     private static final String OUTPUT_SIGNAL_ID = "output_signal";
     private static final String OUTPUT_SOURCE_ID = "output_source";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     private volatile int inputBranchCount = DEFAULT_INPUT_BRANCHES;
     @NodeProperty(displayName = "Prefer Primary", category = "Coalesce", order = 1)
@@ -48,7 +49,14 @@ public class CoalesceNode extends BaseCustomUINode {
     public CoalesceNode() {
         super(UUID.randomUUID(), "utilities.assist.coalesce");
 
-        rebuildInputPorts();
+        syncBranchInputPorts(DEFAULT_INPUT_BRANCHES);
+        addInputPort(new BasePort(
+            INPUT_PREFER_PRIMARY_ID,
+            "Prefer Primary",
+            "Whether to scan primary-first (boolean)",
+            NodeDataType.BOOLEAN,
+            this
+        ));
 
         BasePort signalOut = new BasePort(
             OUTPUT_SIGNAL_ID,
@@ -71,8 +79,16 @@ public class CoalesceNode extends BaseCustomUINode {
         addOutputPort(new BasePort(
             OUTPUT_VALID_ID,
             "Valid",
-            "Always true for coalesce",
+            "False when Prefer Primary input is connected but invalid",
             NodeDataType.BOOLEAN,
+            this
+        ));
+
+        addOutputPort(new BasePort(
+            OUTPUT_ERROR_ID,
+            "Error",
+            "Graph input failure reason when Valid is false",
+            NodeDataType.STRING,
             this
         ));
     }
@@ -172,26 +188,30 @@ public class CoalesceNode extends BaseCustomUINode {
         };
     }
 
-    private void rebuildInputPorts() {
-        inputPorts.clear();
-        for (int i = 1; i <= inputBranchCount; i++) {
-            BasePort branch = new BasePort(
-                getInputBranchPortId(i),
-                getInputBranchDisplayName(i),
-                getInputBranchDescription(i),
-                NodeDataType.ANY,
-                this
-            );
-            branch.bindPassthroughType("T");
-            addInputPort(branch);
+    private void ensureBranchInputPortExists(int index) {
+        String portId = getInputBranchPortId(index);
+        if (findPortById(portId, true) != null) {
+            return;
         }
-        addInputPort(new BasePort(
-            INPUT_PREFER_PRIMARY_ID,
-            "Prefer Primary",
-            "Whether to scan primary-first (boolean)",
-            NodeDataType.BOOLEAN,
+        BasePort branch = new BasePort(
+            portId,
+            getInputBranchDisplayName(index),
+            getInputBranchDescription(index),
+            NodeDataType.ANY,
             this
-        ));
+        );
+        branch.bindPassthroughType("T");
+        insertInputPort(index - 1, branch);
+    }
+
+    private void syncBranchInputPorts(int targetCount) {
+        for (int i = 1; i <= targetCount; i++) {
+            ensureBranchInputPortExists(i);
+        }
+        for (int i = inputBranchCount; i > targetCount; i--) {
+            removePortById(getInputBranchPortId(i), true);
+        }
+        inputBranchCount = targetCount;
     }
 
     public int getInputBranchCount() {
@@ -211,8 +231,8 @@ public class CoalesceNode extends BaseCustomUINode {
             return false;
         }
 
+        ensureBranchInputPortExists(inputBranchCount + 1);
         inputBranchCount++;
-        rebuildInputPorts();
         markDirty();
         return true;
     }
@@ -223,8 +243,8 @@ public class CoalesceNode extends BaseCustomUINode {
         }
 
         String removedPortId = getInputBranchPortId(inputBranchCount);
+        removePortById(removedPortId, true);
         inputBranchCount--;
-        rebuildInputPorts();
         markDirty();
         return removedPortId;
     }
@@ -232,8 +252,7 @@ public class CoalesceNode extends BaseCustomUINode {
     public void setInputBranchCount(int count) {
         int clamped = Math.max(MIN_INPUT_BRANCHES, Math.min(MAX_INPUT_BRANCHES, count));
         if (inputBranchCount != clamped) {
-            inputBranchCount = clamped;
-            rebuildInputPorts();
+            syncBranchInputPorts(clamped);
             markDirty();
         }
     }
@@ -242,11 +261,8 @@ public class CoalesceNode extends BaseCustomUINode {
     public void processNode(@Nullable ExecutionContext context) {
         Boolean preferOverride = OptionalPortDrive.resolveOptionalBoolean(
             this, INPUT_PREFER_PRIMARY_ID, preferPrimary);
-        // Connected Prefer Primary with null/invalid → fail closed (not property fallback).
         if (preferOverride == null) {
-            outputValues.put(OUTPUT_SIGNAL_ID, null);
-            outputValues.put(OUTPUT_SOURCE_ID, "none");
-            outputValues.put(OUTPUT_VALID_ID, false);
+            writeInvalid("Prefer Primary connected but invalid BOOLEAN");
             return;
         }
         boolean usePrimaryFirst = preferOverride;
@@ -285,6 +301,14 @@ public class CoalesceNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_SIGNAL_ID, result);
         outputValues.put(OUTPUT_SOURCE_ID, source);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_SIGNAL_ID, null);
+        outputValues.put(OUTPUT_SOURCE_ID, "none");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     public boolean isPreferPrimary() {

@@ -1,11 +1,12 @@
 # Node Language v1 — Assist Utilities
 
-**Status: PASSED / FROZEN** (Graph **V55**)
+**Status: PASSED / FROZEN** (Graph **V55**; superseded by v2 at **V89**)
 
 Graph readability / flow helpers under `utilities.assist` (5 nodes). The frozen rule for this
 family is: **assist nodes must not destroy the type system**.
 
-Related: [`node-language-v1-list-collection.md`](./node-language-v1-list-collection.md) (type
+Related: [`node-language-v2-assist-utilities.md`](./node-language-v2-assist-utilities.md),
+[`node-language-v1-list-collection.md`](./node-language-v1-list-collection.md) (type
 variables), [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Product boundary

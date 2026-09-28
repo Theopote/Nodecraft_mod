@@ -47,7 +47,7 @@ public class SignalForkNode extends BaseCustomUINode {
         input.bindPassthroughType("T");
         addInputPort(input);
 
-        rebuildOutputPorts();
+        syncOutputBranchPorts(DEFAULT_OUTPUT_BRANCHES);
     }
 
     @Override
@@ -137,19 +137,30 @@ public class SignalForkNode extends BaseCustomUINode {
         return "分流输出 " + suffix;
     }
 
-    private void rebuildOutputPorts() {
-        outputPorts.clear();
-        for (int i = 1; i <= outputBranchCount; i++) {
-            BasePort output = new BasePort(
-                getOutputPortId(i),
-                getOutputDisplayName(i),
-                getOutputDescription(i),
-                NodeDataType.ANY,
-                this
-            );
-            output.bindPassthroughType("T");
-            addOutputPort(output);
+    private void ensureOutputPortExists(int index) {
+        String portId = getOutputPortId(index);
+        if (findPortById(portId, false) != null) {
+            return;
         }
+        BasePort output = new BasePort(
+            portId,
+            getOutputDisplayName(index),
+            getOutputDescription(index),
+            NodeDataType.ANY,
+            this
+        );
+        output.bindPassthroughType("T");
+        addOutputPort(output);
+    }
+
+    private void syncOutputBranchPorts(int targetCount) {
+        for (int i = 1; i <= targetCount; i++) {
+            ensureOutputPortExists(i);
+        }
+        for (int i = outputBranchCount; i > targetCount; i--) {
+            removePortById(getOutputPortId(i), false);
+        }
+        outputBranchCount = targetCount;
         markDirty();
     }
 
@@ -169,8 +180,9 @@ public class SignalForkNode extends BaseCustomUINode {
         if (!canIncreaseOutputBranch()) {
             return false;
         }
+        ensureOutputPortExists(outputBranchCount + 1);
         outputBranchCount++;
-        rebuildOutputPorts();
+        markDirty();
         return true;
     }
 
@@ -180,16 +192,16 @@ public class SignalForkNode extends BaseCustomUINode {
         }
 
         String removedPortId = getOutputPortId(outputBranchCount);
+        removePortById(removedPortId, false);
         outputBranchCount--;
-        rebuildOutputPorts();
+        markDirty();
         return removedPortId;
     }
 
     public void setOutputBranchCount(int count) {
         int clamped = Math.max(MIN_OUTPUT_BRANCHES, Math.min(MAX_OUTPUT_BRANCHES, count));
         if (outputBranchCount != clamped) {
-            outputBranchCount = clamped;
-            rebuildOutputPorts();
+            syncOutputBranchPorts(clamped);
         }
     }
 

@@ -13,6 +13,21 @@ public final class GenerationLimits {
     public static final int MAX_LIST_ELEMENTS = 1_048_576;
 
     /**
+     * Maximum nested List/Map depth when formatting values for String Format.
+     */
+    public static final int MAX_FORMAT_DEPTH = 32;
+
+    /**
+     * Maximum template length accepted by String Format (aligned with NBT string cap).
+     */
+    public static final int MAX_FORMAT_TEMPLATE_CHARS = 65_536;
+
+    /**
+     * Maximum formatted output length produced by String Format.
+     */
+    public static final int MAX_FORMAT_OUTPUT_CHARS = 65_536;
+
+    /**
      * Hard cap for GeometryData / CompositeGeometry instance arrays.
      * Much lower than {@link #MAX_LIST_ELEMENTS} because each instance is far heavier than a point or scalar.
      */
@@ -781,5 +796,44 @@ public final class GenerationLimits {
      */
     public static int clampBoundsSamples(int requested) {
         return Math.max(2, Math.min(MAX_BOUNDS_SAMPLES, requested));
+    }
+
+    /**
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateFormatTemplateLength(@Nullable String template) {
+        if (template == null) {
+            return "Template must be STRING";
+        }
+        if (template.length() > MAX_FORMAT_TEMPLATE_CHARS) {
+            return "Template exceeds MAX_FORMAT_TEMPLATE_CHARS";
+        }
+        return null;
+    }
+
+    /**
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateFormatValuesSize(int size) {
+        if (size < 0 || size > MAX_LIST_ELEMENTS) {
+            return "Values size exceeds MAX_LIST_ELEMENTS";
+        }
+        return null;
+    }
+
+    /**
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateFormatOutputBudget(int currentLength, int appendLength) {
+        long total;
+        try {
+            total = Math.addExact((long) currentLength, (long) appendLength);
+        } catch (ArithmeticException overflow) {
+            return "Formatted output exceeds MAX_FORMAT_OUTPUT_CHARS";
+        }
+        if (total > MAX_FORMAT_OUTPUT_CHARS) {
+            return "Formatted output exceeds MAX_FORMAT_OUTPUT_CHARS";
+        }
+        return null;
     }
 }

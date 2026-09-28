@@ -350,6 +350,7 @@ public final class GraphFormatVersion {
     /**
      * Assist Utilities v1: scalar passthrough T, ban unbound ANY→typed washout,
      * Reroute+Tag→Relay, Assert→Validate, Signal Merge→Coalesce.
+     * Superseded by {@link #V89}.
      */
     public static final int V55 = 55;
 
@@ -586,8 +587,15 @@ public final class GraphFormatVersion {
      */
     public static final int V88 = 88;
 
+    /**
+     * Assist Utilities Language v2 (PASSED / FROZEN): String Format workload caps,
+     * incremental dynamic ports, Validate/Coalesce/String Format Error ports,
+     * connection-aware optional inputs. V55 remains the historical Assist Utilities v1 fence.
+     */
+    public static final int V89 = 89;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V88;
+    public static final int CURRENT = V89;
 
     private GraphFormatVersion() {
     }

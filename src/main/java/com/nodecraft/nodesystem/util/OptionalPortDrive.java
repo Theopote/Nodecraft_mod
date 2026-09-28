@@ -184,4 +184,20 @@ public final class OptionalPortDrive {
         }
         return propertyFallback.trim();
     }
+
+    /**
+     * Optional STRING drive that preserves explicit blank strings when connected.
+     * Returns {@code null} when connected but value is not a {@link String} (fail closed).
+     */
+    public static @Nullable String resolveOptionalStringAllowBlank(
+            BaseNode node,
+            String portId,
+            @Nullable String propertyFallback
+    ) {
+        if (isConnected(node, portId)) {
+            Object value = node.getInput(portId);
+            return value instanceof String text ? text : null;
+        }
+        return propertyFallback;
+    }
 }

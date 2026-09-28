@@ -7,6 +7,8 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -210,11 +212,50 @@ public abstract class BaseNode implements INode {
         inputPorts.add(port);
     }
 
+    protected void insertInputPort(int index, IPort port) {
+        if (port instanceof BasePort basePort) {
+            basePort.setDirection(BasePort.Direction.INPUT);
+        }
+        int safeIndex = Math.max(0, Math.min(index, inputPorts.size()));
+        inputPorts.add(safeIndex, port);
+    }
+
     protected void addOutputPort(IPort port) {
         if (port instanceof BasePort basePort) {
             basePort.setDirection(BasePort.Direction.OUTPUT);
         }
         outputPorts.add(port);
+    }
+
+    /**
+     * Removes a port by id, disconnecting it first when it is a {@link BasePort}.
+     *
+     * @return true when a port was removed
+     */
+    protected boolean removePortById(String portId, boolean input) {
+        List<IPort> ports = input ? inputPorts : outputPorts;
+        for (int i = 0; i < ports.size(); i++) {
+            IPort port = ports.get(i);
+            if (!portId.equals(port.getId())) {
+                continue;
+            }
+            if (port instanceof BasePort basePort) {
+                basePort.disconnect();
+            }
+            ports.remove(i);
+            return true;
+        }
+        return false;
+    }
+
+    protected @Nullable IPort findPortById(String portId, boolean input) {
+        List<IPort> ports = input ? inputPorts : outputPorts;
+        for (IPort port : ports) {
+            if (portId.equals(port.getId())) {
+                return port;
+            }
+        }
+        return null;
     }
 
     protected void syncOutputPorts() {
