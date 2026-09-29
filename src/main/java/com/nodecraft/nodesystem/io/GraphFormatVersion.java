@@ -691,8 +691,14 @@ public final class GraphFormatVersion {
      */
     public static final int V102 = 102;
 
+    /**
+     * Pattern Grid Face Invariant & Budget v3: BOX_FACE ordered rectangular invariant;
+     * Grid Array countLeavesBounded. No wire changes.
+     */
+    public static final int V103 = 103;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V102;
+    public static final int CURRENT = V103;
 
     private GraphFormatVersion() {
     }

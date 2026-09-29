@@ -20,6 +20,7 @@ import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -75,6 +76,7 @@ class PatternGridLanguageV2ContractTest {
     void currentGraphFormatIsAtLeastV80() {
         assertEquals(80, GraphFormatVersion.V80);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V80);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V103);
     }
 
     @Test
@@ -209,6 +211,52 @@ class PatternGridLanguageV2ContractTest {
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("margin"));
+    }
+
+    @Test
+    void facadeGridRejectsTrapezoidFace() {
+        List<Vector3d> corners = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(2, 0, 0),
+            new Vector3d(3, 1, 0),
+            new Vector3d(0, 1, 0)
+        );
+        BoxFaceData trapezoid = new BoxFaceData(
+            0, "front", List.of(0, 1, 2, 3), corners,
+            new Vector3d(1.25, 0.5, 0), new Vector3d(0, 0, 1)
+        );
+        assertNotNull(BoxFaceValidator.validate(trapezoid));
+
+        BaseNode facade = node("pattern.grid.facade_grid");
+        facade.setInput("input_face", trapezoid);
+        facade.setNodeState(Map.of("columns", 3, "rows", 3));
+        facade.processNode(null);
+        assertEquals(Boolean.FALSE, facade.getOutput("output_valid"));
+        assertFalse(String.valueOf(facade.getOutput("output_error")).isBlank());
+        assertEquals(0, facade.getOutput("output_cell_count"));
+    }
+
+    @Test
+    void gridArrayOversizedLeafWorkloadFailsClosed() {
+        BaseNode grid = node("pattern.grid.grid_array");
+        List<com.nodecraft.nodesystem.datatypes.GeometryData> leaves = new ArrayList<>();
+        int leafCount = GenerationLimits.MAX_GEOMETRY_INSTANCES / 2 + 1;
+        for (int i = 0; i < leafCount; i++) {
+            leaves.add(new SphereData(new Vector3d(i, 0, 0), 0.1d));
+        }
+        grid.setInput("input_geometry", new CompositeGeometryData(leaves));
+        grid.setNodeState(Map.of(
+            "xCount", 2,
+            "yCount", 1,
+            "zCount", 1,
+            "xDistance", 1.0d,
+            "yDistance", 1.0d,
+            "zDistance", 1.0d
+        ));
+        grid.processNode(null);
+        assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
+        assertTrue(String.valueOf(grid.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("workload")
+            || String.valueOf(grid.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("limit"));
     }
 
     @Test

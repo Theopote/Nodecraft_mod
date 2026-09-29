@@ -8,9 +8,11 @@ import org.joml.Vector3d;
 import java.util.List;
 
 /**
- * Shared invariants for {@link BoxFaceData} consumed by graph nodes (Graph V75).
+ * Shared invariants for {@link BoxFaceData} consumed by graph nodes (Graph V75, V103).
  * <p>
- * Canonical BOX_FACE: exactly 4 corners/indices, finite geometry, usable normal, coplanar corners.
+ * Canonical BOX_FACE: exactly 4 corners/indices in CCW ring order, finite geometry,
+ * usable normal, coplanar corners, and an ordered rectangular face (adjacent edges
+ * orthogonal, opposite edges parallel and equal length).
  */
 public final class BoxFaceValidator {
 
@@ -75,6 +77,84 @@ public final class BoxFaceValidator {
                 return "Box face corners must be coplanar";
             }
         }
+
+        return validateRectangularRing(corners, center, normal);
+    }
+
+    private static @Nullable String validateRectangularRing(
+            List<Vector3d> corners,
+            Vector3d center,
+            Vector3d normal
+    ) {
+        for (int i = 0; i < 4; i++) {
+            for (int j = i + 1; j < 4; j++) {
+                if (corners.get(i).distanceSquared(corners.get(j)) <= COPLANAR_EPS * COPLANAR_EPS) {
+                    return "Box face corners must be unique";
+                }
+            }
+        }
+
+        Vector3d c0 = corners.get(0);
+        Vector3d c1 = corners.get(1);
+        Vector3d c2 = corners.get(2);
+        Vector3d c3 = corners.get(3);
+
+        Vector3d e01 = edge(c1, c0);
+        Vector3d e12 = edge(c2, c1);
+        Vector3d e23 = edge(c3, c2);
+        Vector3d e30 = edge(c0, c3);
+        Vector3d e03 = edge(c3, c0);
+
+        if (!FrameUtils.isUsableAxis(e01) || !FrameUtils.isUsableAxis(e12)
+                || !FrameUtils.isUsableAxis(e23) || !FrameUtils.isUsableAxis(e30)) {
+            return "Box face edges must be non-zero";
+        }
+
+        Vector3d e01n = new Vector3d(e01).normalize();
+        Vector3d e03n = new Vector3d(e03).normalize();
+        if (Math.abs(e01n.dot(e03n)) > COPLANAR_EPS) {
+            return "Box face adjacent edges must be perpendicular";
+        }
+
+        if (!FrameUtils.areParallel(e01, e23)) {
+            return "Box face opposite edges must be parallel";
+        }
+        if (!FrameUtils.areParallel(e03, e12)) {
+            return "Box face opposite edges must be parallel";
+        }
+
+        if (!lengthsApproximatelyEqual(e01.length(), e23.length())
+                || !lengthsApproximatelyEqual(e03.length(), e12.length())) {
+            return "Box face opposite edges must have equal length";
+        }
+
+        Vector3d average = new Vector3d(c0).add(c1).add(c2).add(c3).mul(0.25d);
+        if (center.distanceSquared(average) > COPLANAR_EPS * COPLANAR_EPS) {
+            return "Box face center must match corner average";
+        }
+
+        Vector3d edgeNormal = new Vector3d(e01).cross(e03);
+        if (!FrameUtils.isUsableAxis(edgeNormal)) {
+            return "Box face must form a rectangle";
+        }
+        edgeNormal.normalize();
+        Vector3d storedNormal = new Vector3d(normal).normalize();
+        if (Math.abs(storedNormal.dot(edgeNormal)) < 1.0d - COPLANAR_EPS) {
+            return "Box face normal must align with edge cross product";
+        }
+
         return null;
+    }
+
+    private static Vector3d edge(Vector3d to, Vector3d from) {
+        return new Vector3d(to).sub(from);
+    }
+
+    private static boolean lengthsApproximatelyEqual(double a, double b) {
+        double max = Math.max(a, b);
+        if (max <= COPLANAR_EPS) {
+            return false;
+        }
+        return Math.abs(a - b) <= COPLANAR_EPS * max;
     }
 }

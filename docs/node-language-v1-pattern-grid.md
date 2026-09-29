@@ -8,7 +8,10 @@ producer — aligned with Pattern Linear v1 Count semantics, typed spatial ports
 geometry-first workflows.
 
 Related: [`node-language-v1-pattern-linear.md`](./node-language-v1-pattern-linear.md),
-[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
+[`node-language-v2-pattern-grid-face-budget.md`](./node-language-v2-pattern-grid-face-budget.md) (Graph **V103** BOX_FACE + Grid Array budget).
+
+> **Note:** V42 header marks the original freeze; runtime contracts were extended by **V80** (fail-closed Valid+Error) and **V103** (rectangular BOX_FACE, bounded leaf preflight).
 
 ## Core rules
 

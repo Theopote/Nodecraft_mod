@@ -161,6 +161,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V99 -> migrateV99ToV100(graph);
             case GraphFormatVersion.V100 -> migrateV100ToV101(graph);
             case GraphFormatVersion.V101 -> migrateV101ToV102(graph);
+            case GraphFormatVersion.V102 -> migrateV102ToV103(graph);
             default -> graph;
         };
     }
@@ -5434,6 +5435,14 @@ public final class GraphMigrationRegistry {
      * closed roll correction, bounded leaf / instance preflight; no wire remaps).
      */
     private static SavedGraph migrateV101ToV102(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern Grid Face Invariant & Budget v3: format bump only (rectangular BOX_FACE
+     * validator; Grid Array bounded leaf preflight; no wire remaps).
+     */
+    private static SavedGraph migrateV102ToV103(SavedGraph graph) {
         return graph;
     }
 

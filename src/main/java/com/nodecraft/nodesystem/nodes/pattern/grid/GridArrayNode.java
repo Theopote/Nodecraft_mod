@@ -142,10 +142,10 @@ public class GridArrayNode extends AbstractPatternGridNode {
             return;
         }
 
+        long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
         long instanceCount = (long) resolvedXCount * resolvedYCount * resolvedZCount;
-        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
-        long totalLeaves = sourceLeaves * instanceCount;
-        if (totalLeaves > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
+        if (sourceLeaves > maxInstances || sourceLeaves * instanceCount > maxInstances) {
             writeFail("Array workload exceeds limit (source leaves × grid count > MAX_GEOMETRY_INSTANCES)");
             return;
         }

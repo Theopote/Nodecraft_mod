@@ -80,6 +80,7 @@ class PatternLinearLanguageV2ContractTest {
         assertEquals(79, GraphFormatVersion.V79);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V79);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V102);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V103);
     }
 
     @Test

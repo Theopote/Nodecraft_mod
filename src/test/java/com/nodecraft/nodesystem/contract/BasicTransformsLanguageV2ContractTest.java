@@ -249,6 +249,53 @@ class BasicTransformsLanguageV2ContractTest {
     }
 
     @Test
+    void boxFaceValidatorRejectsTrapezoidFace() {
+        List<Vector3d> corners = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(2, 0, 0),
+            new Vector3d(3, 1, 0),
+            new Vector3d(0, 1, 0)
+        );
+        BoxFaceData trapezoid = new BoxFaceData(
+            0, "front", List.of(0, 1, 2, 3), corners,
+            new Vector3d(1.25, 0.5, 0), new Vector3d(0, 0, 1)
+        );
+        String error = BoxFaceValidator.validate(trapezoid);
+        assertNotNull(error);
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("perpendicular")
+            || error.toLowerCase(Locale.ROOT).contains("parallel")
+            || error.toLowerCase(Locale.ROOT).contains("length")
+            || error.toLowerCase(Locale.ROOT).contains("rectangle"));
+    }
+
+    @Test
+    void boxFaceValidatorRejectsShuffledCornerOrder() {
+        List<Vector3d> corners = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(2, 2, 0),
+            new Vector3d(2, 0, 0),
+            new Vector3d(0, 2, 0)
+        );
+        BoxFaceData shuffled = new BoxFaceData(
+            0, "front", List.of(0, 1, 2, 3), corners,
+            new Vector3d(1, 1, 0), new Vector3d(0, 0, 1)
+        );
+        assertNotNull(BoxFaceValidator.validate(shuffled));
+    }
+
+    @Test
+    void boxFaceValidatorAcceptsRotatedBoxFace() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(), new Vector3d(4, 1, 1));
+        GeometryData rotated = GeometryTransform.transform(box, new Vector3d(), 45.0d, 0.0d, 0.0d, 1.0d);
+        BoxGeometryData rotatedBox = assertInstanceOf(BoxGeometryData.class, rotated);
+        BoxFaceData front = rotatedBox.getFaces().stream()
+            .filter(face -> "Front".equalsIgnoreCase(face.getName()))
+            .findFirst()
+            .orElseThrow();
+        assertNull(BoxFaceValidator.validate(front));
+    }
+
+    @Test
     void trsOrderIsScaleThenRotateXyzThenTranslate() {
         SphereData sphere = new SphereData(new Vector3d(1, 0, 0), 1.0d);
         GeometryData transformed = GeometryTransform.transform(
