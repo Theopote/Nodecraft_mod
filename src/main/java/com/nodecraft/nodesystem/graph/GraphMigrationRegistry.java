@@ -170,6 +170,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V108 -> migrateV108ToV109(graph);
             case GraphFormatVersion.V109 -> migrateV109ToV110(graph);
             case GraphFormatVersion.V110 -> migrateV110ToV111(graph);
+            case GraphFormatVersion.V111 -> migrateV111ToV112(graph);
             default -> graph;
         };
     }
@@ -5514,6 +5515,14 @@ public final class GraphMigrationRegistry {
      * span; no wire remaps).
      */
     private static SavedGraph migrateV110ToV111(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Input Context Snapshot Data Contract v2 (Raycast BlockInfoData/EntityInfoData;
+     * Position context-only capture; no wire remaps).
+     */
+    private static SavedGraph migrateV111ToV112(SavedGraph graph) {
         return graph;
     }
 
