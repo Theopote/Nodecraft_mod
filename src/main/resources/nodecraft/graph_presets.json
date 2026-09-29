@@ -1276,7 +1276,7 @@
             },
             {
               "fromRef": "perimeter",
-              "fromPort": "output_polyline",
+              "fromPort": "output_path",
               "toRef": "walls",
               "toPort": "input_path"
             },
@@ -1637,7 +1637,7 @@
             },
             {
               "fromRef": "perimeter",
-              "fromPort": "output_polyline",
+              "fromPort": "output_path",
               "toRef": "walls",
               "toPort": "input_path"
             },
@@ -1910,7 +1910,7 @@
             },
             {
               "fromRef": "perimeter",
-              "fromPort": "output_polyline",
+              "fromPort": "output_path",
               "toRef": "walls",
               "toPort": "input_path"
             },

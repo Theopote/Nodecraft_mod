@@ -65,7 +65,7 @@ class GeometrySolidsSectionTopologyV2ContractTest {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V93;
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.V94, migrated.formatVersion);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
     }
 
     @Test

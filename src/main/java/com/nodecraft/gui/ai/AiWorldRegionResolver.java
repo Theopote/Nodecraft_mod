@@ -1,16 +1,17 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 final class AiWorldRegionResolver {
 
     private static final String SELECTED_REGION_TYPE = "world.selection.selected_region";
+    private static final String OUTPUT_REGION_ID = "output_region";
 
     private AiWorldRegionResolver() {
     }
@@ -41,24 +42,25 @@ final class AiWorldRegionResolver {
     }
 
     private static AiWorldContextSnapshot.SelectedRegionContext toRegion(INode node) {
-        if (node == null || !SELECTED_REGION_TYPE.equals(node.getTypeId()) || !(node instanceof BaseNode baseNode)) {
+        if (node == null || !SELECTED_REGION_TYPE.equals(node.getTypeId())) {
             return null;
         }
-        if (!(baseNode.getNodeState() instanceof Map<?, ?> state)) {
+        // Selection corners are session/runtime outputs, not persisted node state.
+        if (!(node.getOutput(OUTPUT_REGION_ID) instanceof RegionData region) || !region.isComplete()) {
             return null;
         }
-        int[] pos1 = readPosition(state.get("pos1"));
-        int[] pos2 = readPosition(state.get("pos2"));
-        if (pos1 == null || pos2 == null) {
+        BlockPos min = region.getMinCorner();
+        BlockPos max = region.getMaxCorner();
+        if (min == null || max == null) {
             return null;
         }
 
-        int minX = Math.min(pos1[0], pos2[0]);
-        int minY = Math.min(pos1[1], pos2[1]);
-        int minZ = Math.min(pos1[2], pos2[2]);
-        int maxX = Math.max(pos1[0], pos2[0]);
-        int maxY = Math.max(pos1[1], pos2[1]);
-        int maxZ = Math.max(pos1[2], pos2[2]);
+        int minX = min.getX();
+        int minY = min.getY();
+        int minZ = min.getZ();
+        int maxX = max.getX();
+        int maxY = max.getY();
+        int maxZ = max.getZ();
         int sizeX = maxX - minX + 1;
         int sizeY = maxY - minY + 1;
         int sizeZ = maxZ - minZ + 1;
@@ -76,15 +78,5 @@ final class AiWorldRegionResolver {
                 ),
                 (long) sizeX * sizeY * sizeZ
         );
-    }
-
-    private static int[] readPosition(Object value) {
-        if (!(value instanceof Map<?, ?> position)
-                || !(position.get("x") instanceof Number x)
-                || !(position.get("y") instanceof Number y)
-                || !(position.get("z") instanceof Number z)) {
-            return null;
-        }
-        return new int[]{Math.round(x.floatValue()), Math.round(y.floatValue()), Math.round(z.floatValue())};
     }
 }
