@@ -91,7 +91,7 @@
 |---|---|---|---|
 | Block Bounds | `geometry.analysis.block_bounds` | Calculates a continuous AABB from a block list or region cell envelope | `BlockBoundsNode` |
 | Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
-| Convex Hull 3D From Points | `geometry.analysis.convex_hull_3d` | Builds a 3D convex hull (triangle facets) from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
+| Convex Hull 3D From Points | `geometry.analysis.convex_hull_3d` | Builds a 3D convex hull mesh from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
 
 ## geometry.architectural_primitives (18)
 

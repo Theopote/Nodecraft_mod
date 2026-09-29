@@ -395,6 +395,9 @@ public final class GenerationLimits {
     /** Maximum O(n²) triangulation workload for profile nodes (vertices²). */
     public static final long MAX_PROFILE_TRIANGULATION_WORK = MAX_LIST_ELEMENTS;
 
+    /** Hard cap for 3D convex hull input sites after de-duplication. */
+    public static final int MAX_CONVEX_HULL_3D_POINTS = 96;
+
     /** Maximum shrinkwrap query points. */
     public static final int MAX_SURFACE_PROJECTION_QUERIES = MAX_GEOMETRY_INSTANCES;
 

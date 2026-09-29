@@ -2,12 +2,14 @@
 
 **Status: PASSED / FROZEN** (Graph **V67**)
 
-Geometry Analysis v1 freezes the language for the 2 `geometry.analysis` nodes.
+Geometry Analysis v1 freezes the language for the 2 bounds nodes below.
 Core rule: `BOUNDING_BOX` is a **continuous** geometric AABB; `REGION` / `BLOCK_POS` stay in the discrete Minecraft cell domain.
+
+**Convex Hull 3D** (`geometry.analysis.convex_hull_3d`, order 2) is governed separately by [node-language-v2-geometry-analysis-convex-hull.md](node-language-v2-geometry-analysis-convex-hull.md) (Graph V96).
 
 **Out of scope:** retargeting primitive / architectural deconstruct nodes still on `GeometryVoxelizer` bounds (follow-up).
 
-## Inventory (order 0–1)
+## Inventory (order 0–1, frozen)
 
 | Order | Display | Id | Effect |
 |------:|---------|-----|--------|

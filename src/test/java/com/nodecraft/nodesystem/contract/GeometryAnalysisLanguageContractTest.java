@@ -25,7 +25,9 @@ import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.geometry.analysis.BlockBoundsNode;
+import com.nodecraft.nodesystem.nodes.geometry.analysis.ConvexHull3DFromPointsNode;
 import com.nodecraft.nodesystem.nodes.geometry.analysis.GeometryBoundsNode;
+import com.nodecraft.nodesystem.datatypes.TriangleMeshData;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
@@ -304,6 +306,123 @@ class GeometryAnalysisLanguageContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV96ForConvexHullV2() {
+        assertEquals(96, GraphFormatVersion.V96);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V96);
+    }
+
+    @Test
+    void convexHull3DPortDomains() {
+        INode node = registry.createNodeInstance("geometry.analysis.convex_hull_3d");
+        assertPortType(node, "input_points", NodeDataType.POINT_LIST);
+        assertPortType(node, "output_mesh", NodeDataType.TRIANGLE_MESH);
+        assertPortType(node, "output_vertices", NodeDataType.POINT_LIST);
+        assertPortType(node, "output_triangle_count", NodeDataType.INTEGER);
+        assertPortType(node, "output_valid", NodeDataType.BOOLEAN);
+        assertPortType(node, "output_error", NodeDataType.STRING);
+        assertFalse(hasPort(node, "output_faces"));
+    }
+
+    @Test
+    void convexHull3DStrictInputRejectsInvalidMembers() {
+        ConvexHull3DProbe node = new ConvexHull3DProbe();
+        node.connectInput("input_points", NodeDataType.POINT_LIST);
+        List<Object> points = new ArrayList<>();
+        points.add(new PointData(new Vector3d(0, 0, 0)));
+        points.add(new PointData(new Vector3d(1, 0, 0)));
+        points.add(new PointData(new Vector3d(0, 1, 0)));
+        points.add(new PointData(new Vector3d(0, 0, 1)));
+        points.add("bad");
+        node.setInput("input_points", points);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_mesh"));
+    }
+
+    @Test
+    void convexHull3DDedupeBeforeBudget() {
+        ConvexHull3DProbe node = new ConvexHull3DProbe();
+        node.connectInput("input_points", NodeDataType.POINT_LIST);
+        node.setMaxPoints(96);
+        List<Object> points = new ArrayList<>(100);
+        Vector3d[] unique = {
+                new Vector3d(0, 0, 0),
+                new Vector3d(1, 0, 0),
+                new Vector3d(0, 1, 0),
+                new Vector3d(0, 0, 1),
+                new Vector3d(0.5, 0.5, 0.5)
+        };
+        for (int i = 0; i < 100; i++) {
+            points.add(new PointData(unique[i % unique.length]));
+        }
+        node.setInput("input_points", points);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertNotNull(node.getOutput("output_mesh"));
+    }
+
+    @Test
+    void convexHull3DUnitCubeHasTwelveTriangles() {
+        ConvexHull3DProbe node = new ConvexHull3DProbe();
+        node.connectInput("input_points", NodeDataType.POINT_LIST);
+        List<Object> corners = new ArrayList<>(8);
+        for (int x = 0; x <= 1; x++) {
+            for (int y = 0; y <= 1; y++) {
+                for (int z = 0; z <= 1; z++) {
+                    corners.add(new PointData(new Vector3d(x, y, z)));
+                }
+            }
+        }
+        node.setInput("input_points", corners);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals(12, node.getOutput("output_triangle_count"));
+        TriangleMeshData mesh = assertInstanceOf(TriangleMeshData.class, node.getOutput("output_mesh"));
+        assertEquals(12, mesh.triangleCount());
+        assertEquals(8, mesh.vertices().size());
+    }
+
+    @Test
+    void convexHull3DHardCapRejectsExcessiveMaxPointsProperty() {
+        ConvexHull3DProbe node = new ConvexHull3DProbe();
+        node.connectInput("input_points", NodeDataType.POINT_LIST);
+        node.setMaxPoints(100_000);
+        List<Object> corners = new ArrayList<>(8);
+        for (int x = 0; x <= 1; x++) {
+            for (int y = 0; y <= 1; y++) {
+                for (int z = 0; z <= 1; z++) {
+                    corners.add(new PointData(new Vector3d(x, y, z)));
+                }
+            }
+        }
+        node.setInput("input_points", corners);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Max points"));
+    }
+
+    @Test
+    void migrateV95ToV96DropsConvexHullOutputFaces() {
+        SavedGraph graph = new SavedGraph();
+        graph.formatVersion = GraphFormatVersion.V95;
+        graph.nodes = new ArrayList<>();
+        graph.connections = new ArrayList<>();
+
+        SavedNode hull = savedNode("hull", "geometry.analysis.convex_hull_3d");
+        graph.nodes.add(hull);
+        graph.connections.add(wire("hull", "output_faces", "sink", "input_list"));
+        graph.connections.add(wire("hull", "output_vertices", "sink2", "input_points"));
+
+        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
+        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
+        List<String> wires = migrated.connections.stream()
+                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
+                .sorted()
+                .toList();
+        assertEquals(List.of("hull:output_vertices->sink2:input_points"), wires);
+    }
+
+    @Test
     void migrateV66ToV67RenamesAndRemapsPorts() {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V66;
@@ -410,6 +529,12 @@ class GeometryAnalysisLanguageContractTest {
     }
 
     private static final class BlockBoundsProbe extends BlockBoundsNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            GeometryAnalysisLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class ConvexHull3DProbe extends ConvexHull3DFromPointsNode {
         void connectInput(String portId, NodeDataType outputType) {
             GeometryAnalysisLanguageContractTest.connectInput(this, portId, outputType);
         }

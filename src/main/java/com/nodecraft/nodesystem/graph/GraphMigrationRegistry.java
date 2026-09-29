@@ -154,6 +154,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V92 -> migrateV92ToV93(graph);
             case GraphFormatVersion.V93 -> migrateV93ToV94(graph);
             case GraphFormatVersion.V94 -> migrateV94ToV95(graph);
+            case GraphFormatVersion.V95 -> migrateV95ToV96(graph);
             default -> graph;
         };
     }
@@ -5389,6 +5390,40 @@ public final class GraphMigrationRegistry {
 
     private static SavedGraph migrateV94ToV95(SavedGraph graph) {
         return graph;
+    }
+
+    private static final String LEGACY_CONVEX_HULL_3D_FACES_PORT = "output_faces";
+
+    private static SavedGraph migrateV95ToV96(SavedGraph graph) {
+        applyConvexHull3DV96PortMigration(graph);
+        return graph;
+    }
+
+    /**
+     * Convex Hull 3D v2: raw LIST {@code output_faces} replaced by typed {@code output_mesh}.
+     * Drop incompatible wires; users reconnect to TRIANGLE_MESH.
+     */
+    private static void applyConvexHull3DV96PortMigration(SavedGraph graph) {
+        if (graph.connections == null) {
+            return;
+        }
+        List<SavedConnection> kept = new ArrayList<>();
+        for (SavedConnection connection : graph.connections) {
+            if (connection == null) {
+                continue;
+            }
+            String sourceType = typeIdOf(graph, connection.sourceNodeId);
+            String sourcePort = connection.sourcePortId == null
+                    ? null : connection.sourcePortId.toLowerCase(Locale.ROOT);
+            if (CONVEX_HULL_3D_ANALYSIS_TYPE.equals(sourceType)
+                    && LEGACY_CONVEX_HULL_3D_FACES_PORT.equals(sourcePort)) {
+                LOGGER.debug("Dropped Convex Hull 3D V96 removed-port connection {} -> {}",
+                        connection.sourcePortId, connection.targetPortId);
+                continue;
+            }
+            kept.add(connection);
+        }
+        graph.connections = kept;
     }
 
     private static void applySurfaceVolumeV82ToGraph(SavedGraph graph) {

@@ -641,8 +641,15 @@ public final class GraphFormatVersion {
      */
     public static final int V95 = 95;
 
+    /**
+     * Geometry Analysis / Convex Hull 3D v2: TRIANGLE_MESH output (replaces raw LIST faces);
+     * strict POINT_LIST input; dedupe-before-budget; MAX_CONVEX_HULL_3D_POINTS hard cap;
+     * coplanar facet grouping with non-overlapping triangulation. Bounds nodes remain V67 frozen.
+     */
+    public static final int V96 = 96;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V95;
+    public static final int CURRENT = V96;
 
     private GraphFormatVersion() {
     }

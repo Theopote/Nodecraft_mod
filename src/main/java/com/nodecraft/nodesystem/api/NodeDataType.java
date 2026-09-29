@@ -64,6 +64,8 @@ public enum NodeDataType {
     SURFACE_STRIP("surface_strip", "Surface Strip", SurfaceStripData.class),
     /** Ordered surface strips (shell layers, cap collections). */
     SURFACE_STRIP_LIST("surface_strip_list", "Surface Strip List", List.class, ListElementKind.SURFACE_STRIP),
+    /** Indexed triangle mesh (vertices + triangle index triples). */
+    TRIANGLE_MESH("triangle_mesh", "Triangle Mesh", TriangleMeshData.class),
     LINE("line", "Line", LineData.class),
     POLYLINE("polyline", "Polyline", PolylineData.class),
     CURVE("curve", "Curve", Curve.class),
