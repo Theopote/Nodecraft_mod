@@ -12,7 +12,6 @@ import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
-import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiColorEditFlags;
 import imgui.flag.ImGuiMouseButton;
 import imgui.type.ImDouble;
@@ -343,7 +342,7 @@ public class GradientRampNode extends BaseCustomUINode {
                 ? ImGui.colorConvertFloat4ToU32(1.0f, 1.0f, 1.0f, 1.0f)
                 : ImGui.colorConvertFloat4ToU32(0.08f, 0.09f, 0.10f, 1.0f);
             float radius = selected ? 5.5f * zoom : 4.5f * zoom;
-            drawList.addLine(mx, y0, mx, y1 + markerHeight, markerBorder, selected ? 2.0f * zoom : 1.0f * zoom);
+            drawList.addLine(mx, y0, mx, y1 + markerHeight, markerBorder, selected ? 2.0f * zoom : zoom);
             drawList.addCircleFilled(mx, markerTop + radius, Math.max(3.5f, radius), markerFill, 20);
             drawList.addCircle(mx, markerTop + radius, Math.max(3.5f, radius), markerBorder, 20, Math.max(1.0f, zoom));
         }
@@ -359,12 +358,22 @@ public class GradientRampNode extends BaseCustomUINode {
         ColorData color = sample.color();
         double t = sample.t();
         outputValues.put(OUTPUT_COLOR_ID, color);
-        outputValues.put(OUTPUT_RED_ID, (double) color.r());
-        outputValues.put(OUTPUT_GREEN_ID, (double) color.g());
-        outputValues.put(OUTPUT_BLUE_ID, (double) color.b());
-        outputValues.put(OUTPUT_ALPHA_ID, (double) color.a());
+        if (color != null) {
+            outputValues.put(OUTPUT_RED_ID, (double) color.r());
+        }
+        if (color != null) {
+            outputValues.put(OUTPUT_GREEN_ID, (double) color.g());
+        }
+        if (color != null) {
+            outputValues.put(OUTPUT_BLUE_ID, (double) color.b());
+        }
+        if (color != null) {
+            outputValues.put(OUTPUT_ALPHA_ID, (double) color.a());
+        }
         outputValues.put(OUTPUT_T_ID, t);
-        outputValues.put(OUTPUT_HEX_ID, toHex(color));
+        if (color != null) {
+            outputValues.put(OUTPUT_HEX_ID, toHex(color));
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         syncOutputPorts();
     }
@@ -424,8 +433,7 @@ public class GradientRampNode extends BaseCustomUINode {
 
     private @Nullable Double resolveSampleTRaw() {
         if (gradientMode == GradientMode.SCALAR) {
-            Double t = getInputDoubleOrNull(INPUT_T_ID, 0.5d);
-            return t;
+            return getInputDoubleOrNull(INPUT_T_ID, 0.5d);
         }
         Double x = getInputDoubleOrNull(INPUT_X_ID, 0.5d);
         Double y = getInputDoubleOrNull(INPUT_Y_ID, 0.5d);
@@ -478,10 +486,10 @@ public class GradientRampNode extends BaseCustomUINode {
     private ColorData sampleColor(double t) {
         ensureValidStops();
         double u = clamp01(t);
-        if (stops.size() == 1 || u <= stops.get(0).position) {
-            return stops.get(0).color;
+        if (stops.size() == 1 || u <= stops.getFirst().position) {
+            return stops.getFirst().color;
         }
-        GradientStop last = stops.get(stops.size() - 1);
+        GradientStop last = stops.getLast();
         if (u >= last.position) {
             return last.color;
         }

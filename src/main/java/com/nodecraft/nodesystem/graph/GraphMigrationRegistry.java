@@ -5644,9 +5644,6 @@ public final class GraphMigrationRegistry {
         if (targetType == null) {
             return targetPort;
         }
-        if ("geometry.curves.nurbs".equals(targetType) && "input_weights".equals(targetPort)) {
-            return targetPort;
-        }
         return targetPort;
     }
 
@@ -6139,11 +6136,8 @@ public final class GraphMigrationRegistry {
             && FLOW_LOOP_WHILE_DEAD_PORTS.contains(connection.sourcePortId)) {
             return true;
         }
-        if ("flow.loop.while".equals(targetType)
-            && FLOW_LOOP_WHILE_DEAD_PORTS.contains(connection.targetPortId)) {
-            return true;
-        }
-        return false;
+        return "flow.loop.while".equals(targetType)
+                && FLOW_LOOP_WHILE_DEAD_PORTS.contains(connection.targetPortId);
     }
 
     private static @Nullable String typeIdOf(SavedGraph graph, @Nullable String nodeId) {
@@ -6227,15 +6221,12 @@ public final class GraphMigrationRegistry {
                     || "input_entity_type".equals(targetPort))) {
                 return true;
             }
-            if ("world.write.remove_entities".equals(targetType)
+            return "world.write.remove_entities".equals(targetType)
                     && ("input_entity_uuid".equals(targetPort)
                     || "input_entity_type".equals(targetPort)
-                    || "input_uuid".equals(targetPort))) {
-                return true;
-            }
+                    || "input_uuid".equals(targetPort));
             // Drop wires into removed teleported/failed LIST ports that will be typed differently —
             // keep wires; port ids stay, only type changes.
-            return false;
         });
     }
 
