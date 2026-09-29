@@ -1,6 +1,7 @@
 # Node Language v1 — Input Context
 
-**Status: PASSED / FROZEN** (post-implementation working tree, Graph **V32**)
+**Status: PASSED / FROZEN** (historical Graph **V32**; remediated by Graph **V112** —
+see [`node-language-v2-input-context.md`](./node-language-v2-input-context.md))
 
 Language unification for `input.context.*` (4 nodes): one fail-closed runtime contract for
 world/player reads. Missing context must never look like Overworld, origin, morning, or a
@@ -10,8 +11,13 @@ Shared helper: `ContextReadUtils`. Graph schema: **V32** renames Player Look At 
 retargets hit position to `POINT`, distance and time ticks to `DOUBLE`, adds `output_valid` on
 all four nodes, and drops incompatible downstream wires.
 
+**V112 remediation:** Raycast `BLOCK_INFO` / `ENTITY_INFO` are `BlockInfoData` /
+`EntityInfoData` snapshots (not live Minecraft objects). Position graph runtime capture is
+ExecutionContext-only (UI Update Position may use client player).
+
 Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
 [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md),
+[`node-language-v2-input-context.md`](./node-language-v2-input-context.md),
 [`type-conversion-guidelines.md`](./type-conversion-guidelines.md).
 
 ## Core rules
@@ -55,6 +61,8 @@ Persisted snapshot restore rejects non-finite `cachedX/Y/Z` (`setNodeState` sani
 `setCachedPosition` guard). `Valid=true` never pairs with NaN/Infinity coordinates.
 
 Server capture reads `ServerPlayerEntity` doubles directly (bypasses float `PlayerAccessor` path).
+Graph `processNode` first capture is ExecutionContext-only (V112); UI **Update Position** may use
+the client player.
 
 ## Player Raycast (`input.context.player_raycast`)
 
@@ -66,8 +74,8 @@ Renamed from **Player Look At**. Raycasts from player eye + view vector.
 | `output_hit_position` | `POINT` | `null` on miss or invalid |
 | `output_hit_distance` | `DOUBLE` | `0.0` on miss or invalid |
 | `output_has_hit` | `BOOLEAN` | `false` on miss **or** invalid |
-| `output_hit_block` | `BLOCK_INFO` | `null` when no hit |
-| `output_hit_entity` | `ENTITY_INFO` | `null` when no hit |
+| `output_hit_block` | `BLOCK_INFO` | `BlockInfoData` snapshot when block hit; `null` otherwise (V112) |
+| `output_hit_entity` | `ENTITY_INFO` | `EntityInfoData` snapshot when entity hit; `null` otherwise (V112) |
 
 | Semantics | `Valid` | `Has Hit` |
 |-----------|---------|-----------|
@@ -127,4 +135,5 @@ Runtime object on `output_time_ticks` is `Double`, not `Long` or `Integer`.
 
 - `InputContextLanguageContractTest` — 4-node inventory, WORLD_READ, port types, fail-closed
   `processNode(null)`, snapshot restore (missing / non-finite persisted coords), V31→V32 migration.
-- Format contract tests bumped to **V32** (`GraphFormatVersionContractTest`, family fences).
+- `InputContextLanguageV2ContractTest` — snapshot types, Position context-only capture (V112).
+- Format CURRENT is **V112**.
