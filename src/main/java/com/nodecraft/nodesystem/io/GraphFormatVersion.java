@@ -670,8 +670,15 @@ public final class GraphFormatVersion {
      */
     public static final int V99 = 99;
 
+    /**
+     * Placement Semantics & Budgeting v3: Orient Geometry To Frame product language clarified
+     * as Apply Frame Orientation (relative frame rotation; algorithm unchanged); bounded
+     * FRAME_LIST resolve and allocation-free leaf counting for Place On Frames. No wire changes.
+     */
+    public static final int V100 = 100;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V99;
+    public static final int CURRENT = V100;
 
     private GraphFormatVersion() {
     }

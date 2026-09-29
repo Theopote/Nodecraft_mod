@@ -158,6 +158,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V96 -> migrateV96ToV97(graph);
             case GraphFormatVersion.V97 -> migrateV97ToV98(graph);
             case GraphFormatVersion.V98 -> migrateV98ToV99(graph);
+            case GraphFormatVersion.V99 -> migrateV99ToV100(graph);
             default -> graph;
         };
     }
@@ -5411,6 +5412,10 @@ public final class GraphMigrationRegistry {
     }
 
     private static SavedGraph migrateV98ToV99(SavedGraph graph) {
+        return graph;
+    }
+
+    private static SavedGraph migrateV99ToV100(SavedGraph graph) {
         return graph;
     }
 

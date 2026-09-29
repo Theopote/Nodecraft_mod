@@ -74,7 +74,7 @@ class OrientationLanguageContractTest {
         assertEquals(77, GraphFormatVersion.V77);
         assertEquals(99, GraphFormatVersion.V99);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V77);
-        assertEquals(GraphFormatVersion.V99, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V99);
     }
 
     @Test

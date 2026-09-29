@@ -1,12 +1,13 @@
 # Node Language v1 — Placement
 
-**Status: PASSED / FROZEN** (Graph **V54**)
+**Status: PASSED / FROZEN** (Graph **V54**; Orient wording + placement budgeting remediations in **V100**)
 
 Geometry place/orient plus block-grid transforms under `transform.placement` (8 nodes).
 
 Related: [`node-language-v1-basic-transforms.md`](./node-language-v1-basic-transforms.md),
 [`node-language-v1-deformations.md`](./node-language-v1-deformations.md),
 [`node-language-v1-reference-frames.md`](./node-language-v1-reference-frames.md),
+[`node-language-v2-placement-semantics.md`](./node-language-v2-placement-semantics.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Product boundary
@@ -28,7 +29,7 @@ BLOCK_LIST: order + duplicates preserved
 |------:|--------------|---------|
 | 0 | Place Geometry On Frames | `transform.placement.place_geometry_on_frames` |
 | 1 | Place Geometry On Plane | `transform.placement.place_geometry_on_plane` |
-| 2 | Orient Geometry To Frame | `transform.placement.orient_geometry_to_frame` |
+| 2 | Apply Frame Orientation | `transform.placement.orient_geometry_to_frame` |
 | 3 | Offset Block Position | `transform.placement.offset_block_position` |
 | 4 | Offset Block Positions | `transform.placement.offset_block_positions` |
 | 5 | Rotate Block Positions | `transform.placement.rotate_block_positions` |
@@ -82,14 +83,17 @@ outputs: Geometry + Count + Error + Valid (no Geometries LIST)
 - X Hint connected valid → required projection (`fromPlaneRequireHint`); zero projection → fail.
 - X Hint connected invalid → fail closed.
 
-### Orient Geometry To Frame
+### Apply Frame Orientation
 
-Pivot: `OptionalPortDrive` only; algorithm unchanged.
+Pivot: `OptionalPortDrive` only. Applies FRAME rotation **relative** to existing geometry
+about the pivot (not absolute set-to-frame). See
+[`node-language-v2-placement-semantics.md`](./node-language-v2-placement-semantics.md).
 
 ## Shared helpers
 
 - `BlockSpace.cellCenter` / `snapCellCenter`
-- `FrameUtils.resolveStrictFrameList` / `fromPlaneRequireHint`
+- `FrameUtils.resolveStrictFrameList` / `resolveStrictFrameListBounded` / `fromPlaneRequireHint`
+- `GeometryStructureUtils.countLeaves` / `countLeavesBounded`
 - `OptionalPortDrive`
 - `GenerationLimits.MAX_GEOMETRY_INSTANCES` (16384)
 

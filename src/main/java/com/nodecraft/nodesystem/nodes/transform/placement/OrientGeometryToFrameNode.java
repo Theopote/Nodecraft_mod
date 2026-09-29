@@ -14,13 +14,13 @@ import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 /**
- * Orients geometry to match a frame's axes while keeping the pivot world position fixed.
+ * Applies FRAME rotation relative to existing geometry coordinates while keeping the pivot fixed.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "transform.placement.orient_geometry_to_frame",
-    displayName = "Orient Geometry To Frame",
-    description = "Rotates geometry so local axes match FRAME X/Y/Z while keeping the pivot point fixed in world space",
+    displayName = "Apply Frame Orientation",
+    description = "Applies FRAME rotation relative to existing geometry coordinates while keeping the pivot fixed in world space (not an absolute set-to-frame)",
     category = "transform.placement",
     order = 2
 )
@@ -35,17 +35,22 @@ public class OrientGeometryToFrameNode extends AbstractPlacementNode {
     public OrientGeometryToFrameNode() {
         super("transform.placement.orient_geometry_to_frame");
 
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to orient", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to rotate by frame orientation", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_PIVOT_ID, "Pivot", "World-space pivot that stays fixed during orientation", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Target orientation frame", NodeDataType.FRAME, this));
+        addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Frame whose rotation is applied relative to the geometry", NodeDataType.FRAME, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Oriented geometry", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Geometry after applying frame rotation about the pivot", NodeDataType.GEOMETRY, this));
         addValidAndErrorOutputs();
     }
 
     @Override
+    public String getDisplayName() {
+        return "Apply Frame Orientation";
+    }
+
+    @Override
     public String getDescription() {
-        return "Rotates geometry so local axes match FRAME X/Y/Z while keeping the pivot point fixed in world space";
+        return "Applies FRAME rotation relative to existing geometry coordinates while keeping the pivot fixed in world space (not an absolute set-to-frame)";
     }
 
     @Override

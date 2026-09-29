@@ -7,8 +7,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
@@ -22,8 +24,10 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryStructureUtils;
+import com.nodecraft.nodesystem.util.GeometryTransform;
 import com.nodecraft.nodesystem.util.PlacementBlockUtils;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -49,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Placement Language v2 (Graph V76).
+ * Language fence for Placement Language v2 / Semantics & Budgeting v3 (Graph V76 / V100).
  */
 class PlacementLanguageV2ContractTest {
 
@@ -77,7 +81,9 @@ class PlacementLanguageV2ContractTest {
     @Test
     void currentGraphFormatIsAtLeastV76() {
         assertEquals(76, GraphFormatVersion.V76);
+        assertEquals(100, GraphFormatVersion.V100);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V76);
+        assertEquals(GraphFormatVersion.V100, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -195,6 +201,71 @@ class PlacementLanguageV2ContractTest {
         place.processNode(null);
         assertEquals(Boolean.FALSE, place.getOutput("output_valid"));
         assertTrue(String.valueOf(place.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("workload"));
+    }
+
+    @Test
+    void orientDisplayNameIsApplyFrameOrientation() {
+        BaseNode orient = node("transform.placement.orient_geometry_to_frame");
+        assertEquals("Apply Frame Orientation", orient.getDisplayName());
+        String desc = orient.getDescription().toLowerCase(Locale.ROOT);
+        assertTrue(desc.contains("relative"));
+        assertTrue(desc.contains("not an absolute"));
+    }
+
+    @Test
+    void orientAppliesRelativeFrameRotation() {
+        BoxGeometryData axisAligned = new BoxGeometryData(new Vector3d(), new Vector3d(4, 1, 1));
+        GeometryData preRotated = GeometryTransform.transform(
+            axisAligned, new Vector3d(), 0.0d, 45.0d, 0.0d, 1.0d);
+        BoxGeometryData rotatedIn = assertInstanceOf(BoxGeometryData.class, preRotated);
+        assertTrue(rotatedIn.isOriented());
+
+        BaseNode orient = node("transform.placement.orient_geometry_to_frame");
+        orient.setInput("input_geometry", rotatedIn);
+        orient.setInput("input_frame", FrameData.orthonormal(
+            new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
+        ));
+        orient.setInput("input_pivot", new PointData(0, 0, 0));
+        orient.processNode(null);
+        assertEquals(Boolean.TRUE, orient.getOutput("output_valid"));
+        BoxGeometryData out = assertInstanceOf(BoxGeometryData.class, orient.getOutput("output_geometry"));
+        assertTrue(out.isOriented());
+        assertFalse(out.getOrientationMatrix().equals(new org.joml.Matrix3d().identity(), 1.0e-6d),
+            "identity Frame must not reset absolute orientation of a pre-rotated box");
+    }
+
+    @Test
+    void resolveStrictFrameListBoundedRejectsOversizeWithoutFullCopy() {
+        List<FrameData> oversized = new AbstractList<>() {
+            @Override
+            public FrameData get(int index) {
+                return FrameData.orthonormal(
+                    new Vector3d(index, 0, 0),
+                    new Vector3d(1, 0, 0),
+                    new Vector3d(0, 1, 0),
+                    new Vector3d(0, 0, 1)
+                );
+            }
+
+            @Override
+            public int size() {
+                return GenerationLimits.MAX_GEOMETRY_INSTANCES + 1;
+            }
+        };
+        assertNull(FrameUtils.resolveStrictFrameListBounded(
+            oversized, GenerationLimits.MAX_GEOMETRY_INSTANCES));
+    }
+
+    @Test
+    void countLeavesBoundedStopsEarly() {
+        List<GeometryData> leaves = new ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            leaves.add(new SphereData(new Vector3d(i, 0, 0), 0.5d));
+        }
+        CompositeGeometryData composite = new CompositeGeometryData(leaves);
+        assertEquals(10, GeometryStructureUtils.countLeavesBounded(composite, 9));
+        assertEquals(64, GeometryStructureUtils.countLeavesBounded(composite, 64));
+        assertEquals(64, GeometryStructureUtils.countLeaves(composite));
     }
 
     @Test

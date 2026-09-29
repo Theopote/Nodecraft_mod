@@ -41,6 +41,23 @@ public final class FrameUtils {
         return List.copyOf(frames);
     }
 
+    /**
+     * Like {@link #resolveStrictFrameList} but fails closed when {@code list.size() > maxElements}
+     * before allocating the copy (Graph V100 placement budgeting).
+     */
+    public static @Nullable List<FrameData> resolveStrictFrameListBounded(
+            @Nullable Object value,
+            int maxElements
+    ) {
+        if (!(value instanceof List<?> list) || list.isEmpty()) {
+            return null;
+        }
+        if (maxElements < 1 || list.size() > maxElements) {
+            return null;
+        }
+        return resolveStrictFrameList(value);
+    }
+
     public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
         return SpatialValueResolver.resolvePoint(value);
     }

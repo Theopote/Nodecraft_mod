@@ -76,9 +76,10 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
             return;
         }
 
-        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
-        long outputLeaves = sourceLeaves * (long) frames.size();
-        if (outputLeaves > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
+        long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
+        if (sourceLeaves > maxInstances
+            || sourceLeaves * (long) frames.size() > maxInstances) {
             writeFail("Placement workload exceeds limit (source leaves × frame count > MAX_GEOMETRY_INSTANCES)");
             return;
         }
@@ -136,9 +137,12 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
         }
 
         if (framesConnected) {
-            List<FrameData> frames = FrameUtils.resolveStrictFrameList(getInput(INPUT_FRAMES_ID));
+            List<FrameData> frames = FrameUtils.resolveStrictFrameListBounded(
+                getInput(INPUT_FRAMES_ID),
+                GenerationLimits.MAX_GEOMETRY_INSTANCES
+            );
             if (frames == null) {
-                writeFail("Frames list is null, empty, or contains non-FRAME entries");
+                writeFail("Frames list is null, empty, over budget, or contains non-FRAME entries");
                 return null;
             }
             return frames;
