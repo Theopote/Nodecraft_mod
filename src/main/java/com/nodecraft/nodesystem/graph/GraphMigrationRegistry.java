@@ -172,6 +172,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V110 -> migrateV110ToV111(graph);
             case GraphFormatVersion.V111 -> migrateV111ToV112(graph);
             case GraphFormatVersion.V112 -> migrateV112ToV113(graph);
+            case GraphFormatVersion.V113 -> migrateV113ToV114(graph);
             default -> graph;
         };
     }
@@ -5532,6 +5533,14 @@ public final class GraphMigrationRegistry {
      * UI-only; Valid requires authoritative registry; no wire remaps).
      */
     private static SavedGraph migrateV112ToV113(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Basic Assignment Strict Source & Weight Contract v2 (finite total weight,
+     * exact DOUBLE_LIST, fail-closed sources; no wire remaps).
+     */
+    private static SavedGraph migrateV113ToV114(SavedGraph graph) {
         return graph;
     }
 

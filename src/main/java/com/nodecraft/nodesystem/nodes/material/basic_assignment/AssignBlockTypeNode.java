@@ -44,6 +44,18 @@ public class AssignBlockTypeNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        INPUT_BLOCKS_TREE_ID,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public AssignBlockTypeNode() {
         super(UUID.randomUUID(), "material.basic_assignment.assign_block_type");
 
@@ -52,7 +64,7 @@ public class AssignBlockTypeNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
             "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+            "Optional geometry — voxelized when no higher-precedence source is driven", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -80,48 +92,27 @@ public class AssignBlockTypeNode extends BaseNode {
         }
         String blockType = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_BLOCK_TYPE_ID));
 
-        Object blocksTreeObj = inputValues.get(INPUT_BLOCKS_TREE_ID);
-        if (blocksTreeObj instanceof DataTreeData blocksTree && blocksTree.getBranchCount() > 0) {
-            writeTreeAssignments(blocksTree, blockType);
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, blockType);
+        if (!source.valid()) {
+            emitFail(source.error());
             return;
         }
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.resolveSourcePlacements(
-            inputValues.get(INPUT_PLACEMENTS_ID),
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            blockType
-        );
-
-        if (sources.isEmpty()
-            && BasicAssignmentUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )) {
-            emitFail("No geometry or coordinates resolved");
-            return;
-        }
-
-        List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-        for (BlockPlacementData source : sources) {
-            if (source.pos() == null) {
-                continue;
+        switch (source.kind()) {
+            case BLOCKS_TREE -> writeTreeAssignments(source.tree(), blockType);
+            case PLACEMENTS, COORDINATES, GEOMETRY -> {
+                List<BlockPlacementData> placements = new ArrayList<>(source.placements().size());
+                for (BlockPlacementData sourcePlacement : source.placements()) {
+                    placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockType));
+                }
+                DataTreeData tree = new DataTreeData(List.of(
+                    new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
+                ));
+                emitOk(placements, tree);
             }
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockType));
+            case NONE, PLACEMENTS_TREE -> emitOk(List.of(), new DataTreeData(List.of()));
         }
-
-        DataTreeData tree = new DataTreeData(List.of(
-            new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
-        ));
-        emitOk(placements, tree);
     }
 
     private void writeTreeAssignments(DataTreeData blocksTree, String blockType) {
@@ -133,9 +124,6 @@ public class AssignBlockTypeNode extends BaseNode {
             for (Object item : branch.items()) {
                 if (item instanceof BlockPlacementData existing) {
                     BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(existing, blockType);
-                    if (remapped.pos() == null) {
-                        continue;
-                    }
                     placements.add(remapped);
                     branchPlacements.add(remapped);
                 } else if (item instanceof BlockPos pos) {

@@ -758,9 +758,16 @@ public final class GraphFormatVersion {
      * No wire changes.
      */
     public static final int V113 = 113;
+
+    /**
+     * Basic Assignment Strict Source & Weight Contract v2: finite total weight,
+     * exact DOUBLE_LIST, fail-closed placement/tree, connection-aware source precedence.
+     * No wire changes.
+     */
+    public static final int V114 = 114;
     
     /** Version written by current builds. */
-    public static final int CURRENT = V113;
+    public static final int CURRENT = V114;
 
     private GraphFormatVersion() {
     }

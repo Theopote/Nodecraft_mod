@@ -88,10 +88,9 @@ public final class BasicAssignmentUtils {
         }
         List<Double> out = new ArrayList<>(list.size());
         for (Object entry : list) {
-            if (!(entry instanceof Number number)) {
-                return ParseResult.fail(portName + " must contain only numbers");
+            if (!(entry instanceof Double weight)) {
+                return ParseResult.fail(portName + " must contain only doubles");
             }
-            double weight = number.doubleValue();
             Validation weightOk = validatePaletteEntryWeight(weight);
             if (!weightOk.valid()) {
                 return ParseResult.fail(weightOk.message());
@@ -122,6 +121,9 @@ public final class BasicAssignmentUtils {
                 return entryOk;
             }
             sum += weight;
+            if (!Double.isFinite(sum)) {
+                return Validation.fail("Total weight must be finite");
+            }
         }
         if (sum <= 0.0d) {
             return Validation.fail("Total weight must be > 0");
@@ -140,6 +142,9 @@ public final class BasicAssignmentUtils {
                 return entryOk;
             }
             sum += entry.weight();
+            if (!Double.isFinite(sum)) {
+                return Validation.fail("Total weight must be finite");
+            }
         }
         if (sum <= 0.0d) {
             return Validation.fail("Total palette weight must be > 0");
@@ -295,7 +300,7 @@ public final class BasicAssignmentUtils {
                 sum += weight;
             }
         }
-        return sum;
+        return Double.isFinite(sum) ? sum : Double.NaN;
     }
 
     public static Map<String, Object> assignFailResult(String error) {

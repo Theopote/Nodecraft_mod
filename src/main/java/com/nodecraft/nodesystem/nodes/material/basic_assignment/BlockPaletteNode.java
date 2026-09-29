@@ -9,8 +9,6 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,6 +47,18 @@ public class BlockPaletteNode extends BaseNode {
     private static final String OUTPUT_PALETTE_SIZE_ID = "output_palette_size";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
+
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        INPUT_PLACEMENTS_TREE_ID,
+        INPUT_BLOCKS_TREE_ID,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
 
     public BlockPaletteNode() {
         super(UUID.randomUUID(), "material.basic_assignment.block_palette");
@@ -91,69 +101,52 @@ public class BlockPaletteNode extends BaseNode {
         List<String> palette = new ArrayList<>(paletteData.blockIds());
         int paletteSize = palette.size();
 
-        Object placementsTreeObj = inputValues.get(INPUT_PLACEMENTS_TREE_ID);
-        if (placementsTreeObj instanceof DataTreeData placementsTree && placementsTree.getBranchCount() > 0) {
-            writePlacementTreeAssignments(placementsTree, palette, startIndex, paletteSize);
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, "");
+        if (!source.valid()) {
+            emitFail(source.error());
             return;
         }
 
-        Object blocksTreeObj = inputValues.get(INPUT_BLOCKS_TREE_ID);
-        if (blocksTreeObj instanceof DataTreeData blocksTree && blocksTree.getBranchCount() > 0) {
-            if (palette.isEmpty()) {
-                emitFail("Palette required for blocks tree input");
-                return;
+        switch (source.kind()) {
+            case PLACEMENTS_TREE -> writeTreeAssignments(source.tree(), palette, startIndex, paletteSize, true);
+            case BLOCKS_TREE -> {
+                if (palette.isEmpty()) {
+                    emitFail("Palette required for blocks tree input");
+                    return;
+                }
+                writeTreeAssignments(source.tree(), palette, startIndex, paletteSize, false);
             }
-            writeBlockTreeAssignments(blocksTree, palette, startIndex, paletteSize);
-            return;
-        }
-
-        if (BasicAssignmentUtils.hasPlacementSource(inputValues.get(INPUT_PLACEMENTS_ID))) {
-            List<BlockPlacementData> placements = mapFlatPlacements(palette, startIndex);
-            DataTreeData tree = new DataTreeData(List.of(
-                new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
-            ));
-            emitOk(placements, tree, paletteSize);
-            return;
-        }
-
-        if (BasicAssignmentUtils.hasNonPlacementSource(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-        )) {
-            if (palette.isEmpty()) {
-                emitFail("Palette required for geometry or coordinates input");
-                return;
+            case PLACEMENTS -> {
+                List<BlockPlacementData> placements = mapFlatPlacements(source.placements(), palette, startIndex);
+                emitOk(placements, flatTree(placements), paletteSize);
             }
-            List<BlockPlacementData> placements = mapGeometryPlacements(palette, startIndex);
-            if (placements.isEmpty()) {
-                emitFail("No geometry or coordinates resolved");
-                return;
+            case COORDINATES, GEOMETRY -> {
+                if (palette.isEmpty()) {
+                    emitFail("Palette required for geometry or coordinates input");
+                    return;
+                }
+                List<BlockPlacementData> placements = mapFlatPlacements(source.placements(), palette, startIndex);
+                emitOk(placements, flatTree(placements), paletteSize);
             }
-            DataTreeData tree = new DataTreeData(List.of(
-                new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
-            ));
-            emitOk(placements, tree, paletteSize);
-            return;
+            case NONE -> emitFail("No placements, coordinates, geometry, or tree input");
         }
-
-        emitFail("No placements, coordinates, geometry, or tree input");
     }
 
-    private List<BlockPlacementData> mapFlatPlacements(List<String> palette, int startIndex) {
-        List<BlockPlacementData> remapped = new ArrayList<>();
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        if (!(placementsObj instanceof List<?> placementList)) {
-            return remapped;
-        }
+    private static DataTreeData flatTree(List<BlockPlacementData> placements) {
+        return new DataTreeData(List.of(
+            new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
+        ));
+    }
+
+    private List<BlockPlacementData> mapFlatPlacements(
+            List<BlockPlacementData> sources,
+            List<String> palette,
+            int startIndex
+    ) {
+        List<BlockPlacementData> remapped = new ArrayList<>(sources.size());
         int index = 0;
-        for (Object entry : placementList) {
-            if (!(entry instanceof BlockPlacementData placement) || placement.pos() == null) {
-                continue;
-            }
+        for (BlockPlacementData placement : sources) {
             String blockId = BasicAssignmentUtils.cyclicPaletteBlockId(
                 palette, startIndex + index, placement.blockId());
             remapped.add(new BlockPlacementData(placement.pos(), blockId, placement.stateData()));
@@ -162,41 +155,23 @@ public class BlockPaletteNode extends BaseNode {
         return remapped;
     }
 
-    private List<BlockPlacementData> mapGeometryPlacements(List<String> palette, int startIndex) {
-        BlockPosList positions = GeometryVoxelizer.resolveBlocks(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-            true
-        );
-        List<BlockPlacementData> resolved = new ArrayList<>();
-        int index = 0;
-        for (BlockPos pos : positions) {
-            String blockId = BasicAssignmentUtils.cyclicPaletteBlockId(palette, startIndex + index, null);
-            resolved.add(new BlockPlacementData(pos, blockId));
-            index++;
-        }
-        return resolved;
-    }
-
-    private void writePlacementTreeAssignments(
-            DataTreeData placementsTree,
+    private void writeTreeAssignments(
+            DataTreeData sourceTree,
             List<String> palette,
             int startIndex,
-            int paletteSize
+            int paletteSize,
+            boolean preserveWhenEmptyPalette
     ) {
         List<BlockPlacementData> placements = new ArrayList<>();
         List<DataTreeData.Branch> placementBranches = new ArrayList<>();
         int branchIndex = 0;
 
-        for (DataTreeData.Branch branch : placementsTree.getBranches()) {
+        for (DataTreeData.Branch branch : sourceTree.getBranches()) {
             List<Object> branchPlacements = new ArrayList<>();
-            if (palette.isEmpty()) {
+            if (palette.isEmpty() && preserveWhenEmptyPalette) {
                 for (Object item : branch.items()) {
-                    if (item instanceof BlockPlacementData placement && placement.pos() != null) {
+                    BlockPlacementData placement = toPlacementPreserving(item);
+                    if (placement != null) {
                         placements.add(placement);
                         branchPlacements.add(placement);
                     }
@@ -205,11 +180,10 @@ public class BlockPaletteNode extends BaseNode {
                 String branchBlockId = BasicAssignmentUtils.cyclicPaletteBlockId(
                     palette, startIndex + branchIndex, null);
                 for (Object item : branch.items()) {
-                    if (item instanceof BlockPlacementData placement && placement.pos() != null) {
-                        BlockPlacementData remapped = new BlockPlacementData(
-                            placement.pos(), branchBlockId, placement.stateData());
-                        placements.add(remapped);
-                        branchPlacements.add(remapped);
+                    BlockPlacementData placement = toPlacementWithBlockId(item, branchBlockId);
+                    if (placement != null) {
+                        placements.add(placement);
+                        branchPlacements.add(placement);
                     }
                 }
             }
@@ -220,32 +194,24 @@ public class BlockPaletteNode extends BaseNode {
         emitOk(placements, new DataTreeData(placementBranches), paletteSize);
     }
 
-    private void writeBlockTreeAssignments(
-            DataTreeData blocksTree,
-            List<String> palette,
-            int startIndex,
-            int paletteSize
-    ) {
-        List<BlockPlacementData> placements = new ArrayList<>();
-        List<DataTreeData.Branch> placementBranches = new ArrayList<>();
-        int branchIndex = 0;
-
-        for (DataTreeData.Branch branch : blocksTree.getBranches()) {
-            String branchBlockId = BasicAssignmentUtils.cyclicPaletteBlockId(
-                palette, startIndex + branchIndex, null);
-            List<Object> branchPlacements = new ArrayList<>();
-            for (Object item : branch.items()) {
-                if (item instanceof BlockPos pos) {
-                    BlockPlacementData placement = new BlockPlacementData(pos, branchBlockId);
-                    placements.add(placement);
-                    branchPlacements.add(placement);
-                }
-            }
-            placementBranches.add(new DataTreeData.Branch(branch.path(), branchPlacements));
-            branchIndex++;
+    private static @Nullable BlockPlacementData toPlacementPreserving(Object item) {
+        if (item instanceof BlockPlacementData placement) {
+            return placement;
         }
+        if (item instanceof BlockPos pos) {
+            return new BlockPlacementData(pos, "");
+        }
+        return null;
+    }
 
-        emitOk(placements, new DataTreeData(placementBranches), paletteSize);
+    private static @Nullable BlockPlacementData toPlacementWithBlockId(Object item, String blockId) {
+        if (item instanceof BlockPlacementData placement) {
+            return new BlockPlacementData(placement.pos(), blockId, placement.stateData());
+        }
+        if (item instanceof BlockPos pos) {
+            return new BlockPlacementData(pos, blockId);
+        }
+        return null;
     }
 
     private void emitFail(String message) {
