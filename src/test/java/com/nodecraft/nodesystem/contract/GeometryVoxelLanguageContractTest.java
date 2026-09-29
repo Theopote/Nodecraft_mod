@@ -22,6 +22,7 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.VoxelInputUtils;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -197,6 +198,54 @@ class GeometryVoxelLanguageContractTest {
         );
         assertFalse(result.success(), "status=" + result.status() + " error=" + result.error());
         assertEquals(VoxelizationStatus.OVER_BUDGET, result.status());
+    }
+
+    @Test
+    void geometryTreeDuplicateChildren_doesNotDuplicateBranchBlocks() {
+        BoxGeometryData box = new BoxGeometryData(
+            new Vector3d(0.5d, 0.5d, 0.5d),
+            new Vector3d(3.5d, 3.5d, 3.5d)
+        );
+        int uniqueCount = GeometryVoxelizer.voxelizeStrict(box, true).blocks().size();
+        assertTrue(uniqueCount > 1);
+
+        VoxelizeGeometryNode node = new VoxelizeGeometryNode();
+        connectInput(node, "input_geometry_tree", NodeDataType.DATA_TREE);
+        node.setInput("input_geometry_tree", new DataTreeData(List.of(
+            new DataTreeData.Branch(List.of(0), List.of(box, box, box))
+        )));
+        node.processNode(null);
+
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals(uniqueCount, node.getOutput("output_count"));
+        DataTreeData blocksTree = (DataTreeData) node.getOutput("output_blocks_tree");
+        assertNotNull(blocksTree);
+        assertEquals(1, blocksTree.getBranchCount());
+        assertEquals(uniqueCount, blocksTree.getBranches().getFirst().items().size());
+    }
+
+    @Test
+    void geometryTreeMaterializedOutputOverBudget_failsClosed() {
+        BoxGeometryData box = new BoxGeometryData(
+            new Vector3d(0.5d, 0.5d, 0.5d),
+            new Vector3d(3.5d, 3.5d, 3.5d)
+        );
+        int blocksPerBranch = GeometryVoxelizer.voxelizeStrict(box, true).blocks().size();
+        assertTrue(blocksPerBranch > 0);
+
+        int branchCount = (int) (GenerationLimits.MAX_VOXEL_TREE_BLOCK_ITEMS / blocksPerBranch) + 1;
+        List<DataTreeData.Branch> branches = new ArrayList<>(branchCount);
+        for (int i = 0; i < branchCount; i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(box)));
+        }
+
+        VoxelInputUtils.TreeVoxelizationOutcome outcome =
+            VoxelInputUtils.voxelizeGeometryTree(new DataTreeData(branches), true);
+        assertFalse(outcome.success());
+        assertEquals(VoxelizationStatus.OVER_BUDGET, outcome.status());
+        assertTrue(outcome.blocks().isEmpty());
+        assertTrue(outcome.error().contains("MAX_VOXEL_TREE_BLOCK_ITEMS")
+            || outcome.error().toLowerCase().contains("materialized"));
     }
 
     @Test

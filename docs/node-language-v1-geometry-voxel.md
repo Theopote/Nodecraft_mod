@@ -42,8 +42,11 @@ Boolean Difference / Intersection with `Fill=false`: **solid CSG first**, then `
 ## Budget layers
 
 1. **Leaf bounds:** bounding volume ≤ `MAX_GEOMETRY_VOXELS` (262_144)
-2. **Aggregate merge:** Composite and Geometry Tree flattened output ≤ `MAX_GEOMETRY_VOXELS`
-3. **Tree items:** total geometry items ≤ `MAX_GEOMETRY_INSTANCES`
+2. **Unique flattened output:** `output_blocks` union ≤ `MAX_GEOMETRY_VOXELS`
+3. **Tree materialization:** sum of per-branch unique block counts in `output_blocks_tree` ≤ `MAX_VOXEL_TREE_BLOCK_ITEMS` (= `MAX_LIST_ELEMENTS`)
+4. **Tree geometry items:** total input geometry items ≤ `MAX_GEOMETRY_INSTANCES`
+
+Per-branch Blocks Tree output is deduplicated (duplicate geometry children in one branch do not inflate branch block lists).
 
 ## Composite vs Boolean Union
 

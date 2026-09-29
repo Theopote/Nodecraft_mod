@@ -286,6 +286,13 @@ public final class GenerationLimits {
      */
     public static final long MAX_GEOMETRY_VOXELS = 262_144L;
 
+    /**
+     * Hard cap on total block items materialized across all Blocks Tree branches
+     * (sum of per-branch unique block counts). Distinct from unique flattened
+     * {@link #MAX_GEOMETRY_VOXELS} on {@code output_blocks}.
+     */
+    public static final long MAX_VOXEL_TREE_BLOCK_ITEMS = MAX_LIST_ELEMENTS;
+
     /** Maximum unique blocks for morphology input, intermediate, and output sets. */
     public static final int MAX_MORPHOLOGY_BLOCKS = 262_144;
 

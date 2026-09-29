@@ -72,9 +72,10 @@ public final class VoxelInputUtils {
         Set<BlockPos> merged = new LinkedHashSet<>();
         List<DataTreeData.Branch> blockBranches = new ArrayList<>();
         RegionData region = null;
+        long treeMaterializedItems = 0L;
 
         for (DataTreeData.Branch branch : tree.getBranches()) {
-            BlockPosList branchBlocks = new BlockPosList();
+            Set<BlockPos> branchMerged = new LinkedHashSet<>();
             List<Integer> branchPath = branch.path();
             int itemIndex = 0;
             for (Object item : branch.items()) {
@@ -99,7 +100,11 @@ public final class VoxelInputUtils {
                     return TreeVoxelizationOutcome.fail(status, childError);
                 }
 
-                branchBlocks.addAll(childResult.blocks().getPositions());
+                GeometryVoxelizationResult branchMergeError =
+                    GeometryVoxelizer.mergeIntoSet(branchMerged, childResult.blocks());
+                if (branchMergeError != null) {
+                    return TreeVoxelizationOutcome.fail(branchMergeError.status(), branchMergeError.error());
+                }
                 GeometryVoxelizationResult mergeError = GeometryVoxelizer.mergeIntoSet(merged, childResult.blocks());
                 if (mergeError != null) {
                     return TreeVoxelizationOutcome.fail(mergeError.status(), mergeError.error());
@@ -108,8 +113,23 @@ public final class VoxelInputUtils {
                 itemIndex++;
             }
 
-            if (!branchBlocks.isEmpty()) {
-                blockBranches.add(new DataTreeData.Branch(branchPath, new ArrayList<>(branchBlocks.getPositions())));
+            if (!branchMerged.isEmpty()) {
+                try {
+                    treeMaterializedItems = Math.addExact(treeMaterializedItems, branchMerged.size());
+                } catch (ArithmeticException overflow) {
+                    return TreeVoxelizationOutcome.fail(
+                        VoxelizationStatus.OVER_BUDGET,
+                        "Blocks Tree materialized item count overflow"
+                    );
+                }
+                if (treeMaterializedItems > GenerationLimits.MAX_VOXEL_TREE_BLOCK_ITEMS) {
+                    return TreeVoxelizationOutcome.fail(
+                        VoxelizationStatus.OVER_BUDGET,
+                        "Blocks Tree materialized item count exceeds MAX_VOXEL_TREE_BLOCK_ITEMS ("
+                            + GenerationLimits.MAX_VOXEL_TREE_BLOCK_ITEMS + ")"
+                    );
+                }
+                blockBranches.add(new DataTreeData.Branch(branchPath, new ArrayList<>(branchMerged)));
             }
         }
 
