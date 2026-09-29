@@ -63,7 +63,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Basic Transforms Language v2 (Graph V75).
+ * Language fence for Basic Transforms Language v2 / Oriented Box Consistency (Graph V98).
  */
 class BasicTransformsLanguageV2ContractTest {
 
