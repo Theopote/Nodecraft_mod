@@ -59,6 +59,7 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     private transient volatile boolean minecraftOnly = false;
     private transient volatile int currentPage = 0;
     private transient volatile boolean registryReady = true;
+    private transient volatile boolean registryAuthoritative = false;
     private transient volatile boolean registryErrorLogged = false;
     private transient volatile String selectedCategory = CATEGORY_ALL;
     private transient boolean lastCommitSyntaxValid = true;
@@ -94,7 +95,10 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     protected abstract CategorySpec[] getCategorySpecs();
 
-    protected abstract void collectRegistryIds(List<String> target);
+    /**
+     * Loads picker catalog ids and whether membership is authoritative for Graph Valid.
+     */
+    protected abstract RegistryCatalog collectRegistryCatalog();
 
     protected abstract boolean isKnownId(String id);
 
@@ -132,9 +136,15 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     protected final RegistrySelectionOutputs resolveSelectionOutputs(String selectedId) {
         String[] parts = RegistrySelectorUtils.splitNamespacePath(selectedId);
+        ensureCatalogReady();
         boolean registryOk = isKnownId(selectedId);
         boolean valid = lastCommitSyntaxValid
-                && RegistrySelectorUtils.computeValid(selectedId, registryOk, isAllowModded());
+                && RegistrySelectorUtils.computeValid(
+                    selectedId,
+                    registryOk,
+                    isAllowModded(),
+                    registryAuthoritative
+                );
         return new RegistrySelectionOutputs(
                 parts[0],
                 parts[1],
@@ -534,26 +544,44 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     private void ensureCatalogReady() {
         if (!allIds.isEmpty()) {
-            registryReady = true;
             return;
         }
         List<String> collected = new ArrayList<>();
+        boolean authoritative = false;
         try {
-            collectRegistryIds(collected);
+            RegistryCatalog catalog = collectRegistryCatalog();
+            collected.addAll(catalog.ids());
+            authoritative = catalog.authoritative();
             collected.sort(Comparator.naturalOrder());
             registryReady = !collected.isEmpty();
+            registryAuthoritative = authoritative && registryReady;
             if (registryReady) {
                 registryErrorLogged = false;
             }
         } catch (Throwable ignored) {
             // Includes Bootstrap ExceptionInInitializerError when Minecraft is not loaded.
             registryReady = false;
+            registryAuthoritative = false;
             if (!registryErrorLogged) {
                 NodeCraft.LOGGER.warn(getRegistryLoadWarningLog());
                 registryErrorLogged = true;
             }
         }
         allIds = collected;
+    }
+
+    /**
+     * Force a non-authoritative catalog without live registry (contracts / tests).
+     */
+    public final void forceNonAuthoritativeCatalogForTest(List<String> uiIds) {
+        allIds = new ArrayList<>(uiIds == null ? List.of() : uiIds);
+        registryReady = !allIds.isEmpty();
+        registryAuthoritative = false;
+    }
+
+    public final boolean isRegistryAuthoritativeForTest() {
+        ensureCatalogReady();
+        return registryAuthoritative;
     }
 
     private void updateFilteredList(String searchTextRaw) {

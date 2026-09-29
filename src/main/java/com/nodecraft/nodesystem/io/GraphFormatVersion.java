@@ -752,8 +752,15 @@ public final class GraphFormatVersion {
      */
     public static final int V112 = 112;
 
+    /**
+     * Type Selector Authoritative Registry Contract v2: biome UI fallback catalogs are
+     * non-authoritative; Graph Valid requires live/static registry membership.
+     * No wire changes.
+     */
+    public static final int V113 = 113;
+    
     /** Version written by current builds. */
-    public static final int CURRENT = V112;
+    public static final int CURRENT = V113;
 
     private GraphFormatVersion() {
     }

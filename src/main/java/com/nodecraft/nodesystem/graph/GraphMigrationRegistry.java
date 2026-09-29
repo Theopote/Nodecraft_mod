@@ -171,6 +171,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V109 -> migrateV109ToV110(graph);
             case GraphFormatVersion.V110 -> migrateV110ToV111(graph);
             case GraphFormatVersion.V111 -> migrateV111ToV112(graph);
+            case GraphFormatVersion.V112 -> migrateV112ToV113(graph);
             default -> graph;
         };
     }
@@ -5523,6 +5524,14 @@ public final class GraphMigrationRegistry {
      * Position context-only capture; no wire remaps).
      */
     private static SavedGraph migrateV111ToV112(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Type Selector Authoritative Registry Contract v2 (biome fallback catalogs are
+     * UI-only; Valid requires authoritative registry; no wire remaps).
+     */
+    private static SavedGraph migrateV112ToV113(SavedGraph graph) {
         return graph;
     }
 

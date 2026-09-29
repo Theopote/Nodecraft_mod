@@ -44,10 +44,28 @@ public final class RegistrySelectorUtils {
         return !MINECRAFT_NAMESPACE.equals(namespace);
     }
 
-    public static boolean computeValid(@Nullable String canonicalId, boolean registryContains, boolean allowModded) {
-        if (canonicalId == null || !registryContains) {
+    /**
+     * Graph Valid requires an authoritative registry, membership, and allow-modded policy.
+     * Non-authoritative UI fallback catalogs must never yield {@code true}.
+     */
+    public static boolean computeValid(
+        @Nullable String canonicalId,
+        boolean registryContains,
+        boolean allowModded,
+        boolean registryAuthoritative
+    ) {
+        if (!registryAuthoritative || canonicalId == null || !registryContains) {
             return false;
         }
         return allowModded || canonicalId.startsWith(MINECRAFT_NAMESPACE + ":");
+    }
+
+    /**
+     * @deprecated Prefer {@link #computeValid(String, boolean, boolean, boolean)} with explicit
+     *             {@code registryAuthoritative}. Assumes authoritative=true for legacy callers.
+     */
+    @Deprecated
+    public static boolean computeValid(@Nullable String canonicalId, boolean registryContains, boolean allowModded) {
+        return computeValid(canonicalId, registryContains, allowModded, true);
     }
 }

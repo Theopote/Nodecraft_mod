@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -148,15 +149,21 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
-    protected void collectRegistryIds(List<String> target) {
-        for (Identifier id : Registries.ENTITY_TYPE.getIds()) {
-            target.add(id.toString());
+    protected RegistryCatalog collectRegistryCatalog() {
+        List<String> ids = new ArrayList<>();
+        try {
+            for (Identifier id : Registries.ENTITY_TYPE.getIds()) {
+                ids.add(id.toString());
+            }
+        } catch (Throwable ignored) {
+            return new RegistryCatalog(List.of(), false);
         }
+        return new RegistryCatalog(ids, !ids.isEmpty());
     }
 
     @Override
     protected boolean isKnownId(String id) {
-        if (catalogContains(id)) {
+        if (isRegistryAuthoritativeForTest() && catalogContains(id)) {
             return true;
         }
         try {

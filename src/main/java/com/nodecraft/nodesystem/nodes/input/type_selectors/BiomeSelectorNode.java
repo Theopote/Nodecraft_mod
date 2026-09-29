@@ -136,15 +136,13 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
-    protected void collectRegistryIds(List<String> target) {
-        RegistryCatalogHelper.collectBiomeIds(target);
+    protected RegistryCatalog collectRegistryCatalog() {
+        return RegistryCatalogHelper.collectBiomeCatalog();
     }
 
     @Override
     protected boolean isKnownId(String id) {
-        if (catalogContains(id)) {
-            return true;
-        }
+        // Never treat UI fallback catalog membership as proof of registry presence.
         return RegistryCatalogHelper.isKnownBiomeId(id);
     }
 
