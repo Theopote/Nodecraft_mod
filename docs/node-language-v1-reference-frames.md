@@ -1,6 +1,7 @@
 # Node Language v1 — Reference Frames
 
-**Status: PASSED / FROZEN** (Graph **V47**; V85 remains the v2 fence)
+**Status: PASSED / FROZEN** (Graph **V47**; V85 remains the v2 fence;
+V108 transform semantics: [`node-language-v2-reference-frames-transform-semantics.md`](./node-language-v2-reference-frames-transform-semantics.md))
 
 Language unification for the eight canonical `reference.frames.*` nodes: canonical IDs,
 shared `FrameUtils`, strict Construct semantics, Sphere X Hint, and orthonormal validation
@@ -81,11 +82,14 @@ Algorithm: project point to sphere surface, outward normal, then
 
 ## Transform Frame
 
-Inputs: Frame `FRAME`, Translation `VECTOR`, Rotation X/Y/Z `DOUBLE` (degrees)
+Inputs: Frame `FRAME`, Translation `VECTOR`, World Rotation X/Y/Z `DOUBLE` (degrees)
 
 Outputs: Frame `FRAME`, Valid `BOOLEAN`
 
 No scale input. Output axes are unit length.
+
+**V108:** Rotation is world-axis Euler XYZ (not local-frame). See
+[`node-language-v2-reference-frames-transform-semantics.md`](./node-language-v2-reference-frames-transform-semantics.md).
 
 ## Deconstruct Frame / Deconstruct Frames
 

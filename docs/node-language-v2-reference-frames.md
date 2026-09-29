@@ -1,6 +1,8 @@
 # Node Language v2 — Reference Frames
 
-**Status: PASSED / FROZEN** (Graph **V85**; V47 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V85** foundation; **V108** transform semantics — see
+[`node-language-v2-reference-frames-transform-semantics.md`](./node-language-v2-reference-frames-transform-semantics.md);
+V47 remains historical v1)
 
 Language modernization for the eight canonical `reference.frames.*` nodes:
 Valid+Error on fallible nodes, OptionalPortDrive on optional ports, strict connected X Hint
@@ -8,6 +10,7 @@ semantics, BoxFaceValidator on Face Center, Transform input canonicalization, an
 Deconstruct Frames list cap.
 
 Related: [`node-language-v1-reference-frames.md`](./node-language-v1-reference-frames.md),
+[`node-language-v2-reference-frames-transform-semantics.md`](./node-language-v2-reference-frames-transform-semantics.md),
 [`node-language-v1-frame-plane.md`](./node-language-v1-frame-plane.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
@@ -31,7 +34,7 @@ Unchanged from v1 — orthonormal right-handed orientation only (no scale/shear)
 ## Core rules
 
 1. **Valid + Error** on all fallible nodes; **World Frame** remains constant-only (Frame output only).
-2. **OptionalPortDrive** — Construct Origin/X/Y; Transform Translation + Rotation X/Y/Z (degrees):
+2. **OptionalPortDrive** — Construct Origin/X/Y; Transform Translation + World Rotation X/Y/Z (degrees):
    unconnected → documented default or node property; connected valid → wire; connected invalid → fail.
 3. **Connected X Hint** (Frame From Plane, Sphere Surface Frame) — uses
    `FrameUtils.fromPlaneRequireHint` / `fromNormalRequireHint`; **no cardinal fallback** when connected.
@@ -42,6 +45,8 @@ Unchanged from v1 — orthonormal right-handed orientation only (no scale/shear)
 7. **Deconstruct boundaries** — single/list entries must `orthonormalized()` or fail closed.
 8. **Deconstruct Frames cap** — `list.size() > GenerationLimits.MAX_LIST_ELEMENTS` fails preflight.
 9. **FrameUtils public API unchanged** — nodes call existing helpers plus RequireHint variants.
+10. **Transform Frame rotation (V108)** — World Rotation X/Y/Z are world-axis Euler **XYZ** degrees
+    (`R_out = R_world · R_frame`); non-finite saved-state values fail at process time.
 
 ## Migration (V84 → V85)
 

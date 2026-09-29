@@ -721,8 +721,14 @@ public final class GraphFormatVersion {
      */
     public static final int V107 = 107;
 
+    /**
+     * Reference Frame Transform Semantics v3: world-axis Euler XYZ rotation contract;
+     * Transform Frame saved-state non-finite fail-closed. No wire changes.
+     */
+    public static final int V108 = 108;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V107;
+    public static final int CURRENT = V108;
 
     private GraphFormatVersion() {
     }

@@ -647,7 +647,7 @@
 | World Frame | `reference.frames.world_frame` | Outputs the world coordinate frame as FRAME | `WorldFrameNode` |
 | Construct Frame | `reference.frames.construct_frame` | Builds an orthonormal right-handed FRAME from origin, X axis, and Y axis (Z = X × Y) | `ConstructFrameNode` |
 | Frame From Plane | `reference.frames.frame_from_plane` | Builds a right-handed orthonormal FRAME on a plane (Z = normal, X from hint) | `FrameFromPlaneNode` |
-| Transform Frame | `reference.frames.transform_frame` | Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only. | `TransformFrameNode` |
+| Transform Frame | `reference.frames.transform_frame` | Applies translation and world-axis Euler XYZ rotation (degrees) to a FRAME. Output is orthonormal orientation-only. | `TransformFrameNode` |
 | Deconstruct Frame | `reference.frames.deconstruct_frame` | Splits a FRAME into origin point, X/Y/Z axes, and plane | `DeconstructFrameNode` |
 | Deconstruct Frames | `reference.frames.deconstruct_frames` | Splits a FRAME_LIST into origins, axes, and planes | `DeconstructFramesNode` |
 

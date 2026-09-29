@@ -166,6 +166,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V104 -> migrateV104ToV105(graph);
             case GraphFormatVersion.V105 -> migrateV105ToV106(graph);
             case GraphFormatVersion.V106 -> migrateV106ToV107(graph);
+            case GraphFormatVersion.V107 -> migrateV107ToV108(graph);
             default -> graph;
         };
     }
@@ -5479,6 +5480,14 @@ public final class GraphMigrationRegistry {
      * bounded Sites preflight; no wire remaps).
      */
     private static SavedGraph migrateV106ToV107(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Reference Frame Transform Semantics v3 (world-axis Euler XYZ contract,
+     * saved-state non-finite fail-closed; no wire remaps).
+     */
+    private static SavedGraph migrateV107ToV108(SavedGraph graph) {
         return graph;
     }
 

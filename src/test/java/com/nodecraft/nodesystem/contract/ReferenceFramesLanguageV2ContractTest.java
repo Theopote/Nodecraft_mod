@@ -95,6 +95,12 @@ class ReferenceFramesLanguageV2ContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV108() {
+        assertEquals(108, GraphFormatVersion.V108);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V108);
+    }
+
+    @Test
     void exactlyEightNodesWithUniqueOrdersZeroToSeven() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("reference.frames."))
@@ -293,6 +299,55 @@ class ReferenceFramesLanguageV2ContractTest {
         assertEquals(1.0d, out.getXAxis().length(), 1.0e-9d);
         assertEquals(0.0d, out.getXAxis().x, 1.0e-6d);
         assertEquals(1.0d, Math.abs(out.getXAxis().y), 1.0e-6d);
+    }
+
+    @Test
+    void transformRotationUsesWorldAxisSemantics() {
+        // Pre-rotated frame: local X = world +Z (not identity).
+        FrameData preRotated = new FrameData(
+            new Vector3d(0, 0, 0),
+            new Vector3d(0, 0, 1),
+            new Vector3d(0, 1, 0),
+            new Vector3d(-1, 0, 0)
+        );
+        BaseNode transform = node("reference.frames.transform_frame");
+        transform.setInput("input_frame", preRotated);
+        transform.setNodeState(Map.of("rotationX", 90.0d));
+        transform.processNode(null);
+
+        assertValid(transform);
+        FrameData out = assertInstanceOf(FrameData.class, transform.getOutput("output_frame"));
+        // World-axis Rx(90) · (0,0,1) = (0,-1,0). Local Rx would leave outX ≈ (0,0,1).
+        assertVectorEquals(new Vector3d(0, -1, 0), out.getXAxis(), 1.0e-6d);
+    }
+
+    @Test
+    void transformSavedStateNonFiniteRotationFailsAtProcess() {
+        FrameData identity = new FrameData(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1, 0, 0),
+            new Vector3d(0, 1, 0),
+            new Vector3d(0, 0, 1)
+        );
+        BaseNode transform = node("reference.frames.transform_frame");
+        transform.setInput("input_frame", identity);
+        transform.setNodeState(Map.of("rotationZ", 45.0d));
+        transform.setNodeState(Map.of("rotationZ", Double.NaN));
+        transform.processNode(null);
+        assertInvalid(transform);
+    }
+
+    @Test
+    void transformWorldRotationPortLabels() {
+        INode node = registry.createNodeInstance("reference.frames.transform_frame");
+        for (String portId : List.of("input_rotation_x", "input_rotation_y", "input_rotation_z")) {
+            IPort port = node.getInputPorts().stream()
+                .filter(candidate -> portId.equals(candidate.getId()))
+                .findFirst()
+                .orElseThrow();
+            assertTrue(port.getDisplayName().contains("World Rotation"),
+                portId + " display name should contain World Rotation, was: " + port.getDisplayName());
+        }
     }
 
     @Test

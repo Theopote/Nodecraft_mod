@@ -22,7 +22,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.frames.transform_frame",
     displayName = "Transform Frame",
-    description = "Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only.",
+    description = "Applies translation and world-axis Euler XYZ rotation (degrees) to a FRAME. Output is orthonormal orientation-only.",
     category = "reference.frames",
     order = 5
 )
@@ -34,11 +34,11 @@ public class TransformFrameNode extends BaseNode {
     private double translationY = 0.0d;
     @NodeProperty(displayName = "Translation Z", category = "Transform", order = 3)
     private double translationZ = 0.0d;
-    @NodeProperty(displayName = "Rotation X", category = "Transform", order = 4)
+    @NodeProperty(displayName = "World Rotation X", category = "Transform", order = 4)
     private double rotationX = 0.0d;
-    @NodeProperty(displayName = "Rotation Y", category = "Transform", order = 5)
+    @NodeProperty(displayName = "World Rotation Y", category = "Transform", order = 5)
     private double rotationY = 0.0d;
-    @NodeProperty(displayName = "Rotation Z", category = "Transform", order = 6)
+    @NodeProperty(displayName = "World Rotation Z", category = "Transform", order = 6)
     private double rotationZ = 0.0d;
 
     private static final String INPUT_FRAME_ID = "input_frame";
@@ -55,9 +55,9 @@ public class TransformFrameNode extends BaseNode {
         super(UUID.randomUUID(), "reference.frames.transform_frame");
         addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Input frame to transform", NodeDataType.FRAME, this));
         addInputPort(new BasePort(INPUT_TRANSLATION_ID, "Translation", "Optional translation vector override", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Rotation around X axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Rotation around Y axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Rotation around Z axis in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROT_X_ID, "World Rotation X", "Rotation around world X axis in degrees (Euler XYZ order)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROT_Y_ID, "World Rotation Y", "Rotation around world Y axis in degrees (Euler XYZ order)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROT_Z_ID, "World Rotation Z", "Rotation around world Z axis in degrees (Euler XYZ order)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FRAME_ID, "Frame", "Transformed orthonormal frame", NodeDataType.FRAME, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when frame transform succeeded", NodeDataType.BOOLEAN, this));
@@ -66,7 +66,7 @@ public class TransformFrameNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Applies translation and Euler rotation (degrees) to a FRAME. Output is orthonormal orientation-only.";
+        return "Applies translation and world-axis Euler XYZ rotation (degrees) to a FRAME. Output is orthonormal orientation-only.";
     }
 
     @Override
@@ -96,17 +96,17 @@ public class TransformFrameNode extends BaseNode {
 
         Double rx = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_X_ID, rotationX);
         if (rx == null) {
-            writeInvalid("Rotation X connected but invalid");
+            writeInvalid("World Rotation X connected but invalid");
             return;
         }
         Double ry = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Y_ID, rotationY);
         if (ry == null) {
-            writeInvalid("Rotation Y connected but invalid");
+            writeInvalid("World Rotation Y connected but invalid");
             return;
         }
         Double rz = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROT_Z_ID, rotationZ);
         if (rz == null) {
-            writeInvalid("Rotation Z connected but invalid");
+            writeInvalid("World Rotation Z connected but invalid");
             return;
         }
 
@@ -155,21 +155,23 @@ public class TransformFrameNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        translationX = finiteOrCurrent(map.get("translationX"), translationX);
-        translationY = finiteOrCurrent(map.get("translationY"), translationY);
-        translationZ = finiteOrCurrent(map.get("translationZ"), translationZ);
-        rotationX = finiteOrCurrent(map.get("rotationX"), rotationX);
-        rotationY = finiteOrCurrent(map.get("rotationY"), rotationY);
-        rotationZ = finiteOrCurrent(map.get("rotationZ"), rotationZ);
-    }
-
-    private double finiteOrCurrent(Object value, double current) {
-        if (value instanceof Number number) {
-            double candidate = number.doubleValue();
-            if (Double.isFinite(candidate)) {
-                return candidate;
-            }
+        if (map.get("translationX") instanceof Number n) {
+            translationX = n.doubleValue();
         }
-        return current;
+        if (map.get("translationY") instanceof Number n) {
+            translationY = n.doubleValue();
+        }
+        if (map.get("translationZ") instanceof Number n) {
+            translationZ = n.doubleValue();
+        }
+        if (map.get("rotationX") instanceof Number n) {
+            rotationX = n.doubleValue();
+        }
+        if (map.get("rotationY") instanceof Number n) {
+            rotationY = n.doubleValue();
+        }
+        if (map.get("rotationZ") instanceof Number n) {
+            rotationZ = n.doubleValue();
+        }
     }
 }
