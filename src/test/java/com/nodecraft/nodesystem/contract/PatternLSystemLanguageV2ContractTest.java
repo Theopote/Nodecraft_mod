@@ -74,6 +74,12 @@ class PatternLSystemLanguageV2ContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV106() {
+        assertEquals(106, GraphFormatVersion.V106);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V106);
+    }
+
+    @Test
     void exactlyThreeNodesWithOrdersZeroToTwoPure() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("pattern.lsystem."))
@@ -306,6 +312,36 @@ class PatternLSystemLanguageV2ContractTest {
         assertInvalidTurtle(probe);
         assertEquals(Boolean.TRUE, probe.getOutput("output_hit_limit"));
         assertTrue(cap <= GenerationLimits.MAX_LIST_ELEMENTS / 2);
+    }
+
+    @Test
+    void turtleMissingCommandsFailsClosed() {
+        TurtleProbe probe = new TurtleProbe();
+        probe.processNode(null);
+        assertInvalidTurtle(probe);
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("command"));
+    }
+
+    @Test
+    void turtleWrongTypeCommandsFailsClosed() {
+        TurtleProbe probe = new TurtleProbe();
+        probe.connectInput("input_commands", NodeDataType.STRING);
+        probe.putRawInput("input_commands", 42);
+        probe.processNode(null);
+        assertInvalidTurtle(probe);
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("command"));
+    }
+
+    @Test
+    void turtleExplicitEmptyCommandsValid() {
+        TurtleProbe probe = new TurtleProbe();
+        probe.setInput("input_commands", "");
+        probe.processNode(null);
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertEquals(0, probe.getOutput("output_segment_count"));
+        assertEquals("", probe.getOutput("output_error"));
     }
 
     @Test

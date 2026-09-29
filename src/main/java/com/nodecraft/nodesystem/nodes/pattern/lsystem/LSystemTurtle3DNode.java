@@ -51,7 +51,7 @@ public class LSystemTurtle3DNode extends BaseNode {
     public LSystemTurtle3DNode() {
         super(UUID.randomUUID(), "pattern.lsystem.turtle_3d");
 
-        addInputPort(new BasePort(INPUT_COMMANDS_ID, "Commands", "Command string (e.g. expanded L-system)", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_COMMANDS_ID, "Commands", "Required command string (e.g. expanded L-system; empty string is valid zero-draw)", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Forward step length", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ANGLE_ID, "Angle", "Turn angle in degrees", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional start point", NodeDataType.POINT, this));
@@ -76,7 +76,11 @@ public class LSystemTurtle3DNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String commands = inputValues.get(INPUT_COMMANDS_ID) instanceof String s ? s : "";
+        Object commandsRaw = inputValues.get(INPUT_COMMANDS_ID);
+        if (!(commandsRaw instanceof String commands)) {
+            writeInvalid(false, "Commands are required");
+            return;
+        }
 
         Double st = OptionalPortDrive.resolveOptionalDouble(this, INPUT_STEP_ID, step);
         if (st == null) {

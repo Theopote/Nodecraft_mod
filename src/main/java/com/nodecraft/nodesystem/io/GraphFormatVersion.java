@@ -709,8 +709,14 @@ public final class GraphFormatVersion {
      */
     public static final int V105 = 105;
 
+    /**
+     * Pattern L-System Turtle Input & Pose Strictness v3: Turtle Commands required;
+     * quaternion normalization after rotations. No wire changes.
+     */
+    public static final int V106 = 106;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V105;
+    public static final int CURRENT = V106;
 
     private GraphFormatVersion() {
     }

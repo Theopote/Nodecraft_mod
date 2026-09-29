@@ -1,10 +1,14 @@
 # Node Language v2 — Pattern L-System
 
-**Status: PASSED / FROZEN** (Graph **V84**; V46 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V84** foundation; **V106** extends Turtle input/pose)
 
 Language modernization for the three canonical `pattern.lsystem.*` nodes:
 Valid+Error, OptionalPortDrive, connection-aware rules, axiom/rewrite budgets,
 weighted-sum finite fence, and Turtle hard-fail transactional geometry.
+
+**V106 note:** Turtle Commands required (missing/non-String fail-closed); explicit `""`
+valid zero-draw; quaternion normalize after rotations. See
+[`node-language-v2-pattern-lsystem-turtle-strictness.md`](./node-language-v2-pattern-lsystem-turtle-strictness.md).
 
 Related: [`node-language-v1-pattern-lsystem.md`](./node-language-v1-pattern-lsystem.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
@@ -38,7 +42,7 @@ also feed Turtle directly.
 8. **Weighted choice** — same-symbol positive weight sum must be finite.
 9. **Expand length hit** — return previous complete round; `Valid=true`, `Hit Limit=true`.
 10. **Turtle budgets** — command / stack / segments hard-fail; effective segments `<= MAX_LIST_ELEMENTS/2`; no partial geometry.
-11. **Turtle Valid** — legal interpretation (including zero-draw) succeeds; finite pose/endpoints required.
+11. **Turtle Valid** — Commands must be connected `String`; missing/non-String fails; explicit `""` is valid zero-draw; finite pose/endpoints required (V106).
 12. **Unknown turtle symbols** ignored; `F` emits independent PATH segments; degrees rotations unchanged.
 
 ## Migration (V83 → V84)

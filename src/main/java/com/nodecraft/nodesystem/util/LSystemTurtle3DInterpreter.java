@@ -98,38 +98,32 @@ public final class LSystemTurtle3DInterpreter {
                     }
                 }
                 case '+' -> {
-                    orientation.rotateLocalY(angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalY(orientation, angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
                 case '-' -> {
-                    orientation.rotateLocalY(-angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalY(orientation, -angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
                 case '&' -> {
-                    orientation.rotateLocalX(angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalX(orientation, angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
                 case '^' -> {
-                    orientation.rotateLocalX(-angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalX(orientation, -angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
                 case '/' -> {
-                    orientation.rotateLocalZ(-angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalZ(orientation, -angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
                 case '\\' -> {
-                    orientation.rotateLocalZ(angRad);
-                    if (!isFinite(orientation)) {
+                    if (!rotateLocalZ(orientation, angRad)) {
                         return TurtleResult.failure("Turtle orientation became non-finite", false);
                     }
                 }
@@ -170,6 +164,24 @@ public final class LSystemTurtle3DInterpreter {
     private static void moveForward(Vector3d pos, Quaterniond orientation, double stepLen) {
         Vector3d direction = orientation.transform(new Vector3d(LOCAL_FORWARD), new Vector3d());
         pos.fma(stepLen, direction);
+    }
+
+    private static boolean rotateLocalX(Quaterniond orientation, double radians) {
+        orientation.rotateLocalX(radians);
+        orientation.normalize();
+        return isFinite(orientation);
+    }
+
+    private static boolean rotateLocalY(Quaterniond orientation, double radians) {
+        orientation.rotateLocalY(radians);
+        orientation.normalize();
+        return isFinite(orientation);
+    }
+
+    private static boolean rotateLocalZ(Quaterniond orientation, double radians) {
+        orientation.rotateLocalZ(radians);
+        orientation.normalize();
+        return isFinite(orientation);
     }
 
     private static boolean isFinite(Vector3d vector) {

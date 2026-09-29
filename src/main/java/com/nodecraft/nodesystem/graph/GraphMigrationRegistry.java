@@ -164,6 +164,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V102 -> migrateV102ToV103(graph);
             case GraphFormatVersion.V103 -> migrateV103ToV104(graph);
             case GraphFormatVersion.V104 -> migrateV104ToV105(graph);
+            case GraphFormatVersion.V105 -> migrateV105ToV106(graph);
             default -> graph;
         };
     }
@@ -5461,6 +5462,14 @@ public final class GraphMigrationRegistry {
      * area-uniform sampling; Surface Strip strict quad validation; Poisson Max Attempts policy).
      */
     private static SavedGraph migrateV104ToV105(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern L-System Turtle Input & Pose Strictness v3: format bump only (Commands required;
+     * quaternion normalization; no wire remaps).
+     */
+    private static SavedGraph migrateV105ToV106(SavedGraph graph) {
         return graph;
     }
 
