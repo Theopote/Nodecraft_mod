@@ -70,6 +70,10 @@ public class TransformPointsByFramesNode extends AbstractBasicTransformNode {
             writeInvalid("Frame list is required");
             return;
         }
+        if (raw.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
+            writeInvalid("Frame list exceeds limit (" + GenerationLimits.MAX_LIST_ELEMENTS + ")");
+            return;
+        }
 
         List<FrameData> frames = new ArrayList<>(raw.size());
         for (Object element : raw) {

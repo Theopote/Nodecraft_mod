@@ -247,11 +247,12 @@ public final class GeometryTransform {
             Vector3d center = transformPoint(box.getCenter(), t, r, s);
             Matrix3d newOrientation = new Matrix3d(r).mul(box.getOrientationMatrix());
             Vector3d half = box.getHalfExtents();
+            boolean oriented = box.isOriented() || !isIdentity(r);
             return new BoxGeometryData(
                 center,
                 new Vector3d(half.x * s, half.y * s, half.z * s),
                 newOrientation,
-                box.isOriented()
+                oriented
             );
         }
         if (geometry instanceof PrismGeometryData prism) {

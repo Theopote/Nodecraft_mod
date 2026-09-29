@@ -120,7 +120,12 @@ public class TransformGeometryNode extends AbstractBasicTransformNode implements
         }
 
         GeometryData transformed = GeometryTransform.transform(geometry, translation, rx, ry, rz, s);
-        writeResult(transformed, transformed == null ? "Unsupported geometry transform" : "");
+        if (transformed == null) {
+            hideGizmoPreview();
+            writeResult(null, "Unsupported geometry transform");
+            return;
+        }
+        writeResult(transformed, "");
         updateGizmoPreview();
     }
 

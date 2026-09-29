@@ -1,13 +1,14 @@
 # Node Language v1 — Basic Transforms
 
-**Status: PASSED / FROZEN** (Graph **V52**)
+**Status: PASSED / FROZEN** (Graph **V52**; oriented-box consistency remediations in **V98**)
 
 Continuous Geometry / Point / BoxFace transforms only. Block-grid coordinate transforms live in
 `transform.placement`. Shear lives in `transform.deformations`.
 
 Related: [`node-language-v1-reference-vectors.md`](./node-language-v1-reference-vectors.md),
 [`node-language-v1-reference-planes.md`](./node-language-v1-reference-planes.md),
-[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
+[`node-language-v2-basic-transforms-oriented-box.md`](./node-language-v2-basic-transforms-oriented-box.md).
 
 ## Product boundary
 

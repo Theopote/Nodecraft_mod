@@ -655,8 +655,15 @@ public final class GraphFormatVersion {
      */
     public static final int V97 = 97;
 
+    /**
+     * Basic Transform / Oriented Box Consistency v2: GeometryTransform and GeometryMirror mark
+     * BoxGeometryData as oriented when orientation is non-identity (or always after mirror),
+     * so Bounds / Voxelize / Corners stay consistent. Additive runtime fix; no wire changes.
+     */
+    public static final int V98 = 98;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V97;
+    public static final int CURRENT = V98;
 
     private GraphFormatVersion() {
     }

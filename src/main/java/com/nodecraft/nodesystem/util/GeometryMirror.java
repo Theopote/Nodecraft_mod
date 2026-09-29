@@ -115,7 +115,7 @@ public final class GeometryMirror {
                 Vector3d center = mirrorPoint(box.getCenter(), plane);
                 Matrix3d r = reflectionMatrix3(plane.getNormal());
                 Matrix3d rm = new Matrix3d(r).mul(box.getOrientationMatrix());
-                return new BoxGeometryData(center, box.getHalfExtents(), rm, box.isOriented());
+                return new BoxGeometryData(center, box.getHalfExtents(), rm, true);
             }
             case PrismGeometryData prism -> {
                 List<Vector3d> base = prism.baseVertices();

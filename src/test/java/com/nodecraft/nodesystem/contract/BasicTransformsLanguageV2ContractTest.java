@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
@@ -36,8 +37,11 @@ import com.nodecraft.nodesystem.nodes.transform.basic_transforms.TransformPoints
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
 import com.nodecraft.nodesystem.util.GeometryMirror;
 import com.nodecraft.nodesystem.util.GeometryTransform;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.PointUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -88,7 +92,9 @@ class BasicTransformsLanguageV2ContractTest {
     @Test
     void currentGraphFormatIsAtLeastV75() {
         assertEquals(75, GraphFormatVersion.V75);
+        assertEquals(98, GraphFormatVersion.V98);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V75);
+        assertEquals(GraphFormatVersion.V98, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -257,6 +263,106 @@ class BasicTransformsLanguageV2ContractTest {
         assertEquals(2.0d, out.center().y, 1.0e-9d);
         assertEquals(0.0d, out.center().z, 1.0e-9d);
         assertEquals(2.0d, out.radius(), 1.0e-9d);
+    }
+
+    @Test
+    void rotateAxisAlignedBox_marksOriented() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(), new Vector3d(4, 1, 1));
+        assertFalse(box.isOriented());
+        GeometryData transformed = GeometryTransform.transform(
+            box, new Vector3d(), 0.0d, 45.0d, 0.0d, 1.0d);
+        BoxGeometryData out = assertInstanceOf(BoxGeometryData.class, transformed);
+        assertTrue(out.isOriented());
+    }
+
+    @Test
+    void rotateAxisAlignedBox_boundsUseRotatedCorners() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(), new Vector3d(4, 1, 1));
+        BoundingBoxData unrotated = GeometryBoundsResolver.resolve(box);
+        assertNotNull(unrotated);
+        assertEquals(8.0d, unrotated.size().x, 1.0e-9d);
+        assertEquals(2.0d, unrotated.size().z, 1.0e-9d);
+
+        GeometryData transformed = GeometryTransform.transform(
+            box, new Vector3d(), 0.0d, 45.0d, 0.0d, 1.0d);
+        BoxGeometryData out = assertInstanceOf(BoxGeometryData.class, transformed);
+        BoundingBoxData rotated = GeometryBoundsResolver.resolve(out);
+        assertNotNull(rotated);
+        assertTrue(Math.abs(rotated.size().x - 8.0d) > 0.5d,
+            "rotated X extent should differ from axis-aligned 8, got " + rotated.size().x);
+        assertTrue(Math.abs(rotated.size().z - 2.0d) > 0.5d,
+            "rotated Z extent should differ from axis-aligned 2, got " + rotated.size().z);
+    }
+
+    @Test
+    void mirrorAxisAlignedBoxAboutObliquePlane_marksOriented() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(), new Vector3d(3, 1, 1));
+        assertFalse(box.isOriented());
+        PlaneData plane = new PlaneData(new Vector3d(), new Vector3d(1, 0, 1).normalize());
+        GeometryData mirrored = GeometryMirror.mirror(box, plane);
+        BoxGeometryData out = assertInstanceOf(BoxGeometryData.class, mirrored);
+        assertTrue(out.isOriented());
+    }
+
+    @Test
+    void mirrorAxisAlignedBox_boundsMatchMirroredCorners() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(), new Vector3d(3, 1, 1));
+        PlaneData plane = new PlaneData(new Vector3d(), new Vector3d(1, 0, 1).normalize());
+        BoxGeometryData mirrored = assertInstanceOf(BoxGeometryData.class, GeometryMirror.mirror(box, plane));
+        BoundingBoxData resolved = GeometryBoundsResolver.resolve(mirrored);
+        assertNotNull(resolved);
+
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+        for (Vector3d corner : mirrored.getCorners()) {
+            minX = Math.min(minX, corner.x);
+            minY = Math.min(minY, corner.y);
+            minZ = Math.min(minZ, corner.z);
+            maxX = Math.max(maxX, corner.x);
+            maxY = Math.max(maxY, corner.y);
+            maxZ = Math.max(maxZ, corner.z);
+        }
+        assertEquals(minX, resolved.getMin().x, 1.0e-9d);
+        assertEquals(minY, resolved.getMin().y, 1.0e-9d);
+        assertEquals(minZ, resolved.getMin().z, 1.0e-9d);
+        assertEquals(maxX, resolved.getMax().x, 1.0e-9d);
+        assertEquals(maxY, resolved.getMax().y, 1.0e-9d);
+        assertEquals(maxZ, resolved.getMax().z, 1.0e-9d);
+
+        BoundingBoxData naiveAxisAligned = GeometryBoundsResolver.resolve(
+            new BoxGeometryData(mirrored.getCenter(), mirrored.getHalfExtents()));
+        assertNotNull(naiveAxisAligned);
+        assertTrue(
+            Math.abs(resolved.size().x - naiveAxisAligned.size().x) > 1.0e-6d
+                || Math.abs(resolved.size().z - naiveAxisAligned.size().z) > 1.0e-6d,
+            "oriented bounds must differ from naive axis-aligned halfExtents"
+        );
+    }
+
+    @Test
+    void rotateBoxThenVoxelize_usesOrientedBox() {
+        BoxGeometryData box = new BoxGeometryData(new Vector3d(0.5d, 0.5d, 0.5d), new Vector3d(4, 1, 1));
+        GeometryVoxelizationResult unrotated = GeometryVoxelizer.voxelizeStrict(box, true);
+        assertTrue(unrotated.success());
+        int unrotatedCount = unrotated.blocks().size();
+        assertTrue(unrotatedCount > 0);
+
+        BoxGeometryData rotated = assertInstanceOf(
+            BoxGeometryData.class,
+            GeometryTransform.transform(box, new Vector3d(), 0.0d, 45.0d, 0.0d, 1.0d)
+        );
+        assertTrue(rotated.isOriented());
+        GeometryVoxelizationResult rotatedResult = GeometryVoxelizer.voxelizeStrict(rotated, true);
+        assertTrue(rotatedResult.success(), rotatedResult.error());
+        assertTrue(
+            rotatedResult.blocks().size() != unrotatedCount,
+            "rotated voxel footprint must differ from axis-aligned box: unrotated="
+                + unrotatedCount + " rotated=" + rotatedResult.blocks().size()
+        );
     }
 
     @Test
