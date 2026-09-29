@@ -113,8 +113,10 @@ class ArchitecturalTopologyV2ContractTest {
     void mRoofHasTwoRidgesAndOneValley() {
         RoofGeneratorProbe generator = new RoofGeneratorProbe();
         generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.connectInput("input_ridge_direction", NodeDataType.STRING);
         generator.setInput("input_face", sampleFace(16, 10));
         generator.setInput("input_roof_type", "m");
+        generator.setInput("input_ridge_direction", "y");
         generator.setInput("input_height", 3.0d);
         generator.setInput("input_thickness", 0.5d);
         generator.setInput("input_m_peak_ratio", 0.25d);
@@ -127,9 +129,107 @@ class ArchitecturalTopologyV2ContractTest {
         List<PathData> valleys = (List<PathData>) generator.getOutput("output_valleys");
         assertEquals(2, ridges.size());
         assertEquals(1, valleys.size());
-        double fullSpan = 16.0d;
-        double ridgeLength = ridges.getFirst().getLine().getLength();
-        assertTrue(ridgeLength < fullSpan - 0.5d);
+        mRoofRidgesRunAlongExtrusionAxis(ridges, 10.0d);
+        mRoofValleyRunsAlongExtrusionAxis(valleys.getFirst(), 10.0d);
+    }
+
+    @Test
+    void mRoofRidgesRunAlongExtrusionAxis() {
+        RoofGeneratorProbe generator = new RoofGeneratorProbe();
+        generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.connectInput("input_ridge_direction", NodeDataType.STRING);
+        generator.setInput("input_face", sampleFace(16, 10));
+        generator.setInput("input_roof_type", "m");
+        generator.setInput("input_ridge_direction", "y");
+        generator.setInput("input_height", 3.0d);
+        generator.setInput("input_thickness", 0.5d);
+        generator.processNode(null);
+        @SuppressWarnings("unchecked")
+        List<PathData> ridges = (List<PathData>) generator.getOutput("output_ridges");
+        mRoofRidgesRunAlongExtrusionAxis(ridges, 10.0d);
+    }
+
+    @Test
+    void mRoofValleyRunsAlongExtrusionAxis() {
+        RoofGeneratorProbe generator = new RoofGeneratorProbe();
+        generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.connectInput("input_ridge_direction", NodeDataType.STRING);
+        generator.setInput("input_face", sampleFace(16, 10));
+        generator.setInput("input_roof_type", "m");
+        generator.setInput("input_ridge_direction", "y");
+        generator.setInput("input_height", 3.0d);
+        generator.setInput("input_thickness", 0.5d);
+        generator.setInput("input_valley_drop", 1.0d);
+        generator.processNode(null);
+        @SuppressWarnings("unchecked")
+        List<PathData> valleys = (List<PathData>) generator.getOutput("output_valleys");
+        assertEquals(1, valleys.size());
+        mRoofValleyRunsAlongExtrusionAxis(valleys.getFirst(), 10.0d);
+    }
+
+    @Test
+    void asymmetricGableRidgeMatchesExtrusionDirection() {
+        RoofGeneratorProbe generator = new RoofGeneratorProbe();
+        generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.connectInput("input_ridge_direction", NodeDataType.STRING);
+        generator.setInput("input_face", sampleFace(14, 9));
+        generator.setInput("input_roof_type", "asymmetric_gable");
+        generator.setInput("input_ridge_direction", "y");
+        generator.setInput("input_height", 3.0d);
+        generator.setInput("input_thickness", 0.5d);
+        generator.setInput("input_asymmetric_left_height_ratio", 1.0d);
+        generator.setInput("input_asymmetric_right_height_ratio", 0.6d);
+        generator.processNode(null);
+        assertEquals(Boolean.TRUE, generator.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<PathData> ridges = (List<PathData>) generator.getOutput("output_ridges");
+        assertEquals(2, ridges.size());
+        for (PathData ridge : ridges) {
+            assertPathParallelToAxis(ridge, new Vector3d(0, 1, 0), 9.0d);
+        }
+        double spanAlongProfile = ridges.getFirst().getLine().start().distanceTo(ridges.get(1).getLine().start());
+        assertTrue(spanAlongProfile > 0.5d, "peaks should be separated along profile axis");
+    }
+
+    @Test
+    void hipTopologyMatchesActualGeometryEdges() {
+        RoofGeneratorProbe generator = new RoofGeneratorProbe();
+        generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.setInput("input_face", sampleFace(20, 12));
+        generator.setInput("input_roof_type", "hip");
+        generator.setInput("input_height", 3.0d);
+        generator.setInput("input_thickness", 0.5d);
+        generator.setInput("input_ridge_ratio", 0.5d);
+        generator.setInput("input_inset", 1.0d);
+        generator.processNode(null);
+        @SuppressWarnings("unchecked")
+        List<PathData> ridges = (List<PathData>) generator.getOutput("output_ridges");
+        assertEquals(1, ridges.size());
+        PathData ridge = ridges.getFirst();
+        double halfRidge = Math.max(20.0d * 0.5d * 0.5d, 20.0d * 0.1d);
+        assertEquals(2.0d * halfRidge, ridge.getLine().getLength(), 0.05d);
+        assertPathParallelToAxis(ridge, new Vector3d(1, 0, 0), ridge.getLine().getLength());
+    }
+
+    @Test
+    void crossGableValleyMatchesGeometryIntersection() {
+        RoofGeneratorProbe generator = new RoofGeneratorProbe();
+        generator.connectInput("input_roof_type", NodeDataType.STRING);
+        generator.setInput("input_face", sampleFace(12, 12));
+        generator.setInput("input_roof_type", "cross_gable");
+        generator.setInput("input_height", 2.5d);
+        generator.setInput("input_thickness", 0.5d);
+        generator.setInput("input_cross_gable_offset", 0.25d);
+        generator.processNode(null);
+        assertEquals(Boolean.TRUE, generator.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<PathData> valleys = (List<PathData>) generator.getOutput("output_valleys");
+        assertEquals(1, valleys.size());
+        PathData valley = valleys.getFirst();
+        assertNotNull(valley.getLine());
+        assertTrue(valley.getLine().getLength() > 0.5d);
+        assertTrue(valley.getLine().start().y >= -0.01d);
+        assertTrue(valley.getLine().end().y <= 12.0d + 0.01d);
     }
 
     @Test
@@ -218,6 +318,32 @@ class ArchitecturalTopologyV2ContractTest {
         SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
         assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
         assertEquals(2, migrated.connections.size());
+    }
+
+    private static void mRoofRidgesRunAlongExtrusionAxis(List<PathData> ridges, double extrusionLength) {
+        assertEquals(2, ridges.size());
+        for (PathData ridge : ridges) {
+            assertPathParallelToAxis(ridge, new Vector3d(0, 1, 0), extrusionLength);
+        }
+        double peakSeparation = ridges.getFirst().getLine().start().distanceTo(ridges.get(1).getLine().start());
+        assertTrue(peakSeparation > 0.5d, "M roof peaks should be separated in profile plane");
+    }
+
+    private static void mRoofValleyRunsAlongExtrusionAxis(PathData valley, double extrusionLength) {
+        assertPathParallelToAxis(valley, new Vector3d(0, 1, 0), extrusionLength);
+    }
+
+    private static void assertPathParallelToAxis(PathData path, Vector3d axis, double expectedLength) {
+        assertNotNull(path.getLine());
+        Vec3d start = path.getLine().start();
+        Vec3d end = path.getLine().end();
+        Vector3d direction = new Vector3d(end.x - start.x, end.y - start.y, end.z - start.z);
+        double length = direction.length();
+        assertEquals(expectedLength, length, 0.05d);
+        direction.normalize();
+        Vector3d unitAxis = new Vector3d(axis).normalize();
+        double alignment = Math.abs(direction.dot(unitAxis));
+        assertTrue(alignment > 0.999d, "path should align with extrusion axis, got dot=" + alignment);
     }
 
     private static BoxFaceData sampleFace(double width, double height) {

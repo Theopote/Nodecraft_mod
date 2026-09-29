@@ -1,6 +1,6 @@
 # Architectural Topology & Path Join — Node Language v2
 
-**Status: PASSED / FROZEN** (Graph **V97**)
+**Status: Path Join PASSED / FROZEN; Roof Topology remediation in progress** (Graph **V97**)
 
 Focused remediation for roof topology outputs and path join semantics. The V68 inventory (18 nodes), strict input, Valid/Error, and instance budgets remain frozen under [node-language-v1-architectural-primitives.md](node-language-v1-architectural-primitives.md).
 
@@ -22,10 +22,10 @@ Focused remediation for roof topology outputs and path join semantics. The V68 i
 |-----------|--------|---------|
 | flat / shed | empty | empty |
 | gable | 1 full ridge | empty |
-| asymmetric_gable | 1 segment between left/right peaks | empty |
-| hip | 1 shortened central ridge | empty |
-| cross_gable | 2 perpendicular ridges | 1 approximate intersection |
-| m | 2 peak→center segments | 1 center valley segment |
+| asymmetric_gable | 2 ridges (extrusion edges at left/right peaks) | empty |
+| hip | 1 ridge (profile ridge edge shared with geometry) | empty |
+| cross_gable | 2 perpendicular ridges (extrusion edges) | 1 valley (primary/secondary roof plane intersection) |
+| m | 2 ridges (extrusion edges at left/right peaks) | 1 valley (extrusion edge at center valley point) |
 
 Primary paths are derived from topology lists (not independent gable approximations).
 
