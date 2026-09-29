@@ -202,6 +202,66 @@ public final class FrameUtils {
         return projected;
     }
 
+    /**
+     * Local axis that should align with the surface normal when building a frame.
+     */
+    public enum LocalUpAxis {
+        X,
+        Y,
+        Z
+    }
+
+    /**
+     * Right-handed frame: selected local axis aligns with {@code +normal}; {@code tangent}
+     * lies in the tangent plane. Axes are orthonormalized without flipping the up axis.
+     */
+    public static @Nullable FrameData fromNormalUpAxis(
+            @Nullable Vector3d origin,
+            @Nullable Vector3d unitNormal,
+            @Nullable Vector3d unitTangent,
+            @Nullable LocalUpAxis axis
+    ) {
+        if (!isFinite(origin) || !isUsableAxis(unitNormal) || !isUsableAxis(unitTangent)) {
+            return null;
+        }
+        LocalUpAxis resolved = axis == null ? LocalUpAxis.Y : axis;
+        Vector3d up = new Vector3d(unitNormal).normalize();
+        Vector3d tangent = new Vector3d(unitTangent).normalize();
+        if (Math.abs(up.dot(tangent)) > 1.0d - EPS) {
+            return null;
+        }
+
+        Vector3d x;
+        Vector3d y;
+        Vector3d z;
+        switch (resolved) {
+            case X -> {
+                x = new Vector3d(up);
+                y = new Vector3d(tangent);
+                z = new Vector3d(up).cross(tangent);
+            }
+            case Y -> {
+                x = new Vector3d(tangent);
+                y = new Vector3d(up);
+                // Z = X × Y = tangent × up (not up × tangent) so orthonormal() keeps +Y
+                z = new Vector3d(tangent).cross(up);
+            }
+            case Z -> {
+                x = new Vector3d(tangent);
+                y = new Vector3d(up).cross(tangent);
+                z = new Vector3d(up);
+            }
+            default -> {
+                return null;
+            }
+        }
+        if (!isUsableAxis(z)) {
+            return null;
+        }
+        z.normalize();
+        return FrameData.orthonormal(origin, x, y, z);
+    }
+
     private static @Nullable Vector3d resolveHint(@Nullable Vector3d xHint) {
         if (xHint != null && isUsableAxis(xHint)) {
             return new Vector3d(xHint);

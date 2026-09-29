@@ -138,35 +138,12 @@ public class AlignPointsToSurfaceNormalsNode extends AbstractOrientationNode {
                 return;
             }
 
-            Vector3d bitangent = new Vector3d(up).cross(tangent);
-            if (!VectorUtils.isNonZero(bitangent)) {
-                writeInvalid("Could not build orthonormal frame");
-                return;
-            }
-            bitangent.normalize();
-
-            Vector3d x = new Vector3d();
-            Vector3d y = new Vector3d();
-            Vector3d z = new Vector3d();
-            switch (axis) {
-                case X -> {
-                    x.set(up);
-                    y.set(tangent);
-                    z.set(bitangent);
-                }
-                case Y -> {
-                    x.set(tangent);
-                    y.set(up);
-                    z.set(bitangent);
-                }
-                case Z -> {
-                    x.set(tangent);
-                    y.set(bitangent);
-                    z.set(up);
-                }
-            }
-
-            FrameData frame = new FrameData(p, x, y, z).orthonormalized();
+            FrameUtils.LocalUpAxis frameAxis = switch (axis) {
+                case X -> FrameUtils.LocalUpAxis.X;
+                case Y -> FrameUtils.LocalUpAxis.Y;
+                case Z -> FrameUtils.LocalUpAxis.Z;
+            };
+            FrameData frame = FrameUtils.fromNormalUpAxis(p, up, tangent, frameAxis);
             if (frame == null) {
                 writeInvalid("Could not build orthonormal frame");
                 return;

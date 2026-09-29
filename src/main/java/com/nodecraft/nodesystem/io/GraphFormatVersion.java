@@ -662,8 +662,16 @@ public final class GraphFormatVersion {
      */
     public static final int V98 = 98;
 
+    /**
+     * Orientation / Frame Handedness & Projected Path Validity v2: Align Y-Up frames keep
+     * Local Y along +Normal (right-handed Z = tangent × up); Project Path fails closed on
+     * degenerate projected segments and emits LINE for two-point paths; Rotate Vector emits
+     * VectorData; Project Profile enforces MAX_LIST_ELEMENTS. Additive runtime fix.
+     */
+    public static final int V99 = 99;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V98;
+    public static final int CURRENT = V99;
 
     private GraphFormatVersion() {
     }

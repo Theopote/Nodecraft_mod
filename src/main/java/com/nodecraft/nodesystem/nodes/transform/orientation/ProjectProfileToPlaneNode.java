@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -70,6 +71,10 @@ public class ProjectProfileToPlaneNode extends AbstractOrientationNode {
         List<Vector3d> sourcePoints = profile.closedPoints();
         if (sourcePoints.size() < 4) {
             writeInvalid("Profile has fewer than 4 closed points");
+            return;
+        }
+        if (sourcePoints.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
+            writeInvalid("Profile point count exceeds MAX_LIST_ELEMENTS");
             return;
         }
 

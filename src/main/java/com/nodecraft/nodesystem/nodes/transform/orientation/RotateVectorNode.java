@@ -91,7 +91,7 @@ public class RotateVectorNode extends AbstractOrientationNode {
         Quaterniond rotation = new Quaterniond(new AxisAngle4d(Math.toRadians(angleDegrees), axis.x, axis.y, axis.z));
         Vector3d result = rotation.transform(new Vector3d(vector));
 
-        outputValues.put(OUTPUT_ROTATED_VECTOR_ID, result);
+        outputValues.put(OUTPUT_ROTATED_VECTOR_ID, VectorUtils.toVectorPort(result));
         markSuccess();
     }
 

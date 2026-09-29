@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
@@ -45,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Orientation Language v1 (Graph V77).
+ * Language fence for Orientation Language v1 / Frame Handedness & Projected Path Validity v2 (Graph V99).
  */
 class OrientationLanguageContractTest {
 
@@ -71,7 +72,9 @@ class OrientationLanguageContractTest {
     @Test
     void currentGraphFormatIsAtLeastV77() {
         assertEquals(77, GraphFormatVersion.V77);
+        assertEquals(99, GraphFormatVersion.V99);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V77);
+        assertEquals(GraphFormatVersion.V99, GraphFormatVersion.CURRENT);
     }
 
     @Test
@@ -203,6 +206,77 @@ class OrientationLanguageContractTest {
     }
 
     @Test
+    void alignYUpActuallyPointsAlongNormal() {
+        AlignProbe align = new AlignProbe();
+        align.setNodeState(Map.of("localUpAxis", "Y"));
+        Vector3d normal = new Vector3d(0, 0, 1);
+        runAlignWithHint(align, normal, new Vector3d(1, 0, 0));
+        assertEquals(Boolean.TRUE, align.getOutput("output_valid"));
+        FrameData frame = firstFrame(align);
+        assertTrue(frame.getYAxis().dot(normal) > 0.999999d);
+        assertRightHanded(frame);
+        PlaneData plane = firstPlane(align);
+        assertTrue(plane.getNormal().dot(frame.getYAxis()) > 0.999999d);
+    }
+
+    @Test
+    void alignXUpActuallyPointsAlongNormal() {
+        AlignProbe align = new AlignProbe();
+        align.setNodeState(Map.of("localUpAxis", "X"));
+        Vector3d normal = new Vector3d(0, 0, 1);
+        runAlignWithHint(align, normal, new Vector3d(1, 0, 0));
+        assertEquals(Boolean.TRUE, align.getOutput("output_valid"));
+        FrameData frame = firstFrame(align);
+        assertTrue(frame.getXAxis().dot(normal) > 0.999999d);
+        assertRightHanded(frame);
+    }
+
+    @Test
+    void alignZUpActuallyPointsAlongNormal() {
+        AlignProbe align = new AlignProbe();
+        align.setNodeState(Map.of("localUpAxis", "Z"));
+        Vector3d normal = new Vector3d(0, 1, 0);
+        runAlignWithHint(align, normal, new Vector3d(1, 0, 0));
+        assertEquals(Boolean.TRUE, align.getOutput("output_valid"));
+        FrameData frame = firstFrame(align);
+        assertTrue(frame.getZAxis().dot(normal) > 0.999999d);
+        assertRightHanded(frame);
+    }
+
+    @Test
+    void projectPathZeroLengthAfterProjectionFailsClosed() {
+        BaseNode project = node("transform.orientation.project_path_to_plane");
+        project.setInput("input_path", PathData.fromLine(new LineData(new Vec3d(0, 0, 0), new Vec3d(0, 5, 0))));
+        project.setInput("input_plane", PlaneData.XZ_PLANE);
+        project.processNode(null);
+        assertEquals(Boolean.FALSE, project.getOutput("output_valid"));
+        assertNull(project.getOutput("output_path"));
+    }
+
+    @Test
+    void projectPathLineInputEmitsLineWhenTwoPointsRemain() {
+        BaseNode project = node("transform.orientation.project_path_to_plane");
+        project.setInput("input_path", PathData.fromLine(new LineData(new Vec3d(0, 5, 0), new Vec3d(10, 5, 0))));
+        project.setInput("input_plane", PlaneData.XZ_PLANE);
+        project.processNode(null);
+        assertEquals(Boolean.TRUE, project.getOutput("output_valid"));
+        PathData path = assertInstanceOf(PathData.class, project.getOutput("output_path"));
+        assertEquals(PathData.Kind.LINE, path.getKind());
+        assertNotNull(path.getLine());
+    }
+
+    @Test
+    void rotateVectorEmitsVectorData() {
+        RotateProbe rotate = new RotateProbe();
+        rotate.setInput("input_vector", new VectorData(1, 0, 0));
+        rotate.setInput("input_axis", new VectorData(0, 1, 0));
+        rotate.setInput("input_angle", 90.0d);
+        rotate.processNode(null);
+        assertEquals(Boolean.TRUE, rotate.getOutput("output_valid"));
+        assertInstanceOf(VectorData.class, rotate.getOutput("output_rotated_vector"));
+    }
+
+    @Test
     void rotateAxisConnectedInvalidFailsClosed() {
         RotateProbe rotate = new RotateProbe();
         rotate.setInput("input_vector", new VectorData(1, 0, 0));
@@ -318,6 +392,35 @@ class OrientationLanguageContractTest {
             new Vector3d(0, 0, 0)
         );
         return new PolygonProfileData(closed, PlaneData.XY_PLANE);
+    }
+
+    private static void runAlignWithHint(AlignProbe align, Vector3d normal, Vector3d forwardHint) {
+        align.setInput("input_points", List.of(new PointData(0, 0, 0)));
+        align.setInput("input_normals", List.of(new VectorData(normal.x, normal.y, normal.z)));
+        align.connectInput("input_forward_hint", NodeDataType.VECTOR);
+        align.setInput("input_forward_hint", new VectorData(forwardHint.x, forwardHint.y, forwardHint.z));
+        align.processNode(null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static FrameData firstFrame(AlignProbe align) {
+        List<FrameData> frames = (List<FrameData>) align.getOutput("output_frames");
+        assertNotNull(frames);
+        assertFalse(frames.isEmpty());
+        return frames.getFirst();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static PlaneData firstPlane(AlignProbe align) {
+        List<PlaneData> planes = (List<PlaneData>) align.getOutput("output_planes");
+        assertNotNull(planes);
+        assertFalse(planes.isEmpty());
+        return planes.getFirst();
+    }
+
+    private static void assertRightHanded(FrameData frame) {
+        Vector3d cross = new Vector3d(frame.getXAxis()).cross(frame.getYAxis());
+        assertEquals(1.0d, cross.dot(frame.getZAxis()), 1.0e-6d);
     }
 
     private static List<PointData> oversizedPointList() {

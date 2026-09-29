@@ -18,6 +18,7 @@ import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GeometryMirror;
 import com.nodecraft.nodesystem.util.GeometryTransform;
@@ -77,10 +78,10 @@ class TransformFamilyContractTest {
         node.processNode(null);
 
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
-        Vector3d rotated = assertInstanceOf(Vector3d.class, node.getOutput("output_rotated_vector"));
-        assertEquals(0.0d, rotated.x, 1.0e-6d);
-        assertEquals(0.0d, rotated.y, 1.0e-6d);
-        assertEquals(-1.0d, rotated.z, 1.0e-6d);
+        VectorData rotated = assertInstanceOf(VectorData.class, node.getOutput("output_rotated_vector"));
+        assertEquals(0.0d, rotated.x(), 1.0e-6d);
+        assertEquals(0.0d, rotated.y(), 1.0e-6d);
+        assertEquals(-1.0d, rotated.z(), 1.0e-6d);
     }
 
     @Test

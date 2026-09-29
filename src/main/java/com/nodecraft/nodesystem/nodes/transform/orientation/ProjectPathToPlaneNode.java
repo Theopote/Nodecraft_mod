@@ -6,12 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.SpatialTolerance;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -76,7 +75,6 @@ public class ProjectPathToPlaneNode extends AbstractOrientationNode {
         }
 
         List<Vector3d> projectedVectors = new ArrayList<>(sourceVertices.size());
-        List<Vec3d> projectedVec3d = new ArrayList<>(sourceVertices.size());
         List<Double> distances = new ArrayList<>(sourceVertices.size());
         for (Vector3d source : sourceVertices) {
             OrientationUtils.PointProjection projection = OrientationUtils.projectPoint(normalized, source);
@@ -85,23 +83,56 @@ public class ProjectPathToPlaneNode extends AbstractOrientationNode {
                 return;
             }
             projectedVectors.add(projection.projected());
-            projectedVec3d.add(new Vec3d(projection.projected().x, projection.projected().y, projection.projected().z));
             distances.add(projection.distance());
         }
 
-        PolylineData polyline;
-        try {
-            polyline = new PolylineData(projectedVec3d);
-        } catch (IllegalArgumentException ex) {
+        List<Vector3d> canonical = adjacentDedupe(projectedVectors);
+        List<Double> canonicalDistances = adjacentDedupeDistances(projectedVectors, distances);
+        if (canonical.size() < 2) {
+            writeInvalid("Projected path collapsed to fewer than 2 distinct vertices");
+            return;
+        }
+        if (PathUtils.hasDegenerateSegment(canonical)) {
+            writeInvalid("Projected path contains a zero-length segment");
+            return;
+        }
+
+        PathData path = PathUtils.toPathData(canonical);
+        if (path == null) {
             writeInvalid("Projected path is invalid");
             return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projectedVectors));
-        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
-        outputValues.put(OUTPUT_COUNT_ID, projectedVectors.size());
+        outputValues.put(OUTPUT_PATH_ID, path);
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(canonical));
+        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(canonicalDistances));
+        outputValues.put(OUTPUT_COUNT_ID, canonical.size());
         markSuccess();
+    }
+
+    private static List<Vector3d> adjacentDedupe(List<Vector3d> points) {
+        List<Vector3d> out = new ArrayList<>(points.size());
+        double epsSq = SpatialTolerance.EPS_SQ;
+        for (Vector3d point : points) {
+            if (out.isEmpty() || out.getLast().distanceSquared(point) > epsSq) {
+                out.add(new Vector3d(point));
+            }
+        }
+        return out;
+    }
+
+    private static List<Double> adjacentDedupeDistances(List<Vector3d> points, List<Double> distances) {
+        List<Double> out = new ArrayList<>(distances.size());
+        double epsSq = SpatialTolerance.EPS_SQ;
+        Vector3d lastKept = null;
+        for (int i = 0; i < points.size(); i++) {
+            Vector3d point = points.get(i);
+            if (lastKept == null || lastKept.distanceSquared(point) > epsSq) {
+                out.add(distances.get(i));
+                lastKept = point;
+            }
+        }
+        return out;
     }
 
     @Override
