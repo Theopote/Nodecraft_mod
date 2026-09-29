@@ -75,7 +75,7 @@ Point/vector resolution at boundaries uses `SpatialValueResolver` (not duplicate
 | 0 | Block Position Input | `reference.points.block_position` | Integer block position source |
 | 1 | Construct Block Position | `reference.points.construct_coordinate` | X/Y/Z integers -> BLOCK_POS |
 | 2 | Deconstruct Block Position | `reference.points.deconstruct_block_position` | BLOCK_POS -> integers |
-| 3 | Block To Point | `reference.points.point_from_block` | Explicit BLOCK_POS -> POINT |
+| 3 | Block To Point | `reference.points.point_from_block` | Explicit BLOCK_POS → POINT; default block center `(x+0.5,y+0.5,z+0.5)` |
 | 4 | Construct Point | `reference.points.construct_point` | X/Y/Z doubles -> POINT |
 | 5 | Deconstruct Point | `reference.points.deconstruct_point` | POINT -> doubles |
 | 6 | Translate Point | `reference.points.translate_point` | Point + Vector displacement |
@@ -131,3 +131,5 @@ Deconstruct Face Edge rejects degenerate lines (`lengthSquared <= EPS`).
 - `LineData` finite/non-degenerate invariant at datatype layer
 - Rename display/id `mid_point` -> `midpoint` (optional canonical naming)
 - Further slim Deconstruct Box Face outputs (e.g. drop Plane)
+- Invalid / truncated INTEGER saved-state on Block Position Input → future warehouse-wide `StrictStateReader.requireInteger`
+- `BoxGeometryData` constructor / topology invariant hardening at datatype layer

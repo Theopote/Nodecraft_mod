@@ -42,7 +42,7 @@ weights precomputed to avoid scaling finite values to Infinity),
 | 0 | Block Position Input | `reference.points.block_position` | yes | OptionalPortDrive on X/Y/Z |
 | 1 | Construct Block Position | `reference.points.construct_coordinate` | yes | exact INTEGER |
 | 2 | Deconstruct Block Position | `reference.points.deconstruct_block_position` | yes | 0 sentinel on invalid |
-| 3 | Block To Point | `reference.points.point_from_block` | yes | explicit conversion |
+| 3 | Block To Point | `reference.points.point_from_block` | yes | default block center |
 | 4 | Construct Point | `reference.points.construct_point` | yes | strict DOUBLE |
 | 5 | Deconstruct Point | `reference.points.deconstruct_point` | yes | NaN components on invalid |
 | 6 | Translate Point | `reference.points.translate_point` | yes | finite add fence |
@@ -58,6 +58,18 @@ weights precomputed to avoid scaling finite values to Infinity),
 | 16 | Get Face Edge | `reference.points.get_face_edge` | yes | Valid+Found+Error, BoxFaceValidator |
 | 17 | Deconstruct Box Face | `reference.points.deconstruct_face` | yes | BoxFaceValidator preflight |
 | 18 | Deconstruct Face Edge | `reference.points.deconstruct_edge` | yes | safe length/midpoint/vector |
+
+## Block To Point policy
+
+Explicit `BLOCK_POS` → `POINT` conversion only (no silent Point→BlockPos reverse):
+
+| `useBlockCenter` | Mapping |
+|------------------|---------|
+| `true` (default) | `BlockPos(x,y,z)` → `(x+0.5, y+0.5, z+0.5)` |
+| `false` | min corner `(x, y, z)` |
+
+Default block center is the intentional modeling choice for continuous geometry inputs
+(box/sphere centers, placement origins).
 
 ## Query semantics (Valid + Found + Error)
 
@@ -77,6 +89,13 @@ Examples:
 
 Closest Point, Point List Center, and Point List Bounds use
 `PointUtils.resolveStrictPointListBounded(GenerationLimits.MAX_LIST_ELEMENTS)`.
+
+## Deferred
+
+- Invalid / truncated INTEGER saved-state on Block Position Input → future warehouse-wide
+  `StrictStateReader.requireInteger` (no per-family Graph bump)
+- `BoxGeometryData` constructor / topology invariant hardening at datatype layer
+  (Get Box Corner defensive completeness)
 
 ## Migration (V86 → V87)
 
