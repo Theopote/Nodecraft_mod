@@ -15,8 +15,8 @@ public final class NumericDomainResolver {
     public static @Nullable NumericRangeData resolveDomain(@Nullable Object domainValue,
                                                            double defaultStart,
                                                            double defaultEnd) {
-        if (domainValue instanceof NumericRangeData domain) {
-            return NumericRangeData.canonical(domain.start(), domain.end());
+        if (domainValue instanceof NumericRangeData(double start, double end)) {
+            return NumericRangeData.canonical(start, end);
         }
         return NumericRangeData.canonical(defaultStart, defaultEnd);
     }
@@ -26,8 +26,8 @@ public final class NumericDomainResolver {
                                                                    @Nullable Object endValue,
                                                                    double defaultStart,
                                                                    double defaultEnd) {
-        if (domainValue instanceof NumericRangeData domain) {
-            return NumericRangeData.canonical(domain.start(), domain.end());
+        if (domainValue instanceof NumericRangeData(double start1, double end1)) {
+            return NumericRangeData.canonical(start1, end1);
         }
         double start = startValue instanceof Number n ? n.doubleValue() : defaultStart;
         double end = endValue instanceof Number n ? n.doubleValue() : defaultEnd;

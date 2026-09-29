@@ -80,7 +80,7 @@ public enum NodeDataType {
 
     BLOCK_POS("block_pos", "Block Position", BlockPos.class),
     BLOCK_LIST("block_list", "Block List", BlockPosList.class, ListElementKind.BLOCK_POS),
-    BLOCK_INFO("block_info", "Block Info", Object.class),
+    BLOCK_INFO("block_info", "Block Info", BlockInfoData.class),
     BLOCK_STATE_DATA("block_state_data", "Block State Data", BlockStateData.class),
     BLOCK_TYPE("block_type", "Block Type", String.class),
     /** Ordered weighted block ids for Material palette mapping. */
@@ -88,7 +88,7 @@ public enum NodeDataType {
     ITEM_TYPE("item_type", "Item Type", String.class),
     ITEM_STACK("item_stack", "Item Stack", Object.class),
     ENTITY_TYPE("entity_type", "Entity Type", String.class),
-    ENTITY_INFO("entity_info", "Entity Info", Object.class),
+    ENTITY_INFO("entity_info", "Entity Info", EntityInfoData.class),
     MINECRAFT_ENTITY("minecraft_entity", "Minecraft Entity", Object.class),
     MINECRAFT_ENTITY_LIST("minecraft_entity_list", "Minecraft Entity List", List.class, ListElementKind.MINECRAFT_ENTITY),
     MINECRAFT_BLOCK("minecraft_block", "Minecraft Block", Object.class),
@@ -309,6 +309,17 @@ public enum NodeDataType {
             return value instanceof BlockPaletteData;
         }
 
+        // BLOCK_INFO accepts canonical snapshots plus legacy BlockState / block-id String wires.
+        if (this == BLOCK_INFO) {
+            return value instanceof BlockInfoData
+                || value instanceof net.minecraft.block.BlockState
+                || (value instanceof String blockId && !blockId.isBlank());
+        }
+
+        if (this == ENTITY_INFO) {
+            return value instanceof EntityInfoData;
+        }
+
         if (this == GEOMETRY && value instanceof GeometryData) {
             return true;
         }
@@ -330,7 +341,10 @@ public enum NodeDataType {
             return true;
         }
         return switch (kind) {
-            case NONE, UNCONSTRAINED, BLOCK_INFO, BLOCK_PLACEMENT -> true;
+            case NONE, UNCONSTRAINED, BLOCK_PLACEMENT -> true;
+            case BLOCK_INFO -> value instanceof BlockInfoData
+                || value instanceof net.minecraft.block.BlockState
+                || (value instanceof String blockId && !blockId.isBlank());
             case INTEGER -> value instanceof Integer;
             case DOUBLE -> value instanceof Number;
             case BOOLEAN -> value instanceof Boolean;

@@ -69,7 +69,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (!hasCachedPosition) {
-            capturePosition(context);
+            captureFromExecutionContext(context);
         }
         updateOutputs();
     }
@@ -113,7 +113,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
 
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
             if (ImGui.button("Update Position##updatePosition", buttonWidth, ImGui.getFrameHeight())) {
-                if (capturePosition(null)) {
+                if (captureFromClientPlayer()) {
                     changed = true;
                     markDirty();
                 }
@@ -130,22 +130,23 @@ public class PlayerPositionNode extends BaseCustomUINode {
     }
 
     /**
-     * Samples the current player position into the node snapshot.
-     *
-     * @param context optional execution context; when null, samples from the client player
-     * @return true if a position was captured
+     * Graph-runtime capture: ExecutionContext player only (no MinecraftClient fallback).
      */
-    private boolean capturePosition(@Nullable ExecutionContext context) {
-        if (context != null) {
-            Vector3d fromContext = readPlayerPosition(context);
-            if (fromContext != null) {
-                setCachedPosition(fromContext.x, fromContext.y, fromContext.z);
-                return true;
-            }
+    private boolean captureFromExecutionContext(@Nullable ExecutionContext context) {
+        if (context == null) {
+            return false;
         }
-        return captureFromClientPlayer();
+        Vector3d fromContext = readPlayerPosition(context);
+        if (fromContext == null) {
+            return false;
+        }
+        setCachedPosition(fromContext.x, fromContext.y, fromContext.z);
+        return true;
     }
 
+    /**
+     * UI capture: samples from the client player only.
+     */
     private boolean captureFromClientPlayer() {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null || client.player == null) {
@@ -210,7 +211,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
             return;
         }
         this.useEyePosition = useEyePosition;
-        capturePosition(null);
+        captureFromClientPlayer();
         markDirty();
     }
 

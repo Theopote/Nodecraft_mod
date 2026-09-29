@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.datatypes.BlockInfoData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.util.BlockListUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
@@ -108,6 +109,12 @@ final class WorldWriteUtils {
     }
 
     static @Nullable BlockState resolveBlockState(Object value) {
+        if (value instanceof BlockInfoData info) {
+            if (info.blockId().isBlank()) {
+                return null;
+            }
+            return BlockStateResolver.resolve(info.blockId(), info.stateProperties());
+        }
         if (value instanceof BlockState blockState) {
             return blockState;
         }

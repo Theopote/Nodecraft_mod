@@ -745,8 +745,15 @@ public final class GraphFormatVersion {
      */
     public static final int V111 = 111;
 
+    /**
+     * Input Context Snapshot Data Contract v2: Player Raycast BLOCK_INFO/ENTITY_INFO
+     * emit BlockInfoData/EntityInfoData; Position runtime capture is ExecutionContext-only.
+     * No wire changes.
+     */
+    public static final int V112 = 112;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V111;
+    public static final int CURRENT = V112;
 
     private GraphFormatVersion() {
     }

@@ -6,8 +6,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BlockInfoData;
+import com.nodecraft.nodesystem.datatypes.EntityInfoData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -69,8 +72,12 @@ public class PlayerRaycastNode extends BaseCustomUINode {
 
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether world context was available for raycast", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", "World-space hit location", NodeDataType.POINT, this));
-        addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block", "The currently hit block", NodeDataType.BLOCK_INFO, this));
-        addOutputPort(new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity", "The currently hit entity", NodeDataType.ENTITY_INFO, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block",
+            "Block snapshot at hit time (null when entity hit or miss)",
+            NodeDataType.BLOCK_INFO, this));
+        addOutputPort(new BasePort(OUTPUT_HIT_ENTITY_ID, "Hit Entity",
+            "Entity snapshot at hit time (null when block hit or miss); never a live Entity",
+            NodeDataType.ENTITY_INFO, this));
         addOutputPort(new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", "Distance from the player to the hit", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", "Whether the raycast hit something", NodeDataType.BOOLEAN, this));
 
@@ -79,7 +86,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Raycasts from the player view and reports hit position, block, entity, and distance.";
+        return "Raycasts from the player view and reports hit position plus block/entity snapshots and distance.";
     }
 
     @Override
@@ -137,9 +144,11 @@ public class PlayerRaycastNode extends BaseCustomUINode {
 
         HitCandidate blockCandidate = null;
         if (blockHit != null && blockHit.getType() != HitResult.Type.MISS) {
+            BlockPos blockPos = blockHit.getBlockPos();
             blockCandidate = HitCandidate.block(
                 blockHit.getPos(),
-                blockHit.getBlockPos(),
+                blockPos,
+                context.getWorld().getBlockState(blockPos),
                 start.distanceTo(blockHit.getPos())
             );
         }
@@ -154,12 +163,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
             return;
         }
 
-        setHit(
-            best.hitPos,
-            best.blockPos != null ? context.getWorld().getBlockState(best.blockPos) : null,
-            best.entity,
-            best.distance
-        );
+        setHit(best);
     }
 
     private @Nullable HitCandidate raycastEntities(ExecutionContext context,
@@ -220,13 +224,22 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         syncOutputPorts();
     }
 
-    private void setHit(Vec3d hitPos, @Nullable Object blockState, @Nullable Entity entity, double distance) {
+    private void setHit(HitCandidate best) {
+        BlockInfoData blockInfo = null;
+        EntityInfoData entityInfo = null;
+        if (best.blockPos != null) {
+            BlockState state = best.blockState;
+            blockInfo = BlockInfoData.fromBlockState(best.blockPos, state);
+        } else if (best.entity != null) {
+            entityInfo = EntityInfoData.fromEntity(best.entity);
+        }
+
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_HAS_HIT_ID, true);
-        outputValues.put(OUTPUT_HIT_POSITION_ID, new PointData(hitPos.x, hitPos.y, hitPos.z));
-        outputValues.put(OUTPUT_HIT_BLOCK_ID, blockState);
-        outputValues.put(OUTPUT_HIT_ENTITY_ID, entity);
-        outputValues.put(OUTPUT_HIT_DISTANCE_ID, distance);
+        outputValues.put(OUTPUT_HIT_POSITION_ID, new PointData(best.hitPos.x, best.hitPos.y, best.hitPos.z));
+        outputValues.put(OUTPUT_HIT_BLOCK_ID, blockInfo);
+        outputValues.put(OUTPUT_HIT_ENTITY_ID, entityInfo);
+        outputValues.put(OUTPUT_HIT_DISTANCE_ID, best.distance);
         syncOutputPorts();
     }
 
@@ -235,22 +248,31 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         @Nullable
         final BlockPos blockPos;
         @Nullable
+        final BlockState blockState;
+        @Nullable
         final Entity entity;
         final double distance;
 
-        private HitCandidate(Vec3d hitPos, @Nullable BlockPos blockPos, @Nullable Entity entity, double distance) {
+        private HitCandidate(
+            Vec3d hitPos,
+            @Nullable BlockPos blockPos,
+            @Nullable BlockState blockState,
+            @Nullable Entity entity,
+            double distance
+        ) {
             this.hitPos = hitPos;
             this.blockPos = blockPos;
+            this.blockState = blockState;
             this.entity = entity;
             this.distance = distance;
         }
 
-        private static HitCandidate block(Vec3d hitPos, BlockPos blockPos, double distance) {
-            return new HitCandidate(hitPos, blockPos, null, distance);
+        private static HitCandidate block(Vec3d hitPos, BlockPos blockPos, BlockState blockState, double distance) {
+            return new HitCandidate(hitPos, blockPos, blockState, null, distance);
         }
 
         private static HitCandidate entity(Vec3d hitPos, double distance, Entity entity) {
-            return new HitCandidate(hitPos, null, entity, distance);
+            return new HitCandidate(hitPos, null, null, entity, distance);
         }
     }
 
