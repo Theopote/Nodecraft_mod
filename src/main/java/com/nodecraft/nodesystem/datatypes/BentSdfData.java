@@ -4,6 +4,10 @@ import org.joml.Vector3d;
 
 /**
  * Applies an axial bend domain transform before sampling an input SDF.
+ * <p>
+ * Constructors are strict (Graph V101): no silent axis / normal / length repair.
+ * Callers must supply a usable axis, a bend normal that is not parallel to the axis,
+ * and a positive bend length.
  */
 public class BentSdfData implements SignedDistanceFieldData {
     private static final double EPS = 1.0e-9d;
@@ -30,13 +34,45 @@ public class BentSdfData implements SignedDistanceFieldData {
                        double bendDegrees,
                        double bendLength,
                        ClampMode clampMode) {
+        if (source == null) {
+            throw new IllegalArgumentException("Bent SDF requires a source field");
+        }
+        if (axisOrigin == null || !isFinite(axisOrigin)) {
+            throw new IllegalArgumentException("Bent SDF requires a finite axis origin");
+        }
+        if (axisDirection == null || !isFinite(axisDirection) || axisDirection.lengthSquared() <= EPS) {
+            throw new IllegalArgumentException("Bent SDF requires a non-zero finite axis direction");
+        }
+        if (bendNormal == null || !isFinite(bendNormal) || bendNormal.lengthSquared() <= EPS) {
+            throw new IllegalArgumentException("Bent SDF requires a non-zero finite bend normal");
+        }
+        if (!Double.isFinite(bendDegrees)) {
+            throw new IllegalArgumentException("Bent SDF requires a finite bend angle");
+        }
+        if (!Double.isFinite(bendLength) || bendLength <= 0.0d) {
+            throw new IllegalArgumentException("Bent SDF requires a positive bend length");
+        }
+
+        Vector3d axis = new Vector3d(axisDirection).normalize();
+        Vector3d projected = new Vector3d(bendNormal);
+        projected.sub(new Vector3d(axis).mul(projected.dot(axis)));
+        if (projected.lengthSquared() <= EPS) {
+            throw new IllegalArgumentException("Bend normal must not be parallel to axis direction");
+        }
+        projected.normalize();
+        Vector3d binormal = new Vector3d(axis).cross(projected);
+        if (binormal.lengthSquared() <= EPS) {
+            throw new IllegalArgumentException("Degenerate bend frame");
+        }
+        binormal.normalize();
+
         this.source = source;
         this.axisOrigin = new Vector3d(axisOrigin);
-        this.axisDirection = normalizeOr(axisDirection, new Vector3d(0.0d, 1.0d, 0.0d));
-        this.bendNormal = normalizeBendNormal(bendNormal, this.axisDirection);
-        this.binormal = new Vector3d(this.axisDirection).cross(this.bendNormal).normalize();
+        this.axisDirection = axis;
+        this.bendNormal = projected;
+        this.binormal = binormal;
         this.angleRadians = Math.toRadians(bendDegrees);
-        this.bendLength = Math.max(EPS, Math.abs(bendLength));
+        this.bendLength = bendLength;
         this.clampMode = clampMode == null ? ClampMode.CLAMP : clampMode;
     }
 
@@ -110,28 +146,8 @@ public class BentSdfData implements SignedDistanceFieldData {
         };
     }
 
-    private static Vector3d normalizeBendNormal(Vector3d normal, Vector3d axis) {
-        Vector3d projected = normal == null ? defaultNormal(axis) : new Vector3d(normal);
-        projected.sub(new Vector3d(axis).mul(projected.dot(axis)));
-        if (projected.lengthSquared() <= EPS) {
-            projected = defaultNormal(axis);
-        }
-        return projected.normalize();
-    }
-
-    private static Vector3d defaultNormal(Vector3d axis) {
-        Vector3d fallback = Math.abs(axis.y) < 0.9d
-            ? new Vector3d(0.0d, 1.0d, 0.0d)
-            : new Vector3d(1.0d, 0.0d, 0.0d);
-        fallback.sub(new Vector3d(axis).mul(fallback.dot(axis)));
-        return fallback.normalize();
-    }
-
-    private static Vector3d normalizeOr(Vector3d value, Vector3d fallback) {
-        if (value == null || value.lengthSquared() <= EPS) {
-            return fallback.normalize();
-        }
-        return new Vector3d(value).normalize();
+    private static boolean isFinite(Vector3d value) {
+        return Double.isFinite(value.x) && Double.isFinite(value.y) && Double.isFinite(value.z);
     }
 
     private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double angle) {

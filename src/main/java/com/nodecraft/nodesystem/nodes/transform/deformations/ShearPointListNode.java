@@ -139,7 +139,11 @@ public class ShearPointListNode extends AbstractDeformationNode {
                 shearAxis = ShearAxis.X;
             }
         }
-        if (map.get("factorU") instanceof Number n) factorU = n.doubleValue();
-        if (map.get("factorV") instanceof Number n) factorV = n.doubleValue();
+        if (map.get("factorU") instanceof Number n && Double.isFinite(n.doubleValue())) {
+            factorU = n.doubleValue();
+        }
+        if (map.get("factorV") instanceof Number n && Double.isFinite(n.doubleValue())) {
+            factorV = n.doubleValue();
+        }
     }
 }

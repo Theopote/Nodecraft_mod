@@ -83,7 +83,7 @@ class PlacementLanguageV2ContractTest {
         assertEquals(76, GraphFormatVersion.V76);
         assertEquals(100, GraphFormatVersion.V100);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V76);
-        assertEquals(GraphFormatVersion.V100, GraphFormatVersion.CURRENT);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V100);
     }
 
     @Test

@@ -677,8 +677,15 @@ public final class GraphFormatVersion {
      */
     public static final int V100 = 100;
 
+    /**
+     * Deformation Bend Contract & SDF Bounds v3: Bend SDF fails closed when bend normal is
+     * parallel to axis; output bounds from SdfSource.min/max with boundsSamples; strict
+     * BentSdfData / TwistedSdfData constructors (no silent axis/normal/length repair). No wire changes.
+     */
+    public static final int V101 = 101;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V100;
+    public static final int CURRENT = V101;
 
     private GraphFormatVersion() {
     }

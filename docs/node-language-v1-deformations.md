@@ -8,36 +8,41 @@ Basic Transforms (V49–V52).
 
 Related: [`node-language-v1-basic-transforms.md`](./node-language-v1-basic-transforms.md),
 [`node-language-v1-reference-vectors.md`](./node-language-v1-reference-vectors.md),
-[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
+[`node-language-v2-deformations-bend-contract.md`](./node-language-v2-deformations-bend-contract.md) (Graph **V101** bend / SDF bounds).
 
 ## Product boundary
 
 ```text
-deformations = point-list + SDF/geometry morphs (11 nodes, order 0-10)
+deformations = point-list + SDF morphs (11 nodes, order 0-10)
 POINT_LIST / VECTOR_LIST: strict fail-closed
 Optional ports: OptionalPortDrive
 INTEGER: exact Integer
 Length/Radius/Power > 0; Frequency >= 0; Taper scales >= 0
 no silent EPS/abs/minScale/swap/intValue repair
-Geometry-connected precedence over SDF
+Geometry-connected precedence over SDF  (legacy V53 Twist/Bend Geometry; retired V78)
 budgets: GenerationLimits (relax points, deform voxels)
 ```
 
 ## Inventory (11)
 
-| order | Display name | Type id |
-|------:|--------------|---------|
-| 0 | Twist Point List | `transform.deformations.twist` |
-| 1 | Bend Point List | `transform.deformations.bend` |
-| 2 | Taper Point List | `transform.deformations.taper` |
-| 3 | Shear Point List | `transform.deformations.shear_point_list` |
-| 4 | Noise Displace Point List | `transform.deformations.noise_displace` |
-| 5 | Spherical Displace | `transform.deformations.spherical_displace` |
-| 6 | Path Attract Point List | `transform.deformations.curve_attract` |
-| 7 | Relax Point List | `transform.deformations.relax_points` |
-| 8 | Lattice Deform Point List | `transform.deformations.lattice_deform` |
-| 9 | Twist Geometry | `transform.deformations.twist_geometry` |
-| 10 | Bend Geometry | `transform.deformations.bend_geometry` |
+| order | Display name | Type id | Notes |
+|------:|--------------|---------|-------|
+| 0 | Twist Point List | `transform.deformations.twist` | |
+| 1 | Bend Point List | `transform.deformations.bend` | |
+| 2 | Taper Point List | `transform.deformations.taper` | |
+| 3 | Shear Point List | `transform.deformations.shear_point_list` | |
+| 4 | Noise Displace Point List | `transform.deformations.noise_displace` | |
+| 5 | Spherical Displace | `transform.deformations.spherical_displace` | |
+| 6 | Path Attract Point List | `transform.deformations.curve_attract` | |
+| 7 | Relax Point List | `transform.deformations.relax_points` | |
+| 8 | Lattice Deform Point List | `transform.deformations.lattice_deform` | |
+| 9 | Twist SDF | `transform.deformations.twist_sdf` | V78 replaces Twist Geometry |
+| 10 | Bend SDF | `transform.deformations.bend_sdf` | V78 replaces Bend Geometry; V101 bend contract |
+
+Orders 9–10 were Twist/Bend Geometry under V53; Graph **V78** renamed them to SDF-only
+ids. See [`node-language-v2-deformations-bend-contract.md`](./node-language-v2-deformations-bend-contract.md)
+for Bend SDF parallel-normal fail-closed and source-bounds sampling (V101).
 
 ## Parameter rules
 
@@ -101,7 +106,7 @@ No user-facing Max Points / Max Source Voxels properties.
 - `VectorUtils.resolveStrictVectorList` / `toVector` / `toVectorPort`
 - `OptionalPortDrive`
 - `StrictIntegerUtils`
-- `DeformationUtils.rotateAroundAxis` only (no duplicate resolvers)
+- `DeformationUtils.rotateAroundAxis` / `resolveBendFrame` (V101; no duplicate resolvers)
 
 ## Migration (V52 → V53)
 

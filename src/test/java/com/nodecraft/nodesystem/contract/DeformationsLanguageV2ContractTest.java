@@ -19,6 +19,8 @@ import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.transform.deformations.BendPointListNode;
+import com.nodecraft.nodesystem.nodes.transform.deformations.BendSdfNode;
 import com.nodecraft.nodesystem.nodes.transform.deformations.TwistSdfNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -77,6 +79,7 @@ class DeformationsLanguageV2ContractTest {
     void currentGraphFormatIsAtLeastV78() {
         assertEquals(78, GraphFormatVersion.V78);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V78);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V101);
     }
 
     @Test
@@ -202,6 +205,129 @@ class DeformationsLanguageV2ContractTest {
     }
 
     @Test
+    void bendSdfParallelNormalFailsClosed() {
+        BendSdfProbe probe = new BendSdfProbe();
+        SignedDistanceFieldData sdf = point -> point.length() - 1.0d;
+        probe.setInput("input_sdf", sdf);
+        probe.connectInput("input_bounds_min", NodeDataType.POINT);
+        probe.connectInput("input_bounds_max", NodeDataType.POINT);
+        probe.setInput("input_bounds_min", new PointData(-2, -2, -2));
+        probe.setInput("input_bounds_max", new PointData(2, 2, 2));
+        probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
+        probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
+        probe.setInput("input_axis_origin", new PointData(0, 0, 0));
+        probe.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
+        assertNull(probe.getOutput("output_sdf"));
+    }
+
+    @Test
+    void bendPointListCustomParallelNormalFailsClosed() {
+        BendPointListProbe bend = new BendPointListProbe();
+        bend.setNodeState(Map.of("bendPlaneMode", "CUSTOM", "bendDegrees", 45.0d, "bendLength", 10.0d));
+        bend.setInput("input_points", List.of(new PointData(0, 0, 0), new PointData(0, 5, 0)));
+        bend.setInput("input_axis_origin", new PointData(0, 0, 0));
+        bend.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        bend.connectInput("input_bend_normal", NodeDataType.VECTOR);
+        bend.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        bend.processNode(null);
+        assertEquals(Boolean.FALSE, bend.getOutput("output_valid"));
+        assertTrue(String.valueOf(bend.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
+        assertEquals(0, bend.getOutput("output_count"));
+    }
+
+    @Test
+    void bendSdfExplicitBoundsUsedForCustomSdf() {
+        BendSdfProbe probe = new BendSdfProbe();
+        SignedDistanceFieldData sdf = point -> point.length() - 1.0d;
+        probe.setInput("input_sdf", sdf);
+        probe.connectInput("input_bounds_min", NodeDataType.POINT);
+        probe.connectInput("input_bounds_max", NodeDataType.POINT);
+        probe.setInput("input_bounds_min", new PointData(-2, -2, -2));
+        probe.setInput("input_bounds_max", new PointData(2, 2, 2));
+        probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
+        probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
+        probe.setInput("input_axis_origin", new PointData(0, 0, 0));
+        probe.setInput("input_axis_direction", new Vector3d(1, 0, 0));
+        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        probe.setNodeState(Map.of(
+            "bendDegrees", 90.0d,
+            "bendLength", 10.0d,
+            "boundsPadding", 0.0d,
+            "boundsSamples", 5
+        ));
+        probe.processNode(null);
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertNotNull(probe.getOutput("output_sdf"));
+        PointData outMin = assertInstanceOf(PointData.class, probe.getOutput("output_bounds_min"));
+        PointData outMax = assertInstanceOf(PointData.class, probe.getOutput("output_bounds_max"));
+        assertTrue(Double.isFinite(outMin.getX()) && Double.isFinite(outMin.getY()) && Double.isFinite(outMin.getZ()));
+        assertTrue(Double.isFinite(outMax.getX()) && Double.isFinite(outMax.getY()) && Double.isFinite(outMax.getZ()));
+        assertTrue(outMin.getX() <= outMax.getX()
+            && outMin.getY() <= outMax.getY()
+            && outMin.getZ() <= outMax.getZ());
+    }
+
+    @Test
+    void bendSdfBoundsSamplesAffectEstimate() {
+        SignedDistanceFieldData sdf = point -> point.length() - 1.0d;
+
+        BendSdfProbe coarse = bendProbeWithSource(sdf);
+        coarse.setNodeState(Map.of(
+            "bendDegrees", 90.0d,
+            "bendLength", 10.0d,
+            "boundsPadding", 0.0d,
+            "boundsSamples", 2
+        ));
+        coarse.processNode(null);
+        assertEquals(Boolean.TRUE, coarse.getOutput("output_valid"));
+        PointData coarseMin = assertInstanceOf(PointData.class, coarse.getOutput("output_bounds_min"));
+        PointData coarseMax = assertInstanceOf(PointData.class, coarse.getOutput("output_bounds_max"));
+
+        BendSdfProbe fine = bendProbeWithSource(sdf);
+        fine.setNodeState(Map.of(
+            "bendDegrees", 90.0d,
+            "bendLength", 10.0d,
+            "boundsPadding", 0.0d,
+            "boundsSamples", 8
+        ));
+        fine.processNode(null);
+        assertEquals(Boolean.TRUE, fine.getOutput("output_valid"));
+        PointData fineMin = assertInstanceOf(PointData.class, fine.getOutput("output_bounds_min"));
+        PointData fineMax = assertInstanceOf(PointData.class, fine.getOutput("output_bounds_max"));
+
+        assertTrue(volume(coarseMin, coarseMax) > 0.0d);
+        assertTrue(volume(fineMin, fineMax) > 0.0d);
+        assertEquals(2, coarse.getBoundsSamples());
+        assertEquals(8, fine.getBoundsSamples());
+        // Hull may be identical when corner extrema already dominate; property path is the lock.
+    }
+
+    private static BendSdfProbe bendProbeWithSource(SignedDistanceFieldData sdf) {
+        BendSdfProbe probe = new BendSdfProbe();
+        probe.setInput("input_sdf", sdf);
+        probe.connectInput("input_bounds_min", NodeDataType.POINT);
+        probe.connectInput("input_bounds_max", NodeDataType.POINT);
+        probe.setInput("input_bounds_min", new PointData(0, -2, -2));
+        probe.setInput("input_bounds_max", new PointData(10, 2, 2));
+        probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
+        probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
+        probe.setInput("input_axis_origin", new PointData(0, 0, 0));
+        probe.setInput("input_axis_direction", new Vector3d(1, 0, 0));
+        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        return probe;
+    }
+
+    private static double volume(PointData min, PointData max) {
+        return Math.max(0.0d, max.getX() - min.getX())
+            * Math.max(0.0d, max.getY() - min.getY())
+            * Math.max(0.0d, max.getZ() - min.getZ());
+    }
+
+    @Test
     void migrateV77ToV78RenamesSdfNodesAndDropsGeometryWires() {
         SavedGraph graph = new SavedGraph();
         graph.formatVersion = GraphFormatVersion.V77;
@@ -311,6 +437,18 @@ class DeformationsLanguageV2ContractTest {
             inputValues.put(portId, value);
         }
 
+        void connectInput(String portId, NodeDataType outputType) {
+            DeformationsLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class BendSdfProbe extends BendSdfNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            DeformationsLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class BendPointListProbe extends BendPointListNode {
         void connectInput(String portId, NodeDataType outputType) {
             DeformationsLanguageV2ContractTest.connectInput(this, portId, outputType);
         }

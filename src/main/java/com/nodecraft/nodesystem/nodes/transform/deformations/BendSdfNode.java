@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import com.nodecraft.nodesystem.util.SdfBoundsEstimator;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -85,7 +84,7 @@ public class BendSdfNode extends AbstractSdfDeformationNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        SdfSource source = resolveSdfSource(0.0d);
+        SdfSource source = resolveSdfSource(boundsPadding);
         Vector3d axisOrigin = OptionalPortDrive.resolveOptionalPoint(this, INPUT_AXIS_ORIGIN_ID, new Vector3d());
         Vector3d axisDirection = OptionalPortDrive.resolveOptionalVector(
             this, INPUT_AXIS_DIRECTION_ID, new Vector3d(1.0d, 0.0d, 0.0d));
@@ -119,22 +118,64 @@ public class BendSdfNode extends AbstractSdfDeformationNode {
             return;
         }
 
-        Vector3d axis = new Vector3d(axisDirection).normalize();
-        Vector3d normal = new Vector3d(bendNormal).normalize();
+        DeformationUtils.BendFrame frame = DeformationUtils.resolveBendFrame(axisDirection, bendNormal);
+        if (frame == null) {
+            failSdfOutputs("Bend normal must not be parallel to axis direction");
+            return;
+        }
+
         BentSdfData bent = new BentSdfData(
-            source.sdf(), axisOrigin, axis, normal, resolvedDegrees, resolvedLength, clampMode);
-        SdfBoundsEstimator.AxisAlignedBounds estimated = SdfBoundsEstimator.estimate(bent);
-        if (estimated == null || !estimated.isValid()) {
+            source.sdf(),
+            axisOrigin,
+            frame.axis(),
+            frame.normal(),
+            resolvedDegrees,
+            resolvedLength,
+            clampMode
+        );
+        AxisAlignedBounds outputBounds = estimateBentBounds(
+            source.min(),
+            source.max(),
+            bent,
+            GenerationLimits.clampBoundsSamples(boundsSamples),
+            boundsPadding
+        );
+        if (outputBounds == null || !outputBounds.isValid()) {
             failSdfOutputs("Failed to estimate output bounds");
             return;
         }
 
-        AxisAlignedBounds outputBounds = AxisAlignedBounds.from(estimated.min(), estimated.max())
-            .expanded(boundsPadding);
         outputValues.put(OUTPUT_SDF_ID, bent);
         outputValues.put(OUTPUT_BOUNDS_MIN_ID, new PointData(outputBounds.min()));
         outputValues.put(OUTPUT_BOUNDS_MAX_ID, new PointData(outputBounds.max()));
         markSuccess();
+    }
+
+    private static @Nullable AxisAlignedBounds estimateBentBounds(
+        Vector3d sourceMin,
+        Vector3d sourceMax,
+        BentSdfData bent,
+        int samplesPerAxis,
+        double padding
+    ) {
+        AxisAlignedBounds bounds = null;
+        int samples = GenerationLimits.clampBoundsSamples(samplesPerAxis);
+        for (int ix = 0; ix < samples; ix++) {
+            double x = lerp(sourceMin.x, sourceMax.x, ix / (double) (samples - 1));
+            for (int iy = 0; iy < samples; iy++) {
+                double y = lerp(sourceMin.y, sourceMax.y, iy / (double) (samples - 1));
+                for (int iz = 0; iz < samples; iz++) {
+                    double z = lerp(sourceMin.z, sourceMax.z, iz / (double) (samples - 1));
+                    Vector3d p = bent.bendPoint(new Vector3d(x, y, z));
+                    bounds = bounds == null ? AxisAlignedBounds.from(p, p) : bounds.include(p);
+                }
+            }
+        }
+        return bounds == null ? null : bounds.expanded(padding);
+    }
+
+    private static double lerp(double a, double b, double t) {
+        return a + (b - a) * t;
     }
 
     private String resolveSdfFailureReason() {

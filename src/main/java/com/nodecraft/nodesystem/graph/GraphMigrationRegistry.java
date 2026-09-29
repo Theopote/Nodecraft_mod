@@ -159,6 +159,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V97 -> migrateV97ToV98(graph);
             case GraphFormatVersion.V98 -> migrateV98ToV99(graph);
             case GraphFormatVersion.V99 -> migrateV99ToV100(graph);
+            case GraphFormatVersion.V100 -> migrateV100ToV101(graph);
             default -> graph;
         };
     }
@@ -5416,6 +5417,14 @@ public final class GraphMigrationRegistry {
     }
 
     private static SavedGraph migrateV99ToV100(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Deformation Bend Contract & SDF Bounds v3: format bump only (runtime fail-closed /
+     * bounds / strict SDF data; no wire or state remaps).
+     */
+    private static SavedGraph migrateV100ToV101(SavedGraph graph) {
         return graph;
     }
 

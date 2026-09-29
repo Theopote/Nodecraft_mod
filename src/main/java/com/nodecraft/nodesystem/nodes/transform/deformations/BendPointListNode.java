@@ -100,31 +100,27 @@ public class BendPointListNode extends AbstractDeformationNode {
             return;
         }
 
-        Vector3d axis = new Vector3d(axisDirection).normalize();
-        Vector3d normal = resolveBendNormal(axis);
-        if (normal == null) {
+        Vector3d candidateNormal = resolveBendNormal(new Vector3d(axisDirection).normalize());
+        if (candidateNormal == null) {
             failPointList("Invalid bend normal");
             return;
         }
-        normal.sub(new Vector3d(axis).mul(normal.dot(axis)));
-        if (!VectorUtils.isNonZero(normal)) {
+        DeformationUtils.BendFrame frame = DeformationUtils.resolveBendFrame(axisDirection, candidateNormal);
+        if (frame == null) {
             if (bendPlaneMode == BendPlaneMode.CUSTOM) {
-                failPointList("Invalid bend normal");
+                failPointList("Bend normal must not be parallel to axis direction");
                 return;
             }
-            normal = defaultNormal(axis);
+            // AUTO / fixed-plane modes: fall back to a default normal perpendicular to axis.
+            frame = DeformationUtils.resolveBendFrame(axisDirection, defaultNormal(new Vector3d(axisDirection).normalize()));
+            if (frame == null) {
+                failPointList("Degenerate bend frame");
+                return;
+            }
         }
-        if (!VectorUtils.isNonZero(normal)) {
-            failPointList("Invalid bend normal");
-            return;
-        }
-        normal.normalize();
-        Vector3d binormal = new Vector3d(axis).cross(normal);
-        if (!VectorUtils.isNonZero(binormal)) {
-            failPointList("Degenerate bend frame");
-            return;
-        }
-        binormal.normalize();
+        Vector3d axis = frame.axis();
+        Vector3d normal = frame.normal();
+        Vector3d binormal = frame.binormal();
 
         double totalAngleRadians = Math.toRadians(resolvedBendDegrees);
         double curvature = Math.abs(totalAngleRadians) <= SpatialTolerance.EPS ? 0.0d : totalAngleRadians / resolvedBendLength;

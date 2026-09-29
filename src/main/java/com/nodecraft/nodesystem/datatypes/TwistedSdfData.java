@@ -4,6 +4,8 @@ import org.joml.Vector3d;
 
 /**
  * Applies an axial twist domain transform before sampling an input SDF.
+ * <p>
+ * Constructors are strict (Graph V101): no silent axis / length repair.
  */
 public class TwistedSdfData implements SignedDistanceFieldData {
     private static final double EPS = 1.0e-9d;
@@ -27,16 +29,27 @@ public class TwistedSdfData implements SignedDistanceFieldData {
                           double angleDegrees,
                           double twistLength,
                           ClampMode clampMode) {
+        if (source == null) {
+            throw new IllegalArgumentException("Twisted SDF requires a source field");
+        }
+        if (axisOrigin == null || !isFinite(axisOrigin)) {
+            throw new IllegalArgumentException("Twisted SDF requires a finite axis origin");
+        }
+        if (axisDirection == null || !isFinite(axisDirection) || axisDirection.lengthSquared() <= EPS) {
+            throw new IllegalArgumentException("Twisted SDF requires a non-zero finite axis direction");
+        }
+        if (!Double.isFinite(angleDegrees)) {
+            throw new IllegalArgumentException("Twisted SDF requires a finite twist angle");
+        }
+        if (!Double.isFinite(twistLength) || twistLength <= 0.0d) {
+            throw new IllegalArgumentException("Twisted SDF requires a positive twist length");
+        }
+
         this.source = source;
         this.axisOrigin = new Vector3d(axisOrigin);
-        this.axisDirection = new Vector3d(axisDirection);
-        if (this.axisDirection.lengthSquared() <= EPS) {
-            this.axisDirection.set(0.0d, 1.0d, 0.0d);
-        } else {
-            this.axisDirection.normalize();
-        }
+        this.axisDirection = new Vector3d(axisDirection).normalize();
         this.angleRadians = Math.toRadians(angleDegrees);
-        this.twistLength = Math.max(EPS, Math.abs(twistLength));
+        this.twistLength = twistLength;
         this.clampMode = clampMode == null ? ClampMode.CLAMP : clampMode;
     }
 
@@ -96,6 +109,10 @@ public class TwistedSdfData implements SignedDistanceFieldData {
             case REPEAT -> normalizedDistance - Math.floor(normalizedDistance);
             case UNBOUNDED -> normalizedDistance;
         };
+    }
+
+    private static boolean isFinite(Vector3d value) {
+        return Double.isFinite(value.x) && Double.isFinite(value.y) && Double.isFinite(value.z);
     }
 
     private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double angle) {
