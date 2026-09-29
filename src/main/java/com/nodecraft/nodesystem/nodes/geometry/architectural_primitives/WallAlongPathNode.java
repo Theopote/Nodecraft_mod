@@ -5,12 +5,13 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -19,13 +20,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Continuous wall slabs following a PATH centerline (one segment box per polyline edge).
+ * Joined wall footprint extruded along a planar PATH centerline (Graph V97).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.wall_along_path",
     displayName = "Wall Along Path",
-    description = "Generates continuous wall slabs along a path (line, polyline, or curve)",
+    description = "Generates a joined wall footprint extruded along a planar path (line or polyline)",
     category = "geometry.architectural_primitives",
     order = 15
 )
@@ -35,6 +36,7 @@ public class WallAlongPathNode extends BaseNode {
     private static final String INPUT_HEIGHT_ID = "input_height";
     private static final String INPUT_THICKNESS_ID = "input_thickness";
     private static final String INPUT_OFFSET_ID = "input_offset";
+    private static final String INPUT_JOIN_ID = "input_join";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_FRAMES_ID = "output_frames";
@@ -48,18 +50,19 @@ public class WallAlongPathNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Wall centerline path", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Wall height measured upward from the path", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Wall thickness across the path", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Sideways offset from the path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_JOIN_ID, "Join", "Corner join policy: miter, bevel, or butt", NodeDataType.STRING, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Wall slabs along the path", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each wall segment center", NodeDataType.FRAME_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of wall segments", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Joined wall extrusion along the path", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each path segment center", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of extrusion pieces", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid wall could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Generates continuous wall slabs along a path (line, polyline, or curve)";
+        return "Generates a joined wall footprint extruded along a planar path (line or polyline)";
     }
 
     @Override
@@ -77,11 +80,6 @@ public class WallAlongPathNode extends BaseNode {
                 + GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS + ")");
             return;
         }
-        if (segments.size() > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
-            writeInvalid("Requested instance count exceeds limit ("
-                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
-            return;
-        }
 
         Double height = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 3.0d);
         if (height == null) {
@@ -93,40 +91,69 @@ public class WallAlongPathNode extends BaseNode {
             writeInvalid("Thickness must be a positive finite number");
             return;
         }
-        Double offset = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
+        Double offset = ArchitecturalInputUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
         if (offset == null) {
-            writeInvalid("Offset must be a non-negative finite number");
+            writeInvalid("Offset must be a finite number");
+            return;
+        }
+        String joinText = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_JOIN_ID, "miter", ArchitecturalInputUtils.PATH_JOIN_MODES);
+        if (joinText == null) {
+            writeInvalid("Join must be one of: miter, bevel, butt");
+            return;
+        }
+        ArchitecturalPathJoinSupport.JoinMode join = ArchitecturalPathJoinSupport.JoinMode.fromString(joinText);
+        if (join == null) {
+            writeInvalid("Join must be one of: miter, bevel, butt");
             return;
         }
 
-        List<GeometryData> pieces = new ArrayList<>();
+        GeometryData geometry = ArchitecturalPathJoinSupport.extrudeWallFootprint(
+            path, thickness, height, offset, join);
+        if (geometry == null) {
+            writeInvalid("Could not generate joined wall from the path (planar polyline required)");
+            return;
+        }
+
+        int pieceCount = countExtrusionPieces(geometry);
+        if (pieceCount > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
+            writeInvalid("Requested instance count exceeds limit ("
+                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
+            return;
+        }
+
+        ArchitecturalPathSupport.PathGeometry offsetPath =
+            ArchitecturalPathJoinSupport.offsetPath(path, offset, join);
         List<FrameData> placementFrames = new ArrayList<>();
-        for (ArchitecturalPathSupport.Segment segment : segments) {
-            Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
-            double length = direction.length();
-            if (length <= 1.0e-9d) {
-                continue;
+        if (offsetPath != null) {
+            for (ArchitecturalPathSupport.Segment segment : ArchitecturalPathSupport.segments(offsetPath)) {
+                Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
+                if (direction.lengthSquared() <= 1.0e-18d) {
+                    continue;
+                }
+                ArchitecturalPathSupport.SampleFrame frame =
+                    ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
+                Vector3d mid = new Vector3d(segment.start()).lerp(segment.end(), 0.5d)
+                    .fma(height / 2.0d, frame.up());
+                placementFrames.add(new FrameData(mid, frame.tangent(), frame.up(), frame.side()));
             }
-            ArchitecturalPathSupport.SampleFrame frame =
-                ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
-            Vector3d mid = new Vector3d(segment.start()).lerp(segment.end(), 0.5d)
-                .fma(offset, frame.side())
-                .fma(height / 2.0d, frame.up());
-            Vector3d halfExtents = new Vector3d(length / 2.0d, height / 2.0d, thickness / 2.0d);
-            pieces.add(ArchitecturalPrimitiveSupport.createOrientedBox(
-                mid, halfExtents, frame.tangent(), frame.up(), frame.side()));
-            placementFrames.add(new FrameData(mid, frame.tangent(), frame.up(), frame.side()));
-        }
-        if (pieces.isEmpty()) {
-            writeInvalid("Could not generate wall segments from the path");
-            return;
         }
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(pieces));
+        outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(placementFrames));
-        outputValues.put(OUTPUT_COUNT_ID, pieces.size());
+        outputValues.put(OUTPUT_COUNT_ID, pieceCount);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private static int countExtrusionPieces(GeometryData geometry) {
+        if (geometry instanceof CompositeGeometryData composite) {
+            return composite.size();
+        }
+        if (geometry instanceof PrismGeometryData) {
+            return 1;
+        }
+        return 1;
     }
 
     private void writeInvalid(String error) {

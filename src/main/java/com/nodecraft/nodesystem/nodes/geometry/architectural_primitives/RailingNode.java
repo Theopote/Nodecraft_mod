@@ -19,14 +19,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Generates a railing or balustrade that follows the true PATH centerline
- * (line, polyline, or curve) — not a first→last chord.
+ * Generates a railing that follows a joined offset centerline along a planar PATH.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.railing",
     displayName = "Railing",
-    description = "Generates a railing or balustrade that follows a path (line, polyline, or curve)",
+    description = "Generates a railing or balustrade along a joined offset path (line or polyline)",
     category = "geometry.architectural_primitives",
     order = 3
 )
@@ -39,6 +38,7 @@ public class RailingNode extends BaseNode {
     private static final String INPUT_RAIL_COUNT_ID = "input_rail_count";
     private static final String INPUT_RAIL_RADIUS_ID = "input_rail_radius";
     private static final String INPUT_OFFSET_ID = "input_offset";
+    private static final String INPUT_JOIN_ID = "input_join";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -54,7 +54,8 @@ public class RailingNode extends BaseNode {
         addInputPort(new BasePort(INPUT_POST_RADIUS_ID, "Post Radius", "Radius of the balustrade posts", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RAIL_COUNT_ID, "Rail Count", "Number of horizontal rails", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_RAIL_RADIUS_ID, "Rail Radius", "Radius of the horizontal rails", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Sideways offset from the path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_JOIN_ID, "Join", "Corner join policy: miter, bevel, or butt", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the railing components", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of railing components created", NodeDataType.INTEGER, this));
@@ -64,7 +65,7 @@ public class RailingNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates a railing or balustrade that follows a path (line, polyline, or curve)";
+        return "Generates a railing or balustrade along a joined offset path (line or polyline)";
     }
 
     @Override
@@ -104,13 +105,31 @@ public class RailingNode extends BaseNode {
             writeInvalid("Rail Radius must be a finite positive DOUBLE");
             return;
         }
-        Double offset = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
+        Double offset = ArchitecturalInputUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
         if (offset == null) {
-            writeInvalid("Offset must be a finite non-negative DOUBLE");
+            writeInvalid("Offset must be a finite DOUBLE");
+            return;
+        }
+        String joinText = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_JOIN_ID, "miter", ArchitecturalInputUtils.PATH_JOIN_MODES);
+        if (joinText == null) {
+            writeInvalid("Join must be one of: miter, bevel, butt");
+            return;
+        }
+        ArchitecturalPathJoinSupport.JoinMode join = ArchitecturalPathJoinSupport.JoinMode.fromString(joinText);
+        if (join == null) {
+            writeInvalid("Join must be one of: miter, bevel, butt");
             return;
         }
 
-        List<ArchitecturalPathSupport.Segment> segments = ArchitecturalPathSupport.segments(path);
+        ArchitecturalPathSupport.PathGeometry offsetPath =
+            ArchitecturalPathJoinSupport.offsetPath(path, offset, join);
+        if (offsetPath == null) {
+            writeInvalid("Could not build joined offset path (planar polyline required)");
+            return;
+        }
+
+        List<ArchitecturalPathSupport.Segment> segments = ArchitecturalPathSupport.segments(offsetPath);
         if (segments.size() > GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS) {
             writeInvalid("Path segment count exceeds MAX_ARCHITECTURAL_PATH_SEGMENTS ("
                 + GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS + ")");
@@ -135,7 +154,7 @@ public class RailingNode extends BaseNode {
         }
 
         List<GeometryData> railing = buildRailing(
-            path, segments, postCount, railCount, height, postRadius, railRadius, offset);
+            offsetPath, segments, postCount, railCount, height, postRadius, railRadius);
         if (railing.isEmpty()) {
             writeInvalid("Unable to generate railing geometry from the given path and parameters");
             return;
@@ -154,14 +173,13 @@ public class RailingNode extends BaseNode {
         int railCount,
         double height,
         double postRadius,
-        double railRadius,
-        double offset
+        double railRadius
     ) {
         List<GeometryData> results = new ArrayList<>();
 
         List<ArchitecturalPathSupport.SampleFrame> posts = ArchitecturalPathSupport.sampleEvenly(path, postCount);
         for (ArchitecturalPathSupport.SampleFrame frame : posts) {
-            Vector3d base = new Vector3d(frame.origin()).fma(offset, frame.side());
+            Vector3d base = new Vector3d(frame.origin());
             Vector3d top = new Vector3d(base).fma(height, frame.up());
             results.add(new CylinderGeometryData(base, top, postRadius));
         }
@@ -173,12 +191,8 @@ public class RailingNode extends BaseNode {
                 Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
                 ArchitecturalPathSupport.SampleFrame frame =
                     ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
-                Vector3d railStart = new Vector3d(segment.start())
-                    .fma(offset, frame.side())
-                    .fma(railHeight, frame.up());
-                Vector3d railEnd = new Vector3d(segment.end())
-                    .fma(offset, frame.side())
-                    .fma(railHeight, frame.up());
+                Vector3d railStart = new Vector3d(segment.start()).fma(railHeight, frame.up());
+                Vector3d railEnd = new Vector3d(segment.end()).fma(railHeight, frame.up());
                 if (railStart.distanceSquared(railEnd) > 1.0e-12d) {
                     results.add(new CylinderGeometryData(railStart, railEnd, railRadius));
                 }

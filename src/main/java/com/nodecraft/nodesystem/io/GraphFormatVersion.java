@@ -648,8 +648,15 @@ public final class GraphFormatVersion {
      */
     public static final int V96 = 96;
 
+    /**
+     * Architectural Topology & Path Join v2: roof PATH_LIST topology (Eaves/Ridges/Valleys);
+     * type-correct primary ridge/eave paths; wall footprint join extrusion; railing joined offset path;
+     * signed Offset on Wall/Beam/Railing; Join miter/bevel/butt. V68 input/budget foundations frozen.
+     */
+    public static final int V97 = 97;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V96;
+    public static final int CURRENT = V97;
 
     private GraphFormatVersion() {
     }

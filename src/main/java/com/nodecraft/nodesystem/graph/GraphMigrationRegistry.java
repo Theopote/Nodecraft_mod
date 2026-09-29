@@ -155,6 +155,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V93 -> migrateV93ToV94(graph);
             case GraphFormatVersion.V94 -> migrateV94ToV95(graph);
             case GraphFormatVersion.V95 -> migrateV95ToV96(graph);
+            case GraphFormatVersion.V96 -> migrateV96ToV97(graph);
             default -> graph;
         };
     }
@@ -5396,6 +5397,10 @@ public final class GraphMigrationRegistry {
 
     private static SavedGraph migrateV95ToV96(SavedGraph graph) {
         applyConvexHull3DV96PortMigration(graph);
+        return graph;
+    }
+
+    private static SavedGraph migrateV96ToV97(SavedGraph graph) {
         return graph;
     }
 

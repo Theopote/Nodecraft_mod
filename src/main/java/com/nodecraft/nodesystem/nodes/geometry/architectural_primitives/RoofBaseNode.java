@@ -6,12 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -43,6 +42,9 @@ public class RoofBaseNode extends BaseNode {
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_EAVE_PATH_ID = "output_eave_path";
     private static final String OUTPUT_RIDGE_PATH_ID = "output_ridge_path";
+    private static final String OUTPUT_EAVES_ID = "output_eaves";
+    private static final String OUTPUT_RIDGES_ID = "output_ridges";
+    private static final String OUTPUT_VALLEYS_ID = "output_valleys";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
@@ -61,6 +63,9 @@ public class RoofBaseNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Core roof geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EAVE_PATH_ID, "Primary Eave Path", "Primary eave edge path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_RIDGE_PATH_ID, "Ridge Path", "Ridge path for gable roofs", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_EAVES_ID, "Eaves", "All eave edge paths", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_RIDGES_ID, "Ridges", "All ridge paths", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALLEYS_ID, "Valleys", "Valley paths when applicable", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid roof could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
@@ -128,9 +133,17 @@ public class RoofBaseNode extends BaseNode {
             return;
         }
 
+        writeSuccess(result);
+    }
+
+    private void writeSuccess(RoofGeometrySupport.RoofResult result) {
+        RoofGeometrySupport.RoofTopology topology = result.topology();
         outputValues.put(OUTPUT_GEOMETRY_ID, result.geometry());
-        outputValues.put(OUTPUT_EAVE_PATH_ID, result.eavePath());
-        outputValues.put(OUTPUT_RIDGE_PATH_ID, result.ridgePath());
+        outputValues.put(OUTPUT_EAVE_PATH_ID, topology.primaryEave());
+        outputValues.put(OUTPUT_RIDGE_PATH_ID, topology.primaryRidge());
+        outputValues.put(OUTPUT_EAVES_ID, topology.eaves());
+        outputValues.put(OUTPUT_RIDGES_ID, topology.ridges());
+        outputValues.put(OUTPUT_VALLEYS_ID, topology.valleys());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
@@ -139,6 +152,9 @@ public class RoofBaseNode extends BaseNode {
         outputValues.put(OUTPUT_GEOMETRY_ID, null);
         outputValues.put(OUTPUT_EAVE_PATH_ID, null);
         outputValues.put(OUTPUT_RIDGE_PATH_ID, null);
+        outputValues.put(OUTPUT_EAVES_ID, List.of());
+        outputValues.put(OUTPUT_RIDGES_ID, List.of());
+        outputValues.put(OUTPUT_VALLEYS_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

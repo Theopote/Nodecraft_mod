@@ -100,7 +100,7 @@
 | Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
 | Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door openings with placement frames | `DoorArrayNode` |
 | Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns with base/top points and placement frames | `ColumnGridNode` |
-| Railing | `geometry.architectural_primitives.railing` | Generates a railing or balustrade that follows a path (line, polyline, or curve) | `RailingNode` |
+| Railing | `geometry.architectural_primitives.railing` | Generates a railing or balustrade along a joined offset path (line or polyline) | `RailingNode` |
 | Roof Base | `geometry.architectural_primitives.roof_base` | Generates a core roof (flat, shed, or gable) from a box face footprint | `RoofBaseNode` |
 | Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a path | `StaircaseNode` |
 | Roof Generator | `geometry.architectural_primitives.roof_generator` | Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable | `RoofGeneratorNode` |
@@ -112,8 +112,8 @@
 | Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
 | Beam Grid | `geometry.architectural_primitives.beam_grid` | Generates a support beam grid on a box face footprint | `BeamGridNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
-| Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates continuous wall slabs along a path (line, polyline, or curve) | `WallAlongPathNode` |
-| Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates structural beams along a path (line, polyline, or curve) | `BeamAlongPathNode` |
+| Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates a joined wall footprint extruded along a planar path (line or polyline) | `WallAlongPathNode` |
+| Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates one structural beam box per path segment (not a continuous sweep) | `BeamAlongPathNode` |
 | Column | `geometry.architectural_primitives.column` | Generates a single column from a frame or base point | `ColumnNode` |
 
 ## geometry.boolean（2）

@@ -76,6 +76,24 @@ public final class ArchitecturalInputUtils {
     }
 
     /**
+     * Any finite DOUBLE (signed). Used for lateral path offsets.
+     */
+    public static @Nullable Double resolveOptionalFiniteDouble(
+            BaseNode node,
+            String portId,
+            double propertyFallback
+    ) {
+        Double value = OptionalPortDrive.resolveOptionalDouble(node, portId, propertyFallback);
+        if (value == null || !Double.isFinite(value)) {
+            return null;
+        }
+        return value;
+    }
+
+    /** Path join policies for wall/railing offset centerlines (Graph V97). */
+    public static final Set<String> PATH_JOIN_MODES = Set.of("miter", "bevel", "butt");
+
+    /**
      * Known string enum (case-insensitive, trimmed). Connected unknown/null → fail closed.
      */
     public static @Nullable String resolveKnownStringEnum(

@@ -2,9 +2,11 @@
 
 **Status: PASSED / FROZEN** (Graph **V68**)
 
-Architectural Primitives v1 freezes the 18 `geometry.architectural_primitives` nodes as a language-stable building-block family: strict inputs, Valid/Error, instance budgets, and composable continuous geometry outputs.
+Architectural Primitives v1 freezes the 18-node inventory and foundation layer: strict inputs, Valid/Error, instance budgets, and composable continuous geometry outputs.
 
-**Out of scope:** `GEOMETRY_LIST`, new arch nodes, new roof types, stair algorithm rewrite, BIM/materials, full eave/ridge `PATH_LIST` topology.
+**Roof topology and path join semantics** are governed separately by [node-language-v2-architectural-topology.md](node-language-v2-architectural-topology.md) (Graph V97).
+
+**Out of scope:** `GEOMETRY_LIST`, new arch nodes, new roof types, stair algorithm rewrite, BIM/materials.
 
 ## Inventory (order 0–17)
 

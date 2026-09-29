@@ -19,13 +19,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Structural beams following a PATH centerline (one segment box per polyline edge).
+ * Structural beams following a PATH centerline (one box per polyline edge).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.beam_along_path",
     displayName = "Beam Along Path",
-    description = "Generates structural beams along a path (line, polyline, or curve)",
+    description = "Generates one structural beam box per path segment (not a continuous sweep)",
     category = "geometry.architectural_primitives",
     order = 16
 )
@@ -48,7 +48,7 @@ public class BeamAlongPathNode extends BaseNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Beam centerline path", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Beam width across the path", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Beam depth measured along local up", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Sideways offset from the path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Beams along the path", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each beam segment center", NodeDataType.FRAME_LIST, this));
@@ -59,7 +59,7 @@ public class BeamAlongPathNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates structural beams along a path (line, polyline, or curve)";
+        return "Generates one structural beam box per path segment (not a continuous sweep)";
     }
 
     @Override
@@ -93,9 +93,9 @@ public class BeamAlongPathNode extends BaseNode {
             writeInvalid("Height must be a positive finite number");
             return;
         }
-        Double offset = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
+        Double offset = ArchitecturalInputUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_ID, 0.0d);
         if (offset == null) {
-            writeInvalid("Offset must be a non-negative finite number");
+            writeInvalid("Offset must be a finite number");
             return;
         }
 
