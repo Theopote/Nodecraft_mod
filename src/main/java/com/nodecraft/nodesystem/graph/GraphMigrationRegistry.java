@@ -163,6 +163,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V101 -> migrateV101ToV102(graph);
             case GraphFormatVersion.V102 -> migrateV102ToV103(graph);
             case GraphFormatVersion.V103 -> migrateV103ToV104(graph);
+            case GraphFormatVersion.V104 -> migrateV104ToV105(graph);
             default -> graph;
         };
     }
@@ -5452,6 +5453,14 @@ public final class GraphMigrationRegistry {
      * radial frames; Count=1 tangent contract; Polar Array bounded leaf preflight).
      */
     private static SavedGraph migrateV103ToV104(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Surface Distribution Uniformity & Strict Topology v3: format bump only (Cone/Torus
+     * area-uniform sampling; Surface Strip strict quad validation; Poisson Max Attempts policy).
+     */
+    private static SavedGraph migrateV104ToV105(SavedGraph graph) {
         return graph;
     }
 

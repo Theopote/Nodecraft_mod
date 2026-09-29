@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -11,6 +12,8 @@ import java.util.Random;
  * Surface strip topology validation and globally area-weighted quad sampling.
  */
 public final class SurfaceStripSampling {
+
+    private static final double EPS = 1.0e-12d;
 
     private SurfaceStripSampling() {
     }
@@ -29,6 +32,55 @@ public final class SurfaceStripSampling {
             }
         }
         return true;
+    }
+
+    /**
+     * Strict validation for scatter consumers: topology, finite points, and every cross-section
+     * quad must have positive area (Graph V105 fail-closed).
+     *
+     * @return null when valid; otherwise an actionable error message
+     */
+    public static @Nullable String validateStrict(@Nullable SurfaceStripData strip) {
+        String baseError = SurfaceStripValidator.validate(strip);
+        if (baseError != null) {
+            return baseError;
+        }
+        if (strip == null) {
+            return "Surface strip is missing";
+        }
+
+        List<List<Vector3d>> sections = strip.sections();
+        boolean closed = strip.areAllSectionsClosed();
+        int pointsPerSection = sections.getFirst().size();
+        int segmentCount = closed ? pointsPerSection : pointsPerSection - 1;
+        if (segmentCount <= 0) {
+            return "Surface strip has no sampleable quads";
+        }
+
+        for (int s = 0; s < sections.size() - 1; s++) {
+            for (int i = 0; i < segmentCount; i++) {
+                int nextI = closed ? (i + 1) % pointsPerSection : i + 1;
+                Vector3d a = sections.get(s).get(i);
+                Vector3d b = sections.get(s).get(nextI);
+                Vector3d c = sections.get(s + 1).get(i);
+                Vector3d d = sections.get(s + 1).get(nextI);
+                if (!isFinitePoint(a) || !isFinitePoint(b) || !isFinitePoint(c) || !isFinitePoint(d)) {
+                    return "Surface strip contains non-finite quad corners";
+                }
+                double area = triangleArea(a, b, c) + triangleArea(b, d, c);
+                if (!Double.isFinite(area) || area <= EPS) {
+                    return "Surface strip contains degenerate quad";
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isFinitePoint(Vector3d point) {
+        return point != null
+            && Double.isFinite(point.x)
+            && Double.isFinite(point.y)
+            && Double.isFinite(point.z);
     }
 
     /**

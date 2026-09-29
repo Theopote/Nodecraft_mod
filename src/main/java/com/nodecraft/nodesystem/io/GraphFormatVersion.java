@@ -703,8 +703,14 @@ public final class GraphFormatVersion {
      */
     public static final int V104 = 104;
 
+    /**
+     * Surface Distribution Uniformity & Strict Topology v3: Cone/Torus area-uniform sampling;
+     * Surface Strip strict quad validation; Poisson Max Attempts fail-closed. No wire changes.
+     */
+    public static final int V105 = 105;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V104;
+    public static final int CURRENT = V105;
 
     private GraphFormatVersion() {
     }

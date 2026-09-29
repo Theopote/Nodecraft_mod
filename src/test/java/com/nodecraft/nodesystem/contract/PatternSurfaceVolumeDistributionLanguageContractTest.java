@@ -31,6 +31,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -234,6 +235,19 @@ class PatternSurfaceVolumeDistributionLanguageContractTest {
             assertTrue(point.x >= 9.0d || point.z < 1.0d,
                     "open strip must not sample wrap quad; got x=" + point.x + " z=" + point.z);
         }
+    }
+
+    @Test
+    void surfaceStripValidateStrictRejectsDegenerateQuad() {
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0))
+        );
+        SurfaceStripData strip = new SurfaceStripData(sections, List.of(false, false));
+        String error = SurfaceStripSampling.validateStrict(strip);
+        assertNotNull(error);
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("degenerate")
+            || error.toLowerCase(Locale.ROOT).contains("quad"));
     }
 
     @Test

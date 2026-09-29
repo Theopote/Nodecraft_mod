@@ -73,8 +73,9 @@ public class ScatterOnSurfaceStripNode extends AbstractSurfaceVolumeDistribution
             return;
         }
 
-        if (!SurfaceStripSampling.hasValidTopology(strip.sections())) {
-            writeFail("Surface Strip topology is invalid");
+        String stripError = SurfaceStripSampling.validateStrict(strip);
+        if (stripError != null) {
+            writeFail(stripError);
             return;
         }
 

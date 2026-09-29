@@ -85,6 +85,12 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV105() {
+        assertEquals(105, GraphFormatVersion.V105);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V105);
+    }
+
+    @Test
     void exactlySixNodesWithUniqueOrdersZeroToFive() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("pattern.surface_volume_distribution."))
@@ -278,6 +284,53 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         assertTrue(Math.abs(first.position().x - Math.round(first.position().x)) > 1.0e-6d
             || Math.abs(first.position().y - Math.round(first.position().y)) > 1.0e-6d
             || Math.abs(first.position().z - Math.round(first.position().z)) > 1.0e-6d);
+    }
+
+    @Test
+    void surfaceStripDegenerateQuadFailsClosed() {
+        BaseNode node = node("pattern.surface_volume_distribution.scatter_surface_strip");
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0))
+        );
+        node.setInput("input_surface_strip",
+            new com.nodecraft.nodesystem.datatypes.SurfaceStripData(sections, List.of(false, false)));
+        node.setNodeState(Map.of("targetCount", 8, "seed", 11));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("degenerate") || String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("quad"));
+        assertEquals(0, node.getOutput("output_count"));
+    }
+
+    @Test
+    void surfaceStripNaNPointFailsClosed() {
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(Double.NaN, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 1, 0), new Vector3d(1, 1, 0), new Vector3d(2, 1, 0))
+        );
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+            new com.nodecraft.nodesystem.datatypes.SurfaceStripData(sections, List.of(false, false)));
+    }
+
+    @Test
+    void poissonMaxAttemptsBelowMinimumFailsClosed() {
+        PoissonProbe probe = new PoissonProbe();
+        probe.connectInput("input_plane", NodeDataType.PLANE);
+        probe.putRawInput("input_plane", new PlaneData(new Vector3d(), new Vector3d(0, 1, 0)));
+        probe.setNodeState(Map.of(
+            "targetCount", 4,
+            "halfU", 1.0d,
+            "halfV", 1.0d,
+            "minDistance", 0.1d,
+            "maxAttempts", -5
+        ));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("attempt"));
+        assertEquals(0, probe.getOutput("output_count"));
     }
 
     @Test

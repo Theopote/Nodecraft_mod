@@ -1,10 +1,14 @@
 # Node Language v2 — Surface / Volume Distribution
 
-**Status: PASSED / FROZEN** (Graph **V82**; V44 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V82** foundation; **V105** extends runtime sampling/topology)
 
 Language modernization for the six canonical `pattern.surface_volume_distribution.*`
 nodes aligned with Pattern Linear/Grid/Radial v2 rules: Valid+Error+Complete,
 OptionalPortDrive, fail-closed Count budgets, continuous volume bounds.
+
+**V105 note:** Cone/Torus area-uniform surface sampling; Surface Strip strict quad
+validation; Poisson Max Attempts fail-closed. See
+[`node-language-v2-pattern-surface-volume-uniformity-topology.md`](./node-language-v2-pattern-surface-volume-uniformity-topology.md).
 
 Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
@@ -35,8 +39,10 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Sampling notes
 
-- Cylinder / Cone: **lateral surface only**.
+- Cylinder / Cone: **lateral surface only**; Cone lateral is area-uniform (V105).
+- Torus surface RANDOM sampling is area-uniform (V105).
 - Ellipsoid: analytic continuous sampling (not area-uniform).
+- Surface Strip: strict quad validation before scatter (V105; fail-closed).
 - BLUE_NOISE distribution mode is an **approximate** blue-noise selector (not Bridson Poisson-disk).
 
 ## Migration (V81 → V82)

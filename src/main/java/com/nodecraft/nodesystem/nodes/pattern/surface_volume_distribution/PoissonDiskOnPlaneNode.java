@@ -143,6 +143,11 @@ public class PoissonDiskOnPlaneNode extends AbstractSurfaceVolumeDistributionNod
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
         Vector2d originUv = axes.to2d(origin);
 
+        if (maxAttempts < 100) {
+            writeFail("Max Attempts must be >= 100");
+            return;
+        }
+
         int attemptCap = GenerationLimits.clampAttemptBudget(maxAttempts, resolvedTarget);
         String distanceBudget = GenerationLimits.validateScatterDistanceTests(attemptCap, resolvedTarget);
         if (distanceBudget != null) {
@@ -185,9 +190,8 @@ public class PoissonDiskOnPlaneNode extends AbstractSurfaceVolumeDistributionNod
     }
 
     public void setMaxAttempts(int maxAttempts) {
-        int resolved = Math.max(100, maxAttempts);
-        if (this.maxAttempts != resolved) {
-            this.maxAttempts = resolved;
+        if (this.maxAttempts != maxAttempts) {
+            this.maxAttempts = maxAttempts;
             markDirty();
         }
     }

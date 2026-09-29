@@ -18,10 +18,12 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Continuous analytic surface sampling for supported primitive geometry types (Graph V82).
+ * Continuous analytic surface sampling for supported primitive geometry types (Graph V82/V105).
  * <p>
- * Cylinder/Cone sample the lateral surface only. Ellipsoid sampling is analytic continuous
- * (not area-uniform). Degenerate primitives fail closed — no world-axis repair.
+ * Area-uniform RANDOM sampling: Sphere, Hemisphere, Box (face-weighted), Cylinder lateral,
+ * Cone lateral (Graph V105), Torus (Graph V105). Ellipsoid is analytic continuous but
+ * not area-uniform. Cylinder/Cone sample the lateral surface only. Degenerate primitives
+ * fail closed — no world-axis repair.
  */
 public final class PrimitiveGeometrySurfaceSampler {
 
@@ -181,6 +183,11 @@ public final class PrimitiveGeometrySurfaceSampler {
         return -1;
     }
 
+    /** Package-visible for unit tests. */
+    static @Nullable SurfaceSample sampleRandomSurfacePointForTest(GeometryData geometry, Random random) {
+        return sampleRandomSurfacePoint(geometry, random);
+    }
+
     private static @Nullable SurfaceSample sampleRandomSurfacePoint(GeometryData geometry, Random random) {
         if (geometry instanceof SphereData sphere) {
             Vector3d normal = SphereSurfaceSampling.normalizeStrict(SphereSurfaceSampling.sampleRandomUnitNormal(random));
@@ -296,10 +303,13 @@ public final class PrimitiveGeometrySurfaceSampler {
         }
         bitangent.normalize();
 
-        double u = random.nextDouble() * Math.PI * 2.0d;
-        double v = random.nextDouble() * Math.PI * 2.0d;
         double major = torus.majorRadius();
         double minor = torus.minorRadius();
+        double v;
+        do {
+            v = random.nextDouble() * Math.PI * 2.0d;
+        } while (random.nextDouble() > (major + minor * Math.cos(v)) / (major + minor));
+        double u = random.nextDouble() * Math.PI * 2.0d;
 
         Vector3d ring = new Vector3d(tangent).mul(Math.cos(u)).add(new Vector3d(bitangent).mul(Math.sin(u)));
         Vector3d centerOnRing = new Vector3d(torus.center()).add(new Vector3d(ring).mul(major));
@@ -312,7 +322,7 @@ public final class PrimitiveGeometrySurfaceSampler {
         return new SurfaceSample(point, unitNormal);
     }
 
-    /** Lateral surface only (no base disk). Analytic outward normal. */
+    /** Lateral surface only (no base disk). Area-uniform; analytic outward normal. */
     private static @Nullable SurfaceSample sampleConeLateralSurface(ConeGeometryData cone, Random random) {
         Vector3d apex = cone.getApex();
         Vector3d baseCenter = cone.getBaseCenter();
@@ -323,7 +333,7 @@ public final class PrimitiveGeometrySurfaceSampler {
         }
         axis.div(height);
 
-        double t = random.nextDouble();
+        double t = Math.sqrt(random.nextDouble());
         double r = cone.getBaseRadius() * t;
         Vector3d tangent = orthonormalTangent(axis, random);
         if (tangent == null) {
@@ -419,5 +429,10 @@ public final class PrimitiveGeometrySurfaceSampler {
         Vector3d ab = new Vector3d(b).sub(a);
         Vector3d ac = new Vector3d(c).sub(a);
         return ab.cross(ac).length() * 0.5d;
+    }
+
+    /** Package-visible for unit tests in {@code com.nodecraft.nodesystem.util}. */
+    static @Nullable SurfaceSample sampleRandomSurfacePointForTests(GeometryData geometry, Random random) {
+        return sampleRandomSurfacePoint(geometry, random);
     }
 }
