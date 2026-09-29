@@ -1,10 +1,14 @@
 # Node Language v1 — Pattern Radial
 
-**Status: PASSED / FROZEN** (Graph **V43**)
+**Status: PASSED / FROZEN** (Graph **V43** foundation; **V81** fail-closed extended by **V104** runtime)
 
 Language unification for the three canonical `pattern.radial.*` nodes: one geometry-first
 polar array plus two continuous radial layout producers — aligned with Pattern Linear/Grid
 v1 Count semantics, typed spatial ports, and geometry-first workflows.
+
+**V104 note:** Spiral/Phyllotaxis frames use parallel transport; Count=1 tangent is
+parameter-derived (fail-closed); Polar Array uses bounded leaf preflight. See
+[`node-language-v2-pattern-radial-frame-budget.md`](./node-language-v2-pattern-radial-frame-budget.md).
 
 Related: [`node-language-v1-pattern-linear.md`](./node-language-v1-pattern-linear.md),
 [`node-language-v1-pattern-grid.md`](./node-language-v1-pattern-grid.md),
@@ -62,7 +66,8 @@ Shared outputs:
 - `output_frames` (FRAME_LIST)
 - `output_count`, `output_valid`
 
-Frames use shared `RadialFrameUtils` -> `PathFrameUtils` placement convention.
+Frames use shared `RadialFrameUtils.placementFrames` -> `PathFrameUtils.placementFramesFromSamples`
+(parallel transport, Graph V104).
 
 Downstream:
 

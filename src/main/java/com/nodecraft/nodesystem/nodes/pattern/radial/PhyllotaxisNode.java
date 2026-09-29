@@ -142,28 +142,42 @@ public class PhyllotaxisNode extends AbstractPatternRadialNode {
 
         List<Vector3d> points = new ArrayList<>(resolvedCount);
         for (int i = 0; i < resolvedCount; i++) {
-            double angle = startAngleRadians + angleStepRadians * i;
-            double radius = resolvedRadiusScale * Math.pow(i, resolvedExponent);
-            if (!Double.isFinite(radius)) {
+            Vector3d point = layoutPoint(
+                origin,
+                i,
+                startAngleRadians,
+                angleStepRadians,
+                resolvedRadiusScale,
+                resolvedExponent,
+                resolvedHeightStep
+            );
+            if (point == null) {
                 writeFail("Non-finite phyllotaxis radius");
                 return;
             }
-            double cosA = Math.cos(angle);
-            double sinA = Math.sin(angle);
-            points.add(new Vector3d(origin).add(cosA * radius, resolvedHeightStep * i, sinA * radius));
+            points.add(point);
         }
 
         List<Vector3d> tangents = new ArrayList<>(resolvedCount);
-        List<FrameData> frames = new ArrayList<>(resolvedCount);
         for (int i = 0; i < resolvedCount; i++) {
-            Vector3d tangent = tangentFromPoints(points, i);
+            Vector3d tangent = tangentFromPoints(
+                points,
+                i,
+                origin,
+                startAngleRadians,
+                angleStepRadians,
+                resolvedRadiusScale,
+                resolvedExponent,
+                resolvedHeightStep
+            );
             if (tangent == null) {
                 writeFail("Degenerate phyllotaxis tangent");
                 return;
             }
             tangents.add(tangent);
-            frames.add(RadialFrameUtils.placementFrame(points.get(i), tangent));
         }
+
+        List<FrameData> frames = RadialFrameUtils.placementFrames(points, tangents);
 
         commitAlignedLayout(
             OUTPUT_POINTS_ID, OUTPUT_TANGENTS_ID, OUTPUT_FRAMES_ID, OUTPUT_COUNT_ID,
@@ -171,9 +185,45 @@ public class PhyllotaxisNode extends AbstractPatternRadialNode {
         );
     }
 
-    private static @Nullable Vector3d tangentFromPoints(List<Vector3d> points, int index) {
+    private static @Nullable Vector3d layoutPoint(Vector3d origin,
+                                                  int index,
+                                                  double startAngleRadians,
+                                                  double angleStepRadians,
+                                                  double radiusScale,
+                                                  double radialExponent,
+                                                  double heightStep) {
+        double angle = startAngleRadians + angleStepRadians * index;
+        double radius = radiusScale * Math.pow(index, radialExponent);
+        if (!Double.isFinite(radius)) {
+            return null;
+        }
+        double cosA = Math.cos(angle);
+        double sinA = Math.sin(angle);
+        return new Vector3d(origin).add(cosA * radius, heightStep * index, sinA * radius);
+    }
+
+    private static @Nullable Vector3d tangentFromPoints(List<Vector3d> points,
+                                                        int index,
+                                                        Vector3d origin,
+                                                        double startAngleRadians,
+                                                        double angleStepRadians,
+                                                        double radiusScale,
+                                                        double radialExponent,
+                                                        double heightStep) {
         if (points.size() == 1) {
-            return RadialFrameUtils.normalizeTangent(new Vector3d(1.0d, 0.0d, 0.0d));
+            Vector3d next = layoutPoint(
+                origin,
+                1,
+                startAngleRadians,
+                angleStepRadians,
+                radiusScale,
+                radialExponent,
+                heightStep
+            );
+            if (next == null) {
+                return null;
+            }
+            return RadialFrameUtils.normalizeTangent(new Vector3d(next).sub(points.getFirst()));
         }
         Vector3d delta;
         if (index == 0) {

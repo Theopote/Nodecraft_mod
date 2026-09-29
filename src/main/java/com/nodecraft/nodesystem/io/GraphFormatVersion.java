@@ -697,8 +697,14 @@ public final class GraphFormatVersion {
      */
     public static final int V103 = 103;
 
+    /**
+     * Pattern Radial Frame Continuity & Budget v3: Spiral/Phyllotaxis parallel-transport
+     * frames; Count=1 tangent contract; Polar Array countLeavesBounded. No wire changes.
+     */
+    public static final int V104 = 104;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V103;
+    public static final int CURRENT = V104;
 
     private GraphFormatVersion() {
     }

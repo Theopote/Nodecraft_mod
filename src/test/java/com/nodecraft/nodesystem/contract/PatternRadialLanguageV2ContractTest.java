@@ -77,6 +77,12 @@ class PatternRadialLanguageV2ContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV104() {
+        assertEquals(104, GraphFormatVersion.V104);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V104);
+    }
+
+    @Test
     void exactlyThreeNodesWithUniqueOrdersZeroToTwo() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("pattern.radial."))
@@ -162,6 +168,24 @@ class PatternRadialLanguageV2ContractTest {
         polar.processNode(null);
         assertEquals(Boolean.FALSE, polar.getOutput("output_valid"));
         assertEquals(0, polar.getOutput("output_count"));
+    }
+
+    @Test
+    void polarArrayOversizedSourceLeavesFailsClosed() {
+        List<com.nodecraft.nodesystem.datatypes.GeometryData> leaves = new ArrayList<>();
+        int leafCount = GenerationLimits.MAX_GEOMETRY_INSTANCES / 2 + 1;
+        for (int i = 0; i < leafCount; i++) {
+            leaves.add(new SphereData(new Vector3d(i, 0, 0), 0.1d));
+        }
+        BaseNode polar = node("pattern.radial.polar_array");
+        polar.setInput("input_geometry", new CompositeGeometryData(leaves));
+        polar.setNodeState(Map.of("count", 2, "totalAngle", 90.0d));
+        polar.processNode(null);
+        assertEquals(Boolean.FALSE, polar.getOutput("output_valid"));
+        assertTrue(String.valueOf(polar.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("workload")
+            || String.valueOf(polar.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("limit"));
+        assertEquals(0, polar.getOutput("output_count"));
+        assertNull(polar.getOutput("output_geometry"));
     }
 
     @Test
@@ -299,6 +323,89 @@ class PatternRadialLanguageV2ContractTest {
             "radiusScale", 0.0d,
             "heightStep", 0.0d,
             "radialExponent", 0.5d
+        ));
+        phyllotaxis.processNode(null);
+        assertEquals(Boolean.FALSE, phyllotaxis.getOutput("output_valid"));
+        assertTrue(String.valueOf(phyllotaxis.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("tangent"));
+        assertEquals(0, phyllotaxis.getOutput("output_count"));
+    }
+
+    @Test
+    void spiralFramesHaveRollContinuity() {
+        BaseNode spiral = node("pattern.radial.spiral");
+        spiral.setNodeState(Map.of(
+            "count", 32,
+            "turns", 3.0d,
+            "heightStep", 0.4d,
+            "radiusStep", 0.08d
+        ));
+        spiral.processNode(null);
+        assertEquals(Boolean.TRUE, spiral.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<FrameData> frames = assertInstanceOf(List.class, spiral.getOutput("output_frames"));
+        assertTrue(frames.size() >= 24);
+        for (int i = 1; i < frames.size(); i++) {
+            FrameData prev = frames.get(i - 1);
+            FrameData cur = frames.get(i);
+            double yDot = Math.abs(prev.getYAxis().dot(cur.getYAxis()));
+            double zDot = Math.abs(prev.getZAxis().dot(cur.getZAxis()));
+            assertTrue(yDot > 0.5d, "y-axis flipped between " + (i - 1) + " and " + i + ": " + yDot);
+            assertTrue(zDot > 0.5d, "z-axis flipped between " + (i - 1) + " and " + i + ": " + zDot);
+        }
+    }
+
+    @Test
+    void phyllotaxisFramesHaveRollContinuity() {
+        BaseNode phyllotaxis = node("pattern.radial.phyllotaxis");
+        phyllotaxis.setNodeState(Map.of(
+            "count", 48,
+            "angleStep", 12.0d,
+            "radiusScale", 0.5d,
+            "radialExponent", 0.5d
+        ));
+        phyllotaxis.processNode(null);
+        assertEquals(Boolean.TRUE, phyllotaxis.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<FrameData> frames = assertInstanceOf(List.class, phyllotaxis.getOutput("output_frames"));
+        assertTrue(frames.size() >= 24);
+        for (int i = 1; i < frames.size(); i++) {
+            FrameData prev = frames.get(i - 1);
+            FrameData cur = frames.get(i);
+            double yDot = Math.abs(prev.getYAxis().dot(cur.getYAxis()));
+            double zDot = Math.abs(prev.getZAxis().dot(cur.getZAxis()));
+            assertTrue(yDot > 0.5d, "y-axis flipped between " + (i - 1) + " and " + i + ": " + yDot);
+            assertTrue(zDot > 0.5d, "z-axis flipped between " + (i - 1) + " and " + i + ": " + zDot);
+        }
+    }
+
+    @Test
+    void phyllotaxisCountOneUsesParametricTangentNotInventedAxis() {
+        BaseNode phyllotaxis = node("pattern.radial.phyllotaxis");
+        phyllotaxis.setNodeState(Map.of(
+            "count", 1,
+            "radiusScale", 0.75d,
+            "angleStep", 137.507764d
+        ));
+        phyllotaxis.processNode(null);
+        assertEquals(Boolean.TRUE, phyllotaxis.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<Vector3d> tangents = assertInstanceOf(List.class, phyllotaxis.getOutput("output_tangents"));
+        assertEquals(1, tangents.size());
+        Vector3d tangent = tangents.getFirst();
+        assertFalse(Math.abs(tangent.x - 1.0d) < 1.0e-6d
+            && Math.abs(tangent.y) < 1.0e-6d
+            && Math.abs(tangent.z) < 1.0e-6d,
+            "Count=1 must not invent canonical +X tangent");
+    }
+
+    @Test
+    void phyllotaxisCountOneDegenerateTangentFailsClosed() {
+        BaseNode phyllotaxis = node("pattern.radial.phyllotaxis");
+        phyllotaxis.setNodeState(Map.of(
+            "count", 1,
+            "radiusScale", 0.0d,
+            "heightStep", 0.0d
         ));
         phyllotaxis.processNode(null);
         assertEquals(Boolean.FALSE, phyllotaxis.getOutput("output_valid"));

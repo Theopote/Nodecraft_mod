@@ -125,9 +125,10 @@ public class PolarArrayNode extends AbstractPatternRadialNode {
             return;
         }
 
-        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
-        long workload = sourceLeaves * (long) resolvedCount;
-        if (workload > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
+        long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
+        if (sourceLeaves > maxInstances
+            || sourceLeaves * (long) resolvedCount > maxInstances) {
             writeFail("Array workload exceeds limit (source leaves × Count > MAX_GEOMETRY_INSTANCES)");
             return;
         }

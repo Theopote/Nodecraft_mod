@@ -162,6 +162,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V100 -> migrateV100ToV101(graph);
             case GraphFormatVersion.V101 -> migrateV101ToV102(graph);
             case GraphFormatVersion.V102 -> migrateV102ToV103(graph);
+            case GraphFormatVersion.V103 -> migrateV103ToV104(graph);
             default -> graph;
         };
     }
@@ -5443,6 +5444,14 @@ public final class GraphMigrationRegistry {
      * validator; Grid Array bounded leaf preflight; no wire remaps).
      */
     private static SavedGraph migrateV102ToV103(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern Radial Frame Continuity & Budget v3: format bump only (parallel-transport
+     * radial frames; Count=1 tangent contract; Polar Array bounded leaf preflight).
+     */
+    private static SavedGraph migrateV103ToV104(SavedGraph graph) {
         return graph;
     }
 

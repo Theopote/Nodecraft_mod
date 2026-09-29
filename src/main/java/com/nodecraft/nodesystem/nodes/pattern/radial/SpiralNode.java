@@ -136,7 +136,6 @@ public class SpiralNode extends AbstractPatternRadialNode {
 
         List<Vector3d> points = new ArrayList<>(resolvedCount);
         List<Vector3d> tangents = new ArrayList<>(resolvedCount);
-        List<FrameData> frames = new ArrayList<>(resolvedCount);
 
         for (int i = 0; i < resolvedCount; i++) {
             double t = resolvedCount == 1 ? 0.0d : (double) i * invSteps;
@@ -158,8 +157,9 @@ public class SpiralNode extends AbstractPatternRadialNode {
 
             points.add(point);
             tangents.add(tangent);
-            frames.add(RadialFrameUtils.placementFrame(point, tangent));
         }
+
+        List<FrameData> frames = RadialFrameUtils.placementFrames(points, tangents);
 
         commitAlignedLayout(
             OUTPUT_POINTS_ID, OUTPUT_TANGENTS_ID, OUTPUT_FRAMES_ID, OUTPUT_COUNT_ID,
