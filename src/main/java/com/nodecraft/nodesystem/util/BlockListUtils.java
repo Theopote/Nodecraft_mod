@@ -50,6 +50,28 @@ public final class BlockListUtils {
         };
     }
 
+    /**
+     * Like {@link #resolveStrictBlockList} but fails closed when the collection size exceeds
+     * {@code maxElements} before allocating the copy (Graph V102).
+     */
+    public static @Nullable List<BlockPos> resolveStrictBlockListBounded(
+            @Nullable Object value,
+            int maxElements
+    ) {
+        if (maxElements < 1) {
+            return null;
+        }
+        int size = switch (value) {
+            case BlockPosList blockPosList -> blockPosList.size();
+            case Collection<?> collection -> collection.size();
+            case null, default -> -1;
+        };
+        if (size < 0 || size > maxElements) {
+            return null;
+        }
+        return resolveStrictBlockList(value);
+    }
+
     private static @Nullable LinkedHashSet<BlockPos> resolveSetFromIterable(Iterable<?> values) {
         LinkedHashSet<BlockPos> blocks = new LinkedHashSet<>();
         for (Object entry : values) {

@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PathFrameUtilsTest {
@@ -84,5 +86,53 @@ class PathFrameUtilsTest {
         double maxAbsV = locals.stream().mapToDouble(v -> Math.abs(v.y)).max().orElse(0);
         assertTrue(maxAbsU > 0.5d && maxAbsU < 2.5d);
         assertTrue(maxAbsV > 0.5d && maxAbsV < 2.5d);
+    }
+
+    @Test
+    void initialFrameRequireUpRejectsParallelUp() {
+        PathFrameUtils.Frame frame = PathFrameUtils.initialFrameRequireUp(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1, 0, 0),
+            new Vector3d(1, 0, 0)
+        );
+        assertNull(frame);
+
+        PathFrameUtils.Frame ok = PathFrameUtils.initialFrameRequireUp(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1, 0, 0),
+            new Vector3d(0, 1, 0)
+        );
+        assertNotNull(ok);
+        assertTrue(ok.zAxis().x > 0.9d);
+    }
+
+    @Test
+    void closedPathFrameRollSeamCorrected() {
+        // Non-planar closed rectangle (one corner lifted) — open transport has holonomy.
+        List<Vector3d> origins = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(10, 0, 0),
+            new Vector3d(10, 4, 8),
+            new Vector3d(0, 1, 8)
+        );
+        List<Vector3d> tangents = new ArrayList<>(origins.size());
+        for (int i = 0; i < origins.size(); i++) {
+            Vector3d t = PathFrameUtils.tryComputeTangent(origins, i, true);
+            assertTrue(t != null);
+            tangents.add(t);
+        }
+
+        List<PathFrameUtils.Frame> corrected = PathFrameUtils.framesFromSamples(
+            origins, tangents, new Vector3d(0, 1, 0), false, true);
+        assertNotNull(corrected);
+        assertEquals(4, corrected.size());
+
+        PathFrameUtils.Frame first = corrected.getFirst();
+        PathFrameUtils.Frame last = corrected.get(corrected.size() - 1);
+        PathFrameUtils.Frame closeProbe = PathFrameUtils.transport(last, first.origin(), first.zAxis());
+        assertTrue(closeProbe.xAxis().dot(first.xAxis()) > 0.999d,
+            "closed roll correction should make last→first match first.x");
+        assertTrue(closeProbe.yAxis().dot(first.yAxis()) > 0.999d,
+            "closed roll correction should make last→first match first.y");
     }
 }

@@ -100,9 +100,10 @@ public class LinearArrayNode extends AbstractPatternLinearNode {
             return;
         }
 
-        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
-        long totalLeaves = sourceLeaves * (long) resolvedCount;
-        if (totalLeaves > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
+        long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
+        if (sourceLeaves > maxInstances
+            || sourceLeaves * (long) resolvedCount > maxInstances) {
             writeFail("Array workload exceeds limit (source leaves × Count > MAX_GEOMETRY_INSTANCES)");
             return;
         }

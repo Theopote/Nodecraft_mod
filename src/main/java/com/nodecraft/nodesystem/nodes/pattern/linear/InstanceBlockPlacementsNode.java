@@ -15,6 +15,7 @@ import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -73,9 +74,30 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
             return;
         }
 
-        List<BlockPos> anchors = BlockListUtils.resolveStrictBlockList(inputValues.get(INPUT_ANCHORS_ID));
+        int max = GenerationLimits.MAX_LIST_ELEMENTS;
+        Object anchorsObj = inputValues.get(INPUT_ANCHORS_ID);
+        Object templateObj = inputValues.get(INPUT_TEMPLATE_PLACEMENTS_ID);
+        Integer anchorsSize = collectionSize(anchorsObj);
+        Integer templateSize = collectionSize(templateObj);
+        if (anchorsSize != null && templateSize != null) {
+            if (anchorsSize > max || templateSize > max) {
+                writeFail("Instance workload exceeds MAX_LIST_ELEMENTS (anchors × template)");
+                return;
+            }
+            long product = (long) anchorsSize * (long) templateSize;
+            if (product > max) {
+                writeFail("Instance workload exceeds MAX_LIST_ELEMENTS (anchors × template)");
+                return;
+            }
+        }
+
+        List<BlockPos> anchors = BlockListUtils.resolveStrictBlockListBounded(anchorsObj, max);
         if (anchors == null) {
-            writeFail("Anchors list is missing or invalid");
+            if (anchorsSize != null && anchorsSize > max) {
+                writeFail("Instance workload exceeds MAX_LIST_ELEMENTS (anchors × template)");
+            } else {
+                writeFail("Anchors list is missing or invalid");
+            }
             return;
         }
         if (anchors.isEmpty()) {
@@ -89,7 +111,7 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
             return;
         }
 
-        List<BlockPlacementData> template = resolveStrictTemplate(origin);
+        List<BlockPlacementData> template = resolveStrictTemplateBounded(origin, max);
         if (template == null) {
             return;
         }
@@ -99,12 +121,12 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
         }
 
         long workload = (long) anchors.size() * (long) template.size();
-        if (workload > GenerationLimits.MAX_LIST_ELEMENTS) {
+        if (workload > max) {
             writeFail("Instance workload exceeds MAX_LIST_ELEMENTS (anchors × template)");
             return;
         }
 
-        List<BlockPlacementData> placements = new ArrayList<>((int) workload);
+        List<BlockPlacementData> placements = new ArrayList<>((int) Math.min(workload, Integer.MAX_VALUE));
         BlockPosList usedAnchors = new BlockPosList();
 
         for (BlockPos anchor : anchors) {
@@ -124,12 +146,17 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
     }
 
     /**
-     * Strict template resolution. Returns null when the node has already been marked invalid.
+     * Strict template resolution with size preflight. Returns null when the node has already
+     * been marked invalid.
      */
-    private @Nullable List<BlockPlacementData> resolveStrictTemplate(BlockPos origin) {
+    private @Nullable List<BlockPlacementData> resolveStrictTemplateBounded(BlockPos origin, int maxElements) {
         Object placementsObj = inputValues.get(INPUT_TEMPLATE_PLACEMENTS_ID);
         if (!(placementsObj instanceof List<?> list)) {
             writeFail("Template Placements list is missing or invalid");
+            return null;
+        }
+        if (list.size() > maxElements) {
+            writeFail("Instance workload exceeds MAX_LIST_ELEMENTS (anchors × template)");
             return null;
         }
         List<BlockPlacementData> resolved = new ArrayList<>(list.size());
@@ -154,6 +181,14 @@ public class InstanceBlockPlacementsNode extends AbstractPatternLinearNode {
             resolved.add(new BlockPlacementData(local, placement.blockId(), placement.stateData()));
         }
         return resolved;
+    }
+
+    private static @Nullable Integer collectionSize(@Nullable Object value) {
+        return switch (value) {
+            case BlockPosList list -> list.size();
+            case Collection<?> collection -> collection.size();
+            case null, default -> null;
+        };
     }
 
     private void writeFail(String error) {

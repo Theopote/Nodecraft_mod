@@ -115,9 +115,10 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
             return;
         }
 
-        long sourceLeaves = GeometryStructureUtils.countLeaves(geometry);
-        long totalLeaves = sourceLeaves * (long) distances.size();
-        if (totalLeaves > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
+        long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
+        if (sourceLeaves > maxInstances
+            || sourceLeaves * (long) distances.size() > maxInstances) {
             writeFail("Array workload exceeds limit (source leaves × instances > MAX_GEOMETRY_INSTANCES)");
             return;
         }
@@ -155,9 +156,18 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
             sampleTangents.add(tangent);
         }
 
-        List<FrameData> candidateFrames = orientToPath
-            ? PathFrameUtils.placementFramesFromSamples(sampleOrigins, sampleTangents, up)
-            : identityFrames(sampleOrigins);
+        List<FrameData> candidateFrames;
+        if (orientToPath) {
+            boolean requireUp = OptionalPortDrive.isConnected(this, INPUT_UP_VECTOR_ID);
+            candidateFrames = PathFrameUtils.placementFramesFromSamples(
+                sampleOrigins, sampleTangents, up, requireUp, closed);
+            if (candidateFrames == null) {
+                writeFail("Up Vector is parallel to path tangent");
+                return;
+            }
+        } else {
+            candidateFrames = identityFrames(sampleOrigins);
+        }
 
         if (candidateFrames.size() != distances.size()) {
             writeFail("Failed to construct frames for all requested samples");

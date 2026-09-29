@@ -160,6 +160,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V98 -> migrateV98ToV99(graph);
             case GraphFormatVersion.V99 -> migrateV99ToV100(graph);
             case GraphFormatVersion.V100 -> migrateV100ToV101(graph);
+            case GraphFormatVersion.V101 -> migrateV101ToV102(graph);
             default -> graph;
         };
     }
@@ -5425,6 +5426,14 @@ public final class GraphMigrationRegistry {
      * bounds / strict SDF data; no wire or state remaps).
      */
     private static SavedGraph migrateV100ToV101(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern Linear Frame & Budget Contract v3: format bump only (RequireUp fail-closed,
+     * closed roll correction, bounded leaf / instance preflight; no wire remaps).
+     */
+    private static SavedGraph migrateV101ToV102(SavedGraph graph) {
         return graph;
     }
 

@@ -9,7 +9,8 @@ full-circle semantics.
 
 Related: [`node-language-v1-basic-assignment.md`](./node-language-v1-basic-assignment.md),
 [`node-language-v1-curve-path.md`](./node-language-v1-curve-path.md),
-[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+[`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
+[`node-language-v2-pattern-linear-frame-budget.md`](./node-language-v2-pattern-linear-frame-budget.md) (Graph **V102** Up / closed roll / budgets).
 
 ## Core rules
 

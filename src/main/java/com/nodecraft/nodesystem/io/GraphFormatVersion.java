@@ -684,8 +684,15 @@ public final class GraphFormatVersion {
      */
     public static final int V101 = 101;
 
+    /**
+     * Pattern Linear Frame & Budget Contract v3: connected Up ∥ tangent fail-closed;
+     * closed-path frame roll correction; Linear/Curve countLeavesBounded; Instance Block
+     * product preflight before allocate. No wire changes.
+     */
+    public static final int V102 = 102;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V101;
+    public static final int CURRENT = V102;
 
     private GraphFormatVersion() {
     }

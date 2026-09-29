@@ -111,7 +111,13 @@ public class PathFramesNode extends AbstractPatternLinearNode {
             tangents.add(tangent);
         }
 
-        List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(vertices, tangents, up);
+        boolean requireUp = OptionalPortDrive.isConnected(this, INPUT_UP_VECTOR_ID);
+        List<FrameData> frames = PathFrameUtils.placementFramesFromSamples(
+            vertices, tangents, up, requireUp, closed);
+        if (frames == null) {
+            writeInvalid("Up Vector is parallel to path tangent");
+            return;
+        }
         if (frames.isEmpty()) {
             writeInvalid("Failed to construct path frames");
             return;

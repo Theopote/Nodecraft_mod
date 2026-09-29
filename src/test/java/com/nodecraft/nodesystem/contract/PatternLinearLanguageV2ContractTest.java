@@ -79,6 +79,7 @@ class PatternLinearLanguageV2ContractTest {
     void currentGraphFormatIsAtLeastV79() {
         assertEquals(79, GraphFormatVersion.V79);
         assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V79);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V102);
     }
 
     @Test
@@ -206,6 +207,31 @@ class PatternLinearLanguageV2ContractTest {
     }
 
     @Test
+    void pathFramesConnectedUpParallelTangentFailsClosed() {
+        PathFramesProbe probe = new PathFramesProbe();
+        probe.setInput("input_path", new PolylineData(List.of(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0))));
+        probe.connectInput("input_up_vector", NodeDataType.VECTOR);
+        probe.putRawInput("input_up_vector", new Vector3d(1, 0, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        String error = String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("parallel") || error.contains("up"));
+        assertEquals(0, probe.getOutput("output_count"));
+    }
+
+    @Test
+    void pathFramesUnconnectedUpOnVerticalPathSucceeds() {
+        BaseNode pathFrames = node("pattern.linear.path_frames");
+        pathFrames.setInput("input_path", new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(0, 10, 0)
+        )));
+        pathFrames.processNode(null);
+        assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
+        assertTrue((Integer) pathFrames.getOutput("output_count") >= 2);
+    }
+
+    @Test
     void pathFramesClosedSeamNoDuplicate() {
         BaseNode pathFrames = node("pattern.linear.path_frames");
         pathFrames.setInput("input_path", new PolylineData(List.of(
@@ -301,6 +327,23 @@ class PatternLinearLanguageV2ContractTest {
     }
 
     @Test
+    void curveArrayConnectedUpParallelTangentFailsClosed() {
+        CurveArrayProbe probe = new CurveArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 0.5d));
+        probe.setInput("input_path", new PolylineData(List.of(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0))));
+        probe.connectInput("input_count", NodeDataType.INTEGER);
+        probe.putRawInput("input_count", 2);
+        probe.setNodeState(Map.of("orientToPath", true));
+        probe.connectInput("input_up_vector", NodeDataType.VECTOR);
+        probe.putRawInput("input_up_vector", new Vector3d(1, 0, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        String error = String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("parallel") || error.contains("up"));
+        assertEquals(0, probe.getOutput("output_count"));
+    }
+
+    @Test
     void curveArraySpacingOverBudgetFails() {
         CurveArrayProbe probe = new CurveArrayProbe();
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 0.5d));
@@ -350,6 +393,43 @@ class PatternLinearLanguageV2ContractTest {
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
         assertEquals(2, node.getOutput("output_instance_count"));
         assertEquals(4, node.getOutput("output_placement_count"));
+    }
+
+    @Test
+    void instanceBlockPlacementsRejectsOversizedProductBeforeEmit() {
+        BaseNode node = node("pattern.linear.instance_block_placements");
+        int side = (int) Math.sqrt(GenerationLimits.MAX_LIST_ELEMENTS) + 1;
+        List<BlockPos> anchors = new ArrayList<>(side);
+        for (int i = 0; i < side; i++) {
+            anchors.add(new BlockPos(i, 0, 0));
+        }
+        List<BlockPlacementData> template = new ArrayList<>(side);
+        for (int i = 0; i < side; i++) {
+            template.add(new BlockPlacementData(new BlockPos(0, i, 0), "minecraft:stone"));
+        }
+        node.setInput("input_anchors", new BlockPosList(anchors));
+        node.setInput("input_template_placements", template);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("workload")
+            || String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("max_list"));
+        assertEquals(0, node.getOutput("output_placement_count"));
+    }
+
+    @Test
+    void linearArrayOversizedLeafWorkloadFailsClosed() {
+        BaseNode linear = node("pattern.linear.linear_array");
+        List<com.nodecraft.nodesystem.datatypes.GeometryData> leaves = new ArrayList<>();
+        int leafCount = GenerationLimits.MAX_GEOMETRY_INSTANCES / 2 + 1;
+        for (int i = 0; i < leafCount; i++) {
+            leaves.add(new SphereData(new Vector3d(i, 0, 0), 0.1d));
+        }
+        linear.setInput("input_geometry", new CompositeGeometryData(leaves));
+        linear.setNodeState(Map.of("distance", 1.0d, "count", 2));
+        linear.processNode(null);
+        assertEquals(Boolean.FALSE, linear.getOutput("output_valid"));
+        assertTrue(String.valueOf(linear.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("workload")
+            || String.valueOf(linear.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("limit"));
     }
 
     @Test

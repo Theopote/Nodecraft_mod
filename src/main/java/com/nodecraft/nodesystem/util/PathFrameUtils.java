@@ -68,7 +68,25 @@ public final class PathFrameUtils {
     public static List<FrameData> placementFramesFromSamples(List<Vector3d> origins,
                                                              List<Vector3d> tangents,
                                                              @Nullable Vector3d upHint) {
-        List<Frame> pathFrames = framesFromSamples(origins, tangents, upHint);
+        List<FrameData> frames = placementFramesFromSamples(origins, tangents, upHint, false, false);
+        return frames == null ? List.of() : frames;
+    }
+
+    /**
+     * Parallel-transports placement frames with optional RequireUp and closed-loop roll correction
+     * (Graph V102).
+     *
+     * @return null when {@code requireUp} and the initial Up is parallel to the first tangent
+     */
+    public static @Nullable List<FrameData> placementFramesFromSamples(List<Vector3d> origins,
+                                                                       List<Vector3d> tangents,
+                                                                       @Nullable Vector3d upHint,
+                                                                       boolean requireUp,
+                                                                       boolean closed) {
+        List<Frame> pathFrames = framesFromSamples(origins, tangents, upHint, requireUp, closed);
+        if (pathFrames == null) {
+            return null;
+        }
         List<FrameData> frames = new ArrayList<>(pathFrames.size());
         for (Frame frame : pathFrames) {
             frames.add(toPlacementFrame(frame));
@@ -91,6 +109,7 @@ public final class PathFrameUtils {
     /**
      * Builds an initial frame at {@code origin} with tangent {@code tangent}.
      * Optional {@code upHint} stabilizes the first section axes when provided.
+     * When Up ∥ tangent, falls back to a least-aligned cardinal (tolerant).
      */
     public static Frame initialFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
         Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
@@ -129,6 +148,34 @@ public final class PathFrameUtils {
     }
 
     /**
+     * Like {@link #initialFrame} but requires a usable Up that is not parallel to the tangent —
+     * no cardinal fallback (Graph V102 connected-Up fail-closed).
+     *
+     * @return null when Up is missing, zero, or parallel to tangent
+     */
+    public static @Nullable Frame initialFrameRequireUp(Vector3d origin, Vector3d tangent, Vector3d upHint) {
+        Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
+        if (zAxis == null) {
+            return null;
+        }
+        Vector3d up = normalizeOr(new Vector3d(upHint), null);
+        if (up == null) {
+            return null;
+        }
+        Vector3d xAxis = new Vector3d(up).cross(zAxis);
+        if (xAxis.lengthSquared() <= EPS) {
+            return null;
+        }
+        xAxis.normalize();
+        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
+        if (yAxis.lengthSquared() <= EPS) {
+            return null;
+        }
+        yAxis.normalize();
+        return new Frame(new Vector3d(origin), xAxis, yAxis, zAxis);
+    }
+
+    /**
      * Parallel-transports frames along a polyline (one frame per vertex).
      */
     public static List<Frame> framesAlongPolyline(List<Vector3d> points, @Nullable Vector3d upHint) {
@@ -139,7 +186,8 @@ public final class PathFrameUtils {
         for (int i = 0; i < points.size(); i++) {
             tangents.add(computeTangent(points, i));
         }
-        return framesFromSamples(points, tangents, upHint);
+        List<Frame> frames = framesFromSamples(points, tangents, upHint, false, false);
+        return frames == null ? List.of() : frames;
     }
 
     /**
@@ -148,18 +196,121 @@ public final class PathFrameUtils {
     public static List<Frame> framesFromSamples(List<Vector3d> origins,
                                                 List<Vector3d> tangents,
                                                 @Nullable Vector3d upHint) {
+        List<Frame> frames = framesFromSamples(origins, tangents, upHint, false, false);
+        return frames == null ? List.of() : frames;
+    }
+
+    /**
+     * Parallel-transports frames with optional RequireUp and closed-loop roll correction.
+     *
+     * @return null when {@code requireUp} and Up ∥ first tangent; empty list for invalid input
+     */
+    public static @Nullable List<Frame> framesFromSamples(List<Vector3d> origins,
+                                                          List<Vector3d> tangents,
+                                                          @Nullable Vector3d upHint,
+                                                          boolean requireUp,
+                                                          boolean closed) {
         if (origins == null || tangents == null || origins.isEmpty() || origins.size() != tangents.size()) {
             return List.of();
         }
         List<Frame> frames = new ArrayList<>(origins.size());
-        Frame prev = initialFrame(origins.getFirst(), tangents.getFirst(), upHint);
+        Frame prev;
+        if (requireUp) {
+            if (upHint == null) {
+                return null;
+            }
+            prev = initialFrameRequireUp(origins.getFirst(), tangents.getFirst(), upHint);
+            if (prev == null) {
+                return null;
+            }
+        } else {
+            prev = initialFrame(origins.getFirst(), tangents.getFirst(), upHint);
+        }
         frames.add(prev);
         for (int i = 1; i < origins.size(); i++) {
             Frame next = transport(prev, origins.get(i), tangents.get(i));
             frames.add(next);
             prev = next;
         }
+        if (closed && frames.size() >= 3) {
+            return applyClosedRollCorrection(frames, origins);
+        }
         return frames;
+    }
+
+    /**
+     * Distributes closed-loop parallel-transport holonomy (roll error) evenly along arc length
+     * so transporting the last frame onto the first matches the first section axes.
+     */
+    static List<Frame> applyClosedRollCorrection(List<Frame> frames, List<Vector3d> origins) {
+        int n = frames.size();
+        if (n < 3 || origins == null || origins.size() != n) {
+            return frames;
+        }
+        Frame first = frames.getFirst();
+        Frame last = frames.get(n - 1);
+        Frame closeProbe = transport(last, first.origin(), first.zAxis());
+        double error = signedAngleAboutAxis(first.xAxis(), closeProbe.xAxis(), first.zAxis());
+        if (!Double.isFinite(error) || Math.abs(error) <= EPS) {
+            return frames;
+        }
+
+        double[] arc = new double[n];
+        double total = 0.0d;
+        arc[0] = 0.0d;
+        for (int i = 1; i < n; i++) {
+            total += origins.get(i).distance(origins.get(i - 1));
+            arc[i] = total;
+        }
+        if (total <= EPS) {
+            return frames;
+        }
+
+        List<Frame> corrected = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            double angle = -error * (arc[i] / total);
+            corrected.add(rotateSectionAboutTangent(frames.get(i), angle));
+        }
+        return corrected;
+    }
+
+    private static Frame rotateSectionAboutTangent(Frame frame, double angleRadians) {
+        if (Math.abs(angleRadians) <= EPS) {
+            return frame;
+        }
+        Vector3d z = frame.zAxis();
+        Vector3d x = rotateAroundUnitAxis(frame.xAxis(), z, angleRadians);
+        Vector3d y = rotateAroundUnitAxis(frame.yAxis(), z, angleRadians);
+        // Re-orthonormalize
+        x.sub(new Vector3d(z).mul(x.dot(z)));
+        if (x.lengthSquared() <= EPS) {
+            return frame;
+        }
+        x.normalize();
+        y = new Vector3d(z).cross(x);
+        if (y.lengthSquared() <= EPS) {
+            return frame;
+        }
+        y.normalize();
+        return new Frame(new Vector3d(frame.origin()), x, y, new Vector3d(z));
+    }
+
+    /**
+     * Signed angle from {@code from} to {@code to} about unit {@code axis}.
+     */
+    static double signedAngleAboutAxis(Vector3d from, Vector3d to, Vector3d axis) {
+        Vector3d a = new Vector3d(from);
+        a.sub(new Vector3d(axis).mul(a.dot(axis)));
+        Vector3d b = new Vector3d(to);
+        b.sub(new Vector3d(axis).mul(b.dot(axis)));
+        if (a.lengthSquared() <= EPS || b.lengthSquared() <= EPS) {
+            return 0.0d;
+        }
+        a.normalize();
+        b.normalize();
+        double sin = new Vector3d(a).cross(b).dot(axis);
+        double cos = a.dot(b);
+        return Math.atan2(sin, cos);
     }
 
     /**
