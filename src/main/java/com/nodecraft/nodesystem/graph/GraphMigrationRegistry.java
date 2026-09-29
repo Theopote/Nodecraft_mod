@@ -174,6 +174,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V112 -> migrateV112ToV113(graph);
             case GraphFormatVersion.V113 -> migrateV113ToV114(graph);
             case GraphFormatVersion.V114 -> migrateV114ToV115(graph);
+            case GraphFormatVersion.V115 -> migrateV115ToV116(graph);
             default -> graph;
         };
     }
@@ -5550,6 +5551,14 @@ public final class GraphMigrationRegistry {
      * fail-closed placements, OptionalPortDrive Direction/Half; no wire remaps).
      */
     private static SavedGraph migrateV114ToV115(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Directional Mapping Strict Sources & Normals v2 (MaterialSourceResolver,
+     * non-zero normals, known BLOCK_TYPE, angle fail-closed; no wire remaps).
+     */
+    private static SavedGraph migrateV115ToV116(SavedGraph graph) {
         return graph;
     }
 

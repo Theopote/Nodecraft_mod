@@ -1,12 +1,8 @@
-package com.nodecraft.nodesystem.nodes.material.basic_assignment;
+package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Connection-aware source resolution for Basic Assignment nodes.
+ * Connection-aware source resolution for material nodes.
  * Unconnected → skip; driven+valid → use; driven+invalid → fail (no fallback).
  */
 public final class MaterialSourceResolver {
@@ -72,7 +68,6 @@ public final class MaterialSourceResolver {
      * Resolve the first driven source in precedence order.
      *
      * @param geometryFallbackBlockId block id stamped onto coords/geometry placements
-     *                                (Assign uses required type; palette nodes may pass {@code ""})
      */
     public static SourceResolution resolve(
             BaseNode node,
@@ -103,7 +98,7 @@ public final class MaterialSourceResolver {
      * Driven when the port is wired, or a non-null value was injected (unit tests / direct setInput).
      * Connected + null still counts as driven and fails closed in parsers.
      */
-    static boolean isDriven(BaseNode node, String portId) {
+    public static boolean isDriven(BaseNode node, String portId) {
         return OptionalPortDrive.isConnected(node, portId) || node.getInput(portId) != null;
     }
 
@@ -130,14 +125,14 @@ public final class MaterialSourceResolver {
         if (!(value instanceof DataTreeData tree)) {
             return SourceResolution.fail(portName + " must be a DATA_TREE");
         }
-        BasicAssignmentUtils.Validation itemsOk = validateTreeItems(tree);
-        if (!itemsOk.valid()) {
-            return SourceResolution.fail(itemsOk.message());
+        String itemsError = validateTreeItems(tree);
+        if (itemsError != null) {
+            return SourceResolution.fail(itemsError);
         }
         return SourceResolution.tree(kind, tree);
     }
 
-    static BasicAssignmentUtils.Validation validateTreeItems(DataTreeData tree) {
+    private static @Nullable String validateTreeItems(DataTreeData tree) {
         for (DataTreeData.Branch branch : tree.getBranches()) {
             for (Object item : branch.items()) {
                 if (item instanceof BlockPos) {
@@ -146,12 +141,10 @@ public final class MaterialSourceResolver {
                 if (item instanceof BlockPlacementData placement && placement.pos() != null) {
                     continue;
                 }
-                return BasicAssignmentUtils.Validation.fail(
-                    "Tree items must be BlockPos or BlockPlacementData with non-null pos"
-                );
+                return "Tree items must be BlockPos or BlockPlacementData with non-null pos";
             }
         }
-        return BasicAssignmentUtils.Validation.ok();
+        return null;
     }
 
     private static SourceResolution resolvePlacements(@Nullable Object value) {

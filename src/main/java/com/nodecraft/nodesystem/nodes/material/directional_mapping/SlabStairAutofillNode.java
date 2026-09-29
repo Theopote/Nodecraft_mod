@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -26,6 +27,8 @@ import java.util.UUID;
     order = 10
 )
 public class SlabStairAutofillNode extends BaseNode {
+
+    private static final double NORMAL_EPS_SQ = 1.0e-9d;
 
     @NodeProperty(
         displayName = "Slab Angle",
@@ -61,6 +64,18 @@ public class SlabStairAutofillNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public SlabStairAutofillNode() {
         super(UUID.randomUUID(), "material.directional_mapping.slab_stair_autofill");
 
@@ -77,8 +92,10 @@ public class SlabStairAutofillNode extends BaseNode {
         addInputPort(new BasePort(INPUT_STAIR_BLOCK_ID, "Stair Block", "Stair block id for steep slopes", NodeDataType.BLOCK_TYPE, this));
 
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Adapted placements (blockId only)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_SLAB_COUNT_ID, "Slab Count", "Number of slab placements", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_STAIR_COUNT_ID, "Stair Count", "Number of stair placements", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SLAB_COUNT_ID, "Slab-Classified",
+            "Count of placements classified as slab by normal angle (not necessarily remapped to slab block)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_STAIR_COUNT_ID, "Stair-Classified",
+            "Count of placements classified as stair by normal angle (not necessarily remapped to stair block)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when normals align with placements", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
@@ -90,53 +107,81 @@ public class SlabStairAutofillNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double slabAngle = resolveAngle(slabAngleDegrees, 20.0d);
-        double stairAngle = resolveAngle(stairAngleDegrees, 35.0d);
-        if (stairAngle < slabAngle) {
-            stairAngle = slabAngle;
+        if (!Double.isFinite(slabAngleDegrees) || slabAngleDegrees < 0.0d || slabAngleDegrees > 90.0d) {
+            emitInvalid("Slab Angle must be finite and in [0, 90]");
+            return;
+        }
+        if (!Double.isFinite(stairAngleDegrees) || stairAngleDegrees < 0.0d || stairAngleDegrees > 90.0d) {
+            emitInvalid("Stair Angle must be finite and in [0, 90]");
+            return;
+        }
+        if (stairAngleDegrees < slabAngleDegrees) {
+            emitInvalid("Stair Angle must be >= Slab Angle");
+            return;
+        }
+        double slabAngle = slabAngleDegrees;
+        double stairAngle = stairAngleDegrees;
+
+        MaterialMappingSupport.MappedBlockType defaultMapped =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_DEFAULT_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_DEFAULT_BLOCK_ID));
+        if (!defaultMapped.valid()) {
+            emitInvalid(defaultMapped.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType slabMapped =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_SLAB_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_SLAB_BLOCK_ID));
+        if (!slabMapped.valid()) {
+            emitInvalid(slabMapped.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType stairMapped =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_STAIR_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_STAIR_BLOCK_ID));
+        if (!stairMapped.valid()) {
+            emitInvalid(stairMapped.error());
+            return;
         }
 
-        String defaultMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_DEFAULT_BLOCK_ID));
-        String slabMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_SLAB_BLOCK_ID));
-        String stairMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_STAIR_BLOCK_ID));
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, defaultMapped.blockId());
+        if (!source.valid()) {
+            emitInvalid(source.error());
+            return;
+        }
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitSuccess(List.of(), 0, 0);
+            return;
+        }
 
-        List<BlockPlacementData> base = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                defaultMapped
-            );
-
-        if (!placementSource && base.isEmpty() && hasNonPlacementSource()) {
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && defaultMapped.blockId() == null) {
             emitInvalid("Explicit default block required for geometry or coordinates input");
             return;
         }
 
+        List<BlockPlacementData> base = source.placements();
         Object normalsObj = inputValues.get(INPUT_NORMALS_ID);
         if (!base.isEmpty() && normalsObj == null) {
             emitInvalid("Normals required");
             return;
         }
 
-        List<Vector3d> normals = resolveNormals(normalsObj);
-        if (!base.isEmpty()) {
-            if (normals.isEmpty() && normalsObj instanceof List<?> list && !list.isEmpty()) {
-                emitInvalid("Normals must be a homogeneous VECTOR_LIST");
-                return;
-            }
-            if (normals.size() != base.size()) {
-                emitInvalid("Normals count must match placements count");
-                return;
-            }
+        NormalsResult normalsResult = resolveNormals(normalsObj);
+        if (!normalsResult.valid()) {
+            emitInvalid(normalsResult.error());
+            return;
+        }
+        List<Vector3d> normals = normalsResult.normals();
+        if (!base.isEmpty() && normals.size() != base.size()) {
+            emitInvalid("Normals count must match placements count");
+            return;
         }
 
         List<BlockPlacementData> resolved = new ArrayList<>(base.size());
@@ -145,15 +190,12 @@ public class SlabStairAutofillNode extends BaseNode {
 
         for (int i = 0; i < base.size(); i++) {
             BlockPlacementData placement = base.get(i);
-            if (placement.pos() == null) {
-                continue;
-            }
-            Vector3d normal = i < normals.size() ? normals.get(i) : null;
+            Vector3d normal = normals.get(i);
             MaterialChoice choice = chooseMaterial(
                 normal,
-                defaultMapped,
-                slabMapped,
-                stairMapped,
+                defaultMapped.blockId(),
+                slabMapped.blockId(),
+                stairMapped.blockId(),
                 slabAngle,
                 stairAngle,
                 placement.blockId()
@@ -168,22 +210,11 @@ public class SlabStairAutofillNode extends BaseNode {
             resolved.add(MaterialMappingSupport.remapBlockId(placement, choice.blockId()));
         }
 
-        outputValues.put(OUTPUT_PLACEMENTS_ID, resolved);
-        outputValues.put(OUTPUT_SLAB_COUNT_ID, slabCount);
-        outputValues.put(OUTPUT_STAIR_COUNT_ID, stairCount);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    private double resolveAngle(double value, double fallback) {
-        if (!Double.isFinite(value)) {
-            return fallback;
-        }
-        return Math.max(0.0d, Math.min(90.0d, value));
+        emitSuccess(resolved, slabCount, stairCount);
     }
 
     private MaterialChoice chooseMaterial(
-            @Nullable Vector3d normal,
+            Vector3d normal,
             @Nullable String defaultMapped,
             @Nullable String slabMapped,
             @Nullable String stairMapped,
@@ -191,11 +222,6 @@ public class SlabStairAutofillNode extends BaseNode {
             double stairAngle,
             @Nullable String sourceBlockId
     ) {
-        if (normal == null || normal.lengthSquared() <= 1.0e-9d) {
-            String blockId = MaterialMappingSupport.resolveMaterialTarget(defaultMapped, sourceBlockId);
-            return new MaterialChoice(MaterialType.DEFAULT, blockId);
-        }
-
         Vector3d n = new Vector3d(normal).normalize();
         double angleFromVertical = Math.toDegrees(Math.acos(Math.min(1.0d, Math.abs(n.y))));
 
@@ -217,28 +243,22 @@ public class SlabStairAutofillNode extends BaseNode {
         );
     }
 
-    private List<Vector3d> resolveNormals(@Nullable Object value) {
+    private NormalsResult resolveNormals(@Nullable Object value) {
+        if (value == null) {
+            return NormalsResult.ok(List.of());
+        }
         if (!(value instanceof List<?> list)) {
-            return List.of();
+            return NormalsResult.fail("Normals must be a VECTOR_LIST");
         }
         List<Vector3d> out = new ArrayList<>(list.size());
         for (Object entry : list) {
             Vector3d normal = BlockStateValidationUtils.resolveStrictVectorListElement(entry);
-            if (normal == null) {
-                return List.of();
+            if (normal == null || normal.lengthSquared() <= NORMAL_EPS_SQ) {
+                return NormalsResult.fail("Normals must be finite non-zero vectors");
             }
             out.add(normal);
         }
-        return out;
-    }
-
-    private boolean hasNonPlacementSource() {
-        return inputValues.get(INPUT_COORDINATES_ID) != null
-            || inputValues.get(INPUT_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_BOX_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_CYLINDER_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_SPHERE_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_TORUS_GEOMETRY_ID) != null;
+        return NormalsResult.ok(out);
     }
 
     private void emitInvalid(String message) {
@@ -249,6 +269,40 @@ public class SlabStairAutofillNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, message);
     }
 
+    private void emitSuccess(List<BlockPlacementData> placements, int slabCount, int stairCount) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_SLAB_COUNT_ID, slabCount);
+        outputValues.put(OUTPUT_STAIR_COUNT_ID, stairCount);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    public double getSlabAngleDegrees() {
+        return slabAngleDegrees;
+    }
+
+    public void setSlabAngleDegrees(double slabAngleDegrees) {
+        if (Double.isFinite(slabAngleDegrees)) {
+            this.slabAngleDegrees = Math.max(0.0d, Math.min(90.0d, slabAngleDegrees));
+        }
+    }
+
+    public double getStairAngleDegrees() {
+        return stairAngleDegrees;
+    }
+
+    public void setStairAngleDegrees(double stairAngleDegrees) {
+        if (Double.isFinite(stairAngleDegrees)) {
+            this.stairAngleDegrees = Math.max(0.0d, Math.min(90.0d, stairAngleDegrees));
+        }
+    }
+
+    /** Contract hook: write raw angle fields without UI clamp. */
+    public void forceAnglesForTest(double slabAngle, double stairAngle) {
+        this.slabAngleDegrees = slabAngle;
+        this.stairAngleDegrees = stairAngle;
+    }
+
     private enum MaterialType {
         DEFAULT,
         SLAB,
@@ -256,5 +310,15 @@ public class SlabStairAutofillNode extends BaseNode {
     }
 
     private record MaterialChoice(MaterialType type, String blockId) {
+    }
+
+    private record NormalsResult(boolean valid, List<Vector3d> normals, String error) {
+        static NormalsResult ok(List<Vector3d> normals) {
+            return new NormalsResult(true, normals, "");
+        }
+
+        static NormalsResult fail(String error) {
+            return new NormalsResult(false, List.of(), error);
+        }
     }
 }

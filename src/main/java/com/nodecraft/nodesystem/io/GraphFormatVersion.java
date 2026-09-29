@@ -772,9 +772,15 @@ public final class GraphFormatVersion {
      * VectorData VECTOR, StairsBlock detection. No wire remaps.
      */
     public static final int V115 = 115;
+
+    /**
+     * Directional Mapping Strict Sources & Normals v2: MaterialSourceResolver,
+     * non-zero normals, known BLOCK_TYPE, angle fail-closed. No wire remaps.
+     */
+    public static final int V116 = 116;
     
     /** Version written by current builds. */
-    public static final int CURRENT = V115;
+    public static final int CURRENT = V116;
 
     private GraphFormatVersion() {
     }

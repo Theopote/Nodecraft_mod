@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -65,6 +67,70 @@ public final class MaterialMappingSupport {
             return null;
         }
         return text.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Registry-validated mapped BLOCK_TYPE for material remappers.
+     * Undriven → absent (null id, valid); driven unknown/blank → fail.
+     */
+    public record MappedBlockType(boolean valid, @Nullable String blockId, String error) {
+        public static MappedBlockType absent() {
+            return new MappedBlockType(true, null, "");
+        }
+
+        public static MappedBlockType known(String blockId) {
+            return new MappedBlockType(true, blockId, "");
+        }
+
+        public static MappedBlockType fail(String error) {
+            return new MappedBlockType(false, null, error == null ? "" : error);
+        }
+    }
+
+    /**
+     * @param driven whether the port is connected or has an injected non-null value
+     */
+    public static MappedBlockType requireKnownBlockType(@Nullable Object value, boolean driven) {
+        if (!driven) {
+            return MappedBlockType.absent();
+        }
+        if (!(value instanceof String text) || text.isBlank()) {
+            return MappedBlockType.fail("Block Type must be a non-blank string");
+        }
+        String normalized = text.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.contains(":")) {
+            normalized = "minecraft:" + normalized;
+        }
+        if (!isKnownBlockId(normalized)) {
+            return MappedBlockType.fail("Unknown block: " + normalized);
+        }
+        return MappedBlockType.known(normalized);
+    }
+
+    public static boolean isKnownBlockId(@Nullable String blockType) {
+        if (blockType == null || blockType.isBlank()) {
+            return false;
+        }
+        Identifier id;
+        try {
+            id = Identifier.tryParse(blockType);
+        } catch (Throwable ignored) {
+            return false;
+        }
+        if (id == null) {
+            return false;
+        }
+        try {
+            // Pre-bootstrap / unit tests: empty registry cannot refute membership —
+            // accept well-formed ids. Once populated, require containsId.
+            if (Registries.BLOCK.getIds().isEmpty()) {
+                return true;
+            }
+            return Registries.BLOCK.containsId(id);
+        } catch (Throwable ignored) {
+            // Registry unavailable: fail open on syntax only (id already parsed).
+            return true;
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 

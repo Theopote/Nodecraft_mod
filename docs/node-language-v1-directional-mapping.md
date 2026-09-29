@@ -1,6 +1,7 @@
 # Node Language v1 — Directional Mapping
 
-**Status: PASSED / FROZEN** (Graph **V36**)
+**Status: PASSED / FROZEN** (Graph **V36**; remediated by **V116** — see
+[`node-language-v2-directional-mapping.md`](./node-language-v2-directional-mapping.md))
 
 Language unification for exactly **3** `material.directional_mapping.*` nodes: PURE
 blockId-only remapping driven by column geometry or surface normals, without mutating
@@ -8,6 +9,10 @@ blockId-only remapping driven by column geometry or surface normals, without mut
 
 Shared helper: `MaterialMappingSupport`. Graph schema: **V36** drops
 `output_positions` / `output_block_ids` wires from the three directional nodes.
+
+**V116 remediation (historical note):** soft `extractPlacements` / geometry fallthrough,
+zero-normal → DEFAULT, and silent angle clamp-on-process are superseded by strict
+`MaterialSourceResolver`, non-zero normals, known `BLOCK_TYPE`, and angle fail-closed.
 
 Related: [`node-language-v1-block-state.md`](./node-language-v1-block-state.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).

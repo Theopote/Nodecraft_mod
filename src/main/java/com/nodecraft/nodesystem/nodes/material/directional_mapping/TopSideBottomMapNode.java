@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,6 +46,18 @@ public class TopSideBottomMapNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public TopSideBottomMapNode() {
         super(UUID.randomUUID(), "material.directional_mapping.top_side_bottom_map");
 
@@ -52,7 +65,7 @@ public class TopSideBottomMapNode extends BaseNode {
             "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+            "Optional geometry — voxelized when no higher-precedence source is driven", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Legacy box geometry (voxelized first)", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
@@ -73,31 +86,50 @@ public class TopSideBottomMapNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String topMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_TOP_ID));
-        String sideMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_SIDE_ID));
-        String bottomMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_BOTTOM_ID));
+        MaterialMappingSupport.MappedBlockType top =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_TOP_ID), MaterialSourceResolver.isDriven(this, INPUT_TOP_ID));
+        if (!top.valid()) {
+            emitInvalid(top.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType side =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_SIDE_ID), MaterialSourceResolver.isDriven(this, INPUT_SIDE_ID));
+        if (!side.valid()) {
+            emitInvalid(side.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType bottom =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_BOTTOM_ID), MaterialSourceResolver.isDriven(this, INPUT_BOTTOM_ID));
+        if (!bottom.valid()) {
+            emitInvalid(bottom.error());
+            return;
+        }
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
+        String fallback = MaterialMappingSupport.firstMappedBlockType(
+            top.blockId(), side.blockId(), bottom.blockId());
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitInvalid(source.error());
+            return;
+        }
 
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(topMapped, sideMapped, bottomMapped)
-            );
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitSuccess(List.of());
+            return;
+        }
 
-        if (!placementSource && sources.isEmpty() && hasNonPlacementSource()) {
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
             emitInvalid("Explicit block material required for geometry or coordinates input");
             return;
         }
 
+        List<BlockPlacementData> sources = source.placements();
         if (sources.isEmpty()) {
             emitSuccess(List.of());
             return;
@@ -107,47 +139,32 @@ public class TopSideBottomMapNode extends BaseNode {
         Map<Long, Integer> maxYByColumn = new HashMap<>();
         for (BlockPlacementData placement : sources) {
             BlockPos pos = placement.pos();
-            if (pos == null) {
-                continue;
-            }
             long key = columnKey(pos.getX(), pos.getZ());
             minYByColumn.merge(key, pos.getY(), Math::min);
             maxYByColumn.merge(key, pos.getY(), Math::max);
         }
 
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             long key = columnKey(pos.getX(), pos.getZ());
             int minY = minYByColumn.getOrDefault(key, pos.getY());
             int maxY = maxYByColumn.getOrDefault(key, pos.getY());
 
             String roleMapped;
             if (pos.getY() == maxY) {
-                roleMapped = topMapped;
+                roleMapped = top.blockId();
             } else if (pos.getY() == minY) {
-                roleMapped = bottomMapped;
+                roleMapped = bottom.blockId();
             } else {
-                roleMapped = sideMapped;
+                roleMapped = side.blockId();
             }
 
-            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
         }
 
         emitSuccess(placements);
-    }
-
-    private boolean hasNonPlacementSource() {
-        return inputValues.get(INPUT_COORDINATES_ID) != null
-            || inputValues.get(INPUT_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_BOX_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_CYLINDER_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_SPHERE_GEOMETRY_ID) != null
-            || inputValues.get(INPUT_TORUS_GEOMETRY_ID) != null;
     }
 
     private void emitInvalid(String message) {
