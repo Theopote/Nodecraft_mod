@@ -21,7 +21,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.planes.world_plane",
     displayName = "World Plane",
-    description = "Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin",
+    description = "Creates a standard world plane with a Point-compatible origin. Preset normals: XY = +Z, YZ = +X, XZ = +Y.",
     category = "reference.planes",
     order = 0
 )
@@ -42,7 +42,7 @@ public class PlaneSelectorNode extends BaseNode {
         displayName = "Plane Preset",
         category = "Plane",
         order = 1,
-        description = "Selects which standard world plane to construct"
+        description = "World plane preset and its unit normal: XY = +Z, YZ = +X, XZ = +Y"
     )
     private PlanePreset planePreset = PlanePreset.XZ;
 
@@ -86,7 +86,7 @@ public class PlaneSelectorNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin";
+        return "Creates a standard world plane with a Point-compatible origin. Preset normals: XY = +Z, YZ = +X, XZ = +Y.";
     }
 
     @Override

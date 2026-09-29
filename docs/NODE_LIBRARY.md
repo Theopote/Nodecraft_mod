@@ -655,7 +655,7 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| World Plane | `reference.planes.world_plane` | Creates a standard XY, YZ, or XZ world plane with a Point-compatible origin | `PlaneSelectorNode` |
+| World Plane | `reference.planes.world_plane` | Creates a standard world plane with a Point-compatible origin. Preset normals: XY = +Z, YZ = +X, XZ = +Y. | `PlaneSelectorNode` |
 | Construct Plane | `reference.planes.construct_plane` | Constructs a plane from an origin point and a normal vector | `ConstructPlaneNode` |
 | Construct Plane From Points | `reference.planes.plane_from_points` | Constructs a plane from three non-collinear points | `ConstructPlaneFromPointsNode` |
 | Box Face To Plane | `reference.planes.box_face_plane` | Converts a box face into its supporting plane | `BoxFaceToPlaneNode` |

@@ -48,6 +48,21 @@ not an equation-derived closest point. Frame From Plane (V85) uses this origin a
 7. **Distance Point To Plane** — plane canonicalized before math; signed distance positive = normal side; failure → NaN distances + Valid=false + Error.
 8. **Deconstruct Plane** — `plane.normalized()` boundary; outputs canonical unit normal and construction origin.
 9. **PlaneUtils / PlaneData public API unchanged** — no PLANE_LIST or list caps in this family.
+10. **World Plane preset normals** — XY = +Z, YZ = +X, XZ = +Y (intentional DCC convention; XZ is +Y, not X×Z = −Y).
+
+## World Plane preset normals
+
+| Preset | Unit normal |
+|--------|-------------|
+| XY | +Z `(0, 0, 1)` |
+| YZ | +X `(1, 0, 0)` |
+| XZ | +Y `(0, 1, 0)` |
+
+These directions affect Offset Plane, Signed Distance, and Frame From Plane orientation.
+
+## Deferred
+
+- Invalid enum / non-finite World Plane origin saved-state silent retention → future warehouse-wide `StrictStateReader` (no per-family Graph bump)
 
 ## Migration (V85 → V86)
 

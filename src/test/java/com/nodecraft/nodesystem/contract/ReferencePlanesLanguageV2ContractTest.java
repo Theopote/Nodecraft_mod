@@ -173,6 +173,28 @@ class ReferencePlanesLanguageV2ContractTest {
     }
 
     @Test
+    void worldPlanePresetNormalsAreDocumentedOrientations() {
+        assertWorldPlaneNormal("XY", new Vector3d(0, 0, 1));
+        assertWorldPlaneNormal("YZ", new Vector3d(1, 0, 0));
+        assertWorldPlaneNormal("XZ", new Vector3d(0, 1, 0));
+    }
+
+    private static void assertWorldPlaneNormal(String preset, Vector3d expectedNormal) {
+        BaseNode world = node("reference.planes.world_plane");
+        world.setNodeState(Map.of(
+            "planePreset", preset,
+            "originX", 0.0d,
+            "originY", 0.0d,
+            "originZ", 0.0d
+        ));
+        world.processNode(null);
+        assertValid(world);
+        PlaneData plane = assertInstanceOf(PlaneData.class, world.getOutput("output_plane"));
+        assertEquals(1.0d, plane.getNormal().length(), 1.0e-9d);
+        assertVectorEquals(expectedNormal, plane.getNormal(), 1.0e-9d);
+    }
+
+    @Test
     void constructPlaneZeroNormalFailsClosed() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(0, 0, 0));

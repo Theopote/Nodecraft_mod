@@ -56,6 +56,15 @@ Point/vector resolution uses `SpatialValueResolver` (not duplicated in PlaneUtil
 - Optional Origin `POINT`; unconnected → property fallback
 - Connected invalid Origin → `Valid=false` (no silent property fallback)
 - Outputs: Plane `PLANE`, Valid `BOOLEAN`
+- Preset unit normals (locked):
+
+| Preset | Unit normal |
+|--------|-------------|
+| XY | +Z `(0, 0, 1)` |
+| YZ | +X `(1, 0, 0)` |
+| XZ | +Y `(0, 1, 0)` |
+
+XZ uses +Y by DCC convention (not right-hand X×Z = −Y).
 
 **Construct Plane** — explicit construction:
 - Required Origin `POINT` + Normal `VECTOR` (no implicit defaults)
@@ -92,3 +101,4 @@ Deconstruct outputs canonical origin (POINT) and unit normal (VECTOR).
 
 - Privatize `PlaneData` public constructors (datatypes-layer hardening)
 - Broader migration of non-reference nodes to `PlaneData.canonical()` at every producer boundary
+- Invalid enum / non-finite World Plane origin saved-state silent retention → future warehouse-wide `StrictStateReader`
