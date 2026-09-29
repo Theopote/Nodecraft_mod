@@ -1,7 +1,9 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.block.Block;
+import net.minecraft.block.StairsBlock;
 import net.minecraft.registry.Registries;
 import net.minecraft.state.property.Property;
 import net.minecraft.util.Identifier;
@@ -156,16 +158,37 @@ public final class BlockStateValidationUtils {
     }
 
     /**
-     * Graph-facing VECTOR ports accept canonical {@link Vector3d} only (no POINT/BLOCK_POS coercion).
+     * Graph-facing VECTOR ports: canonical {@link com.nodecraft.nodesystem.datatypes.VectorData}
+     * or legacy {@link Vector3d}. No POINT/BLOCK_POS coercion.
      */
     public static @Nullable Vector3d resolveStrictVector3d(@Nullable Object value) {
-        if (!(value instanceof Vector3d vector)) {
+        Vector3d vector = SpatialValueResolver.resolveVector(value);
+        if (vector == null) {
             return null;
         }
         if (!Double.isFinite(vector.x) || !Double.isFinite(vector.y) || !Double.isFinite(vector.z)) {
             return null;
         }
         return new Vector3d(vector);
+    }
+
+    /**
+     * True when {@code blockId} resolves to a registry {@link StairsBlock}.
+     * Unknown / unavailable registry → false (treat as non-stair pass-through).
+     */
+    public static boolean isStairsBlock(@Nullable String blockId) {
+        if (blockId == null || blockId.isBlank()) {
+            return false;
+        }
+        try {
+            Identifier id = Identifier.tryParse(blockId.trim().toLowerCase(Locale.ROOT));
+            if (id == null || !Registries.BLOCK.containsId(id)) {
+                return false;
+            }
+            return Registries.BLOCK.get(id) instanceof StairsBlock;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     public static @Nullable Vector3d resolveStrictVectorListElement(@Nullable Object value) {

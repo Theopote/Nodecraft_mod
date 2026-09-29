@@ -765,9 +765,16 @@ public final class GraphFormatVersion {
      * No wire changes.
      */
     public static final int V114 = 114;
+
+    /**
+     * Block State Strict Apply & Stair Input Contract v2: fail-closed placements,
+     * Apply/Stair Valid+Error, Direction/Half OptionalPortDrive, Property/Value pairs,
+     * VectorData VECTOR, StairsBlock detection. No wire remaps.
+     */
+    public static final int V115 = 115;
     
     /** Version written by current builds. */
-    public static final int CURRENT = V114;
+    public static final int CURRENT = V115;
 
     private GraphFormatVersion() {
     }

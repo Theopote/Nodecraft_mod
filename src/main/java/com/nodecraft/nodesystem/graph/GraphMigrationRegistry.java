@@ -173,6 +173,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V111 -> migrateV111ToV112(graph);
             case GraphFormatVersion.V112 -> migrateV112ToV113(graph);
             case GraphFormatVersion.V113 -> migrateV113ToV114(graph);
+            case GraphFormatVersion.V114 -> migrateV114ToV115(graph);
             default -> graph;
         };
     }
@@ -5541,6 +5542,14 @@ public final class GraphMigrationRegistry {
      * exact DOUBLE_LIST, fail-closed sources; no wire remaps).
      */
     private static SavedGraph migrateV113ToV114(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Block State Strict Apply & Stair Input Contract v2 (Valid/Error on Apply/Stair,
+     * fail-closed placements, OptionalPortDrive Direction/Half; no wire remaps).
+     */
+    private static SavedGraph migrateV114ToV115(SavedGraph graph) {
         return graph;
     }
 

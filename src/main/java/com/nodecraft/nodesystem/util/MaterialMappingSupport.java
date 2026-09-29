@@ -115,4 +115,40 @@ public final class MaterialMappingSupport {
         }
         return resolved;
     }
+
+    /**
+     * Fail-closed placement list parse for Block State Apply / Stair Shape.
+     * Null/absent → valid empty; mixed or incomplete entries → invalid (no silent filter).
+     */
+    public record PlacementListResult(boolean valid, List<BlockPlacementData> placements, String error) {
+        public static PlacementListResult ok(List<BlockPlacementData> placements) {
+            return new PlacementListResult(true, placements != null ? placements : List.of(), "");
+        }
+
+        public static PlacementListResult fail(String error) {
+            return new PlacementListResult(false, List.of(), error == null ? "" : error);
+        }
+    }
+
+    public static PlacementListResult parsePlacementsStrict(@Nullable Object placementsObj) {
+        if (placementsObj == null) {
+            return PlacementListResult.ok(List.of());
+        }
+        if (!(placementsObj instanceof List<?> list)) {
+            return PlacementListResult.fail("Block Placements must be a BLOCK_PLACEMENT_LIST");
+        }
+        List<BlockPlacementData> resolved = new ArrayList<>(list.size());
+        for (Object entry : list) {
+            if (!(entry instanceof BlockPlacementData placement)
+                || placement.pos() == null
+                || placement.blockId() == null
+                || placement.blockId().isBlank()) {
+                return PlacementListResult.fail(
+                    "Block Placements must contain only BlockPlacementData with non-null pos and non-blank blockId"
+                );
+            }
+            resolved.add(placement);
+        }
+        return PlacementListResult.ok(resolved);
+    }
 }

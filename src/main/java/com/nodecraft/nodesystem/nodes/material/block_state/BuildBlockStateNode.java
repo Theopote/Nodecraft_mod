@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -80,7 +81,13 @@ public class BuildBlockStateNode extends BaseNode {
             return;
         }
 
-        putString(state, INPUT_PROPERTY_NAME_ID, INPUT_PROPERTY_VALUE_ID);
+        BlockStateValidationUtils.ValidationResult pairOk =
+            putDynamicPropertyPair(state, INPUT_PROPERTY_NAME_ID, INPUT_PROPERTY_VALUE_ID);
+        if (!pairOk.valid()) {
+            emit(state, blockType, pairOk);
+            return;
+        }
+
         putShortcut(state, "facing", inputValues.get(INPUT_FACING_ID));
         putShortcut(state, "axis", inputValues.get(INPUT_AXIS_ID));
         putShortcut(state, "half", inputValues.get(INPUT_HALF_ID));
@@ -98,13 +105,35 @@ public class BuildBlockStateNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, validation.message());
     }
 
-    private void putString(BlockStateData state, String namePortId, String valuePortId) {
+    private BlockStateValidationUtils.ValidationResult putDynamicPropertyPair(
+            BlockStateData state,
+            String namePortId,
+            String valuePortId
+    ) {
+        boolean nameDriven = isDriven(namePortId);
+        boolean valueDriven = isDriven(valuePortId);
+        if (!nameDriven && !valueDriven) {
+            return BlockStateValidationUtils.ValidationResult.ok();
+        }
+        if (nameDriven != valueDriven) {
+            return BlockStateValidationUtils.ValidationResult.fail(
+                "Property and Value must both be connected or both unconnected"
+            );
+        }
         Object nameObj = inputValues.get(namePortId);
         Object valueObj = inputValues.get(valuePortId);
-        if (!(nameObj instanceof String name) || !(valueObj instanceof String value)) {
-            return;
+        if (!(nameObj instanceof String name) || name.isBlank()
+            || !(valueObj instanceof String value) || value.isBlank()) {
+            return BlockStateValidationUtils.ValidationResult.fail(
+                "Property and Value must be non-blank strings"
+            );
         }
         BlockStateValidationUtils.putProperty(state, name, value);
+        return BlockStateValidationUtils.ValidationResult.ok();
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.get(portId) != null;
     }
 
     private void putShortcut(BlockStateData state, String property, Object valueObj) {

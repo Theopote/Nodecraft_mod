@@ -32,6 +32,8 @@ public class ApplyBlockStateNode extends BaseNode {
     private static final String INPUT_BLOCK_STATE_ID = "input_block_state";
 
     private static final String OUTPUT_PLACEMENTS_ID = "output_placements";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ApplyBlockStateNode() {
         super(UUID.randomUUID(), "material.block_state.apply_block_state");
@@ -40,6 +42,8 @@ public class ApplyBlockStateNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BLOCK_STATE_ID, "Block State", "State property overrides merged into each placement", NodeDataType.BLOCK_STATE_DATA, this));
 
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Placements with merged block-state overrides", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when placements and state inputs are usable", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -49,6 +53,13 @@ public class ApplyBlockStateNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        MaterialMappingSupport.PlacementListResult parsed =
+            MaterialMappingSupport.parsePlacementsStrict(inputValues.get(INPUT_PLACEMENTS_ID));
+        if (!parsed.valid()) {
+            emitFail(parsed.error());
+            return;
+        }
+
         BlockStateData override = inputValues.get(INPUT_BLOCK_STATE_ID) instanceof BlockStateData inputState
             ? inputState.copy()
             : null;
@@ -56,18 +67,26 @@ public class ApplyBlockStateNode extends BaseNode {
             BlockStateValidationUtils.stripIdentityKeys(override);
         }
 
-        List<BlockPlacementData> sources = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        List<BlockPlacementData> resolved = new ArrayList<>(sources.size());
-        for (BlockPlacementData placement : sources) {
-            if (placement.pos() == null || placement.blockId() == null || placement.blockId().isBlank()) {
-                continue;
-            }
+        List<BlockPlacementData> resolved = new ArrayList<>(parsed.placements().size());
+        for (BlockPlacementData placement : parsed.placements()) {
             BlockStateData merged = override != null
                 ? BlockStateValidationUtils.mergeStateData(placement.stateData(), override)
                 : placement.stateData();
             resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), merged));
         }
 
-        outputValues.put(OUTPUT_PLACEMENTS_ID, resolved);
+        emitOk(resolved);
+    }
+
+    private void emitFail(String error) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private void emitOk(List<BlockPlacementData> placements) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 }
