@@ -727,8 +727,20 @@ public final class GraphFormatVersion {
      */
     public static final int V108 = 108;
 
+    /**
+     * Reference Vector Signed-Angle Semantics v3 placeholder: Graph step reserved for
+     * Angle Between Vectors projection-around-Reference remediation. No wire changes.
+     */
+    public static final int V109 = 109;
+
+    /**
+     * Input Values Optional Drive Strictness v2: Value List Index/Options and Gradient
+     * T/X/Y use OptionalPortDrive fail-closed; Gradient exact finite Double. No wire changes.
+     */
+    public static final int V110 = 110;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V108;
+    public static final int CURRENT = V110;
 
     private GraphFormatVersion() {
     }

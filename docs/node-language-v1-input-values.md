@@ -1,6 +1,7 @@
 # Node Language v1 — Input Values
 
-**Status: PASSED / FROZEN** (HEAD `98096d80`, Graph **V34**)
+**Status: PASSED / FROZEN** (historical Graph **V34**; remediated by Graph **V110** —
+see [`node-language-v2-input-values.md`](./node-language-v2-input-values.md))
 
 Language unification for exactly **6** `input.values.*` value-source nodes: typed ports,
 no graph-facing `ANY` / unconstrained `LIST`, no hidden coercion, and `Valid` where needed.
@@ -10,8 +11,12 @@ Shared helper: `ValueInputUtils`. Graph schema: **V34** remaps `input.basic.text
 `ColorData`, Value List options to `STRING_LIST`, drops Gradient `output_ramp`, and adds File
 Path `output_valid`.
 
+**V110 remediation:** Value List Index/Options and Gradient T/X/Y no longer treat
+connected-null as unconnected. Use OptionalPortDrive fail-closed (see v2 doc).
+
 Related: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md),
 [`node-language-v1-input-context.md`](./node-language-v1-input-context.md),
+[`node-language-v2-input-values.md`](./node-language-v2-input-values.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Core rules
@@ -75,13 +80,14 @@ Legacy persisted state may still coerce string/number on restore (acceptable).
 | `output_options` | `STRING_LIST` | Resolved options |
 | `output_valid` | `BOOLEAN` | `false` when options empty |
 
-Property CSV `Options = "A, B, C"` is the unconnected fallback.
+Property CSV `Options = "A, B, C"` is the unconnected fallback. **Connected** Options
+null/invalid must not fall back to CSV (`Valid=false`) — see V110 / v2 doc.
 
 ## Gradient Ramp
 
 | Port | Type | Notes |
 |------|------|-------|
-| `input_t` / `input_x` / `input_y` | `DOUBLE` | Sample coordinates |
+| `input_t` / `input_x` / `input_y` | `DOUBLE` | Sample coordinates; unconnected default `0.5`; connected invalid → `Valid=false` (V110) |
 | `output_color` | `COLOR` | `ColorData` when valid |
 | `output_red/green/blue/alpha` / `output_t` | `DOUBLE` | Finite when valid; else `NaN` |
 | `output_hex` | `STRING` | `#RRGGBB` or `""` when invalid |
@@ -122,5 +128,6 @@ No `Files.exists`. PURE.
 
 - `InputValuesLanguageContractTest` — inventory, ColorData/DOUBLE, Value List strictness,
   Gradient Valid, File Path Valid, Text no multiline, V33→V34 remaps/drops.
-- Format contract tests bumped to **V34**.
+- `InputValuesLanguageV2ContractTest` — OptionalPortDrive connected-null / exact Double (V110).
+- Format contract tests bumped to **V34** (historical); CURRENT is **V110**.
 - `AnyAllowlistContractTest` — `input.values.` forbidden for ANY.

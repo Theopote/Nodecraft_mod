@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -42,34 +43,53 @@ public class DropdownSelectorNode extends BaseNode {
 
     public DropdownSelectorNode() {
         super(UUID.randomUUID(), "input.values.dropdown");
-        addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Optional selected index override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_OPTIONS_ID, "Options", "Optional string-list options override", NodeDataType.STRING_LIST, this));
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Index",
+            "Optional selected index override; connected invalid fails closed",
+            NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_OPTIONS_ID, "Options",
+            "Optional string-list options override; connected invalid fails closed (no CSV fallback)",
+            NodeDataType.STRING_LIST, this));
 
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Selected option index", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALUE_ID, "Value", "Selected option text", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_OPTIONS_ID, "Options", "Resolved option list", NodeDataType.STRING_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when options are available", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when options are available and optional Index/Options drives are valid",
+            NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<String> optionList = resolveOptions(inputValues.get(INPUT_OPTIONS_ID));
-        if (optionList.isEmpty()) {
-            outputValues.put(OUTPUT_INDEX_ID, 0);
-            outputValues.put(OUTPUT_VALUE_ID, "");
-            outputValues.put(OUTPUT_OPTIONS_ID, List.of());
-            outputValues.put(OUTPUT_VALID_ID, false);
+        List<String> optionList = OptionalPortDrive.resolveOptionalStringList(
+            this,
+            INPUT_OPTIONS_ID,
+            parseCsvOptions(options)
+        );
+        if (optionList == null || optionList.isEmpty()) {
+            publishInvalid();
             return;
         }
 
-        int index = inputValues.get(INPUT_INDEX_ID) instanceof Integer i ? i : selectedIndex;
-        index = Math.max(0, Math.min(optionList.size() - 1, index));
-        String value = optionList.get(index);
+        Integer index = OptionalPortDrive.resolveOptionalInteger(this, INPUT_INDEX_ID, selectedIndex);
+        if (index == null) {
+            publishInvalid();
+            return;
+        }
 
-        outputValues.put(OUTPUT_INDEX_ID, index);
+        int resolvedIndex = Math.max(0, Math.min(optionList.size() - 1, index));
+        String value = optionList.get(resolvedIndex);
+
+        outputValues.put(OUTPUT_INDEX_ID, resolvedIndex);
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_OPTIONS_ID, List.copyOf(optionList));
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private void publishInvalid() {
+        outputValues.put(OUTPUT_INDEX_ID, 0);
+        outputValues.put(OUTPUT_VALUE_ID, "");
+        outputValues.put(OUTPUT_OPTIONS_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 
     @Override
@@ -118,34 +138,6 @@ public class DropdownSelectorNode extends BaseNode {
             selectedIndex = resolved;
             markDirty();
         }
-    }
-
-    /**
-     * Port override accepts only a homogeneous {@link String} list (no {@code String.valueOf}
-     * coercion, no silent filtering of non-String elements). Any non-String element invalidates
-     * the whole options input. When the port is unconnected, falls back to the Options CSV.
-     */
-    private List<String> resolveOptions(Object value) {
-        if (value instanceof List<?> list) {
-            List<String> out = new ArrayList<>();
-            for (Object item : list) {
-                if (!(item instanceof String text)) {
-                    return List.of();
-                }
-                String trimmed = text.trim();
-                if (!trimmed.isEmpty()) {
-                    out.add(trimmed);
-                }
-            }
-            return out;
-        }
-
-        if (value != null) {
-            // Connected non-list values are rejected (no silent String coercion).
-            return List.of();
-        }
-
-        return parseCsvOptions(options);
     }
 
     private static List<String> parseCsvOptions(@Nullable String raw) {

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
@@ -101,9 +102,15 @@ public class GradientRampNode extends BaseCustomUINode {
     public GradientRampNode() {
         super(UUID.randomUUID(), "input.values.gradient_ramp");
 
-        addInputPort(new BasePort(INPUT_T_ID, "T", "Scalar sample coordinate", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_X_ID, "X", "2D sample X coordinate for fill modes", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "2D sample Y coordinate for fill modes", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_T_ID, "T",
+            "Scalar sample coordinate; unconnected defaults to 0.5; connected invalid fails closed",
+            NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X",
+            "2D sample X for fill modes; unconnected defaults to 0.5; connected invalid fails closed",
+            NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y",
+            "2D sample Y for fill modes; unconnected defaults to 0.5; connected invalid fails closed",
+            NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_COLOR_ID, "Color", "Sampled color", NodeDataType.COLOR, this));
         addOutputPort(new BasePort(OUTPUT_RED_ID, "R", "Red channel in 0..1", NodeDataType.DOUBLE, this));
@@ -576,15 +583,12 @@ public class GradientRampNode extends BaseCustomUINode {
         return value == null ? fallback : value;
     }
 
+    /**
+     * Connection-aware sample drive: unconnected → {@code fallback}; connected exact finite
+     * {@link Double} → wire value; connected null/invalid → {@code null} (fail closed).
+     */
     private @Nullable Double getInputDoubleOrNull(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        if (value == null) {
-            return fallback;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
-        return null;
+        return OptionalPortDrive.resolveOptionalStrictDouble(this, portId, fallback);
     }
 
     private double clamp01(double value) {

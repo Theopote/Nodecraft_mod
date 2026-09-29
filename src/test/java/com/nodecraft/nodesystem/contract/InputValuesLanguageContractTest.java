@@ -4,6 +4,8 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -119,56 +122,91 @@ class InputValuesLanguageContractTest {
 
         node.setOptions("A, B, C");
         node.setSelectedIndex(1);
-        node.setInput("input_index", 2.0d); // Number but not Integer  -> ignored
+        // Unconnected Index ignores non-Integer slot values and uses selectedIndex.
+        node.setInput("input_index", 2.0d);
         node.processNode(null);
         assertEquals(1, node.getOutput("output_index"));
         assertEquals("B", node.getOutput("output_value"));
         assertTrue((Boolean) node.getOutput("output_valid"));
 
-        node.setInput("input_index", 2);
-        node.processNode(null);
-        assertEquals(2, node.getOutput("output_index"));
-        assertEquals("C", node.getOutput("output_value"));
+        ValueListProbe connectedIndex = new ValueListProbe();
+        connectedIndex.setOptions("A, B, C");
+        connectedIndex.setSelectedIndex(1);
+        connectedIndex.connectInput("input_index", NodeDataType.INTEGER);
+        connectedIndex.putRawInput("input_index", 2);
+        connectedIndex.processNode(null);
+        assertEquals(2, connectedIndex.getOutput("output_index"));
+        assertEquals("C", connectedIndex.getOutput("output_value"));
 
-        // Bypass port compatibility so runtime can observe non-String list elements without coercion.
-        putInput(node, "input_options", List.of(1, 2, 3));
-        node.processNode(null);
-        assertFalse((Boolean) node.getOutput("output_valid"));
-        assertEquals("", node.getOutput("output_value"));
-        assertEquals(List.of(), node.getOutput("output_options"));
+        // Connected Options with non-String elements fail closed (no CSV fallback).
+        ValueListProbe badOptions = new ValueListProbe();
+        badOptions.setOptions("A, B, C");
+        badOptions.connectInput("input_options", NodeDataType.STRING_LIST);
+        badOptions.putRawInput("input_options", List.of(1, 2, 3));
+        badOptions.processNode(null);
+        assertFalse((Boolean) badOptions.getOutput("output_valid"));
+        assertEquals("", badOptions.getOutput("output_value"));
+        assertEquals(List.of(), badOptions.getOutput("output_options"));
 
-        // Mixed list must fail-closed (no silent String filtering).
-        putInput(node, "input_options", List.of("A", 1, "B"));
-        node.processNode(null);
-        assertFalse((Boolean) node.getOutput("output_valid"));
-        assertEquals("", node.getOutput("output_value"));
-        assertEquals(List.of(), node.getOutput("output_options"));
+        ValueListProbe mixedOptions = new ValueListProbe();
+        mixedOptions.setOptions("A, B, C");
+        mixedOptions.connectInput("input_options", NodeDataType.STRING_LIST);
+        mixedOptions.putRawInput("input_options", List.of("A", 1, "B"));
+        mixedOptions.processNode(null);
+        assertFalse((Boolean) mixedOptions.getOutput("output_valid"));
+        assertEquals("", mixedOptions.getOutput("output_value"));
+        assertEquals(List.of(), mixedOptions.getOutput("output_options"));
 
-        node.setInput("input_options", List.of("X", "Y"));
-        node.setInput("input_index", 99);
-        node.processNode(null);
-        assertTrue((Boolean) node.getOutput("output_valid"));
-        assertEquals(1, node.getOutput("output_index"));
-        assertEquals("Y", node.getOutput("output_value"));
+        ValueListProbe clamp = new ValueListProbe();
+        clamp.connectInput("input_options", NodeDataType.STRING_LIST);
+        clamp.connectInput("input_index", NodeDataType.INTEGER);
+        clamp.putRawInput("input_options", List.of("X", "Y"));
+        clamp.putRawInput("input_index", 99);
+        clamp.processNode(null);
+        assertTrue((Boolean) clamp.getOutput("output_valid"));
+        assertEquals(1, clamp.getOutput("output_index"));
+        assertEquals("Y", clamp.getOutput("output_value"));
     }
 
-    @SuppressWarnings("unchecked")
-    private static void putInput(DropdownSelectorNode node, String portId, Object value) throws Exception {
-        Class<?> type = node.getClass();
-        Field field = null;
-        while (type != null) {
-            try {
-                field = type.getDeclaredField("inputValues");
-                break;
-            } catch (NoSuchFieldException ignored) {
-                type = type.getSuperclass();
-            }
+    private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
+        PortStubNode stub = new PortStubNode(outputType);
+        BasePort output = (BasePort) stub.getOutputPorts().getFirst();
+        BasePort input = (BasePort) target.getInputPorts().stream()
+            .filter(port -> inputPortId.equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertTrue(output.connectTo(input));
+    }
+
+    private static final class ValueListProbe extends DropdownSelectorNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
         }
-        if (field == null) {
-            throw new AssertionError("inputValues field not found");
+
+        void connectInput(String portId, NodeDataType outputType) {
+            InputValuesLanguageContractTest.connectInput(this, portId, outputType);
         }
-        field.setAccessible(true);
-        ((Map<String, Object>) field.get(node)).put(portId, value);
+    }
+
+    private static final class GradientProbe extends GradientRampNode {
+        void putRawInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            InputValuesLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class PortStubNode extends BaseNode {
+        PortStubNode(NodeDataType outputType) {
+            super(UUID.randomUUID(), "test.port_stub");
+            addOutputPort(new BasePort("output_stub", "Stub", "", outputType, this));
+        }
+
+        @Override
+        public void processNode(com.nodecraft.nodesystem.execution.ExecutionContext context) {
+        }
     }
 
     @Test
@@ -183,15 +221,16 @@ class InputValuesLanguageContractTest {
         assertInstanceOf(ColorData.class, node.getOutput("output_color"));
         assertTrue(Double.isFinite((Double) node.getOutput("output_red")));
 
-        node.setInput("input_t", Double.NaN);
-        node.processNode(null);
-        assertFalse((Boolean) node.getOutput("output_valid"));
-        assertNull(node.getOutput("output_color"));
-        assertTrue(Double.isNaN((Double) node.getOutput("output_red")));
-        assertTrue(Double.isNaN((Double) node.getOutput("output_t")));
-        assertEquals("", node.getOutput("output_hex"));
+        GradientProbe nanT = new GradientProbe();
+        nanT.connectInput("input_t", NodeDataType.DOUBLE);
+        nanT.putRawInput("input_t", Double.NaN);
+        nanT.processNode(null);
+        assertFalse((Boolean) nanT.getOutput("output_valid"));
+        assertNull(nanT.getOutput("output_color"));
+        assertTrue(Double.isNaN((Double) nanT.getOutput("output_red")));
+        assertTrue(Double.isNaN((Double) nanT.getOutput("output_t")));
+        assertEquals("", nanT.getOutput("output_hex"));
 
-        node.setInput("input_t", 0.5d);
         node.setNodeState(Map.of(
                 "gradientMode", "RADIAL",
                 "radius", 0.0d,

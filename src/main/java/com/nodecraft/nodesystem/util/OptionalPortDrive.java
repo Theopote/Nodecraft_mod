@@ -8,6 +8,9 @@ import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Connection-aware optional port resolution for property-backed drives.
  * <p>
@@ -197,6 +200,37 @@ public final class OptionalPortDrive {
         if (isConnected(node, portId)) {
             Object value = node.getInput(portId);
             return value instanceof String text ? text : null;
+        }
+        return propertyFallback;
+    }
+
+    /**
+     * Optional STRING_LIST drive. Returns {@code null} when connected but invalid (fail closed).
+     * Connected lists must be homogeneous {@link String} elements (no coercion). Blank entries
+     * are trimmed and skipped. When unconnected, returns {@code propertyFallback} as-is
+     * (may be null or empty).
+     */
+    public static @Nullable List<String> resolveOptionalStringList(
+            BaseNode node,
+            String portId,
+            @Nullable List<String> propertyFallback
+    ) {
+        if (isConnected(node, portId)) {
+            Object value = node.getInput(portId);
+            if (!(value instanceof List<?> list)) {
+                return null;
+            }
+            List<String> out = new ArrayList<>(list.size());
+            for (Object item : list) {
+                if (!(item instanceof String text)) {
+                    return null;
+                }
+                String trimmed = text.trim();
+                if (!trimmed.isEmpty()) {
+                    out.add(trimmed);
+                }
+            }
+            return List.copyOf(out);
         }
         return propertyFallback;
     }

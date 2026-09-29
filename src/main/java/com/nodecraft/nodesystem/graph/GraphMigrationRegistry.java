@@ -167,6 +167,8 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V105 -> migrateV105ToV106(graph);
             case GraphFormatVersion.V106 -> migrateV106ToV107(graph);
             case GraphFormatVersion.V107 -> migrateV107ToV108(graph);
+            case GraphFormatVersion.V108 -> migrateV108ToV109(graph);
+            case GraphFormatVersion.V109 -> migrateV109ToV110(graph);
             default -> graph;
         };
     }
@@ -5488,6 +5490,21 @@ public final class GraphMigrationRegistry {
      * saved-state non-finite fail-closed; no wire remaps).
      */
     private static SavedGraph migrateV107ToV108(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Reference Vector Signed-Angle Semantics v3 placeholder (no wire remaps).
+     */
+    private static SavedGraph migrateV108ToV109(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Input Values Optional Drive Strictness v2 (OptionalPortDrive fail-closed for
+     * Value List / Gradient; no wire remaps).
+     */
+    private static SavedGraph migrateV109ToV110(SavedGraph graph) {
         return graph;
     }
 
