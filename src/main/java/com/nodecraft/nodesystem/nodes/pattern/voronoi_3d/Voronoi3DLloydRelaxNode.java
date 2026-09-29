@@ -78,7 +78,16 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d cornerA = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CORNER_A_ID));
         Vector3d cornerB = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_CORNER_B_ID));
-        List<Vector3d> sites = resolveValidatedPointList(inputValues.get(INPUT_SITES_ID));
+        Object sitesRaw = inputValues.get(INPUT_SITES_ID);
+        if (!(sitesRaw instanceof List<?> rawSites) || rawSites.isEmpty()) {
+            writeInvalid("Missing or invalid Sites");
+            return;
+        }
+        if (rawSites.size() > GenerationLimits.MAX_VORONOI_LLOYD_SITES) {
+            writeInvalid("Site count exceeds MAX_VORONOI_LLOYD_SITES");
+            return;
+        }
+        List<Vector3d> sites = resolveValidatedPointList(rawSites);
 
         if (cornerA == null || cornerB == null) {
             writeInvalid("Missing or invalid Corner A/B");
@@ -102,10 +111,6 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
             return;
         }
 
-        if (sites.size() > GenerationLimits.MAX_VORONOI_LLOYD_SITES) {
-            writeInvalid("Site count exceeds MAX_VORONOI_LLOYD_SITES");
-            return;
-        }
         if (!sitesInsideBounds(sites, min, max)) {
             writeInvalid("All sites must lie inside bounds");
             return;
@@ -137,6 +142,13 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
                 + GenerationLimits.MAX_VORONOI_LLOYD_ITERATIONS + "]");
             return;
         }
+        if (iters > 0) {
+            long gridSamples = (long) cells * cells * cells;
+            if ((long) sites.size() > gridSamples) {
+                writeInvalid("Site count exceeds available Lloyd grid samples (cells³)");
+                return;
+            }
+        }
         if (GenerationLimits.exceedsLloydWorkBudget(cells, sites.size(), iters)) {
             writeInvalid("Lloyd work budget exceeded");
             return;
@@ -158,7 +170,7 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
     }
 
     /**
-     * Transactional publish fence: cardinality, finite sites, inside bounds.
+     * Transactional publish fence: cardinality, finite sites, inside bounds, distinctness.
      *
      * @return true when outputs were written successfully
      */
@@ -180,6 +192,10 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         }
         if (!sitesInsideBounds(relaxed, min, max)) {
             writeInvalid("Relaxed sites must remain inside bounds");
+            return false;
+        }
+        if (hasDuplicateSites(relaxed)) {
+            writeInvalid("Relaxation produced duplicate or near-duplicate sites");
             return false;
         }
         writeSuccess(relaxed);
@@ -260,10 +276,7 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         return false;
     }
 
-    private static @Nullable List<Vector3d> resolveValidatedPointList(@Nullable Object value) {
-        if (!(value instanceof List<?> rawSites) || rawSites.isEmpty()) {
-            return null;
-        }
+    private static @Nullable List<Vector3d> resolveValidatedPointList(List<?> rawSites) {
         List<Vector3d> sites = new ArrayList<>(rawSites.size());
         for (Object entry : rawSites) {
             Vector3d resolved = SpatialValueResolver.resolvePoint(entry);

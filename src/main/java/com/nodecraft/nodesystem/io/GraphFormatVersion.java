@@ -715,8 +715,14 @@ public final class GraphFormatVersion {
      */
     public static final int V106 = 106;
 
+    /**
+     * Pattern Voronoi 3D Sampling Capacity & Site Invariants v3: grid capacity invariant;
+     * output distinctness fence; bounded Sites preflight. No wire changes.
+     */
+    public static final int V107 = 107;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V106;
+    public static final int CURRENT = V107;
 
     private GraphFormatVersion() {
     }

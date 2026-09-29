@@ -65,6 +65,12 @@ class PatternVoronoi3DLanguageV2ContractTest {
     }
 
     @Test
+    void currentGraphFormatIsAtLeastV107() {
+        assertEquals(107, GraphFormatVersion.V107);
+        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V107);
+    }
+
+    @Test
     void exactlyOneNodeOrderZeroPure() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("pattern.voronoi_3d."))
@@ -299,6 +305,70 @@ class PatternVoronoi3DLanguageV2ContractTest {
         node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
         assertInvalid(node);
+    }
+
+    @Test
+    void siteCountExceedsGridSamplesFailsWhenIterationsPositive() {
+        BaseNode node = createLloyd();
+        List<PointData> sites = new ArrayList<>(100);
+        for (int i = 0; i < 100; i++) {
+            double x = 0.5d + (i % 10) * 0.9d;
+            double y = 0.5d + ((i / 10) % 10) * 0.9d;
+            double z = 0.5d + ((i / 100) % 10) * 0.9d;
+            sites.add(new PointData(x, y, z));
+        }
+        node.setInput("input_sites", sites);
+        node.setInput("input_corner_a", new PointData(0, 0, 0));
+        node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 1));
+        node.processNode(null);
+        assertInvalid(node);
+        String error = String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("grid") || error.contains("sample") || error.contains("cells"));
+    }
+
+    @Test
+    void siteCountMayExceedGridSamplesWhenIterationsZero() {
+        BaseNode node = createLloyd();
+        List<PointData> sites = new ArrayList<>(100);
+        for (int i = 0; i < 100; i++) {
+            double x = 0.5d + (i % 10) * 0.9d;
+            double y = 0.5d + ((i / 10) % 10) * 0.9d;
+            double z = 0.5d + ((i / 100) % 10) * 0.9d;
+            sites.add(new PointData(x, y, z));
+        }
+        node.setInput("input_sites", sites);
+        node.setInput("input_corner_a", new PointData(0, 0, 0));
+        node.setInput("input_corner_b", new PointData(10, 10, 10));
+        node.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 0));
+        node.processNode(null);
+
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals("", node.getOutput("output_error"));
+        assertEquals(100, node.getOutput("output_count"));
+        @SuppressWarnings("unchecked")
+        List<PointData> out = assertInstanceOf(List.class, node.getOutput("output_sites"));
+        assertEquals(100, out.size());
+    }
+
+    @Test
+    void outputSitesRemainDistinctAfterRelaxation() {
+        BaseNode node = createLloyd();
+        seedValidGeometry(node);
+        node.setNodeState(Map.of("cellsPerAxis", 6, "iterations", 2));
+        node.processNode(null);
+
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<PointData> out = assertInstanceOf(List.class, node.getOutput("output_sites"));
+        for (int i = 0; i < out.size(); i++) {
+            for (int j = i + 1; j < out.size(); j++) {
+                Vector3d a = out.get(i).position();
+                Vector3d b = out.get(j).position();
+                assertTrue(a.distanceSquared(b) > 1.0e-12d,
+                    "output sites " + i + " and " + j + " are near-duplicates");
+            }
+        }
     }
 
     @Test

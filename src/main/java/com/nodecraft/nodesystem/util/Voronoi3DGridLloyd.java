@@ -9,6 +9,8 @@ import java.util.List;
  * Lloyd relaxation for 3D sites using a uniform axis-aligned grid: each cell center votes for its
  * nearest site; sites move to the centroid of cells they own. This is an approximation, not an exact 3D Voronoi diagram.
  * <p>
+ * Sites owning zero grid samples retain their previous position (Graph V107 empty-cell policy).
+ * <p>
  * Callers must validate bounds, site count, cells, and iterations before invoking {@link #relax}.
  */
 public final class Voronoi3DGridLloyd {

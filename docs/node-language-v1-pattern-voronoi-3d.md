@@ -1,7 +1,8 @@
 # Node Language v1 — Pattern Voronoi 3D
 
 **Status: PASSED / FROZEN** (Graph **V45**; superseded by Language v2 at Graph **V83** —
-see [`node-language-v2-pattern-voronoi-3d.md`](./node-language-v2-pattern-voronoi-3d.md))
+see [`node-language-v2-pattern-voronoi-3d.md`](./node-language-v2-pattern-voronoi-3d.md);
+V107 sampling invariants: [`node-language-v2-pattern-voronoi-3d-sampling-invariants.md`](./node-language-v2-pattern-voronoi-3d-sampling-invariants.md))
 
 Language unification for the single canonical `pattern.voronoi_3d.*` node: grid-approximated
 Lloyd relaxation inside an axis-aligned 3D box — aligned with Pattern Linear/Grid/Radial/Surface

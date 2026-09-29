@@ -165,6 +165,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V103 -> migrateV103ToV104(graph);
             case GraphFormatVersion.V104 -> migrateV104ToV105(graph);
             case GraphFormatVersion.V105 -> migrateV105ToV106(graph);
+            case GraphFormatVersion.V106 -> migrateV106ToV107(graph);
             default -> graph;
         };
     }
@@ -5470,6 +5471,14 @@ public final class GraphMigrationRegistry {
      * quaternion normalization; no wire remaps).
      */
     private static SavedGraph migrateV105ToV106(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern Voronoi 3D Sampling Capacity & Site Invariants v3 (grid capacity, output distinctness,
+     * bounded Sites preflight; no wire remaps).
+     */
+    private static SavedGraph migrateV106ToV107(SavedGraph graph) {
         return graph;
     }
 

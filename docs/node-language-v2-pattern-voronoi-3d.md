@@ -1,12 +1,15 @@
 # Node Language v2 — Pattern Voronoi 3D
 
-**Status: PASSED / FROZEN** (Graph **V83**; V45 remains historical v1)
+**Status: PASSED / FROZEN** (Graph **V83** foundation; **V107** sampling invariants — see
+[`node-language-v2-pattern-voronoi-3d-sampling-invariants.md`](./node-language-v2-pattern-voronoi-3d-sampling-invariants.md);
+V45 remains historical v1)
 
 Language modernization for the single canonical `pattern.voronoi_3d.lloyd_relax`
 node: Valid+Error, OptionalPortDrive for Cells/Iterations, order 0, and a
 transactional publish fence. Grid-approximated Lloyd algorithm unchanged.
 
 Related: [`node-language-v1-pattern-voronoi-3d.md`](./node-language-v1-pattern-voronoi-3d.md),
+[`node-language-v2-pattern-voronoi-3d-sampling-invariants.md`](./node-language-v2-pattern-voronoi-3d-sampling-invariants.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Core rules
@@ -18,9 +21,10 @@ Related: [`node-language-v1-pattern-voronoi-3d.md`](./node-language-v1-pattern-v
 5. **Non-degenerate 3D bounds** — span on each axis must exceed epsilon.
 6. **Sites >= 1**, all inside inclusive AABB, all distinct (distance² ≤ 1e-12 → invalid).
 7. **Iterations = 0** — deep-copy passthrough; util not called.
-8. **Publish fence** — success only when relaxed cardinality matches input, every site finite and inside bounds; otherwise whole fail (`Count=0`, empty Sites, Error set).
-9. **Fail closed on budget** — site cap / estimated Lloyd work over limit → invalid.
-10. **Deterministic** — same inputs → same outputs (no RNG).
+8. **Publish fence** — success only when relaxed cardinality matches input, every site finite, inside bounds, and distinct (distance² ≤ 1e-12 → invalid); otherwise whole fail (`Count=0`, empty Sites, Error set).
+9. **Grid capacity (V107)** — when `Iterations > 0`, site count must not exceed `cells³`; `Iterations = 0` passthrough is exempt.
+10. **Fail closed on budget** — site cap / estimated Lloyd work over limit → invalid.
+11. **Deterministic** — same inputs → same outputs (no RNG).
 
 ## Inventory (order 0)
 
