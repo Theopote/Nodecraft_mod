@@ -22,7 +22,7 @@ import java.util.function.DoubleConsumer;
     effect = NodeEffect.PURE,
     id = "input.numeric.range",
     displayName = "Domain Input",
-    description = "Defines a directed numeric domain (Start→End) and outputs domain, start, end, and directed span.",
+    description = "Defines a directed numeric domain (Start→End) with finite directed span; outputs Domain, Start, End, Span, Valid, and Error.",
     category = "input.numeric",
     order = 9
 )
@@ -32,6 +32,8 @@ public class RangeInputNode extends BaseCustomUINode {
     private static final String OUTPUT_START_ID = "output_start";
     private static final String OUTPUT_END_ID = "output_end";
     private static final String OUTPUT_SPAN_ID = "output_span";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Start", category = "Value", order = 1)
     private double start = 0.0d;
@@ -45,16 +47,24 @@ public class RangeInputNode extends BaseCustomUINode {
 
     public RangeInputNode() {
         super(UUID.randomUUID(), "input.numeric.range");
-        addOutputPort(new BasePort(OUTPUT_DOMAIN_ID, "Domain", "Directed numeric domain (Start→End)", NodeDataType.NUMERIC_RANGE, this));
+        addOutputPort(new BasePort(OUTPUT_DOMAIN_ID, "Domain",
+            "Directed numeric domain (Start→End) when Valid",
+            NodeDataType.NUMERIC_RANGE, this));
         addOutputPort(new BasePort(OUTPUT_START_ID, "Start", "Domain start value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_END_ID, "End", "Domain end value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_SPAN_ID, "Span", "Directed span (End - Start)", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when Start, End, and directed Span are all finite",
+            NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Failure reason when Valid is false",
+            NodeDataType.STRING, this));
         updateOutput();
     }
 
     @Override
     public String getDescription() {
-        return "Defines a directed numeric domain (Start→End). Use with Remap, Clamp, and Random nodes.";
+        return "Defines a directed numeric domain (Start→End) with finite directed span. Use with Remap, Clamp, and Random nodes.";
     }
 
     @Override
@@ -119,11 +129,25 @@ public class RangeInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        NumericRangeData domain = new NumericRangeData(start, end);
+        NumericRangeData domain = NumericRangeData.canonical(start, end);
+        if (domain == null) {
+            outputValues.put(OUTPUT_DOMAIN_ID, null);
+            outputValues.put(OUTPUT_START_ID, Double.NaN);
+            outputValues.put(OUTPUT_END_ID, Double.NaN);
+            outputValues.put(OUTPUT_SPAN_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, "Domain span is not finite");
+            syncOutputPorts();
+            return;
+        }
+
+        double span = NumericInputUtils.safeDirectedSpan(domain.start(), domain.end());
         outputValues.put(OUTPUT_DOMAIN_ID, domain);
         outputValues.put(OUTPUT_START_ID, domain.start());
         outputValues.put(OUTPUT_END_ID, domain.end());
-        outputValues.put(OUTPUT_SPAN_ID, NumericInputUtils.safeDirectedSpan(start, end));
+        outputValues.put(OUTPUT_SPAN_ID, span);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
         syncOutputPorts();
     }
 

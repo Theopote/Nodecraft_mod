@@ -27,6 +27,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -224,6 +225,8 @@ class InputNumericLanguageContractTest {
         node.setEnd(-Double.MAX_VALUE);
         node.processNode(null);
         assertTrue(Double.isNaN((Double) node.getOutput("output_span")));
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_domain"));
     }
 
     @Test

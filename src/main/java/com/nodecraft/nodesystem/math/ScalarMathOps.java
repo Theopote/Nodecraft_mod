@@ -192,7 +192,7 @@ public final class ScalarMathOps {
         if (!Double.isFinite(value)
             || !Double.isFinite(source.start()) || !Double.isFinite(source.end())
             || !Double.isFinite(target.start()) || !Double.isFinite(target.end())
-            || source.delta() == 0.0d) {
+            || !Double.isFinite(source.delta()) || source.delta() == 0.0d) {
             return ScalarResult.invalid();
         }
         double t = (value - source.start()) / source.delta();

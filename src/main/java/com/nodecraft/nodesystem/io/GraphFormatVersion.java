@@ -739,8 +739,14 @@ public final class GraphFormatVersion {
      */
     public static final int V110 = 110;
 
+    /**
+     * Input Numeric Domain Finite Contract v2: Domain Input Valid/Error; finite directed
+     * span; NumericRangeData.canonical. No wire changes.
+     */
+    public static final int V111 = 111;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V110;
+    public static final int CURRENT = V111;
 
     private GraphFormatVersion() {
     }

@@ -118,7 +118,8 @@ public class GraphMapperNode extends BaseNode {
         double center = gaussianCenter;
         double width = gaussianWidth;
 
-        if (!allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)
+        if (source == null || target == null
+            || !allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)
             || source.delta() == 0.0d) {
             writeInvalid();
             return;

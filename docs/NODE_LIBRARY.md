@@ -301,7 +301,7 @@
 | Angle Slider | `input.numeric.angle` | 输出一个可通过滑动条调节的角度值（度）。需要弧度时使用 Degrees To Radians。 | `AngleSliderNode` |
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |
-| Domain Input | `input.numeric.range` | Defines a directed numeric domain (Start→End) and outputs domain, start, end, and directed span. | `RangeInputNode` |
+| Domain Input | `input.numeric.range` | Defines a directed numeric domain (Start→End) with finite directed span; outputs Domain, Start, End, Span, Valid, and Error. | `RangeInputNode` |
 | Pi | `input.numeric.pi` | Outputs the mathematical constant Pi. | `PiNode` |
 | E | `input.numeric.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
 

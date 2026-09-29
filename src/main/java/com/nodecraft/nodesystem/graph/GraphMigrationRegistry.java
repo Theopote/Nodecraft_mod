@@ -169,6 +169,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V107 -> migrateV107ToV108(graph);
             case GraphFormatVersion.V108 -> migrateV108ToV109(graph);
             case GraphFormatVersion.V109 -> migrateV109ToV110(graph);
+            case GraphFormatVersion.V110 -> migrateV110ToV111(graph);
             default -> graph;
         };
     }
@@ -5505,6 +5506,14 @@ public final class GraphMigrationRegistry {
      * Value List / Gradient; no wire remaps).
      */
     private static SavedGraph migrateV109ToV110(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Input Numeric Domain Finite Contract v2 (Domain Valid/Error + finite directed
+     * span; no wire remaps).
+     */
+    private static SavedGraph migrateV110ToV111(SavedGraph graph) {
         return graph;
     }
 

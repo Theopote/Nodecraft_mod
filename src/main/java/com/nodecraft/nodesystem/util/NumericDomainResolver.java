@@ -5,6 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Resolves {@link NumericRangeData} from port values and node defaults.
+ * Unsafe domains (non-finite endpoints or overflow directed span) fail closed as {@code null}.
  */
 public final class NumericDomainResolver {
 
@@ -15,21 +16,21 @@ public final class NumericDomainResolver {
                                                            double defaultStart,
                                                            double defaultEnd) {
         if (domainValue instanceof NumericRangeData domain) {
-            return domain;
+            return NumericRangeData.canonical(domain.start(), domain.end());
         }
-        return new NumericRangeData(defaultStart, defaultEnd);
+        return NumericRangeData.canonical(defaultStart, defaultEnd);
     }
 
-    public static NumericRangeData resolveDomainOrBounds(@Nullable Object domainValue,
-                                                         @Nullable Object startValue,
-                                                         @Nullable Object endValue,
-                                                         double defaultStart,
-                                                         double defaultEnd) {
+    public static @Nullable NumericRangeData resolveDomainOrBounds(@Nullable Object domainValue,
+                                                                   @Nullable Object startValue,
+                                                                   @Nullable Object endValue,
+                                                                   double defaultStart,
+                                                                   double defaultEnd) {
         if (domainValue instanceof NumericRangeData domain) {
-            return domain;
+            return NumericRangeData.canonical(domain.start(), domain.end());
         }
         double start = startValue instanceof Number n ? n.doubleValue() : defaultStart;
         double end = endValue instanceof Number n ? n.doubleValue() : defaultEnd;
-        return new NumericRangeData(start, end);
+        return NumericRangeData.canonical(start, end);
     }
 }

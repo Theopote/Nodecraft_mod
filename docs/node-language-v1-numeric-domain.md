@@ -10,12 +10,15 @@ A **Domain** is a directed interval **Start → End**, not unordered bounds.
 
 ### Domain Input
 
-- Outputs: `Domain`, `Start`, `End`, `Span` (directed delta).
+- Outputs: `Domain`, `Start`, `End`, `Span` (directed delta), **`Valid`**, **`Error`** (V111).
 - Does **not** force-sort Start/End.
 - Runtime and persisted state reject non-finite Start/End.
-- `output_span` uses `NumericInputUtils.safeDirectedSpan` (overflow → `NaN`, not `-Infinity`).
+- Valid requires finite directed span (`NumericRangeData.canonical` /
+  `NumericInputUtils.safeDirectedSpan`). Overflow (e.g. `MAX→-MAX`) →
+  Domain=`null`, Start/End/Span=`NaN`, Valid=false.
 
-See [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) for full Input Numeric v1 rules.
+See [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md) and
+[`node-language-v2-input-numeric.md`](./node-language-v2-input-numeric.md).
 
 ### Number Sequence vs Domain
 

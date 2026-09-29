@@ -1,6 +1,7 @@
 # Node Language v1 — Input Numeric
 
-**Status: PASSED / FROZEN** (HEAD `9c4393c7`, Graph **V31**)
+**Status: PASSED / FROZEN** (historical Graph **V31**; remediated by Graph **V111** —
+see [`node-language-v2-input-numeric.md`](./node-language-v2-input-numeric.md))
 
 Language unification for `input.numeric.*` (10 nodes): finite graph-facing scalars,
 UI-only precision, degrees-only angles, typed XY outputs, unified constant ports.
@@ -8,7 +9,11 @@ Shared implementation: `NumericInputUtils`.
 Graph schema: **V31** retargets Pi/E to `output_value`, drops XY Slider `output_vector`,
 tightens `output_uv` to `DOUBLE_LIST`, and drops incompatible downstream wires.
 
+**V111 remediation:** Domain Input requires finite directed span and publishes Valid/Error;
+`NumericRangeData.canonical` enforces the typed-data invariant.
+
 Related: [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md) (Domain Input / directed span),
+[`node-language-v2-input-numeric.md`](./node-language-v2-input-numeric.md),
 [`node-language-v1-trigonometry.md`](./node-language-v1-trigonometry.md) (Pi/E moved here from trig),
 [`node-language-v1-scalar-math.md`](./node-language-v1-scalar-math.md) (finite numeric),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
@@ -118,12 +123,16 @@ Removed: `output_vector` (`VECTOR` was wrong semantic).
 ## Domain Input (`input.numeric.range`)
 
 Directed domain — see [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md).
+**V111:** Valid only when Start, End, and directed Span are all finite (see
+[`node-language-v2-input-numeric.md`](./node-language-v2-input-numeric.md)).
 
 | Port | Type | Notes |
 |------|------|-------|
-| `output_domain` | `NUMERIC_RANGE` | Start → End, unsorted |
-| `output_start` / `output_end` | `DOUBLE` | Finite endpoints only |
-| `output_span` | `DOUBLE` | `safeDirectedSpan`; overflow → `NaN` |
+| `output_domain` | `NUMERIC_RANGE` | Start → End, unsorted; `null` when invalid |
+| `output_start` / `output_end` | `DOUBLE` | Finite when Valid; else `NaN` |
+| `output_span` | `DOUBLE` | `safeDirectedSpan`; overflow → `NaN` + Valid=false |
+| `output_valid` | `BOOLEAN` | Finite endpoints + finite directed span |
+| `output_error` | `STRING` | Non-blank when Valid=false |
 
 Domain Precision is UI-only (panel input format).
 
@@ -167,4 +176,7 @@ No node type-id changes. No V32 bump required for state-sanitizer fixes after V3
 
 - `InputNumericLanguageContractTest` — finite runtime + persisted state, precision UI-only,
   XY ports, Domain span, Pi/E ports, V31 migration, 10-node inventory.
+- `InputNumericLanguageV2ContractTest` — Domain Valid/Error, overflow fail-closed,
+  `NumericRangeData.canonical` (V111).
 - `NumericDomainLanguageContractTest` — directed domain (shared with Domain Input).
+- Format CURRENT is **V111**.
