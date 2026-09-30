@@ -6,7 +6,8 @@ Strict index & null contract remediation for seven core `math.list.*` nodes:
 exact `Integer` list indices, Create List connected-null preservation,
 and documented negative-index / non-destructive edit semantics.
 
-Related: [`node-language-v1-list-collection.md`](./node-language-v1-list-collection.md),
+Related: [`node-language-v2-list-collection.md`](./node-language-v2-list-collection.md),
+[`node-language-v1-list-collection.md`](./node-language-v1-list-collection.md),
 [`node-language-v2-sequence.md`](./node-language-v2-sequence.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 

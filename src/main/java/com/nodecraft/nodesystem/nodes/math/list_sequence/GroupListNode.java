@@ -22,10 +22,15 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.list.group_list",
     displayName = "Group List",
-    description = "Groups list items by parallel keys into a DATA_TREE (one branch per unique key).",
+    description = "Groups list items by parallel keys (same length) into a DATA_TREE. Null items forbidden.",
     category = "math.list"
 )
 public class GroupListNode extends BaseNode {
+
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
+    public static final String ERROR_LENGTH_MISMATCH = "length_mismatch";
+    public static final String ERROR_NULL_ITEM = "null_item";
+    public static final String ERROR_NULL_KEY = "null_key";
 
     private boolean skipInvalidKeys = false;
 
@@ -34,6 +39,8 @@ public class GroupListNode extends BaseNode {
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_KEYS_ID = "output_unique_keys";
     private static final String OUTPUT_COUNT_ID = "output_group_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GroupListNode() {
         super(UUID.randomUUID(), "math.list.group_list");
@@ -43,7 +50,7 @@ public class GroupListNode extends BaseNode {
         addInputPort(listInput);
 
         IPort keysInput = new BasePort(INPUT_KEYS_ID, "Keys",
-                "List of keys to group by", NodeDataType.LIST, this);
+                "Keys to group by (must match List length)", NodeDataType.LIST, this);
         addInputPort(keysInput);
 
         IPort treeOutput = new BasePort(OUTPUT_TREE_ID, "Tree",
@@ -58,37 +65,63 @@ public class GroupListNode extends BaseNode {
         IPort countOutput = new BasePort(OUTPUT_COUNT_ID, "Group Count",
                 "Number of groups created", NodeDataType.INTEGER, this);
         addOutputPort(countOutput);
+
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether grouping succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when grouping failed",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object listObj = inputValues.get(INPUT_LIST_ID);
         Object keysObj = inputValues.get(INPUT_KEYS_ID);
+        ListElementKind elementKind = resolveListElementKind();
+
+        if (!(listObj instanceof List<?> inputList) || !(keysObj instanceof List<?> keysList)) {
+            writeFailure(elementKind, ERROR_INVALID_INPUT);
+            return;
+        }
+
+        if (inputList.size() != keysList.size()) {
+            writeFailure(elementKind, ERROR_LENGTH_MISMATCH);
+            return;
+        }
+
+        for (Object item : inputList) {
+            if (item == null) {
+                writeFailure(elementKind, ERROR_NULL_ITEM);
+                return;
+            }
+        }
+
+        if (!skipInvalidKeys) {
+            for (Object key : keysList) {
+                if (key == null) {
+                    writeFailure(elementKind, ERROR_NULL_KEY);
+                    return;
+                }
+            }
+        }
 
         Map<Object, List<Object>> groups = new HashMap<>();
         List<Object> uniqueKeys = new ArrayList<>();
 
-        if (listObj instanceof List<?> inputList && keysObj instanceof List<?> keysList) {
-            for (int i = 0; i < inputList.size(); i++) {
-                Object item = inputList.get(i);
+        for (int i = 0; i < inputList.size(); i++) {
+            Object item = inputList.get(i);
+            Object key = keysList.get(i);
 
-                Object key = null;
-                if (i < keysList.size()) {
-                    key = keysList.get(i);
-                }
+            if (key == null && skipInvalidKeys) {
+                continue;
+            }
 
-                if (key == null && skipInvalidKeys) {
-                    continue;
-                }
-
-                if (!groups.containsKey(key)) {
-                    List<Object> group = new ArrayList<>();
-                    group.add(item);
-                    groups.put(key, group);
-                    uniqueKeys.add(key);
-                } else {
-                    groups.get(key).add(item);
-                }
+            if (!groups.containsKey(key)) {
+                List<Object> group = new ArrayList<>();
+                group.add(item);
+                groups.put(key, group);
+                uniqueKeys.add(key);
+            } else {
+                groups.get(key).add(item);
             }
         }
 
@@ -98,9 +131,19 @@ public class GroupListNode extends BaseNode {
             branches.add(new DataTreeData.Branch(List.of(i), groups.get(key)));
         }
 
-        outputValues.put(OUTPUT_TREE_ID, new DataTreeData(branches, resolveListElementKind()));
+        outputValues.put(OUTPUT_TREE_ID, new DataTreeData(branches, elementKind));
         outputValues.put(OUTPUT_KEYS_ID, uniqueKeys);
         outputValues.put(OUTPUT_COUNT_ID, uniqueKeys.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeFailure(ListElementKind elementKind, String error) {
+        outputValues.put(OUTPUT_TREE_ID, DataTreeData.empty(elementKind));
+        outputValues.put(OUTPUT_KEYS_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error);
     }
 
     private ListElementKind resolveListElementKind() {

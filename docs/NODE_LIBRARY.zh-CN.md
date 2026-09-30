@@ -450,7 +450,7 @@
 | Filter List | `math.list.filter_list` | Filters a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `FilterListNode` |
 | Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
 | Get Item | `math.list.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
-| Group List | `math.list.group_list` | Groups list items by parallel keys into a DATA_TREE (one branch per unique key). | `GroupListNode` |
+| Group List | `math.list.group_list` | Groups list items by parallel keys (same length) into a DATA_TREE. Null items forbidden. | `GroupListNode` |
 | Insert Item | `math.list.insert_item` | Inserts an item at index (negatives from end). Invalid index → Valid=false. | `InsertItemNode` |
 | List Length | `math.list.list_length` | Returns the number of items in a list. | `ListLengthNode` |
 | Remove Item | `math.list.remove_item` | Removes an item by index or value (preserves element type T). | `RemoveItemNode` |

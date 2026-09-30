@@ -845,8 +845,13 @@ public final class GraphFormatVersion {
      */
     public static final int V126 = 126;
 
+    /**
+     * List Collection Strict Grouping & Seed Contract v2. No wire remaps.
+     */
+    public static final int V127 = 127;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V126;
+    public static final int CURRENT = V127;
 
     private GraphFormatVersion() {
     }

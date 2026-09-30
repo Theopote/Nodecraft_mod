@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -25,12 +27,16 @@ import java.util.UUID;
 )
 public class ShuffleListNode extends BaseNode {
 
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
+
     private long seed = 0;
 
     private static final String LIST_T = "T";
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_SEED_ID = "input_seed";
     private static final String OUTPUT_LIST_ID = "output_list";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ShuffleListNode() {
         super(UUID.randomUUID(), "math.list.shuffle_list");
@@ -41,25 +47,58 @@ public class ShuffleListNode extends BaseNode {
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_LIST_ID, "Shuffled", "The shuffled list", NodeDataType.LIST, this)
                 .bindListType(LIST_T));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether shuffling succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when shuffling failed",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object seedObj = inputValues.get(INPUT_SEED_ID);
+        Object inputObj = resolveValue(INPUT_LIST_ID);
 
-        List<Object> resultList = new ArrayList<>();
-        if (inputObj instanceof List<?> inputList) {
-            resultList.addAll(inputList);
-            long actualSeed = seed;
-            if (seedObj instanceof Number number) {
-                actualSeed = number.longValue();
+        if (!(inputObj instanceof List<?> inputList)) {
+            writeFailure(List.of());
+            return;
+        }
+
+        long actualSeed;
+        if (isDriven(INPUT_SEED_ID)) {
+            RandomInputResolver.IntegerResolveResult seedResult =
+                    RandomInputResolver.resolveSeed(resolveValue(INPUT_SEED_ID), true);
+            if (!seedResult.valid()) {
+                writeFailure(List.of());
+                return;
             }
-            if (!resultList.isEmpty()) {
-                Collections.shuffle(resultList, new Random(actualSeed));
-            }
+            actualSeed = seedResult.value();
+        } else {
+            actualSeed = seed;
+        }
+
+        List<Object> resultList = new ArrayList<>(inputList);
+        if (!resultList.isEmpty()) {
+            Collections.shuffle(resultList, new Random(actualSeed));
         }
         outputValues.put(OUTPUT_LIST_ID, resultList);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeFailure(List<Object> emptyList) {
+        outputValues.put(OUTPUT_LIST_ID, emptyList);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, ERROR_INVALID_INPUT);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 
     public long getSeed() {
