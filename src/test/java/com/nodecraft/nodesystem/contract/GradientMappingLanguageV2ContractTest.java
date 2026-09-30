@@ -29,8 +29,7 @@ class GradientMappingLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV117() {
-        assertEquals(117, GraphFormatVersion.V117);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V117);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

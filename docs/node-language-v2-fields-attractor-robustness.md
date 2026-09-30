@@ -60,7 +60,7 @@ Origin must be finite (`resolveFinitePoint`). Axis must be finite and non-zero
 | Rule | Behavior |
 |------|----------|
 | Weight participation | Exact `weight != 0.0` (V30) |
-| Normalize | `VectorUtils.safeNormalize`; failure → zero (no bogus unit) |
+| Normalize | Finite tiny → zero; non-finite → NaN (sample Valid=false); else unit via `safeNormalize` |
 | Max Magnitude | Enabled when `limit > 0` (including values in `(0, EPS]`) |
 
 ## GAUSSIAN Exponent UI

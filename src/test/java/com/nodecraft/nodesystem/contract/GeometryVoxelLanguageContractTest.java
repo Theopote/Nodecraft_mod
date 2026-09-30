@@ -59,17 +59,9 @@ class GeometryVoxelLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV95() {
-        assertEquals(95, GraphFormatVersion.V95);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V95);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV94ToCurrentIncludesV95AndV96() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V94;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void voxelCategoryHasSingleNode() {

@@ -28,8 +28,7 @@ class TrigonometryLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV124() {
-        assertEquals(124, GraphFormatVersion.V124);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V124);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

@@ -30,8 +30,7 @@ class DirectionalMappingLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV116() {
-        assertEquals(116, GraphFormatVersion.V116);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V116);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

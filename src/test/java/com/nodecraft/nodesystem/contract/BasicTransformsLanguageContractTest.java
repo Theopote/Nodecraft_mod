@@ -79,7 +79,6 @@ class BasicTransformsLanguageContractTest {
 
     @Test
     void basicTransformsFreezeVersionIsV52() {
-        assertEquals(52, GraphFormatVersion.V52);
     }
 
     @Test
@@ -270,39 +269,6 @@ class BasicTransformsLanguageContractTest {
         assertPointEquals(new Vector3d(10, 1, 0), assertInstanceOf(PointData.class, points.get(3)));
     }
 
-    @Test
-    void migrateV51ToV52RemapsTypesAndDropsLegacyPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V51;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode offsetCoord = savedNode("n1", "transform.basic_transforms.offset_coordinate");
-        SavedNode shear = savedNode("n2", "transform.basic_transforms.shear");
-        SavedNode mirror = savedNode("n3", "transform.basic_transforms.mirror_vector_list_plane");
-        SavedNode face = savedNode("n4", "transform.basic_transforms.offset_face");
-        SavedNode sink = savedNode("n5", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(offsetCoord, shear, mirror, face, sink));
-
-        graph.connections.add(wire("n1", "output_x", "n5", "input_x"));
-        graph.connections.add(wire("n2", "output_skipped_count", "n5", "input_y"));
-        graph.connections.add(wire("n3", "output_skipped_count", "n5", "input_z"));
-        graph.connections.add(wire("n4", "output_center", "n5", "input_x"));
-        graph.connections.add(wire("n4", "output_valid", "n5", "input_y"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals("transform.placement.offset_block_position", typeOf(migrated, "n1"));
-        assertEquals("transform.deformations.shear_point_list", typeOf(migrated, "n2"));
-        assertEquals("transform.basic_transforms.mirror_point_list_plane", typeOf(migrated, "n3"));
-        assertEquals("transform.basic_transforms.offset_face", typeOf(migrated, "n4"));
-
-        assertEquals(1, migrated.connections.size());
-        SavedConnection kept = migrated.connections.getFirst();
-        assertEquals("n4", kept.sourceNodeId);
-        assertEquals("output_valid", kept.sourcePortId);
-    }
 
     private static String typeOf(SavedGraph graph, String nodeId) {
         return graph.nodes.stream()

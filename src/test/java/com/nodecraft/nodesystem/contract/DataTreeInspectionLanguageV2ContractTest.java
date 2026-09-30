@@ -28,8 +28,7 @@ class DataTreeInspectionLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV132() {
-        assertEquals(132, GraphFormatVersion.V132);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V132);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

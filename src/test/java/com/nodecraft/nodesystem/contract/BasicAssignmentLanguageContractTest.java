@@ -60,9 +60,7 @@ class BasicAssignmentLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV41() {
-        assertEquals(40, GraphFormatVersion.V40);
-        assertEquals(41, GraphFormatVersion.V41);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -312,39 +310,6 @@ class BasicAssignmentLanguageContractTest {
         assertFalse((Boolean) node.getOutput("output_valid"));
     }
 
-    @Test
-    void v39ToV40DropsBasicAssignmentDeconstructFallbackAndListWires() {
-        SavedGraph v39 = new SavedGraph();
-        v39.formatVersion = GraphFormatVersion.V39;
-
-        SavedNode assign = savedNode("assign", "material.basic_assignment.assign_block_type");
-        SavedNode blockPalette = savedNode("palette", "material.basic_assignment.block_palette");
-        SavedNode weighted = savedNode("weighted", "material.basic_assignment.weighted_palette");
-        SavedNode create = savedNode("create", "material.basic_assignment.create_block_palette");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-        SavedNode listSrc = savedNode("list", "input.values.value_list");
-
-        v39.nodes = new ArrayList<>(List.of(assign, blockPalette, weighted, create, preview, listSrc));
-        v39.connections = new ArrayList<>(List.of(
-                wire("assign", "output_placements", "preview", "input_block_placements"),
-                wire("assign", "output_positions", "preview", "input_block_placements"),
-                wire("palette", "output_block_ids", "preview", "input_block_placements"),
-                wire("weighted", "output_positions_tree", "preview", "input_block_placements"),
-                wire("list", "output_list", "create", "input_block_ids"),
-                wire("list", "output_list", "weighted", "input_weights"),
-                wire("list", "output_value", "palette", "input_fallback_block_type")
-        ));
-        v39.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v39);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertTrue(hasWire(migrated, "assign", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "assign", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "palette", "output_block_ids", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "weighted", "output_positions_tree", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "list", "output_value", "palette", "input_fallback_block_type"));
-    }
 
     /** Bypasses port type checks so wrong-type list elements can be exercised. */
     private static final class CreateBlockPaletteProbe extends CreateBlockPaletteNode {

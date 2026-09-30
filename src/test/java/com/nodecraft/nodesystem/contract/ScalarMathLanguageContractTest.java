@@ -230,56 +230,9 @@ class ScalarMathLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV28() {
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v24ToV25DropsDeletedScalarMathPortsAndPreservesUnrelatedWires() {
-        SavedGraph v24 = new SavedGraph();
-        v24.formatVersion = GraphFormatVersion.V24;
-
-        SavedNode numberA = savedNode("num_a", "input.values.float");
-        SavedNode numberB = savedNode("num_b", "input.values.float");
-        SavedNode numberC = savedNode("num_c", "input.values.float");
-        SavedNode numberD = savedNode("num_d", "input.values.float");
-        SavedNode mapper = savedNode("mapper", "math.scalar_math.graph_mapper");
-        SavedNode frac = savedNode("frac", "math.scalar_math.frac");
-        SavedNode sink = savedNode("sink", "math.list.create_list");
-        SavedNode add = savedNode("add", "math.scalar_math.addition");
-
-        v24.nodes = new ArrayList<>(List.of(numberA, numberB, numberC, numberD, mapper, frac, sink, add));
-        v24.connections = new ArrayList<>(List.of(
-                wire("num_a", "output_value", "mapper", "input_exponent"),
-                wire("num_b", "output_value", "mapper", "input_gaussian_center"),
-                wire("num_c", "output_value", "mapper", "input_gaussian_width"),
-                wire("frac", "output_floor", "sink", "input_0"),
-                wire("num_d", "output_value", "mapper", "input_value"),
-                wire("num_a", "output_value", "add", "input_a"),
-                wire("num_b", "output_value", "add", "input_b")
-        ));
-        v24.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v24);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals(8, migrated.nodes.size());
-        assertEquals(3, migrated.connections.size());
-        assertTrue(hasWire(migrated, "num_d", "output_value", "mapper", "input_value"));
-        assertTrue(hasWire(migrated, "num_a", "output_value", "add", "input_a"));
-        assertTrue(hasWire(migrated, "num_b", "output_value", "add", "input_b"));
-        assertFalse(hasWire(migrated, "num_a", "output_value", "mapper", "input_exponent"));
-        assertFalse(hasWire(migrated, "num_b", "output_value", "mapper", "input_gaussian_center"));
-        assertFalse(hasWire(migrated, "num_c", "output_value", "mapper", "input_gaussian_width"));
-        assertFalse(hasWire(migrated, "frac", "output_floor", "sink", "input_0"));
-    }
 
     private static SavedNode savedNode(String id, String typeId) {
         SavedNode node = new SavedNode();

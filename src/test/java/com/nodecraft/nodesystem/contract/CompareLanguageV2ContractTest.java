@@ -41,8 +41,7 @@ class CompareLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV121() {
-        assertEquals(121, GraphFormatVersion.V121);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V121);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

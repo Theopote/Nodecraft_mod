@@ -57,7 +57,6 @@ class ReferenceFramesLanguageContractTest {
 
     @Test
     void referenceFramesFreezeVersionIsV47() {
-        assertEquals(47, GraphFormatVersion.V47);
     }
 
     @Test

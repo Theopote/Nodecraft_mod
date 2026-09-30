@@ -74,8 +74,7 @@ class GeometryAnalysisLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV67() {
-        assertEquals(67, GraphFormatVersion.V67);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V67);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -307,8 +306,7 @@ class GeometryAnalysisLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV96ForConvexHullV2() {
-        assertEquals(96, GraphFormatVersion.V96);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V96);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -401,59 +399,7 @@ class GeometryAnalysisLanguageContractTest {
         assertTrue(String.valueOf(node.getOutput("output_error")).contains("Max points"));
     }
 
-    @Test
-    void migrateV95ToV96DropsConvexHullOutputFaces() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V95;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
 
-        SavedNode hull = savedNode("hull", "geometry.analysis.convex_hull_3d");
-        graph.nodes.add(hull);
-        graph.connections.add(wire("hull", "output_faces", "sink", "input_list"));
-        graph.connections.add(wire("hull", "output_vertices", "sink2", "input_points"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        List<String> wires = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of("hull:output_vertices->sink2:input_points"), wires);
-    }
-
-    @Test
-    void migrateV66ToV67RenamesAndRemapsPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V66;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        graph.nodes.add(savedNode("bb", "geometry.boolean.bounding_box"));
-        graph.nodes.add(savedNode("gb", "geometry.boolean.geometry_bounds"));
-
-        graph.connections.add(wire("src", "out", "bb", "input_coordinates"));
-        graph.connections.add(wire("bb", "output_min_corner", "sink", "in_block"));
-        graph.connections.add(wire("gb", "output_region", "sink2", "in_region"));
-        graph.connections.add(wire("gb", "output_bounding_box", "sink3", "in_box"));
-        graph.connections.add(wire("gb", "output_size_x", "sink4", "in_size"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("geometry.analysis.block_bounds", nodeOf(migrated, "bb").typeId);
-        assertEquals("geometry.analysis.geometry_bounds", nodeOf(migrated, "gb").typeId);
-
-        List<String> wires = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of(
-                "bb:output_min_block->sink:in_block",
-                "gb:output_bounding_box->sink3:in_box",
-                "gb:output_size_x->sink4:in_size",
-                "src:out->bb:input_blocks"
-        ), wires);
-    }
 
     private static int orderOf(String typeId) {
         INode node = registry.createNodeInstance(typeId);

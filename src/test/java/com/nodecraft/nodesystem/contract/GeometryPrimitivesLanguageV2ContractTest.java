@@ -67,17 +67,9 @@ class GeometryPrimitivesLanguageV2ContractTest {
 
     @Test
     void primitiveGeometryLanguageV90FenceRemains() {
-        assertEquals(90, GraphFormatVersion.V90);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V90);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV89ToV90IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V89;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void exactlyThirtyOnePrimitiveNodesWithUniqueOrdersZeroToThirty() {

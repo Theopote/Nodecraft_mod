@@ -52,8 +52,7 @@ class ArchitecturalTopologyV2ContractTest {
 
     @Test
     void currentGraphFormatIsV97() {
-        assertEquals(97, GraphFormatVersion.V97);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V97);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -303,22 +302,6 @@ class ArchitecturalTopologyV2ContractTest {
         assertEquals(Boolean.FALSE, wall.getOutput("output_valid"));
     }
 
-    @Test
-    void migrateV96ToV97PreservesPrimaryRoofPathWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V96;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode roof = savedNode("roof", "geometry.architectural_primitives.roof_base");
-        graph.nodes.add(roof);
-        graph.connections.add(wire("roof", "output_eave_path", "sink", "input_path"));
-        graph.connections.add(wire("roof", "output_ridge_path", "sink2", "input_path"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(2, migrated.connections.size());
-    }
 
     private static void mRoofRidgesRunAlongExtrusionAxis(List<PathData> ridges, double extrusionLength) {
         assertEquals(2, ridges.size());

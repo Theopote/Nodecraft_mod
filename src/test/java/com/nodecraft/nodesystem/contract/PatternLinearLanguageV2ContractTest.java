@@ -77,10 +77,9 @@ class PatternLinearLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV79() {
-        assertEquals(79, GraphFormatVersion.V79);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V79);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V102);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V103);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -448,48 +447,6 @@ class PatternLinearLanguageV2ContractTest {
         assertEquals(0, probe.getOutput("output_placement_count"));
     }
 
-    @Test
-    void migrateV78ToV79RenamesInstanceAndDropsUnsafeWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V78;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode instance = savedNode("n1", "pattern.linear.instance_on_points");
-        Map<String, Object> state = new HashMap<>();
-        state.put("maxInstances", 100);
-        instance.state = state;
-
-        SavedNode linear = savedNode("n2", "pattern.linear.linear_array");
-        SavedNode sink = savedNode("n3", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(instance, linear, sink));
-
-        graph.connections.add(wire("n3", "output_x", "n1", "input_points"));
-        graph.connections.add(wire("n3", "output_x", "n1", "input_max_instances"));
-        graph.connections.add(wire("n2", "output_geometries", "n3", "input_x"));
-        graph.connections.add(wire("n2", "output_geometry", "n3", "input_y"));
-        graph.connections.add(wire("n1", "output_placements", "n3", "input_z"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("pattern.linear.instance_block_placements", typeOf(migrated, "n1"));
-
-        assertFalse(migrated.connections.stream().anyMatch(c ->
-            "input_points".equals(c.targetPortId) || "input_max_instances".equals(c.targetPortId)));
-        assertFalse(migrated.connections.stream().anyMatch(c ->
-            "output_geometries".equals(c.sourcePortId)));
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "n2".equals(c.sourceNodeId) && "output_geometry".equals(c.sourcePortId)));
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "n1".equals(c.sourceNodeId) && "output_placements".equals(c.sourcePortId)));
-
-        Object migratedState = nodeOf(migrated, "n1").state;
-        if (migratedState instanceof Map<?, ?> cleaned) {
-            assertFalse(cleaned.containsKey("maxInstances"));
-        } else {
-            assertNull(migratedState);
-        }
-    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

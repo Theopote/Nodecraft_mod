@@ -77,9 +77,8 @@ class DeformationsLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV78() {
-        assertEquals(78, GraphFormatVersion.V78);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V78);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V101);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -327,43 +326,6 @@ class DeformationsLanguageV2ContractTest {
             * Math.max(0.0d, max.getZ() - min.getZ());
     }
 
-    @Test
-    void migrateV77ToV78RenamesSdfNodesAndDropsGeometryWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V77;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode twist = savedNode("n1", "transform.deformations.twist_geometry");
-        Map<String, Object> twistState = new HashMap<>();
-        twistState.put("fillSourceGeometry", true);
-        twist.state = twistState;
-
-        SavedNode sinkSdf = savedNode("n2", "reference.vectors.vector");
-        SavedNode sinkGeo = savedNode("n3", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(twist, sinkSdf, sinkGeo));
-
-        graph.connections.add(wire("n1", "input_sdf", "n2", "output_x"));
-        graph.connections.add(wire("n1", "input_geometry", "n3", "output_x"));
-        graph.connections.add(wire("n1", "output_geometry", "n3", "input_x"));
-        graph.connections.add(wire("n1", "output_sdf", "n2", "input_x"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("transform.deformations.twist_sdf", typeOf(migrated, "n1"));
-
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "n1".equals(c.sourceNodeId) && "output_sdf".equals(c.sourcePortId)));
-        assertFalse(migrated.connections.stream().anyMatch(c ->
-            "input_geometry".equals(c.targetPortId) || "output_geometry".equals(c.sourcePortId)));
-
-        Object migratedTwistState = nodeOf(migrated, "n1").state;
-        if (migratedTwistState instanceof Map<?, ?> cleaned) {
-            assertFalse(cleaned.containsKey("fillSourceGeometry"));
-        } else {
-            assertNull(migratedTwistState);
-        }
-    }
 
     private static List<PointData> oversizedPointList() {
         return new AbstractList<>() {

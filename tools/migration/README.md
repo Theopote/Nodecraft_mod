@@ -9,13 +9,14 @@ scripts back to the repo root.
 |------|----------------|
 | Preset → `graph_presets.json` conversion | `./gradlew runPresetConverter` |
 | Preset resource contract | `GraphPresetResourceTest` |
-| Graph id / port migration (load path) | `GraphMigrationRegistry` + `src/main/resources/nodecraft/migration/v0-to-v1.json` |
-| Rebuild V0→V1 migration manifest | `python scripts/build_v0_migration_manifest.py` |
+| Graph format on load | `GraphMigrationRegistry` stamps older payloads to `CURRENT` (no remaps) |
 | Canonicalize on-disk `presets/**/preset.json` ids | `python scripts/canonicalize_presets.py` |
 | Node library docs | `./gradlew generateNodeLibraryDocs` (from `node-catalog.json`) |
 
 ## Do not use
 
 Historical root scripts such as `fix_node_ids.py`, `run_converter_final.bat`,
-`validate_presets.py`, etc. were removed. Their war stories live under
-`docs/history/` and are **not** current procedure.
+`validate_presets.py`, `build_v0_migration_manifest.py`, etc. were removed or retired.
+Their war stories live under `docs/history/` and are **not** current procedure.
+
+There is **no** maintained `v0-to-v1.json` migration ladder during active development.

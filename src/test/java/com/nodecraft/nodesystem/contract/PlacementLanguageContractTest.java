@@ -76,8 +76,7 @@ class PlacementLanguageContractTest {
 
     @Test
     void placementFreezeVersionIsV54() {
-        assertEquals(54, GraphFormatVersion.V54);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V54);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -280,49 +279,6 @@ class PlacementLanguageContractTest {
         assertEquals(Boolean.FALSE, place.getOutput("output_valid"));
     }
 
-    @Test
-    void migrateV53ToV54RemapsTypesAndDropsGeometriesPort() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V53;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode rotate = savedNode("n1", "transform.placement.rotate_coordinates");
-        Map<String, Object> rotateState = new HashMap<>();
-        rotateState.put("rotationAxis", "CUSTOM");
-        rotateState.put("defaultAngle", 45.0d);
-        rotate.state = rotateState;
-
-        SavedNode mirror = savedNode("n2", "transform.placement.mirror_coordinates");
-        Map<String, Object> mirrorState = new HashMap<>();
-        mirrorState.put("mirrorPlane", "CUSTOM");
-        mirrorState.put("roundingMode", "NEAREST");
-        mirror.state = mirrorState;
-
-        SavedNode place = savedNode("n3", "transform.placement.place_geometry_on_frames");
-        SavedNode sink = savedNode("n4", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(rotate, mirror, place, sink));
-
-        graph.connections.add(wire("n3", "output_geometries", "n4", "input_x"));
-        graph.connections.add(wire("n3", "output_valid", "n4", "input_y"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("transform.placement.rotate_block_positions", typeOf(migrated, "n1"));
-        assertEquals("transform.placement.mirror_block_positions", typeOf(migrated, "n2"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> rotatedState = (Map<String, Object>) nodeOf(migrated, "n1").state;
-        assertEquals("Y_AXIS", rotatedState.get("rotationAxis"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> mirroredState = (Map<String, Object>) nodeOf(migrated, "n2").state;
-        assertEquals("XZ", mirroredState.get("mirrorPlane"));
-        assertFalse(mirroredState.containsKey("roundingMode"));
-
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_valid", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static BlockPos firstBlock(BaseNode node) {
         BlockPosList list = assertInstanceOf(BlockPosList.class, node.getOutput("output_block_positions"));

@@ -29,8 +29,7 @@ class SurfaceAgingLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV119() {
-        assertEquals(119, GraphFormatVersion.V119);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V119);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

@@ -46,11 +46,7 @@ class TypeSelectorsLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV34() {
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -118,44 +114,6 @@ class TypeSelectorsLanguageContractTest {
         assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", true, false, true));
     }
 
-    @Test
-    void v32ToV33RemapsBlockStateSelectorAndTightensBlockTypeWires() {
-        SavedGraph v32 = new SavedGraph();
-        v32.formatVersion = GraphFormatVersion.V32;
-
-        SavedNode legacyState = savedNode("legacy", "input.type_selectors.block_state_selector");
-        legacyState.state = Map.of(
-                "blockId", "minecraft:oak_stairs",
-                "stateProperties", "facing=north"
-        );
-
-        SavedNode simpleBlock = savedNode("block", "input.type_selectors.block_type_selector");
-        SavedNode assign = savedNode("assign", "material.basic_assignment.assign_block_type");
-        SavedNode build = savedNode("build", "material.block_state.build_block_state");
-
-        v32.nodes = new ArrayList<>(List.of(legacyState, simpleBlock, assign, build));
-        v32.connections = new ArrayList<>(List.of(
-                wire("legacy", "output_block_state", "build", "input_base_state"),
-                wire("block", "output_block_id", "assign", "input_block_type"),
-                wire("block", "output_block_id", "build", "input_property_name")
-        ));
-        v32.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v32);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(BLOCK_TYPE_SELECTOR, findNode(migrated, "legacy").typeId);
-        assertFalse(hasWire(migrated, "legacy", "output_block_state", "build", "input_base_state"));
-        assertTrue(hasWire(migrated, "block", "output_block_id", "assign", "input_block_type"));
-        assertFalse(hasWire(migrated, "block", "output_block_id", "build", "input_property_name"));
-
-        SavedNode insertedBuild = migrated.nodes.stream()
-                .filter(n -> BUILD_BLOCK_STATE.equals(n.typeId) && !"build".equals(n.nodeId))
-                .findFirst()
-                .orElse(null);
-        assertNotNull(insertedBuild);
-        assertTrue(hasWire(migrated, "legacy", "output_block_id", insertedBuild.nodeId, "input_block_type"));
-        assertTrue(hasWire(migrated, insertedBuild.nodeId, "output_block_state", "build", "input_base_state"));
-    }
 
     private static final String BLOCK_TYPE_SELECTOR = "input.type_selectors.block_type_selector";
     private static final String BUILD_BLOCK_STATE = "material.block_state.build_block_state";

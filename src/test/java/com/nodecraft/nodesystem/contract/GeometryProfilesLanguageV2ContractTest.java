@@ -61,17 +61,9 @@ class GeometryProfilesLanguageV2ContractTest {
 
     @Test
     void planarRegionLanguageV91FenceRemains() {
-        assertEquals(91, GraphFormatVersion.V91);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V91);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV90ToV91IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V90;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void planarRegionTypesExist() {

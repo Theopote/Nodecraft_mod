@@ -61,8 +61,7 @@ class GeometryPrimitivesLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV74() {
-        assertEquals(74, GraphFormatVersion.V74);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V74);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -267,84 +266,6 @@ class GeometryPrimitivesLanguageContractTest {
         assertNull(capsule.getOutput("output_geometry"));
     }
 
-    @Test
-    void migrateV73ToV74DropsBoxVoxelWiresAndRemapsPathPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V73;
-
-        SavedNode box = new SavedNode();
-        box.nodeId = "box";
-        box.typeId = "geometry.primitives.box";
-        Map<String, Object> state = new HashMap<>();
-        state.put("fillBox", false);
-        state.put("outputAsRegion", true);
-        state.put("sizeX", 3.0d);
-        box.state = state;
-
-        SavedNode cylinder = new SavedNode();
-        cylinder.nodeId = "cyl";
-        cylinder.typeId = "geometry.primitives.cylinder";
-
-        SavedNode sinkBlocks = new SavedNode();
-        sinkBlocks.nodeId = "sink_blocks";
-        sinkBlocks.typeId = "utilities.passthrough.any";
-
-        SavedNode sinkPath = new SavedNode();
-        sinkPath.nodeId = "sink_path";
-        sinkPath.typeId = "utilities.passthrough.any";
-
-        graph.nodes = new ArrayList<>(List.of(box, cylinder, sinkBlocks, sinkPath));
-
-        SavedConnection drop = new SavedConnection();
-        drop.sourceNodeId = "box";
-        drop.sourcePortId = "output_box_blocks";
-        drop.targetNodeId = "sink_blocks";
-        drop.targetPortId = "input";
-
-        SavedConnection remap = new SavedConnection();
-        remap.sourceNodeId = "cyl";
-        remap.sourcePortId = "output_axis_line";
-        remap.targetNodeId = "sink_path";
-        remap.targetPortId = "input";
-
-        SavedConnection keep = new SavedConnection();
-        keep.sourceNodeId = "box";
-        keep.sourcePortId = "output_geometry";
-        keep.targetNodeId = "sink_path";
-        keep.targetPortId = "input2";
-
-        graph.connections = new ArrayList<>(List.of(drop, remap, keep));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(migrated.formatVersion >= GraphFormatVersion.V74);
-        assertEquals(2, migrated.connections.size());
-
-        boolean foundRemap = false;
-        boolean foundKeep = false;
-        for (SavedConnection c : migrated.connections) {
-            assertFalse("output_box_blocks".equals(c.sourcePortId));
-            if ("cyl".equals(c.sourceNodeId)) {
-                assertEquals("output_axis_path", c.sourcePortId);
-                foundRemap = true;
-            }
-            if ("box".equals(c.sourceNodeId) && "output_geometry".equals(c.sourcePortId)) {
-                foundKeep = true;
-            }
-        }
-        assertTrue(foundRemap);
-        assertTrue(foundKeep);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> migratedState = (Map<String, Object>) migrated.nodes.stream()
-            .filter(n -> "box".equals(n.nodeId))
-            .findFirst()
-            .orElseThrow()
-            .state;
-        assertFalse(migratedState.containsKey("fillBox"));
-        assertFalse(migratedState.containsKey("outputAsRegion"));
-        assertEquals(3.0d, ((Number) migratedState.get("sizeX")).doubleValue(), 1e-9);
-    }
 
     private static void assertOrder(String typeId, int expected) {
         NodeInfo info = registry.getNodeInfo(typeId);

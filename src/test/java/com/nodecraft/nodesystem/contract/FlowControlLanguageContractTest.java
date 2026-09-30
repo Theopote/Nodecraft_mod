@@ -57,8 +57,7 @@ class FlowControlLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV65() {
-        assertEquals(65, GraphFormatVersion.V65);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V65);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -222,28 +221,6 @@ class FlowControlLanguageContractTest {
         assertPassthroughT(gate, "output_blocked");
     }
 
-    @Test
-    void migrateV64ToV65StripsDoOnceFallbackExecuted() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V64;
-        graph.nodes = new java.util.ArrayList<>();
-        graph.connections = new java.util.ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode doOnce = new SavedNode();
-        doOnce.nodeId = "d1";
-        doOnce.typeId = "flow.control.do_once";
-        Map<String, Object> state = new HashMap<>();
-        state.put("fallbackExecuted", true);
-        doOnce.state = state;
-        graph.nodes.add(doOnce);
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> migratedState = (Map<String, Object>) migrated.nodes.getFirst().state;
-        assertFalse(migratedState.containsKey("fallbackExecuted"));
-    }
 
     private static int orderOf(String typeId) {
         INode node = registry.createNodeInstance(typeId);

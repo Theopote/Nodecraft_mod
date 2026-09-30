@@ -77,17 +77,9 @@ class GeometrySdfLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV93() {
-        assertEquals(93, GraphFormatVersion.V93);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V93);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV92ToV93IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V92;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void exactlyThirteenSdfNodesInGeometrySdfCategory() {

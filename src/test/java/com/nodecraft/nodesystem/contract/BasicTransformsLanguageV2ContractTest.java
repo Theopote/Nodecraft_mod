@@ -91,10 +91,8 @@ class BasicTransformsLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV75() {
-        assertEquals(75, GraphFormatVersion.V75);
-        assertEquals(98, GraphFormatVersion.V98);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V75);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V98);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

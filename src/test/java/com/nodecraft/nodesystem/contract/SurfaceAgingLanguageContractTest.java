@@ -59,9 +59,7 @@ class SurfaceAgingLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV39() {
-        assertEquals(38, GraphFormatVersion.V38);
-        assertEquals(39, GraphFormatVersion.V39);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -358,36 +356,6 @@ class SurfaceAgingLanguageContractTest {
         assertFalse((Boolean) vectorOrigin.getOutput("output_valid"));
     }
 
-    @Test
-    void v38ToV39DropsSurfaceAgingDeconstructAndCrackIntervalWires() {
-        SavedGraph v38 = new SavedGraph();
-        v38.formatVersion = GraphFormatVersion.V38;
-
-        SavedNode weathering = savedNode("weathering", "material.surface_aging.weathering");
-        SavedNode moss = savedNode("moss", "material.surface_aging.moss_growth");
-        SavedNode crack = savedNode("crack", "material.surface_aging.crack_pattern");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-        SavedNode amount = savedNode("amount", "input.numeric.float_constant");
-
-        v38.nodes = new ArrayList<>(List.of(weathering, moss, crack, preview, amount));
-        v38.connections = new ArrayList<>(List.of(
-                wire("weathering", "output_placements", "preview", "input_block_placements"),
-                wire("weathering", "output_positions", "preview", "input_block_placements"),
-                wire("moss", "output_block_ids", "preview", "input_block_placements"),
-                wire("crack", "output_positions", "preview", "input_block_placements"),
-                wire("amount", "output_value", "crack", "input_interval")
-        ));
-        v38.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v38);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertTrue(hasWire(migrated, "weathering", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "weathering", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "moss", "output_block_ids", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "crack", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "amount", "output_value", "crack", "input_interval"));
-    }
 
     /** Bypasses port type checks so wrong-type Aging Origin / Seed can be exercised. */
     private static final class WeatheringProbe extends WeatheringNode {

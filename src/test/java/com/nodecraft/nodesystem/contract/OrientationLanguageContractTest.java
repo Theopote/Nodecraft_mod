@@ -71,10 +71,8 @@ class OrientationLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV77() {
-        assertEquals(77, GraphFormatVersion.V77);
-        assertEquals(99, GraphFormatVersion.V99);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V77);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V99);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -336,52 +334,6 @@ class OrientationLanguageContractTest {
         assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("max_list_elements"));
     }
 
-    @Test
-    void migrateV76ToV77RemapsProjectCurveNodeAndPortsOnly() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V76;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode curve = savedNode("n1", "transform.orientation.project_curve_to_plane");
-        Map<String, Object> curveState = new HashMap<>();
-        curveState.put("sampleCurve", false);
-        curve.state = curveState;
-
-        SavedNode align = savedNode("n2", "transform.orientation.align_to_surface");
-        Map<String, Object> alignState = new HashMap<>();
-        alignState.put("useShortestList", true);
-        align.state = alignState;
-
-        SavedNode material = savedNode("n3", "material.basic_assignment.assign_block_type");
-        SavedNode sink = savedNode("n4", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(curve, align, material, sink));
-
-        graph.connections.add(wire("n1", "output_curve", "n4", "input_x"));
-        graph.connections.add(wire("n1", "output_polyline", "n4", "input_x"));
-        graph.connections.add(wire("n4", "output_z", "n3", "input_coordinates"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("transform.orientation.project_path_to_plane", typeOf(migrated, "n1"));
-
-        long pathOutputs = migrated.connections.stream()
-            .filter(c -> "n1".equals(c.sourceNodeId))
-            .filter(c -> "output_path".equals(c.sourcePortId))
-            .count();
-        assertEquals(1, pathOutputs);
-
-        assertEquals("input_coordinates", migrated.connections.stream()
-            .filter(c -> "n3".equals(c.targetNodeId)).findFirst().orElseThrow().targetPortId);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cleanedCurve = (Map<String, Object>) nodeOf(migrated, "n1").state;
-        assertFalse(cleanedCurve.containsKey("sampleCurve"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cleanedAlign = (Map<String, Object>) nodeOf(migrated, "n2").state;
-        assertFalse(cleanedAlign.containsKey("useShortestList"));
-    }
 
     private static PolygonProfileData verticalSquareProfile() {
         List<Vector3d> closed = List.of(

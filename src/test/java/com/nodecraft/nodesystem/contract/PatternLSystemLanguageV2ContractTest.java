@@ -69,14 +69,12 @@ class PatternLSystemLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV84() {
-        assertEquals(84, GraphFormatVersion.V84);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V84);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void currentGraphFormatIsAtLeastV106() {
-        assertEquals(106, GraphFormatVersion.V106);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V106);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

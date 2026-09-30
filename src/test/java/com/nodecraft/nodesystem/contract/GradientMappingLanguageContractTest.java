@@ -65,9 +65,7 @@ class GradientMappingLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV37() {
-        assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(37, GraphFormatVersion.V37);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -301,47 +299,6 @@ class GradientMappingLanguageContractTest {
         assertTrue(((String) halfWidth.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("half"));
     }
 
-    @Test
-    void v36ToV37DropsGradientDeconstructAndLegacyWires() {
-        SavedGraph v36 = new SavedGraph();
-        v36.formatVersion = GraphFormatVersion.V36;
-
-        SavedNode height = savedNode("height", "material.gradient_mapping.height_gradient_map");
-        SavedNode noise = savedNode("noise", "material.gradient_mapping.noise_material");
-        SavedNode ramp = savedNode("ramp", "material.gradient_mapping.gradient_ramp_map");
-        Map<String, Object> rampState = new HashMap<>();
-        rampState.put("rampBlocks", "minecraft:stone,minecraft:dirt");
-        ramp.state = rampState;
-        SavedNode distance = savedNode("distance", "material.gradient_mapping.distance_material");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-        SavedNode vector = savedNode("vector", "reference.vectors.construct_vector");
-
-        v36.nodes = new ArrayList<>(List.of(height, noise, ramp, distance, preview, vector));
-        v36.connections = new ArrayList<>(List.of(
-                wire("height", "output_placements", "preview", "input_block_placements"),
-                wire("height", "output_positions", "preview", "input_block_placements"),
-                wire("noise", "output_block_ids", "preview", "input_block_placements"),
-                wire("vector", "output_vector", "distance", "input_reference_point")
-        ));
-        v36.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v36);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertTrue(hasWire(migrated, "height", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "height", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "noise", "output_block_ids", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "vector", "output_vector", "distance", "input_reference_point"));
-
-        SavedNode migratedRamp = migrated.nodes.stream()
-                .filter(n -> "ramp".equals(n.nodeId))
-                .findFirst()
-                .orElseThrow();
-        assertInstanceOf(Map.class, migratedRamp.state);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cleaned = (Map<String, Object>) migratedRamp.state;
-        assertFalse(cleaned.containsKey("rampBlocks"));
-    }
 
     /** Local clamp matching GradientMaterialUtils.clamp01 for the single-octave noise spot-check. */
     private static double GradientMaterialUtilsClamp01(double value) {

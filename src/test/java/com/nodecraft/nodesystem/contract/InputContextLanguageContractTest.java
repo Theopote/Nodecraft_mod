@@ -45,11 +45,7 @@ class InputContextLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV34() {
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -156,29 +152,6 @@ class InputContextLanguageContractTest {
         assertNull(infNode.getOutput("output_position"));
     }
 
-    @Test
-    void v31ToV32RemapsRaycastTypeAndDropsIncompatibleHitWire() {
-        SavedGraph v31 = new SavedGraph();
-        v31.formatVersion = GraphFormatVersion.V31;
-
-        SavedNode look = savedNode("look", "input.context.player_look_direction");
-        SavedNode construct = savedNode("construct", "reference.vectors.construct_vector");
-        SavedNode compare = savedNode("compare", "math.compare.greater_than");
-
-        v31.nodes = new ArrayList<>(List.of(look, construct, compare));
-        v31.connections = new ArrayList<>(List.of(
-                wire("look", "output_hit_position", "construct", "input_x"),
-                wire("look", "output_hit_distance", "compare", "input_a")
-        ));
-        v31.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v31);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("input.context.player_raycast",
-                migrated.nodes.stream().filter(n -> "look".equals(n.nodeId)).findFirst().orElseThrow().typeId);
-        assertFalse(hasWire(migrated, "look", "output_hit_position", "construct", "input_x"));
-        assertTrue(hasWire(migrated, "look", "output_hit_distance", "compare", "input_a"));
-    }
 
     private static SavedNode savedNode(String id, String typeId) {
         SavedNode node = new SavedNode();

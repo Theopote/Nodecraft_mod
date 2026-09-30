@@ -46,8 +46,7 @@ class RandomLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV123() {
-        assertEquals(123, GraphFormatVersion.V123);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V123);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

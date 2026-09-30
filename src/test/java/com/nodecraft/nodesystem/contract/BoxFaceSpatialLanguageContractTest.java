@@ -90,39 +90,6 @@ class BoxFaceSpatialLanguageContractTest {
         assertEquals(NodeDataType.POINT, findPort(ifGrid, "input_point").getDataType());
     }
 
-    @Test
-    void v19ToV20MigrationDropsSlimmedFaceEdgePorts() {
-        SavedGraph v19 = new SavedGraph();
-        v19.formatVersion = GraphFormatVersion.V19;
-
-        SavedNode edge = new SavedNode();
-        edge.nodeId = "edge";
-        edge.typeId = "reference.points.get_face_edge";
-        SavedNode sink = new SavedNode();
-        sink.nodeId = "sink";
-        sink.typeId = "reference.vectors.vector_length";
-        v19.nodes = new ArrayList<>(List.of(edge, sink));
-
-        SavedConnection legacyStart = new SavedConnection();
-        legacyStart.sourceNodeId = "edge";
-        legacyStart.sourcePortId = "output_start";
-        legacyStart.targetNodeId = "sink";
-        legacyStart.targetPortId = "input_vector";
-
-        SavedConnection kept = new SavedConnection();
-        kept.sourceNodeId = "edge";
-        kept.sourcePortId = "output_found";
-        kept.targetNodeId = "sink";
-        kept.targetPortId = "input_vector";
-
-        v19.connections = new ArrayList<>(List.of(legacyStart, kept));
-        v19.nodePositions = java.util.Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v19);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_found", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static boolean hasVectorNamedPort(INode node, String nameFragment) {
         for (IPort port : node.getOutputPorts()) {

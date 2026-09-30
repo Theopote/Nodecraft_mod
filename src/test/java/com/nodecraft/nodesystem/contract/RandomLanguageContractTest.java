@@ -222,84 +222,10 @@ class RandomLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV30() {
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v28ToV29DropsRandomVectorCountAndOldOutputWires() {
-        SavedGraph v28 = new SavedGraph();
-        v28.formatVersion = GraphFormatVersion.V28;
 
-        SavedNode vector = savedNode("rv", "math.random.random_vector");
-        SavedNode sink = savedNode("sink", "math.list.create_list");
-        SavedNode countSrc = savedNode("count", "input.numeric.integer");
-        SavedNode construct = savedNode("cv", "reference.vectors.construct_vector");
-
-        v28.nodes = new ArrayList<>(List.of(vector, sink, countSrc, construct));
-        v28.connections = new ArrayList<>(List.of(
-                wire("rv", "output_random_vector", "sink", "input_0"),
-                wire("count", "output_value", "rv", "input_count"),
-                wire("cv", "output_vector", "rv", "input_min_corner")
-        ));
-        v28.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals(4, migrated.nodes.size());
-        assertEquals(1, migrated.connections.size());
-        assertTrue(hasWire(migrated, "cv", "output_vector", "rv", "input_min_corner"));
-        assertFalse(hasWire(migrated, "rv", "output_random_vector", "sink", "input_0"));
-        assertFalse(hasWire(migrated, "count", "output_value", "rv", "input_count"));
-    }
-
-    @Test
-    void v28ToV29DropsIncompatibleRandomListItemAndNumbersWires() {
-        SavedGraph v28 = new SavedGraph();
-        v28.formatVersion = GraphFormatVersion.V28;
-
-        SavedNode listItem = savedNode("rli", "math.random.random_list_item");
-        SavedNode numbers = savedNode("rns", "math.random.random_numbers");
-        SavedNode text = savedNode("text", "input.values.text_input");
-        SavedNode createList = savedNode("clist", "math.list.create_list");
-        SavedNode sortText = savedNode("sort", "math.list.sort_text");
-        SavedNode equals = savedNode("eq", "math.compare.equals");
-        SavedNode sinkList = savedNode("sink", "math.list.create_list");
-
-        v28.nodes = new ArrayList<>(List.of(listItem, numbers, text, createList, sortText, equals, sinkList));
-        v28.connections = new ArrayList<>(List.of(
-                // STRING  -> LIST input: was ANY-legal in V28, illegal in V29
-                wire("text", "output_text", "rli", "input_list"),
-                // LIST  -> LIST input: keep
-                wire("clist", "output_list", "rli", "input_list"),
-                // LIST items  -> STRING_LIST: drop
-                wire("rli", "output_items", "sort", "input_list"),
-                // Item (ANY/T)  -> Equals: keep
-                wire("rli", "output_item", "eq", "input_a"),
-                // DOUBLE_LIST  -> STRING_LIST: drop
-                wire("rns", "output_values", "sort", "input_list"),
-                // DOUBLE_LIST  -> LIST: keep
-                wire("rns", "output_values", "sink", "input_0")
-        ));
-        v28.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v28);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertFalse(hasWire(migrated, "text", "output_text", "rli", "input_list"));
-        assertTrue(hasWire(migrated, "clist", "output_list", "rli", "input_list"));
-        assertFalse(hasWire(migrated, "rli", "output_items", "sort", "input_list"));
-        assertTrue(hasWire(migrated, "rli", "output_item", "eq", "input_a"));
-        assertFalse(hasWire(migrated, "rns", "output_values", "sort", "input_list"));
-        assertTrue(hasWire(migrated, "rns", "output_values", "sink", "input_0"));
-    }
 
     private static IPort findPort(Object node, String portId) {
         IPort port = findPortOrNull(node, portId);

@@ -27,8 +27,7 @@ class BlockStateLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV115() {
-        assertEquals(115, GraphFormatVersion.V115);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V115);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

@@ -50,17 +50,9 @@ class GeometryProfilesLanguageV3ContractTest {
 
     @Test
     void planarRegionModelingLanguageV92FenceRemains() {
-        assertEquals(92, GraphFormatVersion.V92);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V92);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV91ToV92IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V91;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void regionModelingNodesRegisteredWithOrders23To25() {

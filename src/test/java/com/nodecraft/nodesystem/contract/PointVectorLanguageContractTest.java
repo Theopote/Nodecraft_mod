@@ -64,14 +64,7 @@ class PointVectorLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV28() {
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -192,43 +185,6 @@ class PointVectorLanguageContractTest {
         assertFalse(hasPort(new ProjectPointToPlaneNode(), "output_vector"));
     }
 
-    @Test
-    void v18ToV19MigrationDropsLegacyPortsAndDeletedNodes() {
-        SavedGraph v18 = new SavedGraph();
-        v18.formatVersion = GraphFormatVersion.V18;
-
-        SavedNode mid = new SavedNode();
-        mid.nodeId = "mid";
-        mid.typeId = "reference.points.mid_point";
-        SavedNode deleted = new SavedNode();
-        deleted.nodeId = "deleted";
-        deleted.typeId = "reference.points.block_to_vector";
-        SavedNode sink = new SavedNode();
-        sink.nodeId = "sink";
-        sink.typeId = "reference.vectors.vector_length";
-        v18.nodes = new ArrayList<>(List.of(mid, deleted, sink));
-
-        SavedConnection legacyVector = new SavedConnection();
-        legacyVector.sourceNodeId = "mid";
-        legacyVector.sourcePortId = "output_vector";
-        legacyVector.targetNodeId = "sink";
-        legacyVector.targetPortId = "input_vector";
-
-        SavedConnection toDeleted = new SavedConnection();
-        toDeleted.sourceNodeId = "mid";
-        toDeleted.sourcePortId = "output_midpoint";
-        toDeleted.targetNodeId = "deleted";
-        toDeleted.targetPortId = "input_coordinate";
-
-        v18.connections = new ArrayList<>(List.of(legacyVector, toDeleted));
-        v18.nodePositions = java.util.Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v18);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(2, migrated.nodes.size());
-        assertTrue(migrated.nodes.stream().noneMatch(n -> "reference.points.block_to_vector".equals(n.typeId)));
-        assertTrue(migrated.connections.isEmpty());
-    }
 
     private static boolean hasPort(INode node, String portId) {
         return findPortOrNull(node, portId) != null;

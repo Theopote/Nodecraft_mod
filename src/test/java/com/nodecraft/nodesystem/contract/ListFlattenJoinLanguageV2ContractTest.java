@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.math.ListFlattenOps;
+import com.nodecraft.nodesystem.nodes.math.list_sequence.CreateListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.FlattenListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.JoinStringsNode;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -17,6 +18,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -26,8 +28,7 @@ class ListFlattenJoinLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV129() {
-        assertEquals(129, GraphFormatVersion.V129);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V129);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -38,6 +39,47 @@ class ListFlattenJoinLanguageV2ContractTest {
         ));
         assertTrue((Boolean) outputs.get("output_valid"));
         assertEquals(List.of("A", "B", "C"), outputs.get("output_list"));
+    }
+
+    @Test
+    void flattenPreservesNullLeaves() {
+        List<Object> withNull = new ArrayList<>();
+        withNull.add("A");
+        withNull.add(null);
+        withNull.add("B");
+        FlattenListNode node = new FlattenListNode();
+        Map<String, Object> outputs = node.compute(Map.of("input_list", withNull));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<Object> flattened = (List<Object>) outputs.get("output_list");
+        assertEquals(3, flattened.size());
+        assertEquals("A", flattened.get(0));
+        assertNull(flattened.get(1));
+        assertEquals("B", flattened.get(2));
+    }
+
+    @Test
+    void createListWithDrivenNullSurvivesFlatten() {
+        CreateListProbe create = new CreateListProbe();
+        create.setInputCount(3);
+        create.putInput("input_0", "A");
+        create.putInput("input_1", null);
+        create.putInput("input_2", "B");
+        create.processNode(null);
+        @SuppressWarnings("unchecked")
+        List<Object> created = (List<Object>) create.getOutput("output_list");
+        assertEquals(3, created.size());
+        assertNull(created.get(1));
+
+        Map<String, Object> flattened = new FlattenListNode().compute(Map.of("input_list", created));
+        assertTrue((Boolean) flattened.get("output_valid"));
+        assertEquals("", flattened.get("output_error"));
+        @SuppressWarnings("unchecked")
+        List<Object> items = (List<Object>) flattened.get("output_list");
+        assertEquals(3, items.size());
+        assertEquals("A", items.get(0));
+        assertNull(items.get(1));
+        assertEquals("B", items.get(2));
     }
 
     @Test
@@ -174,6 +216,12 @@ class ListFlattenJoinLanguageV2ContractTest {
 
         void connectInput(String portId, NodeDataType outputType) {
             ListFlattenJoinLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class CreateListProbe extends CreateListNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
         }
     }
 }

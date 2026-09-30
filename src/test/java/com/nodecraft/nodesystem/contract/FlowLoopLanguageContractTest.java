@@ -59,8 +59,7 @@ class FlowLoopLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV66() {
-        assertEquals(66, GraphFormatVersion.V66);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V66);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -213,35 +212,6 @@ class FlowLoopLanguageContractTest {
         assertPortType(node, "output_result", NodeDataType.STRING);
     }
 
-    @Test
-    void migrateV65ToV66DropsAccumulatorAndDeadPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V65;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode forEach = savedNode("fe", "flow.loop.for_each");
-        SavedNode whileNode = savedNode("w", "flow.loop.while");
-        SavedNode acc = savedNode("acc", "flow.loop.accumulator");
-        graph.nodes.addAll(List.of(forEach, whileNode, acc));
-
-        graph.connections.add(wire("x", "out", "fe", "output_items"));
-        graph.connections.add(wire("y", "out", "w", "input_values"));
-        graph.connections.add(wire("acc", "output_result", "sink", "in"));
-        graph.connections.add(wire("z", "out", "fe", "input_list"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(2, migrated.nodes.size());
-        assertTrue(migrated.nodes.stream().noneMatch(n -> "flow.loop.accumulator".equals(n.typeId)));
-
-        List<String> wires = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of("z:out->fe:input_list"), wires);
-    }
 
     private static int orderOf(String typeId) {
         INode node = registry.createNodeInstance(typeId);

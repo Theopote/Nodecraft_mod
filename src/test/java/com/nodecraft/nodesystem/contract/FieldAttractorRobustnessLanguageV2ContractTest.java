@@ -33,8 +33,7 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV135() {
-        assertEquals(135, GraphFormatVersion.V135);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V135);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -186,6 +185,30 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
         assertEquals(0.0d, out.x, 0.0d);
         assertEquals(0.0d, out.y, 0.0d);
         assertEquals(0.0d, out.z, 0.0d);
+    }
+
+    @Test
+    void blendNormalizeOnNonFiniteKeepsInvalidNotZero() {
+        VectorFieldData nanField = (point, dest) -> dest.set(Double.NaN, 0.0d, 0.0d);
+        AttractorFieldBlendNode blend = new AttractorFieldBlendNode();
+        blend.setNodeState(Map.of("normalize", true));
+        VectorFieldData field = assertInstanceOf(VectorFieldData.class,
+                blend.compute(Map.of(
+                        "input_field_a", nanField,
+                        "input_weight_a", 1.0d
+                )).get("output_field"));
+
+        Vector3d raw = new Vector3d();
+        field.sampleVector(new Vector3d(), raw);
+        assertTrue(Double.isNaN(raw.x) && Double.isNaN(raw.y) && Double.isNaN(raw.z),
+                "Non-finite blend must not become a finite zero under Normalize");
+
+        Map<String, Object> sample = new VectorFieldSamplePointNode().compute(Map.of(
+                "input_field", field,
+                "input_point", new PointData(0, 0, 0)
+        ));
+        assertFalse((Boolean) sample.get("output_valid"));
+        assertNull(sample.get("output_vector"));
     }
 
     @Test

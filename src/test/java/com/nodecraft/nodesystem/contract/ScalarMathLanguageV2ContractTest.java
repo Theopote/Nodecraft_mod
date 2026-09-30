@@ -43,8 +43,7 @@ class ScalarMathLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV120() {
-        assertEquals(120, GraphFormatVersion.V120);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V120);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

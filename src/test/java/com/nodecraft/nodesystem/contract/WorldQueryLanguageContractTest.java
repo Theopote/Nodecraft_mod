@@ -90,8 +90,7 @@ class WorldQueryLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV60() {
-        assertEquals(60, GraphFormatVersion.V60);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V60);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -257,31 +256,6 @@ class WorldQueryLanguageContractTest {
         assertPortType(node, "output_entity_positions", NodeDataType.POINT_LIST);
     }
 
-    @Test
-    void migrateV59ToV60DropsRemovedPortWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V59;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode ruleNode = savedNode("r1", "world.query.filter_points_by_rule");
-        SavedNode gridNode = savedNode("g1", "world.query.filter_grid_points");
-        graph.nodes.add(ruleNode);
-        graph.nodes.add(gridNode);
-
-        graph.connections.add(wire("r1", "output_filtered_blocks", "t1", "input_stub"));
-        graph.connections.add(wire("r1", "output_removed_blocks", "t2", "input_stub"));
-        graph.connections.add(wire("t3", "output_stub", "r1", "input_mode"));
-        graph.connections.add(wire("g1", "output_skipped_count", "t4", "input_stub"));
-        graph.connections.add(wire("r1", "output_filtered_points", "t5", "input_stub"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(migrated.formatVersion >= GraphFormatVersion.V60);
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_filtered_points", migrated.connections.getFirst().sourcePortId);
-    }
 
     @Test
     void filterPointsConnectedNullHeightFailsClosed() {

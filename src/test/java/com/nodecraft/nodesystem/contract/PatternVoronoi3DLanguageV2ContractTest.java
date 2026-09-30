@@ -60,14 +60,12 @@ class PatternVoronoi3DLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV83() {
-        assertEquals(83, GraphFormatVersion.V83);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V83);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void currentGraphFormatIsAtLeastV107() {
-        assertEquals(107, GraphFormatVersion.V107);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V107);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

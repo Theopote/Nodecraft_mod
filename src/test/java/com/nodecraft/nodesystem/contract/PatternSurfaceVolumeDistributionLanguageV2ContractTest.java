@@ -80,14 +80,12 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV82() {
-        assertEquals(82, GraphFormatVersion.V82);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V82);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void currentGraphFormatIsAtLeastV105() {
-        assertEquals(105, GraphFormatVersion.V105);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V105);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -396,50 +394,7 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         assertEquals(7, probe.getOutput("output_count"));
     }
 
-    @Test
-    void migrateV81ToV82DropsImagePathWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V81;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
 
-        SavedNode image = savedNode("n1", "pattern.surface_volume_distribution.image_scatter");
-        SavedNode path = savedNode("n2", "utilities.fileio.read_image");
-        graph.nodes.addAll(List.of(image, path));
-        graph.connections.add(wire("n2", "output_path", "n1", "input_image_path"));
-        graph.connections.add(wire("n2", "output_width", "n1", "input_image_width"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertFalse(migrated.connections.stream().anyMatch(c ->
-            "input_image_path".equals(c.targetPortId)));
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "input_image_width".equals(c.targetPortId)));
-    }
-
-    @Test
-    void migrateV81ToV82DropsImagePathInSubgraphs() {
-        SavedGraph subgraph = new SavedGraph();
-        subgraph.formatVersion = GraphFormatVersion.V81;
-        subgraph.nodes = new ArrayList<>();
-        subgraph.connections = new ArrayList<>();
-        subgraph.nodes.add(savedNode("s1", "pattern.surface_volume_distribution.image_scatter"));
-        subgraph.nodes.add(savedNode("s2", "reference.vectors.vector"));
-        subgraph.connections.add(wire("s2", "output_x", "s1", "input_image_path"));
-
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V81;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.subgraphDefinitions = new HashMap<>();
-        graph.subgraphDefinitions.put("inner", subgraph);
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        SavedGraph migratedSub = migrated.subgraphDefinitions.get("inner");
-        assertNotNull(migratedSub);
-        assertFalse(migratedSub.connections.stream().anyMatch(c ->
-            "input_image_path".equals(c.targetPortId)));
-    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

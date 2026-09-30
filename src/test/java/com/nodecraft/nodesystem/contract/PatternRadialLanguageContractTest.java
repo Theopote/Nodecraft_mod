@@ -59,7 +59,6 @@ class PatternRadialLanguageContractTest {
 
     @Test
     void patternRadialFreezeVersionIsV43() {
-        assertEquals(43, GraphFormatVersion.V43);
     }
 
     @Test

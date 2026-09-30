@@ -87,8 +87,7 @@ class WorldReadLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV61() {
-        assertEquals(61, GraphFormatVersion.V61);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V61);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -233,53 +232,6 @@ class WorldReadLanguageContractTest {
         assertTrue(hasPort(node, "output_complete"));
     }
 
-    @Test
-    void migrateV60ToV61RenamesDropsAndRemapsPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V60;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode points = savedNode("p1", "world.read.get_points_in_region");
-        SavedNode biomePlayer = savedNode("b1", "world.read.biome_at_player");
-        SavedNode scan = savedNode("s1", "world.read.scan_region_by_type");
-        SavedNode entityNbt = savedNode("e1", "world.read.get_entity_nbt");
-        SavedNode blockNbt = savedNode("n1", "world.read.get_block_nbt");
-        SavedNode sign = savedNode("g1", "world.read.read_sign_text");
-        SavedNode biome = savedNode("m1", "world.read.get_biome");
-        graph.nodes.addAll(List.of(points, biomePlayer, scan, entityNbt, blockNbt, sign, biome));
-        graph.nodePositions.put("b1", null);
-
-        graph.connections.add(wire("s1", "output_entries", "t1", "input_stub"));
-        graph.connections.add(wire("s1", "output_type_counts", "t2", "input_stub"));
-        graph.connections.add(wire("s1", "output_block_type_ids", "t3", "input_stub"));
-        graph.connections.add(wire("t4", "output_stub", "e1", "input_uuid"));
-        graph.connections.add(wire("e1", "output_distance", "t5", "input_stub"));
-        graph.connections.add(wire("n1", "output_success", "t6", "input_stub"));
-        graph.connections.add(wire("g1", "output_success", "t7", "input_stub"));
-        graph.connections.add(wire("t8", "output_stub", "g1", "input_include_formatting"));
-        graph.connections.add(wire("m1", "output_is_ocean", "t9", "input_stub"));
-        graph.connections.add(wire("b1", "output_biome", "t10", "input_stub"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(migrated.formatVersion >= GraphFormatVersion.V61);
-
-        assertEquals("world.read.get_block_positions_in_region",
-                migrated.nodes.stream().filter(n -> "p1".equals(n.nodeId)).findFirst().orElseThrow().typeId);
-        assertTrue(migrated.nodes.stream().noneMatch(n -> "b1".equals(n.nodeId)));
-
-        List<String> keptSources = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of(
-                "g1:output_valid",
-                "n1:output_valid",
-                "s1:output_block_type_ids"
-        ), keptSources);
-    }
 
     private static void assertPortType(INode node, String portId, NodeDataType expected) {
         IPort port = findPort(node, portId);

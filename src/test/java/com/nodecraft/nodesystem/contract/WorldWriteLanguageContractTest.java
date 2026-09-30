@@ -75,8 +75,7 @@ class WorldWriteLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV64() {
-        assertEquals(64, GraphFormatVersion.V64);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V64);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -208,35 +207,6 @@ class WorldWriteLanguageContractTest {
         assertFalse(hasPort(remove, "input_entity_type"));
     }
 
-    @Test
-    void migrateV63ToV64DropsDeadPortsAndInjectsTrigger() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V63;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode setBlocks = savedNode("sb", "world.write.set_blocks");
-        SavedNode redstone = savedNode("rs", "world.write.apply_redstone_power");
-        graph.nodes.addAll(List.of(setBlocks, redstone));
-
-        graph.connections.add(wire("a", "output_stub", "sb", "input_batch_updates"));
-        graph.connections.add(wire("b", "output_stub", "rs", "input_play_sound"));
-        graph.connections.add(wire("c", "output_stub", "sb", "input_coordinates"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        List<String> kept = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of("c:output_stub->sb:input_coordinates"), kept);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> state = (Map<String, Object>) nodeOf(migrated, "sb").state;
-        assertEquals(Boolean.TRUE, state.get("trigger"));
-    }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);

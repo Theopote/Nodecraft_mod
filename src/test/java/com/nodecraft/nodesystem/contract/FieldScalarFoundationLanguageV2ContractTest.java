@@ -36,8 +36,7 @@ class FieldScalarFoundationLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV133() {
-        assertEquals(133, GraphFormatVersion.V133);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V133);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

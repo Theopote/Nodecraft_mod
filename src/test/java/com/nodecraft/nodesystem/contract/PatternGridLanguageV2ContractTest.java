@@ -74,9 +74,8 @@ class PatternGridLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV80() {
-        assertEquals(80, GraphFormatVersion.V80);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V80);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V103);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -323,25 +322,6 @@ class PatternGridLanguageV2ContractTest {
         assertEquals(4, grid.getOutput("output_count"));
     }
 
-    @Test
-    void migrateV79ToV80DropsGridArrayOutputGeometriesWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V79;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode grid = savedNode("n1", "pattern.grid.grid_array");
-        SavedNode sink = savedNode("n2", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(grid, sink));
-        graph.connections.add(wire("n1", "output_geometries", "n2", "input_x"));
-        graph.connections.add(wire("n1", "output_geometry", "n2", "input_y"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertFalse(migrated.connections.stream().anyMatch(c -> "output_geometries".equals(c.sourcePortId)));
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "n1".equals(c.sourceNodeId) && "output_geometry".equals(c.sourcePortId)));
-    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

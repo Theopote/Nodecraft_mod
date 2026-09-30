@@ -76,8 +76,7 @@ class AssistUtilitiesLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV89() {
-        assertEquals(89, GraphFormatVersion.V89);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V89);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -505,28 +504,7 @@ class AssistUtilitiesLanguageV2ContractTest {
         assertTrue(hasListInput);
     }
 
-    @Test
-    void migrateV54ToV55LegacyAssistRemapPreserved() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V54;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodes.add(savedNode("n1", "utilities.assist.reroute"));
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals("utilities.assist.relay", migrated.nodes.getFirst().typeId);
-    }
 
-    @Test
-    void migrateV88ToV89IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V88;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodes.add(savedNode("n1", "utilities.assist.relay"));
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("utilities.assist.relay", migrated.nodes.getFirst().typeId);
-    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

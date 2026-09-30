@@ -70,7 +70,6 @@ class ReferencePointsLanguageContractTest {
 
     @Test
     void referencePointsFreezeVersionIsV49() {
-        assertEquals(49, GraphFormatVersion.V49);
     }
 
     @Test

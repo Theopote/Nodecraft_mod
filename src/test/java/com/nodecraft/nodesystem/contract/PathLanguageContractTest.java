@@ -201,51 +201,6 @@ class PathLanguageContractTest {
         assertEquals(Boolean.FALSE, trim.getOutput("output_valid"));
     }
 
-    @Test
-    void pathParameterAtPointMigratesToClosestPointOnPath() {
-        SavedGraph v16 = new SavedGraph();
-        v16.formatVersion = GraphFormatVersion.V16;
-        v16.graphName = "path-parameter-migration";
-
-        SavedNode legacy = new SavedNode();
-        legacy.nodeId = "legacy-param";
-        legacy.typeId = "geometry.curves.path_parameter_at_point";
-
-        SavedNode sink = new SavedNode();
-        sink.nodeId = "sink";
-        sink.typeId = "input.numeric.number";
-
-        v16.nodes = List.of(legacy, sink);
-        v16.nodePositions = java.util.Map.of();
-
-        SavedConnection parameterWire = new SavedConnection();
-        parameterWire.sourceNodeId = "legacy-param";
-        parameterWire.sourcePortId = "output_parameter";
-        parameterWire.targetNodeId = "sink";
-        parameterWire.targetPortId = "input_value";
-
-        SavedConnection distanceWire = new SavedConnection();
-        distanceWire.sourceNodeId = "legacy-param";
-        distanceWire.sourcePortId = "output_distance";
-        distanceWire.targetNodeId = "sink";
-        distanceWire.targetPortId = "input_value";
-
-        SavedConnection validWire = new SavedConnection();
-        validWire.sourceNodeId = "legacy-param";
-        validWire.sourcePortId = "output_valid";
-        validWire.targetNodeId = "sink";
-        validWire.targetPortId = "input_value";
-
-        v16.connections = new ArrayList<>(List.of(parameterWire, distanceWire, validWire));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v16);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("geometry.curves.closest_point_on_path", migrated.nodes.getFirst().typeId);
-        assertEquals(3, migrated.connections.size());
-        assertEquals("output_parameter", migrated.connections.get(0).sourcePortId);
-        assertEquals("output_distance", migrated.connections.get(1).sourcePortId);
-        assertEquals("output_valid", migrated.connections.get(2).sourcePortId);
-    }
 
     @Test
     void pathParameterAtPointNodeIsRetired() {

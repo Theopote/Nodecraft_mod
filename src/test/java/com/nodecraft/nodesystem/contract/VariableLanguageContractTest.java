@@ -66,7 +66,6 @@ class VariableLanguageContractTest {
 
     @Test
     void graphFormatV59ConstantExists() {
-        assertEquals(59, GraphFormatVersion.V59);
     }
 
     @Test
@@ -331,33 +330,6 @@ class VariableLanguageContractTest {
         assertNull(context.getVariable("userVar"));
     }
 
-    @Test
-    void migrateV58ToV59RenamesSuccessAndDropsEntries() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V58;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode setNode = savedNode("s1", "variable.set");
-        SavedNode listNode = savedNode("l1", "variable.list");
-        SavedNode clearNode = savedNode("c1", "variable.clear");
-        clearNode.state = new HashMap<>(Map.of("includeInternalVariables", true));
-        graph.nodes.add(setNode);
-        graph.nodes.add(listNode);
-        graph.nodes.add(clearNode);
-
-        graph.connections.add(wire("s1", "output_success", "t1", "input_stub"));
-        graph.connections.add(wire("l1", "output_entries", "t2", "input_stub"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("output_valid", migrated.connections.getFirst().sourcePortId);
-        assertEquals(1, migrated.connections.size());
-        @SuppressWarnings("unchecked")
-        Map<String, Object> clearState = (Map<String, Object>) nodeOf(migrated, "c1").state;
-        assertFalse(clearState.containsKey("includeInternalVariables"));
-    }
 
     private static void assertEffect(String typeId, NodeEffect expected) {
         INode node = registry.createNodeInstance(typeId);

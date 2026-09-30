@@ -132,44 +132,9 @@ class SequenceLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV28() {
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v27ToV28DropsSeriesSumWiresAndPreservesSeriesOutput() {
-        SavedGraph v27 = new SavedGraph();
-        v27.formatVersion = GraphFormatVersion.V27;
-
-        SavedNode series = savedNode("series", "math.sequence.series");
-        SavedNode sink = savedNode("sink", "math.list.create_list");
-        SavedNode add = savedNode("add", "math.scalar_math.addition");
-        SavedNode floatA = savedNode("float_a", "input.numeric.float");
-
-        v27.nodes = new ArrayList<>(List.of(series, sink, add, floatA));
-        v27.connections = new ArrayList<>(List.of(
-                wire("series", "output_sum", "add", "input_a"),
-                wire("series", "output_series", "sink", "input_0"),
-                wire("float_a", "output_value", "add", "input_b")
-        ));
-        v27.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v27);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals(4, migrated.nodes.size());
-        assertEquals(2, migrated.connections.size());
-        assertTrue(hasWire(migrated, "series", "output_series", "sink", "input_0"));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_b"));
-        assertFalse(hasWire(migrated, "series", "output_sum", "add", "input_a"));
-    }
 
     private static IPort findPort(Object node, String portId) {
         IPort port = findPortOrNull(node, portId);

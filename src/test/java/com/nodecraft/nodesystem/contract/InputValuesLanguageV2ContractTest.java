@@ -25,8 +25,7 @@ class InputValuesLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV110() {
-        assertEquals(110, GraphFormatVersion.V110);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V110);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

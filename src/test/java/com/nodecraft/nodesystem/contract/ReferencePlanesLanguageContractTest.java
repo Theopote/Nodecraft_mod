@@ -57,7 +57,6 @@ class ReferencePlanesLanguageContractTest {
 
     @Test
     void referencePlanesFreezeVersionIsV48() {
-        assertEquals(48, GraphFormatVersion.V48);
     }
 
     @Test

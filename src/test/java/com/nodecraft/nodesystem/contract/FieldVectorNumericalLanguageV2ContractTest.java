@@ -31,8 +31,7 @@ class FieldVectorNumericalLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV134() {
-        assertEquals(134, GraphFormatVersion.V134);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V134);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

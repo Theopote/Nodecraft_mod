@@ -1,6 +1,6 @@
 # Graph format version
 
-Design freeze for on-disk / embedded `SavedGraph` compatibility.
+Development-stage policy: **current format only**. No historical migration ladder.
 
 ## Canonical API
 
@@ -8,70 +8,29 @@ Design freeze for on-disk / embedded `SavedGraph` compatibility.
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `V0` / `LEGACY_UNSPECIFIED` | `0` | Pre-versioning JSON / omitted field |
-| `V1` | `1` | Explicit version + V0→V1 taxonomy migration manifest |
-| `V2` | `2` | Batch A language remediation (Integer Slider `value` → `output_value`) |
-| `V3` | `3` | Batch B language remediation (Coordinate Input → Block Position Input) |
-| `V4` | `4` | Batch 3 curves PATH language |
-| `V5` | `5` | Batch 4 solids Extrude / Surface Strip language |
-| `V6` | `6` | Batch 5 Combine Geometry canonical id |
-| `V7` | `7` | Batch 6 Rotate Vector degrees freeze |
-| `V8` | `8` | Batch 9 Voxelize Geometry rename |
-| `V9` | `9` | Batch 10 trigonometry degrees freeze |
-| `V10` / `CURRENT` | `10` | Batch 13 architectural Railing / Staircase `input_line` → `input_path` |
+| `UNSPECIFIED` | `0` | Pre-versioning / omitted field |
+| `CURRENT` | `1` | Version written by current builds |
+
+Historical `V2`…`V135` step constants and remaps were removed. Language docs may still mention prior
+batch names for narrative history; on-disk behavior is stamp-only.
 
 ## Load policy
 
 ```
-normalize(version) = max(version, V0)
-if version > CURRENT → load best-effort, no migration (warn)
-if version < CURRENT → run GraphMigrationRegistry step-by-step until CURRENT
+normalize(version) = version <= 0 ? UNSPECIFIED : version
+if version > CURRENT → load best-effort, no stamp (warn)
+if version < CURRENT → normalize structure, stamp formatVersion = CURRENT (no port/type remaps)
 if version == CURRENT → load as-is
 ```
 
 New saves always write `formatVersion = CURRENT`.
 
-## Migration ownership
+## Ownership
 
-`GraphMigrationRegistry.migrateToCurrent(SavedGraph)` is the only place that bumps versions.
+`GraphMigrationRegistry.migrateToCurrent(SavedGraph)` only stamps older payloads to `CURRENT`.
+There is no `v0-to-v1.json` migration manifest.
 
-The V0→V1 manifest lives at:
+## Related
 
-- `src/main/resources/nodecraft/migration/v0-to-v1.json`
-- generated/updated by `scripts/build_v0_migration_manifest.py` from `docs/nodecraft-v1-node-alias-plan.md`
-
-It covers:
-
-- node type rename (`visualization.*` → `output.*`, `spatial.*` → `geometry.*`, etc.)
-- port rename (global + per-node overrides)
-- node state property rename
-- enum value rename (reserved for future rows)
-
-V1→V2 is applied inline in `GraphMigrationRegistry.migrateV1ToV2`:
-
-- `input.numeric.integer_slider` output port `value` → `output_value`
-
-V2→V3 is applied inline in `GraphMigrationRegistry.migrateV2ToV3`:
-
-- `reference.points.point_from_coordinates` → `reference.points.block_position`
-
-(See [`nodecraft-v1-node-language.md`](../nodecraft-v1-node-language.md) Batch A/B.)
-
-`NodeRegistry.resolveCanonicalNodeId(...)` remains lowercase normalization only. **Do not** add runtime alias tables there; file migration owns legacy ids.
-
-## Compatibility rules
-
-1. Readers **must** accept `V0` and migrate to `CURRENT`.
-2. Writers **must** emit `CURRENT`.
-3. Newer-than-current files are **not** rewritten; warn and load best-effort.
-4. Bumping `CURRENT` requires a new manifest step and contract/legacy fixture tests.
-
-## Regression fixtures
-
-Legacy graphs under `src/test/resources/legacy/v0/*.nodecraft` are loaded with the full node registry in `LegacyGraphLoadContractTest`.
-
-## Exit gates
-
-1. `GraphFormatVersion` + policy helpers land
-2. `GraphMigrationRegistry` + manifest land
-3. Contract + legacy fixture tests green
+- Contract: [`docs/contracts/graph-format.md`](../contracts/graph-format.md)
+- Tests: `GraphFormatVersionContractTest`, `GraphMigrationRegistryTest`

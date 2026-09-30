@@ -29,8 +29,7 @@ class PatternMappingLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV118() {
-        assertEquals(118, GraphFormatVersion.V118);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V118);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

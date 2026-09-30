@@ -55,8 +55,7 @@ class GeometryCombineLanguageContractTest {
 
     @Test
     void graphFormatIncludesV70CombineLanguage() {
-        assertEquals(70, GraphFormatVersion.V70);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V70);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

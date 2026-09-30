@@ -4,11 +4,15 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 
 /**
  * Safe bounded flattening for nested {@link List} structures.
+ * <p>
+ * Null leaf elements are preserved (compatible with Create List driven-null retention).
+ * Do not use {@link List#copyOf} for successful results — it rejects nulls.
  */
 public final class ListFlattenOps {
 
@@ -24,8 +28,9 @@ public final class ListFlattenOps {
     }
 
     public record FlattenResult(List<Object> items, boolean valid, String error) {
+        /** Null-tolerant immutable snapshot (unlike {@link List#copyOf}). */
         public static FlattenResult ok(List<Object> items) {
-            return new FlattenResult(List.copyOf(items), true, "");
+            return new FlattenResult(Collections.unmodifiableList(new ArrayList<>(items)), true, "");
         }
 
         public static FlattenResult invalid(String error) {

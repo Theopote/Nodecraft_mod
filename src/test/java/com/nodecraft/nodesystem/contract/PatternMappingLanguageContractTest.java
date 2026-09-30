@@ -58,9 +58,7 @@ class PatternMappingLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV38() {
-        assertEquals(37, GraphFormatVersion.V37);
-        assertEquals(38, GraphFormatVersion.V38);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -300,36 +298,6 @@ class PatternMappingLanguageContractTest {
         assertNotEqualsIds(findAt(autoOut, 0, 0, 0).blockId(), findAt(autoOut, 0, 0, 2).blockId());
     }
 
-    @Test
-    void v37ToV38DropsPatternDeconstructWires() {
-        SavedGraph v37 = new SavedGraph();
-        v37.formatVersion = GraphFormatVersion.V37;
-
-        SavedNode checker = savedNode("checker", "material.pattern_mapping.checker_pattern_map");
-        SavedNode stripe = savedNode("stripe", "material.pattern_mapping.stripe_pattern_map");
-        SavedNode brick = savedNode("brick", "material.pattern_mapping.brick_pattern_map");
-        SavedNode grid = savedNode("grid", "material.pattern_mapping.grid_pattern_map");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-
-        v37.nodes = new ArrayList<>(List.of(checker, stripe, brick, grid, preview));
-        v37.connections = new ArrayList<>(List.of(
-                wire("checker", "output_placements", "preview", "input_block_placements"),
-                wire("checker", "output_positions", "preview", "input_block_placements"),
-                wire("stripe", "output_block_ids", "preview", "input_block_placements"),
-                wire("brick", "output_positions", "preview", "input_block_placements"),
-                wire("grid", "output_block_ids", "preview", "input_block_placements")
-        ));
-        v37.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v37);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertTrue(hasWire(migrated, "checker", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "checker", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "stripe", "output_block_ids", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "brick", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "grid", "output_block_ids", "preview", "input_block_placements"));
-    }
 
     /** Bypasses port type checks so wrong-type Pattern Origin can be exercised. */
     private static final class CheckerProbe extends CheckerPatternMapNode {

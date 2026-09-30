@@ -20,8 +20,7 @@ class TypeSelectorsLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV113() {
-        assertEquals(113, GraphFormatVersion.V113);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V113);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

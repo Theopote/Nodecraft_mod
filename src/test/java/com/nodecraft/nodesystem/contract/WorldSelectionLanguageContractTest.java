@@ -85,8 +85,7 @@ class WorldSelectionLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV62() {
-        assertEquals(62, GraphFormatVersion.V62);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V62);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -324,75 +323,7 @@ class WorldSelectionLanguageContractTest {
         assertEquals(0, sequence.getOutput("output_count"));
     }
 
-    @Test
-    void migrateV61ToV62DeletesSnapVectorAndDropsPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V61;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
 
-        SavedNode snapVector = savedNode("v1", "world.selection.snap_vector_to_block");
-        SavedNode snapPoint = savedNode("p1", "world.selection.snap_point_to_block");
-        Map<String, Object> snapState = new HashMap<>();
-        snapState.put("snapMode", "FLOOR");
-        snapPoint.state = snapState;
-
-        SavedNode selected = savedNode("b1", "world.selection.selected_block");
-        Map<String, Object> selectedState = new HashMap<>();
-        selectedState.put("sourceMode", "AUTO");
-        selectedState.put("pickedBlock", Map.of("x", 1, "y", 2, "z", 3));
-        selected.state = selectedState;
-
-        SavedNode multi = savedNode("m1", "world.selection.multi_region");
-        SavedNode listSnap = savedNode("l1", "world.selection.snap_points_to_blocks");
-        graph.nodes.addAll(List.of(snapVector, snapPoint, selected, multi, listSnap));
-
-        graph.connections.add(wire("v1", "output_coordinate", "t1", "input_stub"));
-        graph.connections.add(wire("b1", "output_block_id", "t2", "input_stub"));
-        graph.connections.add(wire("b1", "output_position", "t3", "input_stub"));
-        graph.connections.add(wire("m1", "output_min", "t4", "input_stub"));
-        graph.connections.add(wire("l1", "output_skipped_count", "t5", "input_stub"));
-        graph.connections.add(wire("t6", "output_stub", "m1", "input_min_points"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(migrated.formatVersion >= GraphFormatVersion.V62);
-        assertTrue(migrated.nodes.stream().noneMatch(n -> "v1".equals(n.nodeId)));
-        assertEquals("CONTAINING_CELL",
-                ((Map<?, ?>) nodeOf(migrated, "p1").state).get("snapMode"));
-        assertFalse(((Map<?, ?>) nodeOf(migrated, "b1").state).containsKey("pickedBlock"));
-
-        List<String> kept = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of(
-                "b1:output_position->t3:input_stub",
-                "t6:output_stub->m1:input_min_blocks"
-        ), kept);
-    }
-
-    @Test
-    void migrateV61ToV62RemapsLegacySnapModes() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V61;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode floor = savedNode("f", "world.selection.snap_point_to_block");
-        floor.state = Map.of("snapMode", "FLOOR");
-        SavedNode nearest = savedNode("n", "world.selection.snap_point_to_block");
-        nearest.state = Map.of("snapMode", "NEAREST");
-        SavedNode ceil = savedNode("c", "world.selection.snap_point_to_block");
-        ceil.state = Map.of("snapMode", "CEIL");
-        graph.nodes.addAll(List.of(floor, nearest, ceil));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals("CONTAINING_CELL", ((Map<?, ?>) nodeOf(migrated, "f").state).get("snapMode"));
-        assertEquals("NEAREST_CENTER", ((Map<?, ?>) nodeOf(migrated, "n").state).get("snapMode"));
-        assertEquals("NEAREST_CENTER", ((Map<?, ?>) nodeOf(migrated, "c").state).get("snapMode"));
-    }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);

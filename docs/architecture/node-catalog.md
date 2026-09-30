@@ -120,7 +120,7 @@ Today other “node lists” still diverge until U1+:
 - Outputs:
   - `build/generated/nodeCatalog/node-icon-manifest.json` — id → explicit icon + derived paths (mirrors `NodeIconPathResolver`) + SVG existence under `assets/nodecraft`
   - `build/generated/nodeCatalog/node-compatibility-manifest.json` — V0→V1 `nodeTypes` aliases with `targetInCatalog` / `missingTargets`
-- Does **not** rewrite `src/main/resources/nodecraft/migration/v0-to-v1.json` (still owned by file-migration / `scripts/build_v0_migration_manifest.py`)
+- Does **not** maintain a historical graph migration manifest (stamp-only `CURRENT` policy)
 - Does **not** change runtime icon resolution caches
 - `verifyNodeCatalogModel` asserts icon ids match catalog and alias pairs match migration × catalog cross-check
 

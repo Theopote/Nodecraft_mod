@@ -73,39 +73,6 @@ class VectorLanguageContractTest {
         assertEquals("Vector Scalar Divide", new VectorScalarDivideNode().getDisplayName());
     }
 
-    @Test
-    void v20ToV21MigrationDropsVectorProducerComponentWires() {
-        SavedGraph v20 = new SavedGraph();
-        v20.formatVersion = GraphFormatVersion.V20;
-
-        SavedNode construct = new SavedNode();
-        construct.nodeId = "cv";
-        construct.typeId = "reference.vectors.construct_vector";
-        SavedNode sink = new SavedNode();
-        sink.nodeId = "sink";
-        sink.typeId = "math.scalar_math.add";
-        v20.nodes = new ArrayList<>(List.of(construct, sink));
-
-        SavedConnection legacyX = new SavedConnection();
-        legacyX.sourceNodeId = "cv";
-        legacyX.sourcePortId = "output_x";
-        legacyX.targetNodeId = "sink";
-        legacyX.targetPortId = "input_a";
-
-        SavedConnection kept = new SavedConnection();
-        kept.sourceNodeId = "cv";
-        kept.sourcePortId = "output_vector";
-        kept.targetNodeId = "sink";
-        kept.targetPortId = "input_b";
-
-        v20.connections = new ArrayList<>(List.of(legacyX, kept));
-        v20.nodePositions = java.util.Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v20);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_vector", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static boolean hasPort(INode node, String portId) {
         return findPortOrNull(node, portId) != null;

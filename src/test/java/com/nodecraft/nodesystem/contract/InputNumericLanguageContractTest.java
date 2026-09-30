@@ -47,11 +47,7 @@ class InputNumericLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV34() {
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -241,31 +237,6 @@ class InputNumericLanguageContractTest {
         assertEquals(Math.E, (Double) e.getOutput("output_value"), 0.0d);
     }
 
-    @Test
-    void v30ToV31RemapsPiPortAndDropsXyVectorWire() {
-        SavedGraph v30 = new SavedGraph();
-        v30.formatVersion = GraphFormatVersion.V30;
-
-        SavedNode pi = savedNode("pi", "input.numeric.pi");
-        SavedNode xy = savedNode("xy", "input.numeric.xy_slider");
-        SavedNode sin = savedNode("sin", "math.trigonometry.sin");
-        SavedNode construct = savedNode("construct", "reference.vectors.construct_vector");
-
-        v30.nodes = new ArrayList<>(List.of(pi, xy, sin, construct));
-        v30.connections = new ArrayList<>(List.of(
-                wire("pi", "output_pi", "sin", "input_angle"),
-                wire("xy", "output_vector", "construct", "input_x"),
-                wire("xy", "output_x", "construct", "input_y")
-        ));
-        v30.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v30);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertTrue(hasWire(migrated, "pi", "output_value", "sin", "input_angle"));
-        assertFalse(hasWire(migrated, "pi", "output_pi", "sin", "input_angle"));
-        assertFalse(hasWire(migrated, "xy", "output_vector", "construct", "input_x"));
-        assertTrue(hasWire(migrated, "xy", "output_x", "construct", "input_y"));
-    }
 
     @Test
     void exactlyTenInputNumericNodesRegistered() {

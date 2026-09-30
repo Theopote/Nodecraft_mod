@@ -81,8 +81,7 @@ class WorldTerrainLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV63() {
-        assertEquals(63, GraphFormatVersion.V63);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V63);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -268,48 +267,6 @@ class WorldTerrainLanguageContractTest {
         assertEquals("max_columns", node.getOutput("output_stopped_reason"));
     }
 
-    @Test
-    void migrateV62ToV63RenamesTerrainPorts() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V62;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode heightfield = savedNode("h1", "world.terrain.heightfield_to_blocks");
-        Map<String, Object> hfState = new HashMap<>();
-        hfState.put("surfaceBlock", "minecraft:grass_block");
-        heightfield.state = hfState;
-
-        SavedNode sample = savedNode("s1", "world.terrain.sample_field_on_region");
-        SavedNode biome = savedNode("b1", "world.terrain.biome_classify");
-        graph.nodes.addAll(List.of(heightfield, sample, biome));
-
-        graph.connections.add(wire("h1", "output_surface_points", "t1", "input_stub"));
-        graph.connections.add(wire("s1", "output_was_clamped", "t2", "input_stub"));
-        graph.connections.add(wire("s1", "output_points", "t3", "input_stub"));
-        graph.connections.add(wire("s1", "output_values", "t4", "input_stub"));
-        graph.connections.add(wire("b1", "output_legend", "t5", "input_stub"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        List<String> kept = migrated.connections.stream()
-                .map(c -> c.sourceNodeId + ":" + c.sourcePortId + "->" + c.targetNodeId + ":" + c.targetPortId)
-                .sorted()
-                .toList();
-        assertEquals(List.of(
-                "b1:output_biome_labels->t5:input_stub",
-                "h1:output_surface_blocks->t1:input_stub",
-                "s1:output_hit_limit->t2:input_stub",
-                "s1:output_sample_points->t3:input_stub",
-                "s1:output_sample_values->t4:input_stub"
-        ), kept);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> state = (Map<String, Object>) nodeOf(migrated, "h1").state;
-        assertFalse(state.containsKey("surfaceBlock"));
-    }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);

@@ -30,6 +30,14 @@ class NumericListReductionTest {
     }
 
     @Test
+    void averageOppositeExtremesCurrentlyFailsClosed() {
+        // Documented V128 limitation: online mean via (x_i - mean) overflows for [-1e308, 1e308]
+        // even though the mathematical mean is 0. Improve only with an intentional algorithm change.
+        ScalarResult result = NumericListReduction.average(List.of(-1e308, 1e308));
+        assertFalse(result.valid());
+    }
+
+    @Test
     void medianEqualLargeValuesAvoidsMidpointOverflow() {
         List<Double> sorted = List.of(1e308, 1e308);
         ScalarResult result = NumericListReduction.medianSorted(sorted);

@@ -47,7 +47,6 @@ class PatternVoronoi3DLanguageContractTest {
 
     @Test
     void voronoi3DFreezeVersionIsV45() {
-        assertEquals(45, GraphFormatVersion.V45);
     }
 
     @Test

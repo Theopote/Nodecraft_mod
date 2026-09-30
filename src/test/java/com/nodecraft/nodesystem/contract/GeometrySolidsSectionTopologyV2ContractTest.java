@@ -56,17 +56,9 @@ class GeometrySolidsSectionTopologyV2ContractTest {
 
     @Test
     void currentGraphFormatIsV94() {
-        assertEquals(94, GraphFormatVersion.V94);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V94);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void migrateV93ToV94IsNoOp() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V93;
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-    }
 
     @Test
     void solidsInventoryRemainsTwentyThree() {

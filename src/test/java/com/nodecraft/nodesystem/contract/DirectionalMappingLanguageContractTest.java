@@ -58,9 +58,7 @@ class DirectionalMappingLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV36() {
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -246,33 +244,6 @@ class DirectionalMappingLanguageContractTest {
         assertTrue(((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("match"));
     }
 
-    @Test
-    void v35ToV36DropsDirectionalDeconstructWires() {
-        SavedGraph v35 = new SavedGraph();
-        v35.formatVersion = GraphFormatVersion.V35;
-
-        SavedNode slope = savedNode("slope", "material.directional_mapping.slope_map");
-        SavedNode column = savedNode("column", "material.directional_mapping.top_side_bottom_map");
-        SavedNode slab = savedNode("slab", "material.directional_mapping.slab_stair_autofill");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-
-        v35.nodes = new ArrayList<>(List.of(slope, column, slab, preview));
-        v35.connections = new ArrayList<>(List.of(
-                wire("slope", "output_placements", "preview", "input_block_placements"),
-                wire("slope", "output_positions", "preview", "input_block_placements"),
-                wire("column", "output_block_ids", "preview", "input_block_placements"),
-                wire("slab", "output_positions", "preview", "input_block_placements")
-        ));
-        v35.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v35);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertTrue(hasWire(migrated, "slope", "output_placements", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "slope", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "column", "output_block_ids", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "slab", "output_positions", "preview", "input_block_placements"));
-    }
 
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {
         return placements.stream()

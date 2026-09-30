@@ -72,14 +72,12 @@ class PatternRadialLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV81() {
-        assertEquals(81, GraphFormatVersion.V81);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V81);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void currentGraphFormatIsAtLeastV104() {
-        assertEquals(104, GraphFormatVersion.V104);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V104);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -424,48 +422,7 @@ class PatternRadialLanguageV2ContractTest {
             .contains("exponent"));
     }
 
-    @Test
-    void migrateV80ToV81DropsPolarArrayOutputGeometriesWires() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V80;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
 
-        SavedNode polar = savedNode("n1", "pattern.radial.polar_array");
-        SavedNode sink = savedNode("n2", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(polar, sink));
-        graph.connections.add(wire("n1", "output_geometries", "n2", "input_x"));
-        graph.connections.add(wire("n1", "output_geometry", "n2", "input_y"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertFalse(migrated.connections.stream().anyMatch(c -> "output_geometries".equals(c.sourcePortId)));
-        assertTrue(migrated.connections.stream().anyMatch(c ->
-            "n1".equals(c.sourceNodeId) && "output_geometry".equals(c.sourcePortId)));
-    }
-
-    @Test
-    void migrateV80ToV81DropsPolarArrayOutputGeometriesInSubgraphs() {
-        SavedGraph subgraph = new SavedGraph();
-        subgraph.formatVersion = GraphFormatVersion.V80;
-        subgraph.nodes = new ArrayList<>();
-        subgraph.connections = new ArrayList<>();
-        subgraph.nodes.add(savedNode("s1", "pattern.radial.polar_array"));
-        subgraph.nodes.add(savedNode("s2", "reference.vectors.vector"));
-        subgraph.connections.add(wire("s1", "output_geometries", "s2", "input_x"));
-
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V80;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.subgraphDefinitions = new HashMap<>();
-        graph.subgraphDefinitions.put("inner", subgraph);
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        SavedGraph migratedSub = migrated.subgraphDefinitions.get("inner");
-        assertNotNull(migratedSub);
-        assertFalse(migratedSub.connections.stream().anyMatch(c -> "output_geometries".equals(c.sourcePortId)));
-    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

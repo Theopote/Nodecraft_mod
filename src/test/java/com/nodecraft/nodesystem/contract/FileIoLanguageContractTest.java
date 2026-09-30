@@ -87,8 +87,7 @@ class FileIoLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV56() {
-        assertEquals(56, GraphFormatVersion.V56);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V56);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -310,60 +309,6 @@ class FileIoLanguageContractTest {
         assertEquals(3, indices.size());
     }
 
-    @Test
-    void migrateV55ToV56DropsObsoletePortsAndState() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V55;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode read = savedNode("r1", "utilities.fileio.read_image");
-        Map<String, Object> readState = new HashMap<>();
-        readState.put("allowExternalPaths", true);
-        readState.put("maxPixels", 999);
-        readState.put("readMode", "FULL");
-        read.state = readState;
-
-        SavedNode sampler = savedNode("s1", "utilities.fileio.image_sampler");
-        SavedNode vox = savedNode("v1", "utilities.fileio.import_vox");
-        Map<String, Object> voxState = new HashMap<>();
-        voxState.put("maxVoxels", 100);
-        voxState.put("defaultBlock", "minecraft:stone");
-        voxState.put("defaultBlockType", "minecraft:stone");
-        voxState.put("zUpToMinecraftY", true);
-        vox.state = voxState;
-
-        SavedNode sink = savedNode("n2", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(read, sampler, vox, sink));
-
-        graph.connections.add(wire("r1", "output_valid", "n2", "input_x"));
-        graph.connections.add(wire("n2", "output_value", "r1", "input_max_pixels"));
-        graph.connections.add(wire("n2", "output_value", "r1", "input_allow_external_paths"));
-        graph.connections.add(wire("n2", "output_value", "s1", "input_pixel_colors"));
-        graph.connections.add(wire("n2", "output_value", "s1", "input_image_width"));
-        graph.connections.add(wire("n2", "output_value", "s1", "input_width"));
-        graph.connections.add(wire("v1", "output_placements", "n2", "input_y"));
-        graph.connections.add(wire("n2", "output_value", "v1", "input_block_type"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> readMigrated = (Map<String, Object>) nodeOf(migrated, "r1").state;
-        assertEquals("FULL", readMigrated.get("readMode"));
-        assertFalse(readMigrated.containsKey("allowExternalPaths"));
-        assertFalse(readMigrated.containsKey("maxPixels"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> voxMigrated = (Map<String, Object>) nodeOf(migrated, "v1").state;
-        assertEquals(Boolean.TRUE, voxMigrated.get("zUpToMinecraftY"));
-        assertFalse(voxMigrated.containsKey("maxVoxels"));
-        assertFalse(voxMigrated.containsKey("defaultBlock"));
-        assertFalse(voxMigrated.containsKey("defaultBlockType"));
-
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_valid", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static void writeSolidPng(Path file, int width, int height, int argb) throws Exception {
         BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);

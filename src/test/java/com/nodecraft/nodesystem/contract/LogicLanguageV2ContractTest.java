@@ -44,8 +44,7 @@ class LogicLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV122() {
-        assertEquals(122, GraphFormatVersion.V122);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V122);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

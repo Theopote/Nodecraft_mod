@@ -72,8 +72,7 @@ class AssistUtilitiesLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV55() {
-        assertEquals(55, GraphFormatVersion.V55);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V55);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -269,51 +268,6 @@ class AssistUtilitiesLanguageContractTest {
         assertTrue(text.contains("1") && text.contains("2") && text.contains("3"), text);
     }
 
-    @Test
-    void migrateV54ToV55RemapsTypesAndDropsPassedPort() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V54;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode reroute = savedNode("n1", "utilities.assist.reroute");
-        SavedNode tag = savedNode("n2", "utilities.assist.tag_relay");
-        Map<String, Object> tagState = new HashMap<>();
-        tagState.put("tag", "danger");
-        tagState.put("color", "#E53935");
-        tag.state = tagState;
-
-        SavedNode assertNode = savedNode("n3", "utilities.assist.assert");
-        Map<String, Object> assertState = new HashMap<>();
-        assertState.put("failHard", true);
-        assertState.put("defaultCondition", false);
-        assertNode.state = assertState;
-
-        SavedNode merge = savedNode("n4", "utilities.assist.signal_merge");
-        SavedNode sink = savedNode("n5", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(reroute, tag, assertNode, merge, sink));
-
-        graph.connections.add(wire("n3", "output_passed", "n5", "input_x"));
-        graph.connections.add(wire("n3", "output_valid", "n5", "input_y"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("utilities.assist.relay", typeOf(migrated, "n1"));
-        assertEquals("utilities.assist.relay", typeOf(migrated, "n2"));
-        assertEquals("utilities.assist.validate", typeOf(migrated, "n3"));
-        assertEquals("utilities.assist.coalesce", typeOf(migrated, "n4"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> tagMigrated = (Map<String, Object>) nodeOf(migrated, "n2").state;
-        assertEquals("danger", tagMigrated.get("tag"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> validateState = (Map<String, Object>) nodeOf(migrated, "n3").state;
-        assertFalse(validateState.containsKey("failHard"));
-
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_valid", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static SavedNode savedNode(String id, String typeId) {
         SavedNode node = new SavedNode();

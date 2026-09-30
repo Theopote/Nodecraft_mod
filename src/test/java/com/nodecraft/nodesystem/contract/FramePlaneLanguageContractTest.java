@@ -268,42 +268,6 @@ class FramePlaneLanguageContractTest {
         assertPortType("pattern.linear.path_frames", "output_length", false, NodeDataType.DOUBLE);
     }
 
-    @Test
-    void v17ToV18MigrationDropsLegacyWires() {
-        SavedGraph v17 = new SavedGraph();
-        v17.formatVersion = GraphFormatVersion.V17;
-        v17.graphName = "frame-plane-migration";
-
-        SavedNode worldFrame = new SavedNode();
-        worldFrame.nodeId = "wf";
-        worldFrame.typeId = "reference.frames.world_frame";
-
-        SavedNode sink = new SavedNode();
-        sink.nodeId = "sink";
-        sink.typeId = "input.numeric.number";
-
-        v17.nodes = List.of(worldFrame, sink);
-        v17.nodePositions = java.util.Map.of();
-
-        SavedConnection legacy = new SavedConnection();
-        legacy.sourceNodeId = "wf";
-        legacy.sourcePortId = "output_origin";
-        legacy.targetNodeId = "sink";
-        legacy.targetPortId = "input_value";
-
-        SavedConnection kept = new SavedConnection();
-        kept.sourceNodeId = "wf";
-        kept.sourcePortId = "output_frame";
-        kept.targetNodeId = "sink";
-        kept.targetPortId = "input_value";
-
-        v17.connections = new ArrayList<>(List.of(legacy, kept));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v17);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_frame", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static BaseNode node(String typeId) {
         BaseNode node = (BaseNode) NodeRegistry.getInstance().createNodeInstance(typeId);

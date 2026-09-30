@@ -77,10 +77,7 @@ class BlockStateLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV35() {
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -317,57 +314,6 @@ class BlockStateLanguageContractTest {
         assertFalse(hasPort(node.getOutputPorts(), "output_positions"));
     }
 
-    @Test
-    void v34ToV35RemapsTypesDropsWiresAndStripsBlockIdFromState() {
-        SavedGraph v34 = new SavedGraph();
-        v34.formatVersion = GraphFormatVersion.V34;
-
-        SavedNode assign = savedNode("assign", "material.block_state.block_state_assign");
-        SavedNode slab = savedNode("slab", "material.block_state.slab_autofill");
-        SavedNode autoOrient = savedNode("auto", "material.block_state.auto_orient_blocks");
-        SavedNode build = savedNode("build", "material.block_state.build_block_state");
-        SavedNode stair = savedNode("stair", "material.block_state.stair_shape");
-        SavedNode box = savedNode("box", "geometry.primitives.box");
-        SavedNode list = savedNode("list", "math.list.create_list");
-        SavedNode preview = savedNode("preview", "output.preview.preview_blocks");
-
-        Map<String, Object> buildState = new HashMap<>();
-        buildState.put("propertiesText", "facing=north");
-        buildState.put("blockId", "minecraft:stone");
-        build.state = buildState;
-
-        v34.nodes = new ArrayList<>(List.of(assign, slab, autoOrient, build, stair, box, list, preview));
-        v34.connections = new ArrayList<>(List.of(
-                wire("build", "output_block_info", "preview", "input_block_placements"),
-                wire("build", "output_block_state", "assign", "input_block_state"),
-                wire("box", "output_geometry", "assign", "input_geometry"),
-                wire("assign", "output_positions", "preview", "input_block_placements"),
-                wire("assign", "output_placements", "stair", "input_placements"),
-                wire("stair", "output_placements", "preview", "input_block_placements"),
-                wire("box", "output_geometry", "stair", "input_geometry"),
-                wire("list", "output_list", "slab", "input_normals")
-        ));
-        v34.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v34);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertFalse(migrated.nodes.stream().anyMatch(n -> "auto".equals(n.nodeId)));
-        assertEquals("material.block_state.apply_block_state", findNode(migrated, "assign").typeId);
-        assertEquals("material.directional_mapping.slab_stair_autofill", findNode(migrated, "slab").typeId);
-
-        assertFalse(hasWire(migrated, "build", "output_block_info", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "assign", "output_positions", "preview", "input_block_placements"));
-        assertFalse(hasWire(migrated, "box", "output_geometry", "stair", "input_geometry"));
-        assertFalse(hasWire(migrated, "box", "output_geometry", "assign", "input_geometry"));
-        assertFalse(hasWire(migrated, "list", "output_list", "slab", "input_normals"));
-        assertTrue(hasWire(migrated, "assign", "output_placements", "stair", "input_placements"));
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> migratedBuildState = (Map<String, Object>) findNode(migrated, "build").state;
-        assertNotNull(migratedBuildState);
-        assertFalse(migratedBuildState.containsKey("blockId"));
-    }
 
     private static SavedNode findNode(SavedGraph graph, String nodeId) {
         return graph.nodes.stream()

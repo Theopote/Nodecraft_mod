@@ -82,49 +82,9 @@ class CompareLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV28() {
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v26ToV27DeletesCompareAndPreservesUnrelatedWires() {
-        SavedGraph v26 = new SavedGraph();
-        v26.formatVersion = GraphFormatVersion.V26;
-
-        SavedNode compare = savedNode("cmp", "math.compare.compare");
-        SavedNode equals = savedNode("eq", "math.compare.equals");
-        SavedNode add = savedNode("add", "math.scalar_math.addition");
-        SavedNode floatA = savedNode("float_a", "input.numeric.float");
-
-        v26.nodes = new ArrayList<>(List.of(compare, equals, add, floatA));
-        v26.connections = new ArrayList<>(List.of(
-                wire("float_a", "output_value", "cmp", "input_a"),
-                wire("float_a", "output_value", "cmp", "input_b"),
-                wire("float_a", "output_value", "eq", "input_a"),
-                wire("float_a", "output_value", "add", "input_a"),
-                wire("float_a", "output_value", "add", "input_b")
-        ));
-        v26.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v26);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals(3, migrated.nodes.size());
-        assertEquals(3, migrated.connections.size());
-
-        assertFalse(migrated.nodes.stream().anyMatch(n -> "cmp".equals(n.nodeId)));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "eq", "input_a"));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_a"));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_b"));
-        assertFalse(hasWire(migrated, "float_a", "output_value", "cmp", "input_a"));
-    }
 
     private static void assertPortTypes(INode node, NodeDataType expectedA, NodeDataType expectedB) {
         IPort portA = node.getInputPorts().stream()

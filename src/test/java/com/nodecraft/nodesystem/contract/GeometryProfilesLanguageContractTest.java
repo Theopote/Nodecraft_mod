@@ -56,8 +56,7 @@ class GeometryProfilesLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV73() {
-        assertEquals(73, GraphFormatVersion.V73);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V73);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -228,20 +227,6 @@ class GeometryProfilesLanguageContractTest {
         assertNotNull(node.getOutput("output_error"));
     }
 
-    @Test
-    void migrateV72ToV73MovesConvexHull3DToAnalysis() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V72;
-        SavedNode hull = new SavedNode();
-        hull.nodeId = "hull";
-        hull.typeId = "geometry.profiles.convex_hull_3d_points";
-        graph.nodes = List.of(hull);
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertTrue(migrated.formatVersion >= GraphFormatVersion.V73);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals("geometry.analysis.convex_hull_3d", migrated.nodes.getFirst().typeId);
-    }
 
     @Test
     void connectedInvalidPlaneFailsClosed() {

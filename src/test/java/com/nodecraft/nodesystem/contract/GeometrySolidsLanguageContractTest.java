@@ -56,8 +56,7 @@ class GeometrySolidsLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV72() {
-        assertEquals(72, GraphFormatVersion.V72);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V72);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

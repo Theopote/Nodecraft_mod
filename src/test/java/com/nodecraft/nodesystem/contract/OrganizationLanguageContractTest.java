@@ -89,8 +89,7 @@ class OrganizationLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV58() {
-        assertEquals(58, GraphFormatVersion.V58);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -367,47 +366,6 @@ class OrganizationLanguageContractTest {
         ));
     }
 
-    @Test
-    void migrateV57ToV58ExtractsEmbeddedJsonAndLiftsCommentGroup() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V57;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        SavedNode subgraph = savedNode("sg1", "utilities.organization.subgraph");
-        SavedGraph embedded = minimalChildGraph();
-        Map<String, Object> state = new HashMap<>();
-        state.put("subgraphRef", "helper");
-        state.put("embeddedGraphJson", GraphSerializer.toJson(embedded));
-        state.put("inputKey", "in");
-        subgraph.state = state;
-        graph.nodes.add(subgraph);
-
-        SavedNode comment = savedNode("c1", "utilities.organization.comment");
-        comment.state = new Object[] {"note", "#000", "#FFEB3B", 14f, false, false, "STICKY_NOTE", 200d, 120d};
-        graph.nodes.add(comment);
-        graph.nodePositions.put("c1", new com.nodecraft.nodesystem.io.SavedPosition(10f, 20f));
-
-        SavedNode group = savedNode("g1", "utilities.organization.group");
-        group.state = new Object[] {"Group", "#3498db", false, false, 300d, 200d, new UUID[0], new boolean[] {false, false}};
-        graph.nodes.add(group);
-
-        graph.connections.add(wire("sg1", "input_value", "sg1", "output_value"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertNotNull(migrated.subgraphDefinitions.get("helper"));
-        assertEquals(1, migrated.nodes.size());
-        @SuppressWarnings("unchecked")
-        Map<String, Object> migratedState = (Map<String, Object>) migrated.nodes.getFirst().state;
-        assertFalse(migratedState.containsKey("embeddedGraphJson"));
-        assertEquals(1, migrated.comments.size());
-        assertEquals(1, migrated.groups.size());
-        SavedGraphComment savedComment = migrated.comments.getFirst();
-        assertEquals("note", savedComment.text);
-        assertEquals(10f, savedComment.x);
-    }
 
     @Test
     void blockListTypePreservedOnSubgraphInterface() {

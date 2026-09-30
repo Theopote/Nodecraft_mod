@@ -56,8 +56,7 @@ class BlockMorphologyLanguageContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV57() {
-        assertEquals(57, GraphFormatVersion.V57);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V57);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -246,35 +245,6 @@ class BlockMorphologyLanguageContractTest {
         assertTrue(outputIds.contains("output_error"));
     }
 
-    @Test
-    void migrateV56ToV57StripsStateDropsMaxPortAndRemapsErrorPort() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V56;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode morphology = savedNode("m1", TYPE_ID);
-        Map<String, Object> state = new HashMap<>();
-        state.put("maxOutputBlocks", 999);
-        state.put("iterations", 2);
-        morphology.state = state;
-        graph.nodes.add(morphology);
-
-        SavedNode sink = savedNode("s1", "reference.vectors.vector");
-        graph.nodes.add(sink);
-
-        graph.connections.add(wire("m1", "output_stopped_reason", "s1", "input_x"));
-        graph.connections.add(wire("s1", "output_x", "m1", "input_max_output_blocks"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> migratedState = (Map<String, Object>) nodeOf(migrated, "m1").state;
-        assertFalse(migratedState.containsKey("maxOutputBlocks"));
-        assertEquals(1, migrated.connections.size());
-        assertEquals("output_error", migrated.connections.getFirst().sourcePortId);
-    }
 
     private static SavedNode savedNode(String id, String typeId) {
         SavedNode node = new SavedNode();

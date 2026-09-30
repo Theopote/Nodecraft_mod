@@ -61,7 +61,6 @@ class PatternGridLanguageContractTest {
 
     @Test
     void patternGridFreezeVersionIsV42() {
-        assertEquals(42, GraphFormatVersion.V42);
     }
 
     @Test

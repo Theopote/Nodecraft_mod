@@ -40,7 +40,7 @@ class SavedGraphNormalizerTest {
     void missingCollectionsAreInitialized() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy";
-        legacy.formatVersion = GraphFormatVersion.V0;
+        legacy.formatVersion = GraphFormatVersion.CURRENT;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
@@ -55,7 +55,7 @@ class SavedGraphNormalizerTest {
     void loadFromSavedGraphMigratesLegacyPayload() {
         SavedGraph legacy = new SavedGraph();
         legacy.graphName = "legacy-load";
-        legacy.formatVersion = GraphFormatVersion.V0;
+        legacy.formatVersion = GraphFormatVersion.CURRENT;
         SavedNode node = new SavedNode();
         node.nodeId = UUID.randomUUID().toString();
         node.typeId = "test.pass";

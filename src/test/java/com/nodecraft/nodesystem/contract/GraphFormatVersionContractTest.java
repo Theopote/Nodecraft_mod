@@ -16,156 +16,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Freeze fence for {@link GraphFormatVersion} policy.
+ * Current-only graph format policy (no historical migration ladder).
  */
 class GraphFormatVersionContractTest {
 
     @Test
-    void currentVersionIdentityIsFrozen() {
-        assertEquals(0, GraphFormatVersion.V0);
-        assertEquals(1, GraphFormatVersion.V1);
-        assertEquals(2, GraphFormatVersion.V2);
-        assertEquals(3, GraphFormatVersion.V3);
-        assertEquals(4, GraphFormatVersion.V4);
-        assertEquals(5, GraphFormatVersion.V5);
-        assertEquals(6, GraphFormatVersion.V6);
-        assertEquals(7, GraphFormatVersion.V7);
-        assertEquals(8, GraphFormatVersion.V8);
-        assertEquals(9, GraphFormatVersion.V9);
-        assertEquals(10, GraphFormatVersion.V10);
-        assertEquals(11, GraphFormatVersion.V11);
-        assertEquals(12, GraphFormatVersion.V12);
-        assertEquals(13, GraphFormatVersion.V13);
-        assertEquals(14, GraphFormatVersion.V14);
-        assertEquals(15, GraphFormatVersion.V15);
-        assertEquals(16, GraphFormatVersion.V16);
-        assertEquals(17, GraphFormatVersion.V17);
-        assertEquals(18, GraphFormatVersion.V18);
-        assertEquals(19, GraphFormatVersion.V19);
-        assertEquals(20, GraphFormatVersion.V20);
-        assertEquals(22, GraphFormatVersion.V22);
-        assertEquals(23, GraphFormatVersion.V23);
-        assertEquals(24, GraphFormatVersion.V24);
-        assertEquals(25, GraphFormatVersion.V25);
-        assertEquals(26, GraphFormatVersion.V26);
-        assertEquals(27, GraphFormatVersion.V27);
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(31, GraphFormatVersion.V31);
-        assertEquals(32, GraphFormatVersion.V32);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertEquals(37, GraphFormatVersion.V37);
-        assertEquals(38, GraphFormatVersion.V38);
-        assertEquals(39, GraphFormatVersion.V39);
-        assertEquals(40, GraphFormatVersion.V40);
-        assertEquals(41, GraphFormatVersion.V41);
-        assertEquals(42, GraphFormatVersion.V42);
-        assertEquals(43, GraphFormatVersion.V43);
-        assertEquals(44, GraphFormatVersion.V44);
-        assertEquals(45, GraphFormatVersion.V45);
-        assertEquals(46, GraphFormatVersion.V46);
-        assertEquals(47, GraphFormatVersion.V47);
-        assertEquals(48, GraphFormatVersion.V48);
-        assertEquals(49, GraphFormatVersion.V49);
-        assertEquals(50, GraphFormatVersion.V50);
-        assertEquals(51, GraphFormatVersion.V51);
-        assertEquals(52, GraphFormatVersion.V52);
-        assertEquals(53, GraphFormatVersion.V53);
-        assertEquals(54, GraphFormatVersion.V54);
-        assertEquals(55, GraphFormatVersion.V55);
-        assertEquals(56, GraphFormatVersion.V56);
-        assertEquals(57, GraphFormatVersion.V57);
-        assertEquals(58, GraphFormatVersion.V58);
-        assertEquals(59, GraphFormatVersion.V59);
-        assertEquals(60, GraphFormatVersion.V60);
-        assertEquals(61, GraphFormatVersion.V61);
-        assertEquals(62, GraphFormatVersion.V62);
-        assertEquals(64, GraphFormatVersion.V64);
-        assertEquals(65, GraphFormatVersion.V65);
-        assertEquals(66, GraphFormatVersion.V66);
-        assertEquals(67, GraphFormatVersion.V67);
-        assertEquals(68, GraphFormatVersion.V68);
-        assertEquals(69, GraphFormatVersion.V69);
-        assertEquals(70, GraphFormatVersion.V70);
-        assertEquals(71, GraphFormatVersion.V71);
-        assertEquals(72, GraphFormatVersion.V72);
-        assertEquals(73, GraphFormatVersion.V73);
-        assertEquals(74, GraphFormatVersion.V74);
-        assertEquals(75, GraphFormatVersion.V75);
-        assertEquals(76, GraphFormatVersion.V76);
-        assertEquals(77, GraphFormatVersion.V77);
-        assertEquals(78, GraphFormatVersion.V78);
-        assertEquals(79, GraphFormatVersion.V79);
-        assertEquals(80, GraphFormatVersion.V80);
-        assertEquals(81, GraphFormatVersion.V81);
-        assertEquals(82, GraphFormatVersion.V82);
-        assertEquals(83, GraphFormatVersion.V83);
-        assertEquals(84, GraphFormatVersion.V84);
-        assertEquals(85, GraphFormatVersion.V85);
-        assertEquals(86, GraphFormatVersion.V86);
-        assertEquals(87, GraphFormatVersion.V87);
-        assertEquals(88, GraphFormatVersion.V88);
-        assertEquals(89, GraphFormatVersion.V89);
-        assertEquals(90, GraphFormatVersion.V90);
-        assertEquals(91, GraphFormatVersion.V91);
-        assertEquals(92, GraphFormatVersion.V92);
-        assertEquals(93, GraphFormatVersion.V93);
-        assertEquals(94, GraphFormatVersion.V94);
-        assertEquals(95, GraphFormatVersion.V95);
-        assertEquals(96, GraphFormatVersion.V96);
-        assertEquals(97, GraphFormatVersion.V97);
-        assertEquals(98, GraphFormatVersion.V98);
-        assertEquals(99, GraphFormatVersion.V99);
-        assertEquals(100, GraphFormatVersion.V100);
-        assertEquals(101, GraphFormatVersion.V101);
-        assertEquals(102, GraphFormatVersion.V102);
-        assertEquals(103, GraphFormatVersion.V103);
-        assertEquals(104, GraphFormatVersion.V104);
-        assertEquals(105, GraphFormatVersion.V105);
-        assertEquals(106, GraphFormatVersion.V106);
-        assertEquals(107, GraphFormatVersion.V107);
-        assertEquals(108, GraphFormatVersion.V108);
-        assertEquals(109, GraphFormatVersion.V109);
-        assertEquals(110, GraphFormatVersion.V110);
-        assertEquals(111, GraphFormatVersion.V111);
-        assertEquals(112, GraphFormatVersion.V112);
-        assertEquals(113, GraphFormatVersion.V113);
-        assertEquals(114, GraphFormatVersion.V114);
-        assertEquals(115, GraphFormatVersion.V115);
-        assertEquals(116, GraphFormatVersion.V116);
-        assertEquals(117, GraphFormatVersion.V117);
-        assertEquals(118, GraphFormatVersion.V118);
-        assertEquals(119, GraphFormatVersion.V119);
-        assertEquals(120, GraphFormatVersion.V120);
-        assertEquals(121, GraphFormatVersion.V121);
-        assertEquals(122, GraphFormatVersion.V122);
-        assertEquals(123, GraphFormatVersion.V123);
-        assertEquals(124, GraphFormatVersion.V124);
-        assertEquals(125, GraphFormatVersion.V125);
-        assertEquals(126, GraphFormatVersion.V126);
-        assertEquals(127, GraphFormatVersion.V127);
-        assertEquals(128, GraphFormatVersion.V128);
-        assertEquals(129, GraphFormatVersion.V129);
-        assertEquals(130, GraphFormatVersion.V130);
-        assertEquals(131, GraphFormatVersion.V131);
-        assertEquals(132, GraphFormatVersion.V132);
-        assertEquals(133, GraphFormatVersion.V133);
-        assertEquals(134, GraphFormatVersion.V134);
-        assertEquals(135, GraphFormatVersion.V135);
-        assertEquals(GraphFormatVersion.V135, GraphFormatVersion.CURRENT);
+    void currentVersionIdentity() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
+        assertEquals(0, GraphFormatVersion.UNSPECIFIED);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
-    void policyHelpersMatchFrozenRules() {
-        assertEquals(GraphFormatVersion.V0, GraphFormatVersion.normalize(-3));
+    void policyHelpersMatchStampOnlyRules() {
+        assertEquals(GraphFormatVersion.UNSPECIFIED, GraphFormatVersion.normalize(-3));
         assertTrue(GraphFormatVersion.isLegacy(0));
         assertTrue(GraphFormatVersion.needsMigration(0));
         assertFalse(GraphFormatVersion.needsMigration(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
         assertTrue(GraphFormatVersion.isNewerThanCurrent(GraphFormatVersion.CURRENT + 1));
     }
 
@@ -178,19 +45,19 @@ class GraphFormatVersionContractTest {
     }
 
     @Test
-    void legacyPayloadMigratesToCurrent() {
+    void olderPayloadIsStampedToCurrentWithoutRemaps() {
         SavedGraph legacy = new SavedGraph();
-        legacy.formatVersion = GraphFormatVersion.V0;
+        legacy.formatVersion = GraphFormatVersion.UNSPECIFIED;
         legacy.nodes = null;
         legacy.connections = null;
         legacy.nodePositions = null;
 
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(legacy);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertNotNull(migrated.nodes);
-        assertNotNull(migrated.connections);
-        assertNotNull(migrated.nodePositions);
-        assertFalse(GraphFormatVersion.needsMigration(migrated.formatVersion));
+        SavedGraph stamped = GraphMigrationRegistry.migrateToCurrent(legacy);
+        assertEquals(GraphFormatVersion.CURRENT, stamped.formatVersion);
+        assertNotNull(stamped.nodes);
+        assertNotNull(stamped.connections);
+        assertNotNull(stamped.nodePositions);
+        assertFalse(GraphFormatVersion.needsMigration(stamped.formatVersion));
     }
 
     @Test

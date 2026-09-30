@@ -81,8 +81,7 @@ class ReferenceVectorsLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV88() {
-        assertEquals(88, GraphFormatVersion.V88);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V88);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

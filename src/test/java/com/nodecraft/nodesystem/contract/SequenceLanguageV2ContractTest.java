@@ -45,8 +45,7 @@ class SequenceLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV125() {
-        assertEquals(125, GraphFormatVersion.V125);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V125);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

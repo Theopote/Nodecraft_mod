@@ -95,8 +95,7 @@ class ReferencePointsLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV87() {
-        assertEquals(87, GraphFormatVersion.V87);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V87);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

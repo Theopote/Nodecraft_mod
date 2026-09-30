@@ -32,8 +32,7 @@ class ListNumericLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV128() {
-        assertEquals(128, GraphFormatVersion.V128);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V128);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

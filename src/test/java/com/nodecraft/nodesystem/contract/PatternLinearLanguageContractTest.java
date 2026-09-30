@@ -56,7 +56,6 @@ class PatternLinearLanguageContractTest {
 
     @Test
     void patternLinearFreezeVersionIsV41() {
-        assertEquals(41, GraphFormatVersion.V41);
     }
 
     @Test

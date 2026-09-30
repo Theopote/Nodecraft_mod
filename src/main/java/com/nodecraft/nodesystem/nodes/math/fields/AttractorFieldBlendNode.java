@@ -112,6 +112,11 @@ public class AttractorFieldBlendNode extends BaseNode {
             }
 
             if (normalizeOutput) {
+                // Distinguish tiny finite → zero vs non-finite → NaN (sample Valid=false).
+                if (!VectorUtils.isFinite(dest)) {
+                    dest.set(Double.NaN, Double.NaN, Double.NaN);
+                    return;
+                }
                 Vector3d normalized = VectorUtils.safeNormalize(dest);
                 if (normalized != null) {
                     dest.set(normalized);

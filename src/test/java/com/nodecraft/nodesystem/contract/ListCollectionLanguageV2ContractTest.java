@@ -29,8 +29,7 @@ class ListCollectionLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV127() {
-        assertEquals(127, GraphFormatVersion.V127);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V127);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

@@ -74,8 +74,7 @@ class ReferencePlanesLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV86() {
-        assertEquals(86, GraphFormatVersion.V86);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V86);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

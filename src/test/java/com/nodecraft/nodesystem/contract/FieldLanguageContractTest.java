@@ -7,11 +7,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.nodes.math.fields.AttractorFieldBlendNode;
@@ -37,7 +33,6 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -547,37 +542,9 @@ class FieldLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV34() {
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v29ToV30DropsIncompatibleScalarSamplePointsWires() {
-        SavedGraph v29 = new SavedGraph();
-        v29.formatVersion = GraphFormatVersion.V29;
-
-        SavedNode sampler = savedNode("ssp", "math.fields.scalar_sample_points");
-        SavedNode sortText = savedNode("sort", "math.list.sort_text");
-        SavedNode createList = savedNode("clist", "math.list.create_list");
-        SavedNode field = savedNode("field", "math.fields.scalar_constant");
-
-        v29.nodes = new ArrayList<>(List.of(sampler, sortText, createList, field));
-        v29.connections = new ArrayList<>(List.of(
-                wire("ssp", "output_values", "sort", "input_list"),
-                wire("ssp", "output_values", "clist", "input_0"),
-                wire("field", "output_field", "ssp", "input_field")
-        ));
-        v29.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v29);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertFalse(hasWire(migrated, "ssp", "output_values", "sort", "input_list"));
-        assertTrue(hasWire(migrated, "ssp", "output_values", "clist", "input_0"));
-        assertTrue(hasWire(migrated, "field", "output_field", "ssp", "input_field"));
-    }
 
     private static Vector3d sampleSdfGradientField(SignedDistanceFieldData sdf, double step, Vector3d point) {
         VectorFieldFromSdfGradientNode node = new VectorFieldFromSdfGradientNode();
@@ -626,30 +593,5 @@ class FieldLanguageContractTest {
         return Math.abs(a.x - b.x) <= 1.0e-9d
                 && Math.abs(a.y - b.y) <= 1.0e-9d
                 && Math.abs(a.z - b.z) <= 1.0e-9d;
-    }
-
-    private static SavedNode savedNode(String id, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = id;
-        node.typeId = typeId;
-        return node;
-    }
-
-    private static SavedConnection wire(String sourceNode, String sourcePort, String targetNode, String targetPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = sourceNode;
-        connection.sourcePortId = sourcePort;
-        connection.targetNodeId = targetNode;
-        connection.targetPortId = targetPort;
-        return connection;
-    }
-
-    private static boolean hasWire(SavedGraph graph, String sourceNode, String sourcePort,
-                                   String targetNode, String targetPort) {
-        return graph.connections.stream().anyMatch(c ->
-                sourceNode.equals(c.sourceNodeId)
-                        && sourcePort.equalsIgnoreCase(c.sourcePortId)
-                        && targetNode.equals(c.targetNodeId)
-                        && targetPort.equalsIgnoreCase(c.targetPortId));
     }
 }

@@ -90,14 +90,12 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV85() {
-        assertEquals(85, GraphFormatVersion.V85);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V85);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void currentGraphFormatIsAtLeastV108() {
-        assertEquals(108, GraphFormatVersion.V108);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V108);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

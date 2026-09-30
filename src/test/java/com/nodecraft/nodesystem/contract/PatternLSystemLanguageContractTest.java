@@ -55,7 +55,6 @@ class PatternLSystemLanguageContractTest {
 
     @Test
     void lSystemFreezeVersionIsV46() {
-        assertEquals(46, GraphFormatVersion.V46);
     }
 
     @Test

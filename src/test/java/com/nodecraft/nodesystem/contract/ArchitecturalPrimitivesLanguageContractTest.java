@@ -93,8 +93,7 @@ class ArchitecturalPrimitivesLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV68() {
-        assertEquals(68, GraphFormatVersion.V68);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V68);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -284,30 +283,6 @@ class ArchitecturalPrimitivesLanguageContractTest {
         assertNull(GeometryOutputUtils.packGeometry(java.util.Collections.singletonList(null)));
     }
 
-    @Test
-    void migrateV67ToV68RemovesDeletedArchitecturalNodes() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V67;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-        graph.nodePositions = new HashMap<>();
-
-        graph.nodes.add(savedNode("slab", "geometry.architectural_primitives.floor_slab"));
-        graph.nodes.add(savedNode("combo", "geometry.architectural_primitives.floor_slab_with_beams"));
-        graph.nodes.add(savedNode("decon", "geometry.architectural_primitives.deconstruct_opening"));
-        graph.connections.add(wire("combo", "output_geometry", "sink", "in"));
-        graph.connections.add(wire("decon", "output_components", "sink2", "in"));
-        graph.connections.add(wire("slab", "output_geometry", "sink3", "in"));
-        graph.nodePositions.put("combo", new SavedPosition(0f, 0f));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(1, migrated.nodes.size());
-        assertEquals("geometry.architectural_primitives.floor_slab", migrated.nodes.getFirst().typeId);
-        assertEquals(1, migrated.connections.size());
-        assertEquals("slab", migrated.connections.getFirst().sourceNodeId);
-        assertFalse(migrated.nodePositions.containsKey("combo"));
-    }
 
     private static BoxFaceData sampleFace(double width, double height) {
         double halfW = width / 2.0d;

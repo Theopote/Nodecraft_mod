@@ -159,55 +159,9 @@ class TrigonometryLanguageContractTest {
 
     @Test
     void currentGraphFormatIsV28() {
-        assertEquals(28, GraphFormatVersion.V28);
-        assertEquals(29, GraphFormatVersion.V29);
-        assertEquals(30, GraphFormatVersion.V30);
-        assertEquals(33, GraphFormatVersion.V33);
-        assertEquals(34, GraphFormatVersion.V34);
-        assertEquals(35, GraphFormatVersion.V35);
-        assertEquals(36, GraphFormatVersion.V36);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V58);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
-    @Test
-    void v25ToV26RemapsPiDeletesDegRadAndPreservesUnrelatedWires() {
-        SavedGraph v25 = new SavedGraph();
-        v25.formatVersion = GraphFormatVersion.V25;
-
-        SavedNode pi = savedNode("pi", "math.trigonometry.pi");
-        SavedNode degRad = savedNode("deg_rad", "math.trigonometry.deg_to_rad");
-        SavedNode sin = savedNode("sin", "math.trigonometry.sin");
-        SavedNode add = savedNode("add", "math.scalar_math.addition");
-        SavedNode floatA = savedNode("float_a", "input.numeric.float");
-
-        v25.nodes = new ArrayList<>(List.of(pi, degRad, sin, add, floatA));
-        v25.connections = new ArrayList<>(List.of(
-                wire("pi", "output_pi", "sin", "input_angle"),
-                wire("deg_rad", "output_radians", "sin", "input_angle"),
-                wire("float_a", "output_value", "add", "input_a"),
-                wire("float_a", "output_value", "add", "input_b")
-        ));
-        v25.nodePositions = Map.of();
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(v25);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals(4, migrated.nodes.size());
-        assertEquals(3, migrated.connections.size());
-
-        SavedNode migratedPi = migrated.nodes.stream()
-                .filter(n -> "pi".equals(n.nodeId))
-                .findFirst()
-                .orElseThrow();
-        assertEquals("input.numeric.pi", migratedPi.typeId);
-
-        assertFalse(migrated.nodes.stream().anyMatch(n -> "deg_rad".equals(n.nodeId)));
-        assertTrue(hasWire(migrated, "pi", "output_value", "sin", "input_angle"));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_a"));
-        assertTrue(hasWire(migrated, "float_a", "output_value", "add", "input_b"));
-        assertFalse(hasWire(migrated, "deg_rad", "output_radians", "sin", "input_angle"));
-    }
 
     private static SavedNode savedNode(String id, String typeId) {
         SavedNode node = new SavedNode();

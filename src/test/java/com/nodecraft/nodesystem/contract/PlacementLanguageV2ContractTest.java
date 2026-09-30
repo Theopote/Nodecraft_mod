@@ -80,10 +80,8 @@ class PlacementLanguageV2ContractTest {
 
     @Test
     void currentGraphFormatIsAtLeastV76() {
-        assertEquals(76, GraphFormatVersion.V76);
-        assertEquals(100, GraphFormatVersion.V100);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V76);
-        assertTrue(GraphFormatVersion.CURRENT >= GraphFormatVersion.V100);
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
+        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -416,43 +414,6 @@ class PlacementLanguageV2ContractTest {
         assertEquals(new BlockPos(1, 0, 0), out.getPositions().get(1));
     }
 
-    @Test
-    void migrateV75ToV76RemapsPlacementPortsOnly() {
-        SavedGraph graph = new SavedGraph();
-        graph.formatVersion = GraphFormatVersion.V75;
-        graph.nodes = new ArrayList<>();
-        graph.connections = new ArrayList<>();
-
-        SavedNode rotate = savedNode("n1", "transform.placement.rotate_block_positions");
-        SavedNode material = savedNode("n2", "material.basic_assignment.assign_block_type");
-        SavedNode sink = savedNode("n3", "reference.vectors.vector");
-        graph.nodes.addAll(List.of(rotate, material, sink));
-
-        Map<String, Object> scaleState = new HashMap<>();
-        scaleState.put("useUniformScaling", true);
-        SavedNode scale = savedNode("n4", "transform.placement.scale_block_positions");
-        scale.state = scaleState;
-        graph.nodes.add(scale);
-
-        graph.connections.add(wire("n3", "output_x", "n1", "input_coordinates"));
-        graph.connections.add(wire("n1", "output_coordinates", "n3", "output_y"));
-        graph.connections.add(wire("n3", "output_z", "n2", "input_coordinates"));
-        graph.connections.add(wire("n3", "output_x", "n4", "input_coordinates"));
-
-        SavedGraph migrated = GraphMigrationRegistry.migrateToCurrent(graph);
-        assertEquals(GraphFormatVersion.CURRENT, migrated.formatVersion);
-
-        assertEquals("input_block_positions", migrated.connections.stream()
-            .filter(c -> "n1".equals(c.targetNodeId)).findFirst().orElseThrow().targetPortId);
-        assertEquals("output_block_positions", migrated.connections.stream()
-            .filter(c -> "n1".equals(c.sourceNodeId)).findFirst().orElseThrow().sourcePortId);
-        assertEquals("input_coordinates", migrated.connections.stream()
-            .filter(c -> "n2".equals(c.targetNodeId)).findFirst().orElseThrow().targetPortId);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> cleanedScaleState = (Map<String, Object>) nodeOf(migrated, "n4").state;
-        assertFalse(cleanedScaleState.containsKey("useUniformScaling"));
-    }
 
     private static BlockPosList singleBlockList() {
         BlockPosList list = new BlockPosList();
