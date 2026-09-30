@@ -400,12 +400,32 @@ public class BakePlacementService {
     }
 
     /**
+     * Outcome of waiting for a bake task to reach a terminal state or a deadline.
+     *
+     * @param deadlineExceeded {@code true} when the wait loop exited because the deadline elapsed
+     *                         while the task was still non-terminal
+     */
+    public record AwaitResult(@Nullable BakeTaskState state, boolean deadlineExceeded) {
+        public boolean completed() {
+            return state == BakeTaskState.COMPLETED;
+        }
+
+        public boolean terminal() {
+            return state != null && state.isTerminal();
+        }
+
+        public boolean stillRunning() {
+            return !terminal();
+        }
+    }
+
+    /**
      * Drains the bake queue until the task finishes or the deadline is reached.
      * Must run on the Minecraft server thread.
      */
-    public boolean awaitTaskCompletion(UUID taskId, long deadlineMillis) {
+    public AwaitResult awaitTaskTerminalState(UUID taskId, long deadlineMillis) {
         if (taskId == null) {
-            return false;
+            return new AwaitResult(null, false);
         }
 
         long deadline = deadlineMillis > 0L ? deadlineMillis : Long.MAX_VALUE;
@@ -413,10 +433,21 @@ public class BakePlacementService {
             processTick();
             if (isTaskFinished(taskId)) {
                 TaskSnapshot snapshot = getTaskSnapshot(taskId);
-                return snapshot != null && snapshot.state() == BakeTaskState.COMPLETED;
+                return new AwaitResult(snapshot != null ? snapshot.state() : null, false);
             }
         }
-        return false;
+
+        TaskSnapshot snapshot = getTaskSnapshot(taskId);
+        BakeTaskState state = snapshot != null ? snapshot.state() : null;
+        return new AwaitResult(state, state == null || !state.isTerminal());
+    }
+
+    /**
+     * Drains the bake queue until the task finishes or the deadline is reached.
+     * Must run on the Minecraft server thread.
+     */
+    public boolean awaitTaskCompletion(UUID taskId, long deadlineMillis) {
+        return awaitTaskTerminalState(taskId, deadlineMillis).completed();
     }
 
     private boolean isTaskFinished(UUID taskId) {

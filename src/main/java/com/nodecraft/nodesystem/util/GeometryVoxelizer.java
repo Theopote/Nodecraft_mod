@@ -56,16 +56,35 @@ public final class GeometryVoxelizer {
                                              @Nullable Object sphereGeometryObj,
                                              @Nullable Object torusGeometryObj,
                                              boolean fillSolid) {
+        GeometryVoxelizationResult result = resolveBlocksStrict(
+                blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, fillSolid);
+        return result.success() ? result.blocks() : new BlockPosList();
+    }
+
+    /**
+     * Strict blocks/geometry resolution for world-write paths.
+     * Distinguishes voxelization failure from legal empty output.
+     */
+    public static GeometryVoxelizationResult resolveBlocksStrict(@Nullable Object blocksObj,
+                                                                 @Nullable Object geometryObj,
+                                                                 @Nullable Object boxGeometryObj,
+                                                                 @Nullable Object cylinderGeometryObj,
+                                                                 @Nullable Object sphereGeometryObj,
+                                                                 @Nullable Object torusGeometryObj,
+                                                                 boolean fillSolid) {
         if (blocksObj instanceof BlockPosList blockPosList) {
-            return blockPosList;
+            return GeometryVoxelizationResult.ok(blockPosList);
         }
 
         GeometryData geometry = resolveGeometry(geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
         if (geometry != null) {
-            return voxelize(geometry, fillSolid);
+            return voxelizeStrict(geometry, fillSolid);
         }
 
-        return new BlockPosList();
+        return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.UNSUPPORTED,
+                "No blocks or geometry input"
+        );
     }
 
     public static @Nullable GeometryData resolveGeometry(@Nullable Object geometryObj,

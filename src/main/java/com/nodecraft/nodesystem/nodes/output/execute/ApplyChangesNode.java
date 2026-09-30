@@ -10,12 +10,12 @@ import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateResolver;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.PlacementPreflight;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import net.minecraft.block.BlockState;
@@ -170,45 +170,29 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 return;
             }
 
-            List<BlockPlacementData> placements = resolvePlacements(placementsObj);
-            placements.addAll(resolvePlacementTree(placementsTreeObj));
-            if (!placements.isEmpty()) {
+            PlacementPreflight.Result preflight =
+                    PlacementPreflight.preflightSources(placementsObj, placementsTreeObj);
+            if (!preflight.valid()) {
+                publishOutputs(false, 0, 0, formatPreflightError(preflight.error()), "", false);
+                return;
+            }
+            if (preflight.hasPlacements()) {
                 long startTime = System.currentTimeMillis();
                 progressPercentage = 0.2f;
                 statusMessage = "Applying material placements...";
-                ApplyResult applyResult = applyPlacementList(context, placements, startTime + executionTimeout * 1000L);
-                operationCount = applyResult.operationCount();
-                success = !applyResult.timedOut();
-                executionTime = (int) (System.currentTimeMillis() - startTime);
-
-                String taskId = applyResult.taskId() != null ? applyResult.taskId().toString() : "";
-                boolean isAsync = useAsyncBake;
-
-                if (applyResult.timedOut()) {
-                    status = "Timed out after " + executionTimeout + "s; placed " + operationCount + " blocks";
-                    progressPercentage = 0.0f;
-                    statusMessage = "Timed out";
-                } else if (useAsyncBake) {
-                    status = "Submitted " + operationCount + " block placements (task " + taskId + ")";
-                    progressPercentage = 0.0f;
-                    statusMessage = taskId.isEmpty()
-                        ? "Submitted"
-                        : "Submitted (Task: " + taskId + ")";
-                } else {
-                    // Sync mode: operation is completed
-                    status = "Placed " + operationCount + " blocks (synchronous)";
-                    progressPercentage = 1.0f;
-                    statusMessage = "Completed";
-                }
-
-                if (notify) {
-                    LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
-                }
-                publishOutputs(success, operationCount, executionTime, status, taskId, isAsync);
+                ApplyResult applyResult = applyPreflightedPlacements(
+                        context, preflight.resolved(), startTime + executionTimeout * 1000L);
+                publishApplyResult(applyResult, notify, startTime, preflight.resolved().size());
                 return;
             }
 
-            BlockPosList blocks = resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+            GeometryVoxelizationResult voxelResult = resolveBlocksStrict(
+                    blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
+            if (!voxelResult.success()) {
+                publishOutputs(false, 0, 0, formatVoxelError(voxelResult), "", false);
+                return;
+            }
+            BlockPosList blocks = voxelResult.blocks();
             if (blocks.isEmpty()) {
                 publishOutputs(false, 0, 0, "No blocks or geometry to apply", "", false);
                 return;
@@ -224,35 +208,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
             progressPercentage = 0.2f;
             statusMessage = "Applying blocks...";
             ApplyResult applyResult = applyUniformBlocks(context, blocks, targetState, startTime + executionTimeout * 1000L);
-            operationCount = applyResult.operationCount();
-            success = !applyResult.timedOut();
-            executionTime = (int) (System.currentTimeMillis() - startTime);
-
-            String taskId = applyResult.taskId() != null ? applyResult.taskId().toString() : "";
-            boolean isAsync = useAsyncBake;
-
-            if (applyResult.timedOut()) {
-                status = "Timed out after " + executionTimeout + "s; placed " + operationCount + "/" + blocks.size() + " blocks";
-                progressPercentage = 0.0f;
-                statusMessage = "Timed out";
-            } else if (useAsyncBake) {
-                status = "Submitted " + operationCount + " blocks (task " + taskId + ")";
-                progressPercentage = 0.0f;
-                statusMessage = taskId.isEmpty()
-                    ? "Submitted"
-                    : "Submitted (Task: " + taskId + ")";
-            } else {
-                // Sync mode: operation is completed
-                status = "Placed " + operationCount + "/" + blocks.size() + " blocks (synchronous)";
-                progressPercentage = 1.0f;
-                statusMessage = "Completed";
-            }
-
-            if (notify) {
-                LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
-            }
-
-            publishOutputs(success, operationCount, executionTime, status, taskId, isAsync);
+            publishApplyResult(applyResult, notify, startTime, blocks.size());
         } catch (Exception e) {
             status = "Error: " + e.getMessage();
             statusMessage = status;
@@ -292,60 +248,23 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return true;
     }
 
-    private List<BlockPlacementData> resolvePlacements(Object placementsObj) {
-        List<BlockPlacementData> placements = new ArrayList<>();
-        if (!(placementsObj instanceof List<?> placementList) || placementList.isEmpty()) {
-            return placements;
-        }
-
-        for (Object entry : placementList) {
-            if (entry instanceof BlockPlacementData placement
-                && placement.pos() != null
-                && placement.blockId() != null
-                && !placement.blockId().isEmpty()) {
-                placements.add(placement);
-            }
-        }
-        return placements;
+    private GeometryVoxelizationResult resolveBlocksStrict(Object blocksObj,
+                                                           Object geometryObj,
+                                                           Object boxGeometryObj,
+                                                           Object cylinderGeometryObj,
+                                                           Object sphereGeometryObj,
+                                                           Object torusGeometryObj) {
+        return GeometryVoxelizer.resolveBlocksStrict(
+                blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, solidGeometry);
     }
 
-    private List<BlockPlacementData> resolvePlacementTree(Object placementsTreeObj) {
-        List<BlockPlacementData> placements = new ArrayList<>();
-        if (!(placementsTreeObj instanceof DataTreeData tree) || tree.getBranchCount() == 0) {
-            return placements;
+    private ApplyResult applyPreflightedPlacements(ExecutionContext context,
+                                                   List<PlacementPreflight.ResolvedPlacement> resolved,
+                                                   long deadlineMillis) {
+        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(resolved.size());
+        for (PlacementPreflight.ResolvedPlacement placement : resolved) {
+            queuedPlacements.add(new BakeTask.Placement(placement.pos(), placement.state()));
         }
-
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            for (Object entry : branch.items()) {
-                if (entry instanceof BlockPlacementData placement
-                    && placement.pos() != null
-                    && placement.blockId() != null
-                    && !placement.blockId().isEmpty()) {
-                    placements.add(placement);
-                }
-            }
-        }
-        return placements;
-    }
-
-    private BlockPosList resolveBlocks(Object blocksObj, Object geometryObj, Object boxGeometryObj, Object cylinderGeometryObj, Object sphereGeometryObj, Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocks(blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, solidGeometry);
-    }
-
-    private ApplyResult applyPlacementList(ExecutionContext context, List<BlockPlacementData> placements, long deadlineMillis) {
-        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(placements.size());
-        for (BlockPlacementData placement : placements) {
-            BlockState state = BlockStateResolver.resolve(placement.blockId(), placement.stateData());
-            if (state == null) {
-                continue;
-            }
-            queuedPlacements.add(new BakeTask.Placement(placement.pos(), state));
-        }
-
-        if (queuedPlacements.isEmpty()) {
-            return new ApplyResult(0, false, null);
-        }
-
         return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
     }
 
@@ -357,7 +276,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
             }
         }
         if (queuedPlacements.isEmpty()) {
-            return new ApplyResult(0, false, null);
+            return ApplyResult.rejected();
         }
         return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
     }
@@ -369,6 +288,10 @@ public class ApplyChangesNode extends BaseCustomUINode {
     private ApplyResult enqueueAndMaybeAwait(ExecutionContext context,
                                              List<BakeTask.Placement> queuedPlacements,
                                              long deadlineMillis) {
+        if (queuedPlacements.isEmpty()) {
+            return ApplyResult.rejected();
+        }
+
         BakePlacementService service = BakePlacementService.getInstance();
         UUID taskId = service.enqueuePlacements(
             context.getWorld(),
@@ -382,18 +305,34 @@ public class ApplyChangesNode extends BaseCustomUINode {
         );
 
         if (taskId == null) {
-            return new ApplyResult(0, false, null);
+            return ApplyResult.rejected();
         }
 
         if (useAsyncBake) {
-            return new ApplyResult(queuedPlacements.size(), false, taskId);
+            return ApplyResult.queued(queuedPlacements.size(), taskId);
         }
 
-        Boolean completed = context.callOnWorldThread(() ->
-            service.awaitTaskCompletion(taskId, deadlineMillis)
+        BakePlacementService.AwaitResult await = context.callOnWorldThread(() ->
+            service.awaitTaskTerminalState(taskId, deadlineMillis)
         );
-        if (!Boolean.TRUE.equals(completed)) {
-            // Timeout aborts the transaction and waits for time-sliced rollback to finish.
+        if (await == null) {
+            return ApplyResult.failed(0, taskId, null);
+        }
+
+        if (await.completed()) {
+            BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+            int placed = snapshot != null ? snapshot.placedCount() : queuedPlacements.size();
+            return ApplyResult.completed(placed, taskId);
+        }
+
+        BakeTaskState terminal = await.state();
+        if (terminal != null && terminal.isTerminal() && terminal != BakeTaskState.COMPLETED) {
+            BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
+            int placed = snapshot != null ? snapshot.placedCount() : 0;
+            return ApplyResult.fromTerminalState(placed, taskId, terminal);
+        }
+
+        if (await.deadlineExceeded()) {
             Boolean aborted = context.callOnWorldThread(() -> {
                 service.cancelTask(taskId, BakeTaskState.TIMED_OUT);
                 return service.awaitTaskAborted(taskId, deadlineMillis);
@@ -403,12 +342,80 @@ public class ApplyChangesNode extends BaseCustomUINode {
             if (!Boolean.TRUE.equals(aborted)) {
                 LOGGER.warn("ApplyChangesNode: timed out waiting for bake rollback of task {}", taskId);
             }
-            return new ApplyResult(placed, true, taskId);
+            BakeTaskState finalState = snapshot != null ? snapshot.state() : BakeTaskState.TIMED_OUT;
+            return ApplyResult.fromTerminalState(placed, taskId, finalState);
         }
 
         BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
-        int placed = snapshot != null ? snapshot.placedCount() : queuedPlacements.size();
-        return new ApplyResult(placed, false, taskId);
+        int placed = snapshot != null ? snapshot.placedCount() : 0;
+        BakeTaskState state = snapshot != null ? snapshot.state() : null;
+        return ApplyResult.fromTerminalState(placed, taskId, state != null ? state : BakeTaskState.FAILED);
+    }
+
+    private void publishApplyResult(ApplyResult applyResult, boolean notify, long startTime, int requestedCount) {
+        int executionTime = (int) (System.currentTimeMillis() - startTime);
+        String taskId = applyResult.taskId() != null ? applyResult.taskId().toString() : "";
+        boolean isAsync = useAsyncBake && applyResult.outcome() == SubmitOutcome.QUEUED;
+        String status = formatApplyStatus(applyResult, requestedCount);
+
+        if (applyResult.outcome() == SubmitOutcome.TIMED_OUT) {
+            progressPercentage = 0.0f;
+            statusMessage = "Timed out";
+        } else if (applyResult.outcome() == SubmitOutcome.QUEUED) {
+            progressPercentage = 0.0f;
+            statusMessage = taskId.isEmpty() ? "Submitted" : "Submitted (Task: " + taskId + ")";
+        } else if (applyResult.outcome() == SubmitOutcome.COMPLETED) {
+            progressPercentage = 1.0f;
+            statusMessage = "Completed";
+        } else if (applyResult.outcome() == SubmitOutcome.ROLLBACK_FAILED) {
+            progressPercentage = 0.0f;
+            statusMessage = "Rollback failed";
+        } else {
+            progressPercentage = 0.0f;
+            statusMessage = applyResult.outcome().displayName();
+        }
+
+        if (notify) {
+            LOGGER.info("ApplyChangesNode: {}, {}ms", status, executionTime);
+        }
+        publishOutputs(applyResult.success(), applyResult.operationCount(), executionTime, status, taskId, isAsync);
+    }
+
+    private String formatPreflightError(String error) {
+        if (PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK.equals(error)
+                || (error != null && error.startsWith(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK))) {
+            return "Invalid block placement: " + error;
+        }
+        if (PlacementPreflight.ERROR_INVALID_ENTRY.equals(error)) {
+            return "Invalid block placement entry";
+        }
+        if (PlacementPreflight.ERROR_INVALID_INPUT.equals(error)) {
+            return "Invalid block placement input";
+        }
+        return error == null || error.isEmpty() ? "Invalid block placements" : error;
+    }
+
+    private String formatVoxelError(GeometryVoxelizationResult result) {
+        String detail = result.error();
+        if (detail == null || detail.isBlank()) {
+            return "Geometry voxelization failed (" + result.status() + ")";
+        }
+        return "Geometry voxelization failed: " + detail;
+    }
+
+    private String formatApplyStatus(ApplyResult result, int requestedCount) {
+        return switch (result.outcome()) {
+            case REJECTED -> "Submit rejected: no bake task was created";
+            case QUEUED -> "Submitted " + result.operationCount() + " block placements (task " + result.taskId() + ")";
+            case COMPLETED -> "Placed " + result.operationCount()
+                    + (requestedCount > 0 ? "/" + requestedCount : "") + " blocks (synchronous)";
+            case FAILED -> "Bake task failed after placing " + result.operationCount() + " blocks";
+            case TIMED_OUT -> "Timed out after " + executionTimeout + "s; placed " + result.operationCount()
+                    + (requestedCount > 0 ? "/" + requestedCount : "") + " blocks";
+            case CANCELLED -> "Bake task cancelled after placing " + result.operationCount() + " blocks";
+            case ROLLBACK_FAILED -> "Bake rollback failed — world may be inconsistent (placed "
+                    + result.operationCount() + " blocks)";
+        };
     }
 
     @Override
@@ -612,7 +619,66 @@ public class ApplyChangesNode extends BaseCustomUINode {
         return Math.max(1L, tickBudgetMillis) * 1_000_000L;
     }
 
-    private record ApplyResult(int operationCount, boolean timedOut, UUID taskId) {
+    private enum SubmitOutcome {
+        REJECTED,
+        QUEUED,
+        COMPLETED,
+        FAILED,
+        TIMED_OUT,
+        CANCELLED,
+        ROLLBACK_FAILED;
+
+        String displayName() {
+            return switch (this) {
+                case REJECTED -> "Rejected";
+                case QUEUED -> "Queued";
+                case COMPLETED -> "Completed";
+                case FAILED -> "Failed";
+                case TIMED_OUT -> "Timed out";
+                case CANCELLED -> "Cancelled";
+                case ROLLBACK_FAILED -> "Rollback failed";
+            };
+        }
+    }
+
+    private record ApplyResult(int operationCount, SubmitOutcome outcome, @Nullable UUID taskId) {
+        boolean success() {
+            return switch (outcome) {
+                case QUEUED -> taskId != null;
+                case COMPLETED -> true;
+                default -> false;
+            };
+        }
+
+        static ApplyResult rejected() {
+            return new ApplyResult(0, SubmitOutcome.REJECTED, null);
+        }
+
+        static ApplyResult queued(int count, UUID taskId) {
+            return new ApplyResult(count, SubmitOutcome.QUEUED, taskId);
+        }
+
+        static ApplyResult completed(int count, UUID taskId) {
+            return new ApplyResult(count, SubmitOutcome.COMPLETED, taskId);
+        }
+
+        static ApplyResult failed(int count, UUID taskId, @Nullable BakeTaskState ignored) {
+            return new ApplyResult(count, SubmitOutcome.FAILED, taskId);
+        }
+
+        static ApplyResult fromTerminalState(int count, UUID taskId, @Nullable BakeTaskState state) {
+            if (state == null) {
+                return new ApplyResult(count, SubmitOutcome.FAILED, taskId);
+            }
+            SubmitOutcome outcome = switch (state) {
+                case COMPLETED -> SubmitOutcome.COMPLETED;
+                case TIMED_OUT -> SubmitOutcome.TIMED_OUT;
+                case CANCELLED, CANCELLING -> SubmitOutcome.CANCELLED;
+                case ROLLBACK_FAILED -> SubmitOutcome.ROLLBACK_FAILED;
+                case FAILED, QUEUED, RUNNING, ROLLING_BACK -> SubmitOutcome.FAILED;
+            };
+            return new ApplyResult(count, outcome, taskId);
+        }
     }
 
     @Override
