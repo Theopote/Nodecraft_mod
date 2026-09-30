@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,13 +50,25 @@ public class GridPatternMapNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public GridPatternMapNode() {
         super(UUID.randomUUID(), "material.pattern_mapping.grid_pattern_map");
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
             "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+            "Optional geometry — voxelized when no higher-precedence source is driven", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -63,7 +76,7 @@ public class GridPatternMapNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FRAME_ID, "Frame", "Grid line block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_FILL_ID, "Fill", "Grid cell fill block type", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_PATTERN_ORIGIN_ID, "Pattern Origin",
-            "BLOCK_POS origin for pattern phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
+            "BLOCK_POS origin for pattern phase; undriven defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
 
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when grid size/line width and inputs are usable", NodeDataType.BOOLEAN, this));
@@ -83,61 +96,48 @@ public class GridPatternMapNode extends BaseNode {
             return;
         }
 
-        String frameMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FRAME_ID));
-        String fillMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FILL_ID));
-
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(frameMapped, fillMapped)
-            );
-
-        if (!placementSource
-            && sources.isEmpty()
-            && PatternMaterialUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )
-            && frameMapped == null
-            && fillMapped == null) {
-            emitFail("Frame or Fill material required for geometry or coordinates input");
-            return;
-        }
-
         PatternMaterialUtils.OriginResult originResult =
-            PatternMaterialUtils.resolveOrigin(inputValues.get(INPUT_PATTERN_ORIGIN_ID));
+            PatternMaterialUtils.resolveOrigin(this, INPUT_PATTERN_ORIGIN_ID);
         if (!originResult.valid()) {
             emitFail(originResult.error());
             return;
         }
         BlockPos origin = originResult.origin();
+
+        String frameMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FRAME_ID));
+        String fillMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FILL_ID));
+        String fallback = MaterialMappingSupport.firstMappedBlockType(frameMapped, fillMapped);
+
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of());
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
+            emitFail("Frame or Fill material required for geometry or coordinates input");
+            return;
+        }
+
+        long size = gridSize;
+        long line = lineWidth;
+        List<BlockPlacementData> sources = source.placements();
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             PatternMaterialUtils.Relative rel = PatternMaterialUtils.relative(pos, origin);
-            int gx = Math.floorMod(rel.dx(), gridSize);
-            int gz = Math.floorMod(rel.dz(), gridSize);
-            boolean onLine = gx < lineWidth || gz < lineWidth;
+            long gx = Math.floorMod(rel.dx(), size);
+            long gz = Math.floorMod(rel.dz(), size);
+            boolean onLine = gx < line || gz < line;
             String mapped = onLine ? frameMapped : fillMapped;
-            String blockId = PatternMaterialUtils.pickRole(mapped, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = PatternMaterialUtils.pickRole(mapped, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
         }
         emitOk(placements);
     }

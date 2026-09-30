@@ -786,8 +786,22 @@ public final class GraphFormatVersion {
      */
     public static final int V117 = 117;
 
+    /**
+     * Pattern Mapping Strict Coordinates & Source Contract v2: long Relative,
+     * long-safe Brick, MaterialSourceResolver, connection-aware Pattern Origin.
+     * No wire remaps.
+     */
+    public static final int V118 = 118;
+
+    /**
+     * Surface Aging Strict Sources & Spatial Sampling v2: MaterialSourceResolver,
+     * shared long-safe MaterialSpatialUtils, connection-aware Amount/Origin/BLOCK_TYPE,
+     * duplicate-position rejection. No wire remaps.
+     */
+    public static final int V119 = 119;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V117;
+    public static final int CURRENT = V119;
 
     private GraphFormatVersion() {
     }

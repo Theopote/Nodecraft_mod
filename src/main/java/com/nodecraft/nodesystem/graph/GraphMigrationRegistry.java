@@ -176,6 +176,8 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V114 -> migrateV114ToV115(graph);
             case GraphFormatVersion.V115 -> migrateV115ToV116(graph);
             case GraphFormatVersion.V116 -> migrateV116ToV117(graph);
+            case GraphFormatVersion.V117 -> migrateV117ToV118(graph);
+            case GraphFormatVersion.V118 -> migrateV118ToV119(graph);
             default -> graph;
         };
     }
@@ -5568,6 +5570,22 @@ public final class GraphMigrationRegistry {
      * safe height Y-span, finite distance domain, strict optional doubles; no wire remaps).
      */
     private static SavedGraph migrateV116ToV117(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Pattern Mapping Strict Coordinates & Source Contract v2 (long Relative,
+     * long-safe Brick, MaterialSourceResolver, connection-aware Origin; no wire remaps).
+     */
+    private static SavedGraph migrateV117ToV118(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Surface Aging Strict Sources & Spatial Sampling v2 (MaterialSourceResolver,
+     * long-safe spatial sampling, connection-aware ports; no wire remaps).
+     */
+    private static SavedGraph migrateV118ToV119(SavedGraph graph) {
         return graph;
     }
 

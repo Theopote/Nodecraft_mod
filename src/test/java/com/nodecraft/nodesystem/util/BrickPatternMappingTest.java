@@ -83,4 +83,26 @@ class BrickPatternMappingTest {
         assertEquals(0, evenBrick);
         assertEquals(BrickPatternMapping.brickIndex(2, 0, 0, 4, 1, BrickPatternMapping.Axis.X), oddBrick);
     }
+
+    @Test
+    void resolveAxisFromSpansUsesLongExtentsWithoutOverflow() {
+        // spanX = 4e9, spanZ = 1 → prefer X
+        assertEquals(
+            BrickPatternMapping.Axis.X,
+            BrickPatternMapping.resolveAxisFromSpans(-2_000_000_000L, 2_000_000_000L, 0L, 1L)
+        );
+        // spanZ larger → prefer Z
+        assertEquals(
+            BrickPatternMapping.Axis.Z,
+            BrickPatternMapping.resolveAxisFromSpans(0L, 1L, -2_000_000_000L, 2_000_000_000L)
+        );
+    }
+
+    @Test
+    void brickIndexNearIntegerMaxDoesNotOverflowStaggerAdd() {
+        // along = Integer.MAX_VALUE, stagger = 2, brickLength = 4 — must not wrap as int
+        long along = Integer.MAX_VALUE;
+        int index = BrickPatternMapping.brickIndex(along, 1, 0, 4, 1, BrickPatternMapping.Axis.X);
+        assertEquals((int) Math.floorDiv(along + 2L, 4L), index);
+    }
 }

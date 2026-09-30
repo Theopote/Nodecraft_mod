@@ -7,8 +7,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.nodes.material.gradient_mapping.GradientMaterialUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.MaterialSpatialUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,13 +48,25 @@ public class CrackPatternNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public CrackPatternNode() {
         super(UUID.randomUUID(), "material.surface_aging.crack_pattern");
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
             "Canonical placements to crack (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+            "Optional geometry — voxelized when no higher-precedence source is driven", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data to materialize", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
@@ -62,10 +77,11 @@ public class CrackPatternNode extends BaseNode {
         addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Crack density in [0, 1] among surface voxels", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Integer seed for deterministic crack mask", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_AGING_ORIGIN_ID, "Aging Origin",
-            "BLOCK_POS origin for aging phase; missing defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
+            "BLOCK_POS origin for aging phase; undriven defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
 
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_AFFECTED_COUNT_ID, "Affected Count", "Number of voxels remapped to Crack Block", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_AFFECTED_COUNT_ID, "Affected Count",
+            "Voxels where aging mapping ran (mask passed and Crack Block set); not necessarily a blockId change", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when amount/origin and inputs are usable", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
@@ -77,51 +93,66 @@ public class CrackPatternNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double amount = readAmount(0.15d);
-        SurfaceAgingUtils.Validation amountOk = SurfaceAgingUtils.requireAmount01(amount);
+        GradientMaterialUtils.OptionalDoubleResult amountResult =
+            SurfaceAgingUtils.resolveAmount(this, INPUT_AMOUNT_ID, 0.15d, "Amount");
+        if (!amountResult.valid()) {
+            emitFail(amountResult.error());
+            return;
+        }
+        SurfaceAgingUtils.Validation amountOk = SurfaceAgingUtils.requireAmount01(amountResult.value());
         if (!amountOk.valid()) {
             emitFail(amountOk.message());
             return;
         }
+        double amount = amountResult.value();
 
         SurfaceAgingUtils.OriginResult originResult =
-            SurfaceAgingUtils.resolveAgingOrigin(inputValues.get(INPUT_AGING_ORIGIN_ID));
+            SurfaceAgingUtils.resolveAgingOrigin(this, INPUT_AGING_ORIGIN_ID);
         if (!originResult.valid()) {
             emitFail(originResult.error());
             return;
         }
         BlockPos origin = originResult.origin();
 
-        String baseMapped = SurfaceAgingUtils.optionalRole(inputValues.get(INPUT_BASE_ID));
-        String crackMapped = SurfaceAgingUtils.optionalRole(inputValues.get(INPUT_CRACK_ID));
+        MaterialMappingSupport.MappedBlockType base =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_BASE_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_BASE_ID));
+        if (!base.valid()) {
+            emitFail(base.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType crack =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_CRACK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_CRACK_ID));
+        if (!crack.valid()) {
+            emitFail(crack.error());
+            return;
+        }
+        String crackMapped = crack.blockId();
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                baseMapped
-            );
-
-        if (!placementSource
-            && SurfaceAgingUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )
-            && baseMapped == null) {
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, base.blockId());
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of(), 0);
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && base.blockId() == null) {
             emitFail("Base Block required for geometry or coordinates input");
+            return;
+        }
+
+        List<BlockPlacementData> sources = source.placements();
+        SurfaceAgingUtils.Validation uniqueOk = SurfaceAgingUtils.requireUniquePositions(sources);
+        if (!uniqueOk.valid()) {
+            emitFail(uniqueOk.message());
             return;
         }
 
@@ -130,39 +161,30 @@ public class CrackPatternNode extends BaseNode {
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         int affected = 0;
 
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             if (pos == null) {
                 continue;
             }
             if (!SurfaceAgingUtils.isSurface(pos, occupancy)) {
-                placements.add(MaterialMappingSupport.remapBlockId(source, source.blockId()));
+                placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, sourcePlacement.blockId()));
                 continue;
             }
-            SurfaceAgingUtils.SampleResult sample = SurfaceAgingUtils.agingSample(
-                SurfaceAgingUtils.relativeX(pos, origin),
-                SurfaceAgingUtils.relativeY(pos, origin),
-                SurfaceAgingUtils.relativeZ(pos, origin),
-                seed
-            );
+            MaterialSpatialUtils.Relative rel = MaterialSpatialUtils.relative(pos, origin);
+            SurfaceAgingUtils.SampleResult sample = SurfaceAgingUtils.agingSample(rel, seed);
             if (!sample.valid()) {
                 emitFail(sample.error());
                 return;
             }
             boolean age = SurfaceAgingUtils.shouldAge(sample.sample(), amount);
             String mapped = age ? crackMapped : null;
-            String blockId = SurfaceAgingUtils.pickRole(mapped, source.blockId());
+            String blockId = SurfaceAgingUtils.pickRole(mapped, sourcePlacement.blockId());
             if (age && crackMapped != null && !crackMapped.isBlank()) {
                 affected++;
             }
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
         }
         emitOk(placements, affected);
-    }
-
-    private double readAmount(double fallback) {
-        Object value = inputValues.get(INPUT_AMOUNT_ID);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 
     private void emitFail(String message) {

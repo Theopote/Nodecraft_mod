@@ -1,6 +1,7 @@
 # Node Language v1 — Surface Aging
 
-**Status: PASSED / FROZEN** (Graph **V39**)
+**Status: historical v1** (Graph **V39**; superseded by
+[`node-language-v2-surface-aging.md`](./node-language-v2-surface-aging.md) **V119**)
 
 Language unification for exactly **3** `material.surface_aging.*` nodes: PURE
 topology-based aging that remaps `blockId` only on surface-eligible voxels,

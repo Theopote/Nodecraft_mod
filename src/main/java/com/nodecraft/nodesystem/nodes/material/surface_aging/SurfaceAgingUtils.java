@@ -1,8 +1,12 @@
 package com.nodecraft.nodesystem.nodes.material.surface_aging;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.nodes.material.gradient_mapping.GradientMaterialUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.MaterialSpatialUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Shared helpers for topology-based surface aging (Surface Aging v1).
+ * Shared helpers for topology-based surface aging (Surface Aging v2).
  */
 public final class SurfaceAgingUtils {
 
@@ -60,6 +64,9 @@ public final class SurfaceAgingUtils {
         return MaterialMappingSupport.resolveMaterialTarget(mapped, sourceBlockId);
     }
 
+    /**
+     * Type-only origin resolve (legacy). Prefer {@link #resolveAgingOrigin(BaseNode, String)}.
+     */
     public static OriginResult resolveAgingOrigin(@Nullable Object value) {
         if (value == null) {
             return OriginResult.ok(WORLD_ORIGIN);
@@ -70,12 +77,54 @@ public final class SurfaceAgingUtils {
         return OriginResult.fail("Aging Origin must be BLOCK_POS");
     }
 
+    /**
+     * Connection-aware Aging Origin: undriven → (0,0,0); driven + BlockPos → use;
+     * driven + null / wrong type → fail.
+     */
+    public static OriginResult resolveAgingOrigin(BaseNode node, String portId) {
+        if (!MaterialSourceResolver.isDriven(node, portId)) {
+            return OriginResult.ok(WORLD_ORIGIN);
+        }
+        Object value = node.getInput(portId);
+        if (value instanceof BlockPos pos) {
+            return OriginResult.ok(pos);
+        }
+        return OriginResult.fail("Aging Origin must be BLOCK_POS");
+    }
+
+    public static GradientMaterialUtils.OptionalDoubleResult resolveAmount(
+            BaseNode node,
+            String portId,
+            double fallback,
+            String label
+    ) {
+        return GradientMaterialUtils.resolveOptionalStrictDouble(node, portId, fallback, label);
+    }
+
     public static Validation requireAmount01(double amount) {
         if (!Double.isFinite(amount)) {
             return Validation.fail("Amount must be finite");
         }
         if (amount < 0.0d || amount > 1.0d) {
             return Validation.fail("Amount must be within [0, 1]");
+        }
+        return Validation.ok();
+    }
+
+    public static Validation requireUniquePositions(List<BlockPlacementData> sources) {
+        if (sources == null || sources.isEmpty()) {
+            return Validation.ok();
+        }
+        Set<BlockPos> seen = new HashSet<>();
+        for (BlockPlacementData source : sources) {
+            if (source == null || source.pos() == null) {
+                continue;
+            }
+            BlockPos key = source.pos().toImmutable();
+            if (!seen.add(key)) {
+                return Validation.fail("Duplicate block position: " + key.getX()
+                    + "," + key.getY() + "," + key.getZ());
+            }
         }
         return Validation.ok();
     }
@@ -112,7 +161,7 @@ public final class SurfaceAgingUtils {
      * Deterministic aging sample in {@code [0,1]} from {@link RandomOps#valueNoise3}.
      * Non-finite noise → fail.
      */
-    public static SampleResult agingSample(int dx, int dy, int dz, int seed) {
+    public static SampleResult agingSample(double dx, double dy, double dz, int seed) {
         double noise = RandomOps.valueNoise3(dx, dy, dz, seed);
         if (!Double.isFinite(noise)) {
             return SampleResult.fail("Aging sample produced a non-finite value");
@@ -124,6 +173,15 @@ public final class SurfaceAgingUtils {
         return SampleResult.ok(Math.max(0.0d, Math.min(1.0d, sample)));
     }
 
+    public static SampleResult agingSample(MaterialSpatialUtils.Relative relative, int seed) {
+        return agingSample(
+            (double) relative.dx(),
+            (double) relative.dy(),
+            (double) relative.dz(),
+            seed
+        );
+    }
+
     public static boolean shouldAge(double sample, double amount) {
         if (amount <= 0.0d) {
             return false;
@@ -132,34 +190,6 @@ public final class SurfaceAgingUtils {
             return true;
         }
         return sample < amount;
-    }
-
-    public static int relativeX(BlockPos pos, BlockPos origin) {
-        return pos.getX() - origin.getX();
-    }
-
-    public static int relativeY(BlockPos pos, BlockPos origin) {
-        return pos.getY() - origin.getY();
-    }
-
-    public static int relativeZ(BlockPos pos, BlockPos origin) {
-        return pos.getZ() - origin.getZ();
-    }
-
-    public static boolean hasNonPlacementSource(
-            @Nullable Object coordinates,
-            @Nullable Object geometry,
-            @Nullable Object box,
-            @Nullable Object cylinder,
-            @Nullable Object sphere,
-            @Nullable Object torus
-    ) {
-        return coordinates != null
-            || geometry != null
-            || box != null
-            || cylinder != null
-            || sphere != null
-            || torus != null;
     }
 
     public static Map<String, Object> failResult(String error) {

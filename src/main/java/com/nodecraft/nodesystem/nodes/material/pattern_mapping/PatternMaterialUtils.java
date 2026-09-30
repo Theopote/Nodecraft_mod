@@ -1,7 +1,10 @@
 package com.nodecraft.nodesystem.nodes.material.pattern_mapping;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.MaterialSpatialUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -10,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Shared helpers for role-based pattern material mapping (Pattern Mapping v1).
+ * Shared helpers for role-based pattern material mapping (Pattern Mapping v2).
  */
 public final class PatternMaterialUtils {
 
@@ -24,14 +27,14 @@ public final class PatternMaterialUtils {
         }
     }
 
-    public record Relative(int dx, int dy, int dz) {
+    public record Relative(long dx, long dy, long dz) {
     }
 
     private static final BlockPos WORLD_ORIGIN = new BlockPos(0, 0, 0);
 
     /**
-     * Result of resolving Pattern Origin: missing → world origin; {@link BlockPos} → use it;
-     * any other runtime type → invalid.
+     * Result of resolving Pattern Origin: undriven → world origin; {@link BlockPos} → use it;
+     * driven but invalid → fail.
      */
     public record OriginResult(boolean valid, BlockPos origin, String error) {
         public static OriginResult ok(BlockPos origin) {
@@ -55,12 +58,7 @@ public final class PatternMaterialUtils {
     }
 
     /**
-     * Resolves Pattern Origin.
-     * <ul>
-     *   <li>{@code null} (missing) → {@code (0,0,0)}, valid</li>
-     *   <li>{@link BlockPos} → that position, valid</li>
-     *   <li>any other type → invalid ({@code BLOCK_POS} only)</li>
-     * </ul>
+     * Type-only origin resolve (legacy). Prefer {@link #resolveOrigin(BaseNode, String)}.
      */
     public static OriginResult resolveOrigin(@Nullable Object value) {
         if (value == null) {
@@ -72,13 +70,24 @@ public final class PatternMaterialUtils {
         return OriginResult.fail("Pattern Origin must be BLOCK_POS");
     }
 
+    /**
+     * Connection-aware Pattern Origin: undriven → (0,0,0); driven + BlockPos → use;
+     * driven + null / wrong type → fail.
+     */
+    public static OriginResult resolveOrigin(BaseNode node, String portId) {
+        if (!MaterialSourceResolver.isDriven(node, portId)) {
+            return OriginResult.ok(WORLD_ORIGIN);
+        }
+        Object value = node.getInput(portId);
+        if (value instanceof BlockPos pos) {
+            return OriginResult.ok(pos);
+        }
+        return OriginResult.fail("Pattern Origin must be BLOCK_POS");
+    }
+
     public static Relative relative(BlockPos pos, BlockPos origin) {
-        BlockPos o = origin != null ? origin : WORLD_ORIGIN;
-        return new Relative(
-            pos.getX() - o.getX(),
-            pos.getY() - o.getY(),
-            pos.getZ() - o.getZ()
-        );
+        MaterialSpatialUtils.Relative rel = MaterialSpatialUtils.relative(pos, origin);
+        return new Relative(rel.dx(), rel.dy(), rel.dz());
     }
 
     public static Validation requirePositiveInt(int value, String name) {

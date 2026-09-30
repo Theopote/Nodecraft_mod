@@ -1,6 +1,7 @@
 # Node Language v1 — Pattern Mapping
 
-**Status: PASSED / FROZEN** (Graph **V38**)
+**Status: PASSED / FROZEN** (Graph **V38**; remediated by **V118** — see
+[`node-language-v2-pattern-mapping.md`](./node-language-v2-pattern-mapping.md))
 
 Language unification for exactly **4** `material.pattern_mapping.*` nodes: PURE
 role-based (Primary/Secondary or Frame/Fill) pattern remapping of `blockId` only,
@@ -10,6 +11,11 @@ vanilla material defaults.
 Shared helpers: `PatternMaterialUtils` + `MaterialMappingSupport` +
 `BrickPatternMapping`. Graph schema: **V38** drops `output_positions` /
 `output_block_ids` wires from the four pattern nodes.
+
+**V118 remediation (historical note):** int Relative overflow, Brick Auto/stagger
+int overflow, soft `extractPlacements` fallthrough, and driven-null Origin → world
+origin are superseded by long Relative, long-safe Brick, `MaterialSourceResolver`,
+and connection-aware Pattern Origin.
 
 Related: [`node-language-v1-gradient-mapping.md`](./node-language-v1-gradient-mapping.md),
 [`node-language-v1-directional-mapping.md`](./node-language-v1-directional-mapping.md),
