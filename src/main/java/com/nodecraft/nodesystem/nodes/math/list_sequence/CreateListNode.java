@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import org.jetbrains.annotations.Nullable;
@@ -63,12 +64,17 @@ public class CreateListNode extends BaseCustomUINode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Object> resultList = new ArrayList<>();
         for (int i = 0; i < inputCount; i++) {
-            Object value = inputValues.get(inputPortId(i));
-            if (value != null) {
-                resultList.add(value);
+            String portId = inputPortId(i);
+            if (!isDriven(portId)) {
+                continue;
             }
+            resultList.add(inputValues.get(portId));
         }
         outputValues.put(OUTPUT_LIST_ID, resultList);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
     }
 
     @Override

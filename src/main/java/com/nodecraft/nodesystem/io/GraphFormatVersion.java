@@ -839,8 +839,14 @@ public final class GraphFormatVersion {
      */
     public static final int V125 = 125;
 
+    /**
+     * List Core Strict Index & Null Contract v2: exact Integer list indices,
+     * Create List connected-null preservation. No wire remaps.
+     */
+    public static final int V126 = 126;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V125;
+    public static final int CURRENT = V126;
 
     private GraphFormatVersion() {
     }

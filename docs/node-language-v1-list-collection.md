@@ -1,5 +1,9 @@
 # List / Collection / Data Tree language v1
 
+> **Historical (collection-wide):** Core list node index/null rules are superseded by
+> [`node-language-v2-list-core.md`](./node-language-v2-list-core.md) (Graph **V126**).
+> This document remains the V23 fence for typed-list boundaries and Data Tree separation.
+
 Freeze against Graph **V23**.
 
 ## Principles

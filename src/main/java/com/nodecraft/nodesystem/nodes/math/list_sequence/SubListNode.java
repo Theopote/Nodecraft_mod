@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ListIndexResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -35,7 +37,7 @@ public class SubListNode extends BaseNode {
                 .bindListType(LIST_T));
         addInputPort(new BasePort(INPUT_START_ID, "Start", "Start index inclusive (negatives from end)",
                 NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "End index exclusive (negatives from end)",
+        addInputPort(new BasePort(INPUT_END_ID, "End", "End index exclusive (negatives from end). Undriven → list size.",
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SUBLIST_ID, "Sub List", "The resulting sub list",
                 NodeDataType.LIST, this).bindListType(LIST_T));
@@ -46,8 +48,6 @@ public class SubListNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object startObj = inputValues.get(INPUT_START_ID);
-        Object endObj = inputValues.get(INPUT_END_ID);
 
         if (!(inputObj instanceof List<?> inputList)) {
             writeInvalid();
@@ -55,15 +55,24 @@ public class SubListNode extends BaseNode {
         }
 
         int size = inputList.size();
-        int start = startObj instanceof Number number ? number.intValue() : 0;
-        int end = endObj instanceof Number number ? number.intValue() : size;
+        ListIndexResolver.IndexResolveResult startResult = ListIndexResolver.resolveOptionalIndex(
+                resolveValue(INPUT_START_ID),
+                0,
+                isDriven(INPUT_START_ID)
+        );
+        ListIndexResolver.IndexResolveResult endResult = ListIndexResolver.resolveOptionalIndex(
+                resolveValue(INPUT_END_ID),
+                size,
+                isDriven(INPUT_END_ID)
+        );
 
-        if (start < 0) {
-            start = size + start;
+        if (!startResult.valid() || !endResult.valid()) {
+            writeInvalid();
+            return;
         }
-        if (end < 0) {
-            end = size + end;
-        }
+
+        int start = ListIndexResolver.normalizeNegativeFromEnd(startResult.index(), size);
+        int end = ListIndexResolver.normalizeNegativeFromEnd(endResult.index(), size);
 
         if (start < 0 || end < 0 || end > size || start > end) {
             writeInvalid();
@@ -78,6 +87,17 @@ public class SubListNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
+    }
+
     private void writeInvalid() {
         outputValues.put(OUTPUT_SUBLIST_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
@@ -90,6 +110,5 @@ public class SubListNode extends BaseNode {
 
     @Override
     public void setNodeState(Object state) {
-        // Legacy allowNegativeIndex / clampToList ignored.
     }
 }

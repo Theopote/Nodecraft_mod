@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ListIndexResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -37,7 +39,8 @@ public class GetItemNode extends BaseNode {
         addInputPort(listInput);
         
         IPort indexInput = new BasePort(INPUT_INDEX_ID, "Index", 
-                "The index of the item (0-based)", NodeDataType.INTEGER, this);
+                "0-based index; negatives count from end (-1 = last). Wrap property applies modulo size.",
+                NodeDataType.INTEGER, this);
         addInputPort(indexInput);
         
         IPort itemOutput = new BasePort(OUTPUT_ITEM_ID, "Item", 
@@ -52,23 +55,26 @@ public class GetItemNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
+        ListIndexResolver.IndexResolveResult indexResult = ListIndexResolver.resolveRequiredIndex(
+                resolveValue(INPUT_INDEX_ID),
+                isDriven(INPUT_INDEX_ID)
+        );
         
         Object item = null;
         boolean found = false;
         
-        if (inputObj instanceof List<?> list && indexObj instanceof Number) {
+        if (inputObj instanceof List<?> list && indexResult.valid()) {
             int listSize = list.size();
             
             if (listSize > 0) {
-                int index = ((Number) indexObj).intValue();
+                int index = indexResult.index();
                 
                 if (index < 0 && allowNegativeIndex) {
-                    index = listSize + index;
+                    index = ListIndexResolver.normalizeNegativeFromEnd(index, listSize);
                 }
                 
                 if (wrapIndex && listSize > 0) {
-                    index = ((index % listSize) + listSize) % listSize;
+                    index = ListIndexResolver.applyWrap(index, listSize);
                     found = true;
                     item = list.get(index);
                 } else if (index >= 0 && index < listSize) {
@@ -81,8 +87,17 @@ public class GetItemNode extends BaseNode {
         outputValues.put(OUTPUT_ITEM_ID, item);
         outputValues.put(OUTPUT_FOUND_ID, found);
     }
-    
-    // --- Getters/Setters for Properties ---
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
+    }
     
     public boolean isAllowNegativeIndex() {
         return allowNegativeIndex;
@@ -135,4 +150,4 @@ public class GetItemNode extends BaseNode {
             }
         }
     }
-} 
+}

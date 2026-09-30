@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ListIndexResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -37,7 +39,7 @@ public class SetItemNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_LIST_ID, "List", "The list to modify", NodeDataType.LIST, this)
                 .bindListType(LIST_T));
-        addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Index to set (0-based, negatives from end)",
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "0-based index; negatives count from end (-1 = last). Wrap applies modulo size.",
                 NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "The new value", NodeDataType.ANY, this)
                 .bindListElementType(LIST_T));
@@ -50,10 +52,13 @@ public class SetItemNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
+        ListIndexResolver.IndexResolveResult indexResult = ListIndexResolver.resolveRequiredIndex(
+                resolveValue(INPUT_INDEX_ID),
+                isDriven(INPUT_INDEX_ID)
+        );
 
-        if (!(inputObj instanceof List<?> inputList) || !(indexObj instanceof Number number)) {
+        if (!(inputObj instanceof List<?> inputList) || !indexResult.valid()) {
             outputValues.put(OUTPUT_LIST_ID, List.of());
             outputValues.put(OUTPUT_SUCCESS_ID, false);
             return;
@@ -61,12 +66,12 @@ public class SetItemNode extends BaseNode {
 
         List<Object> result = new ArrayList<>(inputList);
         int size = result.size();
-        int index = number.intValue();
+        int index = indexResult.index();
         if (index < 0) {
-            index = size + index;
+            index = ListIndexResolver.normalizeNegativeFromEnd(index, size);
         }
         if (wrapIndex && size > 0) {
-            index = ((index % size) + size) % size;
+            index = ListIndexResolver.applyWrap(index, size);
         }
 
         if (index < 0 || index >= size) {
@@ -78,6 +83,17 @@ public class SetItemNode extends BaseNode {
         result.set(index, valueObj);
         outputValues.put(OUTPUT_LIST_ID, result);
         outputValues.put(OUTPUT_SUCCESS_ID, true);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 
     public boolean isWrapIndex() {
@@ -107,6 +123,5 @@ public class SetItemNode extends BaseNode {
         if (wrap instanceof Boolean value) {
             setWrapIndex(value);
         }
-        // Legacy allowNegativeIndex / expandList ignored.
     }
 }

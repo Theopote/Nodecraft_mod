@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ListIndexResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -58,7 +60,6 @@ public class RemoveItemNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
         boolean hasValueInput = inputValues.containsKey(INPUT_VALUE_ID);
 
@@ -73,15 +74,16 @@ public class RemoveItemNode extends BaseNode {
         boolean valid = false;
 
         if (useIndex) {
-            if (!(indexObj instanceof Number number)) {
+            ListIndexResolver.IndexResolveResult indexResult = ListIndexResolver.resolveRequiredIndex(
+                    resolveValue(INPUT_INDEX_ID),
+                    isDriven(INPUT_INDEX_ID)
+            );
+            if (!indexResult.valid()) {
                 writeResult(result, null, 0, false);
                 return;
             }
             int size = result.size();
-            int index = number.intValue();
-            if (index < 0) {
-                index = size + index;
-            }
+            int index = ListIndexResolver.normalizeNegativeFromEnd(indexResult.index(), size);
             if (index < 0 || index >= size) {
                 writeResult(result, null, 0, false);
                 return;
@@ -115,6 +117,17 @@ public class RemoveItemNode extends BaseNode {
         }
 
         writeResult(result, removedItem, removeCount, valid);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 
     private void writeEmpty(boolean valid) {
@@ -171,6 +184,5 @@ public class RemoveItemNode extends BaseNode {
         if (removeAll instanceof Boolean value) {
             setRemoveAllMatches(value);
         }
-        // Legacy allowNegativeIndex ignored.
     }
 }

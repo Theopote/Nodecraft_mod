@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ListIndexResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -34,7 +36,8 @@ public class InsertItemNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_LIST_ID, "List", "The list to insert into", NodeDataType.LIST, this)
                 .bindListType(LIST_T));
-        addInputPort(new BasePort(INPUT_INDEX_ID, "Index", "Insert index (0-based, negatives from end)",
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Index",
+                "Insert index (0-based). Negatives from end (-1 inserts before last element). No wrap.",
                 NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "The value to insert", NodeDataType.ANY, this)
                 .bindListElementType(LIST_T));
@@ -47,20 +50,20 @@ public class InsertItemNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object inputObj = inputValues.get(INPUT_LIST_ID);
-        Object indexObj = inputValues.get(INPUT_INDEX_ID);
         Object valueObj = inputValues.get(INPUT_VALUE_ID);
+        ListIndexResolver.IndexResolveResult indexResult = ListIndexResolver.resolveRequiredIndex(
+                resolveValue(INPUT_INDEX_ID),
+                isDriven(INPUT_INDEX_ID)
+        );
 
-        if (!(inputObj instanceof List<?> inputList) || !(indexObj instanceof Number number)) {
+        if (!(inputObj instanceof List<?> inputList) || !indexResult.valid()) {
             writeInvalid();
             return;
         }
 
         List<Object> result = new ArrayList<>(inputList);
         int size = result.size();
-        int index = number.intValue();
-        if (index < 0) {
-            index = size + index;
-        }
+        int index = ListIndexResolver.normalizeNegativeFromEnd(indexResult.index(), size);
 
         if (index < 0 || index > size) {
             writeInvalid();
@@ -70,6 +73,17 @@ public class InsertItemNode extends BaseNode {
         result.add(index, valueObj);
         outputValues.put(OUTPUT_LIST_ID, result);
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 
     private void writeInvalid() {
@@ -84,6 +98,5 @@ public class InsertItemNode extends BaseNode {
 
     @Override
     public void setNodeState(Object state) {
-        // Legacy allowNegativeIndex / append ignored.
     }
 }
