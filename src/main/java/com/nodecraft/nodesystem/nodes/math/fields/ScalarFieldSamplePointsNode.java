@@ -79,12 +79,12 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         }
         List<Vector3d> points = pointsResult.points();
 
-        if (points.size() > samplePointLimit) {
+        if (points != null && points.size() > samplePointLimit) {
             writeInvalid(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED);
             return;
         }
 
-        if (points.isEmpty()) {
+        if (points != null && points.isEmpty()) {
             outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
             outputValues.put(OUTPUT_COUNT_ID, 0);
             outputValues.put(OUTPUT_VALID_ID, true);
@@ -92,18 +92,27 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
             return;
         }
 
-        List<Double> values = new ArrayList<>(points.size());
-        for (Vector3d p : points) {
-            FieldSampleUtils.ScalarSample sample = FieldSampleUtils.sampleScalar(field, p);
-            if (!sample.valid()) {
-                writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
-                return;
+        List<Double> values = null;
+        if (points != null) {
+            values = new ArrayList<>(points.size());
+        }
+        if (points != null) {
+            for (Vector3d p : points) {
+                FieldSampleUtils.ScalarSample sample = FieldSampleUtils.sampleScalar(field, p);
+                if (!sample.valid()) {
+                    writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+                    return;
+                }
+                values.add(sample.value());
             }
-            values.add(sample.value());
         }
 
-        outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
-        outputValues.put(OUTPUT_COUNT_ID, values.size());
+        if (values != null) {
+            outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
+        }
+        if (values != null) {
+            outputValues.put(OUTPUT_COUNT_ID, values.size());
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

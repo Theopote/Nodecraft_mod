@@ -62,7 +62,7 @@ public final class FieldSampleUtils {
      * Empty collection is valid (Count=0 correspondence). No silent skips.
      */
     static PointListResult resolvePointListStrict(Object value) {
-        if (value == null || !(value instanceof Collection<?> collection)) {
+        if (!(value instanceof Collection<?> collection)) {
             return PointListResult.invalid(ERROR_INVALID_INPUT);
         }
         List<Vector3d> points = new ArrayList<>(collection.size());

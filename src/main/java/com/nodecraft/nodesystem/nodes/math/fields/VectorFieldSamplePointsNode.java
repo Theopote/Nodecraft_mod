@@ -79,12 +79,12 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         }
         List<Vector3d> points = pointsResult.points();
 
-        if (points.size() > samplePointLimit) {
+        if (points != null && points.size() > samplePointLimit) {
             writeInvalid(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED);
             return;
         }
 
-        if (points.isEmpty()) {
+        if (points != null && points.isEmpty()) {
             outputValues.put(OUTPUT_VECTORS_ID, Collections.emptyList());
             outputValues.put(OUTPUT_COUNT_ID, 0);
             outputValues.put(OUTPUT_VALID_ID, true);
@@ -92,18 +92,27 @@ public class VectorFieldSamplePointsNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> vectors = new ArrayList<>(points.size());
-        for (Vector3d p : points) {
-            FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
-            if (!sample.valid() || sample.vector() == null) {
-                writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
-                return;
+        List<Vector3d> vectors = null;
+        if (points != null) {
+            vectors = new ArrayList<>(points.size());
+        }
+        if (points != null) {
+            for (Vector3d p : points) {
+                FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
+                if (!sample.valid() || sample.vector() == null) {
+                    writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+                    return;
+                }
+                vectors.add(new Vector3d(sample.vector()));
             }
-            vectors.add(new Vector3d(sample.vector()));
         }
 
-        outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
-        outputValues.put(OUTPUT_COUNT_ID, vectors.size());
+        if (vectors != null) {
+            outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
+        }
+        if (vectors != null) {
+            outputValues.put(OUTPUT_COUNT_ID, vectors.size());
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
