@@ -70,8 +70,8 @@ public class CurveAttractorFieldNode extends BaseNode {
         }
 
         double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double effectiveRadius = FieldMath.resolvePositive(inputValues.get(INPUT_RADIUS_ID), radius);
-        double effectiveExponent = FieldMath.resolvePositive(inputValues.get(INPUT_EXPONENT_ID), exponent);
+        double effectiveRadius = FieldMath.resolveAttractorRadius(inputValues.get(INPUT_RADIUS_ID), radius);
+        double effectiveExponent = FieldMath.resolveAttractorExponent(inputValues.get(INPUT_EXPONENT_ID), exponent);
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
         VectorFieldData field = (point, dest) -> {

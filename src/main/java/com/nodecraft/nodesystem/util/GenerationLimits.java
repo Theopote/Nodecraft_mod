@@ -25,6 +25,16 @@ public final class GenerationLimits {
     public static final int MAX_TREE_PATH_DEPTH = 256;
 
     /**
+     * Maximum total branches when merging or entwining data trees (aligned with list element cap).
+     */
+    public static final int MAX_TREE_BRANCHES = MAX_LIST_ELEMENTS;
+
+    /**
+     * Maximum total items when merging or entwining data trees (aligned with Flatten Tree budget).
+     */
+    public static final int MAX_TREE_ITEMS = MAX_LIST_ELEMENTS;
+
+    /**
      * Max query points for Field Sample Points (scalar/vector) before evaluation.
      */
     public static final int MAX_FIELD_SAMPLE_POINTS = MAX_LIST_ELEMENTS;

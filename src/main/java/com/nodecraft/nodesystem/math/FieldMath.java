@@ -8,6 +8,12 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class FieldMath {
 
+    /** Minimum falloff radius for attractor fields (linear divisor floor). */
+    public static final double MIN_ATTRACTOR_FALLOFF_RADIUS = 1.0e-9d;
+
+    /** Minimum falloff exponent for attractor fields (INVERSE / LINEAR modes). */
+    public static final double MIN_ATTRACTOR_FALLOFF_EXPONENT = 0.001d;
+
     public enum ScalarCombineOp {
         ADD,
         SUB,
@@ -37,6 +43,31 @@ public final class FieldMath {
             return Double.isFinite(d) && d > 0.0d ? d : fallback;
         }
         return fallback;
+    }
+
+    /** Attractor falloff radius: finite and {@code >=} {@link #MIN_ATTRACTOR_FALLOFF_RADIUS}. */
+    public static double resolveAttractorRadius(@Nullable Object value, double fallback) {
+        return resolveMinInclusive(value, fallback, MIN_ATTRACTOR_FALLOFF_RADIUS);
+    }
+
+    /** Attractor falloff exponent: finite and {@code >=} {@link #MIN_ATTRACTOR_FALLOFF_EXPONENT}. */
+    public static double resolveAttractorExponent(@Nullable Object value, double fallback) {
+        return resolveMinInclusive(value, fallback, MIN_ATTRACTOR_FALLOFF_EXPONENT);
+    }
+
+    private static double resolveMinInclusive(@Nullable Object value, double fallback, double minInclusive) {
+        if (value instanceof Number number) {
+            double d = number.doubleValue();
+            if (Double.isFinite(d) && d >= minInclusive) {
+                return d;
+            }
+            return validMinFallback(fallback, minInclusive);
+        }
+        return validMinFallback(fallback, minInclusive);
+    }
+
+    private static double validMinFallback(double fallback, double minInclusive) {
+        return Double.isFinite(fallback) && fallback >= minInclusive ? fallback : minInclusive;
     }
 
     /** Finite and non-negative, else {@code fallback}. */

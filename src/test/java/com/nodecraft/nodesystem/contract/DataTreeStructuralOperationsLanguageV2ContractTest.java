@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.TreePathData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.nodes.math.data_tree.CullEmptyBranchesNode;
 import com.nodecraft.nodesystem.nodes.math.data_tree.DataTreeNodeUtils;
 import com.nodecraft.nodesystem.nodes.math.data_tree.EntwineNode;
@@ -96,6 +97,46 @@ class DataTreeStructuralOperationsLanguageV2ContractTest {
         DataTreeData shifted = assertInstanceOf(DataTreeData.class, outputs.get("output_tree"));
         assertEquals(1, shifted.getBranchCount());
         assertEquals(List.of("A", "B"), shifted.getBranch(List.of()).items());
+    }
+
+    @Test
+    void mergeCombinedItemBudgetFailsBeforeOutputConstruction() {
+        int halfCap = GenerationLimits.MAX_TREE_ITEMS / 2 + 1;
+        DataTreeData treeA = new DataTreeData(List.of(
+                new DataTreeData.Branch(List.of(0), java.util.Collections.nCopies(halfCap, "A"))
+        ), ListElementKind.STRING);
+        DataTreeData treeB = new DataTreeData(List.of(
+                new DataTreeData.Branch(List.of(1), java.util.Collections.nCopies(halfCap, "B"))
+        ), ListElementKind.STRING);
+
+        MergeTreesNode node = new MergeTreesNode();
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_a", treeA,
+                "input_b", treeB
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, outputs.get("output_error"));
+        assertEquals(0, outputs.get("output_item_count"));
+    }
+
+    @Test
+    void entwineCombinedItemBudgetFailsBeforeOutputConstruction() {
+        int halfCap = GenerationLimits.MAX_TREE_ITEMS / 2 + 1;
+        DataTreeData treeA = new DataTreeData(List.of(
+                new DataTreeData.Branch(List.of(0), java.util.Collections.nCopies(halfCap, "A"))
+        ), ListElementKind.STRING);
+        DataTreeData treeB = new DataTreeData(List.of(
+                new DataTreeData.Branch(List.of(0), java.util.Collections.nCopies(halfCap, "B"))
+        ), ListElementKind.STRING);
+
+        EntwineNode node = new EntwineNode();
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_a", treeA,
+                "input_b", treeB
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, outputs.get("output_error"));
+        assertEquals(0, outputs.get("output_item_count"));
     }
 
     @Test

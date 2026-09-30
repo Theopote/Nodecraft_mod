@@ -113,6 +113,35 @@ public final class DataTreeNodeUtils {
         return ParseResult.ok(null);
     }
 
+    /**
+     * Cumulative output budget for merge/entwine before constructing the combined branch list.
+     * Uses {@code long} sums to avoid overflow when many inputs are near the cap.
+     */
+    static ParseResult<Void> preflightCombinedTreeBudget(Iterable<DataTreeData> trees) {
+        return preflightCombinedTreeBudget(
+                trees, GenerationLimits.MAX_TREE_BRANCHES, GenerationLimits.MAX_TREE_ITEMS);
+    }
+
+    static ParseResult<Void> preflightCombinedTreeBudget(
+            Iterable<DataTreeData> trees,
+            long maxBranches,
+            long maxItems
+    ) {
+        long totalBranches = 0L;
+        long totalItems = 0L;
+        for (DataTreeData tree : trees) {
+            if (tree == null) {
+                continue;
+            }
+            totalBranches += tree.getBranchCount();
+            totalItems += tree.getItemCount();
+            if (totalBranches > maxBranches || totalItems > maxItems) {
+                return ParseResult.invalid(ERROR_OUTPUT_BUDGET_EXCEEDED);
+            }
+        }
+        return ParseResult.ok(null);
+    }
+
     static ConnectedTreeResult resolveConnectedTree(BaseNode node, String portId) {
         if (!isTreePortDriven(node, portId)) {
             return new ConnectedTreeResult(null, TreeInputState.SKIP, null);

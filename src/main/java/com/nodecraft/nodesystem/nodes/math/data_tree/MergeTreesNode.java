@@ -89,6 +89,13 @@ public class MergeTreesNode extends BaseNode {
             }
         }
 
+        DataTreeNodeUtils.ParseResult<Void> budgetCheck =
+                DataTreeNodeUtils.preflightCombinedTreeBudget(presentTrees);
+        if (!budgetCheck.valid()) {
+            writeInvalid(kind, budgetCheck.error());
+            return;
+        }
+
         List<DataTreeData.Branch> branches = new ArrayList<>();
         for (DataTreeData tree : presentTrees) {
             branches.addAll(tree.getBranches());

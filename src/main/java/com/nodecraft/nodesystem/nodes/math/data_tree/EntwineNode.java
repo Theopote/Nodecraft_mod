@@ -58,11 +58,13 @@ public class EntwineNode extends BaseNode {
                 NodeDataType.STRING, this));
     }
 
+    private record EntwineInput(DataTreeData tree, int sourceIndex) {
+    }
+
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         ListElementKind kind = ListElementKind.UNCONSTRAINED;
-        List<DataTreeData> presentTrees = new ArrayList<>(4);
-        List<DataTreeData.Branch> branches = new ArrayList<>();
+        List<EntwineInput> presentInputs = new ArrayList<>(4);
 
         for (int sourceIndex = 0; sourceIndex < INPUT_IDS.size(); sourceIndex++) {
             String portId = INPUT_IDS.get(sourceIndex);
@@ -98,24 +100,40 @@ public class EntwineNode extends BaseNode {
                 return;
             }
 
-            presentTrees.add(tree);
-            if (tree != null) {
-                for (DataTreeData.Branch branch : tree.getBranches()) {
-                    List<Integer> path = new ArrayList<>(1 + branch.path().size());
-                    path.add(sourceIndex);
-                    path.addAll(branch.path());
-                    branches.add(new DataTreeData.Branch(path, branch.items()));
-                }
-            }
+            presentInputs.add(new EntwineInput(tree, sourceIndex));
         }
 
         if (isConstrained(kind)) {
-            for (DataTreeData tree : presentTrees) {
-                DataTreeNodeUtils.ParseResult<Void> kindCheck = DataTreeNodeUtils.validateTreeItemsMatchKind(tree, kind);
+            for (EntwineInput input : presentInputs) {
+                DataTreeNodeUtils.ParseResult<Void> kindCheck =
+                        DataTreeNodeUtils.validateTreeItemsMatchKind(input.tree(), kind);
                 if (!kindCheck.valid()) {
                     writeInvalid(kind, kindCheck.error());
                     return;
                 }
+            }
+        }
+
+        List<DataTreeData> presentTrees = presentInputs.stream().map(EntwineInput::tree).toList();
+        DataTreeNodeUtils.ParseResult<Void> budgetCheck =
+                DataTreeNodeUtils.preflightCombinedTreeBudget(presentTrees);
+        if (!budgetCheck.valid()) {
+            writeInvalid(kind, budgetCheck.error());
+            return;
+        }
+
+        List<DataTreeData.Branch> branches = new ArrayList<>();
+        for (EntwineInput input : presentInputs) {
+            DataTreeData tree = input.tree();
+            if (tree == null) {
+                continue;
+            }
+            int sourceIndex = input.sourceIndex();
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                List<Integer> path = new ArrayList<>(1 + branch.path().size());
+                path.add(sourceIndex);
+                path.addAll(branch.path());
+                branches.add(new DataTreeData.Branch(path, branch.items()));
             }
         }
 

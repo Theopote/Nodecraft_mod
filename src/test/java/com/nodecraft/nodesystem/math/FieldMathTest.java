@@ -23,6 +23,20 @@ class FieldMathTest {
     }
 
     @Test
+    void resolveAttractorRadiusRejectsBelowDocumentedMinimum() {
+        assertEquals(8.0d, FieldMath.resolveAttractorRadius(1.0e-10, 8.0d), 0.0d);
+        assertEquals(1.0e-9d, FieldMath.resolveAttractorRadius(1.0e-9, 8.0d), 0.0d);
+        assertEquals(1.0e-9d, FieldMath.resolveAttractorRadius(Double.NaN, 1.0e-10), 0.0d);
+    }
+
+    @Test
+    void resolveAttractorExponentRejectsBelowDocumentedMinimum() {
+        assertEquals(2.0d, FieldMath.resolveAttractorExponent(1.0e-4, 2.0d), 0.0d);
+        assertEquals(0.001d, FieldMath.resolveAttractorExponent(0.001d, 2.0d), 0.0d);
+        assertEquals(0.001d, FieldMath.resolveAttractorExponent(Double.NaN, 1.0e-4), 0.0d);
+    }
+
+    @Test
     void combineScalarsDivByZeroIsNaN() {
         assertTrue(Double.isNaN(FieldMath.combineScalars(1.0d, 0.0d, FieldMath.ScalarCombineOp.DIV)));
     }

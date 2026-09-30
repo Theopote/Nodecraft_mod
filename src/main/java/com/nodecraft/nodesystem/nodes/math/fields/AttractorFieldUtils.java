@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -34,24 +35,34 @@ final class AttractorFieldUtils {
     private AttractorFieldUtils() {
     }
 
+    /**
+     * Distance falloff using validated parameters only.
+     * Callers must supply validated radius/exponent
+     * (see {@link FieldMath#resolveAttractorRadius} / {@link FieldMath#resolveAttractorExponent}).
+     */
     static double falloff(double distance, double radius, double exponent, FalloffMode mode) {
         double d = Math.max(0.0d, distance);
-        double r = Math.max(LENGTH_EPS, radius);
-        double e = Math.max(0.001d, exponent);
         FalloffMode safeMode = mode == null ? FalloffMode.INVERSE : mode;
         return switch (safeMode) {
             case INVERSE -> {
-                double x = d / r;
-                yield 1.0d / (1.0d + Math.pow(x, e));
+                double x = d / radius;
+                double powered = Math.pow(x, exponent);
+                if (!Double.isFinite(powered)) {
+                    yield 0.0d;
+                }
+                double result = 1.0d / (1.0d + powered);
+                yield Double.isFinite(result) ? result : 0.0d;
             }
             case LINEAR -> {
-                double x = Math.max(0.0d, 1.0d - d / r);
-                yield Math.pow(x, e);
+                double x = Math.max(0.0d, 1.0d - d / radius);
+                double result = Math.pow(x, exponent);
+                yield Double.isFinite(result) ? result : 0.0d;
             }
             case GAUSSIAN -> {
-                double sigma = r / 3.0d;
-                double x = d / Math.max(LENGTH_EPS, sigma);
-                yield Math.exp(-0.5d * x * x);
+                double sigma = radius / 3.0d;
+                double x = d / sigma;
+                double result = Math.exp(-0.5d * x * x);
+                yield Double.isFinite(result) ? result : 0.0d;
             }
         };
     }
