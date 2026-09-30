@@ -4,11 +4,11 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.SequenceOps;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -22,7 +22,7 @@ import java.util.UUID;
     description = "Generates a DOUBLE_LIST with Start, Step, and Count (no Sum — use Sum Numbers).",
     category = "math.sequence"
 )
-public class DataSeriesNode extends BaseNode {
+public class DataSeriesNode extends SequenceGenerationNode {
 
     private int defaultCount = 10;
     private double defaultStart = 0;
@@ -55,26 +55,20 @@ public class DataSeriesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object startObj = inputValues.get(INPUT_START_ID);
-        Object stepObj = inputValues.get(INPUT_STEP_ID);
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
+        Double start = resolveStrictDouble(INPUT_START_ID, defaultStart);
+        Double step = resolveStrictDouble(INPUT_STEP_ID, defaultStep);
+        RandomInputResolver.IntegerResolveResult countResult = RandomInputResolver.resolveCount(
+                resolveValue(INPUT_COUNT_ID),
+                defaultCount,
+                isDriven(INPUT_COUNT_ID)
+        );
 
-        double start = defaultStart;
-        if (startObj instanceof Number number) {
-            start = number.doubleValue();
+        if (start == null || step == null || !countResult.valid()) {
+            emitListFailure(OUTPUT_SERIES_ID, "invalid_input");
+            return;
         }
 
-        double step = defaultStep;
-        if (stepObj instanceof Number number) {
-            step = number.doubleValue();
-        }
-
-        int count = defaultCount;
-        if (countObj instanceof Integer integer) {
-            count = integer;
-        }
-
-        outputValues.put(OUTPUT_SERIES_ID, SequenceOps.series(start, step, count));
+        emitSequenceResult(OUTPUT_SERIES_ID, SequenceOps.series(start, step, countResult.value()));
     }
 
     public int getDefaultCount() {

@@ -7,12 +7,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Shared sequence generation for Sequence v1 (Number Sequence / Number Series).
+ * Shared sequence generation for Sequence nodes (Number Sequence / Number Series).
  * <p>
  * Exact step (no epsilon). All emitted values are finite. Hard-capped at
  * {@link GenerationLimits#MAX_LIST_ELEMENTS}.
  */
 public final class SequenceOps {
+
+    public static final String ERROR_NON_FINITE_VALUE = "non_finite_value";
+    public static final String ERROR_FLOAT_PRECISION_STALL = "float_precision_stall";
+    public static final String ERROR_MAX_ELEMENTS_EXCEEDED = "max_elements_exceeded";
 
     private SequenceOps() {
     }
@@ -21,18 +25,18 @@ public final class SequenceOps {
      * Value-bounded sequence: Start → End by Step.
      * Does not guarantee End is included unless a generated value lands on End.
      */
-    public static List<Double> range(double start, double end, double step) {
+    public static SequenceResult range(double start, double end, double step) {
         if (!Double.isFinite(start) || !Double.isFinite(end) || !Double.isFinite(step)) {
-            return List.of();
+            return SequenceResult.ok(List.of());
         }
         if (step == 0.0d) {
-            return List.of();
+            return SequenceResult.ok(List.of());
         }
         if (start == end) {
-            return List.of(start);
+            return SequenceResult.ok(List.of(start));
         }
         if ((start < end && step < 0.0d) || (start > end && step > 0.0d)) {
-            return List.of();
+            return SequenceResult.ok(List.of());
         }
 
         boolean ascending = step > 0.0d;
@@ -42,42 +46,42 @@ public final class SequenceOps {
         for (int i = 0; i < GenerationLimits.MAX_LIST_ELEMENTS; i++) {
             double value = start + (double) i * step;
             if (!Double.isFinite(value)) {
-                break;
+                return SequenceResult.invalid(ERROR_NON_FINITE_VALUE);
             }
             if (ascending ? value > end : value < end) {
-                break;
+                return SequenceResult.ok(Collections.unmodifiableList(numbers));
             }
             if (i > 0 && value == previous) {
-                break;
+                return SequenceResult.invalid(ERROR_FLOAT_PRECISION_STALL);
             }
             numbers.add(value);
             previous = value;
         }
 
-        return Collections.unmodifiableList(numbers);
+        return SequenceResult.invalid(ERROR_MAX_ELEMENTS_EXCEEDED);
     }
 
     /**
      * Count-bounded series: Start + i * Step for i in [0, count).
-     * Stops before adding the first non-finite value.
+     * Fails closed when a non-finite value appears before completing Count.
      */
-    public static List<Double> series(double start, double step, int count) {
+    public static SequenceResult series(double start, double step, int count) {
         if (!Double.isFinite(start) || !Double.isFinite(step)) {
-            return List.of();
+            return SequenceResult.ok(List.of());
         }
         int n = GenerationLimits.clampNonNegativeCount(count);
         if (n == 0) {
-            return List.of();
+            return SequenceResult.ok(List.of());
         }
 
         List<Double> values = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             double value = start + (double) i * step;
             if (!Double.isFinite(value)) {
-                break;
+                return SequenceResult.invalid(ERROR_NON_FINITE_VALUE);
             }
             values.add(value);
         }
-        return Collections.unmodifiableList(values);
+        return SequenceResult.ok(Collections.unmodifiableList(values));
     }
 }

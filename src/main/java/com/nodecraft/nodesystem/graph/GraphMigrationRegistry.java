@@ -183,6 +183,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V121 -> migrateV121ToV122(graph);
             case GraphFormatVersion.V122 -> migrateV122ToV123(graph);
             case GraphFormatVersion.V123 -> migrateV123ToV124(graph);
+            case GraphFormatVersion.V124 -> migrateV124ToV125(graph);
             default -> graph;
         };
     }
@@ -5627,6 +5628,10 @@ public final class GraphMigrationRegistry {
     }
 
     private static SavedGraph migrateV123ToV124(SavedGraph graph) {
+        return graph;
+    }
+
+    private static SavedGraph migrateV124ToV125(SavedGraph graph) {
         return graph;
     }
 

@@ -832,8 +832,15 @@ public final class GraphFormatVersion {
      */
     public static final int V124 = 124;
 
+    /**
+     * Sequence Strict Inputs & Explicit Termination v2: connection-aware inputs,
+     * Valid/Error on all sequence nodes, transactional fail-closed overflow/stall.
+     * No wire remaps.
+     */
+    public static final int V125 = 125;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V124;
+    public static final int CURRENT = V125;
 
     private GraphFormatVersion() {
     }

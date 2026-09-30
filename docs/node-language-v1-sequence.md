@@ -1,5 +1,8 @@
 # Node Language v1 — Sequence
 
+> **Historical:** Superseded by [`node-language-v2-sequence.md`](./node-language-v2-sequence.md)
+> (Graph **V125** — strict inputs & explicit termination). This document remains the v1 fence reference.
+
 Freeze for `math.sequence.*` list producers.
 Shared implementation: `com.nodecraft.nodesystem.math.SequenceOps`.
 Graph schema: **V28** drops Number Series `output_sum` wires.

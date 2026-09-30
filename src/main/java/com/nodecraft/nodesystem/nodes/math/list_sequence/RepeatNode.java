@@ -4,13 +4,14 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,7 @@ import java.util.UUID;
     description = "Repeats a single item Count times as a LIST. A list item is repeated as one element, never tiled.",
     category = "math.sequence"
 )
-public class RepeatNode extends BaseNode {
+public class RepeatNode extends SequenceGenerationNode {
 
     private static final String LIST_T = "T";
 
@@ -63,15 +64,28 @@ public class RepeatNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object dataObj = inputValues.get(INPUT_DATA_ID);
-        Object countObj = inputValues.get(INPUT_COUNT_ID);
-
-        int count = defaultCount;
-        if (countObj instanceof Integer integer) {
-            count = integer;
+        RandomInputResolver.IntegerResolveResult countResult = RandomInputResolver.resolveCount(
+                resolveValue(INPUT_COUNT_ID),
+                defaultCount,
+                isDriven(INPUT_COUNT_ID)
+        );
+        if (!countResult.valid()) {
+            emitRepeatFailure("invalid_input");
+            return;
         }
-        count = GenerationLimits.clampNonNegativeCount(count);
 
+        Object dataObj;
+        if (isDriven(INPUT_DATA_ID)) {
+            dataObj = resolveValue(INPUT_DATA_ID);
+            if (dataObj == null) {
+                emitRepeatFailure("invalid_input");
+                return;
+            }
+        } else {
+            dataObj = null;
+        }
+
+        int count = countResult.value();
         List<Object> result = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             result.add(dataObj);
@@ -79,6 +93,15 @@ public class RepeatNode extends BaseNode {
 
         outputValues.put(OUTPUT_RESULT_ID, result);
         outputValues.put(OUTPUT_LENGTH_ID, result.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void emitRepeatFailure(String error) {
+        outputValues.put(OUTPUT_RESULT_ID, Collections.emptyList());
+        outputValues.put(OUTPUT_LENGTH_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     public int getDefaultCount() {
