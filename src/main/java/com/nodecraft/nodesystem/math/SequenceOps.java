@@ -26,6 +26,11 @@ public final class SequenceOps {
      * Does not guarantee End is included unless a generated value lands on End.
      */
     public static SequenceResult range(double start, double end, double step) {
+        return range(start, end, step, GenerationLimits.MAX_LIST_ELEMENTS);
+    }
+
+    /** Package-private for contract tests with a smaller element budget. */
+    static SequenceResult range(double start, double end, double step, int maxElements) {
         if (!Double.isFinite(start) || !Double.isFinite(end) || !Double.isFinite(step)) {
             return SequenceResult.ok(List.of());
         }
@@ -38,12 +43,15 @@ public final class SequenceOps {
         if ((start < end && step < 0.0d) || (start > end && step > 0.0d)) {
             return SequenceResult.ok(List.of());
         }
+        if (maxElements <= 0) {
+            return SequenceResult.invalid(ERROR_MAX_ELEMENTS_EXCEEDED);
+        }
 
         boolean ascending = step > 0.0d;
         List<Double> numbers = new ArrayList<>();
         double previous = Double.NaN;
 
-        for (int i = 0; i < GenerationLimits.MAX_LIST_ELEMENTS; i++) {
+        for (int i = 0; i < maxElements; i++) {
             double value = start + (double) i * step;
             if (!Double.isFinite(value)) {
                 return SequenceResult.invalid(ERROR_NON_FINITE_VALUE);
@@ -58,6 +66,11 @@ public final class SequenceOps {
             previous = value;
         }
 
+        // Budget full: exceed only when another in-range finite value would still be required.
+        double next = start + (double) maxElements * step;
+        if (!Double.isFinite(next) || (ascending ? next > end : next < end)) {
+            return SequenceResult.ok(Collections.unmodifiableList(numbers));
+        }
         return SequenceResult.invalid(ERROR_MAX_ELEMENTS_EXCEEDED);
     }
 

@@ -103,4 +103,21 @@ class SequenceOpsTest {
         assertTrue(result.values().isEmpty());
         assertEquals(SequenceOps.ERROR_NON_FINITE_VALUE, result.error());
     }
+
+    @Test
+    void rangeExactMaxElementsSucceeds() {
+        // Budget 4: 0,1,2,3 fits exactly — must not report max_elements_exceeded.
+        SequenceResult exact = SequenceOps.range(0.0d, 3.0d, 1.0d, 4);
+        assertTrue(exact.valid());
+        assertEquals(List.of(0.0d, 1.0d, 2.0d, 3.0d), exact.values());
+    }
+
+    @Test
+    void rangeNeedsOnePastBudgetFailsClosed() {
+        // Budget 4: 0..4 needs 5 values → exceeded.
+        SequenceResult over = SequenceOps.range(0.0d, 4.0d, 1.0d, 4);
+        assertFalse(over.valid());
+        assertEquals(SequenceOps.ERROR_MAX_ELEMENTS_EXCEEDED, over.error());
+        assertTrue(over.values().isEmpty());
+    }
 }

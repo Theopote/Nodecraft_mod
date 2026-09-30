@@ -212,6 +212,27 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
     }
 
     @Test
+    void blendNormalizeOnOverflowSumKeepsInvalid() {
+        VectorFieldData huge = (point, dest) -> dest.set(Double.MAX_VALUE, Double.MAX_VALUE, 0.0d);
+        AttractorFieldBlendNode blend = new AttractorFieldBlendNode();
+        blend.setNodeState(Map.of("normalize", true));
+        VectorFieldData field = assertInstanceOf(VectorFieldData.class,
+                blend.compute(Map.of(
+                        "input_field_a", huge,
+                        "input_field_b", huge,
+                        "input_weight_a", 1.0d,
+                        "input_weight_b", 1.0d
+                )).get("output_field"));
+
+        Map<String, Object> sample = new VectorFieldSamplePointNode().compute(Map.of(
+                "input_field", field,
+                "input_point", new PointData(0, 0, 0)
+        ));
+        assertFalse((Boolean) sample.get("output_valid"));
+        assertNull(sample.get("output_vector"));
+    }
+
+    @Test
     void blendTinyPositiveMaxMagnitudeStillClamps() {
         VectorFieldData unitX = (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
         AttractorFieldBlendNode blend = new AttractorFieldBlendNode();

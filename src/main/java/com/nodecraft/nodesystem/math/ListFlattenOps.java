@@ -12,7 +12,8 @@ import java.util.List;
  * Safe bounded flattening for nested {@link List} structures.
  * <p>
  * Null leaf elements are preserved (compatible with Create List driven-null retention).
- * Do not use {@link List#copyOf} for successful results — it rejects nulls.
+ * Internal recursion mutates a single budgeted buffer; the immutable result is built once
+ * on success (no per-element copying).
  */
 public final class ListFlattenOps {
 
@@ -38,6 +39,17 @@ public final class ListFlattenOps {
         }
     }
 
+    /** Internal walk status — no result list copies. */
+    private record FlattenStatus(boolean valid, @Nullable String error) {
+        static FlattenStatus ok() {
+            return new FlattenStatus(true, null);
+        }
+
+        static FlattenStatus invalid(String error) {
+            return new FlattenStatus(false, error == null ? "" : error);
+        }
+    }
+
     private ListFlattenOps() {
     }
 
@@ -49,14 +61,14 @@ public final class ListFlattenOps {
     static FlattenResult flatten(List<?> input, int depthLimit, FlattenDepthMode mode, int elementLimit) {
         List<Object> output = new ArrayList<>();
         IdentityHashMap<List<?>, Boolean> activePath = new IdentityHashMap<>();
-        FlattenResult result = flattenRecursive(input, output, 0, depthLimit, mode, activePath, elementLimit);
-        if (!result.valid()) {
-            return result;
+        FlattenStatus status = flattenRecursive(input, output, 0, depthLimit, mode, activePath, elementLimit);
+        if (!status.valid()) {
+            return FlattenResult.invalid(status.error());
         }
         return FlattenResult.ok(output);
     }
 
-    private static FlattenResult flattenRecursive(
+    private static FlattenStatus flattenRecursive(
             List<?> input,
             List<Object> output,
             int currentDepth,
@@ -66,11 +78,11 @@ public final class ListFlattenOps {
             int elementLimit
     ) {
         if (currentDepth > GenerationLimits.MAX_FORMAT_DEPTH) {
-            return FlattenResult.invalid(ERROR_DEPTH_EXCEEDED);
+            return FlattenStatus.invalid(ERROR_DEPTH_EXCEEDED);
         }
 
         if (activePath.containsKey(input)) {
-            return FlattenResult.invalid(ERROR_CYCLE_REFERENCE);
+            return FlattenStatus.invalid(ERROR_CYCLE_REFERENCE);
         }
         activePath.put(input, Boolean.TRUE);
 
@@ -82,41 +94,41 @@ public final class ListFlattenOps {
             for (Object item : input) {
                 if (item instanceof List<?> nested) {
                     if (currentDepth + 1 > depthLimit) {
-                        return FlattenResult.invalid(ERROR_DEPTH_EXCEEDED);
+                        return FlattenStatus.invalid(ERROR_DEPTH_EXCEEDED);
                     }
-                    FlattenResult nestedResult = flattenRecursive(
+                    FlattenStatus nestedStatus = flattenRecursive(
                             nested, output, currentDepth + 1, depthLimit, mode, activePath, elementLimit);
-                    if (!nestedResult.valid()) {
-                        return nestedResult;
+                    if (!nestedStatus.valid()) {
+                        return nestedStatus;
                     }
                 } else {
-                    FlattenResult appendResult = appendValue(output, item, elementLimit);
-                    if (!appendResult.valid()) {
-                        return appendResult;
+                    FlattenStatus appendStatus = appendValue(output, item, elementLimit);
+                    if (!appendStatus.valid()) {
+                        return appendStatus;
                     }
                 }
             }
-            return FlattenResult.ok(output);
+            return FlattenStatus.ok();
         } finally {
             activePath.remove(input);
         }
     }
 
-    private static FlattenResult appendItems(List<?> input, List<Object> output, int elementLimit) {
+    private static FlattenStatus appendItems(List<?> input, List<Object> output, int elementLimit) {
         for (Object item : input) {
-            FlattenResult appendResult = appendValue(output, item, elementLimit);
-            if (!appendResult.valid()) {
-                return appendResult;
+            FlattenStatus appendStatus = appendValue(output, item, elementLimit);
+            if (!appendStatus.valid()) {
+                return appendStatus;
             }
         }
-        return FlattenResult.ok(output);
+        return FlattenStatus.ok();
     }
 
-    private static FlattenResult appendValue(List<Object> output, @Nullable Object value, int elementLimit) {
+    private static FlattenStatus appendValue(List<Object> output, @Nullable Object value, int elementLimit) {
         if (output.size() >= elementLimit) {
-            return FlattenResult.invalid(ERROR_ELEMENT_LIMIT);
+            return FlattenStatus.invalid(ERROR_ELEMENT_LIMIT);
         }
         output.add(value);
-        return FlattenResult.ok(output);
+        return FlattenStatus.ok();
     }
 }

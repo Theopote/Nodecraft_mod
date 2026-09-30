@@ -59,6 +59,21 @@ class ListFlattenJoinLanguageV2ContractTest {
     }
 
     @Test
+    void flattenLargeFlatListSucceedsWithoutPerElementCopies() {
+        List<Object> leaves = new ArrayList<>();
+        for (int i = 0; i < 8_000; i++) {
+            leaves.add(i);
+        }
+        Map<String, Object> outputs = new FlattenListNode().compute(Map.of("input_list", leaves));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<Object> flattened = (List<Object>) outputs.get("output_list");
+        assertEquals(8_000, flattened.size());
+        assertEquals(0, flattened.get(0));
+        assertEquals(7_999, flattened.get(7_999));
+    }
+
+    @Test
     void createListWithDrivenNullSurvivesFlatten() {
         CreateListProbe create = new CreateListProbe();
         create.setInputCount(3);
