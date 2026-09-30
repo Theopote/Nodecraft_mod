@@ -40,8 +40,25 @@ class DataTreeNodeTest {
         FlattenTreeNode flatten = new FlattenTreeNode();
         Map<String, Object> outputs = flatten.compute(Map.of("input_tree", tree));
 
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals("", outputs.get("output_error"));
         assertEquals(3, outputs.get("output_item_count"));
         assertEquals(List.of("a", "b", "c"), outputs.get("output_list"));
+    }
+
+    @Test
+    void flattenExceedsOutputBudgetFailsClosed() {
+        DataTreeData tree = DataTreeData.fromBranches(
+                List.of(List.of(0), List.of(1), List.of(2)),
+                List.of(List.of("a"), List.of("b"), List.of("c"))
+        );
+        FlattenTreeNode flatten = new FlattenTreeNode();
+        flatten.flattenElementLimit = 2;
+        Map<String, Object> outputs = flatten.compute(Map.of("input_tree", tree));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, outputs.get("output_error"));
+        assertEquals(List.of(), outputs.get("output_list"));
+        assertEquals(0, outputs.get("output_item_count"));
     }
 
     @Test

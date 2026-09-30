@@ -25,6 +25,16 @@ public final class GenerationLimits {
     public static final int MAX_TREE_PATH_DEPTH = 256;
 
     /**
+     * Maximum branch detail lines in Tree Viewer debug preview.
+     */
+    public static final int MAX_TREE_VIEWER_PREVIEW_BRANCHES = 64;
+
+    /**
+     * Maximum character length of Tree Viewer debug summary output.
+     */
+    public static final int MAX_TREE_VIEWER_OUTPUT_CHARS = 8_192;
+
+    /**
      * Maximum template length accepted by String Format (aligned with NBT string cap).
      */
     public static final int MAX_FORMAT_TEMPLATE_CHARS = 65_536;

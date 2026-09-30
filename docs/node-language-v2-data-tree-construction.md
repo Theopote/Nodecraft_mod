@@ -10,6 +10,8 @@ Entwine, Shift, Simplify, Cull Empty) are covered in
 
 Related: [`node-language-v1-data-tree.md`](./node-language-v1-data-tree.md),
 [`node-language-v2-list-collection.md`](./node-language-v2-list-collection.md),
+[`node-language-v2-data-tree-structural-ops.md`](./node-language-v2-data-tree-structural-ops.md),
+[`node-language-v2-data-tree-inspection.md`](./node-language-v2-data-tree-inspection.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Preserved (unchanged)

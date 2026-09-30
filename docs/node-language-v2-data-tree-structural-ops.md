@@ -7,6 +7,7 @@ Shift Path, Simplify Tree, and Cull Empty Branches.
 
 Related: [`node-language-v1-data-tree.md`](./node-language-v1-data-tree.md),
 [`node-language-v2-data-tree-construction.md`](./node-language-v2-data-tree-construction.md),
+[`node-language-v2-data-tree-inspection.md`](./node-language-v2-data-tree-inspection.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Preserved (unchanged)

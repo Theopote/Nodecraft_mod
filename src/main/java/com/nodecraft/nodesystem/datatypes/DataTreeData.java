@@ -17,8 +17,28 @@ import java.util.Objects;
  * Graft / Flatten without exploding into per-kind tree port types.
  */
 public class DataTreeData {
+
+    /**
+     * Lexicographic integer path order: compare indices left-to-right; shorter paths sort first.
+     */
+    public static final Comparator<List<Integer>> PATH_ORDER = (left, right) -> {
+        int shared = Math.min(left.size(), right.size());
+        for (int i = 0; i < shared; i++) {
+            int cmp = Integer.compare(left.get(i), right.get(i));
+            if (cmp != 0) {
+                return cmp;
+            }
+        }
+        return Integer.compare(left.size(), right.size());
+    };
+
+    private static final String PREVIEW_TRUNCATED_FOOTER = "\n...\nPreview truncated.";
+
     private final ListElementKind elementKind;
     private final List<Branch> branches;
+
+    public record TreePreview(String summary, boolean truncated) {
+    }
 
     public DataTreeData(List<Branch> branches) {
         this(branches, ListElementKind.UNCONSTRAINED);
@@ -40,7 +60,7 @@ public class DataTreeData {
         for (Map.Entry<List<Integer>, List<Object>> entry : merged.entrySet()) {
             canonical.add(new Branch(entry.getKey(), entry.getValue()));
         }
-        canonical.sort(Comparator.comparing(Branch::pathKey));
+        canonical.sort(Comparator.comparing(Branch::path, PATH_ORDER));
         this.branches = List.copyOf(canonical);
     }
 
@@ -141,7 +161,43 @@ public class DataTreeData {
     }
 
     public String describe() {
+        return describePreview(Integer.MAX_VALUE, Integer.MAX_VALUE).summary();
+    }
+
+    /**
+     * Builds a debug summary without materializing the full text when budgets are exceeded.
+     */
+    public TreePreview describePreview(int maxBranchLines, int maxChars) {
         StringBuilder builder = new StringBuilder();
+        appendHeader(builder);
+        boolean truncated = false;
+        int branchLines = 0;
+        for (Branch branch : branches) {
+            if (branchLines >= maxBranchLines) {
+                truncated = true;
+                break;
+            }
+            String line = '\n' + formatPath(branch.path()) + ": " + branch.items().size() + " items";
+            if (builder.length() + line.length() > maxChars) {
+                truncated = true;
+                break;
+            }
+            builder.append(line);
+            branchLines++;
+        }
+        if (truncated) {
+            if (builder.length() + PREVIEW_TRUNCATED_FOOTER.length() <= maxChars) {
+                builder.append(PREVIEW_TRUNCATED_FOOTER);
+            } else {
+                int keep = Math.max(0, maxChars - PREVIEW_TRUNCATED_FOOTER.length());
+                builder.setLength(keep);
+                builder.append(PREVIEW_TRUNCATED_FOOTER);
+            }
+        }
+        return new TreePreview(builder.toString(), truncated);
+    }
+
+    private void appendHeader(StringBuilder builder) {
         builder.append("Data Tree: ")
             .append(getBranchCount())
             .append(" branches, ")
@@ -151,14 +207,6 @@ public class DataTreeData {
         if (elementKind != ListElementKind.UNCONSTRAINED && elementKind != ListElementKind.NONE) {
             builder.append(", kind ").append(elementKind);
         }
-        for (Branch branch : branches) {
-            builder.append('\n')
-                .append(formatPath(branch.path()))
-                .append(": ")
-                .append(branch.items().size())
-                .append(" items");
-        }
-        return builder.toString();
     }
 
     /**
@@ -218,14 +266,6 @@ public class DataTreeData {
             Objects.requireNonNull(items, "Branch items cannot be null");
             path = List.copyOf(path);
             items = List.copyOf(items);
-        }
-
-        private String pathKey() {
-            StringBuilder builder = new StringBuilder();
-            for (Integer index : path) {
-                builder.append(String.format("%010d", index)).append('/');
-            }
-            return builder.toString();
         }
     }
 }

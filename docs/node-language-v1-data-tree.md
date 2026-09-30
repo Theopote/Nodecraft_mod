@@ -4,7 +4,9 @@ Freeze against Graph **V24**. Construction/lookup strictness for Graft, Partitio
 is documented in [`node-language-v2-data-tree-construction.md`](./node-language-v2-data-tree-construction.md)
 (Graph **V130**). Structural operations safety for Merge, Entwine, Shift, Simplify, and Cull Empty
 is documented in [`node-language-v2-data-tree-structural-ops.md`](./node-language-v2-data-tree-structural-ops.md)
-(Graph **V131**).
+(Graph **V131**). Inspection & flatten safety for Flatten, Paths, Statistics, and Viewer
+is documented in [`node-language-v2-data-tree-inspection.md`](./node-language-v2-data-tree-inspection.md)
+(Graph **V132**).
 
 ## Principles
 

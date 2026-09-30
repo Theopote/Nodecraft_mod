@@ -29,6 +29,7 @@ public final class DataTreeNodeUtils {
     public static final String ERROR_ELEMENT_KIND_CONFLICT = "element_kind_conflict";
     public static final String ERROR_PATH_DEPTH_EXCEEDED = "path_depth_exceeded";
     public static final String ERROR_INVALID_SHIFT = "invalid_shift";
+    public static final String ERROR_OUTPUT_BUDGET_EXCEEDED = "output_budget_exceeded";
 
     enum TreeInputState {
         SKIP,
@@ -99,6 +100,17 @@ public final class DataTreeNodeUtils {
 
     static ParseResult<Void> validateTreeItemsMatchKind(DataTreeData tree, ListElementKind kind) {
         return validateItemsMatchKind(tree.flatten(), kind);
+    }
+
+    static ParseResult<Void> preflightFlattenItemCount(DataTreeData tree) {
+        return preflightFlattenItemCount(tree, GenerationLimits.MAX_LIST_ELEMENTS);
+    }
+
+    static ParseResult<Void> preflightFlattenItemCount(DataTreeData tree, int elementLimit) {
+        if (tree.getItemCount() > elementLimit) {
+            return ParseResult.invalid(ERROR_OUTPUT_BUDGET_EXCEEDED);
+        }
+        return ParseResult.ok(null);
     }
 
     static ConnectedTreeResult resolveConnectedTree(BaseNode node, String portId) {

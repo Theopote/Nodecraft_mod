@@ -870,8 +870,13 @@ public final class GraphFormatVersion {
      */
     public static final int V131 = 131;
 
+    /**
+     * Data Tree Inspection & Flatten Safety v2. No wire remaps.
+     */
+    public static final int V132 = 132;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V131;
+    public static final int CURRENT = V132;
 
     private GraphFormatVersion() {
     }

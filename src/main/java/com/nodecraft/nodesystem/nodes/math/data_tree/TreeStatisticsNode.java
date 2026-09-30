@@ -27,6 +27,8 @@ public class TreeStatisticsNode extends BaseNode {
     private static final String OUTPUT_ITEM_COUNT_ID = "output_item_count";
     private static final String OUTPUT_MAX_DEPTH_ID = "output_max_depth";
     private static final String OUTPUT_BRANCH_SIZES_ID = "output_branch_sizes";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public TreeStatisticsNode() {
         super(UUID.randomUUID(), "math.data_tree.statistics");
@@ -39,11 +41,21 @@ public class TreeStatisticsNode extends BaseNode {
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_BRANCH_SIZES_ID, "Branch Sizes", "Item count per branch",
                 NodeDataType.INTEGER_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether statistics succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        DataTreeData tree = DataTreeNodeUtils.requireTree(inputValues.get(INPUT_TREE_ID));
+        Object treeValue = inputValues.get(INPUT_TREE_ID);
+        DataTreeNodeUtils.ParseResult<DataTreeData> treeResult = DataTreeNodeUtils.parseTree(treeValue);
+        if (!treeResult.valid()) {
+            writeInvalid(treeResult.error());
+            return;
+        }
+        DataTreeData tree = treeResult.value();
         List<Integer> sizes = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {
             sizes.add(branch.items().size());
@@ -52,5 +64,16 @@ public class TreeStatisticsNode extends BaseNode {
         outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
         outputValues.put(OUTPUT_MAX_DEPTH_ID, tree.getMaxDepth());
         outputValues.put(OUTPUT_BRANCH_SIZES_ID, List.copyOf(sizes));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, 0);
+        outputValues.put(OUTPUT_ITEM_COUNT_ID, 0);
+        outputValues.put(OUTPUT_MAX_DEPTH_ID, 0);
+        outputValues.put(OUTPUT_BRANCH_SIZES_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }
