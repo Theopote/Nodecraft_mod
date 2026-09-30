@@ -1,5 +1,8 @@
 # Node Language v1 — Trigonometry
 
+> **Historical:** Superseded by [`node-language-v2-trigonometry.md`](./node-language-v2-trigonometry.md)
+> (Graph **V124** — strict DOUBLE inputs & numerical boundaries). This document remains the v1 fence reference.
+
 Freeze for `math.trigonometry.*` nodes and Expression trig functions.
 Shared implementation: `com.nodecraft.nodesystem.math.TrigMathOps`.
 Graph schema: **V26** remaps Pi/E and deletes deg↔rad converters (see migration below).

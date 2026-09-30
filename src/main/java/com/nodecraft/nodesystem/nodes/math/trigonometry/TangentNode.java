@@ -3,10 +3,8 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,11 +18,10 @@ import java.util.UUID;
     category = "math.trigonometry",
     order = 2
 )
-public class TangentNode extends BaseNode {
+public class TangentNode extends TrigScalarNode {
 
     private static final String INPUT_ANGLE_ID = "input_angle";
     private static final String OUTPUT_TANGENT_ID = "output_tangent";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public TangentNode() {
         super(UUID.randomUUID(), "math.trigonometry.tan");
@@ -36,16 +33,12 @@ public class TangentNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object val = inputValues.get(INPUT_ANGLE_ID);
-        if (!(val instanceof Number number)) {
-            outputValues.put(OUTPUT_TANGENT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Double angle = requireInput(INPUT_ANGLE_ID);
+        if (angle == null) {
+            emitInvalid(OUTPUT_TANGENT_ID);
             return;
         }
-
-        ScalarResult result = TrigMathOps.tan(number.doubleValue());
-        outputValues.put(OUTPUT_TANGENT_ID, result.value());
-        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        emit(OUTPUT_TANGENT_ID, TrigMathOps.tan(angle));
     }
 
     @Override

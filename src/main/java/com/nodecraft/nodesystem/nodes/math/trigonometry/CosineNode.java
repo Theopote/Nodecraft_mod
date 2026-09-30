@@ -3,10 +3,8 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,11 +18,10 @@ import java.util.UUID;
     category = "math.trigonometry",
     order = 1
 )
-public class CosineNode extends BaseNode {
+public class CosineNode extends TrigScalarNode {
 
     private static final String INPUT_ANGLE_ID = "input_angle";
     private static final String OUTPUT_COSINE_ID = "output_cosine";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public CosineNode() {
         super(UUID.randomUUID(), "math.trigonometry.cos");
@@ -36,16 +33,12 @@ public class CosineNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object val = inputValues.get(INPUT_ANGLE_ID);
-        if (!(val instanceof Number number)) {
-            outputValues.put(OUTPUT_COSINE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Double angle = requireInput(INPUT_ANGLE_ID);
+        if (angle == null) {
+            emitInvalid(OUTPUT_COSINE_ID);
             return;
         }
-
-        ScalarResult result = TrigMathOps.cos(number.doubleValue());
-        outputValues.put(OUTPUT_COSINE_ID, result.value());
-        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        emit(OUTPUT_COSINE_ID, TrigMathOps.cos(angle));
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.trigonometry;
 
 import com.nodecraft.nodesystem.nodes.math.scalar_math.LogarithmNode;
-import com.nodecraft.nodesystem.nodes.math.trigonometry.SinhNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -109,5 +108,35 @@ class DomainRestrictedMathNodeTest {
 
         assertTrue((Boolean) outputs.get("output_valid"));
         assertTrue(Double.isFinite((Double) outputs.get("output_tangent")));
+    }
+
+    @Test
+    void coshOverflowIsInvalid() {
+        CoshNode node = new CoshNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_value", 1000.0d));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_result")));
+    }
+
+    @Test
+    void tanhLargeInputStaysValid() {
+        TanhNode node = new TanhNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_value", 1000.0d));
+
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(1.0d, (Double) outputs.get("output_result"), 1.0e-6);
+    }
+
+    @Test
+    void integerInputIsInvalid() {
+        SineNode node = new SineNode();
+
+        Map<String, Object> outputs = node.compute(Map.of("input_angle", 90));
+
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_sine")));
     }
 }

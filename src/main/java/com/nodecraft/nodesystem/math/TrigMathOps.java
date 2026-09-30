@@ -5,6 +5,10 @@ package com.nodecraft.nodesystem.math;
  * <p>
  * Graph-facing angles are always in degrees. Successful results are finite;
  * failures return {@link ScalarResult#invalid()}.
+ * <p>
+ * Angles are period-reduced before radian conversion ({@code mod 360} for sin/cos,
+ * {@code mod 180} for tan) to improve numerical stability for large finite inputs.
+ * This cannot recover phase detail already lost in the input {@code double}.
  */
 public final class TrigMathOps {
 
@@ -15,14 +19,14 @@ public final class TrigMathOps {
         if (!Double.isFinite(angleDeg)) {
             return ScalarResult.invalid();
         }
-        return ScalarResult.ok(Math.sin(Math.toRadians(angleDeg)));
+        return ScalarResult.ok(Math.sin(Math.toRadians(normalizeDegrees360(angleDeg))));
     }
 
     public static ScalarResult cos(double angleDeg) {
         if (!Double.isFinite(angleDeg)) {
             return ScalarResult.invalid();
         }
-        return ScalarResult.ok(Math.cos(Math.toRadians(angleDeg)));
+        return ScalarResult.ok(Math.cos(Math.toRadians(normalizeDegrees360(angleDeg))));
     }
 
     public static ScalarResult tan(double angleDeg) {
@@ -32,7 +36,7 @@ public final class TrigMathOps {
         if (isTanSingularityDegrees(angleDeg)) {
             return ScalarResult.invalid();
         }
-        return ScalarResult.ok(Math.tan(Math.toRadians(angleDeg)));
+        return ScalarResult.ok(Math.tan(Math.toRadians(normalizeDegrees180(angleDeg))));
     }
 
     public static ScalarResult asin(double value) {
@@ -88,5 +92,13 @@ public final class TrigMathOps {
     static boolean isTanSingularityDegrees(double angleDeg) {
         double r = angleDeg % 180.0d;
         return r == 90.0d || r == -90.0d;
+    }
+
+    static double normalizeDegrees360(double angleDeg) {
+        return angleDeg % 360.0d;
+    }
+
+    static double normalizeDegrees180(double angleDeg) {
+        return angleDeg % 180.0d;
     }
 }

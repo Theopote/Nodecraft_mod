@@ -3,10 +3,8 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.math.TrigMathOps;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,11 +18,10 @@ import java.util.UUID;
     category = "math.trigonometry",
     order = 12
 )
-public class CoshNode extends BaseNode {
+public class CoshNode extends TrigScalarNode {
 
     private static final String INPUT_VALUE_ID = "input_value";
     private static final String OUTPUT_RESULT_ID = "output_result";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public CoshNode() {
         super(UUID.randomUUID(), "math.trigonometry.cosh");
@@ -46,16 +43,11 @@ public class CoshNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        if (!(valueObj instanceof Number number)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Double value = requireInput(INPUT_VALUE_ID);
+        if (value == null) {
+            emitInvalid(OUTPUT_RESULT_ID);
             return;
         }
-
-        ScalarResult result = TrigMathOps.cosh(number.doubleValue());
-        outputValues.put(OUTPUT_RESULT_ID, result.value());
-        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        emit(OUTPUT_RESULT_ID, TrigMathOps.cosh(value));
     }
 }
-

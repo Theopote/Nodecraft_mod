@@ -3,10 +3,8 @@ package com.nodecraft.nodesystem.nodes.math.trigonometry;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.math.TrigMathOps;
 
 import java.util.UUID;
@@ -19,12 +17,11 @@ import java.util.UUID;
     category = "math.trigonometry",
     order = 8
 )
-public class Atan2Node extends BaseNode {
+public class Atan2Node extends TrigScalarNode {
 
     private static final String INPUT_Y_ID = "input_y";
     private static final String INPUT_X_ID = "input_x";
     private static final String OUTPUT_ANGLE_ID = "output_angle";
-    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public Atan2Node() {
         super(UUID.randomUUID(), "math.trigonometry.atan2");
@@ -48,17 +45,12 @@ public class Atan2Node extends BaseNode {
 
     @Override
     public void processNode(ExecutionContext context) {
-        Object yObj = inputValues.get(INPUT_Y_ID);
-        Object xObj = inputValues.get(INPUT_X_ID);
-
-        if (yObj instanceof Number yNum && xObj instanceof Number xNum) {
-            ScalarResult result = TrigMathOps.atan2(yNum.doubleValue(), xNum.doubleValue());
-            outputValues.put(OUTPUT_ANGLE_ID, result.value());
-            outputValues.put(OUTPUT_VALID_ID, result.valid());
+        Double y = requireInput(INPUT_Y_ID);
+        Double x = requireInput(INPUT_X_ID);
+        if (y == null || x == null) {
+            emitInvalid(OUTPUT_ANGLE_ID);
             return;
         }
-
-        outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
-        outputValues.put(OUTPUT_VALID_ID, false);
+        emit(OUTPUT_ANGLE_ID, TrigMathOps.atan2(y, x));
     }
 }

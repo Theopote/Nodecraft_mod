@@ -826,8 +826,14 @@ public final class GraphFormatVersion {
      */
     public static final int V123 = 123;
 
+    /**
+     * Trigonometry Strict Inputs & Numerical Boundaries v2: exact Double inputs,
+     * degree normalization in TrigMathOps. No wire remaps.
+     */
+    public static final int V124 = 124;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V123;
+    public static final int CURRENT = V124;
 
     private GraphFormatVersion() {
     }
