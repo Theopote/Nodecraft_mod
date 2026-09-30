@@ -3,8 +3,10 @@
 **Status: PASSED / FROZEN** (Graph **V130**; V24 remains historical for Data Tree v1 foundations)
 
 Strict List→Tree construction and lookup diagnostics for batch 1 of `math.data_tree`
-(Graft List, Partition List To Tree, Tree Branch, Tree Item). Merge/Entwine/Shift and the
-remaining data-tree nodes are deferred to batch 2.
+(Graft List, Partition List To Tree, Tree Branch, Tree Item). Structural operations (Merge,
+Entwine, Shift, Simplify, Cull Empty) are covered in
+[`node-language-v2-data-tree-structural-ops.md`](./node-language-v2-data-tree-structural-ops.md)
+(Graph **V131**).
 
 Related: [`node-language-v1-data-tree.md`](./node-language-v1-data-tree.md),
 [`node-language-v2-list-collection.md`](./node-language-v2-list-collection.md),

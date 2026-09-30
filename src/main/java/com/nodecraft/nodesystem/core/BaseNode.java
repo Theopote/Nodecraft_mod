@@ -191,6 +191,10 @@ public abstract class BaseNode implements INode {
         return inputValues.get(portId);
     }
 
+    public boolean isInputPresent(String portId) {
+        return inputValues.containsKey(portId);
+    }
+
     @Override
     public void setInput(String portId, Object value) {
         for (IPort port : inputPorts) {

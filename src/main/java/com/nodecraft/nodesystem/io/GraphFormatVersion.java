@@ -865,8 +865,13 @@ public final class GraphFormatVersion {
      */
     public static final int V130 = 130;
 
+    /**
+     * Data Tree Structural Operations Safety v2. No wire remaps.
+     */
+    public static final int V131 = 131;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V130;
+    public static final int CURRENT = V131;
 
     private GraphFormatVersion() {
     }

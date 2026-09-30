@@ -30,6 +30,8 @@ public class MergeTreesNode extends BaseNode {
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_BRANCH_COUNT_ID = "output_branch_count";
     private static final String OUTPUT_ITEM_COUNT_ID = "output_item_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public MergeTreesNode() {
         super(UUID.randomUUID(), "math.data_tree.merge");
@@ -43,26 +45,61 @@ public class MergeTreesNode extends BaseNode {
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count",
                 NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether merging succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueA = inputValues.get(INPUT_A_ID);
-        Object valueB = inputValues.get(INPUT_B_ID);
-        DataTreeData treeA = DataTreeNodeUtils.requireTree(valueA);
-        DataTreeData treeB = DataTreeNodeUtils.requireTree(valueB);
-        ListElementKind kind = DataTreeNodeUtils.mergeKinds(
-                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_A_ID, valueA),
-                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_B_ID, valueB));
+        ListElementKind resolvedKind = ListElementKind.UNCONSTRAINED;
+        List<DataTreeData> presentTrees = new ArrayList<>(2);
+        List<ListElementKind> presentKinds = new ArrayList<>(2);
+
+        for (String portId : List.of(INPUT_A_ID, INPUT_B_ID)) {
+            DataTreeNodeUtils.ConnectedTreeResult input = DataTreeNodeUtils.resolveConnectedTree(this, portId);
+            if (input.state() == DataTreeNodeUtils.TreeInputState.INVALID) {
+                writeInvalid(resolvedKind, input.error());
+                return;
+            }
+            if (input.state() == DataTreeNodeUtils.TreeInputState.VALID) {
+                presentTrees.add(input.tree());
+                presentKinds.add(DataTreeNodeUtils.resolveElementKindFromTreePort(this, portId, input.tree()));
+            }
+        }
+
+        ListElementKind kind = ListElementKind.UNCONSTRAINED;
+        for (ListElementKind nextKind : presentKinds) {
+            DataTreeNodeUtils.ParseResult<ListElementKind> folded = DataTreeNodeUtils.foldKindsStrict(kind, nextKind);
+            if (!folded.valid()) {
+                writeInvalid(resolvedKind, folded.error());
+                return;
+            }
+            kind = folded.value();
+        }
+
+        if (isConstrained(kind)) {
+            for (DataTreeData tree : presentTrees) {
+                DataTreeNodeUtils.ParseResult<Void> kindCheck = DataTreeNodeUtils.validateTreeItemsMatchKind(tree, kind);
+                if (!kindCheck.valid()) {
+                    writeInvalid(kind, kindCheck.error());
+                    return;
+                }
+            }
+        }
 
         List<DataTreeData.Branch> branches = new ArrayList<>();
-        branches.addAll(treeA.getBranches());
-        branches.addAll(treeB.getBranches());
+        for (DataTreeData tree : presentTrees) {
+            branches.addAll(tree.getBranches());
+        }
 
         DataTreeData merged = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, merged);
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, merged.getBranchCount());
         outputValues.put(OUTPUT_ITEM_COUNT_ID, merged.getItemCount());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     @Override
@@ -73,5 +110,19 @@ public class MergeTreesNode extends BaseNode {
     @Override
     public void setNodeState(Object state) {
         // Legacy preserveSourceIndex ignored — use Entwine for source-indexed isolation.
+    }
+
+    private void writeInvalid(ListElementKind kind, String error) {
+        outputValues.put(OUTPUT_TREE_ID, DataTreeData.empty(kind));
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, 0);
+        outputValues.put(OUTPUT_ITEM_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private static boolean isConstrained(ListElementKind kind) {
+        return kind != null
+                && kind != ListElementKind.UNCONSTRAINED
+                && kind != ListElementKind.NONE;
     }
 }

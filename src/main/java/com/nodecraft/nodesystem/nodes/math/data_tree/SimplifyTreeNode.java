@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
+import com.nodecraft.nodesystem.api.ListElementKind;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -28,6 +29,8 @@ public class SimplifyTreeNode extends BaseNode {
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_REMOVED_PREFIX_ID = "output_removed_prefix";
     private static final String OUTPUT_BRANCH_COUNT_ID = "output_branch_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SimplifyTreeNode() {
         super(UUID.randomUUID(), "math.data_tree.simplify");
@@ -39,12 +42,24 @@ public class SimplifyTreeNode extends BaseNode {
                 "Common path prefix removed from every branch", NodeDataType.TREE_PATH, this));
         addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches",
                 NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether simplification succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object treeValue = inputValues.get(INPUT_TREE_ID);
-        DataTreeData tree = DataTreeNodeUtils.requireTree(treeValue);
+        ListElementKind kind = DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue);
+
+        DataTreeNodeUtils.ParseResult<DataTreeData> treeResult = DataTreeNodeUtils.parseTree(treeValue);
+        if (!treeResult.valid()) {
+            writeInvalid(kind, treeResult.error());
+            return;
+        }
+        DataTreeData tree = treeResult.value();
+
         List<Integer> prefix = commonPrefix(tree);
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {
@@ -54,11 +69,28 @@ public class SimplifyTreeNode extends BaseNode {
                 : List.copyOf(path.subList(prefix.size(), path.size()));
             branches.add(new DataTreeData.Branch(simplifiedPath, branch.items()));
         }
-        DataTreeData simplified = new DataTreeData(branches,
-                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue));
+
+        DataTreeNodeUtils.ParseResult<Void> depthCheck = DataTreeNodeUtils.preflightPathDepths(
+                branches.stream().map(DataTreeData.Branch::path).toList());
+        if (!depthCheck.valid()) {
+            writeInvalid(kind, depthCheck.error());
+            return;
+        }
+
+        DataTreeData simplified = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, simplified);
         outputValues.put(OUTPUT_REMOVED_PREFIX_ID, new TreePathData(prefix));
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, simplified.getBranchCount());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(ListElementKind kind, String error) {
+        outputValues.put(OUTPUT_TREE_ID, DataTreeData.empty(kind));
+        outputValues.put(OUTPUT_REMOVED_PREFIX_ID, new TreePathData(List.of()));
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private List<Integer> commonPrefix(DataTreeData tree) {

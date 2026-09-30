@@ -20,6 +20,11 @@ public final class GenerationLimits {
     public static final int MAX_FORMAT_DEPTH = 32;
 
     /**
+     * Maximum depth of a single {@code TREE_PATH} branch in data-tree structural operations.
+     */
+    public static final int MAX_TREE_PATH_DEPTH = 256;
+
+    /**
      * Maximum template length accepted by String Format (aligned with NBT string cap).
      */
     public static final int MAX_FORMAT_TEMPLATE_CHARS = 65_536;

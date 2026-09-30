@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
+import com.nodecraft.nodesystem.api.ListElementKind;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -8,6 +9,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -34,6 +37,8 @@ public class ShiftPathNode extends BaseNode {
     private static final String INPUT_SHIFT_ID = "input_shift";
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_BRANCH_COUNT_ID = "output_branch_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public ShiftPathNode() {
         super(UUID.randomUUID(), "math.data_tree.shift_path");
@@ -45,22 +50,47 @@ public class ShiftPathNode extends BaseNode {
                 NodeDataType.DATA_TREE, this).bindListType(LIST_T));
         addOutputPort(new BasePort(OUTPUT_BRANCH_COUNT_ID, "Branch Count", "Number of output branches",
                 NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether shifting succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object treeValue = inputValues.get(INPUT_TREE_ID);
-        DataTreeData tree = DataTreeNodeUtils.requireTree(treeValue);
-        Object shiftObj = inputValues.get(INPUT_SHIFT_ID);
-        int resolvedShift = shiftObj instanceof Number number ? number.intValue() : shift;
+        ListElementKind kind = DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue);
+
+        DataTreeNodeUtils.ParseResult<DataTreeData> treeResult = DataTreeNodeUtils.parseTree(treeValue);
+        if (!treeResult.valid()) {
+            writeInvalid(kind, treeResult.error());
+            return;
+        }
+        DataTreeData tree = treeResult.value();
+
+        Integer resolvedShift = resolveShift();
+        if (resolvedShift == null) {
+            writeInvalid(kind, DataTreeNodeUtils.ERROR_INVALID_SHIFT);
+            return;
+        }
+
+        DataTreeNodeUtils.ParseResult<Void> depthCheck = DataTreeNodeUtils.preflightShiftPaths(tree, resolvedShift);
+        if (!depthCheck.valid()) {
+            writeInvalid(kind, depthCheck.error());
+            return;
+        }
+
         List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
         for (DataTreeData.Branch branch : tree.getBranches()) {
-            branches.add(new DataTreeData.Branch(shiftPath(branch.path(), resolvedShift), branch.items()));
+            branches.add(new DataTreeData.Branch(
+                    DataTreeNodeUtils.shiftPath(branch.path(), resolvedShift),
+                    branch.items()));
         }
-        DataTreeData shifted = new DataTreeData(branches,
-                DataTreeNodeUtils.resolveElementKindFromTreePort(this, INPUT_TREE_ID, treeValue));
+        DataTreeData shifted = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, shifted);
         outputValues.put(OUTPUT_BRANCH_COUNT_ID, shifted.getBranchCount());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     @Override
@@ -87,18 +117,17 @@ public class ShiftPathNode extends BaseNode {
         markDirty();
     }
 
-    private List<Integer> shiftPath(List<Integer> path, int amount) {
-        if (amount == 0) {
-            return path;
+    private @Nullable Integer resolveShift() {
+        if (OptionalPortDrive.isConnected(this, INPUT_SHIFT_ID) || isInputPresent(INPUT_SHIFT_ID)) {
+            return StrictIntegerUtils.requireExactInteger(getInput(INPUT_SHIFT_ID));
         }
-        if (amount > 0) {
-            return amount >= path.size() ? List.of() : List.copyOf(path.subList(amount, path.size()));
-        }
-        List<Integer> shifted = new ArrayList<>(path.size() + Math.abs(amount));
-        for (int i = 0; i < Math.abs(amount); i++) {
-            shifted.add(0);
-        }
-        shifted.addAll(path);
-        return List.copyOf(shifted);
+        return shift;
+    }
+
+    private void writeInvalid(ListElementKind kind, String error) {
+        outputValues.put(OUTPUT_TREE_ID, DataTreeData.empty(kind));
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

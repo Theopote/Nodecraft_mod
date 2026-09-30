@@ -31,6 +31,10 @@ public class EntwineNode extends BaseNode {
     private static final String OUTPUT_TREE_ID = "output_tree";
     private static final String OUTPUT_BRANCH_COUNT_ID = "output_branch_count";
     private static final String OUTPUT_ITEM_COUNT_ID = "output_item_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    private static final List<String> INPUT_IDS = List.of(INPUT_A_ID, INPUT_B_ID, INPUT_C_ID, INPUT_D_ID);
 
     public EntwineNode() {
         super(UUID.randomUUID(), "math.data_tree.entwine");
@@ -48,36 +52,87 @@ public class EntwineNode extends BaseNode {
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Total item count",
                 NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether entwining succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         ListElementKind kind = ListElementKind.UNCONSTRAINED;
+        List<DataTreeData> presentTrees = new ArrayList<>(4);
         List<DataTreeData.Branch> branches = new ArrayList<>();
-        kind = appendSource(branches, kind, inputValues.get(INPUT_A_ID), INPUT_A_ID, 0);
-        kind = appendSource(branches, kind, inputValues.get(INPUT_B_ID), INPUT_B_ID, 1);
-        kind = appendSource(branches, kind, inputValues.get(INPUT_C_ID), INPUT_C_ID, 2);
-        kind = appendSource(branches, kind, inputValues.get(INPUT_D_ID), INPUT_D_ID, 3);
-        DataTreeData tree = new DataTreeData(branches, kind);
-        outputValues.put(OUTPUT_TREE_ID, tree);
-        outputValues.put(OUTPUT_BRANCH_COUNT_ID, tree.getBranchCount());
-        outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
+
+        for (int sourceIndex = 0; sourceIndex < INPUT_IDS.size(); sourceIndex++) {
+            String portId = INPUT_IDS.get(sourceIndex);
+            DataTreeNodeUtils.ConnectedTreeResult input = DataTreeNodeUtils.resolveConnectedTree(this, portId);
+            if (input.state() == DataTreeNodeUtils.TreeInputState.INVALID) {
+                writeInvalid(kind, input.error());
+                return;
+            }
+            if (input.state() == DataTreeNodeUtils.TreeInputState.SKIP) {
+                continue;
+            }
+
+            DataTreeData tree = input.tree();
+            ListElementKind nextKind = DataTreeNodeUtils.resolveElementKindFromTreePort(this, portId, tree);
+            DataTreeNodeUtils.ParseResult<ListElementKind> folded = DataTreeNodeUtils.foldKindsStrict(kind, nextKind);
+            if (!folded.valid()) {
+                writeInvalid(kind, folded.error());
+                return;
+            }
+            kind = folded.value();
+
+            if (tree.getBranchCount() == 0) {
+                continue;
+            }
+
+            DataTreeNodeUtils.ParseResult<Void> depthCheck =
+                    DataTreeNodeUtils.preflightEntwinePaths(tree, sourceIndex);
+            if (!depthCheck.valid()) {
+                writeInvalid(kind, depthCheck.error());
+                return;
+            }
+
+            presentTrees.add(tree);
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                List<Integer> path = new ArrayList<>(1 + branch.path().size());
+                path.add(sourceIndex);
+                path.addAll(branch.path());
+                branches.add(new DataTreeData.Branch(path, branch.items()));
+            }
+        }
+
+        if (isConstrained(kind)) {
+            for (DataTreeData tree : presentTrees) {
+                DataTreeNodeUtils.ParseResult<Void> kindCheck = DataTreeNodeUtils.validateTreeItemsMatchKind(tree, kind);
+                if (!kindCheck.valid()) {
+                    writeInvalid(kind, kindCheck.error());
+                    return;
+                }
+            }
+        }
+
+        DataTreeData result = new DataTreeData(branches, kind);
+        outputValues.put(OUTPUT_TREE_ID, result);
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, result.getBranchCount());
+        outputValues.put(OUTPUT_ITEM_COUNT_ID, result.getItemCount());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private ListElementKind appendSource(List<DataTreeData.Branch> output, ListElementKind kind,
-                                         Object value, String portId, int sourceIndex) {
-        if (value == null) {
-            return kind;
-        }
-        DataTreeData tree = DataTreeNodeUtils.requireTree(value);
-        ListElementKind next = DataTreeNodeUtils.mergeKinds(kind,
-                DataTreeNodeUtils.resolveElementKindFromTreePort(this, portId, value));
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            List<Integer> path = new ArrayList<>();
-            path.add(sourceIndex);
-            path.addAll(branch.path());
-            output.add(new DataTreeData.Branch(path, branch.items()));
-        }
-        return next;
+    private void writeInvalid(ListElementKind kind, String error) {
+        outputValues.put(OUTPUT_TREE_ID, DataTreeData.empty(kind));
+        outputValues.put(OUTPUT_BRANCH_COUNT_ID, 0);
+        outputValues.put(OUTPUT_ITEM_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private static boolean isConstrained(ListElementKind kind) {
+        return kind != null
+                && kind != ListElementKind.UNCONSTRAINED
+                && kind != ListElementKind.NONE;
     }
 }
