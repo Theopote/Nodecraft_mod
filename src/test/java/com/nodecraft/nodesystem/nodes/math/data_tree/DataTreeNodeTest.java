@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DataTreeNodeTest {
 
@@ -19,6 +21,8 @@ class DataTreeNodeTest {
         ));
 
         assertEquals(3, outputs.get("output_branch_count"));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals("", outputs.get("output_error"));
         DataTreeData tree = assertInstanceOf(DataTreeData.class, outputs.get("output_tree"));
         assertEquals(3, tree.getBranchCount());
         assertEquals(List.of("a"), tree.getBranch(List.of(0)).items());
@@ -61,8 +65,33 @@ class DataTreeNodeTest {
         Map<String, Object> outputs = graft.compute(Map.of("input_list", List.of()));
 
         assertEquals(0, outputs.get("output_branch_count"));
+        assertTrue((Boolean) outputs.get("output_valid"));
         DataTreeData tree = assertInstanceOf(DataTreeData.class, outputs.get("output_tree"));
         assertEquals(0, tree.getBranchCount());
         assertEquals(List.of(), tree.flatten());
+    }
+
+    @Test
+    void partitionHappyPathPreservesPartialLastBranch() {
+        PartitionListToTreeNode partition = new PartitionListToTreeNode();
+        Map<String, Object> outputs = partition.compute(Map.of(
+                "input_list", List.of("A", "B", "C", "D", "E"),
+                "input_size", 2
+        ));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(3, outputs.get("output_branch_count"));
+        DataTreeData tree = assertInstanceOf(DataTreeData.class, outputs.get("output_tree"));
+        assertEquals(List.of("E"), tree.getBranch(List.of(2)).items());
+    }
+
+    @Test
+    void graftNullElementFailsWithoutException() {
+        GraftListNode graft = new GraftListNode();
+        java.util.ArrayList<Object> list = new java.util.ArrayList<>(List.of("A", "B"));
+        list.add(1, null);
+        Map<String, Object> outputs = graft.compute(Map.of("input_list", list));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(DataTreeNodeUtils.ERROR_NULL_ITEM, outputs.get("output_error"));
+        assertEquals(0, outputs.get("output_branch_count"));
     }
 }

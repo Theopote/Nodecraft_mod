@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.TreePathData;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +18,69 @@ import java.util.List;
  * LIST to DATA_TREE coercion is not performed here — use Graft List / Flatten Tree.
  * Path ports accept {@link TreePathData} only (fail-closed; no string fallback to {@code {0}}).
  */
-final class DataTreeNodeUtils {
+public final class DataTreeNodeUtils {
+
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
+    public static final String ERROR_INVALID_PATH = "invalid_path";
+    public static final String ERROR_NULL_ITEM = "null_item";
+    public static final String ERROR_ELEMENT_KIND_MISMATCH = "element_kind_mismatch";
+
     private DataTreeNodeUtils() {
+    }
+
+    record ParseResult<T>(@Nullable T value, boolean valid, @Nullable String error) {
+        static <T> ParseResult<T> ok(T value) {
+            return new ParseResult<>(value, true, null);
+        }
+
+        static <T> ParseResult<T> invalid(String error) {
+            return new ParseResult<>(null, false, error);
+        }
+    }
+
+    static ParseResult<List<?>> parseList(Object value) {
+        if (value == null || !(value instanceof List<?> list)) {
+            return ParseResult.invalid(ERROR_INVALID_INPUT);
+        }
+        return ParseResult.ok(new ArrayList<>(list));
+    }
+
+    static ParseResult<DataTreeData> parseTree(Object value) {
+        if (value == null || !(value instanceof DataTreeData tree)) {
+            return ParseResult.invalid(ERROR_INVALID_INPUT);
+        }
+        return ParseResult.ok(tree);
+    }
+
+    static ParseResult<TreePathData> parsePath(Object value) {
+        if (value == null || !(value instanceof TreePathData path)) {
+            return ParseResult.invalid(ERROR_INVALID_PATH);
+        }
+        return ParseResult.ok(path);
+    }
+
+    static ParseResult<Void> validateNonNullItems(List<?> list) {
+        for (Object item : list) {
+            if (item == null) {
+                return ParseResult.invalid(ERROR_NULL_ITEM);
+            }
+        }
+        return ParseResult.ok(null);
+    }
+
+    static ParseResult<Void> validateItemsMatchKind(List<?> list, ListElementKind kind) {
+        if (kind == null
+                || kind == ListElementKind.UNCONSTRAINED
+                || kind == ListElementKind.NONE
+                || kind == ListElementKind.BLOCK_PLACEMENT) {
+            return ParseResult.ok(null);
+        }
+        for (Object item : list) {
+            if (!ListElementKindValidator.matches(item, kind)) {
+                return ParseResult.invalid(ERROR_ELEMENT_KIND_MISMATCH);
+            }
+        }
+        return ParseResult.ok(null);
     }
 
     static DataTreeData requireTree(Object value) {
@@ -125,7 +187,6 @@ final class DataTreeNodeUtils {
                 }
             }
         }
-        // Tree-only T: effective list kind on outputs that share T after binding from connected tree
         for (IPort port : node.getOutputPorts()) {
             if (port != null && variable.equals(port.getListTypeVariable())
                     && port.getDataType() != null && port.getDataType().isListType()) {
@@ -135,12 +196,8 @@ final class DataTreeNodeUtils {
                 }
             }
         }
-        // Probe via any port sharing T through PortTypeResolver (DATA_TREE chain)
         for (IPort port : node.getInputPorts()) {
             if (port != null && variable.equals(port.getListTypeVariable())) {
-                // Force resolution path used by list outputs: temporarily not available —
-                // use PortTypeResolver by reading a synthetic: resolveEffectiveType on list-declared
-                // ports only. For Branch/Item, output LIST shares T — handled above.
                 NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
                 if (effective != null && effective.isListType() && isConstrained(effective.getListElementKind())) {
                     return effective.getListElementKind();

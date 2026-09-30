@@ -1,6 +1,8 @@
 # Data Tree / Tree Path language v1
 
-Freeze against Graph **V24**.
+Freeze against Graph **V24**. Construction/lookup strictness for Graft, Partition, Branch, and Item
+is documented in [`node-language-v2-data-tree-construction.md`](./node-language-v2-data-tree-construction.md)
+(Graph **V130**).
 
 ## Principles
 

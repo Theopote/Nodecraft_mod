@@ -188,6 +188,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V126 -> migrateV126ToV127(graph);
             case GraphFormatVersion.V127 -> migrateV127ToV128(graph);
             case GraphFormatVersion.V128 -> migrateV128ToV129(graph);
+            case GraphFormatVersion.V129 -> migrateV129ToV130(graph);
             default -> graph;
         };
     }
@@ -5653,6 +5654,11 @@ public final class GraphMigrationRegistry {
 
     /** List Flatten Safety v2: runtime ignores legacy {@code preserveTypes} on flatten_list nodes. */
     private static SavedGraph migrateV128ToV129(SavedGraph graph) {
+        return graph;
+    }
+
+    /** Data Tree Construction v2: identity migration (runtime Valid/Error semantics only). */
+    private static SavedGraph migrateV129ToV130(SavedGraph graph) {
         return graph;
     }
 

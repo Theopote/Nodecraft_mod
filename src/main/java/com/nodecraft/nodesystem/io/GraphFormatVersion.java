@@ -860,8 +860,13 @@ public final class GraphFormatVersion {
      */
     public static final int V129 = 129;
 
+    /**
+     * Data Tree Construction & Strict Lookup Contract v2. No wire remaps.
+     */
+    public static final int V130 = 130;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V129;
+    public static final int CURRENT = V130;
 
     private GraphFormatVersion() {
     }
