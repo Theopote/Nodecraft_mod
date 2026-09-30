@@ -18,6 +18,9 @@ final class AttractorFieldUtils {
      */
     static final double DISTANCE_SQUARED_EPS = 1.0e-9d;
 
+    /** Linear divisor / near-zero length floor (not for {@code lenSq} gates). */
+    private static final double LENGTH_EPS = 1.0e-9d;
+
     /** @deprecated Prefer {@link #DISTANCE_SQUARED_EPS}; same numeric value. */
     @Deprecated
     static final double EPS = DISTANCE_SQUARED_EPS;
@@ -33,7 +36,7 @@ final class AttractorFieldUtils {
 
     static double falloff(double distance, double radius, double exponent, FalloffMode mode) {
         double d = Math.max(0.0d, distance);
-        double r = Math.max(EPS, radius);
+        double r = Math.max(LENGTH_EPS, radius);
         double e = Math.max(0.001d, exponent);
         FalloffMode safeMode = mode == null ? FalloffMode.INVERSE : mode;
         return switch (safeMode) {
@@ -47,7 +50,7 @@ final class AttractorFieldUtils {
             }
             case GAUSSIAN -> {
                 double sigma = r / 3.0d;
-                double x = d / Math.max(EPS, sigma);
+                double x = d / Math.max(LENGTH_EPS, sigma);
                 yield Math.exp(-0.5d * x * x);
             }
         };
@@ -146,7 +149,7 @@ final class AttractorFieldUtils {
         Vector3d center = sphere.center();
         Vector3d radial = new Vector3d(query).sub(center);
         double len = radial.length();
-        if (len <= EPS) {
+        if (len <= LENGTH_EPS) {
             radial.set(1.0d, 0.0d, 0.0d);
             len = 1.0d;
         }

@@ -45,7 +45,8 @@ Returns `true` only for a finite surface-offset vector; NaN / flat / overflow �
 ## Distance-squared EPS
 
 `DISTANCE_SQUARED_EPS = 1e-9` is the historical **length-squared** near-zero gate
-(`lenSq <= …`). Equivalent distance ≈ `3e-5`. Alias `EPS` retained. Numeric behavior
+(`lenSq <= …`). Equivalent distance ≈ `3e-5`. Linear divisor floors use private
+`LENGTH_EPS` (same numeric value). Alias `EPS` retained unused. Numeric behavior
 unchanged this batch.
 
 ## Vortex construction
