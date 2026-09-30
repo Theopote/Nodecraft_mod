@@ -1,9 +1,12 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPaletteEntry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -72,10 +75,40 @@ public final class GradientMaterialUtils {
         if (!maxOk.valid()) {
             return maxOk;
         }
-        if (!(min < max)) {
-            return Validation.fail("Domain width must be positive");
+        double span = max - min;
+        if (!Double.isFinite(span) || span <= 0.0d) {
+            return Validation.fail("Domain must have a finite positive width");
         }
         return Validation.ok();
+    }
+
+    /**
+     * Driven-aware optional DOUBLE: undriven → fallback; driven → exact finite {@link Double} or fail.
+     */
+    public record OptionalDoubleResult(boolean valid, double value, String error) {
+        public static OptionalDoubleResult ok(double value) {
+            return new OptionalDoubleResult(true, value, "");
+        }
+
+        public static OptionalDoubleResult fail(String error) {
+            return new OptionalDoubleResult(false, Double.NaN, error == null ? "" : error);
+        }
+    }
+
+    public static OptionalDoubleResult resolveOptionalStrictDouble(
+            BaseNode node,
+            String portId,
+            double fallback,
+            String label
+    ) {
+        if (!MaterialSourceResolver.isDriven(node, portId)) {
+            return OptionalDoubleResult.ok(fallback);
+        }
+        Double resolved = StrictDoubleUtils.requireExactFiniteDouble(node.getInput(portId));
+        if (resolved == null) {
+            return OptionalDoubleResult.fail(label + " must be a finite Double");
+        }
+        return OptionalDoubleResult.ok(resolved);
     }
 
     public static Validation requirePositive(double value, String name) {

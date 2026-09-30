@@ -175,6 +175,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V113 -> migrateV113ToV114(graph);
             case GraphFormatVersion.V114 -> migrateV114ToV115(graph);
             case GraphFormatVersion.V115 -> migrateV115ToV116(graph);
+            case GraphFormatVersion.V116 -> migrateV116ToV117(graph);
             default -> graph;
         };
     }
@@ -5559,6 +5560,14 @@ public final class GraphMigrationRegistry {
      * non-zero normals, known BLOCK_TYPE, angle fail-closed; no wire remaps).
      */
     private static SavedGraph migrateV115ToV116(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Gradient Mapping Strict Source & Finite Domain v2 (MaterialSourceResolver,
+     * safe height Y-span, finite distance domain, strict optional doubles; no wire remaps).
+     */
+    private static SavedGraph migrateV116ToV117(SavedGraph graph) {
         return graph;
     }
 

@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,6 +65,18 @@ public class NoiseMaterialNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public NoiseMaterialNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.noise_material");
 
@@ -94,81 +107,77 @@ public class NoiseMaterialNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        GradientMaterialUtils.Validation params = validateParams();
+        GradientMaterialUtils.Validation params = validateNoiseProperties();
         if (!params.valid()) {
             emitFail(params.message());
             return;
         }
 
+        GradientMaterialUtils.OptionalDoubleResult lowResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_THRESHOLD_LOW_ID, 0.0d, "Low Threshold");
+        if (!lowResult.valid()) {
+            emitFail(lowResult.error());
+            return;
+        }
+        GradientMaterialUtils.OptionalDoubleResult highResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_THRESHOLD_HIGH_ID, 1.0d, "High Threshold");
+        if (!highResult.valid()) {
+            emitFail(highResult.error());
+            return;
+        }
+        double lowThreshold = lowResult.value();
+        double highThreshold = highResult.value();
+        if (!(lowThreshold < highThreshold)) {
+            emitFail("Low Threshold must be less than High Threshold");
+            return;
+        }
+
         BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
         String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        String fallback = MaterialMappingSupport.firstMappedBlockType(
+            fallbackMapped,
+            palette.isEmpty() ? null : palette.entries().getFirst().blockId()
+        );
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(
-                    fallbackMapped,
-                    palette.isEmpty() ? null : palette.entries().getFirst().blockId()
-                )
-            );
-
-        if (!placementSource
-            && sources.isEmpty()
-            && GradientMaterialUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )
-            && palette.isEmpty()
-            && fallbackMapped == null) {
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of(), List.of(), palette.size());
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
             emitFail("Palette or fallback block required for geometry or coordinates input");
             return;
         }
 
         int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        double lowThreshold = readDouble(INPUT_THRESHOLD_LOW_ID, 0.0d);
-        double highThreshold = readDouble(INPUT_THRESHOLD_HIGH_ID, 1.0d);
-
+        List<BlockPlacementData> sources = source.placements();
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         List<Double> noiseValues = new ArrayList<>(sources.size());
 
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             double noise = sampleNoise(pos.getX(), pos.getY(), pos.getZ(), seed);
             double normalized = remapNoise(noise, lowThreshold, highThreshold);
             if (!Double.isFinite(normalized)) {
                 emitFail("Noise sample produced a non-finite value");
                 return;
             }
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
             noiseValues.add(normalized);
         }
 
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
-        outputValues.put(OUTPUT_NOISE_VALUES_ID, List.copyOf(noiseValues));
-        outputValues.put(OUTPUT_PALETTE_SIZE_ID, palette.size());
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        emitOk(placements, noiseValues, palette.size());
     }
 
-    private GradientMaterialUtils.Validation validateParams() {
+    private GradientMaterialUtils.Validation validateNoiseProperties() {
         GradientMaterialUtils.Validation scaleOk = GradientMaterialUtils.requirePositive(scale, "Scale");
         if (!scaleOk.valid()) {
             return scaleOk;
@@ -180,27 +189,7 @@ public class NoiseMaterialNode extends BaseNode {
         if (!persistenceOk.valid()) {
             return persistenceOk;
         }
-        GradientMaterialUtils.Validation lacunarityOk = GradientMaterialUtils.requireFinite(lacunarity, "Lacunarity");
-        if (!lacunarityOk.valid()) {
-            return lacunarityOk;
-        }
-
-        Object lowObj = inputValues.get(INPUT_THRESHOLD_LOW_ID);
-        Object highObj = inputValues.get(INPUT_THRESHOLD_HIGH_ID);
-        double low = lowObj instanceof Number number ? number.doubleValue() : 0.0d;
-        double high = highObj instanceof Number number ? number.doubleValue() : 1.0d;
-        GradientMaterialUtils.Validation lowOk = GradientMaterialUtils.requireFinite(low, "Low Threshold");
-        if (!lowOk.valid()) {
-            return lowOk;
-        }
-        GradientMaterialUtils.Validation highOk = GradientMaterialUtils.requireFinite(high, "High Threshold");
-        if (!highOk.valid()) {
-            return highOk;
-        }
-        if (!(low < high)) {
-            return GradientMaterialUtils.Validation.fail("Low Threshold must be less than High Threshold");
-        }
-        return GradientMaterialUtils.Validation.ok();
+        return GradientMaterialUtils.requireFinite(lacunarity, "Lacunarity");
     }
 
     private double sampleNoise(int x, int y, int z, int seed) {
@@ -242,9 +231,12 @@ public class NoiseMaterialNode extends BaseNode {
         outputValues.put(OUTPUT_PALETTE_SIZE_ID, 0);
     }
 
-    private double readDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void emitOk(List<BlockPlacementData> placements, List<Double> noiseValues, int paletteSize) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_NOISE_VALUES_ID, List.copyOf(noiseValues));
+        outputValues.put(OUTPUT_PALETTE_SIZE_ID, paletteSize);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     public double getScale() {

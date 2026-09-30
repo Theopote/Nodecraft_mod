@@ -778,9 +778,16 @@ public final class GraphFormatVersion {
      * non-zero normals, known BLOCK_TYPE, angle fail-closed. No wire remaps.
      */
     public static final int V116 = 116;
-    
+
+    /**
+     * Gradient Mapping Strict Source & Finite Domain v2: MaterialSourceResolver,
+     * safe height Y-span, finite distance domain width, strict optional doubles.
+     * No wire remaps.
+     */
+    public static final int V117 = 117;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V116;
+    public static final int CURRENT = V117;
 
     private GraphFormatVersion() {
     }

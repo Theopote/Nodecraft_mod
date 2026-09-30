@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -56,6 +57,18 @@ public class DistanceBasedMaterialNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public DistanceBasedMaterialNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.distance_material");
 
@@ -89,13 +102,26 @@ public class DistanceBasedMaterialNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double minDistance = readDouble(INPUT_MIN_DISTANCE_ID, 0.0d);
-        double maxDistance = readDouble(INPUT_MAX_DISTANCE_ID, 16.0d);
+        GradientMaterialUtils.OptionalDoubleResult minResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_MIN_DISTANCE_ID, 0.0d, "Min Distance");
+        if (!minResult.valid()) {
+            emitFail(minResult.error());
+            return;
+        }
+        GradientMaterialUtils.OptionalDoubleResult maxResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_MAX_DISTANCE_ID, 16.0d, "Max Distance");
+        if (!maxResult.valid()) {
+            emitFail(maxResult.error());
+            return;
+        }
+        double minDistance = minResult.value();
+        double maxDistance = maxResult.value();
         GradientMaterialUtils.Validation domain = GradientMaterialUtils.requirePositiveWidth(minDistance, maxDistance);
         if (!domain.valid()) {
             emitFail(domain.message());
             return;
         }
+        double span = maxDistance - minDistance;
 
         ReferenceResolution reference = resolveExactlyOneReference();
         if (!reference.valid()) {
@@ -105,51 +131,34 @@ public class DistanceBasedMaterialNode extends BaseNode {
 
         BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
         String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        String fallback = MaterialMappingSupport.firstMappedBlockType(
+            fallbackMapped,
+            palette.isEmpty() ? null : palette.entries().getFirst().blockId()
+        );
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(
-                    fallbackMapped,
-                    palette.isEmpty() ? null : palette.entries().getFirst().blockId()
-                )
-            );
-
-        if (!placementSource
-            && sources.isEmpty()
-            && GradientMaterialUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )
-            && palette.isEmpty()
-            && fallbackMapped == null) {
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of(), List.of());
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
             emitFail("Palette or fallback block required for geometry or coordinates input");
             return;
         }
 
+        List<BlockPlacementData> sources = source.placements();
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         List<Double> distances = new ArrayList<>(sources.size());
-        double span = maxDistance - minDistance;
 
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
             double distance = 0;
             if (reference.distance() != null) {
@@ -160,15 +169,12 @@ public class DistanceBasedMaterialNode extends BaseNode {
                 return;
             }
             double normalized = GradientMaterialUtils.clamp01((distance - minDistance) / span);
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
             distances.add(distance);
         }
 
-        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
-        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        emitOk(placements, distances);
     }
 
     private ReferenceResolution resolveExactlyOneReference() {
@@ -274,9 +280,11 @@ public class DistanceBasedMaterialNode extends BaseNode {
         outputValues.putAll(GradientMaterialUtils.failResult(message, OUTPUT_DISTANCES_ID));
     }
 
-    private double readDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private void emitOk(List<BlockPlacementData> placements, List<Double> distances) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
+        outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private record ReferenceResolution(boolean valid, String error, @Nullable ToDoubleFunction<Vector3d> distance) {

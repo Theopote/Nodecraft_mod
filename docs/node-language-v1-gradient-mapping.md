@@ -1,6 +1,7 @@
 # Node Language v1 — Gradient Mapping
 
-**Status: PASSED / FROZEN** (Graph **V37**)
+**Status: PASSED / FROZEN** (Graph **V37**; remediated by **V117** — see
+[`node-language-v2-gradient-mapping.md`](./node-language-v2-gradient-mapping.md))
 
 Language unification for exactly **5** `material.gradient_mapping.*` nodes: PURE
 scalar→normalize→`BLOCK_PALETTE`→`blockId`-only remapping, without mutating
@@ -10,6 +11,11 @@ Shared helper: `GradientMaterialUtils` + `MaterialMappingSupport`. Noise kernel:
 `RandomOps.valueNoise3`. Graph schema: **V37** drops deconstruct outputs, tightens
 diagnostics to `DOUBLE_LIST`, Distance reference to `POINT`, and strips legacy
 `rampBlocks` property state.
+
+**V117 remediation (historical note):** soft `extractPlacements` / geometry fallthrough,
+int Y-span overflow, non-finite distance domain width, and silent optional DOUBLE
+defaults are superseded by strict `MaterialSourceResolver`, cast-before-subtract
+height normals, finite positive domain span, and driven-aware strict Doubles.
 
 Related: [`node-language-v1-directional-mapping.md`](./node-language-v1-directional-mapping.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -71,13 +72,25 @@ public class HeightGradientMapNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public HeightGradientMapNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.height_gradient_map");
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements",
             "Canonical placements to remap (blockId only; stateData preserved)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_COORDINATES_ID, "Coordinates", "Block coordinate list when placements are empty", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Optional geometry — voxelized first when placements/coordinates are empty", NodeDataType.GEOMETRY, this));
+            "Optional geometry — voxelized when no higher-precedence source is driven", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Legacy box geometry (voxelized first)", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Legacy cylinder geometry (voxelized first)", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Legacy sphere geometry (voxelized first)", NodeDataType.SPHERE, this));
@@ -109,35 +122,27 @@ public class HeightGradientMapNode extends BaseNode {
         String middleMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_MIDDLE_ID));
         String topMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_TOP_ID));
         String peakMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_PEAK_ID));
+        String fallback = MaterialMappingSupport.firstMappedBlockType(
+            bottomMapped, middleMapped, topMapped, peakMapped);
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(bottomMapped, middleMapped, topMapped, peakMapped)
-            );
-
-        if (!placementSource && sources.isEmpty() && GradientMaterialUtils.hasNonPlacementSource(
-            inputValues.get(INPUT_COORDINATES_ID),
-            inputValues.get(INPUT_GEOMETRY_ID),
-            inputValues.get(INPUT_BOX_GEOMETRY_ID),
-            inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-            inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-            inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-        )) {
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of());
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
             emitFail("Explicit band material required for geometry or coordinates input");
             return;
         }
 
+        List<BlockPlacementData> sources = source.placements();
         if (sources.isEmpty()) {
             emitOk(List.of());
             return;
@@ -147,21 +152,16 @@ public class HeightGradientMapNode extends BaseNode {
         int maxY = Integer.MIN_VALUE;
         for (BlockPlacementData placement : sources) {
             BlockPos pos = placement.pos();
-            if (pos == null) {
-                continue;
-            }
             minY = Math.min(minY, pos.getY());
             maxY = Math.max(maxY, pos.getY());
         }
 
         boolean singleHeight = maxY == minY;
+        double span = (double) maxY - (double) minY;
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
-            double t = singleHeight ? 0.0d : (double) (pos.getY() - minY) / (double) (maxY - minY);
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
+            double t = singleHeight ? 0.0d : ((double) pos.getY() - (double) minY) / span;
             String roleMapped;
             if (t < lowerEndRatio) {
                 roleMapped = bottomMapped;
@@ -172,8 +172,8 @@ public class HeightGradientMapNode extends BaseNode {
             } else {
                 roleMapped = peakMapped;
             }
-            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
         }
 
         emitOk(placements);

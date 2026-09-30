@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -47,6 +48,18 @@ public class SdfDrivenMaterialNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
+    private static final MaterialSourceResolver.SourcePorts SOURCE_PORTS = new MaterialSourceResolver.SourcePorts(
+        null,
+        null,
+        INPUT_PLACEMENTS_ID,
+        INPUT_COORDINATES_ID,
+        INPUT_GEOMETRY_ID,
+        INPUT_BOX_GEOMETRY_ID,
+        INPUT_CYLINDER_GEOMETRY_ID,
+        INPUT_SPHERE_GEOMETRY_ID,
+        INPUT_TORUS_GEOMETRY_ID
+    );
+
     public SdfDrivenMaterialNode() {
         super(UUID.randomUUID(), "material.gradient_mapping.sdf_material");
 
@@ -83,13 +96,20 @@ public class SdfDrivenMaterialNode extends BaseNode {
             return;
         }
 
-        double center = readDouble(INPUT_CENTER_ID, 0.0d);
-        double halfWidth = readDouble(INPUT_HALF_WIDTH_ID, 1.0d);
-        GradientMaterialUtils.Validation centerOk = GradientMaterialUtils.requireFinite(center, "Center");
-        if (!centerOk.valid()) {
-            emitFail(centerOk.message());
+        GradientMaterialUtils.OptionalDoubleResult centerResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_CENTER_ID, 0.0d, "Center");
+        if (!centerResult.valid()) {
+            emitFail(centerResult.error());
             return;
         }
+        GradientMaterialUtils.OptionalDoubleResult halfWidthResult =
+            GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_HALF_WIDTH_ID, 1.0d, "Half Width");
+        if (!halfWidthResult.valid()) {
+            emitFail(halfWidthResult.error());
+            return;
+        }
+        double center = centerResult.value();
+        double halfWidth = halfWidthResult.value();
         GradientMaterialUtils.Validation halfWidthOk = GradientMaterialUtils.requirePositive(halfWidth, "Half Width");
         if (!halfWidthOk.valid()) {
             emitFail(halfWidthOk.message());
@@ -98,51 +118,35 @@ public class SdfDrivenMaterialNode extends BaseNode {
 
         BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
         String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        String fallback = MaterialMappingSupport.firstMappedBlockType(
+            fallbackMapped,
+            palette.isEmpty() ? null : palette.entries().getFirst().blockId()
+        );
 
-        List<BlockPlacementData> fromPlacements = MaterialMappingSupport.extractPlacements(inputValues.get(INPUT_PLACEMENTS_ID));
-        boolean placementSource = !fromPlacements.isEmpty();
-
-        List<BlockPlacementData> sources = placementSource
-            ? fromPlacements
-            : MaterialMappingSupport.resolveSourcePlacements(
-                null,
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID),
-                MaterialMappingSupport.firstMappedBlockType(
-                    fallbackMapped,
-                    palette.isEmpty() ? null : palette.entries().getFirst().blockId()
-                )
-            );
-
-        if (!placementSource
-            && sources.isEmpty()
-            && GradientMaterialUtils.hasNonPlacementSource(
-                inputValues.get(INPUT_COORDINATES_ID),
-                inputValues.get(INPUT_GEOMETRY_ID),
-                inputValues.get(INPUT_BOX_GEOMETRY_ID),
-                inputValues.get(INPUT_CYLINDER_GEOMETRY_ID),
-                inputValues.get(INPUT_SPHERE_GEOMETRY_ID),
-                inputValues.get(INPUT_TORUS_GEOMETRY_ID)
-            )
-            && palette.isEmpty()
-            && fallbackMapped == null) {
+        MaterialSourceResolver.SourceResolution source =
+            MaterialSourceResolver.resolve(this, SOURCE_PORTS, fallback);
+        if (!source.valid()) {
+            emitFail(source.error());
+            return;
+        }
+        if (source.kind() == MaterialSourceResolver.SourceKind.NONE) {
+            emitOk(List.of(), List.of(), List.of());
+            return;
+        }
+        if ((source.kind() == MaterialSourceResolver.SourceKind.COORDINATES
+            || source.kind() == MaterialSourceResolver.SourceKind.GEOMETRY)
+            && fallback == null) {
             emitFail("Palette or fallback block required for geometry or coordinates input");
             return;
         }
 
+        List<BlockPlacementData> sources = source.placements();
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         List<Double> distances = new ArrayList<>(sources.size());
         List<Double> weights = new ArrayList<>(sources.size());
 
-        for (BlockPlacementData source : sources) {
-            BlockPos pos = source.pos();
-            if (pos == null) {
-                continue;
-            }
+        for (BlockPlacementData sourcePlacement : sources) {
+            BlockPos pos = sourcePlacement.pos();
             Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
             double distance = sdf.sampleDistance(sample);
             if (!Double.isFinite(distance)) {
@@ -155,12 +159,20 @@ public class SdfDrivenMaterialNode extends BaseNode {
                 emitFail("SDF weight produced a non-finite value");
                 return;
             }
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, weight, source.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(source, blockId));
+            String blockId = GradientMaterialUtils.pickByNormalized(palette, weight, sourcePlacement.blockId());
+            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
             distances.add(distance);
             weights.add(weight);
         }
 
+        emitOk(placements, distances, weights);
+    }
+
+    private void emitFail(String message) {
+        outputValues.putAll(GradientMaterialUtils.failResult(message, OUTPUT_DISTANCES_ID, OUTPUT_WEIGHTS_ID));
+    }
+
+    private void emitOk(List<BlockPlacementData> placements, List<Double> distances, List<Double> weights) {
         outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
         outputValues.put(OUTPUT_DISTANCES_ID, List.copyOf(distances));
         outputValues.put(OUTPUT_WEIGHTS_ID, List.copyOf(weights));
@@ -168,17 +180,8 @@ public class SdfDrivenMaterialNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void emitFail(String message) {
-        outputValues.putAll(GradientMaterialUtils.failResult(message, OUTPUT_DISTANCES_ID, OUTPUT_WEIGHTS_ID));
-    }
-
     private static double smoothstep01(double value) {
         double t = Math.max(0.0d, Math.min(1.0d, value));
         return t * t * (3.0d - 2.0d * t);
-    }
-
-    private double readDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
     }
 }
