@@ -5,13 +5,22 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.lang.reflect.Method;
 
 final class AttractorFieldUtils {
-    static final double EPS = 1.0e-9d;
+    /**
+     * Historical length-<em>squared</em> near-zero threshold ({@code lenSq <= …}).
+     * Not a distance threshold of {@code 1e-9}.
+     */
+    static final double DISTANCE_SQUARED_EPS = 1.0e-9d;
+
+    /** @deprecated Prefer {@link #DISTANCE_SQUARED_EPS}; same numeric value. */
+    @Deprecated
+    static final double EPS = DISTANCE_SQUARED_EPS;
 
     enum FalloffMode {
         INVERSE,
@@ -92,26 +101,34 @@ final class AttractorFieldUtils {
         return null;
     }
 
+    /**
+     * Vector from {@code query} toward the SDF zero isosurface via shared V134 gradient numerics.
+     * Returns {@code true} only when {@code dest} is a finite surface-offset vector.
+     */
     static boolean vectorToSdfSurface(SignedDistanceFieldData sdf, Vector3d query, double step, Vector3d dest) {
         if (sdf == null || query == null || dest == null) {
             return false;
         }
-        double h = step;
-        double d = sdf.sampleDistance(new Vector3d(query));
-        double gx = sdf.sampleDistance(new Vector3d(query.x + h, query.y, query.z))
-            - sdf.sampleDistance(new Vector3d(query.x - h, query.y, query.z));
-        double gy = sdf.sampleDistance(new Vector3d(query.x, query.y + h, query.z))
-            - sdf.sampleDistance(new Vector3d(query.x, query.y - h, query.z));
-        double gz = sdf.sampleDistance(new Vector3d(query.x, query.y, query.z + h))
-            - sdf.sampleDistance(new Vector3d(query.x, query.y, query.z - h));
-        dest.set(gx, gy, gz);
-        double lenSq = dest.lengthSquared();
-        if (lenSq <= EPS) {
+        FieldSampleUtils.sampleSdfGradientDirection(sdf, query, step, dest);
+        if (!Double.isFinite(dest.x) || !Double.isFinite(dest.y) || !Double.isFinite(dest.z)) {
             dest.zero();
             return false;
         }
-        dest.mul(1.0d / Math.sqrt(lenSq));
+        double gradLen = VectorUtils.safeLength(dest);
+        if (!Double.isFinite(gradLen) || gradLen <= VectorUtils.EPS) {
+            dest.zero();
+            return false;
+        }
+        double d = sdf.sampleDistance(new Vector3d(query));
+        if (!Double.isFinite(d)) {
+            dest.zero();
+            return false;
+        }
         dest.mul(-d);
+        if (!Double.isFinite(dest.x) || !Double.isFinite(dest.y) || !Double.isFinite(dest.z)) {
+            dest.zero();
+            return false;
+        }
         return true;
     }
 

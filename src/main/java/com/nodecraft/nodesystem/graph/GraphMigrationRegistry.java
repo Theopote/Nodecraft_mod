@@ -193,6 +193,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V131 -> migrateV131ToV132(graph);
             case GraphFormatVersion.V132 -> migrateV132ToV133(graph);
             case GraphFormatVersion.V133 -> migrateV133ToV134(graph);
+            case GraphFormatVersion.V134 -> migrateV134ToV135(graph);
             default -> graph;
         };
     }
@@ -5683,6 +5684,11 @@ public final class GraphMigrationRegistry {
 
     /** Field Vector Numerical Stability & Strict Sampling v2: identity migration (runtime safety only). */
     private static SavedGraph migrateV133ToV134(SavedGraph graph) {
+        return graph;
+    }
+
+    /** Field Attractor Robustness & Numerical Consistency v2: identity migration (runtime safety only). */
+    private static SavedGraph migrateV134ToV135(SavedGraph graph) {
         return graph;
     }
 

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -46,6 +47,8 @@ public class VortexFieldNode extends BaseNode {
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String INPUT_CLOCKWISE_ID = "input_clockwise";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VortexFieldNode() {
         super(UUID.randomUUID(), "math.fields.vortex_field");
@@ -58,6 +61,10 @@ public class VortexFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CLOCKWISE_ID, "Clockwise", "Override swirl direction", NodeDataType.BOOLEAN, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Vortex vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -67,33 +74,41 @@ public class VortexFieldNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d origin = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_ORIGIN_ID));
+        Vector3d origin = FieldSampleUtils.resolveFinitePoint(inputValues.get(INPUT_ORIGIN_ID));
         Vector3d axis = FieldSampleUtils.resolveVector(inputValues.get(INPUT_AXIS_ID));
-        if (origin == null || axis == null || axis.lengthSquared() <= AttractorFieldUtils.EPS) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+        if (origin == null || !VectorUtils.isFinite(axis) || !VectorUtils.isNonZero(axis)) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
         }
 
-        Vector3d axisNorm = new Vector3d(axis).normalize();
+        Vector3d axisNorm = VectorUtils.safeNormalize(axis);
+        if (axisNorm == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
         double effectiveRadius = FieldMath.resolvePositive(inputValues.get(INPUT_RADIUS_ID), radius);
         double effectiveExponent = FieldMath.resolvePositive(inputValues.get(INPUT_EXPONENT_ID), exponent);
         boolean effectiveClockwise = inputValues.get(INPUT_CLOCKWISE_ID) instanceof Boolean b ? b : clockwise;
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
+        final Vector3d originFinal = new Vector3d(origin);
+        final Vector3d axisNormFinal = new Vector3d(axisNorm);
+
         VectorFieldData field = (point, dest) -> {
-            Vector3d rel = new Vector3d(point).sub(origin);
-            double axisDistance = rel.dot(axisNorm);
-            Vector3d radial = rel.sub(new Vector3d(axisNorm).mul(axisDistance));
+            Vector3d rel = new Vector3d(point).sub(originFinal);
+            double axisDistance = rel.dot(axisNormFinal);
+            Vector3d radial = rel.sub(new Vector3d(axisNormFinal).mul(axisDistance));
             double radialLenSq = radial.lengthSquared();
-            if (radialLenSq <= AttractorFieldUtils.EPS) {
+            if (radialLenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
 
             double radialLen = Math.sqrt(radialLenSq);
             Vector3d radialNorm = radial.mul(1.0d / radialLen);
-            Vector3d tangent = new Vector3d(axisNorm).cross(radialNorm);
+            Vector3d tangent = new Vector3d(axisNormFinal).cross(radialNorm);
             if (effectiveClockwise) {
                 tangent.negate();
             }
@@ -102,5 +117,13 @@ public class VortexFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

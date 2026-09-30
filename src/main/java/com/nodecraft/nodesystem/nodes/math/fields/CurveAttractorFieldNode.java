@@ -79,7 +79,7 @@ public class CurveAttractorFieldNode extends BaseNode {
             PolylineClosestPoint3d.closestPoint(polyline, point, closest);
             dest.set(closest).sub(point);
             double lenSq = dest.lengthSquared();
-            if (lenSq <= AttractorFieldUtils.EPS) {
+            if (lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }

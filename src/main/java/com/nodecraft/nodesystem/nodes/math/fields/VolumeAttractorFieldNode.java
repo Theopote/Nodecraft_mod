@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -57,6 +58,8 @@ public class VolumeAttractorFieldNode extends BaseNode {
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String INPUT_SDF_STEP_ID = "input_sdf_step";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VolumeAttractorFieldNode() {
         super(UUID.randomUUID(), "math.fields.volume_attractor_field");
@@ -70,6 +73,10 @@ public class VolumeAttractorFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SDF_STEP_ID, "SDF Step", "Finite-difference step for SDF surface mode", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Volume attractor vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -81,7 +88,7 @@ public class VolumeAttractorFieldNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        Vector3d center = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = FieldSampleUtils.resolveFinitePoint(inputValues.get(INPUT_CENTER_ID));
 
         GeometryData geometry = geometryObj instanceof GeometryData data ? data : null;
         SignedDistanceFieldData sdf = AttractorFieldUtils.tryExtractSdf(sdfObj);
@@ -89,14 +96,22 @@ public class VolumeAttractorFieldNode extends BaseNode {
             sdf = AttractorFieldUtils.tryExtractSdf(geometryObj);
         }
 
-        Vector3d resolvedCenter = center != null ? new Vector3d(center) : new Vector3d();
-        boolean hasCenter = center != null
-            || AttractorFieldUtils.tryExtractCenter(geometryObj, resolvedCenter)
-            || AttractorFieldUtils.tryExtractCenter(sdfObj, resolvedCenter);
+        Vector3d resolvedCenter = new Vector3d();
+        boolean hasCenter = false;
+        if (center != null) {
+            resolvedCenter.set(center);
+            hasCenter = true;
+        } else if (AttractorFieldUtils.tryExtractCenter(geometryObj, resolvedCenter)
+                || AttractorFieldUtils.tryExtractCenter(sdfObj, resolvedCenter)) {
+            hasCenter = VectorUtils.isFinite(resolvedCenter);
+            if (!hasCenter) {
+                resolvedCenter.zero();
+            }
+        }
 
         PullMode mode = pullMode == null ? PullMode.SURFACE_PULL : pullMode;
         if (!hasCenter && (mode == PullMode.CENTER_PULL || geometry == null && sdf == null)) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
@@ -108,7 +123,8 @@ public class VolumeAttractorFieldNode extends BaseNode {
 
         final SignedDistanceFieldData fieldSdf = sdf;
         final GeometryData fieldGeometry = geometry;
-        final Vector3d centerFinal = new Vector3d(resolvedCenter);
+        final boolean hasCenterFinal = hasCenter;
+        final Vector3d centerFinal = hasCenter ? new Vector3d(resolvedCenter) : null;
 
         VectorFieldData field = (point, dest) -> {
             Vector3d toTarget = new Vector3d();
@@ -122,12 +138,16 @@ public class VolumeAttractorFieldNode extends BaseNode {
                 }
             }
             if (!resolved) {
+                if (!hasCenterFinal || centerFinal == null) {
+                    dest.set(Double.NaN, Double.NaN, Double.NaN);
+                    return;
+                }
                 toTarget.set(centerFinal).sub(point);
                 resolved = true;
             }
 
             double lenSq = toTarget.lengthSquared();
-            if (!resolved || lenSq <= AttractorFieldUtils.EPS) {
+            if (!resolved || lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
@@ -137,5 +157,13 @@ public class VolumeAttractorFieldNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

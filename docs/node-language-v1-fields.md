@@ -7,7 +7,9 @@ are documented in [`node-language-v2-fields-scalar-foundation.md`](./node-langua
 (Graph **V133**). Vector numerical stability (SDF gradient, Sample Point finite query,
 vector Constant/Combine Valid) is in
 [`node-language-v2-fields-vector-numerical.md`](./node-language-v2-fields-vector-numerical.md)
-(Graph **V134**).
+(Graph **V134**). Attractor / vortex / blend robustness is in
+[`node-language-v2-fields-attractor-robustness.md`](./node-language-v2-fields-attractor-robustness.md)
+(Graph **V135**).
 
 Language unification for `math.fields.*` (17 nodes). Field math inherits frozen Scalar Math and Random
 semantics; sampling nodes enforce a finite **Valid** boundary.

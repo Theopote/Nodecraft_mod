@@ -10,6 +10,8 @@ Points (already V133 strict 1:1).
 
 Related: [`node-language-v1-fields.md`](./node-language-v1-fields.md),
 [`node-language-v2-fields-scalar-foundation.md`](./node-language-v2-fields-scalar-foundation.md),
+[`node-language-v2-fields-attractor-robustness.md`](./node-language-v2-fields-attractor-robustness.md)
+(Graph **V135**),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Nodes in scope
@@ -22,7 +24,9 @@ Related: [`node-language-v1-fields.md`](./node-language-v1-fields.md),
 | Scalar Field Sample Point | `math.fields.scalar_sample_point` |
 | Vector Field Sample Point | `math.fields.vector_sample_point` |
 
-Batch Sample Points remain under V133. Attractor fields deferred.
+Batch Sample Points remain under V133. Attractor fields: see
+[`node-language-v2-fields-attractor-robustness.md`](./node-language-v2-fields-attractor-robustness.md)
+(Graph **V135**).
 
 ## Shared helpers (`FieldSampleUtils`)
 

@@ -74,7 +74,7 @@ public class PointAttractorFieldNode extends BaseNode {
         VectorFieldData field = (point, dest) -> {
             dest.set(center).sub(point);
             double lenSq = dest.lengthSquared();
-            if (lenSq <= AttractorFieldUtils.EPS) {
+            if (lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }

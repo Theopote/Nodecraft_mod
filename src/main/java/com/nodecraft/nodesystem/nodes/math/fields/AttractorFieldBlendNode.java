@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -39,6 +40,8 @@ public class AttractorFieldBlendNode extends BaseNode {
     private static final String INPUT_WEIGHT_C_ID = "input_weight_c";
     private static final String INPUT_WEIGHT_D_ID = "input_weight_d";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public AttractorFieldBlendNode() {
         super(UUID.randomUUID(), "math.fields.attractor_blend");
@@ -53,6 +56,10 @@ public class AttractorFieldBlendNode extends BaseNode {
         addInputPort(new BasePort(INPUT_WEIGHT_D_ID, "Weight D", "Weight for Field D", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Blended vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -67,7 +74,7 @@ public class AttractorFieldBlendNode extends BaseNode {
         VectorFieldData fieldC = asField(inputValues.get(INPUT_FIELD_C_ID));
         VectorFieldData fieldD = asField(inputValues.get(INPUT_FIELD_D_ID));
         if (fieldA == null && fieldB == null && fieldC == null && fieldD == null) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
@@ -105,22 +112,31 @@ public class AttractorFieldBlendNode extends BaseNode {
             }
 
             if (normalizeOutput) {
-                double lenSq = dest.lengthSquared();
-                if (lenSq <= AttractorFieldUtils.EPS) {
+                Vector3d normalized = VectorUtils.safeNormalize(dest);
+                if (normalized != null) {
+                    dest.set(normalized);
+                } else {
                     dest.zero();
                     return;
                 }
-                dest.normalize();
             }
-            if (limitFinal > AttractorFieldUtils.EPS) {
-                double len = dest.length();
-                if (len > limitFinal) {
+            if (limitFinal > 0.0d) {
+                double len = VectorUtils.safeLength(dest);
+                if (Double.isFinite(len) && len > limitFinal) {
                     dest.mul(limitFinal / len);
                 }
             }
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private static VectorFieldData asField(Object value) {

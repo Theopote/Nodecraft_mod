@@ -2,9 +2,12 @@ package com.nodecraft.gui.components.property.support;
 
 import com.nodecraft.gui.components.property.core.MethodAccessor;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
+import com.nodecraft.nodesystem.nodes.math.fields.PointAttractorFieldNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,6 +41,21 @@ class PropertySupportHelpersTest {
                 node, descriptor("transparency", "Transparency", float.class)));
         assertTrue(GeometryViewerPropertySupport.shouldDisplayProperty(
                 node, descriptor("blockType", "Block Type", String.class)));
+    }
+
+    @Test
+    void attractorHidesExponentWhenFalloffIsGaussian() {
+        PointAttractorFieldNode node = new PointAttractorFieldNode();
+        PropertyDescriptor exponent = descriptor("exponent", "Exponent", double.class);
+        PropertyDescriptor strength = descriptor("strength", "Strength", double.class);
+
+        node.setNodeState(Map.of("falloff", "INVERSE"));
+        assertTrue(AttractorFieldPropertySupport.shouldDisplayProperty(node, exponent));
+        assertTrue(AttractorFieldPropertySupport.shouldDisplayProperty(node, strength));
+
+        node.setNodeState(Map.of("falloff", "GAUSSIAN"));
+        assertFalse(AttractorFieldPropertySupport.shouldDisplayProperty(node, exponent));
+        assertTrue(AttractorFieldPropertySupport.shouldDisplayProperty(node, strength));
     }
 
     @Test

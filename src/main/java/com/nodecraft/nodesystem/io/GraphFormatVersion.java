@@ -885,8 +885,13 @@ public final class GraphFormatVersion {
      */
     public static final int V134 = 134;
 
+    /**
+     * Field Attractor Robustness & Numerical Consistency v2. No wire remaps.
+     */
+    public static final int V135 = 135;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V134;
+    public static final int CURRENT = V135;
 
     private GraphFormatVersion() {
     }
