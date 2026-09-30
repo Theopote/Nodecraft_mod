@@ -45,7 +45,9 @@ public class TreePathsNode extends BaseNode {
             writeInvalid(treeResult.error());
             return;
         }
-        outputValues.put(OUTPUT_PATHS_ID, treeResult.value().getTreePaths());
+        if (treeResult.value() != null) {
+            outputValues.put(OUTPUT_PATHS_ID, treeResult.value().getTreePaths());
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

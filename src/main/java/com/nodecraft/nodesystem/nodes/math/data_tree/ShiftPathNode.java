@@ -74,17 +74,25 @@ public class ShiftPathNode extends BaseNode {
             return;
         }
 
-        DataTreeNodeUtils.ParseResult<Void> depthCheck = DataTreeNodeUtils.preflightShiftPaths(tree, resolvedShift);
-        if (!depthCheck.valid()) {
+        DataTreeNodeUtils.ParseResult<Void> depthCheck = null;
+        if (tree != null) {
+            depthCheck = DataTreeNodeUtils.preflightShiftPaths(tree, resolvedShift);
+        }
+        if (depthCheck != null && !depthCheck.valid()) {
             writeInvalid(kind, depthCheck.error());
             return;
         }
 
-        List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            branches.add(new DataTreeData.Branch(
-                    DataTreeNodeUtils.shiftPath(branch.path(), resolvedShift),
-                    branch.items()));
+        List<DataTreeData.Branch> branches = null;
+        if (tree != null) {
+            branches = new ArrayList<>(tree.getBranchCount());
+        }
+        if (tree != null) {
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                branches.add(new DataTreeData.Branch(
+                        DataTreeNodeUtils.shiftPath(branch.path(), resolvedShift),
+                        branch.items()));
+            }
         }
         DataTreeData shifted = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, shifted);

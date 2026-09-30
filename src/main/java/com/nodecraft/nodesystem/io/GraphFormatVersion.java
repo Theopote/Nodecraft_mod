@@ -875,8 +875,13 @@ public final class GraphFormatVersion {
      */
     public static final int V132 = 132;
 
+    /**
+     * Field Scalar Foundation & Strict Sampling v2. No wire remaps.
+     */
+    public static final int V133 = 133;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V132;
+    public static final int CURRENT = V133;
 
     private GraphFormatVersion() {
     }

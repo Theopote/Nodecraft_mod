@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -31,6 +32,10 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
     private static final String OUTPUT_VALUES_ID = "output_values";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    /** Package-visible for budget contract tests; production uses {@link GenerationLimits#MAX_FIELD_SAMPLE_POINTS}. */
+    int samplePointLimit = GenerationLimits.MAX_FIELD_SAMPLE_POINTS;
 
     public ScalarFieldSamplePointsNode() {
         super(UUID.randomUUID(), "math.fields.scalar_sample_points");
@@ -38,9 +43,14 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Scalar field input", NodeDataType.SCALAR_FIELD, this));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Scalar samples aligned with resolved points", NodeDataType.DOUBLE_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values",
+                "Scalar samples aligned with input points", NodeDataType.DOUBLE_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of samples (matches input point count)",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -57,13 +67,28 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
         if (!(fieldObj instanceof ScalarFieldData field)) {
-            writeInvalid();
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
-        List<Vector3d> points = FieldSampleUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        FieldSampleUtils.PointListResult pointsResult =
+                FieldSampleUtils.resolvePointListStrict(inputValues.get(INPUT_POINTS_ID));
+        if (!pointsResult.valid()) {
+            writeInvalid(pointsResult.error());
+            return;
+        }
+        List<Vector3d> points = pointsResult.points();
+
+        if (points.size() > samplePointLimit) {
+            writeInvalid(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED);
+            return;
+        }
+
         if (points.isEmpty()) {
-            writeInvalid();
+            outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
+            outputValues.put(OUTPUT_COUNT_ID, 0);
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
             return;
         }
 
@@ -71,7 +96,7 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         for (Vector3d p : points) {
             FieldSampleUtils.ScalarSample sample = FieldSampleUtils.sampleScalar(field, p);
             if (!sample.valid()) {
-                writeInvalid();
+                writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
                 return;
             }
             values.add(sample.value());
@@ -80,11 +105,13 @@ public class ScalarFieldSamplePointsNode extends BaseNode {
         outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
         outputValues.put(OUTPUT_COUNT_ID, values.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

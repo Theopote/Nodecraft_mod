@@ -56,8 +56,11 @@ public class GraftListNode extends BaseNode {
         }
         List<?> list = listResult.value();
 
-        DataTreeNodeUtils.ParseResult<Void> nullCheck = DataTreeNodeUtils.validateNonNullItems(list);
-        if (!nullCheck.valid()) {
+        DataTreeNodeUtils.ParseResult<Void> nullCheck = null;
+        if (list != null) {
+            nullCheck = DataTreeNodeUtils.validateNonNullItems(list);
+        }
+        if (nullCheck != null && !nullCheck.valid()) {
             writeInvalid(kind, nullCheck.error());
             return;
         }
@@ -68,9 +71,14 @@ public class GraftListNode extends BaseNode {
             return;
         }
 
-        List<DataTreeData.Branch> branches = new ArrayList<>(list.size());
-        for (int i = 0; i < list.size(); i++) {
-            branches.add(new DataTreeData.Branch(List.of(i), new ArrayList<>(List.of(list.get(i)))));
+        List<DataTreeData.Branch> branches = null;
+        if (list != null) {
+            branches = new ArrayList<>(list.size());
+        }
+        if (list != null) {
+            for (int i = 0; i < list.size(); i++) {
+                branches.add(new DataTreeData.Branch(List.of(i), new ArrayList<>(List.of(list.get(i)))));
+            }
         }
         DataTreeData tree = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, tree);

@@ -25,6 +25,11 @@ public final class GenerationLimits {
     public static final int MAX_TREE_PATH_DEPTH = 256;
 
     /**
+     * Max query points for Field Sample Points (scalar/vector) before evaluation.
+     */
+    public static final int MAX_FIELD_SAMPLE_POINTS = MAX_LIST_ELEMENTS;
+
+    /**
      * Maximum branch detail lines in Tree Viewer debug preview.
      */
     public static final int MAX_TREE_VIEWER_PREVIEW_BRANCHES = 64;

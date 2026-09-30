@@ -56,14 +56,27 @@ public class TreeStatisticsNode extends BaseNode {
             return;
         }
         DataTreeData tree = treeResult.value();
-        List<Integer> sizes = new ArrayList<>(tree.getBranchCount());
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            sizes.add(branch.items().size());
+        List<Integer> sizes = null;
+        if (tree != null) {
+            sizes = new ArrayList<>(tree.getBranchCount());
         }
-        outputValues.put(OUTPUT_BRANCH_COUNT_ID, tree.getBranchCount());
-        outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
-        outputValues.put(OUTPUT_MAX_DEPTH_ID, tree.getMaxDepth());
-        outputValues.put(OUTPUT_BRANCH_SIZES_ID, List.copyOf(sizes));
+        if (tree != null) {
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                sizes.add(branch.items().size());
+            }
+        }
+        if (tree != null) {
+            outputValues.put(OUTPUT_BRANCH_COUNT_ID, tree.getBranchCount());
+        }
+        if (tree != null) {
+            outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
+        }
+        if (tree != null) {
+            outputValues.put(OUTPUT_MAX_DEPTH_ID, tree.getMaxDepth());
+        }
+        if (sizes != null) {
+            outputValues.put(OUTPUT_BRANCH_SIZES_ID, List.copyOf(sizes));
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

@@ -61,11 +61,13 @@ public class CullEmptyBranchesNode extends BaseNode {
 
         List<DataTreeData.Branch> branches = new ArrayList<>();
         int removed = 0;
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            if (branch.items().isEmpty()) {
-                removed++;
-            } else {
-                branches.add(branch);
+        if (tree != null) {
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                if (branch.items().isEmpty()) {
+                    removed++;
+                } else {
+                    branches.add(branch);
+                }
             }
         }
         DataTreeData culled = new DataTreeData(branches, kind);

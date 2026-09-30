@@ -60,14 +60,21 @@ public class FlattenTreeNode extends BaseNode {
         DataTreeData tree = treeResult.value();
 
         DataTreeNodeUtils.ParseResult<Void> budgetCheck =
-                DataTreeNodeUtils.preflightFlattenItemCount(tree, flattenElementLimit);
-        if (!budgetCheck.valid()) {
+                null;
+        if (tree != null) {
+            budgetCheck = DataTreeNodeUtils.preflightFlattenItemCount(tree, flattenElementLimit);
+        }
+        if (budgetCheck != null && !budgetCheck.valid()) {
             writeInvalid(kind, budgetCheck.error());
             return;
         }
 
-        outputValues.put(OUTPUT_LIST_ID, tree.flatten());
-        outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
+        if (tree != null) {
+            outputValues.put(OUTPUT_LIST_ID, tree.flatten());
+        }
+        if (tree != null) {
+            outputValues.put(OUTPUT_ITEM_COUNT_ID, tree.getItemCount());
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

@@ -60,19 +60,30 @@ public class SimplifyTreeNode extends BaseNode {
         }
         DataTreeData tree = treeResult.value();
 
-        List<Integer> prefix = commonPrefix(tree);
-        List<DataTreeData.Branch> branches = new ArrayList<>(tree.getBranchCount());
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            List<Integer> path = branch.path();
-            List<Integer> simplifiedPath = path.size() <= prefix.size()
-                ? List.of()
-                : List.copyOf(path.subList(prefix.size(), path.size()));
-            branches.add(new DataTreeData.Branch(simplifiedPath, branch.items()));
+        List<Integer> prefix = null;
+        if (tree != null) {
+            prefix = commonPrefix(tree);
+        }
+        List<DataTreeData.Branch> branches = null;
+        if (tree != null) {
+            branches = new ArrayList<>(tree.getBranchCount());
+        }
+        if (tree != null) {
+            for (DataTreeData.Branch branch : tree.getBranches()) {
+                List<Integer> path = branch.path();
+                List<Integer> simplifiedPath = path.size() <= prefix.size()
+                    ? List.of()
+                    : List.copyOf(path.subList(prefix.size(), path.size()));
+                branches.add(new DataTreeData.Branch(simplifiedPath, branch.items()));
+            }
         }
 
-        DataTreeNodeUtils.ParseResult<Void> depthCheck = DataTreeNodeUtils.preflightPathDepths(
-                branches.stream().map(DataTreeData.Branch::path).toList());
-        if (!depthCheck.valid()) {
+        DataTreeNodeUtils.ParseResult<Void> depthCheck = null;
+        if (branches != null) {
+            depthCheck = DataTreeNodeUtils.preflightPathDepths(
+                    branches.stream().map(DataTreeData.Branch::path).toList());
+        }
+        if (depthCheck != null && !depthCheck.valid()) {
             writeInvalid(kind, depthCheck.error());
             return;
         }

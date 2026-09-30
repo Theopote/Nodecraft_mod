@@ -7,8 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -31,6 +32,8 @@ public class ScalarFieldNoiseNode extends BaseNode {
     private static final String INPUT_AMPLITUDE_ID = "input_amplitude";
 
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     private double defaultScale = 1.0d;
     private double defaultAmplitude = 1.0d;
@@ -38,14 +41,20 @@ public class ScalarFieldNoiseNode extends BaseNode {
     public ScalarFieldNoiseNode() {
         super(UUID.randomUUID(), "math.fields.scalar_noise");
 
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic noise seed (missing ≡ 0)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Noise frequency scale (larger = finer detail)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic noise seed (undriven ≡ 0)",
+                NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Noise frequency scale (larger = finer detail)",
+                NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_X_ID, "Offset X", "Domain offset X", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_Y_ID, "Offset Y", "Domain offset Y", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_Z_ID, "Offset Z", "Domain offset Z", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_AMPLITUDE_ID, "Amplitude", "Output multiplier", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Scalar noise field", NodeDataType.SCALAR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,24 +69,67 @@ public class ScalarFieldNoiseNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        double scale = FieldMath.resolveFinite(inputValues.get(INPUT_SCALE_ID), defaultScale);
-        double ox = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_X_ID), 0.0d);
-        double oy = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_Y_ID), 0.0d);
-        double oz = FieldMath.resolveFinite(inputValues.get(INPUT_OFFSET_Z_ID), 0.0d);
-        double amplitude = FieldMath.resolveFinite(inputValues.get(INPUT_AMPLITUDE_ID), defaultAmplitude);
+        Integer seed = resolveSeed();
+        if (seed == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
+        Double scale = resolveFiniteDouble(INPUT_SCALE_ID, defaultScale);
+        Double ox = resolveFiniteDouble(INPUT_OFFSET_X_ID, 0.0d);
+        Double oy = resolveFiniteDouble(INPUT_OFFSET_Y_ID, 0.0d);
+        Double oz = resolveFiniteDouble(INPUT_OFFSET_Z_ID, 0.0d);
+        Double amplitude = resolveFiniteDouble(INPUT_AMPLITUDE_ID, defaultAmplitude);
+        if (scale == null || ox == null || oy == null || oz == null || amplitude == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
+        final int resolvedSeed = seed;
+        final double resolvedScale = scale;
+        final double resolvedOx = ox;
+        final double resolvedOy = oy;
+        final double resolvedOz = oz;
+        final double resolvedAmplitude = amplitude;
 
         ScalarFieldData field = point -> {
-            double nx = (point.x + ox) * scale;
-            double ny = (point.y + oy) * scale;
-            double nz = (point.z + oz) * scale;
-            double noise = RandomOps.valueNoise3(nx, ny, nz, seed);
-            if (!Double.isFinite(noise) || !Double.isFinite(amplitude)) {
+            double nx = (point.x + resolvedOx) * resolvedScale;
+            double ny = (point.y + resolvedOy) * resolvedScale;
+            double nz = (point.z + resolvedOz) * resolvedScale;
+            double noise = RandomOps.valueNoise3(nx, ny, nz, resolvedSeed);
+            if (!Double.isFinite(noise) || !Double.isFinite(resolvedAmplitude)) {
                 return Double.NaN;
             }
-            return noise * amplitude;
+            return noise * resolvedAmplitude;
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private @Nullable Integer resolveSeed() {
+        if (OptionalPortDrive.isConnected(this, INPUT_SEED_ID) || isInputPresent(INPUT_SEED_ID)) {
+            return StrictIntegerUtils.requireExactInteger(getInput(INPUT_SEED_ID));
+        }
+        return 0;
+    }
+
+    private @Nullable Double resolveFiniteDouble(String portId, double fallback) {
+        if (OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId)) {
+            Object value = getInput(portId);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) ? resolved : null;
+        }
+        return Double.isFinite(fallback) ? fallback : null;
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

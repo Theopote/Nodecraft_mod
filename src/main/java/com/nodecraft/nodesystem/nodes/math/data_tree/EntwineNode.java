@@ -84,23 +84,28 @@ public class EntwineNode extends BaseNode {
             }
             kind = folded.value();
 
-            if (tree.getBranchCount() == 0) {
+            if (tree != null && tree.getBranchCount() == 0) {
                 continue;
             }
 
             DataTreeNodeUtils.ParseResult<Void> depthCheck =
-                    DataTreeNodeUtils.preflightEntwinePaths(tree, sourceIndex);
-            if (!depthCheck.valid()) {
+                    null;
+            if (tree != null) {
+                depthCheck = DataTreeNodeUtils.preflightEntwinePaths(tree, sourceIndex);
+            }
+            if (depthCheck != null && !depthCheck.valid()) {
                 writeInvalid(kind, depthCheck.error());
                 return;
             }
 
             presentTrees.add(tree);
-            for (DataTreeData.Branch branch : tree.getBranches()) {
-                List<Integer> path = new ArrayList<>(1 + branch.path().size());
-                path.add(sourceIndex);
-                path.addAll(branch.path());
-                branches.add(new DataTreeData.Branch(path, branch.items()));
+            if (tree != null) {
+                for (DataTreeData.Branch branch : tree.getBranches()) {
+                    List<Integer> path = new ArrayList<>(1 + branch.path().size());
+                    path.add(sourceIndex);
+                    path.addAll(branch.path());
+                    branches.add(new DataTreeData.Branch(path, branch.items()));
+                }
             }
         }
 

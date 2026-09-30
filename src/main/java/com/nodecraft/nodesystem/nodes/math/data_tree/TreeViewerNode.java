@@ -47,13 +47,20 @@ public class TreeViewerNode extends BaseNode {
             writeInvalid(treeResult.error());
             return;
         }
-        DataTreeData.TreePreview preview = treeResult.value().describePreview(
-                GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
-                GenerationLimits.MAX_TREE_VIEWER_OUTPUT_CHARS);
-        outputValues.put(OUTPUT_SUMMARY_ID, preview.summary());
+        DataTreeData.TreePreview preview = null;
+        if (treeResult.value() != null) {
+            preview = treeResult.value().describePreview(
+                    GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
+                    GenerationLimits.MAX_TREE_VIEWER_OUTPUT_CHARS);
+        }
+        if (preview != null) {
+            outputValues.put(OUTPUT_SUMMARY_ID, preview.summary());
+        }
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-        outputValues.put(OUTPUT_TRUNCATED_ID, preview.truncated());
+        if (preview != null) {
+            outputValues.put(OUTPUT_TRUNCATED_ID, preview.truncated());
+        }
     }
 
     private void writeInvalid(String error) {

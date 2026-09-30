@@ -76,7 +76,10 @@ public class TreeItemNode extends BaseNode {
             return;
         }
 
-        DataTreeData.Branch branch = tree.getBranch(path);
+        DataTreeData.Branch branch = null;
+        if (tree != null) {
+            branch = tree.getBranch(path);
+        }
         if (branch == null) {
             writeNotFound();
             return;

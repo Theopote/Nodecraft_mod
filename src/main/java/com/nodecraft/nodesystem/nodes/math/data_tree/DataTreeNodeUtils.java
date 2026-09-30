@@ -54,21 +54,21 @@ public final class DataTreeNodeUtils {
     }
 
     static ParseResult<List<?>> parseList(Object value) {
-        if (value == null || !(value instanceof List<?> list)) {
+        if (!(value instanceof List<?> list)) {
             return ParseResult.invalid(ERROR_INVALID_INPUT);
         }
         return ParseResult.ok(new ArrayList<>(list));
     }
 
     static ParseResult<DataTreeData> parseTree(Object value) {
-        if (value == null || !(value instanceof DataTreeData tree)) {
+        if (!(value instanceof DataTreeData tree)) {
             return ParseResult.invalid(ERROR_INVALID_INPUT);
         }
         return ParseResult.ok(tree);
     }
 
     static ParseResult<TreePathData> parsePath(Object value) {
-        if (value == null || !(value instanceof TreePathData path)) {
+        if (!(value instanceof TreePathData path)) {
             return ParseResult.invalid(ERROR_INVALID_PATH);
         }
         return ParseResult.ok(path);

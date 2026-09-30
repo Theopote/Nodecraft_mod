@@ -69,8 +69,11 @@ public class PartitionListToTreeNode extends BaseNode {
         }
         List<?> list = listResult.value();
 
-        DataTreeNodeUtils.ParseResult<Void> nullCheck = DataTreeNodeUtils.validateNonNullItems(list);
-        if (!nullCheck.valid()) {
+        DataTreeNodeUtils.ParseResult<Void> nullCheck = null;
+        if (list != null) {
+            nullCheck = DataTreeNodeUtils.validateNonNullItems(list);
+        }
+        if (nullCheck != null && !nullCheck.valid()) {
             writeInvalid(kind, nullCheck.error());
             return;
         }
@@ -83,11 +86,13 @@ public class PartitionListToTreeNode extends BaseNode {
 
         List<DataTreeData.Branch> branches = new ArrayList<>();
         int branchIndex = 0;
-        for (int i = 0; i < list.size(); i += size) {
-            int end = Math.min(i + size, list.size());
-            List<Object> branchItems = new ArrayList<>(list.subList(i, end));
-            branches.add(new DataTreeData.Branch(List.of(branchIndex), branchItems));
-            branchIndex++;
+        if (list != null) {
+            for (int i = 0; i < list.size(); i += size) {
+                int end = Math.min(i + size, list.size());
+                List<Object> branchItems = new ArrayList<>(list.subList(i, end));
+                branches.add(new DataTreeData.Branch(List.of(branchIndex), branchItems));
+                branchIndex++;
+            }
         }
 
         DataTreeData tree = new DataTreeData(branches, kind);

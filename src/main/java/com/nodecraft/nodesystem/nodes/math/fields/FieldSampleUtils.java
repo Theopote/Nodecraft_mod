@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -13,13 +15,30 @@ import java.util.List;
  * directions use {@link SpatialValueResolver#resolveVector}.
  * <p>
  * Sampling helpers enforce Field v1 finite boundary: Valid=true only for finite outputs.
+ * Batch sample points use {@link #resolvePointListStrict} (1:1, fail closed)—not the
+ * filtering {@link SpatialValueResolver#resolvePointList}.
  */
-final class FieldSampleUtils {
+public final class FieldSampleUtils {
+
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
+    public static final String ERROR_INVALID_POINTS = "invalid_points";
+    public static final String ERROR_INVALID_FIELD = "invalid_field";
+    public static final String ERROR_OUTPUT_BUDGET_EXCEEDED = "output_budget_exceeded";
 
     record ScalarSample(double value, boolean valid) {
     }
 
     record VectorSample(@Nullable Vector3d vector, boolean valid) {
+    }
+
+    record PointListResult(@Nullable List<Vector3d> points, boolean valid, @Nullable String error) {
+        static PointListResult ok(List<Vector3d> points) {
+            return new PointListResult(points, true, null);
+        }
+
+        static PointListResult invalid(String error) {
+            return new PointListResult(null, false, error);
+        }
     }
 
     private FieldSampleUtils() {
@@ -33,8 +52,31 @@ final class FieldSampleUtils {
         return SpatialValueResolver.resolveVector(value);
     }
 
+    /** Filtering resolve (legacy); prefer {@link #resolvePointListStrict} for batch sample nodes. */
     static List<Vector3d> resolvePointList(Object value) {
         return SpatialValueResolver.resolvePointList(value);
+    }
+
+    /**
+     * Strict 1:1 POINT_LIST parse: every element must resolve to a finite point.
+     * Empty collection is valid (Count=0 correspondence). No silent skips.
+     */
+    static PointListResult resolvePointListStrict(Object value) {
+        if (value == null || !(value instanceof Collection<?> collection)) {
+            return PointListResult.invalid(ERROR_INVALID_INPUT);
+        }
+        List<Vector3d> points = new ArrayList<>(collection.size());
+        for (Object entry : collection) {
+            Vector3d resolved = SpatialValueResolver.resolvePoint(entry);
+            if (resolved == null
+                    || !Double.isFinite(resolved.x)
+                    || !Double.isFinite(resolved.y)
+                    || !Double.isFinite(resolved.z)) {
+                return PointListResult.invalid(ERROR_INVALID_POINTS);
+            }
+            points.add(resolved);
+        }
+        return PointListResult.ok(List.copyOf(points));
     }
 
     static ScalarSample sampleScalar(ScalarFieldData field, Vector3d point) {

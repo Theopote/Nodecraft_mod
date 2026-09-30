@@ -103,39 +103,27 @@ class FieldLanguageContractTest {
     }
 
     @Test
-    void scalarFieldNoiseIgnoresNonIntegerSeed() {
+    void scalarFieldNoiseRejectsNonIntegerSeed() {
         ScalarFieldNoiseNode node = new ScalarFieldNoiseNode();
-        Map<String, Object> withString = Map.of(
+        Map<String, Object> outputs = node.compute(Map.of(
                 "input_seed", "1",
                 "input_scale", 1.0d,
                 "input_amplitude", 1.0d
-        );
-        Map<String, Object> withZero = Map.of(
-                "input_seed", 0,
-                "input_scale", 1.0d,
-                "input_amplitude", 1.0d
-        );
-        ScalarFieldData a = (ScalarFieldData) node.compute(withString).get("output_field");
-        ScalarFieldData b = (ScalarFieldData) node.compute(withZero).get("output_field");
-        assertEquals(a.sampleScalar(new Vector3d()), b.sampleScalar(new Vector3d()), 0.0d);
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertNull(outputs.get("output_field"));
     }
 
     @Test
-    void scalarFieldNoiseIgnoresNonIntegerDoubleSeed() {
+    void scalarFieldNoiseRejectsNonIntegerDoubleSeed() {
         ScalarFieldNoiseNode node = new ScalarFieldNoiseNode();
-        Map<String, Object> withDouble = Map.of(
+        Map<String, Object> outputs = node.compute(Map.of(
                 "input_seed", 1.9d,
                 "input_scale", 1.0d,
                 "input_amplitude", 1.0d
-        );
-        Map<String, Object> withZero = Map.of(
-                "input_seed", 0,
-                "input_scale", 1.0d,
-                "input_amplitude", 1.0d
-        );
-        ScalarFieldData a = (ScalarFieldData) node.compute(withDouble).get("output_field");
-        ScalarFieldData b = (ScalarFieldData) node.compute(withZero).get("output_field");
-        assertEquals(a.sampleScalar(new Vector3d()), b.sampleScalar(new Vector3d()), 0.0d);
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertNull(outputs.get("output_field"));
     }
 
     @Test
@@ -268,7 +256,9 @@ class FieldLanguageContractTest {
 
     @Test
     void constantFieldsRejectNonFiniteInputs() {
-        assertNull(new ScalarFieldConstantNode().compute(Map.of("input_value", Double.POSITIVE_INFINITY)).get("output_field"));
+        Map<String, Object> scalarOut = new ScalarFieldConstantNode().compute(Map.of("input_value", Double.POSITIVE_INFINITY));
+        assertNull(scalarOut.get("output_field"));
+        assertFalse((Boolean) scalarOut.get("output_valid"));
         assertNull(new VectorFieldConstantNode().compute(Map.of(
                 "input_x", 1.0d,
                 "input_y", Double.NaN,

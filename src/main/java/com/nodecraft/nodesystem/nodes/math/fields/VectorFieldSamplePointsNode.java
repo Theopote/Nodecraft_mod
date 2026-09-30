@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -31,6 +32,10 @@ public class VectorFieldSamplePointsNode extends BaseNode {
     private static final String OUTPUT_VECTORS_ID = "output_vectors";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    /** Package-visible for budget contract tests; production uses {@link GenerationLimits#MAX_FIELD_SAMPLE_POINTS}. */
+    int samplePointLimit = GenerationLimits.MAX_FIELD_SAMPLE_POINTS;
 
     public VectorFieldSamplePointsNode() {
         super(UUID.randomUUID(), "math.fields.vector_sample_points");
@@ -38,9 +43,14 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Vector field input", NodeDataType.VECTOR_FIELD, this));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Query point list", NodeDataType.POINT_LIST, this));
 
-        addOutputPort(new BasePort(OUTPUT_VECTORS_ID, "Vectors", "Vector samples aligned with resolved points", NodeDataType.VECTOR_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of resolved samples", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VECTORS_ID, "Vectors",
+                "Vector samples aligned with input points", NodeDataType.VECTOR_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of samples (matches input point count)",
+                NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all samples are finite",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -57,13 +67,28 @@ public class VectorFieldSamplePointsNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
         if (!(fieldObj instanceof VectorFieldData field)) {
-            writeInvalid();
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
-        List<Vector3d> points = FieldSampleUtils.resolvePointList(inputValues.get(INPUT_POINTS_ID));
+        FieldSampleUtils.PointListResult pointsResult =
+                FieldSampleUtils.resolvePointListStrict(inputValues.get(INPUT_POINTS_ID));
+        if (!pointsResult.valid()) {
+            writeInvalid(pointsResult.error());
+            return;
+        }
+        List<Vector3d> points = pointsResult.points();
+
+        if (points.size() > samplePointLimit) {
+            writeInvalid(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED);
+            return;
+        }
+
         if (points.isEmpty()) {
-            writeInvalid();
+            outputValues.put(OUTPUT_VECTORS_ID, Collections.emptyList());
+            outputValues.put(OUTPUT_COUNT_ID, 0);
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
             return;
         }
 
@@ -71,7 +96,7 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         for (Vector3d p : points) {
             FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
             if (!sample.valid() || sample.vector() == null) {
-                writeInvalid();
+                writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
                 return;
             }
             vectors.add(new Vector3d(sample.vector()));
@@ -80,11 +105,13 @@ public class VectorFieldSamplePointsNode extends BaseNode {
         outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
         outputValues.put(OUTPUT_COUNT_ID, vectors.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_VECTORS_ID, Collections.emptyList());
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

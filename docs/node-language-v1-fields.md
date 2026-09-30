@@ -2,6 +2,10 @@
 
 **Status: PASSED / FROZEN** (HEAD `540daeef`, Graph **V30**)
 
+Strict sampling / construction diagnostics for Scalar Constant, Noise, Combine, and Sample Points
+are documented in [`node-language-v2-fields-scalar-foundation.md`](./node-language-v2-fields-scalar-foundation.md)
+(Graph **V133**).
+
 Language unification for `math.fields.*` (17 nodes). Field math inherits frozen Scalar Math and Random
 semantics; sampling nodes enforce a finite **Valid** boundary.
 Shared implementation: `FieldMath`, `FieldSampleUtils`, `RandomOps`, `ScalarMathOps`.

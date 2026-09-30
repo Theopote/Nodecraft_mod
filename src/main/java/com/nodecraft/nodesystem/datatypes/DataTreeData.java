@@ -213,8 +213,8 @@ public class DataTreeData {
      * Debug / legacy string parse only. Graph nodes must accept {@link TreePathData}.
      */
     public static List<Integer> parsePath(Object value) {
-        if (value instanceof TreePathData treePath) {
-            return treePath.indices();
+        if (value instanceof TreePathData(List<Integer> indices)) {
+            return indices;
         }
         if (value instanceof Number number) {
             return List.of(number.intValue());
