@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -50,11 +51,12 @@ public class SortNumbersNode extends BaseNode {
         }
         List<Double> values = new ArrayList<>(list.size());
         for (Object item : list) {
-            if (!(item instanceof Number number) || !Double.isFinite(number.doubleValue())) {
+            Double value = StrictDoubleUtils.requireExactFiniteDouble(item);
+            if (value == null) {
                 writeInvalid();
                 return;
             }
-            values.add(number.doubleValue());
+            values.add(value);
         }
         values.sort(descending ? Comparator.reverseOrder() : Comparator.naturalOrder());
         outputValues.put(OUTPUT_LIST_ID, values);

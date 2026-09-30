@@ -107,6 +107,31 @@ class ListNumericLanguageV2ContractTest {
     }
 
     @Test
+    void mapRejectsNonExactDoubleListElementsAndOperands() {
+        MapListNode map = new MapListNode();
+        map.setOperation(MapListNode.Operation.ADD);
+        assertFalse((Boolean) map.compute(Map.of(
+                "input_list", List.of(1),
+                "input_value", 2.0
+        )).get("output_valid"));
+        assertFalse((Boolean) map.compute(Map.of(
+                "input_list", List.of(1.0),
+                "input_value", 2
+        )).get("output_valid"));
+        assertFalse((Boolean) map.compute(Map.of(
+                "input_list", List.of(1.0f),
+                "input_value", 2.0
+        )).get("output_valid"));
+    }
+
+    @Test
+    void reductionsRejectIntegerCoercionInDoubleList() {
+        List<Integer> integers = List.of(1, 2, 3);
+        assertFalse((Boolean) new SumNumbersNode().compute(Map.of("input_list", integers)).get("output_valid"));
+        assertFalse((Boolean) new SortNumbersNode().compute(Map.of("input_list", integers)).get("output_valid"));
+    }
+
+    @Test
     void nanElementFailsAllReductionNodes() {
         List<Double> input = List.of(1.0, Double.NaN, 2.0);
         assertFalse((Boolean) new SumNumbersNode().compute(Map.of("input_list", input)).get("output_valid"));

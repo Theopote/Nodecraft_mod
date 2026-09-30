@@ -104,7 +104,7 @@ public class MapListNode extends BaseNode {
 
         List<Double> mapped = new ArrayList<>(inputList.size());
         for (Object item : inputList) {
-            Double value = toFiniteDouble(item);
+            Double value = StrictDoubleUtils.requireExactFiniteDouble(item);
             if (value == null) {
                 writeInvalid();
                 return;
@@ -127,7 +127,11 @@ public class MapListNode extends BaseNode {
         if (!needsOperand(op)) {
             return null;
         }
-        return toFiniteDouble(resolveValue(INPUT_VALUE_ID));
+        if (!isDriven(INPUT_VALUE_ID)) {
+            // Undriven operand port: no property fallback; fail closed when required.
+            return null;
+        }
+        return StrictDoubleUtils.requireExactFiniteDouble(resolveValue(INPUT_VALUE_ID));
     }
 
     private @Nullable Double resolveClampBound(String portId, double defaultValue) {
@@ -175,14 +179,6 @@ public class MapListNode extends BaseNode {
             case ROUND -> ScalarMathOps.round(input);
             case SIGN -> ScalarMathOps.sign(input);
         };
-    }
-
-    private Double toFiniteDouble(Object value) {
-        if (value instanceof Number number) {
-            double parsed = number.doubleValue();
-            return Double.isFinite(parsed) ? parsed : null;
-        }
-        return null;
     }
 
     @Override

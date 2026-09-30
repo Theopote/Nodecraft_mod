@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -42,12 +43,13 @@ public class MaxNumberNode extends BaseNode {
         }
         double max = Double.NEGATIVE_INFINITY;
         for (Object item : list) {
-            if (!(item instanceof Number number) || !Double.isFinite(number.doubleValue())) {
+            Double value = StrictDoubleUtils.requireExactFiniteDouble(item);
+            if (value == null) {
                 outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
                 outputValues.put(OUTPUT_VALID_ID, false);
                 return;
             }
-            max = Math.max(max, number.doubleValue());
+            max = Math.max(max, value);
         }
         outputValues.put(OUTPUT_VALUE_ID, max);
         outputValues.put(OUTPUT_VALID_ID, true);

@@ -60,7 +60,7 @@ public class FlattenListNode extends BaseNode {
         }
 
         Integer depth = OptionalPortDrive.resolveOptionalInteger(this, INPUT_DEPTH_ID, maxDepth);
-        if (depth == null) {
+        if (depth == null || !isValidMaxDepth(depth)) {
             writeFailure(ERROR_INVALID_DEPTH);
             return;
         }
@@ -92,11 +92,20 @@ public class FlattenListNode extends BaseNode {
         return maxDepth;
     }
 
+    /**
+     * Allowed depths: {@code -1} (safe full flatten) or any non-negative integer.
+     * Illegal values are rejected (property unchanged).
+     */
     public void setMaxDepth(int depth) {
-        if (this.maxDepth != depth) {
-            this.maxDepth = depth;
-            markDirty();
+        if (!isValidMaxDepth(depth) || this.maxDepth == depth) {
+            return;
         }
+        this.maxDepth = depth;
+        markDirty();
+    }
+
+    static boolean isValidMaxDepth(int depth) {
+        return depth == -1 || depth >= 0;
     }
 
     @Override

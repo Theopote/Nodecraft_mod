@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -42,12 +43,13 @@ public class MinNumberNode extends BaseNode {
         }
         double min = Double.POSITIVE_INFINITY;
         for (Object item : list) {
-            if (!(item instanceof Number number) || !Double.isFinite(number.doubleValue())) {
+            Double value = StrictDoubleUtils.requireExactFiniteDouble(item);
+            if (value == null) {
                 outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
                 outputValues.put(OUTPUT_VALID_ID, false);
                 return;
             }
-            min = Math.min(min, number.doubleValue());
+            min = Math.min(min, value);
         }
         outputValues.put(OUTPUT_VALUE_ID, min);
         outputValues.put(OUTPUT_VALID_ID, true);

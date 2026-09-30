@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.math;
 
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.List;
 /**
  * Shared finite DOUBLE_LIST parsing and reduction for list numeric nodes.
  * All reductions return {@link ScalarResult}; overflow and non-finite results fail closed.
+ * List elements must be exact finite {@link Double} (same rule as Number Sequence / Map Numbers).
  */
 public final class NumericListReduction {
 
@@ -30,11 +32,8 @@ public final class NumericListReduction {
         }
         List<Double> values = new ArrayList<>(list.size());
         for (Object item : list) {
-            if (!(item instanceof Number number)) {
-                return ParseResult.invalid();
-            }
-            double value = number.doubleValue();
-            if (!Double.isFinite(value)) {
+            Double value = StrictDoubleUtils.requireExactFiniteDouble(item);
+            if (value == null) {
                 return ParseResult.invalid();
             }
             values.add(value);

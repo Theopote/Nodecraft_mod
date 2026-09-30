@@ -164,6 +164,30 @@ class ListFlattenJoinLanguageV2ContractTest {
     }
 
     @Test
+    void flattenDepthPropertyRejectsValuesBelowMinusOne() {
+        FlattenListNode node = new FlattenListNode();
+        assertEquals(-1, node.getMaxDepth());
+        node.setMaxDepth(-2);
+        assertEquals(-1, node.getMaxDepth());
+
+        node.setMaxDepth(2);
+        assertEquals(2, node.getMaxDepth());
+        node.setNodeState(Map.of("maxDepth", -5));
+        assertEquals(2, node.getMaxDepth());
+    }
+
+    @Test
+    void flattenRejectsConnectedDepthBelowMinusOne() {
+        FlattenListProbe probe = new FlattenListProbe();
+        probe.putInput("input_list", List.of(List.of("A"), "B"));
+        probe.putInput("input_depth", -2);
+        probe.connectInput("input_depth", NodeDataType.INTEGER);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertEquals(FlattenListNode.ERROR_INVALID_DEPTH, probe.getOutput("output_error"));
+    }
+
+    @Test
     void flattenDoesNotUnwrapObjectArray() {
         FlattenListNode node = new FlattenListNode();
         Object[] array = new Object[] {"C", "D"};
