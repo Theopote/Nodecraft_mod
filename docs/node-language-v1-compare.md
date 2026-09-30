@@ -1,5 +1,7 @@
 # Node Language v1 — Compare
 
+**Historical** (Graph **V27**). Current contract: [`node-language-v2-compare.md`](./node-language-v2-compare.md) (Graph **V121**).
+
 Freeze for `math.compare.*` comparison nodes.
 Shared implementation: `com.nodecraft.nodesystem.nodes.math.compare.CompareUtils`.
 Graph schema: **V27** deletes composite Compare node (see migration below).

@@ -807,8 +807,15 @@ public final class GraphFormatVersion {
      */
     public static final int V120 = 120;
 
+    /**
+     * Compare Exact Numeric & Invalid Input Contract v2: exact integer equality,
+     * output_valid on all compare nodes, undriven vs explicit null, strict DOUBLE ordering.
+     * No wire remaps.
+     */
+    public static final int V121 = 121;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V120;
+    public static final int CURRENT = V121;
 
     private GraphFormatVersion() {
     }

@@ -1,13 +1,16 @@
 package com.nodecraft.nodesystem.nodes.math.compare;
 
+import com.nodecraft.nodesystem.math.ComparisonResult;
+import com.nodecraft.nodesystem.util.NumericComparison;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
 /**
- * Shared comparison for Compare v1 nodes.
+ * Shared comparison for Compare v2 nodes.
  * <p>
- * Numeric ordering is exact (no epsilon). Non-finite operands fail closed to {@code false}.
+ * Numeric ordering is exact (no epsilon). Non-finite operands fail closed.
  * Generic equality accepts ANY types but never coerces across unrelated types.
  */
 final class CompareUtils {
@@ -15,77 +18,120 @@ final class CompareUtils {
     private CompareUtils() {
     }
 
-    static boolean genericEqual(@Nullable Object left, @Nullable Object right) {
+    static ComparisonResult compareEqual(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        if (!drivenLeft && !drivenRight) {
+            return ComparisonResult.invalid();
+        }
         if (left == null || right == null) {
-            return left == right;
+            return ComparisonResult.ok(left == right);
         }
         switch (left) {
             case Number leftNumber when right instanceof Number rightNumber -> {
-                return numericEqual(leftNumber.doubleValue(), rightNumber.doubleValue());
+                return ComparisonResult.ok(NumericComparison.numbersEqual(leftNumber, rightNumber));
             }
             case String leftString when right instanceof String rightString -> {
-                return leftString.equals(rightString);
+                return ComparisonResult.ok(leftString.equals(rightString));
             }
             case Boolean leftBoolean when right instanceof Boolean rightBoolean -> {
-                return leftBoolean.equals(rightBoolean);
+                return ComparisonResult.ok(leftBoolean.equals(rightBoolean));
             }
             default -> {
             }
         }
         if (left.getClass() == right.getClass()) {
-            return Objects.equals(left, right);
+            return ComparisonResult.ok(Objects.equals(left, right));
         }
-        return false;
+        return ComparisonResult.ok(false);
     }
 
-    static boolean numericEqual(double a, double b) {
-        if (!Double.isFinite(a) || !Double.isFinite(b)) {
-            return false;
+    static ComparisonResult compareNotEqual(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        if (!drivenLeft && !drivenRight) {
+            return ComparisonResult.invalid();
         }
-        return a == b;
+        if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
+            boolean leftFinite = Double.isFinite(leftNumber.doubleValue());
+            boolean rightFinite = Double.isFinite(rightNumber.doubleValue());
+            if (!leftFinite && !rightFinite) {
+                return ComparisonResult.invalid();
+            }
+        }
+        ComparisonResult equal = compareEqual(left, right, drivenLeft, drivenRight);
+        if (!equal.valid()) {
+            return ComparisonResult.invalid();
+        }
+        return ComparisonResult.ok(!equal.result());
     }
 
-    static boolean numericLess(@Nullable Object left, @Nullable Object right) {
-        Double a = asFiniteDouble(left);
-        Double b = asFiniteDouble(right);
+    static ComparisonResult compareLess(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        return compareOrdering(left, right, drivenLeft, drivenRight, (a, b) -> a < b);
+    }
+
+    static ComparisonResult compareLessOrEqual(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        return compareOrdering(left, right, drivenLeft, drivenRight, (a, b) -> a <= b);
+    }
+
+    static ComparisonResult compareGreater(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        return compareOrdering(left, right, drivenLeft, drivenRight, (a, b) -> a > b);
+    }
+
+    static ComparisonResult compareGreaterOrEqual(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight
+    ) {
+        return compareOrdering(left, right, drivenLeft, drivenRight, (a, b) -> a >= b);
+    }
+
+    private static ComparisonResult compareOrdering(
+            @Nullable Object left,
+            @Nullable Object right,
+            boolean drivenLeft,
+            boolean drivenRight,
+            OrderingPredicate predicate
+    ) {
+        if (!drivenLeft || !drivenRight) {
+            return ComparisonResult.invalid();
+        }
+        Double a = asStrictFiniteDouble(left);
+        Double b = asStrictFiniteDouble(right);
         if (a == null || b == null) {
-            return false;
+            return ComparisonResult.invalid();
         }
-        return a < b;
+        return ComparisonResult.ok(predicate.test(a, b));
     }
 
-    static boolean numericLessOrEqual(@Nullable Object left, @Nullable Object right) {
-        Double a = asFiniteDouble(left);
-        Double b = asFiniteDouble(right);
-        if (a == null || b == null) {
-            return false;
-        }
-        return a <= b;
+    private static @Nullable Double asStrictFiniteDouble(@Nullable Object value) {
+        return StrictDoubleUtils.requireExactFiniteDouble(value);
     }
 
-    static boolean numericGreater(@Nullable Object left, @Nullable Object right) {
-        Double a = asFiniteDouble(left);
-        Double b = asFiniteDouble(right);
-        if (a == null || b == null) {
-            return false;
-        }
-        return a > b;
-    }
-
-    static boolean numericGreaterOrEqual(@Nullable Object left, @Nullable Object right) {
-        Double a = asFiniteDouble(left);
-        Double b = asFiniteDouble(right);
-        if (a == null || b == null) {
-            return false;
-        }
-        return a >= b;
-    }
-
-    private static @Nullable Double asFiniteDouble(@Nullable Object value) {
-        if (!(value instanceof Number number)) {
-            return null;
-        }
-        double d = number.doubleValue();
-        return Double.isFinite(d) ? d : null;
+    @FunctionalInterface
+    private interface OrderingPredicate {
+        boolean test(double left, double right);
     }
 }

@@ -179,6 +179,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V117 -> migrateV117ToV118(graph);
             case GraphFormatVersion.V118 -> migrateV118ToV119(graph);
             case GraphFormatVersion.V119 -> migrateV119ToV120(graph);
+            case GraphFormatVersion.V120 -> migrateV120ToV121(graph);
             default -> graph;
         };
     }
@@ -5595,6 +5596,14 @@ public final class GraphMigrationRegistry {
      * stable lerp; no wire remaps).
      */
     private static SavedGraph migrateV119ToV120(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Compare Exact Numeric & Invalid Input Contract v2 (output_valid, exact integers,
+     * strict DOUBLE ordering; no wire remaps).
+     */
+    private static SavedGraph migrateV120ToV121(SavedGraph graph) {
         return graph;
     }
 
