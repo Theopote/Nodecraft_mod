@@ -3,10 +3,11 @@ package com.nodecraft.nodesystem.nodes.math.random;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.math.VectorSampleResult;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -20,7 +21,7 @@ import java.util.UUID;
     category = "math.random",
     order = 3
 )
-public class RandomVectorNode extends BaseNode {
+public class RandomVectorNode extends RandomSamplingNode {
 
     private static final String INPUT_MIN_CORNER_ID = "input_min_corner";
     private static final String INPUT_MAX_CORNER_ID = "input_max_corner";
@@ -47,11 +48,37 @@ public class RandomVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d minCorner = RandomOps.resolveVector(
-                inputValues.get(INPUT_MIN_CORNER_ID), RandomOps.defaultMinCorner());
-        Vector3d maxCorner = RandomOps.resolveVector(
-                inputValues.get(INPUT_MAX_CORNER_ID), RandomOps.defaultMaxCorner());
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        outputValues.put(OUTPUT_VECTOR_ID, RandomOps.sampleVector(minCorner, maxCorner, RandomOps.rng(seed)));
+        Vector3d minCorner = resolveCorner(INPUT_MIN_CORNER_ID, RandomOps.defaultMinCorner());
+        if (minCorner == null) {
+            emitFailure(OUTPUT_VECTOR_ID, null, "Min Corner must be a finite VECTOR");
+            return;
+        }
+        Vector3d maxCorner = resolveCorner(INPUT_MAX_CORNER_ID, RandomOps.defaultMaxCorner());
+        if (maxCorner == null) {
+            emitFailure(OUTPUT_VECTOR_ID, null, "Max Corner must be a finite VECTOR");
+            return;
+        }
+
+        RandomInputResolver.IntegerResolveResult seed = RandomInputResolver.resolveSeed(
+                resolveValue(INPUT_SEED_ID), isDriven(INPUT_SEED_ID));
+        if (!seed.valid()) {
+            emitFailure(OUTPUT_VECTOR_ID, null, "Seed must be an exact Integer");
+            return;
+        }
+
+        VectorSampleResult result = RandomOps.sampleVectorValidated(
+                minCorner, maxCorner, RandomOps.rng(seed.value()));
+        if (!result.valid()) {
+            emitFailure(OUTPUT_VECTOR_ID, null, result.error());
+            return;
+        }
+        emitSuccess(OUTPUT_VECTOR_ID, result.vector());
+    }
+
+    private @Nullable Vector3d resolveCorner(String portId, Vector3d defaultCorner) {
+        if (!isDriven(portId)) {
+            return new Vector3d(defaultCorner);
+        }
+        return resolveVectorValue(portId);
     }
 }

@@ -3,17 +3,15 @@ package com.nodecraft.nodesystem.nodes.math.random;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.math.VectorSampleResult;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @NodeInfo(
@@ -24,7 +22,7 @@ import java.util.UUID;
     category = "math.random",
     order = 4
 )
-public class RandomVectorsNode extends BaseNode {
+public class RandomVectorsNode extends RandomSamplingNode {
 
     private static final String INPUT_MIN_CORNER_ID = "input_min_corner";
     private static final String INPUT_MAX_CORNER_ID = "input_max_corner";
@@ -55,23 +53,44 @@ public class RandomVectorsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int count = RandomOps.resolveCount(inputValues.get(INPUT_COUNT_ID), defaultCount);
-        Vector3d minCorner = RandomOps.resolveVector(
-                inputValues.get(INPUT_MIN_CORNER_ID), RandomOps.defaultMinCorner());
-        Vector3d maxCorner = RandomOps.resolveVector(
-                inputValues.get(INPUT_MAX_CORNER_ID), RandomOps.defaultMaxCorner());
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        Random random = RandomOps.rng(seed);
-
-        if (count <= 0) {
-            outputValues.put(OUTPUT_VECTORS_ID, Collections.emptyList());
+        Vector3d minCorner = resolveCorner(INPUT_MIN_CORNER_ID, RandomOps.defaultMinCorner());
+        if (minCorner == null) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), "Min Corner must be a finite VECTOR");
+            return;
+        }
+        Vector3d maxCorner = resolveCorner(INPUT_MAX_CORNER_ID, RandomOps.defaultMaxCorner());
+        if (maxCorner == null) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), "Max Corner must be a finite VECTOR");
             return;
         }
 
-        List<Vector3d> vectors = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            vectors.add(RandomOps.sampleVector(minCorner, maxCorner, random));
+        RandomInputResolver.IntegerResolveResult count = RandomInputResolver.resolveCount(
+                resolveValue(INPUT_COUNT_ID), defaultCount, isDriven(INPUT_COUNT_ID));
+        RandomInputResolver.IntegerResolveResult seed = RandomInputResolver.resolveSeed(
+                resolveValue(INPUT_SEED_ID), isDriven(INPUT_SEED_ID));
+
+        if (!count.valid()) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), "Count must be an exact Integer");
+            return;
         }
-        outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
+        if (!seed.valid()) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), "Seed must be an exact Integer");
+            return;
+        }
+
+        VectorSampleResult.ListResult result = RandomOps.sampleVectorsValidated(
+                minCorner, maxCorner, count.value(), RandomOps.rng(seed.value()));
+        if (!result.valid()) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), result.error());
+            return;
+        }
+        emitSuccess(OUTPUT_VECTORS_ID, Collections.unmodifiableList(result.vectors()));
+    }
+
+    private @Nullable Vector3d resolveCorner(String portId, Vector3d defaultCorner) {
+        if (!isDriven(portId)) {
+            return new Vector3d(defaultCorner);
+        }
+        return resolveVectorValue(portId);
     }
 }

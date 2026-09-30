@@ -101,6 +101,65 @@ public final class RandomOps {
         );
     }
 
+    /** Returns true when {@link #sampleDouble(double, double, Random)} can produce a finite value. */
+    public static boolean isAxisSampleable(double min, double max) {
+        if (!Double.isFinite(min) || !Double.isFinite(max)) {
+            return false;
+        }
+        if (min == max) {
+            return Double.isFinite(min);
+        }
+        double lo = Math.min(min, max);
+        double hi = Math.max(min, max);
+        return Double.isFinite(hi - lo);
+    }
+
+    /**
+     * Preflights all three axes; samples only when every axis span is finite.
+     */
+    public static VectorSampleResult sampleVectorValidated(Vector3d min, Vector3d max, Random random) {
+        if (random == null || min == null || max == null) {
+            return VectorSampleResult.invalid("Vector bounds must be finite");
+        }
+        if (!isAxisSampleable(min.x, max.x)) {
+            return VectorSampleResult.invalid("Vector domain invalid on axis X");
+        }
+        if (!isAxisSampleable(min.y, max.y)) {
+            return VectorSampleResult.invalid("Vector domain invalid on axis Y");
+        }
+        if (!isAxisSampleable(min.z, max.z)) {
+            return VectorSampleResult.invalid("Vector domain invalid on axis Z");
+        }
+        Vector3d sampled = sampleVector(min, max, random);
+        if (!Double.isFinite(sampled.x) || !Double.isFinite(sampled.y) || !Double.isFinite(sampled.z)) {
+            return VectorSampleResult.invalid("Vector sample is non-finite");
+        }
+        return VectorSampleResult.ok(sampled);
+    }
+
+    /**
+     * Transactional batch: any invalid vector → entire result invalid (no partial list).
+     */
+    public static VectorSampleResult.ListResult sampleVectorsValidated(
+            Vector3d min,
+            Vector3d max,
+            int count,
+            Random random
+    ) {
+        if (count <= 0) {
+            return VectorSampleResult.ListResult.ok(java.util.Collections.emptyList());
+        }
+        java.util.List<Vector3d> vectors = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            VectorSampleResult one = sampleVectorValidated(min, max, random);
+            if (!one.valid()) {
+                return VectorSampleResult.ListResult.invalid(one.error());
+            }
+            vectors.add(one.vector());
+        }
+        return VectorSampleResult.ListResult.ok(vectors);
+    }
+
     /**
      * Deterministic 3D value noise with smooth interpolation.
      * Output roughly in {@code [-1, 1]}. Non-finite position → {@link Double#NaN}.

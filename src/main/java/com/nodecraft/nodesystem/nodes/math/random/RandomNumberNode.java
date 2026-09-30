@@ -3,12 +3,11 @@ package com.nodecraft.nodesystem.nodes.math.random;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
-import com.nodecraft.nodesystem.util.NumericDomainResolver;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -21,7 +20,7 @@ import java.util.UUID;
     category = "math.random",
     order = 0
 )
-public class RandomNumberNode extends BaseNode {
+public class RandomNumberNode extends RandomSamplingNode {
 
     private static final String INPUT_DOMAIN_ID = "input_domain";
     private static final String INPUT_SEED_ID = "input_seed";
@@ -49,13 +48,35 @@ public class RandomNumberNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        NumericRangeData domain = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        double value = 0;
-        if (domain != null) {
-            value = RandomOps.sampleDouble(domain.lower(), domain.upper(), RandomOps.rng(seed));
+        NumericRangeData domain = resolveDomain();
+        RandomInputResolver.IntegerResolveResult seed = RandomInputResolver.resolveSeed(
+                resolveValue(INPUT_SEED_ID), isDriven(INPUT_SEED_ID));
+
+        if (domain == null) {
+            emitFailure(OUTPUT_RANDOM_ID, Double.NaN, "Invalid Domain");
+            return;
         }
-        outputValues.put(OUTPUT_RANDOM_ID, value);
+        if (!seed.valid()) {
+            emitFailure(OUTPUT_RANDOM_ID, Double.NaN, "Seed must be an exact Integer");
+            return;
+        }
+
+        double value = RandomOps.sampleDouble(domain.lower(), domain.upper(), RandomOps.rng(seed.value()));
+        if (!Double.isFinite(value)) {
+            emitFailure(OUTPUT_RANDOM_ID, Double.NaN, "Domain sample is non-finite");
+            return;
+        }
+        emitSuccess(OUTPUT_RANDOM_ID, value);
+    }
+
+    private @Nullable NumericRangeData resolveDomain() {
+        if (!isDriven(INPUT_DOMAIN_ID)) {
+            return NumericRangeData.canonical(defaultStart, defaultEnd);
+        }
+        Object raw = resolveValue(INPUT_DOMAIN_ID);
+        if (!(raw instanceof NumericRangeData range)) {
+            return null;
+        }
+        return NumericRangeData.canonical(range.start(), range.end());
     }
 }

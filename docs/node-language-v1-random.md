@@ -1,6 +1,6 @@
 # Node Language v1 — Random
 
-**Status: PASSED / FROZEN** (HEAD `13b0f798`, Graph **V29**)
+**Historical** (Graph **V29**). Current contract: [`node-language-v2-random.md`](./node-language-v2-random.md) (Graph **V123**).
 
 Freeze for `math.random.*` deterministic seeded procedural variation.
 Shared implementation: `com.nodecraft.nodesystem.math.RandomOps`.

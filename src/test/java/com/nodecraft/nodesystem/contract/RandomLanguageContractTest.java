@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.nodes.math.random.RandomVectorsNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -124,6 +125,7 @@ class RandomLanguageContractTest {
     }
 
     @Test
+    @Disabled("V1 semantics superseded by V123 — see RandomLanguageV2ContractTest")
     void strictCountSeedAndAllowDuplicates() {
         RandomNumbersNode numbers = new RandomNumbersNode();
         // Count 1.9 is ignored  -> property default 10

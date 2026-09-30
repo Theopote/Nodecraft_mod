@@ -476,7 +476,7 @@
 |---|---|---|---|
 | Random Number | `math.random.random_number` | Generates a single deterministic random double within a domain. | `RandomNumberNode` |
 | Random Numbers | `math.random.random_numbers` | Generates a deterministic list of random doubles within a domain. | `RandomNumbersNode` |
-| Random List Item | `math.random.random_list_item` | Deterministically selects one or more items from a list. | `RandomListItemNode` |
+| Random List Item | `math.random.random_list_item` | Deterministically selects one or more items from a list (sample without replacement when duplicates disallowed). | `RandomListItemNode` |
 | Random Vector | `math.random.random_vector` | Generates a single deterministic random vector within a bounding box. | `RandomVectorNode` |
 | Random Vectors | `math.random.random_vectors` | Generates a deterministic list of random vectors within a bounding box. | `RandomVectorsNode` |
 | Noise | `math.random.noise` | Samples coherent 3D value noise from a position and seed. | `NoiseNode` |

@@ -3,12 +3,11 @@ package com.nodecraft.nodesystem.nodes.math.random;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
-import com.nodecraft.nodesystem.util.NumericDomainResolver;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -25,7 +24,7 @@ import java.util.UUID;
     category = "math.random",
     order = 1
 )
-public class RandomNumbersNode extends BaseNode {
+public class RandomNumbersNode extends RandomSamplingNode {
 
     private static final String INPUT_DOMAIN_ID = "input_domain";
     private static final String INPUT_COUNT_ID = "input_count";
@@ -50,24 +49,58 @@ public class RandomNumbersNode extends BaseNode {
     }
 
     @Override
-    public void processNode(@Nullable ExecutionContext context) {
-        int count = RandomOps.resolveCount(inputValues.get(INPUT_COUNT_ID), defaultCount);
-        NumericRangeData domain = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        Random random = RandomOps.rng(seed);
+    public String getDisplayName() {
+        return "Random Numbers";
+    }
 
-        if (count <= 0) {
-            outputValues.put(OUTPUT_VALUES_ID, Collections.emptyList());
+    @Override
+    public void processNode(@Nullable ExecutionContext context) {
+        NumericRangeData domain = resolveDomain();
+        RandomInputResolver.IntegerResolveResult count = RandomInputResolver.resolveCount(
+                resolveValue(INPUT_COUNT_ID), defaultCount, isDriven(INPUT_COUNT_ID));
+        RandomInputResolver.IntegerResolveResult seed = RandomInputResolver.resolveSeed(
+                resolveValue(INPUT_SEED_ID), isDriven(INPUT_SEED_ID));
+
+        if (domain == null) {
+            emitFailure(OUTPUT_VALUES_ID, Collections.emptyList(), "Invalid Domain");
+            return;
+        }
+        if (!count.valid()) {
+            emitFailure(OUTPUT_VALUES_ID, Collections.emptyList(), "Count must be an exact Integer");
+            return;
+        }
+        if (!seed.valid()) {
+            emitFailure(OUTPUT_VALUES_ID, Collections.emptyList(), "Seed must be an exact Integer");
             return;
         }
 
-        List<Double> values = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            if (domain != null) {
-                values.add(RandomOps.sampleDouble(domain.lower(), domain.upper(), random));
-            }
+        int effectiveCount = count.value();
+        if (effectiveCount <= 0) {
+            emitSuccess(OUTPUT_VALUES_ID, Collections.emptyList());
+            return;
         }
-        outputValues.put(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
+
+        Random random = RandomOps.rng(seed.value());
+        List<Double> values = new ArrayList<>(effectiveCount);
+        for (int i = 0; i < effectiveCount; i++) {
+            double sample = RandomOps.sampleDouble(domain.lower(), domain.upper(), random);
+            if (!Double.isFinite(sample)) {
+                emitFailure(OUTPUT_VALUES_ID, Collections.emptyList(), "Domain sample is non-finite");
+                return;
+            }
+            values.add(sample);
+        }
+        emitSuccess(OUTPUT_VALUES_ID, Collections.unmodifiableList(values));
+    }
+
+    private @Nullable NumericRangeData resolveDomain() {
+        if (!isDriven(INPUT_DOMAIN_ID)) {
+            return NumericRangeData.canonical(defaultStart, defaultEnd);
+        }
+        Object raw = resolveValue(INPUT_DOMAIN_ID);
+        if (!(raw instanceof NumericRangeData range)) {
+            return null;
+        }
+        return NumericRangeData.canonical(range.start(), range.end());
     }
 }

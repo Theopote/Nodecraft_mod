@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -118,6 +119,37 @@ class RandomOpsTest {
         double world = RandomOps.valueNoise3(1e6d, 2e6d, 3e6d, 0);
         assertTrue(Double.isFinite(world));
         assertTrue(world >= -1.0d && world <= 1.0d);
+    }
+
+    @Test
+    void isAxisSampleableRejectsOverflowSpan() {
+        assertTrue(RandomOps.isAxisSampleable(0.0d, 1.0d));
+        assertFalse(RandomOps.isAxisSampleable(Double.NaN, 1.0d));
+        assertFalse(RandomOps.isAxisSampleable(-Double.MAX_VALUE, Double.MAX_VALUE));
+    }
+
+    @Test
+    void sampleVectorValidatedRejectsPartialAxisFailure() {
+        Vector3d min = new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE);
+        Vector3d max = new Vector3d(1.0d, 1.0d, Double.MAX_VALUE);
+        VectorSampleResult result = RandomOps.sampleVectorValidated(min, max, RandomOps.rng(0));
+        assertFalse(result.valid());
+    }
+
+    @Test
+    void sampleVectorsValidatedFailsEntireBatchOnBadDomain() {
+        Vector3d min = new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE);
+        Vector3d max = new Vector3d(1.0d, 1.0d, Double.MAX_VALUE);
+        VectorSampleResult.ListResult result = RandomOps.sampleVectorsValidated(min, max, 3, RandomOps.rng(0));
+        assertFalse(result.valid());
+        assertTrue(result.vectors().isEmpty());
+    }
+
+    @Test
+    void valueNoiseNegativeCoordinatesAreFinite() {
+        double value = RandomOps.valueNoise3(-12.5d, -3.0d, -0.25d, 0);
+        assertTrue(Double.isFinite(value));
+        assertTrue(value >= -1.0d && value <= 1.0d);
     }
 
     @Test

@@ -820,8 +820,14 @@ public final class GraphFormatVersion {
      */
     public static final int V122 = 122;
 
+    /**
+     * Random Strict Domain & Transactional Sampling v2: output_valid/error on all random nodes,
+     * connection-aware Seed/Count/Domain, transactional vector sampling. No wire remaps.
+     */
+    public static final int V123 = 123;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V122;
+    public static final int CURRENT = V123;
 
     private GraphFormatVersion() {
     }

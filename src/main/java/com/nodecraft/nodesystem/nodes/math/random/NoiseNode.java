@@ -3,10 +3,10 @@ package com.nodecraft.nodesystem.nodes.math.random;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -19,7 +19,7 @@ import java.util.UUID;
     category = "math.random",
     order = 5
 )
-public class NoiseNode extends BaseNode {
+public class NoiseNode extends RandomSamplingNode {
 
     private static final String INPUT_X_ID = "input_x";
     private static final String INPUT_Y_ID = "input_y";
@@ -48,17 +48,34 @@ public class NoiseNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double x = toDouble(inputValues.get(INPUT_X_ID));
-        double y = toDouble(inputValues.get(INPUT_Y_ID));
-        double z = toDouble(inputValues.get(INPUT_Z_ID));
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
-        outputValues.put(OUTPUT_NOISE_ID, RandomOps.valueNoise3(x, y, z, seed));
-    }
+        Double x = RandomInputResolver.resolveDouble(resolveValue(INPUT_X_ID), 0.0d, isDriven(INPUT_X_ID));
+        Double y = RandomInputResolver.resolveDouble(resolveValue(INPUT_Y_ID), 0.0d, isDriven(INPUT_Y_ID));
+        Double z = RandomInputResolver.resolveDouble(resolveValue(INPUT_Z_ID), 0.0d, isDriven(INPUT_Z_ID));
+        RandomInputResolver.IntegerResolveResult seed = RandomInputResolver.resolveSeed(
+                resolveValue(INPUT_SEED_ID), isDriven(INPUT_SEED_ID));
 
-    private static double toDouble(Object value) {
-        if (value instanceof Number number) {
-            return number.doubleValue();
+        if (x == null) {
+            emitFailure(OUTPUT_NOISE_ID, Double.NaN, "X must be an exact finite Double");
+            return;
         }
-        return Double.NaN;
+        if (y == null) {
+            emitFailure(OUTPUT_NOISE_ID, Double.NaN, "Y must be an exact finite Double");
+            return;
+        }
+        if (z == null) {
+            emitFailure(OUTPUT_NOISE_ID, Double.NaN, "Z must be an exact finite Double");
+            return;
+        }
+        if (!seed.valid()) {
+            emitFailure(OUTPUT_NOISE_ID, Double.NaN, "Seed must be an exact Integer");
+            return;
+        }
+
+        double noise = RandomOps.valueNoise3(x, y, z, seed.value());
+        if (!Double.isFinite(noise)) {
+            emitFailure(OUTPUT_NOISE_ID, Double.NaN, "Noise sample is non-finite");
+            return;
+        }
+        emitSuccess(OUTPUT_NOISE_ID, noise);
     }
 }

@@ -23,6 +23,7 @@ class RandomNumberNodeTest {
 
         assertInstanceOf(Double.class, outputs.get("output_random"));
         assertTrue(Double.isFinite((Double) outputs.get("output_random")));
+        assertTrue((Boolean) outputs.get("output_valid"));
     }
 
     @Test

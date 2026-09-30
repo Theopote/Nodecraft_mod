@@ -181,6 +181,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V119 -> migrateV119ToV120(graph);
             case GraphFormatVersion.V120 -> migrateV120ToV121(graph);
             case GraphFormatVersion.V121 -> migrateV121ToV122(graph);
+            case GraphFormatVersion.V122 -> migrateV122ToV123(graph);
             default -> graph;
         };
     }
@@ -5613,6 +5614,14 @@ public final class GraphMigrationRegistry {
      * no wire remaps).
      */
     private static SavedGraph migrateV121ToV122(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Random Strict Domain & Transactional Sampling v2 (output_valid/error, strict inputs;
+     * no wire remaps).
+     */
+    private static SavedGraph migrateV122ToV123(SavedGraph graph) {
         return graph;
     }
 
