@@ -9,9 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -25,21 +24,26 @@ import java.util.UUID;
 )
 public class VectorFieldFromSdfGradientNode extends BaseNode {
 
-    private static final double EPS = 1.0e-9d;
-
     @NodeProperty(displayName = "Step", category = "SDF", order = 1, description = "Finite difference step size")
     private double step = 0.25d;
 
     private static final String INPUT_SDF_ID = "input_sdf";
     private static final String INPUT_STEP_ID = "input_step";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorFieldFromSdfGradientNode() {
         super(UUID.randomUUID(), "math.fields.vector_from_sdf_gradient");
 
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Signed distance field input", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Finite difference step size", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Vector field aligned with SDF gradient", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Vector field aligned with SDF gradient",
+                NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -55,25 +59,45 @@ public class VectorFieldFromSdfGradientNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        double h = FieldMath.resolvePositive(inputValues.get(INPUT_STEP_ID), step);
         if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
-        VectorFieldData field = (point, dest) -> {
-            Vector3d p = new Vector3d(point);
-            double gx = sdf.sampleDistance(new Vector3d(p.x + h, p.y, p.z)) - sdf.sampleDistance(new Vector3d(p.x - h, p.y, p.z));
-            double gy = sdf.sampleDistance(new Vector3d(p.x, p.y + h, p.z)) - sdf.sampleDistance(new Vector3d(p.x, p.y - h, p.z));
-            double gz = sdf.sampleDistance(new Vector3d(p.x, p.y, p.z + h)) - sdf.sampleDistance(new Vector3d(p.x, p.y, p.z - h));
-            dest.set(gx, gy, gz);
-            if (dest.lengthSquared() <= EPS) {
-                dest.set(0.0d, 0.0d, 0.0d);
-                return;
-            }
-            dest.normalize();
-        };
+        Double h = resolveStep();
+        if (h == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
+        final double stepSize = h;
+        VectorFieldData field = (point, dest) ->
+                FieldSampleUtils.sampleSdfGradientDirection(sdf, point, stepSize, dest);
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    /**
+     * Undriven → property {@code step}. Driven + finite {@code >0} → use.
+     * Driven invalid → fail closed (no silent property fallback).
+     */
+    private @Nullable Double resolveStep() {
+        if (OptionalPortDrive.isConnected(this, INPUT_STEP_ID) || isInputPresent(INPUT_STEP_ID)) {
+            Object value = getInput(INPUT_STEP_ID);
+            if (!(value instanceof Number number)) {
+                return null;
+            }
+            double resolved = number.doubleValue();
+            return Double.isFinite(resolved) && resolved > 0.0d ? resolved : null;
+        }
+        return Double.isFinite(step) && step > 0.0d ? step : null;
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

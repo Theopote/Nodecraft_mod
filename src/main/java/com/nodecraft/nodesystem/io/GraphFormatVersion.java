@@ -880,8 +880,13 @@ public final class GraphFormatVersion {
      */
     public static final int V133 = 133;
 
+    /**
+     * Field Vector Numerical Stability & Strict Sampling v2. No wire remaps.
+     */
+    public static final int V134 = 134;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V133;
+    public static final int CURRENT = V134;
 
     private GraphFormatVersion() {
     }

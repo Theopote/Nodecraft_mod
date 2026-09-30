@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -25,6 +26,8 @@ public class VectorFieldConstantNode extends BaseNode {
     private static final String INPUT_Y_ID = "input_y";
     private static final String INPUT_Z_ID = "input_z";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorFieldConstantNode() {
         super(UUID.randomUUID(), "math.fields.vector_constant");
@@ -34,6 +37,10 @@ public class VectorFieldConstantNode extends BaseNode {
         addInputPort(new BasePort(INPUT_Z_ID, "Z", "Constant vector Z", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Vector field F(p) = v", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -48,24 +55,39 @@ public class VectorFieldConstantNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Double x = resolveComponent(inputValues.get(INPUT_X_ID), 0.0d);
-        Double y = resolveComponent(inputValues.get(INPUT_Y_ID), 0.0d);
-        Double z = resolveComponent(inputValues.get(INPUT_Z_ID), 0.0d);
+        Double x = resolveComponent(INPUT_X_ID);
+        Double y = resolveComponent(INPUT_Y_ID);
+        Double z = resolveComponent(INPUT_Z_ID);
         if (x == null || y == null || z == null) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
         }
 
-        VectorFieldData field = (point, dest) -> dest.set(x, y, z);
+        final double vx = x;
+        final double vy = y;
+        final double vz = z;
+        VectorFieldData field = (point, dest) -> dest.set(vx, vy, vz);
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    /** Finite component value, or {@code null} when an explicit input is non-finite. */
-    private static Double resolveComponent(@Nullable Object raw, double fallback) {
-        if (raw instanceof Number number) {
+    /** Undriven → {@code 0}. Driven + finite Number → use. Driven invalid → null. */
+    private @Nullable Double resolveComponent(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId)) {
+            Object raw = getInput(portId);
+            if (!(raw instanceof Number number)) {
+                return null;
+            }
             double v = number.doubleValue();
             return Double.isFinite(v) ? v : null;
         }
-        return fallback;
+        return 0.0d;
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

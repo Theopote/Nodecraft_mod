@@ -4,7 +4,10 @@
 
 Strict sampling / construction diagnostics for Scalar Constant, Noise, Combine, and Sample Points
 are documented in [`node-language-v2-fields-scalar-foundation.md`](./node-language-v2-fields-scalar-foundation.md)
-(Graph **V133**).
+(Graph **V133**). Vector numerical stability (SDF gradient, Sample Point finite query,
+vector Constant/Combine Valid) is in
+[`node-language-v2-fields-vector-numerical.md`](./node-language-v2-fields-vector-numerical.md)
+(Graph **V134**).
 
 Language unification for `math.fields.*` (17 nodes). Field math inherits frozen Scalar Math and Random
 semantics; sampling nodes enforce a finite **Valid** boundary.

@@ -51,7 +51,7 @@ public class ScalarFieldSamplePointNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
-        Vector3d p = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d p = FieldSampleUtils.resolveFinitePoint(inputValues.get(INPUT_POINT_ID));
         if (!(fieldObj instanceof ScalarFieldData field) || p == null) {
             outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);

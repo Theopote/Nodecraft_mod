@@ -7,6 +7,8 @@ batch sample twin. Does **not** change `RandomOps.valueNoise3`, `ScalarMathOps`,
 `SpatialValueResolver.resolvePointList` filtering.
 
 Related: [`node-language-v1-fields.md`](./node-language-v1-fields.md),
+[`node-language-v2-fields-vector-numerical.md`](./node-language-v2-fields-vector-numerical.md)
+(Graph **V134**),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
 ## Nodes in scope

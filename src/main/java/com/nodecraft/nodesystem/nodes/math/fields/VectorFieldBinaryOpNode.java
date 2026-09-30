@@ -36,6 +36,8 @@ public class VectorFieldBinaryOpNode extends BaseNode {
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VectorFieldBinaryOpNode() {
         super(UUID.randomUUID(), "math.fields.vector_binary_op");
@@ -43,6 +45,10 @@ public class VectorFieldBinaryOpNode extends BaseNode {
         addInputPort(new BasePort(INPUT_A_ID, "A", "Left vector field", NodeDataType.VECTOR_FIELD, this));
         addInputPort(new BasePort(INPUT_B_ID, "B", "Right vector field", NodeDataType.VECTOR_FIELD, this));
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Combined vector field", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the combined field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,7 +66,7 @@ public class VectorFieldBinaryOpNode extends BaseNode {
         Object aObj = inputValues.get(INPUT_A_ID);
         Object bObj = inputValues.get(INPUT_B_ID);
         if (!(aObj instanceof VectorFieldData a) || !(bObj instanceof VectorFieldData b)) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
@@ -79,5 +85,13 @@ public class VectorFieldBinaryOpNode extends BaseNode {
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

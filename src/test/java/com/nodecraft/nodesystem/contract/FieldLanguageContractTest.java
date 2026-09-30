@@ -16,6 +16,7 @@ import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.nodes.math.fields.AttractorFieldBlendNode;
 import com.nodecraft.nodesystem.nodes.math.fields.CurveAttractorFieldNode;
+import com.nodecraft.nodesystem.nodes.math.fields.FieldSampleUtils;
 import com.nodecraft.nodesystem.nodes.math.fields.PointAttractorFieldNode;
 import com.nodecraft.nodesystem.nodes.math.fields.RepulsorFieldNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldBinaryOpNode;
@@ -330,30 +331,27 @@ class FieldLanguageContractTest {
     }
 
     @Test
-    void sdfGradientInvalidStepFallsBackToPropertyDefault() {
+    void sdfGradientDrivenInvalidStepFailsClosed() {
         SignedDistanceFieldData plane = point -> point.x;
-        Vector3d sampleAt = new Vector3d(0.5d, 0.0d, 0.0d);
 
         VectorFieldFromSdfGradientNode node = new VectorFieldFromSdfGradientNode();
         node.setNodeState(Map.of("step", 0.5d));
 
-        Vector3d explicit = sampleVectorField(node.compute(Map.of(
-                "input_sdf", plane,
-                "input_step", 0.5d
-        )).get("output_field"), sampleAt);
-        Vector3d fallback = sampleVectorField(node.compute(Map.of(
+        Map<String, Object> zeroStep = node.compute(Map.of(
                 "input_sdf", plane,
                 "input_step", 0.0d
-        )).get("output_field"), sampleAt);
-        Vector3d fromNaN = sampleVectorField(node.compute(Map.of(
+        ));
+        assertFalse((Boolean) zeroStep.get("output_valid"));
+        assertEquals(FieldSampleUtils.ERROR_INVALID_INPUT, zeroStep.get("output_error"));
+        assertNull(zeroStep.get("output_field"));
+
+        Map<String, Object> nanStep = node.compute(Map.of(
                 "input_sdf", plane,
                 "input_step", Double.NaN
-        )).get("output_field"), sampleAt);
-
-        assertEquals(explicit.x, fallback.x, 1.0e-9d);
-        assertEquals(explicit.y, fallback.y, 1.0e-9d);
-        assertEquals(explicit.z, fallback.z, 1.0e-9d);
-        assertEquals(explicit.x, fromNaN.x, 1.0e-9d);
+        ));
+        assertFalse((Boolean) nanStep.get("output_valid"));
+        assertEquals(FieldSampleUtils.ERROR_INVALID_INPUT, nanStep.get("output_error"));
+        assertNull(nanStep.get("output_field"));
     }
 
     @Test
