@@ -62,8 +62,8 @@ public class ClampNode extends BaseNode {
             return;
         }
 
-        NumericRangeData domain = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_DOMAIN_ID), defaultStart, defaultEnd);
+        NumericRangeData domain = NumericDomainResolver.resolveOptionalDomain(
+            this, INPUT_DOMAIN_ID, defaultStart, defaultEnd);
         ScalarResult result = ScalarMathOps.clamp(valueNumber.doubleValue(), domain);
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());

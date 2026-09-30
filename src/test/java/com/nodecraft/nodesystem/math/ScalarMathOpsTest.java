@@ -31,7 +31,23 @@ class ScalarMathOpsTest {
     }
 
     @Test
-    void lerpOverflowIsInvalid() {
-        assertFalse(ScalarMathOps.lerp(1.0e308d, -1.0e308d, 1.0d).valid());
+    void stableLerpLargeOppositeEndpoints() {
+        assertTrue(ScalarMathOps.lerp(1.0e308d, -1.0e308d, 0.5d).valid());
+        assertEquals(0.0d, ScalarMathOps.lerp(1.0e308d, -1.0e308d, 0.5d).value(), 0.0d);
+        assertTrue(ScalarMathOps.lerp(1.0e308d, -1.0e308d, 1.0d).valid());
+        assertEquals(-1.0e308d, ScalarMathOps.lerp(1.0e308d, -1.0e308d, 1.0d).value(), 0.0d);
+    }
+
+    @Test
+    void lerpExtremeExtrapolationCanStillFail() {
+        assertFalse(ScalarMathOps.lerp(1.0e308d, 1.0e308d, 1.0e308d).valid());
+    }
+
+    @Test
+    void smoothstepExtremeSymmetricSpan() {
+        ScalarResult result = ScalarMathOps.smoothstep(0.0d, -1.0e308d, 1.0e308d);
+        assertTrue(result.valid());
+        assertEquals(0.5d, ScalarMathOps.smoothstepT(0.0d, -1.0e308d, 1.0e308d).value(), 1.0e-6);
+        assertEquals(0.5d, result.value(), 1.0e-6);
     }
 }

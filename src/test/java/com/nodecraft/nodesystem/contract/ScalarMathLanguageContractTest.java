@@ -136,12 +136,32 @@ class ScalarMathLanguageContractTest {
     }
 
     @Test
-    void lerpOverflowIsInvalid() {
+    void stableLerpLargeOppositeEndpoints() {
         LerpNode node = new LerpNode();
         Map<String, Object> outputs = node.compute(Map.of(
             "input_a", 1.0e308d,
             "input_b", -1.0e308d,
+            "input_t", 0.5d
+        ));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(0.0d, (Double) outputs.get("output_result"), 0.0d);
+
+        Map<String, Object> atB = node.compute(Map.of(
+            "input_a", 1.0e308d,
+            "input_b", -1.0e308d,
             "input_t", 1.0d
+        ));
+        assertTrue((Boolean) atB.get("output_valid"));
+        assertEquals(-1.0e308d, (Double) atB.get("output_result"), 0.0d);
+    }
+
+    @Test
+    void lerpExtremeExtrapolationIsInvalid() {
+        LerpNode node = new LerpNode();
+        Map<String, Object> outputs = node.compute(Map.of(
+            "input_a", 1.0e308d,
+            "input_b", 1.0e308d,
+            "input_t", 1.0e308d
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertTrue(Double.isNaN((Double) outputs.get("output_result")));

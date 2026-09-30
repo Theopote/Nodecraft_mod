@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -48,7 +50,7 @@ public class GraphMapperNode extends BaseNode {
     private boolean clampInput = true;
 
     @NodeProperty(displayName = "Default Exponent", category = "Graph", order = 3,
-        description = "Used by Power, Ease, and Exponential mappings")
+        description = "Used by Power, Ease, and Exponential mappings. Negative values use abs(); magnitudes below 0.001 clamp to 0.001.")
     private double defaultExponent = 2.0d;
 
     @NodeProperty(displayName = "Gaussian Center", category = "Graph", order = 4,
@@ -109,11 +111,16 @@ public class GraphMapperNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        double value = getInputDouble(INPUT_VALUE_ID, 0.0d);
-        NumericRangeData source = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
-        NumericRangeData target = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
+        Double valueObj = resolveOptionalValue();
+        if (valueObj == null) {
+            writeInvalid();
+            return;
+        }
+        double value = valueObj;
+        NumericRangeData source = NumericDomainResolver.resolveOptionalDomain(
+            this, INPUT_SOURCE_ID, defaultSourceStart, defaultSourceEnd);
+        NumericRangeData target = NumericDomainResolver.resolveOptionalDomain(
+            this, INPUT_TARGET_ID, defaultTargetStart, defaultTargetEnd);
         double exponent = defaultExponent;
         double center = gaussianCenter;
         double width = gaussianWidth;
@@ -237,9 +244,15 @@ public class GraphMapperNode extends BaseNode {
         return Math.max(0.001d, Math.abs(exponent));
     }
 
-    private double getInputDouble(String portId, double fallback) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : fallback;
+    private @Nullable Double resolveOptionalValue() {
+        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_ID)) {
+            return OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_VALUE_ID, 0.0d);
+        }
+        Object raw = inputValues.get(INPUT_VALUE_ID);
+        if (raw == null) {
+            return 0.0d;
+        }
+        return StrictDoubleUtils.requireExactFiniteDouble(raw);
     }
 
     private static boolean allFinite(double... values) {

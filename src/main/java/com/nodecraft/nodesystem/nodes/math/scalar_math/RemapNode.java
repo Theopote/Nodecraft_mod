@@ -70,10 +70,10 @@ public class RemapNode extends BaseNode {
             return;
         }
 
-        NumericRangeData source = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_SOURCE_ID), defaultSourceStart, defaultSourceEnd);
-        NumericRangeData target = NumericDomainResolver.resolveDomain(
-            inputValues.get(INPUT_TARGET_ID), defaultTargetStart, defaultTargetEnd);
+        NumericRangeData source = NumericDomainResolver.resolveOptionalDomain(
+            this, INPUT_SOURCE_ID, defaultSourceStart, defaultSourceEnd);
+        NumericRangeData target = NumericDomainResolver.resolveOptionalDomain(
+            this, INPUT_TARGET_ID, defaultTargetStart, defaultTargetEnd);
         boolean clamp = clampObj instanceof Boolean ? (Boolean) clampObj : defaultClamp;
 
         ScalarResult result = ScalarMathOps.remap(valueNumber.doubleValue(), source, target, clamp);

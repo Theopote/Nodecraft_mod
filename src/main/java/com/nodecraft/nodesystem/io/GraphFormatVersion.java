@@ -800,8 +800,15 @@ public final class GraphFormatVersion {
      */
     public static final int V119 = 119;
 
+    /**
+     * Scalar Math Strict Inputs & Numeric Boundaries v2: strict INTEGER divide,
+     * safe smoothstep normalization, connection-aware Expression/Domain/Value,
+     * stable FMA lerp. No wire remaps.
+     */
+    public static final int V120 = 120;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V119;
+    public static final int CURRENT = V120;
 
     private GraphFormatVersion() {
     }

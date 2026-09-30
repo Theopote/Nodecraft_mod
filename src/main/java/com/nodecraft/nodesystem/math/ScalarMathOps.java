@@ -131,12 +131,16 @@ public final class ScalarMathOps {
         return ScalarResult.ok(value - Math.floor(value));
     }
 
-    /** Linear interpolate; T outside [0,1] extrapolates. */
+    /** Linear interpolate; T outside [0,1] extrapolates. Uses FMA to avoid {@code b - a} overflow. */
     public static ScalarResult lerp(double a, double b, double t) {
         if (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(t)) {
             return ScalarResult.invalid();
         }
-        return ScalarResult.ok(a + t * (b - a));
+        double result = Math.fma(t, b, Math.fma(-t, a, a));
+        if (!Double.isFinite(result)) {
+            return ScalarResult.invalid();
+        }
+        return ScalarResult.ok(result);
     }
 
     /**
@@ -144,12 +148,11 @@ public final class ScalarMathOps {
      * Invalid when edges coincide ({@code edge0 == edge1}).
      */
     public static ScalarResult smoothstep(double value, double edge0, double edge1) {
-        if (!Double.isFinite(value) || !Double.isFinite(edge0) || !Double.isFinite(edge1)
-            || edge0 == edge1) {
-            return ScalarResult.invalid();
+        ScalarResult normalized = normalizeInterval(value, edge0, edge1);
+        if (!normalized.valid()) {
+            return normalized;
         }
-        double t = (value - edge0) / (edge1 - edge0);
-        double clamped = clamp01(t);
+        double clamped = clamp01(normalized.value());
         return ScalarResult.ok(clamped * clamped * (3.0d - 2.0d * clamped));
     }
 
@@ -157,12 +160,80 @@ public final class ScalarMathOps {
      * Normalized and clamped parameter for smoothstep (same validity as {@link #smoothstep}).
      */
     public static ScalarResult smoothstepT(double value, double edge0, double edge1) {
+        ScalarResult normalized = normalizeInterval(value, edge0, edge1);
+        if (!normalized.valid()) {
+            return normalized;
+        }
+        return ScalarResult.ok(clamp01(normalized.value()));
+    }
+
+    /**
+     * Directed normalization {@code (value - edge0) / (edge1 - edge0)} with overflow-safe fallback
+     * when {@code edge1 - edge0} is non-finite.
+     */
+    static ScalarResult normalizeInterval(double value, double edge0, double edge1) {
         if (!Double.isFinite(value) || !Double.isFinite(edge0) || !Double.isFinite(edge1)
             || edge0 == edge1) {
             return ScalarResult.invalid();
         }
-        double t = (value - edge0) / (edge1 - edge0);
-        return ScalarResult.ok(clamp01(t));
+
+        double span = edge1 - edge0;
+        if (Double.isFinite(span) && span != 0.0d) {
+            double t = (value - edge0) / span;
+            if (!Double.isFinite(t)) {
+                return ScalarResult.invalid();
+            }
+            return ScalarResult.ok(t);
+        }
+
+        boolean ascending = edge0 < edge1;
+        if (ascending) {
+            if (value <= edge0) {
+                return ScalarResult.ok(0.0d);
+            }
+            if (value >= edge1) {
+                return ScalarResult.ok(1.0d);
+            }
+        } else {
+            if (value >= edge0) {
+                return ScalarResult.ok(0.0d);
+            }
+            if (value <= edge1) {
+                return ScalarResult.ok(1.0d);
+            }
+        }
+
+        double left = value - edge0;
+        double right = edge1 - value;
+        if (!Double.isFinite(left) || !Double.isFinite(right)) {
+            return ScalarResult.invalid();
+        }
+        if (left == 0.0d) {
+            return ScalarResult.ok(0.0d);
+        }
+        if (right == 0.0d) {
+            return ScalarResult.ok(1.0d);
+        }
+        if (left > 0.0d && right > 0.0d && left == right) {
+            return ScalarResult.ok(0.5d);
+        }
+        double sum = left + right;
+        if (Double.isFinite(sum) && sum != 0.0d) {
+            double t = left / sum;
+            if (!Double.isFinite(t)) {
+                return ScalarResult.invalid();
+            }
+            return ScalarResult.ok(t);
+        }
+        double ratio = right / left;
+        if (!Double.isFinite(ratio)) {
+            return ScalarResult.ok(Math.abs(left) > Math.abs(right) ? 0.0d : 1.0d);
+        }
+        double t = 1.0d / (1.0d + ratio);
+        if (!Double.isFinite(t)) {
+            return ScalarResult.invalid();
+        }
+        return ScalarResult.ok(t);
     }
 
     public static ScalarResult clamp(double value, double a, double b) {
@@ -199,6 +270,9 @@ public final class ScalarMathOps {
         double result = target.lerp(t);
         if (clampToTarget) {
             result = Math.max(target.lower(), Math.min(target.upper(), result));
+        }
+        if (!Double.isFinite(result)) {
+            return ScalarResult.invalid();
         }
         return ScalarResult.ok(result);
     }

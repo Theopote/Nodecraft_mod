@@ -1,5 +1,8 @@
 # Node Language v1 — Scalar Math
 
+**Status: historical v1** (Graph **V25**; superseded by
+[`node-language-v2-scalar-math.md`](./node-language-v2-scalar-math.md) **V120**)
+
 Freeze for `math.scalar_math.*` continuous numeric nodes.
 Shared implementation: `com.nodecraft.nodesystem.math.ScalarMathOps`.
 Graph schema: **V25** drops deleted Fraction / Graph Mapper ports (see migration below).

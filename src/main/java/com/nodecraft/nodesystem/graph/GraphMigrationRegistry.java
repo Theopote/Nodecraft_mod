@@ -178,6 +178,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V116 -> migrateV116ToV117(graph);
             case GraphFormatVersion.V117 -> migrateV117ToV118(graph);
             case GraphFormatVersion.V118 -> migrateV118ToV119(graph);
+            case GraphFormatVersion.V119 -> migrateV119ToV120(graph);
             default -> graph;
         };
     }
@@ -5586,6 +5587,14 @@ public final class GraphMigrationRegistry {
      * long-safe spatial sampling, connection-aware ports; no wire remaps).
      */
     private static SavedGraph migrateV118ToV119(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Scalar Math Strict Inputs & Numeric Boundaries v2 (strict ports, safe smoothstep,
+     * stable lerp; no wire remaps).
+     */
+    private static SavedGraph migrateV119ToV120(SavedGraph graph) {
         return graph;
     }
 

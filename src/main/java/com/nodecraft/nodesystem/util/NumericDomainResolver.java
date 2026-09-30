@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +18,30 @@ public final class NumericDomainResolver {
                                                            double defaultEnd) {
         if (domainValue instanceof NumericRangeData(double start, double end)) {
             return NumericRangeData.canonical(start, end);
+        }
+        return NumericRangeData.canonical(defaultStart, defaultEnd);
+    }
+
+    /**
+     * Connection-aware domain resolve: undriven → defaults; driven + valid → canonical;
+     * driven + invalid → {@code null}.
+     */
+    public static @Nullable NumericRangeData resolveOptionalDomain(
+            BaseNode node,
+            String portId,
+            double defaultStart,
+            double defaultEnd
+    ) {
+        if (OptionalPortDrive.isConnected(node, portId)) {
+            Object value = node.getInput(portId);
+            if (!(value instanceof NumericRangeData range)) {
+                return null;
+            }
+            return NumericRangeData.canonical(range.start(), range.end());
+        }
+        Object injected = node.getInput(portId);
+        if (injected instanceof NumericRangeData range) {
+            return NumericRangeData.canonical(range.start(), range.end());
         }
         return NumericRangeData.canonical(defaultStart, defaultEnd);
     }

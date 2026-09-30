@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -50,22 +52,19 @@ public class IntDivideNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_A_ID);
-        Object bObj = inputValues.get(INPUT_B_ID);
+        Integer a = resolveRequiredInteger(INPUT_A_ID);
+        Integer b = resolveRequiredInteger(INPUT_B_ID);
 
-        if (!(aObj instanceof Number aNum) || !(bObj instanceof Number bNum)) {
-            outputValues.put(OUTPUT_QUOTIENT_ID, 0);
-            outputValues.put(OUTPUT_REMAINDER_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        if (a == null || b == null) {
+            emitInvalid();
             return;
         }
-
-        int a = aNum.intValue();
-        int b = bNum.intValue();
         if (b == 0) {
-            outputValues.put(OUTPUT_QUOTIENT_ID, 0);
-            outputValues.put(OUTPUT_REMAINDER_ID, 0);
-            outputValues.put(OUTPUT_VALID_ID, false);
+            emitInvalid();
+            return;
+        }
+        if (a == Integer.MIN_VALUE && b == -1) {
+            emitInvalid();
             return;
         }
 
@@ -73,5 +72,17 @@ public class IntDivideNode extends BaseNode {
         outputValues.put(OUTPUT_REMAINDER_ID, Math.floorMod(a, b));
         outputValues.put(OUTPUT_VALID_ID, true);
     }
-}
 
+    private @Nullable Integer resolveRequiredInteger(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return StrictIntegerUtils.requireExactInteger(getInput(portId));
+        }
+        return StrictIntegerUtils.requireExactInteger(inputValues.get(portId));
+    }
+
+    private void emitInvalid() {
+        outputValues.put(OUTPUT_QUOTIENT_ID, 0);
+        outputValues.put(OUTPUT_REMAINDER_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+    }
+}

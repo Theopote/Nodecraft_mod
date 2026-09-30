@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.ScalarMathOps;
 import com.nodecraft.nodesystem.math.ScalarResult;
 import com.nodecraft.nodesystem.math.TrigMathOps;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiInputTextFlags;
@@ -19,9 +21,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @NodeInfo(
@@ -183,24 +187,91 @@ public class ExpressionNode extends BaseCustomUINode {
         return error.length() <= 42 ? error : error.substring(0, 39) + "...";
     }
 
-    private Map<String, Double> readVariables() {
+    private static final Set<String> EXPRESSION_VARIABLES = Set.of("a", "b", "c", "x", "y", "z", "t");
+
+    private static final Set<String> EXPRESSION_FUNCTIONS = Set.of(
+        "sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+        "sqrt", "abs", "floor", "ceil", "ceiling", "round",
+        "log", "ln", "log10", "exp", "pow", "min", "max",
+        "clamp", "lerp", "smoothstep"
+    );
+
+    static Set<String> scanUsedVariables(String expression) {
+        Set<String> used = new HashSet<>();
+        if (expression == null || expression.isBlank()) {
+            return used;
+        }
+        int index = 0;
+        while (index < expression.length()) {
+            char c = expression.charAt(index);
+            if (Character.isLetter(c) || c == '_') {
+                int start = index;
+                index++;
+                while (index < expression.length()) {
+                    char next = expression.charAt(index);
+                    if (!Character.isLetterOrDigit(next) && next != '_') {
+                        break;
+                    }
+                    index++;
+                }
+                String name = expression.substring(start, index).toLowerCase(Locale.ROOT);
+                if (EXPRESSION_FUNCTIONS.contains(name) || "pi".equals(name) || "tau".equals(name) || "e".equals(name)) {
+                    continue;
+                }
+                if (EXPRESSION_VARIABLES.contains(name)) {
+                    used.add(name);
+                }
+            } else {
+                index++;
+            }
+        }
+        return used;
+    }
+
+    private Map<String, Double> readVariables() throws ExpressionEvaluationException {
+        Set<String> used = scanUsedVariables(expression);
         Map<String, Double> variables = new HashMap<>();
-        variables.put("a", getInputDouble(INPUT_A_ID));
-        variables.put("b", getInputDouble(INPUT_B_ID));
-        variables.put("c", getInputDouble(INPUT_C_ID));
-        variables.put("x", getInputDouble(INPUT_X_ID));
-        variables.put("y", getInputDouble(INPUT_Y_ID));
-        variables.put("z", getInputDouble(INPUT_Z_ID));
-        variables.put("t", getInputDouble(INPUT_T_ID));
+        putVariable(variables, used, "a", INPUT_A_ID);
+        putVariable(variables, used, "b", INPUT_B_ID);
+        putVariable(variables, used, "c", INPUT_C_ID);
+        putVariable(variables, used, "x", INPUT_X_ID);
+        putVariable(variables, used, "y", INPUT_Y_ID);
+        putVariable(variables, used, "z", INPUT_Z_ID);
+        putVariable(variables, used, "t", INPUT_T_ID);
         variables.put("pi", Math.PI);
         variables.put("tau", Math.PI * 2.0d);
         variables.put("e", Math.E);
         return variables;
     }
 
-    private double getInputDouble(String portId) {
-        Object value = inputValues.get(portId);
-        return value instanceof Number number ? number.doubleValue() : 0.0d;
+    private void putVariable(
+            Map<String, Double> variables,
+            Set<String> used,
+            String name,
+            String portId
+    ) throws ExpressionEvaluationException {
+        if (!used.contains(name)) {
+            variables.put(name, 0.0d);
+            return;
+        }
+        Double value;
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            value = OptionalPortDrive.resolveOptionalStrictDouble(this, portId, 0.0d);
+            if (value == null) {
+                throw new ExpressionEvaluationException(name.toUpperCase(Locale.ROOT) + " must be a finite Double");
+            }
+        } else {
+            Object raw = inputValues.get(portId);
+            if (raw == null) {
+                value = 0.0d;
+            } else {
+                value = StrictDoubleUtils.requireExactFiniteDouble(raw);
+                if (value == null) {
+                    throw new ExpressionEvaluationException(name.toUpperCase(Locale.ROOT) + " must be a finite Double");
+                }
+            }
+        }
+        variables.put(name, value);
     }
 
     private void updateOutput(double result, boolean valid, String error) {
