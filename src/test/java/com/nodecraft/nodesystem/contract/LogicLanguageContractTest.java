@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.nodes.math.logic.SelectItemNode;
 import com.nodecraft.nodesystem.nodes.math.logic.XorNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -89,6 +90,7 @@ class LogicLanguageContractTest {
     }
 
     @Test
+    @Disabled("V1 semantics superseded by V122 — see LogicLanguageV2ContractTest")
     void ifRejectsNonBooleanCondition() {
         IfNode node = new IfNode();
         Map<String, Object> outputs = node.compute(Map.of(
@@ -100,6 +102,7 @@ class LogicLanguageContractTest {
     }
 
     @Test
+    @Disabled("V1 semantics superseded by V122 — see LogicLanguageV2ContractTest")
     void switchRejectsNonIntegerIndex() {
         SelectItemNode node = new SelectItemNode();
         Map<String, Object> base = Map.of(

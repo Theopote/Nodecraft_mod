@@ -180,6 +180,7 @@ public final class GraphMigrationRegistry {
             case GraphFormatVersion.V118 -> migrateV118ToV119(graph);
             case GraphFormatVersion.V119 -> migrateV119ToV120(graph);
             case GraphFormatVersion.V120 -> migrateV120ToV121(graph);
+            case GraphFormatVersion.V121 -> migrateV121ToV122(graph);
             default -> graph;
         };
     }
@@ -5604,6 +5605,14 @@ public final class GraphMigrationRegistry {
      * strict DOUBLE ordering; no wire remaps).
      */
     private static SavedGraph migrateV120ToV121(SavedGraph graph) {
+        return graph;
+    }
+
+    /**
+     * Logic Strict Boolean & Value Selection Contract v2 (output_valid, strict inputs;
+     * no wire remaps).
+     */
+    private static SavedGraph migrateV121ToV122(SavedGraph graph) {
         return graph;
     }
 

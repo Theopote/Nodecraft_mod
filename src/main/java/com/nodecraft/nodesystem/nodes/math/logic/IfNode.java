@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.SelectionResult;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -17,7 +19,8 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.logic.if",
     displayName = "If",
-    description = "Selects True Value when Condition is true; otherwise selects False Value.",
+    description = "Selects True Value when Condition is true; otherwise selects False Value. "
+        + "Selects values, not execution paths. Use flow.control.branch for exec branching.",
     category = "math.logic",
     order = 0
 )
@@ -27,6 +30,8 @@ public class IfNode extends BaseNode {
     private static final String INPUT_TRUE_VALUE_ID = "input_true_value";
     private static final String INPUT_FALSE_VALUE_ID = "input_false_value";
     private static final String OUTPUT_RESULT_ID = "output_result";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public IfNode() {
         super(UUID.randomUUID(), "math.logic.if");
@@ -40,11 +45,16 @@ public class IfNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result",
             "Selected output value", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "Whether selection succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Error message when selection failed", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Selects True Value when Condition is true; otherwise selects False Value.";
+        return "Selects True Value when Condition is true; otherwise selects False Value. "
+            + "Selects values, not execution paths. Use flow.control.branch for exec branching.";
     }
 
     @Override
@@ -54,10 +64,35 @@ public class IfNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        boolean condition = LogicUtils.booleanValue(inputValues.get(INPUT_CONDITION_ID));
-        Object result = condition
-            ? inputValues.get(INPUT_TRUE_VALUE_ID)
-            : inputValues.get(INPUT_FALSE_VALUE_ID);
-        outputValues.put(OUTPUT_RESULT_ID, result);
+        SelectionResult result = LogicUtils.selectIf(
+                resolveValue(INPUT_CONDITION_ID),
+                isDriven(INPUT_CONDITION_ID),
+                resolveValue(INPUT_TRUE_VALUE_ID),
+                isConnected(INPUT_TRUE_VALUE_ID),
+                resolveValue(INPUT_FALSE_VALUE_ID),
+                isConnected(INPUT_FALSE_VALUE_ID)
+        );
+        emitSelection(result);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private boolean isConnected(String portId) {
+        return OptionalPortDrive.isConnected(this, portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
+    }
+
+    private void emitSelection(SelectionResult result) {
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        outputValues.put(OUTPUT_ERROR_ID, result.error() == null ? "" : result.error());
     }
 }

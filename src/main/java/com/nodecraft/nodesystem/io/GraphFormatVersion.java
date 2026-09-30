@@ -814,8 +814,14 @@ public final class GraphFormatVersion {
      */
     public static final int V121 = 121;
 
+    /**
+     * Logic Strict Boolean & Value Selection Contract v2: output_valid on all logic nodes,
+     * strict Boolean/Integer parsing, If/Switch invalid-input handling. No wire remaps.
+     */
+    public static final int V122 = 122;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V121;
+    public static final int CURRENT = V122;
 
     private GraphFormatVersion() {
     }

@@ -1,5 +1,7 @@
 # Node Language v1 — Logic
 
+**Historical** (V1). Current contract: [`node-language-v2-logic.md`](./node-language-v2-logic.md) (Graph **V122**).
+
 Freeze for `math.logic.*` boolean algebra and value-selection nodes.
 Shared implementation: `com.nodecraft.nodesystem.nodes.math.logic.LogicUtils`.
 

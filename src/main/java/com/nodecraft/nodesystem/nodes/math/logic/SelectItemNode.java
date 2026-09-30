@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.SelectionResult;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -17,7 +19,8 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.logic.switch",
     displayName = "Switch",
-    description = "Selects one of multiple inputs by index, with a default fallback.",
+    description = "Selects one of multiple inputs by index, with a default fallback. "
+        + "Selects values, not execution paths. Use flow.control.branch for exec branching.",
     category = "math.logic",
     order = 1
 )
@@ -30,6 +33,7 @@ public class SelectItemNode extends BaseNode {
     private static final String INPUT_ITEM_3_ID = "input_item_3";
     private static final String INPUT_DEFAULT_ID = "input_default";
     private static final String OUTPUT_RESULT_ID = "output_result";
+    private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SelectItemNode() {
         super(UUID.randomUUID(), "math.logic.switch");
@@ -49,11 +53,14 @@ public class SelectItemNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result",
             "Selected output value", NodeDataType.ANY, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "Whether selection succeeded", NodeDataType.BOOLEAN, this));
     }
 
     @Override
     public String getDescription() {
-        return "Selects one of multiple inputs by index, with a default fallback.";
+        return "Selects one of multiple inputs by index, with a default fallback. "
+            + "Selects values, not execution paths. Use flow.control.branch for exec branching.";
     }
 
     @Override
@@ -63,16 +70,30 @@ public class SelectItemNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        int index = LogicUtils.switchIndex(inputValues.get(INPUT_INDEX_ID));
+        LogicUtils.SwitchIndexParse indexParse = LogicUtils.parseSwitchIndex(
+                resolveValue(INPUT_INDEX_ID),
+                isDriven(INPUT_INDEX_ID)
+        );
+        SelectionResult result = LogicUtils.selectSwitchIndex(
+                indexParse,
+                resolveValue(INPUT_ITEM_0_ID),
+                resolveValue(INPUT_ITEM_1_ID),
+                resolveValue(INPUT_ITEM_2_ID),
+                resolveValue(INPUT_ITEM_3_ID),
+                resolveValue(INPUT_DEFAULT_ID)
+        );
+        outputValues.put(OUTPUT_RESULT_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
+    }
 
-        Object result = switch (index) {
-            case 0 -> inputValues.get(INPUT_ITEM_0_ID);
-            case 1 -> inputValues.get(INPUT_ITEM_1_ID);
-            case 2 -> inputValues.get(INPUT_ITEM_2_ID);
-            case 3 -> inputValues.get(INPUT_ITEM_3_ID);
-            default -> inputValues.get(INPUT_DEFAULT_ID);
-        };
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
 
-        outputValues.put(OUTPUT_RESULT_ID, result);
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 }

@@ -67,6 +67,7 @@ class NodeExecutorIntegrationTest {
 
         assertTrue(new NodeExecutor(graph).executeSync());
         assertEquals("yes", ifNode.getOutput("output_result"));
+        assertTrue((Boolean) ifNode.getOutput("output_valid"));
     }
 
     @Test
