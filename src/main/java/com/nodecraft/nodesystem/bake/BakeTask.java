@@ -50,7 +50,11 @@ public class BakeTask {
     private BakeTaskState state = BakeTaskState.QUEUED;
     private BakeTaskState pendingAbortState = BakeTaskState.CANCELLED;
     private int placedCount = 0;
-    private int skippedCount = 0;
+    /** INCREMENTAL placement policy skips (expected, not an integrity failure). */
+    private int policySkippedCount = 0;
+    private int chunkUnavailableCount = 0;
+    private int writeFailedCount = 0;
+    private int invalidPlacementCount = 0;
 
     public BakeTask(UUID taskId,
                     World world,
@@ -186,8 +190,29 @@ public class BakeTask {
         return placedCount;
     }
 
+    /** Policy-driven skips only ({@link PlacementMode#INCREMENTAL}). */
     public int getSkippedCount() {
-        return skippedCount;
+        return policySkippedCount;
+    }
+
+    public int getPolicySkippedCount() {
+        return policySkippedCount;
+    }
+
+    public int getChunkUnavailableCount() {
+        return chunkUnavailableCount;
+    }
+
+    public int getWriteFailedCount() {
+        return writeFailedCount;
+    }
+
+    public int getInvalidPlacementCount() {
+        return invalidPlacementCount;
+    }
+
+    public boolean hasIntegrityFailure() {
+        return chunkUnavailableCount > 0 || writeFailedCount > 0 || invalidPlacementCount > 0;
     }
 
     public int getTotalCount() {
@@ -235,13 +260,17 @@ public class BakeTask {
             Placement placement = placements.get(nextIndex++);
             BlockPos pos = placement.pos();
             BlockState targetState = placement.state();
-            if (pos == null || targetState == null || !world.isChunkLoaded(pos)) {
-                skippedCount++;
+            if (pos == null || targetState == null) {
+                invalidPlacementCount++;
+                continue;
+            }
+            if (!world.isChunkLoaded(pos)) {
+                chunkUnavailableCount++;
                 continue;
             }
 
             if (placementMode == PlacementMode.INCREMENTAL && !world.isAir(pos)) {
-                skippedCount++;
+                policySkippedCount++;
                 continue;
             }
 
@@ -252,14 +281,30 @@ public class BakeTask {
                 placedCount++;
                 originalStates.putIfAbsent(pos.toImmutable(), previous);
             } else {
-                skippedCount++;
+                writeFailedCount++;
             }
         }
 
         if (nextIndex >= placements.size()) {
-            state = BakeTaskState.COMPLETED;
+            finalizeApplyPass();
         }
         return placedThisTick;
+    }
+
+    private void finalizeApplyPass() {
+        state = resolveCompletionState(hasIntegrityFailure(), !originalStates.isEmpty());
+        if (state == BakeTaskState.ROLLING_BACK) {
+            pendingAbortState = BakeTaskState.FAILED;
+            beginTimeSlicedRollback();
+        }
+    }
+
+    /** Package-visible completion rule for unit tests (policy skips alone do not fail). */
+    static BakeTaskState resolveCompletionState(boolean integrityFailure, boolean hadSuccessfulWrites) {
+        if (!integrityFailure) {
+            return BakeTaskState.COMPLETED;
+        }
+        return hadSuccessfulWrites ? BakeTaskState.ROLLING_BACK : BakeTaskState.FAILED;
     }
 
     @SuppressWarnings("deprecation")

@@ -610,11 +610,14 @@ public class BakePlacementService {
         }
 
         NodeCraft.LOGGER.debug(
-            "Bake task {} ({}) completed. placed={}, skipped={}, total={}",
+            "Bake task {} ({}) completed. placed={}, policySkipped={}, chunkUnavailable={}, writeFailed={}, invalid={}, total={}",
             task.getTaskId(),
             task.getOperationKind(),
             task.getPlacedCount(),
-            task.getSkippedCount(),
+            task.getPolicySkippedCount(),
+            task.getChunkUnavailableCount(),
+            task.getWriteFailedCount(),
+            task.getInvalidPlacementCount(),
             task.getTotalCount()
         );
     }
@@ -677,12 +680,15 @@ public class BakePlacementService {
             );
         } else {
             NodeCraft.LOGGER.debug(
-                "Bake task {} ({}) {} after rollback. placed={}, skipped={}, total={}",
+                "Bake task {} ({}) {} after rollback. placed={}, policySkipped={}, chunkUnavailable={}, writeFailed={}, invalid={}, total={}",
                 task.getTaskId(),
                 task.getOperationKind(),
                 task.getState(),
                 task.getPlacedCount(),
-                task.getSkippedCount(),
+                task.getPolicySkippedCount(),
+                task.getChunkUnavailableCount(),
+                task.getWriteFailedCount(),
+                task.getInvalidPlacementCount(),
                 task.getTotalCount()
             );
         }

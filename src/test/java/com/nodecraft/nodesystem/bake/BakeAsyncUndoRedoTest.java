@@ -143,6 +143,13 @@ class BakeAsyncUndoRedoTest {
     }
 
     @Test
+    void syncUndoWithNullWorldDoesNotPopStack() {
+        history.push(record("A"));
+        assertFalse(history.undoLast(null));
+        assertEquals(1, history.size());
+    }
+
+    @Test
     void emptyRecordsAreIgnored() {
         BakeHistory.UndoRecord empty = new BakeHistory.UndoRecord(UUID.randomUUID());
         history.push(empty);

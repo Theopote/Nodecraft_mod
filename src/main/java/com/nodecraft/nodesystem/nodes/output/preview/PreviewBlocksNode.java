@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
+import com.nodecraft.nodesystem.preview.PreviewBlocksSignature;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
@@ -72,6 +73,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
 
     private volatile String cachedPreviewId;
     private volatile int cachedInputSignature = 0;
+    private volatile int cachedStyleSignature = 0;
     private volatile String cachedEffectiveBlockType;
     private volatile long lastNonEmptyInputAt = 0L;
 
@@ -114,6 +116,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             PreviewManager.hideNodePreviews(getId().toString());
             cachedPreviewId = null;
             cachedInputSignature = 0;
+            cachedStyleSignature = 0;
             cachedEffectiveBlockType = null;
         } else {
             List<PreviewBlock> previewBlocks = new ArrayList<>();
@@ -121,13 +124,17 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             collectPreviewBlocks(placementsObj, effectiveBlockType, previewBlocks);
             collectPreviewBlocks(placementsTreeObj, effectiveBlockType, previewBlocks);
             collectPreviewBlocks(coordsObj, effectiveBlockType, previewBlocks);
+            previewBlocks = PreviewBlocksSignature.dedupeLastWinsByCell(previewBlocks);
 
             blockCount = previewBlocks.size();
 
             if (!previewBlocks.isEmpty()) {
                 lastNonEmptyInputAt = now;
-                int inputSignature = computePreviewBlocksSignature(previewBlocks);
+                int inputSignature = PreviewBlocksSignature.computeContentFingerprint(previewBlocks);
+                int styleSignature = PreviewBlocksSignature.computeStyleFingerprint(
+                        transparency, showOutline, duration);
                 boolean unchanged = inputSignature == cachedInputSignature
+                    && styleSignature == cachedStyleSignature
                     && effectiveBlockType.equals(cachedEffectiveBlockType)
                     && cachedPreviewId != null
                     && PreviewManager.hasActivePreview(cachedPreviewId);
@@ -154,6 +161,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
                         previewId = UUID.nameUUIDFromBytes(newPreviewId.getBytes());
                         cachedPreviewId = newPreviewId;
                         cachedInputSignature = inputSignature;
+                        cachedStyleSignature = styleSignature;
                         cachedEffectiveBlockType = effectiveBlockType;
                         success = true;
                     }
@@ -168,6 +176,7 @@ public class PreviewBlocksNode extends BaseCustomUINode {
                     PreviewManager.hideNodePreviews(getId().toString());
                     cachedPreviewId = null;
                     cachedInputSignature = 0;
+                    cachedStyleSignature = 0;
                     cachedEffectiveBlockType = null;
                 }
             }
@@ -176,33 +185,6 @@ public class PreviewBlocksNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_SUCCESS_ID, success);
         outputValues.put(OUTPUT_PREVIEW_ID_ID, previewId.toString());
         outputValues.put(OUTPUT_BLOCK_COUNT_ID, blockCount);
-    }
-
-    private int computePreviewBlocksSignature(List<PreviewBlock> blocks) {
-        int hash = 17;
-        hash = 31 * hash + blocks.size();
-        long sx = 0L;
-        long sy = 0L;
-        long sz = 0L;
-        int xh = 0;
-        for (PreviewBlock block : blocks) {
-            long x = Math.round(block.x());
-            long y = Math.round(block.y());
-            long z = Math.round(block.z());
-            sx += x;
-            sy += y;
-            sz += z;
-            xh ^= (int) (31L * x + 17L * y + z);
-            xh ^= block.blockId().hashCode();
-            if (block.stateData() != null) {
-                xh ^= block.stateData().hashCode();
-            }
-        }
-        hash = 31 * hash + Long.hashCode(sx);
-        hash = 31 * hash + Long.hashCode(sy);
-        hash = 31 * hash + Long.hashCode(sz);
-        hash = 31 * hash + xh;
-        return hash;
     }
 
     private void collectPreviewBlocks(Object source, String effectiveBlockType, List<PreviewBlock> out) {

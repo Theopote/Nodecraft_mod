@@ -71,13 +71,17 @@ public class BakeHistory {
      * WARNING: This can cause server lag for large builds. Consider using undoLastAsync instead.
      */
     public boolean undoLast(World world) {
-        UndoRecord record = pop();
-        if (record == null || world == null) {
+        if (world == null || undoStack.isEmpty()) {
             return false;
         }
-        UndoRecord redoRecord = record.applyAndCaptureInverse(world);
-        if (redoRecord != null && redoRecord.size() > 0) {
-            redoStack.add(redoRecord);
+        UndoRecord record = undoStack.getLast();
+        UndoApplyResult result = record.applyAndCaptureInverseStrict(world);
+        if (!result.fullySucceeded(record.size())) {
+            return false;
+        }
+        undoStack.removeLast();
+        if (result.inverse() != null && result.inverse().size() > 0) {
+            redoStack.add(result.inverse());
             trim(redoStack);
         }
         return true;
@@ -88,13 +92,17 @@ public class BakeHistory {
      * WARNING: This can cause server lag for large builds. Consider using redoLastAsync instead.
      */
     public boolean redoLast(World world) {
-        UndoRecord record = redoStack.isEmpty() ? null : redoStack.removeLast();
-        if (record == null || world == null) {
+        if (world == null || redoStack.isEmpty()) {
             return false;
         }
-        UndoRecord inverse = record.captureInverseAfterApply(world);
-        if (inverse != null && inverse.size() > 0) {
-            pushUndo(inverse);
+        UndoRecord record = redoStack.getLast();
+        UndoApplyResult result = record.applyAndCaptureInverseStrict(world);
+        if (!result.fullySucceeded(record.size())) {
+            return false;
+        }
+        redoStack.removeLast();
+        if (result.inverse() != null && result.inverse().size() > 0) {
+            pushUndo(result.inverse());
         }
         return true;
     }
@@ -209,6 +217,16 @@ public class BakeHistory {
         }
     }
 
+    public record UndoApplyResult(UndoRecord inverse, int restoredCount, int failedCount) {
+        public static UndoApplyResult failed(int expected) {
+            return new UndoApplyResult(new UndoRecord(UUID.randomUUID()), 0, expected);
+        }
+
+        public boolean fullySucceeded(int expectedEntries) {
+            return expectedEntries > 0 && failedCount == 0 && restoredCount == expectedEntries;
+        }
+    }
+
     public static class UndoRecord {
         private final UUID bakeId;
         /** First-write-wins original states; preserves insertion order for apply/async enqueue. */
@@ -243,30 +261,36 @@ public class BakeHistory {
         }
 
         public void apply(World world) {
-            captureInverseAfterApply(world);
+            applyAndCaptureInverseStrict(world);
             originalStates.clear();
         }
 
-        UndoRecord captureInverseAfterApply(World world) {
-            return applyAndCaptureInverse(world);
-        }
-
-        private UndoRecord applyAndCaptureInverse(World world) {
+        UndoApplyResult applyAndCaptureInverseStrict(World world) {
             if (world == null) {
-                return null;
+                return UndoApplyResult.failed(size());
             }
             UndoRecord inverse = new UndoRecord(bakeId);
+            int restored = 0;
+            int failed = 0;
             // Restore in reverse insertion order (LIFO).
             List<Map.Entry<BlockPos, BlockState>> entries = new ArrayList<>(originalStates.entrySet());
             for (int i = entries.size() - 1; i >= 0; i--) {
                 Map.Entry<BlockPos, BlockState> entry = entries.get(i);
                 BlockPos pos = entry.getKey();
                 BlockState targetState = entry.getValue();
+                if (pos == null || targetState == null) {
+                    failed++;
+                    continue;
+                }
                 BlockState currentState = world.getBlockState(pos);
+                if (!world.setBlockState(pos, targetState, 3)) {
+                    failed++;
+                    continue;
+                }
                 inverse.add(pos, currentState);
-                world.setBlockState(pos, targetState, 3);
+                restored++;
             }
-            return inverse;
+            return new UndoApplyResult(inverse, restored, failed);
         }
 
         public UUID getBakeId() {
