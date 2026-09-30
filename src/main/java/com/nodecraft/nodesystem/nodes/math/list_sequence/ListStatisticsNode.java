@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericListReduction;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -49,56 +51,38 @@ public class ListStatisticsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object listObj = inputValues.get(INPUT_LIST_ID);
-        if (!(listObj instanceof List<?> inputList)) {
+        NumericListReduction.ParseResult parsed =
+                NumericListReduction.parseFiniteNumbers(inputValues.get(INPUT_LIST_ID));
+        if (!parsed.valid()) {
             setInvalidOutputs();
             return;
         }
 
-        List<Double> values = new ArrayList<>(inputList.size());
-        for (Object item : inputList) {
-            if (!(item instanceof Number number)) {
-                setInvalidOutputs();
-                return;
-            }
-            double value = number.doubleValue();
-            if (!Double.isFinite(value)) {
-                setInvalidOutputs();
-                return;
-            }
-            values.add(value);
-        }
-
-        if (values.isEmpty()) {
-            setInvalidOutputs();
-            return;
-        }
-
+        List<Double> values = new ArrayList<>(parsed.values());
         double min = values.getFirst();
         double max = values.getFirst();
-        double sum = 0.0d;
         for (double v : values) {
             min = Math.min(min, v);
             max = Math.max(max, v);
-            sum += v;
         }
-        double average = sum / values.size();
 
-        Collections.sort(values);
-        double median;
-        int size = values.size();
-        int mid = size / 2;
-        if ((size & 1) == 1) {
-            median = values.get(mid);
-        } else {
-            median = (values.get(mid - 1) + values.get(mid)) * 0.5d;
+        ScalarResult sum = NumericListReduction.sum(values);
+        ScalarResult average = NumericListReduction.average(values);
+
+        List<Double> sorted = new ArrayList<>(values);
+        Collections.sort(sorted);
+        ScalarResult median = NumericListReduction.medianSorted(sorted);
+
+        if (!sum.valid() || !average.valid() || !median.valid()) {
+            setInvalidOutputs();
+            return;
         }
 
         outputValues.put(OUTPUT_MIN_ID, min);
         outputValues.put(OUTPUT_MAX_ID, max);
-        outputValues.put(OUTPUT_SUM_ID, sum);
-        outputValues.put(OUTPUT_AVERAGE_ID, average);
-        outputValues.put(OUTPUT_MEDIAN_ID, median);
+        outputValues.put(OUTPUT_SUM_ID, sum.value());
+        outputValues.put(OUTPUT_AVERAGE_ID, average.value());
+        outputValues.put(OUTPUT_MEDIAN_ID, median.value());
         outputValues.put(OUTPUT_COUNT_ID, values.size());
         outputValues.put(OUTPUT_VALID_ID, true);
     }

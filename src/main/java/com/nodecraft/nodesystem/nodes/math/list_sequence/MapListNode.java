@@ -7,6 +7,10 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ScalarMathOps;
+import com.nodecraft.nodesystem.math.ScalarResult;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -58,8 +62,10 @@ public class MapListNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_LIST_ID, "Numbers", "Input double list", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Operand value for scalar operations", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Clamp minimum (for CLAMP operation)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Clamp maximum (for CLAMP operation)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Clamp minimum (undriven=0; reversed bounds auto-normalized)",
+                NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Clamp maximum (undriven=1; reversed bounds auto-normalized)",
+                NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_LIST_ID, "Numbers", "Mapped double list", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of mapped entries", NodeDataType.INTEGER, this));
@@ -79,25 +85,22 @@ public class MapListNode extends BaseNode {
             return;
         }
 
-        Double operand = toFiniteDouble(inputValues.get(INPUT_VALUE_ID));
-        Double minObj = toFiniteDouble(inputValues.get(INPUT_MIN_ID));
-        Double maxObj = toFiniteDouble(inputValues.get(INPUT_MAX_ID));
-        double min = minObj != null ? minObj : 0.0d;
-        double max = maxObj != null ? maxObj : 1.0d;
-        if (min > max) {
-            double tmp = min;
-            min = max;
-            max = tmp;
-        }
-
         Operation op = operation == null ? Operation.ADD : operation;
-        boolean needsOperand = op != Operation.ABS && op != Operation.FLOOR && op != Operation.CEIL
-                && op != Operation.ROUND && op != Operation.SIGN && op != Operation.CLAMP;
-        if (needsOperand && operand == null) {
+        Double operand = resolveOperand(op);
+        if (operand == null && needsOperand(op)) {
             writeInvalid();
             return;
         }
         double operandValue = operand != null ? operand : 0.0d;
+
+        Double minBound = resolveClampBound(INPUT_MIN_ID, 0.0d);
+        Double maxBound = resolveClampBound(INPUT_MAX_ID, 1.0d);
+        if (op == Operation.CLAMP && (minBound == null || maxBound == null)) {
+            writeInvalid();
+            return;
+        }
+        double min = minBound != null ? minBound : 0.0d;
+        double max = maxBound != null ? maxBound : 1.0d;
 
         List<Double> mapped = new ArrayList<>(inputList.size());
         for (Object item : inputList) {
@@ -107,17 +110,47 @@ public class MapListNode extends BaseNode {
                 return;
             }
 
-            double mappedValue = applyOperation(value, operandValue, min, max);
-            if (!Double.isFinite(mappedValue)) {
+            ScalarResult mappedResult = applyOperation(op, value, operandValue, min, max);
+            if (!mappedResult.valid()) {
                 writeInvalid();
                 return;
             }
-            mapped.add(mappedValue);
+            mapped.add(mappedResult.value());
         }
 
         outputValues.put(OUTPUT_LIST_ID, mapped);
         outputValues.put(OUTPUT_COUNT_ID, mapped.size());
         outputValues.put(OUTPUT_VALID_ID, true);
+    }
+
+    private @Nullable Double resolveOperand(Operation op) {
+        if (!needsOperand(op)) {
+            return null;
+        }
+        return toFiniteDouble(resolveValue(INPUT_VALUE_ID));
+    }
+
+    private @Nullable Double resolveClampBound(String portId, double defaultValue) {
+        if (!isDriven(portId)) {
+            return defaultValue;
+        }
+        return StrictDoubleUtils.requireExactFiniteDouble(resolveValue(portId));
+    }
+
+    private boolean needsOperand(Operation op) {
+        return op != Operation.ABS && op != Operation.FLOOR && op != Operation.CEIL
+                && op != Operation.ROUND && op != Operation.SIGN && op != Operation.CLAMP;
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || inputValues.containsKey(portId);
+    }
+
+    private @Nullable Object resolveValue(String portId) {
+        if (OptionalPortDrive.isConnected(this, portId)) {
+            return getInput(portId);
+        }
+        return inputValues.get(portId);
     }
 
     private void writeInvalid() {
@@ -126,22 +159,21 @@ public class MapListNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, false);
     }
 
-    private double applyOperation(double input, double operand, double min, double max) {
-        Operation op = operation == null ? Operation.ADD : operation;
+    private ScalarResult applyOperation(Operation op, double input, double operand, double min, double max) {
         return switch (op) {
-            case ADD -> input + operand;
-            case SUBTRACT -> input - operand;
-            case MULTIPLY -> input * operand;
-            case DIVIDE -> Math.abs(operand) <= 1.0e-12d ? Double.NaN : input / operand;
-            case POWER -> Math.pow(input, operand);
-            case MIN -> Math.min(input, operand);
-            case MAX -> Math.max(input, operand);
-            case CLAMP -> Math.max(min, Math.min(max, input));
-            case ABS -> Math.abs(input);
-            case FLOOR -> Math.floor(input);
-            case CEIL -> Math.ceil(input);
-            case ROUND -> (double) Math.round(input);
-            case SIGN -> input > 0.0d ? 1.0d : (input < 0.0d ? -1.0d : 0.0d);
+            case ADD -> ScalarMathOps.add(input, operand);
+            case SUBTRACT -> ScalarMathOps.sub(input, operand);
+            case MULTIPLY -> ScalarMathOps.mul(input, operand);
+            case DIVIDE -> ScalarMathOps.div(input, operand);
+            case POWER -> ScalarMathOps.pow(input, operand);
+            case MIN -> ScalarMathOps.min(input, operand);
+            case MAX -> ScalarMathOps.max(input, operand);
+            case CLAMP -> ScalarMathOps.clamp(input, min, max);
+            case ABS -> ScalarMathOps.abs(input);
+            case FLOOR -> ScalarMathOps.floor(input);
+            case CEIL -> ScalarMathOps.ceil(input);
+            case ROUND -> ScalarMathOps.round(input);
+            case SIGN -> ScalarMathOps.sign(input);
         };
     }
 

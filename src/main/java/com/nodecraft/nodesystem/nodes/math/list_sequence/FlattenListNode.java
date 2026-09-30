@@ -1,145 +1,120 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
-import com.nodecraft.nodesystem.core.BaseNode;
-import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.IPort;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.ListFlattenOps;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "math.list.flatten_list",
     displayName = "Flatten List",
-    description = "Flattens a nested list structure into a single-level list",
+    description = "Recursively flattens nested List elements only; bounded by depth and element limits.",
     category = "math.list"
 )
 public class FlattenListNode extends BaseNode {
-    
+
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
+    public static final String ERROR_INVALID_DEPTH = "invalid_depth";
+
     private int maxDepth = -1;
-    private boolean preserveTypes = false;
-    
+
     private static final String INPUT_LIST_ID = "input_list";
     private static final String INPUT_DEPTH_ID = "input_depth";
     private static final String OUTPUT_LIST_ID = "output_list";
-    
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
     public FlattenListNode() {
         super(UUID.randomUUID(), "math.list.flatten_list");
-        
-        IPort listInput = new BasePort(INPUT_LIST_ID, "List", 
-                "The nested list to flatten", NodeDataType.LIST, this);
-        addInputPort(listInput);
-        
-        IPort depthInput = new BasePort(INPUT_DEPTH_ID, "Depth", 
-                "Maximum flattening depth (optional)", NodeDataType.INTEGER, this);
-        addInputPort(depthInput);
-        
-        IPort listOutput = new BasePort(OUTPUT_LIST_ID, "Flattened List", 
-                "The resulting flattened list", NodeDataType.LIST, this);
-        addOutputPort(listOutput);
+
+        addInputPort(new BasePort(INPUT_LIST_ID, "List",
+                "The nested list to flatten", NodeDataType.LIST, this));
+        addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth",
+                "Maximum flattening depth (-1 = safe full flatten)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_LIST_ID, "Flattened List",
+                "The resulting flattened list", NodeDataType.LIST, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether flattening succeeded",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when flattening failed",
+                NodeDataType.STRING, this));
     }
-    
+
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object listObj = inputValues.get(INPUT_LIST_ID);
-        Object depthObj = inputValues.get(INPUT_DEPTH_ID);
-        
-        int depth = maxDepth;
-        if (depthObj instanceof Number) {
-            depth = ((Number) depthObj).intValue();
-        }
-        
-        List<Object> resultList = new ArrayList<>();
-        
-        if (listObj instanceof List) {
-            flatten((List<?>) listObj, resultList, 0, depth);
-        } else if (listObj != null) {
-            resultList.add(listObj);
-        }
-        
-        outputValues.put(OUTPUT_LIST_ID, resultList);
-    }
-    
-    private void flatten(List<?> input, List<Object> output, int currentDepth, int maxDepth) {
-        if (maxDepth >= 0 && currentDepth >= maxDepth) {
-            output.addAll(input);
+        if (!(listObj instanceof List<?> inputList)) {
+            writeFailure(ERROR_INVALID_INPUT);
             return;
         }
-        
-        for (Object item : input) {
-            if (item instanceof List) {
-                flatten((List<?>) item, output, currentDepth + 1, maxDepth);
-            } else if (preserveTypes || item == null) {
-                output.add(item);
-            } else {
-                try {
-                    Object[] array = (Object[]) item;
-                    output.addAll(Arrays.asList(array));
-                } catch (ClassCastException e) {
-                    output.add(item);
-                }
-            }
+
+        Integer depth = OptionalPortDrive.resolveOptionalInteger(this, INPUT_DEPTH_ID, maxDepth);
+        if (depth == null) {
+            writeFailure(ERROR_INVALID_DEPTH);
+            return;
         }
+
+        int effectiveDepth = depth == -1 ? GenerationLimits.MAX_FORMAT_DEPTH : depth;
+        ListFlattenOps.FlattenDepthMode mode = depth == -1
+                ? ListFlattenOps.FlattenDepthMode.FULL_FLATTEN
+                : ListFlattenOps.FlattenDepthMode.PARTIAL_DEPTH;
+
+        ListFlattenOps.FlattenResult result =
+                ListFlattenOps.flatten(inputList, effectiveDepth, mode);
+        if (!result.valid()) {
+            writeFailure(result.error());
+            return;
+        }
+
+        outputValues.put(OUTPUT_LIST_ID, result.items());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
-    
-    // --- Getters/Setters for Properties ---
-    
+
+    private void writeFailure(String error) {
+        outputValues.put(OUTPUT_LIST_ID, List.of());
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
     public int getMaxDepth() {
         return maxDepth;
     }
-    
+
     public void setMaxDepth(int depth) {
         if (this.maxDepth != depth) {
             this.maxDepth = depth;
             markDirty();
         }
     }
-    
-    public boolean isPreserveTypes() {
-        return preserveTypes;
-    }
-    
-    public void setPreserveTypes(boolean preserve) {
-        if (this.preserveTypes != preserve) {
-            this.preserveTypes = preserve;
-            markDirty();
-        }
-    }
-    
-    
+
     @Override
     public Object getNodeState() {
-        java.util.Map<String, Object> state = new java.util.HashMap<>();
+        Map<String, Object> state = new HashMap<>();
         state.put("maxDepth", getMaxDepth());
-        state.put("preserveTypes", isPreserveTypes());
         return state;
     }
-    
+
     @Override
     public void setNodeState(Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> stateMap = (java.util.Map<?, ?>) state;
-
-            if (stateMap.containsKey("maxDepth")) {
-                Object depth = stateMap.get("maxDepth");
-                if (depth instanceof Number) {
-                    setMaxDepth(((Number) depth).intValue());
-                }
-            }
-            
-            if (stateMap.containsKey("preserveTypes")) {
-                Object preserve = stateMap.get("preserveTypes");
-                if (preserve instanceof Boolean) {
-                    setPreserveTypes((Boolean) preserve);
-                }
-            }
+        if (!(state instanceof Map<?, ?> stateMap)) {
+            return;
         }
+        Object depth = stateMap.get("maxDepth");
+        if (depth instanceof Number number) {
+            setMaxDepth(number.intValue());
+        }
+        // Legacy preserveTypes is ignored at runtime but accepted for old saved graphs.
     }
-} 
+}

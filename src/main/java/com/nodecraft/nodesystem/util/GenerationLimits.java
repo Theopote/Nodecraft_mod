@@ -2,6 +2,8 @@ package com.nodecraft.nodesystem.util;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 /**
  * Shared hard limits for nodes that materialize collections from user-supplied counts.
  */
@@ -26,6 +28,11 @@ public final class GenerationLimits {
      * Maximum formatted output length produced by String Format.
      */
     public static final int MAX_FORMAT_OUTPUT_CHARS = 65_536;
+
+    /**
+     * Maximum joined string output length for Join Strings (aligned with String Format cap).
+     */
+    public static final int MAX_JOIN_STRING_OUTPUT_CHARS = MAX_FORMAT_OUTPUT_CHARS;
 
     /**
      * Maximum elements in a nested List/Map encountered during String Format value formatting.
@@ -816,6 +823,43 @@ public final class GenerationLimits {
      */
     public static int clampBoundsSamples(int requested) {
         return Math.max(2, Math.min(MAX_BOUNDS_SAMPLES, requested));
+    }
+
+    /**
+     * Preflight budget for Join Strings output length.
+     *
+     * @return null when valid; otherwise an error message
+     */
+    public static @Nullable String validateJoinStringOutputBudget(List<?> strings, String separator) {
+        if (strings == null) {
+            return "List must be a STRING_LIST.";
+        }
+        if (separator == null) {
+            return "Separator is null or invalid.";
+        }
+        long total = 0L;
+        for (Object entry : strings) {
+            if (!(entry instanceof String text)) {
+                return "List element is not a STRING.";
+            }
+            try {
+                total = Math.addExact(total, text.length());
+            } catch (ArithmeticException overflow) {
+                return "Joined text exceeds output limit";
+            }
+        }
+        int count = strings.size();
+        if (count > 1) {
+            try {
+                total = Math.addExact(total, Math.multiplyExact((long) count - 1L, separator.length()));
+            } catch (ArithmeticException overflow) {
+                return "Joined text exceeds output limit";
+            }
+        }
+        if (total > MAX_JOIN_STRING_OUTPUT_CHARS) {
+            return "Joined text exceeds output limit";
+        }
+        return null;
     }
 
     /**

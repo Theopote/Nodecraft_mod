@@ -448,7 +448,7 @@
 | Join Strings | `math.list.join_strings` | Joins STRING_LIST items with a separator into one STRING. | `JoinStringsNode` |
 | Dispatch List | `math.list.dispatch_list` | Splits a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `FilterListNode` |
-| Flatten List | `math.list.flatten_list` | Flattens a nested list structure into a single-level list | `FlattenListNode` |
+| Flatten List | `math.list.flatten_list` | Recursively flattens nested List elements only; bounded by depth and element limits. | `FlattenListNode` |
 | Get Item | `math.list.get_item` | Gets an item from a list at a specified index. | `GetItemNode` |
 | Group List | `math.list.group_list` | Groups list items by parallel keys (same length) into a DATA_TREE. Null items forbidden. | `GroupListNode` |
 | Insert Item | `math.list.insert_item` | Inserts an item at index (negatives from end). Invalid index → Valid=false. | `InsertItemNode` |

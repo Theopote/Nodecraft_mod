@@ -6,7 +6,8 @@ Strict grouping & seed contract remediation for six `math.list.*` collection nod
 Code changes in V127 focus on **Group List** and **Shuffle List**; Reverse, Filter, Dispatch,
 and Deduplicate algorithms are unchanged (tests/docs only).
 
-Related: [`node-language-v2-list-core.md`](./node-language-v2-list-core.md),
+Related: [`node-language-v2-list-numeric.md`](./node-language-v2-list-numeric.md),
+[`node-language-v2-list-core.md`](./node-language-v2-list-core.md),
 [`node-language-v1-list-collection.md`](./node-language-v1-list-collection.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 

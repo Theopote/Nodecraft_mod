@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -58,17 +59,26 @@ public class JoinStringsNode extends BaseNode {
             return;
         }
 
-        StringBuilder builder = new StringBuilder();
         for (int i = 0; i < list.size(); i++) {
             Object entry = list.get(i);
-            if (!(entry instanceof String text)) {
+            if (!(entry instanceof String)) {
                 publish("", false, "List element at index " + i + " is not a STRING.");
                 return;
             }
+        }
+
+        String budgetError = GenerationLimits.validateJoinStringOutputBudget(list, sep);
+        if (budgetError != null) {
+            publish("", false, budgetError);
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < list.size(); i++) {
             if (i > 0) {
                 builder.append(sep);
             }
-            builder.append(text);
+            builder.append((String) list.get(i));
         }
         publish(builder.toString(), true, "");
     }

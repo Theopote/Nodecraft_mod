@@ -6,9 +6,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.math.NumericListReduction;
+import com.nodecraft.nodesystem.math.ScalarResult;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -34,22 +35,22 @@ public class SumNumbersNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object input = inputValues.get(INPUT_LIST_ID);
-        if (!(input instanceof List<?> list) || list.isEmpty()) {
-            outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        NumericListReduction.ParseResult parsed =
+                NumericListReduction.parseFiniteNumbers(inputValues.get(INPUT_LIST_ID));
+        if (!parsed.valid()) {
+            writeInvalid();
             return;
         }
-        double sum = 0.0;
-        for (Object item : list) {
-            if (!(item instanceof Number number) || !Double.isFinite(number.doubleValue())) {
-                outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
-                outputValues.put(OUTPUT_VALID_ID, false);
-                return;
-            }
-            sum += number.doubleValue();
-        }
-        outputValues.put(OUTPUT_VALUE_ID, sum);
-        outputValues.put(OUTPUT_VALID_ID, true);
+        publish(NumericListReduction.sum(parsed.values()));
+    }
+
+    private void publish(ScalarResult result) {
+        outputValues.put(OUTPUT_VALUE_ID, result.value());
+        outputValues.put(OUTPUT_VALID_ID, result.valid());
+    }
+
+    private void writeInvalid() {
+        outputValues.put(OUTPUT_VALUE_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
     }
 }

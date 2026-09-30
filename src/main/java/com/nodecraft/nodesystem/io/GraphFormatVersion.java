@@ -850,8 +850,18 @@ public final class GraphFormatVersion {
      */
     public static final int V127 = 127;
 
+    /**
+     * Numeric List Reduction & Scalar Consistency v2. No wire remaps.
+     */
+    public static final int V128 = 128;
+
+    /**
+     * List Flatten Safety & Bounded String Join. No wire remaps.
+     */
+    public static final int V129 = 129;
+
     /** Version written by current builds. */
-    public static final int CURRENT = V127;
+    public static final int CURRENT = V129;
 
     private GraphFormatVersion() {
     }
