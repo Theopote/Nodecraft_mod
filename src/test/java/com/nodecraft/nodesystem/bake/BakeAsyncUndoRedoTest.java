@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.bake;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import net.minecraft.world.World;
+
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -145,7 +147,7 @@ class BakeAsyncUndoRedoTest {
     @Test
     void syncUndoWithNullWorldDoesNotPopStack() {
         history.push(record("A"));
-        assertFalse(history.undoLast(null));
+        assertFalse(history.undoLast((World) null));
         assertEquals(1, history.size());
     }
 

@@ -71,11 +71,18 @@ public class BakeHistory {
      * WARNING: This can cause server lag for large builds. Consider using undoLastAsync instead.
      */
     public boolean undoLast(World world) {
-        if (world == null || undoStack.isEmpty()) {
+        if (world == null) {
+            return false;
+        }
+        return undoLast(worldAccess(world));
+    }
+
+    boolean undoLast(BlockStateAccess access) {
+        if (access == null || undoStack.isEmpty()) {
             return false;
         }
         UndoRecord record = undoStack.getLast();
-        UndoApplyResult result = record.applyAndCaptureInverseStrict(world);
+        UndoApplyResult result = record.applyAndCaptureInverseStrict(access);
         if (!result.fullySucceeded(record.size())) {
             return false;
         }
@@ -92,11 +99,18 @@ public class BakeHistory {
      * WARNING: This can cause server lag for large builds. Consider using redoLastAsync instead.
      */
     public boolean redoLast(World world) {
-        if (world == null || redoStack.isEmpty()) {
+        if (world == null) {
+            return false;
+        }
+        return redoLast(worldAccess(world));
+    }
+
+    boolean redoLast(BlockStateAccess access) {
+        if (access == null || redoStack.isEmpty()) {
             return false;
         }
         UndoRecord record = redoStack.getLast();
-        UndoApplyResult result = record.applyAndCaptureInverseStrict(world);
+        UndoApplyResult result = record.applyAndCaptureInverseStrict(access);
         if (!result.fullySucceeded(record.size())) {
             return false;
         }
@@ -217,13 +231,123 @@ public class BakeHistory {
         }
     }
 
-    public record UndoApplyResult(UndoRecord inverse, int restoredCount, int failedCount) {
+    private static BlockStateAccess worldAccess(World world) {
+        return new BlockStateAccess() {
+            @Override
+            public BlockState getBlockState(BlockPos pos) {
+                return world.getBlockState(pos);
+            }
+
+            @Override
+            public boolean setBlockState(BlockPos pos, BlockState state) {
+                return world.setBlockState(pos, state, 3);
+            }
+        };
+    }
+
+    public record UndoApplyResult(
+            UndoRecord inverse,
+            int restoredCount,
+            int failedCount,
+            RollbackResult rollback) {
         public static UndoApplyResult failed(int expected) {
-            return new UndoApplyResult(new UndoRecord(UUID.randomUUID()), 0, expected);
+            return new UndoApplyResult(new UndoRecord(UUID.randomUUID()), 0, expected, RollbackResult.notNeeded());
         }
 
         public boolean fullySucceeded(int expectedEntries) {
-            return expectedEntries > 0 && failedCount == 0 && restoredCount == expectedEntries;
+            return expectedEntries > 0
+                    && failedCount == 0
+                    && restoredCount == expectedEntries
+                    && rollback.succeeded();
+        }
+    }
+
+    public record RollbackResult(boolean attempted, int attemptedCount, int failedCount) {
+        public static RollbackResult notNeeded() {
+            return new RollbackResult(false, 0, 0);
+        }
+
+        public static RollbackResult succeeded(int attemptedCount) {
+            return new RollbackResult(true, attemptedCount, 0);
+        }
+
+        public static RollbackResult failed(int attemptedCount, int failedCount) {
+            return new RollbackResult(true, attemptedCount, failedCount);
+        }
+
+        public boolean succeeded() {
+            return !attempted || failedCount == 0;
+        }
+    }
+
+    /**
+     * Minimal block mutation surface for atomic undo/redo apply (and unit tests without a full {@link World}).
+     */
+    interface BlockStateAccess {
+        BlockState getBlockState(BlockPos pos);
+
+        boolean setBlockState(BlockPos pos, BlockState state);
+    }
+
+    /**
+     * Shared all-or-rollback apply used by sync undo/redo and unit-tested with opaque tokens.
+     */
+    static final class TransactionalApply {
+        private TransactionalApply() {
+        }
+
+        record Result<T>(LinkedHashMap<BlockPos, T> inverse, int restoredCount, int failedCount, RollbackResult rollback) {
+            boolean fullySucceeded() {
+                return failedCount == 0
+                        && restoredCount > 0
+                        && inverse.size() == restoredCount
+                        && rollback.succeeded();
+            }
+        }
+
+        static <T> Result<T> applyAllOrRollback(
+                LinkedHashMap<BlockPos, T> originals,
+                java.util.function.Function<BlockPos, T> get,
+                java.util.function.BiFunction<BlockPos, T, Boolean> set) {
+            LinkedHashMap<BlockPos, T> inverse = new LinkedHashMap<>();
+            List<Map.Entry<BlockPos, T>> entries = new ArrayList<>(originals.entrySet());
+            for (int i = entries.size() - 1; i >= 0; i--) {
+                Map.Entry<BlockPos, T> entry = entries.get(i);
+                BlockPos pos = entry.getKey();
+                T target = entry.getValue();
+                if (pos == null || target == null) {
+                    RollbackResult rollback = rollbackPartial(inverse, set);
+                    return new Result<>(new LinkedHashMap<>(), 0, entries.size(), rollback);
+                }
+                T current = get.apply(pos);
+                if (!Boolean.TRUE.equals(set.apply(pos, target))) {
+                    RollbackResult rollback = rollbackPartial(inverse, set);
+                    return new Result<>(new LinkedHashMap<>(), 0, entries.size(), rollback);
+                }
+                inverse.putIfAbsent(pos.toImmutable(), current);
+            }
+            return new Result<>(inverse, inverse.size(), 0, RollbackResult.notNeeded());
+        }
+
+        private static <T> RollbackResult rollbackPartial(
+                LinkedHashMap<BlockPos, T> partialInverse,
+                java.util.function.BiFunction<BlockPos, T, Boolean> set) {
+            if (partialInverse.isEmpty()) {
+                return RollbackResult.notNeeded();
+            }
+            int attempted = 0;
+            int rollbackFailed = 0;
+            List<Map.Entry<BlockPos, T>> entries = new ArrayList<>(partialInverse.entrySet());
+            for (int i = entries.size() - 1; i >= 0; i--) {
+                Map.Entry<BlockPos, T> entry = entries.get(i);
+                attempted++;
+                if (!Boolean.TRUE.equals(set.apply(entry.getKey(), entry.getValue()))) {
+                    rollbackFailed++;
+                }
+            }
+            return rollbackFailed == 0
+                    ? RollbackResult.succeeded(attempted)
+                    : RollbackResult.failed(attempted, rollbackFailed);
         }
     }
 
@@ -269,28 +393,26 @@ public class BakeHistory {
             if (world == null) {
                 return UndoApplyResult.failed(size());
             }
-            UndoRecord inverse = new UndoRecord(bakeId);
-            int restored = 0;
-            int failed = 0;
-            // Restore in reverse insertion order (LIFO).
-            List<Map.Entry<BlockPos, BlockState>> entries = new ArrayList<>(originalStates.entrySet());
-            for (int i = entries.size() - 1; i >= 0; i--) {
-                Map.Entry<BlockPos, BlockState> entry = entries.get(i);
-                BlockPos pos = entry.getKey();
-                BlockState targetState = entry.getValue();
-                if (pos == null || targetState == null) {
-                    failed++;
-                    continue;
-                }
-                BlockState currentState = world.getBlockState(pos);
-                if (!world.setBlockState(pos, targetState, 3)) {
-                    failed++;
-                    continue;
-                }
-                inverse.add(pos, currentState);
-                restored++;
+            return applyAndCaptureInverseStrict(BakeHistory.worldAccess(world));
+        }
+
+        UndoApplyResult applyAndCaptureInverseStrict(BlockStateAccess access) {
+            TransactionalApply.Result<BlockState> applied = TransactionalApply.applyAllOrRollback(
+                    originalStates,
+                    access::getBlockState,
+                    access::setBlockState);
+            if (!applied.fullySucceeded() || applied.restoredCount() != size()) {
+                return new UndoApplyResult(
+                        new UndoRecord(bakeId),
+                        0,
+                        size(),
+                        applied.rollback());
             }
-            return new UndoApplyResult(inverse, restored, failed);
+            UndoRecord inverse = new UndoRecord(bakeId);
+            for (Map.Entry<BlockPos, BlockState> entry : applied.inverse().entrySet()) {
+                inverse.add(entry.getKey(), entry.getValue());
+            }
+            return new UndoApplyResult(inverse, applied.restoredCount(), 0, RollbackResult.notNeeded());
         }
 
         public UUID getBakeId() {

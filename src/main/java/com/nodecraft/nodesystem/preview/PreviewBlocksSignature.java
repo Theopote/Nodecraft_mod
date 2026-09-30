@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.preview;
 
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
+import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,12 +18,19 @@ public final class PreviewBlocksSignature {
     }
 
     /**
+     * Floors preview coordinates to the integer block cell used by Apply Changes and bake.
+     */
+    public static BlockPos toCell(PreviewBlock block) {
+        return BlockPos.ofFloored(block.x(), block.y(), block.z());
+    }
+
+    /**
      * Last entry wins for the same integer cell — matches Apply Changes duplicate-position semantics.
      */
     public static List<PreviewBlock> dedupeLastWinsByCell(List<PreviewBlock> blocks) {
-        LinkedHashMap<Long, PreviewBlock> byCell = new LinkedHashMap<>();
+        LinkedHashMap<BlockPos, PreviewBlock> byCell = new LinkedHashMap<>();
         for (PreviewBlock block : blocks) {
-            byCell.put(packCell(block.x(), block.y(), block.z()), block);
+            byCell.put(toCell(block), block);
         }
         return List.copyOf(byCell.values());
     }
@@ -60,12 +68,5 @@ public final class PreviewBlocksSignature {
             hash = 31 * hash + block.stateData().hashCode();
         }
         return hash;
-    }
-
-    private static long packCell(double x, double y, double z) {
-        long ix = Math.round(x);
-        long iy = Math.round(y);
-        long iz = Math.round(z);
-        return (ix & 0x3FFFFFL) | ((iy & 0x3FFFFFL) << 21) | ((iz & 0x3FFFFFL) << 42);
     }
 }
