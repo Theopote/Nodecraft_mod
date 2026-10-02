@@ -2,7 +2,6 @@
   "preset_id": "quickstart.basic_sphere",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Basic Sphere",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A simple sphere structure. Great for domes, planets, or decorative elements."
     },
     "author": "NodeCraft Team",
-    "tags": ["sphere", "dome", "basic", "quickstart"],
+    "tags": [
+      "sphere",
+      "dome",
+      "basic",
+      "quickstart"
+    ],
     "category": "quickstart",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 4
+    "estimated_node_count": 6
   },
-
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "radius",
@@ -56,77 +58,120 @@
       "group": "Options"
     }
   ],
-
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 0.0,
+          "y": 140.0
+        },
         "parameters": {}
       },
       {
-        "id": "sphere",
+        "id": "node_sphere",
         "type": "geometry.primitives.sphere",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 280.0,
+          "y": 140.0
+        },
         "parameters": {
-          "center": {"x": 0, "y": 0, "z": 0},
-          "radius": {"param": "radius"}
+          "radius": {
+            "value": 5.0
+          }
         }
       },
       {
-        "id": "assign_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 450, "y": 200},
-        "parameters": {
-          "block_type": {"param": "material"}
-        }
-      },
-      {
-        "id": "move_to_pos",
-        "type": "transform.basic_transforms.move_geometry",
-        "position": {"x": 650, "y": 200},
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 580.0,
+          "y": 40.0
+        },
         "parameters": {}
       },
       {
-        "id": "bake",
+        "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
-        "position": {"x": 850, "y": 200},
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "position": {
+          "x": 580.0,
+          "y": 240.0
+        },
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 860.0,
+          "y": 240.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
-        "position": {"x": 1050, "y": 200},
+        "position": {
+          "x": 1140.0,
+          "y": 240.0
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "sphere", "port": "output_geometry"},
-        "to": {"node": "assign_material", "port": "input_geometry"}
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_sphere",
+          "port": "input_center"
+        }
       },
       {
-        "from": {"node": "sphere", "port": "output_geometry"},
-        "to": {"node": "move_to_pos", "port": "input_geometry"}
+        "from": {
+          "node": "node_sphere",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "output_position"},
-        "to": {"node": "move_to_pos", "port": "input_translation"}
+        "from": {
+          "node": "node_sphere",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "output_geometry"},
-        "to": {"node": "bake", "port": "input_geometry"}
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
       },
       {
-        "from": {"node": "bake", "port": "output_blocks"},
-        "to": {"node": "preview", "port": "input_blocks"}
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates basic sphere primitive usage. Spheres are perfect for organic shapes and domes.",
     "tips": [

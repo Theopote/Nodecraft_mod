@@ -1,6 +1,7 @@
 package com.nodecraft.gui.preset;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.document.EditorDocumentFactory;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.layout.GraphNodeAutoLayout;
 import com.nodecraft.nodesystem.api.INode;
@@ -30,6 +31,78 @@ public final class GraphPresetApplier {
     }
 
     public static ApplyResult apply(GraphPresetRules.GraphPresetDefinition preset, float originX, float originY) {
+        ApplyResult validation = validateCompositePreset(preset);
+        if (validation != null) {
+            return validation;
+        }
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+        if (editor == null || editor.getCurrentGraph() == null) {
+            return ApplyResult.failure("Editor is not ready");
+        }
+
+        ApplyResult result = applyIntoEditor(
+                editor,
+                preset,
+                originX,
+                originY,
+                resolveLayoutPositions(preset),
+                true);
+        if (result.success()) {
+            NodeCraft.LOGGER.info(
+                    "Applied graph preset {} ({} nodes)",
+                    preset.displayName,
+                    result.createdNodeIds().size());
+        }
+        return result;
+    }
+
+    /**
+     * Replaces the current document with a preset graph using authored node coordinates.
+     */
+    public static ApplyResult loadAsNewDocument(
+            ImGuiNodeEditor editor,
+            GraphPresetRules.GraphPresetDefinition preset) {
+        ApplyResult validation = validateCompositePreset(preset);
+        if (validation != null) {
+            return validation;
+        }
+        if (editor == null) {
+            return ApplyResult.failure("Editor is not ready");
+        }
+
+        editor.getHistory().pauseRecording();
+        try {
+            editor.setCurrentGraph(EditorDocumentFactory.createEmpty());
+            if (preset.displayName != null && !preset.displayName.isBlank()) {
+                editor.getCurrentGraph().setName(preset.displayName);
+            }
+
+            ApplyResult result = applyIntoEditor(
+                    editor,
+                    preset,
+                    0f,
+                    0f,
+                    authoredLayoutPositions(preset),
+                    false);
+            if (!result.success()) {
+                editor.setCurrentGraph(EditorDocumentFactory.createEmpty());
+                return result;
+            }
+
+            editor.getHistory().clear();
+            editor.getDocument().markDirty();
+            editor.setCanvasView(1.0f, 0.0f, 0.0f);
+            editor.clearSelectedNodes();
+            return ApplyResult.success(
+                    "已加载示例: " + (preset.displayName != null ? preset.displayName : preset.id),
+                    result.createdNodeIds());
+        } finally {
+            editor.getHistory().resumeRecording();
+        }
+    }
+
+    private static ApplyResult validateCompositePreset(GraphPresetRules.GraphPresetDefinition preset) {
         if (preset == null) {
             return ApplyResult.failure("Preset is missing");
         }
@@ -42,15 +115,18 @@ public final class GraphPresetApplier {
         if (preset.nodes == null || preset.nodes.isEmpty()) {
             return ApplyResult.failure("Preset has no nodes");
         }
+        return null;
+    }
 
-        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-        if (editor == null || editor.getCurrentGraph() == null) {
-            return ApplyResult.failure("Editor is not ready");
-        }
-
+    private static ApplyResult applyIntoEditor(
+            ImGuiNodeEditor editor,
+            GraphPresetRules.GraphPresetDefinition preset,
+            float originX,
+            float originY,
+            Map<String, LayoutPosition> layoutPositions,
+            boolean selectCreatedNodes) {
         Map<String, UUID> refToNodeId = new HashMap<>();
         List<UUID> createdNodeIds = new ArrayList<>();
-        Map<String, LayoutPosition> layoutPositions = resolveLayoutPositions(preset);
 
         for (GraphPresetRules.PresetNode presetNode : preset.nodes) {
             if (presetNode == null || presetNode.ref == null || presetNode.typeId == null) {
@@ -125,18 +201,27 @@ public final class GraphPresetApplier {
             }
         }
 
-        editor.clearSelectedNodes();
-        editor.getSelectedNodeIds().addAll(createdNodeIds);
-        if (!createdNodeIds.isEmpty()) {
-            editor.setSelectedNodeId(createdNodeIds.getFirst());
+        if (selectCreatedNodes) {
+            editor.clearSelectedNodes();
+            editor.getSelectedNodeIds().addAll(createdNodeIds);
+            if (!createdNodeIds.isEmpty()) {
+                editor.setSelectedNodeId(createdNodeIds.getFirst());
+            }
         }
 
-        NodeCraft.LOGGER.info(
-                "Applied graph preset {} ({} nodes, {} connections)",
-                preset.displayName,
-                createdNodeIds.size(),
-                connectedCount);
         return ApplyResult.success("已添加预设: " + preset.displayName, createdNodeIds);
+    }
+
+    private static Map<String, LayoutPosition> authoredLayoutPositions(
+            GraphPresetRules.GraphPresetDefinition preset) {
+        Map<String, LayoutPosition> positionsByRef = new HashMap<>();
+        for (GraphPresetRules.PresetNode presetNode : preset.nodes) {
+            if (presetNode == null || presetNode.ref == null) {
+                continue;
+            }
+            positionsByRef.put(presetNode.ref, new LayoutPosition(presetNode.x, presetNode.y));
+        }
+        return positionsByRef;
     }
 
     private static int countDeclaredConnections(GraphPresetRules.GraphPresetDefinition preset) {

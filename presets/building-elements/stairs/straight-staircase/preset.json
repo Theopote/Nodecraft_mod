@@ -23,10 +23,10 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 6
+    "estimated_node_count": 15
   },
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
   "parameters": [
@@ -72,130 +72,174 @@
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
         "position": {
-          "x": 50,
-          "y": 200
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {}
       },
       {
-        "id": "steps_line",
-        "type": "geometry.curves.points_to_path",
+        "id": "node_run_vector",
+        "type": "reference.vectors.vector",
         "position": {
-          "x": 250,
-          "y": 200
+          "x": 0.0,
+          "y": 220.0
         },
         "parameters": {
-          "start": {
-            "x": 0,
-            "y": 0,
-            "z": 0
+          "x": {
+            "value": 12.0
           },
-          "end": {
-            "x": {
-              "param": "steps"
-            },
-            "y": {
-              "param": "steps"
-            },
-            "z": 0
-          }
-        }
-      },
-      {
-        "id": "divide_steps",
-        "type": "geometry.curves.path_to_points",
-        "position": {
-          "x": 450,
-          "y": 200
-        },
-        "parameters": {
-          "count": {
-            "param": "steps"
-          }
-        }
-      },
-      {
-        "id": "step_box",
-        "type": "geometry.primitives.box_from_corner_size",
-        "position": {
-          "x": 450,
-          "y": 350
-        },
-        "parameters": {
-          "corner": {
-            "x": 0,
-            "y": 0,
-            "z": 0
+          "y": {
+            "value": 3.0
           },
-          "size": {
-            "x": 1,
-            "y": 0.5,
-            "z": {
-              "param": "step_width"
-            }
+          "z": {
+            "value": 0.0
           }
         }
       },
       {
-        "id": "array_steps",
-        "type": "pattern.linear.instance_on_points",
+        "id": "node_unit_distance",
+        "type": "input.numeric.float",
         "position": {
-          "x": 650,
-          "y": 275
-        },
-        "parameters": {}
-      },
-      {
-        "id": "union_steps",
-        "type": "geometry.combine.geometry",
-        "position": {
-          "x": 850,
-          "y": 275
-        },
-        "parameters": {}
-      },
-      {
-        "id": "assign_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 1050,
-          "y": 275
+          "x": 0.0,
+          "y": 400.0
         },
         "parameters": {
-          "block_type": {
-            "param": "step_material"
+          "value": {
+            "value": 1.0
           }
         }
       },
       {
-        "id": "move_to_pos",
-        "type": "transform.basic_transforms.move_geometry",
+        "id": "node_path_end",
+        "type": "reference.points.point_along_vector",
         "position": {
-          "x": 1250,
-          "y": 275
+          "x": 280.0,
+          "y": 280.0
         },
         "parameters": {}
       },
       {
-        "id": "bake",
+        "id": "node_stair_path",
+        "type": "geometry.primitives.sphere_from_diameter",
+        "position": {
+          "x": 560.0,
+          "y": 80.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_step_count",
+        "type": "input.numeric.integer",
+        "position": {
+          "x": 560.0,
+          "y": 280.0
+        },
+        "parameters": {
+          "value": {
+            "value": 12
+          }
+        }
+      },
+      {
+        "id": "node_step_run",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 560.0,
+          "y": 420.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.0
+          }
+        }
+      },
+      {
+        "id": "node_step_rise",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 560.0,
+          "y": 560.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.25
+          }
+        }
+      },
+      {
+        "id": "node_step_width",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 560.0,
+          "y": 700.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_layout",
+        "type": "input.values.text_input",
+        "position": {
+          "x": 560.0,
+          "y": 840.0
+        },
+        "parameters": {
+          "text": {
+            "value": "straight"
+          },
+          "multiline": {
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "node_staircase",
+        "type": "geometry.architectural_primitives.staircase",
+        "position": {
+          "x": 860.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1160.0,
+          "y": 120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 1450,
-          "y": 275
+          "x": 1160.0,
+          "y": 320.0
         },
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1420.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1650,
-          "y": 275
+          "x": 1680.0,
+          "y": 320.0
         },
         "parameters": {}
       }
@@ -203,82 +247,152 @@
     "connections": [
       {
         "from": {
-          "node": "steps_line",
-          "port": "output_polyline"
+          "node": "node_player_pos",
+          "port": "output_position"
         },
         "to": {
-          "node": "divide_steps",
+          "node": "node_path_end",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_run_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_path_end",
+          "port": "input_vector"
+        }
+      },
+      {
+        "from": {
+          "node": "node_unit_distance",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_path_end",
+          "port": "input_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_stair_path",
+          "port": "output_diameter_path"
+        },
+        "to": {
+          "node": "node_staircase",
           "port": "input_path"
         }
       },
       {
         "from": {
-          "node": "divide_steps",
-          "port": "output_points"
+          "node": "node_step_count",
+          "port": "output_value"
         },
         "to": {
-          "node": "array_steps",
-          "port": "input_points"
+          "node": "node_staircase",
+          "port": "input_step_count"
         }
       },
       {
         "from": {
-          "node": "step_box",
-          "port": "output_geometry"
+          "node": "node_step_run",
+          "port": "output_value"
         },
         "to": {
-          "node": "union_steps",
-          "port": "input_geometry_0"
+          "node": "node_staircase",
+          "port": "input_step_run"
         }
       },
       {
         "from": {
-          "node": "union_steps",
+          "node": "node_step_rise",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_staircase",
+          "port": "input_step_rise"
+        }
+      },
+      {
+        "from": {
+          "node": "node_step_width",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_staircase",
+          "port": "input_width"
+        }
+      },
+      {
+        "from": {
+          "node": "node_layout",
+          "port": "output_text"
+        },
+        "to": {
+          "node": "node_staircase",
+          "port": "input_layout"
+        }
+      },
+      {
+        "from": {
+          "node": "node_staircase",
           "port": "output_geometry"
         },
         "to": {
-          "node": "assign_material",
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "union_steps",
+          "node": "node_staircase",
           "port": "output_geometry"
         },
         "to": {
-          "node": "move_to_pos",
+          "node": "node_voxelize",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "input_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "bake",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "output_blocks"
         },
         "to": {
-          "node": "preview",
-          "port": "input_blocks"
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_stair_path",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_path_end",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_stair_path",
+          "port": "input_end"
         }
       }
     ]

@@ -8,7 +8,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PRESET_FILES = [
     ROOT / "src/main/resources/nodecraft/graph_presets.json",
-    ROOT / "src/main/resources/nodecraft/graph_presets_updated.json",
 ]
 
 

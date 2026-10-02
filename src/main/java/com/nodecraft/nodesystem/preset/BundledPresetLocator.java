@@ -11,6 +11,10 @@ import java.util.Optional;
 
 /**
  * Resolves shipped quickstart preset directories for dev (repo) and runtime (classpath) layouts.
+ * <p>
+ * Editor UI quickstart examples and the preset library panel load from {@code graph_presets.json}
+ * via {@link com.nodecraft.gui.preset.GraphPresetCatalog}. This locator only backfills
+ * {@link PresetRegistry} for legacy folder-format presets and programmatic APIs.
  */
 public final class BundledPresetLocator {
 

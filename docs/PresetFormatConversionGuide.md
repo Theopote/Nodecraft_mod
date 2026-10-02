@@ -45,9 +45,9 @@ We've created two approaches:
 Created `PresetFormatAdapter.java` to convert new presets to old format at runtime.
 
 **Steps:**
-1. Run `PresetConverterTool.main()` to generate `graph_presets_updated.json`
-2. Review the generated file
-3. Replace `src/main/resources/nodecraft/graph_presets.json` with the updated version
+1. Run `PresetConverterTool.main()` or edit `src/main/resources/nodecraft/graph_presets.json` directly
+2. Review the updated preset catalog
+3. Run `python tools/sync_folder_presets_from_graph.py` to refresh `presets/**/preset.json` exports
 4. Restart NodeCraft
 
 **Command:**

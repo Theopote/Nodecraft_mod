@@ -34,9 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PresetSemanticAuditTest {
 
     private static final Gson GSON = new Gson();
-    private static final List<String> RESOURCE_PATHS = List.of(
-            "/nodecraft/graph_presets.json",
-            "/nodecraft/graph_presets_updated.json");
+    private static final String RESOURCE_PATH = GraphPresetTestResources.BUILTIN_GRAPH_PRESETS;
 
     /** P0 Quickstart + Composites — must pass the full v2 teaching contract. */
     private static final Set<String> P0_CANONICAL_IDS = Set.of(
@@ -132,76 +130,56 @@ class PresetSemanticAuditTest {
 
     @Test
     void allCompositePresetsRejectDeadMaterialOutputs() {
-        for (String resourcePath : RESOURCE_PATHS) {
-            GraphPresetRules rules = loadRules(resourcePath);
-            List<String> errors = new ArrayList<>();
+        GraphPresetRules rules = loadRules(RESOURCE_PATH);
+        List<String> errors = new ArrayList<>();
 
-            for (GraphPresetRules.PresetCategory category : rules.categories) {
-                if (category == null || category.presets == null) {
+        for (GraphPresetRules.PresetCategory category : rules.categories) {
+            if (category == null || category.presets == null) {
+                continue;
+            }
+            for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
+                if (preset == null || !"composite".equalsIgnoreCase(preset.kind)) {
                     continue;
                 }
-                for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
-                    if (preset == null || !"composite".equalsIgnoreCase(preset.kind)) {
-                        continue;
-                    }
-                    if (!CANONICAL_IDS.contains(preset.id)) {
-                        continue;
-                    }
-                    errors.addAll(findDeadMaterialBranches(preset));
+                if (!CANONICAL_IDS.contains(preset.id)) {
+                    continue;
                 }
+                errors.addAll(findDeadMaterialBranches(preset));
             }
-
-            assertTrue(
-                    errors.isEmpty(),
-                    resourcePath + System.lineSeparator() + String.join(System.lineSeparator(), errors));
         }
-    }
 
-    @Test
-    void graphPresetsJsonMatchesUpdatedCopyForCanonicalPresets() {
-        GraphPresetRules primary = loadRules("/nodecraft/graph_presets.json");
-        GraphPresetRules updated = loadRules("/nodecraft/graph_presets_updated.json");
-        for (String presetId : CANONICAL_IDS) {
-            GraphPresetRules.GraphPresetDefinition a = findPreset(primary, presetId);
-            GraphPresetRules.GraphPresetDefinition b = findPreset(updated, presetId);
-            assertNotNull(a, "primary missing " + presetId);
-            assertNotNull(b, "updated missing " + presetId);
-            assertTrue(
-                    GSON.toJson(a).equals(GSON.toJson(b)),
-                    "Canonical preset diverged between graph_presets.json and graph_presets_updated.json: "
-                            + presetId);
-        }
+        assertTrue(
+                errors.isEmpty(),
+                RESOURCE_PATH + System.lineSeparator() + String.join(System.lineSeparator(), errors));
     }
 
     private static void auditCanonicalPresetIds(Set<String> presetIds) {
-        for (String resourcePath : RESOURCE_PATHS) {
-            GraphPresetRules rules = loadRules(resourcePath);
-            List<String> errors = new ArrayList<>();
-            Set<String> found = new HashSet<>();
+        GraphPresetRules rules = loadRules(RESOURCE_PATH);
+        List<String> errors = new ArrayList<>();
+        Set<String> found = new HashSet<>();
 
-            for (GraphPresetRules.PresetCategory category : rules.categories) {
-                if (category == null || category.presets == null) {
+        for (GraphPresetRules.PresetCategory category : rules.categories) {
+            if (category == null || category.presets == null) {
+                continue;
+            }
+            for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
+                if (preset == null || !presetIds.contains(preset.id)) {
                     continue;
                 }
-                for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
-                    if (preset == null || !presetIds.contains(preset.id)) {
-                        continue;
-                    }
-                    found.add(preset.id);
-                    errors.addAll(auditCanonicalPreset(preset));
-                }
+                found.add(preset.id);
+                errors.addAll(auditCanonicalPreset(preset));
             }
-
-            for (String requiredId : presetIds) {
-                if (!found.contains(requiredId)) {
-                    errors.add(resourcePath + " missing canonical preset " + requiredId);
-                }
-            }
-
-            assertTrue(
-                    errors.isEmpty(),
-                    resourcePath + System.lineSeparator() + String.join(System.lineSeparator(), errors));
         }
+
+        for (String requiredId : presetIds) {
+            if (!found.contains(requiredId)) {
+                errors.add(RESOURCE_PATH + " missing canonical preset " + requiredId);
+            }
+        }
+
+        assertTrue(
+                errors.isEmpty(),
+                RESOURCE_PATH + System.lineSeparator() + String.join(System.lineSeparator(), errors));
     }
 
     private static List<String> auditCanonicalPreset(GraphPresetRules.GraphPresetDefinition preset) {

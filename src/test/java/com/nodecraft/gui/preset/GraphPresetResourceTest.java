@@ -23,9 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GraphPresetResourceTest {
 
     private static final Gson GSON = new Gson();
-    private static final List<String> RESOURCE_PATHS = List.of(
-            "/nodecraft/graph_presets.json",
-            "/nodecraft/graph_presets_updated.json");
+    private static final String RESOURCE_PATH = GraphPresetTestResources.BUILTIN_GRAPH_PRESETS;
 
     @BeforeAll
     static void initializeRegistry() {
@@ -37,9 +35,7 @@ class GraphPresetResourceTest {
 
     @Test
     void builtinGraphPresetsReferenceCurrentNodesAndPorts() {
-        for (String resourcePath : RESOURCE_PATHS) {
-            validateResource(resourcePath);
-        }
+        validateResource(RESOURCE_PATH);
     }
 
     private static void validateResource(String resourcePath) {

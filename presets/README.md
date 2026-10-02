@@ -1,6 +1,8 @@
 # NodeCraft Preset Library
 
-This directory contains preset definitions for NodeCraft.
+This directory contains **folder-format** preset exports (`preset.json` per preset).
+
+**Runtime source of truth:** `src/main/resources/nodecraft/graph_presets.json` — used by the preset library panel and Quickstart menu examples. Keep folder exports aligned when editing presets here, or export from the editor after changes.
 
 ## Directory Structure
 
@@ -32,11 +34,9 @@ Each preset is a directory containing:
 
 ## Available Presets
 
-### Quickstart (Beginner-Friendly)
-- **basic-box** - Simple box structure
-- **simple-tower** - Cylindrical tower with windows
+See `src/main/resources/nodecraft/graph_presets.json` for the full built-in catalog (quickstart, building elements, architectural, styles, workflows).
 
-More presets coming soon!
+After editing graph presets, run `python tools/sync_folder_presets_from_graph.py` to refresh folder exports here.
 
 ## Documentation
 

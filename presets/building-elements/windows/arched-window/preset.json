@@ -23,10 +23,10 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 10
+    "estimated_node_count": 15
   },
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
   "parameters": [
@@ -94,137 +94,190 @@
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
         "position": {
-          "x": 50,
-          "y": 200
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {}
       },
       {
-        "id": "rect_profile",
+        "id": "node_rect_profile",
         "type": "geometry.profiles.rectangle_profile",
         "position": {
-          "x": 250,
-          "y": 180
+          "x": 0.0,
+          "y": 180.0
         },
         "parameters": {
           "width": {
-            "param": "width"
+            "value": 1.0
           },
           "height": {
-            "param": "height"
+            "value": 1.2
           }
         }
       },
       {
-        "id": "arc_profile",
+        "id": "node_arc_profile",
         "type": "geometry.profiles.sector_profile",
         "position": {
-          "x": 250,
-          "y": 280
+          "x": 0.0,
+          "y": 340.0
         },
         "parameters": {
           "radius": {
-            "param": "arch_radius_calc"
+            "value": 0.55
           },
-          "start_angle": 0,
-          "end_angle": 180,
-          "segments": 12
+          "startAngle": {
+            "value": 0.0
+          },
+          "endAngle": {
+            "value": 180.0
+          },
+          "segments": {
+            "value": 24
+          }
         }
       },
       {
-        "id": "union_profiles",
-        "type": "geometry.profiles.polygon_profile",
+        "id": "node_union_profiles",
+        "type": "geometry.profiles.boolean_2d",
         "position": {
-          "x": 450,
-          "y": 230
+          "x": 280.0,
+          "y": 240.0
         },
-        "parameters": {}
+        "parameters": {
+          "operation": {
+            "value": "UNION"
+          }
+        }
       },
       {
-        "id": "extrude_opening",
+        "id": "node_extrude_dir",
+        "type": "reference.vectors.vector",
+        "position": {
+          "x": 280.0,
+          "y": 420.0
+        },
+        "parameters": {
+          "x": {
+            "value": 0.0
+          },
+          "y": {
+            "value": 0.0
+          },
+          "z": {
+            "value": 0.4
+          }
+        }
+      },
+      {
+        "id": "node_extrude_opening",
         "type": "geometry.solids.extrude",
         "position": {
-          "x": 650,
-          "y": 230
+          "x": 560.0,
+          "y": 240.0
         },
-        "parameters": {
-          "distance": {
-            "param": "depth"
-          }
-        }
+        "parameters": {}
       },
       {
-        "id": "frame_box",
-        "type": "geometry.primitives.box",
+        "id": "node_frame_box",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 250,
-          "y": 400
+          "x": 0.0,
+          "y": 520.0
         },
         "parameters": {
-          "size": {
-            "x": {
-              "param": "frame_width"
-            },
-            "y": {
-              "param": "frame_height"
-            },
-            "z": {
-              "param": "depth"
-            }
+          "cornerX": {
+            "value": -0.2
+          },
+          "cornerY": {
+            "value": -0.2
+          },
+          "cornerZ": {
+            "value": -0.05
+          },
+          "sizeX": {
+            "value": 1.4
+          },
+          "sizeY": {
+            "value": 2.2
+          },
+          "sizeZ": {
+            "value": 0.3
           }
         }
       },
       {
-        "id": "subtract_opening",
+        "id": "node_subtract_opening",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 850,
-          "y": 300
+          "x": 820.0,
+          "y": 360.0
         },
         "parameters": {}
       },
       {
-        "id": "move_to_pos",
+        "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1050,
-          "y": 300
+          "x": 1080.0,
+          "y": 360.0
         },
         "parameters": {}
       },
       {
-        "id": "assign_frame",
-        "type": "material.basic_assignment.assign_block_type",
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
         "position": {
-          "x": 1250,
-          "y": 300
+          "x": 1360.0,
+          "y": 180.0
         },
-        "parameters": {
-          "block_type": {
-            "param": "frame_material"
-          }
-        }
+        "parameters": {}
       },
       {
-        "id": "bake",
+        "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 1450,
-          "y": 300
+          "x": 1360.0,
+          "y": 380.0
         },
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1620.0,
+          "y": 380.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1650,
-          "y": 300
+          "x": 1880.0,
+          "y": 380.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 660.0,
+          "y": 360.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 880.0,
+          "y": 360.0
         },
         "parameters": {}
       }
@@ -232,82 +285,162 @@
     "connections": [
       {
         "from": {
-          "node": "rect_profile",
+          "node": "node_rect_profile",
           "port": "output_profile"
         },
         "to": {
-          "node": "extrude_opening",
+          "node": "node_union_profiles",
+          "port": "input_profile_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc_profile",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "node_union_profiles",
+          "port": "input_profile_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_union_profiles",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "node_extrude_opening",
           "port": "input_profile"
         }
       },
       {
         "from": {
-          "node": "frame_box",
+          "node": "node_extrude_dir",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_extrude_opening",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_frame_box",
           "port": "output_geometry"
         },
         "to": {
-          "node": "subtract_opening",
+          "node": "node_subtract_opening",
           "port": "input_base"
         }
       },
       {
         "from": {
-          "node": "extrude_opening",
+          "node": "node_extrude_opening",
           "port": "output_geometry"
         },
         "to": {
-          "node": "subtract_opening",
+          "node": "node_subtract_opening",
           "port": "input_cutter"
         }
       },
       {
         "from": {
-          "node": "subtract_opening",
+          "node": "node_subtract_opening",
           "port": "output_geometry"
         },
         "to": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "input_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "assign_frame",
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "output_blocks"
         },
         "to": {
-          "node": "preview",
-          "port": "input_blocks"
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
         }
       }
     ]

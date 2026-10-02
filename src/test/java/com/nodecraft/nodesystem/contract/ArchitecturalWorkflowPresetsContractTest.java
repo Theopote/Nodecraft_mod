@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.contract;
 
 import com.google.gson.Gson;
+import com.nodecraft.gui.preset.GraphPresetTestResources;
 import com.nodecraft.gui.preset.GraphPresetRules;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -57,18 +58,13 @@ class ArchitecturalWorkflowPresetsContractTest {
 
     @Test
     void architectureWorkflowPresetsExistInBuiltinCatalog() {
-        for (String resourcePath : List.of(
-            "/nodecraft/graph_presets.json",
-            "/nodecraft/graph_presets_updated.json"
-        )) {
-            GraphPresetRules rules = loadRules(resourcePath);
-            for (String workflowId : WORKFLOW_IDS) {
-                GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, workflowId);
-                assertNotNull(preset, resourcePath + " missing " + workflowId);
-                assertEquals("composite", preset.kind);
-                assertTrue(preset.nodes.size() >= 4, workflowId + " should be a multi-node workflow");
-                assertTrue(preset.connections.size() >= 3, workflowId + " should wire the chain");
-            }
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
+        for (String workflowId : WORKFLOW_IDS) {
+            GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, workflowId);
+            assertNotNull(preset, GraphPresetTestResources.BUILTIN_GRAPH_PRESETS + " missing " + workflowId);
+            assertEquals("composite", preset.kind);
+            assertTrue(preset.nodes.size() >= 4, workflowId + " should be a multi-node workflow");
+            assertTrue(preset.connections.size() >= 3, workflowId + " should wire the chain");
         }
     }
 
@@ -167,7 +163,7 @@ class ArchitecturalWorkflowPresetsContractTest {
 
     @Test
     void workflowPresetsAvoidConvenienceGodNodes() {
-        GraphPresetRules rules = loadRules("/nodecraft/graph_presets.json");
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
         for (String workflowId : WORKFLOW_IDS) {
             GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, workflowId);
             assertNotNull(preset);

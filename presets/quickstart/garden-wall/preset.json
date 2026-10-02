@@ -2,7 +2,6 @@
   "preset_id": "quickstart.garden_wall",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Garden Wall with Gate",
     "name_i18n": {
@@ -15,18 +14,22 @@
       "en_US": "A simple wall segment with an arched gateway opening, perfect for gardens and courtyards."
     },
     "author": "NodeCraft Team",
-    "tags": ["wall", "gate", "garden", "quickstart", "beginner"],
+    "tags": [
+      "wall",
+      "gate",
+      "garden",
+      "quickstart",
+      "beginner"
+    ],
     "category": "quickstart",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 8
+    "estimated_node_count": 11
   },
-
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "wall_length",
@@ -100,112 +103,269 @@
       "group": "Features"
     }
   ],
-
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
-        "position": {"x": 50, "y": 200},
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
         "parameters": {}
       },
       {
-        "id": "wall_box",
+        "id": "node_wall_box",
         "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 200},
+        "position": {
+          "x": 0.0,
+          "y": 200.0
+        },
         "parameters": {
-          "corner": {"x": 0, "y": 0, "z": 0},
-          "size": {
-            "x": {"param": "wall_length"},
-            "y": {"param": "wall_height"},
-            "z": {"param": "wall_thickness"}
-          }
-        }
-      },
-      {
-        "id": "gate_box",
-        "type": "geometry.primitives.box_from_corner_size",
-        "position": {"x": 250, "y": 350},
-        "parameters": {
-          "corner": {
-            "x": {"param": "gate_x_center"},
-            "y": 0,
-            "z": 0
+          "sizeX": {
+            "value": 12.0
           },
-          "size": {
-            "x": {"param": "gate_width"},
-            "y": {"param": "gate_height"},
-            "z": {"param": "wall_thickness"}
+          "sizeY": {
+            "value": 4.0
+          },
+          "sizeZ": {
+            "value": 1.0
+          },
+          "cornerX": {
+            "value": 0.0
+          },
+          "cornerY": {
+            "value": 0.0
+          },
+          "cornerZ": {
+            "value": 0.0
           }
         }
       },
       {
-        "id": "cut_gate",
+        "id": "node_gate_box",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 400.0
+        },
+        "parameters": {
+          "sizeX": {
+            "value": 3.0
+          },
+          "sizeY": {
+            "value": 3.0
+          },
+          "sizeZ": {
+            "value": 2.0
+          },
+          "cornerX": {
+            "value": 4.5
+          },
+          "cornerY": {
+            "value": 0.0
+          },
+          "cornerZ": {
+            "value": -0.5
+          }
+        }
+      },
+      {
+        "id": "node_cut_gate",
         "type": "geometry.boolean.difference",
-        "position": {"x": 450, "y": 275},
+        "position": {
+          "x": 320.0,
+          "y": 280.0
+        },
         "parameters": {}
       },
       {
-        "id": "assign_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 650, "y": 275},
-        "parameters": {
-          "block_type": {"param": "wall_material"}
-        }
-      },
-      {
-        "id": "move_to_pos",
+        "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
-        "position": {"x": 850, "y": 275},
+        "position": {
+          "x": 580.0,
+          "y": 280.0
+        },
         "parameters": {}
       },
       {
-        "id": "bake",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {"x": 1050, "y": 275},
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 860.0,
+          "y": 120.0
+        },
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 860.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1140.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
-        "position": {"x": 1250, "y": 275},
+        "position": {
+          "x": 1420.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 160.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 380.0,
+          "y": 280.0
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "wall_box", "port": "output_geometry"},
-        "to": {"node": "cut_gate", "port": "input_base"}
+        "from": {
+          "node": "node_wall_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_cut_gate",
+          "port": "input_base"
+        }
       },
       {
-        "from": {"node": "gate_box", "port": "output_geometry"},
-        "to": {"node": "cut_gate", "port": "input_cutter"}
+        "from": {
+          "node": "node_gate_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_cut_gate",
+          "port": "input_cutter"
+        }
       },
       {
-        "from": {"node": "cut_gate", "port": "output_geometry"},
-        "to": {"node": "assign_material", "port": "input_geometry"}
+        "from": {
+          "node": "node_cut_gate",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "cut_gate", "port": "output_geometry"},
-        "to": {"node": "move_to_pos", "port": "input_geometry"}
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "input_pos", "port": "output_position"},
-        "to": {"node": "move_to_pos", "port": "input_translation"}
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "move_to_pos", "port": "output_geometry"},
-        "to": {"node": "bake", "port": "input_geometry"}
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
       },
       {
-        "from": {"node": "bake", "port": "output_blocks"},
-        "to": {"node": "preview", "port": "input_blocks"}
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset introduces boolean operations by cutting a gate opening from a solid wall. This is a fundamental technique used in many architectural models.",
     "tips": [

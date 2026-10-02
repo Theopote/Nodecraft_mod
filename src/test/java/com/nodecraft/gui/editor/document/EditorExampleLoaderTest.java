@@ -1,11 +1,7 @@
 package com.nodecraft.gui.editor.document;
 
 import com.nodecraft.gui.preset.GraphPresetCatalog;
-import com.nodecraft.nodesystem.preset.BundledPresetLocator;
-import com.nodecraft.nodesystem.preset.PresetDefinition;
-import com.nodecraft.nodesystem.preset.PresetInstantiator;
-import com.nodecraft.nodesystem.preset.PresetRegistry;
-import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.gui.preset.GraphPresetRules;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -19,20 +15,13 @@ class EditorExampleLoaderTest {
     @BeforeAll
     static void loadCatalog() {
         GraphPresetCatalog.getInstance().reload();
-        PresetRegistry.getInstance().clear();
-        BundledPresetLocator.registerBundledQuickstartPresetsIfAbsent(PresetRegistry.getInstance());
-
-        NodeRegistry registry = NodeRegistry.getInstance();
-        if (!registry.isInitialized()) {
-            registry.initialize();
-        }
     }
 
     @Test
-    void listsQuickstartExamplesFromBundledFullGraphPresets() {
+    void listsQuickstartExamplesFromGraphCatalog() {
         var examples = EditorExampleLoader.listQuickstartExamples();
         assertFalse(examples.isEmpty(), "quickstart examples should be available");
-        assertTrue(examples.size() >= 4, "expected bundled quickstart full-graph presets");
+        assertTrue(examples.size() >= 4, "expected at least four quickstart graph presets");
     }
 
     @Test
@@ -43,12 +32,14 @@ class EditorExampleLoaderTest {
     }
 
     @Test
-    void instantiatesBundledQuickstartPresetGraph() throws Exception {
-        PresetDefinition preset = PresetRegistry.getInstance().getPreset("quickstart.basic_box");
-        assertNotNull(preset);
+    void quickstartExampleMatchesGraphCatalogDefinition() {
+        GraphPresetRules.GraphPresetDefinition catalogPreset =
+                GraphPresetCatalog.getInstance().getPresetDefinition("quickstart.basic_box");
+        assertNotNull(catalogPreset);
 
-        PresetInstantiator.InstantiateResult result = PresetInstantiator.instantiateWithLayout(preset);
-        assertFalse(result.graph().getNodes().isEmpty());
-        assertFalse(result.nodePositions().isEmpty());
+        EditorExampleEntry entry = EditorExampleLoader.findQuickstartEntry("quickstart.basic_box");
+        assertNotNull(entry);
+        assertEquals(catalogPreset.displayName, entry.displayName());
+        assertEquals(catalogPreset.description, entry.description());
     }
 }

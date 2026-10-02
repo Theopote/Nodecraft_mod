@@ -45,7 +45,10 @@ public class PresetLoader {
                 : "1.0";
 
             PresetMetadata metadata = parseMetadata(root.getAsJsonObject("metadata"));
-            PresetThumbnails thumbnails = parseThumbnails(root.getAsJsonObject("thumbnails"));
+            PresetThumbnails thumbnails = parseThumbnails(
+                    root.has("thumbnails") && !root.get("thumbnails").isJsonNull()
+                            ? root.getAsJsonObject("thumbnails")
+                            : null);
             List<PresetParameter> parameters = parseParameters(root.getAsJsonArray("parameters"));
             PresetGraph graph = parseGraph(root.getAsJsonObject("graph"));
             PresetDocumentation documentation = parseDocumentation(
@@ -123,9 +126,14 @@ public class PresetLoader {
     }
 
     private static PresetThumbnails parseThumbnails(JsonObject thumbnailsObj) {
-        String main = thumbnailsObj.get("main").getAsString();
+        if (thumbnailsObj == null) {
+            return new PresetThumbnails("", List.of());
+        }
+        String main = thumbnailsObj.has("main") && !thumbnailsObj.get("main").isJsonNull()
+                ? thumbnailsObj.get("main").getAsString()
+                : "";
         List<String> previews = new ArrayList<>();
-        if (thumbnailsObj.has("previews")) {
+        if (thumbnailsObj.has("previews") && !thumbnailsObj.get("previews").isJsonNull()) {
             thumbnailsObj.getAsJsonArray("previews").forEach(e -> previews.add(e.getAsString()));
         }
         return new PresetThumbnails(main, previews);

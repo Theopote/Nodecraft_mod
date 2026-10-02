@@ -30,9 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PresetCoordinateSpaceAuditTest {
 
     private static final Gson GSON = new Gson();
-    private static final List<String> RESOURCE_PATHS = List.of(
-            "/nodecraft/graph_presets.json",
-            "/nodecraft/graph_presets_updated.json");
+    private static final String RESOURCE_PATH = GraphPresetTestResources.BUILTIN_GRAPH_PRESETS;
 
     /** Mirrors {@link PresetSemanticAuditTest} canonical coverage (P0–P3). */
     private static final Set<String> CANONICAL_IDS = Set.of(
@@ -73,30 +71,28 @@ class PresetCoordinateSpaceAuditTest {
 
     @Test
     void canonicalPresetsMatchExpectedCoordinateSpaceViolations() {
-        for (String resourcePath : RESOURCE_PATHS) {
-            GraphPresetRules rules = loadRules(resourcePath);
-            List<String> errors = new ArrayList<>();
+        GraphPresetRules rules = loadRules(RESOURCE_PATH);
+        List<String> errors = new ArrayList<>();
 
-            for (GraphPresetRules.PresetCategory category : rules.categories) {
-                if (category == null || category.presets == null) {
+        for (GraphPresetRules.PresetCategory category : rules.categories) {
+            if (category == null || category.presets == null) {
+                continue;
+            }
+            for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
+                if (preset == null || !CANONICAL_IDS.contains(preset.id)) {
                     continue;
                 }
-                for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
-                    if (preset == null || !CANONICAL_IDS.contains(preset.id)) {
-                        continue;
-                    }
-                    Set<String> actual = PresetCoordinateSpaceAuditor.violationCodesIncludingWorldSpacePolicy(preset);
-                    Set<String> expected = EXPECTED_VIOLATIONS.getOrDefault(preset.id, Set.of());
-                    if (!expected.equals(actual)) {
-                        errors.add(describeMismatch(resourcePath, preset, expected, actual));
-                    }
+                Set<String> actual = PresetCoordinateSpaceAuditor.violationCodesIncludingWorldSpacePolicy(preset);
+                Set<String> expected = EXPECTED_VIOLATIONS.getOrDefault(preset.id, Set.of());
+                if (!expected.equals(actual)) {
+                    errors.add(describeMismatch(RESOURCE_PATH, preset, expected, actual));
                 }
             }
-
-            assertTrue(
-                    errors.isEmpty(),
-                    resourcePath + System.lineSeparator() + String.join(System.lineSeparator(), errors));
         }
+
+        assertTrue(
+                errors.isEmpty(),
+                RESOURCE_PATH + System.lineSeparator() + String.join(System.lineSeparator(), errors));
     }
 
     private static final Set<String> WORLD_SPACE_ANCHOR_ALLOWLIST = Set.of(
@@ -107,7 +103,7 @@ class PresetCoordinateSpaceAuditTest {
     @Test
     void worldSpaceAnchorAllowlistPresetsStayClean() {
         for (String presetId : WORLD_SPACE_ANCHOR_ALLOWLIST) {
-            GraphPresetRules.GraphPresetDefinition preset = findPreset(loadRules("/nodecraft/graph_presets.json"), presetId);
+            GraphPresetRules.GraphPresetDefinition preset = findPreset(loadRules(RESOURCE_PATH), presetId);
             assertNotNull(preset, presetId);
             Set<String> codes = PresetCoordinateSpaceAuditor.violationCodesIncludingWorldSpacePolicy(preset);
             assertEquals(Set.of(), codes, presetId + " should remain on the intentional world/path anchor allowlist");

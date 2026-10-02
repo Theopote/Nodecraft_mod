@@ -23,10 +23,10 @@
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "3 minutes",
-    "estimated_node_count": 10
+    "estimated_node_count": 20
   },
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
   "parameters": [
@@ -83,223 +83,287 @@
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
         "position": {
-          "x": 50,
-          "y": 250
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {}
       },
       {
-        "id": "outer_tower",
-        "type": "geometry.primitives.box_from_corner_size",
+        "id": "node_outer",
+        "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 250,
-          "y": 200
+          "x": 0.0,
+          "y": 200.0
         },
         "parameters": {
-          "corner": {
-            "x": 0,
-            "y": 0,
-            "z": 0
+          "startX": {
+            "value": 0.0
           },
-          "size": {
-            "x": {
-              "param": "base_size"
-            },
-            "y": {
-              "param": "height"
-            },
-            "z": {
-              "param": "base_size"
-            }
+          "startY": {
+            "value": 0.0
+          },
+          "startZ": {
+            "value": 0.0
+          },
+          "endX": {
+            "value": 0.0
+          },
+          "endY": {
+            "value": 14.0
+          },
+          "endZ": {
+            "value": 0.0
+          },
+          "radius": {
+            "value": 5.0
           }
         }
       },
       {
-        "id": "inner_tower",
-        "type": "geometry.primitives.box_from_corner_size",
+        "id": "node_inner",
+        "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 250,
-          "y": 320
+          "x": 0.0,
+          "y": 380.0
         },
         "parameters": {
-          "corner": {
-            "x": {
-              "param": "wall_thickness"
-            },
-            "y": 0,
-            "z": {
-              "param": "wall_thickness"
-            }
+          "startX": {
+            "value": 0.0
           },
-          "size": {
-            "x": {
-              "param": "inner_size"
-            },
-            "y": {
-              "param": "height"
-            },
-            "z": {
-              "param": "inner_size"
-            }
+          "startY": {
+            "value": 0.0
+          },
+          "startZ": {
+            "value": 0.0
+          },
+          "endX": {
+            "value": 0.0
+          },
+          "endY": {
+            "value": 14.0
+          },
+          "endZ": {
+            "value": 0.0
+          },
+          "radius": {
+            "value": 4.0
           }
         }
       },
       {
-        "id": "hollow_tower",
+        "id": "node_hollow",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 450,
-          "y": 260
+          "x": 280.0,
+          "y": 280.0
         },
         "parameters": {}
       },
       {
-        "id": "battlement_1",
+        "id": "node_roof_volume",
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 250,
-          "y": 460
+          "x": 0.0,
+          "y": 560.0
         },
         "parameters": {
-          "corner": {
-            "x": 0,
-            "y": {
-              "param": "height"
-            },
-            "z": 0
+          "cornerX": {
+            "value": -5.0
           },
-          "size": {
-            "x": 2,
-            "y": 2,
-            "z": 2
+          "cornerY": {
+            "value": 14.0
+          },
+          "cornerZ": {
+            "value": -5.0
+          },
+          "sizeX": {
+            "value": 10.0
+          },
+          "sizeY": {
+            "value": 0.5
+          },
+          "sizeZ": {
+            "value": 10.0
           }
         }
       },
       {
-        "id": "battlement_2",
-        "type": "geometry.primitives.box_from_corner_size",
+        "id": "node_roof_face",
+        "type": "reference.points.get_box_face",
         "position": {
-          "x": 250,
-          "y": 560
+          "x": 280.0,
+          "y": 560.0
         },
         "parameters": {
-          "corner": {
-            "x": {
-              "param": "battlement_x2"
-            },
-            "y": {
-              "param": "height"
-            },
-            "z": 0
-          },
-          "size": {
-            "x": 2,
-            "y": 2,
-            "z": 2
+          "defaultFaceName": {
+            "value": "top"
           }
         }
       },
       {
-        "id": "battlement_3",
-        "type": "geometry.primitives.box_from_corner_size",
+        "id": "node_roof",
+        "type": "geometry.architectural_primitives.roof_base",
         "position": {
-          "x": 250,
-          "y": 660
+          "x": 560.0,
+          "y": 560.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_roof_type",
+        "type": "input.values.text_input",
+        "position": {
+          "x": 280.0,
+          "y": 700.0
         },
         "parameters": {
-          "corner": {
-            "x": 0,
-            "y": {
-              "param": "height"
-            },
-            "z": {
-              "param": "battlement_z2"
-            }
+          "text": {
+            "value": "shed"
           },
-          "size": {
-            "x": 2,
-            "y": 2,
-            "z": 2
+          "multiline": {
+            "value": false
           }
         }
       },
       {
-        "id": "battlement_4",
+        "id": "node_battlement_box",
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 250,
-          "y": 760
+          "x": 0.0,
+          "y": 740.0
         },
         "parameters": {
-          "corner": {
-            "x": {
-              "param": "battlement_x2"
-            },
-            "y": {
-              "param": "height"
-            },
-            "z": {
-              "param": "battlement_z2"
-            }
+          "sizeX": {
+            "value": 1.2
           },
-          "size": {
-            "x": 2,
-            "y": 2,
-            "z": 2
+          "sizeY": {
+            "value": 0.8
+          },
+          "sizeZ": {
+            "value": 0.8
           }
         }
       },
       {
-        "id": "union_all",
+        "id": "node_battlement_array",
+        "type": "pattern.linear.linear_array",
+        "position": {
+          "x": 280.0,
+          "y": 740.0
+        },
+        "parameters": {
+          "count": {
+            "value": 4
+          },
+          "distance": {
+            "value": 2.5
+          }
+        }
+      },
+      {
+        "id": "node_array_dir",
+        "type": "reference.vectors.vector",
+        "position": {
+          "x": 0.0,
+          "y": 900.0
+        },
+        "parameters": {
+          "x": {
+            "value": 1.0
+          },
+          "y": {
+            "value": 0.0
+          },
+          "z": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_eave_railing",
+        "type": "geometry.architectural_primitives.railing",
+        "position": {
+          "x": 560.0,
+          "y": 720.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 650,
-          "y": 500
-        },
-        "parameters": {}
-      },
-      {
-        "id": "assign_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 850,
-          "y": 500
+          "x": 820.0,
+          "y": 480.0
         },
         "parameters": {
-          "block_type": {
-            "param": "tower_material"
+          "inputCount": {
+            "value": 4
           }
         }
       },
       {
-        "id": "move_to_pos",
+        "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1050,
-          "y": 500
+          "x": 1060.0,
+          "y": 480.0
         },
         "parameters": {}
       },
       {
-        "id": "bake",
-        "type": "geometry.voxel.voxelize_geometry",
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
         "position": {
-          "x": 1250,
-          "y": 500
+          "x": 0.0,
+          "y": 0.0
         },
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1450,
-          "y": 500
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 640.0,
+          "y": 480.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 860.0,
+          "y": 480.0
         },
         "parameters": {}
       }
@@ -307,112 +371,222 @@
     "connections": [
       {
         "from": {
-          "node": "outer_tower",
+          "node": "node_outer",
           "port": "output_geometry"
         },
         "to": {
-          "node": "hollow_tower",
+          "node": "node_hollow",
           "port": "input_base"
         }
       },
       {
         "from": {
-          "node": "inner_tower",
+          "node": "node_inner",
           "port": "output_geometry"
         },
         "to": {
-          "node": "hollow_tower",
+          "node": "node_hollow",
           "port": "input_cutter"
         }
       },
       {
         "from": {
-          "node": "hollow_tower",
+          "node": "node_roof_volume",
+          "port": "output_box_geometry"
+        },
+        "to": {
+          "node": "node_roof_face",
+          "port": "input_box_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_face",
+          "port": "output_face"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_type",
+          "port": "output_text"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_roof_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_box",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_battlement_array",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_array_dir",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_battlement_array",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof",
+          "port": "output_eave_path"
+        },
+        "to": {
+          "node": "node_eave_railing",
+          "port": "input_path"
+        }
+      },
+      {
+        "from": {
+          "node": "node_hollow",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine",
           "port": "input_geometry_0"
         }
       },
       {
         "from": {
-          "node": "battlement_1",
+          "node": "node_roof",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_1"
         }
       },
       {
         "from": {
-          "node": "battlement_2",
+          "node": "node_eave_railing",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_2"
         }
       },
       {
         "from": {
-          "node": "battlement_3",
+          "node": "node_battlement_array",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_3"
         }
       },
       {
         "from": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "output_geometry"
         },
         "to": {
-          "node": "assign_material",
+          "node": "node_move_to_pos",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "union_all",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "move_to_pos",
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "input_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "output_blocks"
         },
         "to": {
-          "node": "preview",
-          "port": "input_blocks"
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
         }
       }
     ]

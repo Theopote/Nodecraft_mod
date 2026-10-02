@@ -10,7 +10,6 @@ ROOT = Path(__file__).resolve().parents[1]
 RECOMMENDATIONS = ROOT / "src/main/resources/nodecraft/node_recommendations.json"
 PRESET_PATHS = [
     ROOT / "src/main/resources/nodecraft/graph_presets.json",
-    ROOT / "src/main/resources/nodecraft/graph_presets_updated.json",
 ]
 
 BROKEN_REASON_LINES = [

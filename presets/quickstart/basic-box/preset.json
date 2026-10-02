@@ -2,7 +2,6 @@
   "preset_id": "quickstart.basic_box",
   "version": "1.0.0",
   "schema_version": "1.0",
-
   "metadata": {
     "name": "Basic Box",
     "name_i18n": {
@@ -15,18 +14,21 @@
       "en_US": "A simple box structure. Perfect for beginners to learn the basics of NodeCraft."
     },
     "author": "NodeCraft Team",
-    "tags": ["beginner", "basic", "quickstart", "geometry"],
+    "tags": [
+      "beginner",
+      "basic",
+      "quickstart",
+      "geometry"
+    ],
     "category": "quickstart",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 3
+    "estimated_node_count": 6
   },
-
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
-
   "parameters": [
     {
       "id": "width",
@@ -70,69 +72,126 @@
       "group": "Materials"
     }
   ],
-
   "graph": {
     "nodes": [
       {
         "id": "node_player_pos",
         "type": "input.context.player_position",
-        "position": {"x": 100, "y": 200},
+        "position": {
+          "x": 0.0,
+          "y": 140.0
+        },
         "parameters": {}
       },
       {
         "id": "node_box",
         "type": "geometry.primitives.box",
-        "position": {"x": 300, "y": 200},
+        "position": {
+          "x": 280.0,
+          "y": 140.0
+        },
         "parameters": {
-          "center": {"param": "player_position"},
-          "size_x": {"param": "width"},
-          "size_y": {"param": "height"},
-          "size_z": {"param": "depth"}
+          "sizeX": {
+            "value": 5.0
+          },
+          "sizeY": {
+            "value": 5.0
+          },
+          "sizeZ": {
+            "value": 5.0
+          }
         }
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 580.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 580.0,
+          "y": 240.0
+        },
+        "parameters": {}
       },
       {
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
-        "position": {"x": 500, "y": 200},
-        "parameters": {
-          "block_type": {"param": "material"}
-        }
+        "position": {
+          "x": 860.0,
+          "y": 240.0
+        },
+        "parameters": {}
       },
       {
-        "id": "node_bake",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {"x": 700, "y": 200},
-        "parameters": {
-          "placement_mode": "solid"
-        }
-      },
-      {
-        "id": "node_preview",
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
-        "position": {"x": 900, "y": 200},
+        "position": {
+          "x": 1140.0,
+          "y": 240.0
+        },
         "parameters": {}
       }
     ],
     "connections": [
       {
-        "from": {"node": "node_player_pos", "port": "output_position"},
-        "to": {"node": "node_box", "port": "input_center"}
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_box",
+          "port": "input_center"
+        }
       },
       {
-        "from": {"node": "node_box", "port": "output_geometry"},
-        "to": {"node": "node_material", "port": "input_geometry"}
+        "from": {
+          "node": "node_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "node_box", "port": "output_geometry"},
-        "to": {"node": "node_bake", "port": "input_geometry"}
+        "from": {
+          "node": "node_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
       },
       {
-        "from": {"node": "node_bake", "port": "output_blocks"},
-        "to": {"node": "node_preview", "port": "input_blocks"}
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
       }
     ]
   },
-
   "documentation": {
     "learning_notes": "This preset demonstrates the basic workflow in NodeCraft: get player position, create geometry, voxelize, assign material, and preview (Apply Changes writes the world). Try adjusting the parameters to see how the box changes.",
     "tips": [

@@ -23,10 +23,10 @@
     "category": "decorative",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
-    "estimated_node_count": 9
+    "estimated_node_count": 19
   },
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
   "parameters": [
@@ -102,195 +102,236 @@
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
         "position": {
-          "x": 50,
-          "y": 300
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {}
       },
       {
-        "id": "floor_circle",
-        "type": "geometry.primitives.cylinder",
+        "id": "node_volume",
+        "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 250,
-          "y": 200
+          "x": 0.0,
+          "y": 200.0
         },
         "parameters": {
-          "radius": {
-            "param": "radius"
+          "sizeX": {
+            "value": 10.0
           },
-          "height": 0.5,
-          "axis": {
-            "x": 0,
-            "y": 1,
-            "z": 0
-          }
-        }
-      },
-      {
-        "id": "column_circle",
-        "type": "geometry.profiles.circle_profile",
-        "position": {
-          "x": 250,
-          "y": 350
-        },
-        "parameters": {
-          "radius": {
-            "param": "column_radius"
+          "sizeY": {
+            "value": 3.5
           },
-          "segments": {
-            "param": "column_count"
+          "sizeZ": {
+            "value": 10.0
           }
         }
       },
       {
-        "id": "column_points",
-        "type": "geometry.curves.path_to_points",
+        "id": "node_floor_face",
+        "type": "reference.points.get_box_face",
         "position": {
-          "x": 450,
-          "y": 350
+          "x": 280.0,
+          "y": 120.0
         },
         "parameters": {
-          "count": {
-            "param": "column_count"
+          "defaultFaceName": {
+            "value": "bottom"
           }
         }
       },
       {
-        "id": "single_column",
-        "type": "geometry.primitives.cylinder",
+        "id": "node_roof_face",
+        "type": "reference.points.get_box_face",
         "position": {
-          "x": 450,
-          "y": 500
+          "x": 280.0,
+          "y": 320.0
         },
         "parameters": {
-          "radius": 0.3,
-          "height": {
-            "param": "height"
-          },
-          "axis": {
-            "x": 0,
-            "y": 1,
-            "z": 0
+          "defaultFaceName": {
+            "value": "top"
           }
         }
       },
       {
-        "id": "array_columns",
-        "type": "pattern.linear.instance_on_points",
+        "id": "node_floor",
+        "type": "geometry.architectural_primitives.floor_slab",
         "position": {
-          "x": 650,
-          "y": 425
+          "x": 520.0,
+          "y": 120.0
         },
         "parameters": {}
       },
       {
-        "id": "roof_cone",
-        "type": "geometry.primitives.cone",
+        "id": "node_column",
+        "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 250,
-          "y": 650
+          "x": 0.0,
+          "y": 480.0
         },
         "parameters": {
-          "base_radius": {
-            "param": "roof_radius"
+          "startX": {
+            "value": 4.0
           },
-          "height": {
-            "param": "roof_height"
+          "startY": {
+            "value": 0.0
           },
-          "axis": {
-            "x": 0,
-            "y": 1,
-            "z": 0
+          "startZ": {
+            "value": 0.0
+          },
+          "endX": {
+            "value": 4.0
+          },
+          "endY": {
+            "value": 3.0
+          },
+          "endZ": {
+            "value": 0.0
+          },
+          "radius": {
+            "value": 0.25
           }
         }
       },
       {
-        "id": "position_roof",
-        "type": "transform.basic_transforms.move_geometry",
+        "id": "node_column_count",
+        "type": "input.numeric.integer",
         "position": {
-          "x": 450,
-          "y": 650
+          "x": 280.0,
+          "y": 480.0
         },
         "parameters": {
-          "translation": {
-            "x": 0,
-            "y": {
-              "param": "height"
-            },
-            "z": 0
+          "value": {
+            "value": 8
           }
         }
       },
       {
-        "id": "union_all",
+        "id": "node_column_span",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 620.0
+        },
+        "parameters": {
+          "value": {
+            "value": 360.0
+          }
+        }
+      },
+      {
+        "id": "node_columns",
+        "type": "pattern.radial.polar_array",
+        "position": {
+          "x": 560.0,
+          "y": 480.0
+        },
+        "parameters": {
+          "includeEnd": {
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "node_roof",
+        "type": "geometry.architectural_primitives.roof_base",
+        "position": {
+          "x": 520.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_roof_type",
+        "type": "input.values.text_input",
+        "position": {
+          "x": 280.0,
+          "y": 760.0
+        },
+        "parameters": {
+          "text": {
+            "value": "gable"
+          },
+          "multiline": {
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 850,
-          "y": 450
-        },
-        "parameters": {}
-      },
-      {
-        "id": "assign_materials",
-        "type": "material.gradient_mapping.height_gradient_map",
-        "position": {
-          "x": 1050,
-          "y": 450
+          "x": 800.0,
+          "y": 280.0
         },
         "parameters": {
-          "stops": [
-            {
-              "height": 0,
-              "block": {
-                "param": "floor_material"
-              }
-            },
-            {
-              "height": 0.5,
-              "block": {
-                "param": "column_material"
-              }
-            },
-            {
-              "height": {
-                "param": "height"
-              },
-              "block": {
-                "param": "roof_material"
-              }
-            }
-          ]
+          "inputCount": {
+            "value": 3
+          }
         }
       },
       {
-        "id": "move_to_pos",
+        "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1250,
-          "y": 450
+          "x": 1040.0,
+          "y": 280.0
         },
         "parameters": {}
       },
       {
-        "id": "bake",
-        "type": "geometry.voxel.voxelize_geometry",
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
         "position": {
-          "x": 1450,
-          "y": 450
+          "x": 0.0,
+          "y": 0.0
         },
-        "parameters": {
-          "placement_mode": "solid"
-        }
+        "parameters": {}
       },
       {
-        "id": "preview",
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1650,
-          "y": 450
+          "x": 0.0,
+          "y": 0.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 620.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 840.0,
+          "y": 280.0
         },
         "parameters": {}
       }
@@ -298,112 +339,212 @@
     "connections": [
       {
         "from": {
-          "node": "column_circle",
-          "port": "output_boundary"
+          "node": "node_volume",
+          "port": "output_box_geometry"
         },
         "to": {
-          "node": "column_points",
-          "port": "input_path"
+          "node": "node_floor_face",
+          "port": "input_box_geometry"
         }
       },
       {
         "from": {
-          "node": "column_points",
-          "port": "output_points"
+          "node": "node_volume",
+          "port": "output_box_geometry"
         },
         "to": {
-          "node": "array_columns",
-          "port": "input_points"
+          "node": "node_roof_face",
+          "port": "input_box_geometry"
         }
       },
       {
         "from": {
-          "node": "roof_cone",
+          "node": "node_floor_face",
+          "port": "output_face"
+        },
+        "to": {
+          "node": "node_floor",
+          "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_column",
           "port": "output_geometry"
         },
         "to": {
-          "node": "position_roof",
+          "node": "node_columns",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "floor_circle",
+          "node": "node_column_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_columns",
+          "port": "input_count"
+        }
+      },
+      {
+        "from": {
+          "node": "node_column_span",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_columns",
+          "port": "input_total_angle"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_face",
+          "port": "output_face"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_type",
+          "port": "output_text"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_roof_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_floor",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_0"
         }
       },
       {
         "from": {
-          "node": "single_column",
+          "node": "node_columns",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_1"
         }
       },
       {
         "from": {
-          "node": "position_roof",
+          "node": "node_roof",
           "port": "output_geometry"
         },
         "to": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "input_geometry_2"
         }
       },
       {
         "from": {
-          "node": "union_all",
+          "node": "node_combine",
           "port": "output_geometry"
         },
         "to": {
-          "node": "assign_materials",
+          "node": "node_move_to_pos",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "union_all",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "move_to_pos",
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "input_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "output_blocks"
         },
         "to": {
-          "node": "preview",
-          "port": "input_blocks"
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
         }
       }
     ]

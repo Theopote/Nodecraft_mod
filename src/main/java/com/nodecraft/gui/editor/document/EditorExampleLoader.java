@@ -1,25 +1,19 @@
 package com.nodecraft.gui.editor.document;
 
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
-import com.nodecraft.gui.editor.impl.NodePosition;
 import com.nodecraft.gui.preset.GraphPresetApplier;
-import com.nodecraft.nodesystem.graph.NodeGraph;
-import com.nodecraft.nodesystem.preset.BundledPresetLocator;
-import com.nodecraft.nodesystem.preset.PresetDefinition;
-import com.nodecraft.nodesystem.preset.PresetInstantiator;
-import com.nodecraft.nodesystem.preset.PresetRegistry;
+import com.nodecraft.gui.preset.GraphPresetCatalog;
+import com.nodecraft.gui.preset.GraphPresetRules;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * Loads quickstart full-graph presets into a fresh editor document.
+ * Uses {@link GraphPresetCatalog} / {@code graph_presets.json} — the same source as the preset library panel.
  */
 public final class EditorExampleLoader {
 
@@ -28,23 +22,31 @@ public final class EditorExampleLoader {
     private EditorExampleLoader() {
     }
 
-    public static void ensureQuickstartPresetsRegistered() {
-        BundledPresetLocator.registerBundledQuickstartPresetsIfAbsent(PresetRegistry.getInstance());
-    }
-
     public static List<EditorExampleEntry> listQuickstartExamples() {
-        ensureQuickstartPresetsRegistered();
-
+        GraphPresetCatalog catalog = GraphPresetCatalog.getInstance();
         List<EditorExampleEntry> examples = new ArrayList<>();
-        for (PresetDefinition preset : PresetRegistry.getInstance().getPresetsByCategory(QUICKSTART_CATEGORY_ID)) {
-            if (preset == null || preset.presetId() == null) {
+
+        for (GraphPresetCatalog.CategoryView categoryView : catalog.getCategories()) {
+            if (categoryView.category() == null
+                    || !QUICKSTART_CATEGORY_ID.equals(categoryView.category().id)) {
                 continue;
             }
-            examples.add(new EditorExampleEntry(
-                    preset.presetId(),
-                    preset.metadata().getName(),
-                    preset.metadata().getDescription()
-            ));
+            if (categoryView.category().presets == null) {
+                continue;
+            }
+            for (GraphPresetRules.GraphPresetDefinition preset : categoryView.category().presets) {
+                if (preset == null || preset.id == null) {
+                    continue;
+                }
+                if (!"composite".equalsIgnoreCase(preset.kind)) {
+                    continue;
+                }
+                examples.add(new EditorExampleEntry(
+                        preset.id,
+                        preset.displayName,
+                        preset.description
+                ));
+            }
         }
 
         examples.sort(Comparator.comparing(EditorExampleEntry::displayName, String.CASE_INSENSITIVE_ORDER));
@@ -63,56 +65,19 @@ public final class EditorExampleLoader {
     }
 
     public static GraphPresetApplier.ApplyResult loadQuickstartExample(ImGuiNodeEditor editor, String presetId) {
-        ensureQuickstartPresetsRegistered();
         if (presetId == null || presetId.isBlank()) {
             return GraphPresetApplier.ApplyResult.failure("示例 ID 无效");
         }
 
-        PresetDefinition preset = PresetRegistry.getInstance().getPreset(normalizeId(presetId));
-        if (preset == null) {
+        GraphPresetCatalog.PresetView view = GraphPresetCatalog.getInstance().findPreset(normalizeId(presetId));
+        if (view == null || !QUICKSTART_CATEGORY_ID.equals(view.categoryId())) {
             return GraphPresetApplier.ApplyResult.failure("未找到示例: " + presetId);
         }
-        return loadFullGraphExample(editor, preset);
-    }
-
-    private static GraphPresetApplier.ApplyResult loadFullGraphExample(
-            ImGuiNodeEditor editor,
-            PresetDefinition preset) {
-        if (editor == null) {
-            return GraphPresetApplier.ApplyResult.failure("Editor is not ready");
+        if (!view.isApplicable()) {
+            return GraphPresetApplier.ApplyResult.failure("示例不可用: " + presetId);
         }
 
-        editor.getHistory().pauseRecording();
-        try {
-            PresetInstantiator.InstantiateResult instantiated = PresetInstantiator.instantiateWithLayout(preset);
-            NodeGraph graph = instantiated.graph();
-            graph.setName(preset.metadata().getName());
-
-            editor.setCurrentGraph(graph);
-            editor.setNodePositions(toEditorPositions(instantiated.nodePositions()));
-            editor.getHistory().clear();
-            editor.getDocument().markDirty();
-            editor.setCanvasView(1.0f, 0.0f, 0.0f);
-
-            return GraphPresetApplier.ApplyResult.success(
-                    "已加载示例: " + preset.metadata().getName(),
-                    List.copyOf(instantiated.nodePositions().keySet())
-            );
-        } catch (PresetInstantiator.PresetInstantiationException e) {
-            return GraphPresetApplier.ApplyResult.failure("示例加载失败: " + e.getMessage());
-        } finally {
-            editor.getHistory().resumeRecording();
-        }
-    }
-
-    private static Map<UUID, NodePosition> toEditorPositions(
-            Map<UUID, PresetInstantiator.LayoutPoint> layout) {
-        Map<UUID, NodePosition> positions = new HashMap<>();
-        for (Map.Entry<UUID, PresetInstantiator.LayoutPoint> entry : layout.entrySet()) {
-            PresetInstantiator.LayoutPoint point = entry.getValue();
-            positions.put(entry.getKey(), new NodePosition(point.x(), point.y()));
-        }
-        return positions;
+        return GraphPresetApplier.loadAsNewDocument(editor, view.preset());
     }
 
     private static String normalizeId(String presetId) {

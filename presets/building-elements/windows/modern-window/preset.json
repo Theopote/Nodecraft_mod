@@ -23,10 +23,10 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 5
+    "estimated_node_count": 21
   },
   "thumbnails": {
-    "main": "thumbnail.png",
+    "main": "",
     "previews": []
   },
   "parameters": [
@@ -83,79 +83,237 @@
   "graph": {
     "nodes": [
       {
-        "id": "input_pos",
+        "id": "node_player_pos",
         "type": "input.context.player_position",
         "position": {
-          "x": 50,
-          "y": 200
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {}
       },
       {
-        "id": "window_opening",
+        "id": "node_volume",
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 250,
-          "y": 200
+          "x": 0.0,
+          "y": 200.0
         },
         "parameters": {
-          "corner": {
-            "x": 0,
-            "y": 0,
-            "z": 0
+          "sizeX": {
+            "value": 2.4
           },
-          "size": {
-            "x": {
-              "param": "width"
-            },
-            "y": {
-              "param": "height"
-            },
-            "z": {
-              "param": "frame_thickness"
-            }
+          "sizeY": {
+            "value": 2.6
+          },
+          "sizeZ": {
+            "value": 0.35
           }
         }
       },
       {
-        "id": "assign_glass",
-        "type": "material.basic_assignment.assign_block_type",
+        "id": "node_front_face",
+        "type": "reference.points.get_box_face",
         "position": {
-          "x": 450,
-          "y": 200
+          "x": 280.0,
+          "y": 200.0
         },
         "parameters": {
-          "block_type": {
-            "param": "glass_material"
+          "defaultFaceName": {
+            "value": "front"
           }
         }
       },
       {
-        "id": "move_to_pos",
-        "type": "transform.basic_transforms.move_geometry",
+        "id": "node_opening_cols",
+        "type": "input.numeric.integer",
         "position": {
-          "x": 650,
-          "y": 200
+          "x": 280.0,
+          "y": 380.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "id": "node_opening_rows",
+        "type": "input.numeric.integer",
+        "position": {
+          "x": 280.0,
+          "y": 520.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1
+          }
+        }
+      },
+      {
+        "id": "node_opening_width",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 660.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_opening_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 800.0
+        },
+        "parameters": {
+          "value": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_opening_margin",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 940.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "id": "node_wall_thickness",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 1080.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.35
+          }
+        }
+      },
+      {
+        "id": "node_glass_depth",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 280.0,
+          "y": 1220.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.2
+          }
+        }
+      },
+      {
+        "id": "node_wall",
+        "type": "geometry.architectural_primitives.wall_with_openings",
+        "position": {
+          "x": 560.0,
+          "y": 200.0
         },
         "parameters": {}
       },
       {
-        "id": "bake",
-        "type": "geometry.voxel.voxelize_geometry",
+        "id": "node_windows",
+        "type": "geometry.architectural_primitives.window_array",
         "position": {
-          "x": 850,
-          "y": 200
+          "x": 560.0,
+          "y": 420.0
         },
         "parameters": {
-          "placement_mode": "solid"
+          "defaultDepth": {
+            "value": 0.2
+          }
         }
       },
       {
-        "id": "preview",
+        "id": "node_cut_frame",
+        "type": "geometry.boolean.difference",
+        "position": {
+          "x": 820.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_combine",
+        "type": "geometry.combine.geometry",
+        "position": {
+          "x": 1080.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos",
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1340.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1600.0,
+          "y": 120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1600.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1860.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1050,
-          "y": 200
+          "x": 2120.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 920.0,
+          "y": 280.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 1140.0,
+          "y": 280.0
         },
         "parameters": {}
       }
@@ -163,52 +321,292 @@
     "connections": [
       {
         "from": {
-          "node": "window_opening",
+          "node": "node_volume",
+          "port": "output_box_geometry"
+        },
+        "to": {
+          "node": "node_front_face",
+          "port": "input_box_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_front_face",
+          "port": "output_face"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_front_face",
+          "port": "output_face"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_cols",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_columns"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_cols",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_columns"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_rows",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_rows"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_rows",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_rows"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_width",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_opening_width"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_width",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_window_width"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_opening_height"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_window_height"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_margin",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_margin"
+        }
+      },
+      {
+        "from": {
+          "node": "node_opening_margin",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_margin"
+        }
+      },
+      {
+        "from": {
+          "node": "node_wall_thickness",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_wall",
+          "port": "input_wall_thickness"
+        }
+      },
+      {
+        "from": {
+          "node": "node_glass_depth",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_windows",
+          "port": "input_depth"
+        }
+      },
+      {
+        "from": {
+          "node": "node_wall",
           "port": "output_geometry"
         },
         "to": {
-          "node": "assign_glass",
+          "node": "node_cut_frame",
+          "port": "input_base"
+        }
+      },
+      {
+        "from": {
+          "node": "node_wall",
+          "port": "output_openings"
+        },
+        "to": {
+          "node": "node_cut_frame",
+          "port": "input_cutter"
+        }
+      },
+      {
+        "from": {
+          "node": "node_cut_frame",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine",
+          "port": "input_geometry_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_windows",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine",
+          "port": "input_geometry_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_combine",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_move_to_pos",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "window_opening",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "move_to_pos",
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "input_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "move_to_pos",
+          "node": "node_move_to_pos",
           "port": "output_geometry"
         },
         "to": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "bake",
+          "node": "node_voxelize",
           "port": "output_blocks"
         },
         "to": {
-          "node": "preview",
-          "port": "input_blocks"
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
         }
       }
     ]

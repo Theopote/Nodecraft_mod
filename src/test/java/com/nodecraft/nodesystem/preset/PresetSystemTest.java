@@ -88,6 +88,37 @@ public class PresetSystemTest {
     }
 
     @Test
+    public void testPresetLoadingWithoutThumbnailsSection() throws IOException {
+        String presetJson = """
+        {
+          "preset_id": "test.no_thumbnails",
+          "version": "1.0.0",
+          "schema_version": "1.0",
+          "metadata": {
+            "name": "No Thumbnails",
+            "description": "Missing thumbnails block",
+            "author": "Test",
+            "tags": ["test"],
+            "category": "test",
+            "difficulty": "beginner"
+          },
+          "parameters": [],
+          "graph": {
+            "nodes": [],
+            "connections": []
+          }
+        }
+        """;
+        Path presetFile = tempDir.resolve("no-thumbnails.json");
+        Files.writeString(presetFile, presetJson);
+
+        PresetDefinition preset = PresetLoader.load(presetFile);
+        assertEquals("test.no_thumbnails", preset.presetId());
+        assertEquals("", preset.thumbnails().main());
+        assertTrue(preset.thumbnails().previews().isEmpty());
+    }
+
+    @Test
     public void testPresetRegistry() {
         PresetRegistry registry = new PresetRegistry();
         // Load from the temp dir itself — walking getParent() can hit AccessDenied on CI runners.
