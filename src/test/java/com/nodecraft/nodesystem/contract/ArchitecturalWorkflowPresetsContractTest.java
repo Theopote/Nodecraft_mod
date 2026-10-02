@@ -86,16 +86,35 @@ class ArchitecturalWorkflowPresetsContractTest {
         slab.processNode(null);
         assertEquals(Boolean.TRUE, slab.getOutput("output_valid"));
 
+        BoxFaceData slabBottom = assertInstanceOf(BoxFaceData.class, slab.getOutput("output_bottom_face"));
+        double beamDrop = 0.1d;
+        double beamDepth = 0.25d;
+
         BeamGridNode beams = new BeamGridNode();
-        beams.setInput("input_face", face);
+        beams.setInput("input_face", slabBottom);
+        connectInput(beams, "input_columns", NodeDataType.INTEGER);
+        connectInput(beams, "input_rows", NodeDataType.INTEGER);
+        connectInput(beams, "input_beam_width", NodeDataType.DOUBLE);
+        connectInput(beams, "input_beam_depth", NodeDataType.DOUBLE);
+        connectInput(beams, "input_beam_drop", NodeDataType.DOUBLE);
         beams.setInput("input_columns", 2);
         beams.setInput("input_rows", 2);
         beams.setInput("input_beam_width", 0.2d);
-        beams.setInput("input_beam_depth", 0.25d);
-        beams.setInput("input_slab_thickness", 0.3d);
+        beams.setInput("input_beam_depth", beamDepth);
+        beams.setInput("input_beam_drop", beamDrop);
         beams.processNode(null);
         assertEquals(Boolean.TRUE, beams.getOutput("output_valid"));
         assertInstanceOf(List.class, beams.getOutput("output_center_lines"));
+
+        @SuppressWarnings("unchecked")
+        List<com.nodecraft.nodesystem.datatypes.PointData> centers =
+            (List<com.nodecraft.nodesystem.datatypes.PointData>) beams.getOutput("output_centers");
+        Vector3d outward = slabBottom.getNormal();
+        Vector3d beamCenter = centers.getFirst().position();
+        Vector3d beamTop = new Vector3d(beamCenter).fma(-beamDepth / 2.0d, outward);
+        double dropAlongOutward = new Vector3d(beamTop).sub(slabBottom.getCenter()).dot(outward);
+        assertEquals(beamDrop, dropAlongOutward, 0.05d,
+            "beam top should sit beamDrop below slab bottom face along outward normal");
 
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
         connectInput(combine, "input_geometry_0", NodeDataType.GEOMETRY);

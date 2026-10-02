@@ -84,6 +84,14 @@ public class RailingNode extends BaseNode {
             writeInvalid("Post Count must be an exact positive INTEGER");
             return;
         }
+        if (!path.closed() && postCount < 2) {
+            writeInvalid("Open paths require Post Count >= 2");
+            return;
+        }
+        if (path.closed() && postCount < 3) {
+            writeInvalid("Closed paths require Post Count >= 3");
+            return;
+        }
         Integer railCount = ArchitecturalInputUtils.resolveOptionalExactPositiveInteger(this, INPUT_RAIL_COUNT_ID, 2);
         if (railCount == null) {
             writeInvalid("Rail Count must be an exact positive INTEGER");

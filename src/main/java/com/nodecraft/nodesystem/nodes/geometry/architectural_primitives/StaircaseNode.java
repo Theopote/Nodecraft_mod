@@ -217,6 +217,11 @@ public class StaircaseNode extends BaseNode {
                         + GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS + ")");
                     return;
                 }
+                double requiredRun = parameters.stepCount() * parameters.stepRun();
+                if (requiredRun > path.length() + EPSILON) {
+                    writeInvalid("Path is too short for requested Step Count × Step Run");
+                    return;
+                }
                 steps = buildPathFollowingStairs(
                     path, parameters.stepCount(), parameters.stepRun(),
                     parameters.stepRise(), parameters.width(), parameters.landingLength());
@@ -247,9 +252,6 @@ public class StaircaseNode extends BaseNode {
 
         for (int index = 0; index < stepCount; index++) {
             double centerDistance = stepRun * index + stepRun / 2.0d;
-            if (centerDistance > maxRun + EPSILON) {
-                break;
-            }
             ArchitecturalPathSupport.SampleFrame frame = ArchitecturalPathSupport.sampleAt(path, centerDistance);
             Vector3d center = new Vector3d(frame.origin()).fma(stepRise * index + stepRise / 2.0d, frame.up());
             Vector3d halfExtents = new Vector3d(stepRun / 2.0d, stepRise / 2.0d, width / 2.0d);

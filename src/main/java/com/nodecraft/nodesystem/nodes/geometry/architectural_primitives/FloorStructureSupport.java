@@ -33,6 +33,7 @@ final class FloorStructureSupport {
     }
 
     static BoxFaceData bottomFace(ArchitecturalPrimitiveSupport.FaceFrame frame) {
+        // Outward normal points away from the slab (down when the footprint face is a floor top).
         return planarFace("bottom", frame, 0.0d, new Vector3d(frame.zAxis()).negate());
     }
 
@@ -60,8 +61,9 @@ final class FloorStructureSupport {
 
         double startX = -frame.width() / 2.0d + margin + beamWidth / 2.0d;
         double startY = -frame.height() / 2.0d + margin + beamWidth / 2.0d;
+        // Face outward normal (zAxis) points into air below the slab; beams hang along +zAxis.
         Vector3d beamCenterOffset = new Vector3d(frame.zAxis())
-            .mul(-(slabThickness / 2.0d + beamDrop + beamDepth / 2.0d));
+            .mul(beamDrop + beamDepth / 2.0d);
 
         List<GeometryData> beams = new ArrayList<>(beamColumns + beamRows);
         List<FrameData> frames = new ArrayList<>(beamColumns + beamRows);

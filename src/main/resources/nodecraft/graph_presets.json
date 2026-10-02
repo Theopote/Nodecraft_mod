@@ -2363,7 +2363,7 @@
         {
           "id": "architectural.workflow.floor_with_beam_grid",
           "displayName": "Floor + Beam Grid",
-          "description": "Composable Floor Slab + Beam Grid on the same BOX_FACE →Combine →Preview.",
+          "description": "Floor Slab on footprint face; Beam Grid on slab Bottom Face (beamDrop below slab bottom) →Combine →Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -2431,8 +2431,8 @@
               "toPort": "input_face"
             },
             {
-              "fromRef": "floor_face",
-              "fromPort": "output_face",
+              "fromRef": "slab",
+              "fromPort": "output_bottom_face",
               "toRef": "beams",
               "toPort": "input_face"
             },

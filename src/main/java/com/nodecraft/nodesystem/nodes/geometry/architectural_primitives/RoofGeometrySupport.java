@@ -124,22 +124,13 @@ final class RoofGeometrySupport {
         GeometryData geometry = switch (layout.roofType()) {
             case "flat" -> new BoxGeometryData(
                 new Vector3d(eaveCenter).fma(layout.thickness() / 2.0d, layout.frame().zAxis()),
-                new Vector3d(roofWidth / 2.0d, layout.thickness() / 2.0d, roofDepth / 2.0d),
+                new Vector3d(roofWidth / 2.0d, roofDepth / 2.0d, layout.thickness() / 2.0d),
                 ArchitecturalPrimitiveSupport.createOrientation(
                     layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis()),
                 true
             );
-            case "shed" -> new PrismGeometryData(
-                List.of(
-                    new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, layout.frame().yAxis()),
-                    new Vector3d(eaveCenter).fma(roofDepth / 2.0d, layout.frame().yAxis()),
-                    new Vector3d(eaveCenter).fma(roofDepth / 2.0d, layout.frame().yAxis())
-                        .fma(layout.height(), layout.frame().zAxis()),
-                    new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, layout.frame().yAxis())
-                        .fma(layout.height(), layout.frame().zAxis())
-                ),
-                new Vector3d(layout.frame().xAxis()).mul(roofWidth)
-            );
+            case "shed" -> buildShedRoof(
+                layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height(), layout.thickness());
             case "gable" -> buildGableRoof(
                 layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height(), layout.ridgeDirection());
             default -> null;
@@ -150,7 +141,9 @@ final class RoofGeometrySupport {
         }
 
         RoofTopology topology = switch (layout.roofType()) {
-            case "flat", "shed" -> perimeterTopology(layout.frame(), eaveCenter, roofWidth, roofDepth, List.of(), List.of());
+            case "flat" -> perimeterTopology(layout.frame(), eaveCenter, roofWidth, roofDepth, List.of(), List.of());
+            case "shed" -> shedTopology(
+                layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height());
             case "gable" -> gableTopology(
                 layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height(), layout.ridgeDirection());
             default -> RoofTopology.empty();
@@ -185,6 +178,52 @@ final class RoofGeometrySupport {
         };
     }
 
+    private static final double ROOF_EPSILON = 1.0e-9d;
+
+    static GeometryData buildShedRoof(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
+        double height,
+        double thickness
+    ) {
+        Vector3d lowOuterTop = new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis());
+        Vector3d highOuterTop = new Vector3d(eaveCenter)
+            .fma(roofDepth / 2.0d, frame.yAxis())
+            .fma(height, frame.zAxis());
+        Vector3d extrusion = new Vector3d(frame.xAxis()).mul(roofWidth);
+
+        if (thickness <= ROOF_EPSILON || thickness >= height - ROOF_EPSILON) {
+            return new PrismGeometryData(
+                List.of(
+                    lowOuterTop,
+                    highOuterTop,
+                    new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis())
+                ),
+                extrusion
+            );
+        }
+
+        Vector3d alongSlope = new Vector3d(highOuterTop).sub(lowOuterTop);
+        Vector3d slopeNormal = new Vector3d(frame.xAxis()).cross(alongSlope, new Vector3d());
+        if (slopeNormal.lengthSquared() <= ROOF_EPSILON * ROOF_EPSILON) {
+            slopeNormal.set(frame.zAxis());
+        } else {
+            slopeNormal.normalize();
+        }
+        if (slopeNormal.dot(frame.zAxis()) < 0.0d) {
+            slopeNormal.negate();
+        }
+
+        Vector3d lowInnerBottom = new Vector3d(lowOuterTop).fma(-thickness, frame.zAxis());
+        Vector3d highInnerBottom = new Vector3d(highOuterTop).fma(-thickness, slopeNormal);
+        return new PrismGeometryData(
+            List.of(lowOuterTop, highOuterTop, highInnerBottom, lowInnerBottom),
+            extrusion
+        );
+    }
+
     static GeometryData buildGableRoof(
         ArchitecturalPrimitiveSupport.FaceFrame frame,
         Vector3d eaveCenter,
@@ -211,6 +250,25 @@ final class RoofGeometrySupport {
             ),
             new Vector3d(frame.xAxis()).mul(roofWidth)
         );
+    }
+
+    private static RoofTopology shedTopology(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
+        double height
+    ) {
+        List<PathData> lowEaves = rectangleEaves(frame, eaveCenter, roofWidth, roofDepth);
+        Vector3d hx = new Vector3d(frame.xAxis()).mul(roofWidth / 2.0d);
+        Vector3d highY = new Vector3d(frame.yAxis()).mul(roofDepth / 2.0d);
+        Vector3d highZ = new Vector3d(frame.zAxis()).mul(height);
+        Vector3d highLeft = new Vector3d(eaveCenter).sub(hx).add(highY).add(highZ);
+        Vector3d highRight = new Vector3d(eaveCenter).add(hx).add(highY).add(highZ);
+        List<PathData> eaves = new java.util.ArrayList<>(lowEaves.size() + 1);
+        eaves.addAll(lowEaves);
+        eaves.add(linePath(highLeft, highRight));
+        return new RoofTopology(eaves, List.of(), List.of());
     }
 
     private static RoofTopology gableTopology(

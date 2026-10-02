@@ -49,14 +49,17 @@ public class BeamGridNode extends BaseNode {
     public BeamGridNode() {
         super(UUID.randomUUID(), "geometry.architectural_primitives.beam_grid");
 
-        addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the beam-grid footprint", NodeDataType.BOX_FACE, this));
+        addInputPort(new BasePort(INPUT_FACE_ID, "Face",
+            "Reference face for the beam grid (use Floor Slab Bottom Face when hanging beams below a slab)",
+            NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_COLUMNS_ID, "Columns", "Number of beams running along the width", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ROWS_ID, "Rows", "Number of beams running along the height", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_BEAM_WIDTH_ID, "Beam Width", "Beam width across its short axis", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BEAM_DEPTH_ID, "Beam Depth", "Beam depth along the face normal", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BEAM_DROP_ID, "Beam Drop", "Distance beams hang below the face / slab", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SLAB_THICKNESS_ID, "Slab Thickness",
-            "Optional slab thickness used to hang beams below a Floor Slab", NodeDataType.DOUBLE, this));
+            "Deprecated — ignored. Connect Floor Slab Bottom Face to Face instead of duplicating slab thickness",
+            NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Margin from the face edge to the beam grid", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Beam solids", NodeDataType.GEOMETRY, this));

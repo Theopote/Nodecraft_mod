@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.contract;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.contract.support.ArchitecturalGeometryAssert;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
@@ -10,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.StaircaseNode;
@@ -89,6 +91,89 @@ class ArchitecturalPathFollowingContractTest {
     }
 
     @Test
+    void openPathRailingFailsWhenPostCountBelowTwo() {
+        RailingProbe railing = new RailingProbe();
+        railing.connectInput("input_post_count", NodeDataType.INTEGER);
+        railing.connectInput("input_rail_count", NodeDataType.INTEGER);
+        railing.setInput("input_path", shortPath(10.0d));
+        railing.setInput("input_post_count", 1);
+        railing.setInput("input_rail_count", 1);
+        railing.processNode(null);
+
+        assertEquals(Boolean.FALSE, railing.getOutput("output_valid"));
+        String error = (String) railing.getOutput("output_error");
+        assertTrue(error.toLowerCase().contains("post count"), "error=" + error);
+    }
+
+    @Test
+    void closedPathRailingFailsWhenPostCountBelowThree() {
+        RailingProbe railing = new RailingProbe();
+        railing.connectInput("input_post_count", NodeDataType.INTEGER);
+        railing.connectInput("input_rail_count", NodeDataType.INTEGER);
+        railing.setInput("input_path", closedRectPath());
+        railing.setInput("input_post_count", 2);
+        railing.setInput("input_rail_count", 1);
+        railing.processNode(null);
+
+        assertEquals(Boolean.FALSE, railing.getOutput("output_valid"));
+        String error = (String) railing.getOutput("output_error");
+        assertTrue(error.toLowerCase().contains("post count"), "error=" + error);
+    }
+
+    @Test
+    void straightStairFailsWhenPathTooShort() {
+        StaircaseProbe stair = new StaircaseProbe();
+        stair.connectInput("input_layout", NodeDataType.STRING);
+        stair.connectInput("input_step_count", NodeDataType.INTEGER);
+        stair.connectInput("input_step_run", NodeDataType.DOUBLE);
+        stair.connectInput("input_step_rise", NodeDataType.DOUBLE);
+        stair.connectInput("input_width", NodeDataType.DOUBLE);
+        stair.setInput("input_path", shortPath(6.0d));
+        stair.setInput("input_layout", "straight");
+        stair.setInput("input_step_count", 20);
+        stair.setInput("input_step_run", 0.5d);
+        stair.setInput("input_step_rise", 0.2d);
+        stair.setInput("input_width", 1.0d);
+        stair.processNode(null);
+
+        assertEquals(Boolean.FALSE, stair.getOutput("output_valid"));
+        String error = (String) stair.getOutput("output_error");
+        assertTrue(error.toLowerCase().contains("too short"), "error=" + error);
+    }
+
+    @Test
+    void straightStaircaseCornerStepsStayContinuous() {
+        StaircaseProbe stair = new StaircaseProbe();
+        stair.connectInput("input_layout", NodeDataType.STRING);
+        stair.connectInput("input_step_count", NodeDataType.INTEGER);
+        stair.connectInput("input_step_run", NodeDataType.DOUBLE);
+        stair.connectInput("input_step_rise", NodeDataType.DOUBLE);
+        stair.connectInput("input_width", NodeDataType.DOUBLE);
+        stair.setInput("input_path", lShapedPath());
+        stair.setInput("input_layout", "straight");
+        stair.setInput("input_step_count", 10);
+        stair.setInput("input_step_run", 2.0d);
+        stair.setInput("input_step_rise", 0.2d);
+        stair.setInput("input_width", 1.0d);
+        stair.processNode(null);
+
+        assertEquals(Boolean.TRUE, stair.getOutput("output_valid"));
+        CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, stair.getOutput("output_geometry"));
+        List<BoxGeometryData> steps = geometry.geometries().stream()
+            .map(BoxGeometryData.class::cast)
+            .toList();
+        assertEquals(10, steps.size());
+
+        BoxGeometryData beforeCorner = steps.get(4);
+        BoxGeometryData afterCorner = steps.get(5);
+        assertTrue(near(beforeCorner.getCenter(), 9.0d, 0.9d, 0.0d),
+            "step before corner: " + beforeCorner.getCenter());
+        assertTrue(near(afterCorner.getCenter(), 10.0d, 1.1d, 1.0d),
+            "step after corner: " + afterCorner.getCenter());
+        ArchitecturalGeometryAssert.assertCornerStepContinuity(beforeCorner, afterCorner, 0.05d, 0.85d);
+    }
+
+    @Test
     void straightStaircaseFollowsLShapedPath() {
         StaircaseProbe stair = new StaircaseProbe();
         stair.connectInput("input_layout", NodeDataType.STRING);
@@ -159,11 +244,27 @@ class ArchitecturalPathFollowingContractTest {
             new Vector3d(4.0d, 2.0d, 0.0d), new Vector3d(0.0d, 0.0d, 1.0d));
     }
 
+    private static PathData shortPath(double length) {
+        return PathData.fromLine(new com.nodecraft.nodesystem.datatypes.LineData(
+            new Vec3d(0.0d, 0.0d, 0.0d),
+            new Vec3d(length, 0.0d, 0.0d)
+        ));
+    }
+
     private static PolylineData lShapedPath() {
         return new PolylineData(List.of(
             new Vec3d(0.0d, 0.0d, 0.0d),
             new Vec3d(10.0d, 0.0d, 0.0d),
             new Vec3d(10.0d, 0.0d, 10.0d)
+        ));
+    }
+
+    private static PolylineData closedRectPath() {
+        return new PolylineData(List.of(
+            new Vec3d(0.0d, 0.0d, 0.0d),
+            new Vec3d(10.0d, 0.0d, 0.0d),
+            new Vec3d(10.0d, 0.0d, 8.0d),
+            new Vec3d(0.0d, 0.0d, 0.0d)
         ));
     }
 
