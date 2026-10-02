@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 21
+    "estimated_node_count": 23
   },
   "thumbnails": {
     "main": "",
@@ -235,6 +235,24 @@
             "value": 0.2
           }
         }
+      },
+      {
+        "id": "node_window_frame",
+        "type": "geometry.architectural_primitives.window_frame",
+        "position": {
+          "x": 560.0,
+          "y": 540.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_place_frames",
+        "type": "transform.placement.place_geometry_on_frames",
+        "position": {
+          "x": 820.0,
+          "y": 420.0
+        },
+        "parameters": {}
       },
       {
         "id": "node_cut_frame",
@@ -491,6 +509,26 @@
       },
       {
         "from": {
+          "node": "node_windows",
+          "port": "output_frames"
+        },
+        "to": {
+          "node": "node_place_frames",
+          "port": "input_frames"
+        }
+      },
+      {
+        "from": {
+          "node": "node_window_frame",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_place_frames",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
           "node": "node_cut_frame",
           "port": "output_geometry"
         },
@@ -501,7 +539,7 @@
       },
       {
         "from": {
-          "node": "node_windows",
+          "node": "node_place_frames",
           "port": "output_geometry"
         },
         "to": {

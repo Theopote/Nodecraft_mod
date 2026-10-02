@@ -1183,12 +1183,39 @@
               }
             },
             {
+              "ref": "window_frame",
+              "typeId": "geometry.architectural_primitives.window_frame",
+              "x": 760,
+              "y": 880
+            },
+            {
+              "ref": "combine_openings",
+              "typeId": "geometry.combine.geometry",
+              "x": 920,
+              "y": 400,
+              "state": {
+                "inputCount": 2
+              }
+            },
+            {
+              "ref": "cut_walls",
+              "typeId": "geometry.boolean.difference",
+              "x": 920,
+              "y": 120
+            },
+            {
+              "ref": "place_frames",
+              "typeId": "transform.placement.place_geometry_on_frames",
+              "x": 920,
+              "y": 560
+            },
+            {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
               "x": 1000,
               "y": 280,
               "state": {
-                "inputCount": 4
+                "inputCount": 3
               }
             },
             {
@@ -1317,22 +1344,16 @@
               "toPort": "input_rows"
             },
             {
-              "fromRef": "floor",
-              "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_0"
-            },
-            {
               "fromRef": "walls",
               "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_1"
+              "toRef": "cut_walls",
+              "toPort": "input_base"
             },
             {
               "fromRef": "windows",
-              "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_2"
+              "fromPort": "output_openings",
+              "toRef": "combine_openings",
+              "toPort": "input_geometry_0"
             },
             {
               "fromRef": "front_face",
@@ -1354,9 +1375,45 @@
             },
             {
               "fromRef": "doors",
+              "fromPort": "output_openings",
+              "toRef": "combine_openings",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine_openings",
+              "fromPort": "output_geometry",
+              "toRef": "cut_walls",
+              "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_frames",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "window_frame",
+              "fromPort": "output_geometry",
+              "toRef": "place_frames",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "floor",
               "fromPort": "output_geometry",
               "toRef": "combine",
-              "toPort": "input_geometry_3"
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "cut_walls",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "place_frames",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_2"
             },
             {
               "fromRef": "combine",
@@ -1435,7 +1492,7 @@
         {
           "id": "architectural.residential.simple_house",
           "displayName": "Simple Modern House",
-          "description": "Architectural component chain with flat roof and window array –modern residential showcase.",
+          "description": "Floor →Wall Along Path →Difference (Window openings) →Window Frame →Roof →Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -1551,6 +1608,24 @@
               "state": {
                 "value": 1
               }
+            },
+            {
+              "ref": "window_frame",
+              "typeId": "geometry.architectural_primitives.window_frame",
+              "x": 760,
+              "y": 400
+            },
+            {
+              "ref": "cut_walls",
+              "typeId": "geometry.boolean.difference",
+              "x": 920,
+              "y": 120
+            },
+            {
+              "ref": "place_frames",
+              "typeId": "transform.placement.place_geometry_on_frames",
+              "x": 920,
+              "y": 320
             },
             {
               "ref": "combine",
@@ -1678,19 +1753,43 @@
               "toPort": "input_rows"
             },
             {
+              "fromRef": "walls",
+              "fromPort": "output_geometry",
+              "toRef": "cut_walls",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_openings",
+              "toRef": "cut_walls",
+              "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_frames",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "window_frame",
+              "fromPort": "output_geometry",
+              "toRef": "place_frames",
+              "toPort": "input_geometry"
+            },
+            {
               "fromRef": "floor",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
             },
             {
-              "fromRef": "walls",
+              "fromRef": "cut_walls",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"
             },
             {
-              "fromRef": "windows",
+              "fromRef": "place_frames",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_2"
@@ -1766,7 +1865,7 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor Slab →Wall Along Path →Window Array →Roof Base →Preview Geometry, Voxelize →Assign Block Type →Preview Blocks →Apply Changes.",
+          "description": "Floor →Wall Along Path →Difference (Window openings) →Window Frame on frames →Roof →Voxelize →Material →Preview/Apply.",
           "kind": "composite",
           "nodes": [
             {
@@ -1831,8 +1930,26 @@
               "x": 760,
               "y": 260,
               "state": {
-                "defaultDepth": 0.3
+                "defaultDepth": 0.5
               }
+            },
+            {
+              "ref": "window_frame",
+              "typeId": "geometry.architectural_primitives.window_frame",
+              "x": 760,
+              "y": 400
+            },
+            {
+              "ref": "cut_walls",
+              "typeId": "geometry.boolean.difference",
+              "x": 920,
+              "y": 120
+            },
+            {
+              "ref": "place_frames",
+              "typeId": "transform.placement.place_geometry_on_frames",
+              "x": 920,
+              "y": 320
             },
             {
               "ref": "roof",
@@ -1927,19 +2044,43 @@
               "toPort": "input_face"
             },
             {
+              "fromRef": "walls",
+              "fromPort": "output_geometry",
+              "toRef": "cut_walls",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_openings",
+              "toRef": "cut_walls",
+              "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_frames",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "window_frame",
+              "fromPort": "output_geometry",
+              "toRef": "place_frames",
+              "toPort": "input_geometry"
+            },
+            {
               "fromRef": "floor",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
             },
             {
-              "fromRef": "walls",
+              "fromRef": "cut_walls",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"
             },
             {
-              "fromRef": "windows",
+              "fromRef": "place_frames",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_2"
@@ -1985,7 +2126,7 @@
         {
           "id": "architectural.workflow.wall_with_windows",
           "displayName": "Wall + Windows",
-          "description": "Wall With Openings →Difference (cut holes) + Window Array frames →Combine →Preview.",
+          "description": "Wall →Difference (Window Array openings) + Window Frame on frames →Combine →Preview.",
           "kind": "composite",
           "nodes": [
             {
@@ -2022,6 +2163,18 @@
               "state": {
                 "defaultDepth": 0.3
               }
+            },
+            {
+              "ref": "window_frame",
+              "typeId": "geometry.architectural_primitives.window_frame",
+              "x": 520,
+              "y": 420
+            },
+            {
+              "ref": "place_frames",
+              "typeId": "transform.placement.place_geometry_on_frames",
+              "x": 760,
+              "y": 240
             },
             {
               "ref": "cut",
@@ -2074,13 +2227,25 @@
               "toPort": "input_cutter"
             },
             {
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_frames",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "window_frame",
+              "fromPort": "output_geometry",
+              "toRef": "place_frames",
+              "toPort": "input_geometry"
+            },
+            {
               "fromRef": "cut",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
             },
             {
-              "fromRef": "windows",
+              "fromRef": "place_frames",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"
@@ -3915,6 +4080,18 @@
               }
             },
             {
+              "ref": "window_frame",
+              "typeId": "geometry.architectural_primitives.window_frame",
+              "x": 560,
+              "y": 540
+            },
+            {
+              "ref": "place_frames",
+              "typeId": "transform.placement.place_geometry_on_frames",
+              "x": 820,
+              "y": 420
+            },
+            {
               "ref": "cut_frame",
               "typeId": "geometry.boolean.difference",
               "x": 820,
@@ -4073,13 +4250,25 @@
               "toPort": "input_cutter"
             },
             {
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_frames",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "window_frame",
+              "fromPort": "output_geometry",
+              "toRef": "place_frames",
+              "toPort": "input_geometry"
+            },
+            {
               "fromRef": "cut_frame",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
             },
             {
-              "fromRef": "windows",
+              "fromRef": "place_frames",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"

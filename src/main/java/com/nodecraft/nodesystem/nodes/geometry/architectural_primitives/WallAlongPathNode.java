@@ -8,8 +8,11 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import net.minecraft.util.math.Vec3d;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
@@ -40,6 +43,10 @@ public class WallAlongPathNode extends BaseNode {
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_FRAMES_ID = "output_frames";
+    private static final String OUTPUT_BOTTOM_PATH_ID = "output_bottom_path";
+    private static final String OUTPUT_TOP_PATH_ID = "output_top_path";
+    private static final String OUTPUT_EXTERIOR_PATH_ID = "output_exterior_path";
+    private static final String OUTPUT_INTERIOR_PATH_ID = "output_interior_path";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -55,6 +62,10 @@ public class WallAlongPathNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Joined wall extrusion along the path", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each path segment center", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BOTTOM_PATH_ID, "Bottom Path", "Wall base centerline path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_PATH_ID, "Top Path", "Wall top centerline path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_EXTERIOR_PATH_ID, "Exterior Path", "Exterior face centerline path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_INTERIOR_PATH_ID, "Interior Path", "Interior face centerline path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of extrusion pieces", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid wall could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when Valid is false", NodeDataType.STRING, this));
@@ -139,11 +150,51 @@ public class WallAlongPathNode extends BaseNode {
             }
         }
 
+        double halfThickness = thickness / 2.0d;
+        ArchitecturalPathSupport.PathGeometry bottomPath = offsetPath != null ? offsetPath : path;
+        ArchitecturalPathSupport.PathGeometry exteriorPath =
+            ArchitecturalPathJoinSupport.offsetPath(bottomPath, halfThickness, join);
+        ArchitecturalPathSupport.PathGeometry interiorPath =
+            ArchitecturalPathJoinSupport.offsetPath(bottomPath, -halfThickness, join);
+
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(placementFrames));
+        outputValues.put(OUTPUT_BOTTOM_PATH_ID, pathToPathData(bottomPath));
+        outputValues.put(OUTPUT_TOP_PATH_ID, elevatePath(bottomPath, height));
+        outputValues.put(OUTPUT_EXTERIOR_PATH_ID, pathToPathData(exteriorPath));
+        outputValues.put(OUTPUT_INTERIOR_PATH_ID, pathToPathData(interiorPath));
         outputValues.put(OUTPUT_COUNT_ID, pieceCount);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private static @Nullable PathData pathToPathData(@Nullable ArchitecturalPathSupport.PathGeometry path) {
+        if (path == null) {
+            return null;
+        }
+        List<Vec3d> points = new ArrayList<>(path.unique().size() + (path.closed() ? 1 : 0));
+        for (Vector3d point : path.unique()) {
+            points.add(new Vec3d(point.x, point.y, point.z));
+        }
+        if (path.closed() && !points.isEmpty()) {
+            Vec3d first = points.getFirst();
+            points.add(new Vec3d(first.x, first.y, first.z));
+        }
+        return PathData.fromPolyline(new PolylineData(points));
+    }
+
+    private static @Nullable PathData elevatePath(@Nullable ArchitecturalPathSupport.PathGeometry path, double height) {
+        if (path == null) {
+            return null;
+        }
+        List<Vec3d> elevated = new ArrayList<>(path.unique().size());
+        for (Vector3d point : path.unique()) {
+            Vector3d raised = new Vector3d(point).fma(height, new Vector3d(0.0d, 1.0d, 0.0d));
+            elevated.add(new Vec3d(raised.x, raised.y, raised.z));
+        }
+        ArchitecturalPathSupport.PathGeometry elevatedPath = ArchitecturalPathSupport.resolve(
+            PathData.fromPolyline(new PolylineData(elevated)));
+        return pathToPathData(elevatedPath);
     }
 
     private static int countExtrusionPieces(GeometryData geometry) {
@@ -159,6 +210,10 @@ public class WallAlongPathNode extends BaseNode {
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_GEOMETRY_ID, null);
         outputValues.put(OUTPUT_FRAMES_ID, null);
+        outputValues.put(OUTPUT_BOTTOM_PATH_ID, null);
+        outputValues.put(OUTPUT_TOP_PATH_ID, null);
+        outputValues.put(OUTPUT_EXTERIOR_PATH_ID, null);
+        outputValues.put(OUTPUT_INTERIOR_PATH_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPalet
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.WeightedBlockPaletteNode;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
@@ -124,6 +125,22 @@ class BasicAssignmentLanguageV2ContractTest {
         assertTrue(((List<?>) probe.getOutput("output_placements")).isEmpty());
         String error = (String) probe.getOutput("output_error");
         assertTrue(error.contains("Block Placements") || error.contains("placement"), error);
+    }
+
+    @Test
+    void geometrySourceVoxelizationFailureSurfacesErrorCode() {
+        BoxGeometryData oversized = new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(33, 33, 33));
+        assertFalse(GeometryVoxelizer.voxelizeStrict(oversized, true).success());
+
+        AssignProbe probe = new AssignProbe();
+        probe.putInput("input_geometry", oversized);
+        probe.putInput("input_block_type", "minecraft:stone");
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        String error = (String) probe.getOutput("output_error");
+        assertTrue(error.contains("Voxelization failed"), error);
+        assertTrue(error.contains("OVER_BUDGET") || error.toUpperCase().contains("BUDGET"), error);
+        assertTrue(((List<?>) probe.getOutput("output_placements")).isEmpty());
     }
 
     @Test

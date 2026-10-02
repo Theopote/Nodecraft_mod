@@ -188,7 +188,12 @@ public final class MaterialSourceResolver {
         if (!(value instanceof GeometryData geometry)) {
             return SourceResolution.fail("Geometry input must be geometry data");
         }
-        BlockPosList positions = GeometryVoxelizer.voxelize(geometry, true);
+        GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(geometry, true);
+        if (!result.success()) {
+            return SourceResolution.fail("Voxelization failed: " + result.status()
+                + (result.error().isBlank() ? "" : " (" + result.error() + ")"));
+        }
+        BlockPosList positions = result.blocks();
         if (positions.isEmpty()) {
             return SourceResolution.fail("No geometry or coordinates resolved");
         }

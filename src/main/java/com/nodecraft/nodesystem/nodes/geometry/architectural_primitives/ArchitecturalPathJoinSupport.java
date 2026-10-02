@@ -240,12 +240,18 @@ final class ArchitecturalPathJoinSupport {
         return out;
     }
 
+    private static final int MAX_CONVEX_DECOMPOSE_DEPTH = 32;
+
     private static List<List<Vector3d>> decomposeToConvex(List<Vector3d> polygon) {
+        return decomposeToConvex(polygon, 0);
+    }
+
+    private static List<List<Vector3d>> decomposeToConvex(List<Vector3d> polygon, int depth) {
         List<Vector3d> ring = dedupeAdjacent(polygon);
         if (ring.size() < 3) {
             return List.of();
         }
-        if (isConvex(ring)) {
+        if (depth >= MAX_CONVEX_DECOMPOSE_DEPTH || isConvex(ring)) {
             return List.of(ring);
         }
         int reflex = findReflexIndex(ring);
@@ -258,9 +264,12 @@ final class ArchitecturalPathJoinSupport {
         }
         List<Vector3d> partA = extractChain(ring, reflex, split);
         List<Vector3d> partB = extractChain(ring, split, reflex);
+        if (partA.size() < 3 || partB.size() < 3) {
+            return List.of(ring);
+        }
         List<List<Vector3d>> result = new ArrayList<>();
-        result.addAll(decomposeToConvex(partA));
-        result.addAll(decomposeToConvex(partB));
+        result.addAll(decomposeToConvex(partA, depth + 1));
+        result.addAll(decomposeToConvex(partB, depth + 1));
         return result;
     }
 

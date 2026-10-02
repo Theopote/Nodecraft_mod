@@ -16,6 +16,7 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.Staircas
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFrameNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -67,7 +68,9 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new RoofBaseNode(), "output_eave_path", NodeDataType.PATH);
         assertPortType(new RoofGeneratorNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new RoofGeneratorNode(), "output_eave_path", NodeDataType.PATH);
+        assertPortType(new WindowArrayNode(), "output_openings", NodeDataType.GEOMETRY);
         assertPortType(new WindowArrayNode(), "output_geometry", NodeDataType.GEOMETRY);
+        assertPortType(new DoorArrayNode(), "output_openings", NodeDataType.GEOMETRY);
         assertPortType(new StaircaseNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new WallWithOpeningsNode(), "output_valid", NodeDataType.BOOLEAN);
         assertPortType(new FloorSlabNode(), "output_valid", NodeDataType.BOOLEAN);
@@ -101,6 +104,13 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new ColumnNode(), "input_base", NodeDataType.POINT);
         assertPortType(new WallAlongPathNode(), "output_frames", NodeDataType.FRAME_LIST);
         assertPortType(new BeamAlongPathNode(), "output_frames", NodeDataType.FRAME_LIST);
+    }
+
+    @Test
+    void windowFrameIsRegisteredWithGeometryOutput() {
+        assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.window_frame"));
+        assertPortType(new WindowFrameNode(), "output_geometry", NodeDataType.GEOMETRY);
+        assertPortType(new WindowFrameNode(), "output_valid", NodeDataType.BOOLEAN);
     }
 
     @Test

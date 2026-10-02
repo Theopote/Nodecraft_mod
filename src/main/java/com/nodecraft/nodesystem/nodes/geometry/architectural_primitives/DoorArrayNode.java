@@ -15,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,8 @@ import java.util.UUID;
 )
 public class DoorArrayNode extends AbstractFaceArrayNode {
 
+    private static final Set<String> LAYOUT_MODES = Set.of("distribute", "fixed_gap", "bay");
+
     private static final String INPUT_FACE_ID = "input_face";
     private static final String INPUT_COLUMNS_ID = "input_columns";
     private static final String INPUT_ROWS_ID = "input_rows";
@@ -37,8 +40,15 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     private static final String INPUT_DOOR_HEIGHT_ID = "input_door_height";
     private static final String INPUT_MARGIN_ID = "input_margin";
     private static final String INPUT_DEPTH_ID = "input_depth";
+    private static final String INPUT_LAYOUT_MODE_ID = "input_layout_mode";
+    private static final String INPUT_HORIZONTAL_GAP_ID = "input_horizontal_gap";
+    private static final String INPUT_VERTICAL_GAP_ID = "input_vertical_gap";
+    private static final String INPUT_BAY_WIDTH_ID = "input_bay_width";
 
-    private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_OPENINGS_ID = "output_openings";
+    /** Legacy alias; same value as {@link #OUTPUT_OPENINGS_ID}. */
+    @Deprecated
+    private static final String OUTPUT_GEOMETRY_LEGACY_ID = "output_geometry";
     private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_CENTERS_ID = "output_centers";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -55,8 +65,19 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_DOOR_HEIGHT_ID, "Door Height", "Door opening height in blocks/meters", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Outer margin from the face edge to the first opening", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth", "Inset depth of each opening into the solid", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_LAYOUT_MODE_ID, "Layout Mode",
+            "Spacing mode: distribute, fixed_gap, or bay", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_HORIZONTAL_GAP_ID, "Horizontal Gap",
+            "Fixed pier width between columns when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_VERTICAL_GAP_ID, "Vertical Gap",
+            "Fixed pier height between rows when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_BAY_WIDTH_ID, "Bay Width",
+            "Center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
 
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all door opening boxes", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_OPENINGS_ID, "Openings",
+            "Composite geometry containing all door opening boxes for boolean cutting", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_GEOMETRY_LEGACY_ID, "Geometry (Legacy)",
+            "Legacy alias for Openings — kept for saved graphs", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each door center (face-aligned)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Door center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of door opening boxes created", NodeDataType.INTEGER, this));
@@ -113,13 +134,42 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
             return;
         }
 
+        String layoutModeText = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_LAYOUT_MODE_ID, "distribute", LAYOUT_MODES);
+        if (layoutModeText == null) {
+            writeInvalid("Layout Mode must be one of: distribute, fixed_gap, bay");
+            return;
+        }
+        LayoutMode layoutMode = LayoutMode.fromString(layoutModeText);
+        if (layoutMode == null) {
+            writeInvalid("Layout Mode must be one of: distribute, fixed_gap, bay");
+            return;
+        }
+
+        Double horizontalGap = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_HORIZONTAL_GAP_ID, 0.5d);
+        if (horizontalGap == null) {
+            writeInvalid("Horizontal Gap must be a non-negative finite number");
+            return;
+        }
+        Double verticalGap = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_VERTICAL_GAP_ID, 0.5d);
+        if (verticalGap == null) {
+            writeInvalid("Vertical Gap must be a non-negative finite number");
+            return;
+        }
+        Double bayWidth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_BAY_WIDTH_ID, doorWidth + 0.5d);
+        if (bayWidth == null) {
+            writeInvalid("Bay Width must be a positive finite number");
+            return;
+        }
+
         if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
             writeInvalid("Requested instance count exceeds limit");
             return;
         }
 
+        LayoutSpacingOptions spacingOptions = new LayoutSpacingOptions(layoutMode, horizontalGap, verticalGap, bayWidth);
         FaceArrayLayout layout = resolveFaceArrayLayout(
-            face, columns, rows, doorWidth, doorHeight, margin, VerticalAnchor.BOTTOM);
+            face, columns, rows, doorWidth, doorHeight, margin, VerticalAnchor.BOTTOM, spacingOptions);
         if (layout == null) {
             writeInvalid("Requested array does not fit on face");
             return;
@@ -133,7 +183,9 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         List<FrameData> frames = buildPlacementFrames(layout);
         List<PointData> centers = buildCenters(layout);
 
-        outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(openings));
+        var packedOpenings = GeometryOutputUtils.packGeometry(openings);
+        outputValues.put(OUTPUT_OPENINGS_ID, packedOpenings);
+        outputValues.put(OUTPUT_GEOMETRY_LEGACY_ID, packedOpenings);
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_CENTERS_ID, centers);
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
@@ -151,7 +203,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
+        outputValues.put(OUTPUT_OPENINGS_ID, null);
+        outputValues.put(OUTPUT_GEOMETRY_LEGACY_ID, null);
         outputValues.put(OUTPUT_FRAMES_ID, null);
         outputValues.put(OUTPUT_CENTERS_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);

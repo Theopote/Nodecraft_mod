@@ -196,9 +196,8 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
     }
 
     private @Nullable List<GeometryData> buildOpenings(FaceArrayLayout layout, double openingDepth) {
-        Vector3d inwardNormal = new Vector3d(layout.frame().zAxis()).mul(openingDepth / 2.0d);
         return buildFaceArray(layout, placement -> {
-            Vector3d center = placement.centerOnFace().add(inwardNormal);
+            Vector3d center = placement.centerOnFace().fma(openingDepth / 2.0d, layout.frame().zAxis());
             Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, openingDepth / 2.0d);
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());

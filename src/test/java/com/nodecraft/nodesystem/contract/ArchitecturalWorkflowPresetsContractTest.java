@@ -16,6 +16,8 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingN
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFrameNode;
+import com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.joml.Vector3d;
@@ -25,14 +27,16 @@ import org.junit.jupiter.api.Test;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Batch 13.2: architectural mini-workflow presets teach composable host/placement/reference chains.
@@ -158,7 +162,98 @@ class ArchitecturalWorkflowPresetsContractTest {
         windows.setInput("input_depth", 0.3d);
         windows.processNode(null);
         assertEquals(Boolean.TRUE, windows.getOutput("output_valid"));
+        assertNotNull(windows.getOutput("output_openings"));
         assertNotNull(windows.getOutput("output_frames"));
+
+        BaseNode difference = (BaseNode) registry.createNodeInstance("geometry.boolean.difference");
+        difference.setInput("input_base", wall.getOutput("output_geometry"));
+        difference.setInput("input_cutter", windows.getOutput("output_openings"));
+        difference.processNode(null);
+        assertEquals(Boolean.TRUE, difference.getOutput("output_valid"));
+
+        WindowFrameNode frame = new WindowFrameNode();
+        connectInput(frame, "input_frame_width", NodeDataType.DOUBLE);
+        connectInput(frame, "input_frame_height", NodeDataType.DOUBLE);
+        frame.setInput("input_frame_width", 1.2d);
+        frame.setInput("input_frame_height", 1.4d);
+        frame.processNode(null);
+
+        PlaceGeometryOnFramesNode place = new PlaceGeometryOnFramesNode();
+        connectInput(place, "input_frames", NodeDataType.FRAME_LIST);
+        place.setInput("input_geometry", frame.getOutput("output_geometry"));
+        place.setInput("input_frames", windows.getOutput("output_frames"));
+        place.processNode(null);
+        assertEquals(Boolean.TRUE, place.getOutput("output_valid"));
+    }
+
+    @Test
+    void builtinPresetsForbidOpeningPortsWiredDirectlyToCombine() {
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
+        Set<String> openingPorts = Set.of("output_openings", "output_geometry");
+        Set<String> openingNodeTypes = Set.of(
+            "geometry.architectural_primitives.window_array",
+            "geometry.architectural_primitives.door_array"
+        );
+
+        List<String> violations = new ArrayList<>();
+        for (GraphPresetRules.PresetCategory category : rules.categories) {
+            if (category == null || category.presets == null) {
+                continue;
+            }
+            for (GraphPresetRules.GraphPresetDefinition preset : category.presets) {
+                if (preset == null || preset.nodes == null || preset.connections == null) {
+                    continue;
+                }
+                Map<String, GraphPresetRules.PresetNode> nodesByRef = preset.nodes.stream()
+                    .filter(node -> node != null && node.ref != null)
+                    .collect(Collectors.toMap(node -> node.ref, Function.identity(), (a, b) -> a));
+                for (GraphPresetRules.PresetConnection connection : preset.connections) {
+                    if (connection == null) {
+                        continue;
+                    }
+                    GraphPresetRules.PresetNode from = nodesByRef.get(connection.fromRef);
+                    if (from == null || !openingNodeTypes.contains(from.typeId)) {
+                        continue;
+                    }
+                    if (!openingPorts.contains(connection.fromPort)) {
+                        continue;
+                    }
+                    GraphPresetRules.PresetNode to = nodesByRef.get(connection.toRef);
+                    if (to != null
+                        && "geometry.combine.geometry".equals(to.typeId)
+                        && !"combine_openings".equals(connection.toRef)
+                        && connection.toPort != null
+                        && connection.toPort.startsWith("input_geometry_")) {
+                        violations.add(preset.id + ": "
+                            + connection.fromRef + "." + connection.fromPort
+                            + " → " + connection.toRef + "." + connection.toPort);
+                    }
+                }
+            }
+        }
+        assertTrue(violations.isEmpty(),
+            "Opening geometry must be cut with Difference, not combined: " + violations);
+    }
+
+    @Test
+    void wallWithWindowsPresetUsesDifferenceAndPlaceOnFrames() {
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
+        GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, "architectural.workflow.wall_with_windows");
+        assertNotNull(preset);
+
+        assertTrue(preset.nodes.stream().anyMatch(n -> "geometry.boolean.difference".equals(n.typeId)));
+        assertTrue(preset.nodes.stream().anyMatch(n -> "geometry.architectural_primitives.window_frame".equals(n.typeId)));
+        assertTrue(preset.nodes.stream().anyMatch(n ->
+            "transform.placement.place_geometry_on_frames".equals(n.typeId)));
+
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "wall".equals(c.fromRef) && "output_openings".equals(c.fromPort) && "cut".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "place_frames".equals(c.fromRef) && "combine".equals(c.toRef)));
+        assertFalse(preset.connections.stream().anyMatch(c ->
+            "windows".equals(c.fromRef)
+                && ("output_openings".equals(c.fromPort) || "output_geometry".equals(c.fromPort))
+                && "combine".equals(c.toRef)));
     }
 
     @Test
@@ -168,14 +263,8 @@ class ArchitecturalWorkflowPresetsContractTest {
             GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, workflowId);
             assertNotNull(preset);
             for (GraphPresetRules.PresetNode node : preset.nodes) {
-                assertTrue(
-                    !"geometry.architectural_primitives.floor_slab_with_beams".equals(node.typeId),
-                    workflowId + " should prefer Floor Slab + Beam Grid"
-                );
-                assertTrue(
-                    !"geometry.architectural_primitives.roof_generator".equals(node.typeId),
-                    workflowId + " should prefer Roof Base"
-                );
+                assertNotEquals("geometry.architectural_primitives.floor_slab_with_beams", node.typeId, workflowId + " should prefer Floor Slab + Beam Grid");
+                assertNotEquals("geometry.architectural_primitives.roof_generator", node.typeId, workflowId + " should prefer Roof Base");
             }
         }
     }

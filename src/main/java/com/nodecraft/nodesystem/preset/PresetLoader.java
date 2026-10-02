@@ -199,7 +199,6 @@ public class PresetLoader {
                 }
                 yield null;
             }
-            default -> element.getAsString();
         };
     }
 
@@ -258,7 +257,6 @@ public class PresetLoader {
         return new PresetGraph(nodes, connections);
     }
 
-    @SuppressWarnings("unchecked")
     private static Object parseNodeParameterValue(com.google.gson.JsonElement element) {
         if (element.isJsonNull()) {
             return null;

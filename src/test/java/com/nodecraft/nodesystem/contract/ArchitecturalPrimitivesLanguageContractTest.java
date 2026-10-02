@@ -78,7 +78,8 @@ class ArchitecturalPrimitivesLanguageContractTest {
             "geometry.architectural_primitives.molding_profile",
             "geometry.architectural_primitives.wall_along_path",
             "geometry.architectural_primitives.beam_along_path",
-            "geometry.architectural_primitives.column"
+            "geometry.architectural_primitives.column",
+            "geometry.architectural_primitives.window_frame"
     );
 
     private static NodeRegistry registry;
@@ -97,12 +98,12 @@ class ArchitecturalPrimitivesLanguageContractTest {
     }
 
     @Test
-    void exactlyEighteenCanonicalNodesWithOrdersZeroThroughSeventeen() {
+    void exactlyNineteenCanonicalNodesWithOrdersZeroThroughEighteen() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("geometry.architectural_primitives."))
                 .sorted()
                 .toList();
-        assertEquals(18, ids.size(), ids.toString());
+        assertEquals(19, ids.size(), ids.toString());
         assertEquals(Set.copyOf(CANONICAL_ORDERED_IDS), Set.copyOf(ids));
         assertFalse(ids.contains("geometry.architectural_primitives.floor_slab_with_beams"));
         assertFalse(ids.contains("geometry.architectural_primitives.deconstruct_opening"));
@@ -112,7 +113,7 @@ class ArchitecturalPrimitivesLanguageContractTest {
             int order = orderOf(id);
             assertNull(byOrder.put(order, id), "duplicate order " + order + ": " + byOrder.get(order) + " vs " + id);
         }
-        for (int i = 0; i < 18; i++) {
+        for (int i = 0; i < 19; i++) {
             assertEquals(CANONICAL_ORDERED_IDS.get(i), byOrder.get(i), "order " + i);
         }
     }

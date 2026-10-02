@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **528**
+- Total nodes: **529**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -12,7 +12,7 @@
 | `flow.control` | 3 |
 | `flow.loop` | 2 |
 | `geometry.analysis` | 3 |
-| `geometry.architectural_primitives` | 18 |
+| `geometry.architectural_primitives` | 19 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
@@ -93,7 +93,7 @@
 | Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
 | Convex Hull 3D From Points | `geometry.analysis.convex_hull_3d` | Builds a 3D convex hull mesh from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
 
-## geometry.architectural_primitives (18)
+## geometry.architectural_primitives (19)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -115,6 +115,7 @@
 | Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates a joined wall footprint extruded along a planar path (line or polyline) | `WallAlongPathNode` |
 | Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates one structural beam box per path segment (not a continuous sweep) | `BeamAlongPathNode` |
 | Column | `geometry.architectural_primitives.column` | Generates a single column from a frame or base point | `ColumnNode` |
+| Window Frame | `geometry.architectural_primitives.window_frame` | Generates a hollow window frame solid aligned to local X/Y/Z for placement on frames | `WindowFrameNode` |
 
 ## geometry.boolean (2)
 

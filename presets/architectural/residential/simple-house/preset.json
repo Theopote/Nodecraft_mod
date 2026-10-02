@@ -23,7 +23,7 @@
     "category": "architectural",
     "difficulty": "beginner",
     "estimated_build_time": "3 minutes",
-    "estimated_node_count": 22
+    "estimated_node_count": 25
   },
   "thumbnails": {
     "main": "",
@@ -262,6 +262,33 @@
         }
       },
       {
+        "id": "node_window_frame",
+        "type": "geometry.architectural_primitives.window_frame",
+        "position": {
+          "x": 760.0,
+          "y": 400.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_cut_walls",
+        "type": "geometry.boolean.difference",
+        "position": {
+          "x": 920.0,
+          "y": 120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_place_frames",
+        "type": "transform.placement.place_geometry_on_frames",
+        "position": {
+          "x": 920.0,
+          "y": 320.0
+        },
+        "parameters": {}
+      },
+      {
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
@@ -461,6 +488,46 @@
       },
       {
         "from": {
+          "node": "node_walls",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_cut_walls",
+          "port": "input_base"
+        }
+      },
+      {
+        "from": {
+          "node": "node_windows",
+          "port": "output_openings"
+        },
+        "to": {
+          "node": "node_cut_walls",
+          "port": "input_cutter"
+        }
+      },
+      {
+        "from": {
+          "node": "node_windows",
+          "port": "output_frames"
+        },
+        "to": {
+          "node": "node_place_frames",
+          "port": "input_frames"
+        }
+      },
+      {
+        "from": {
+          "node": "node_window_frame",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_place_frames",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
           "node": "node_floor",
           "port": "output_geometry"
         },
@@ -471,7 +538,7 @@
       },
       {
         "from": {
-          "node": "node_walls",
+          "node": "node_cut_walls",
           "port": "output_geometry"
         },
         "to": {
@@ -481,7 +548,7 @@
       },
       {
         "from": {
-          "node": "node_windows",
+          "node": "node_place_frames",
           "port": "output_geometry"
         },
         "to": {

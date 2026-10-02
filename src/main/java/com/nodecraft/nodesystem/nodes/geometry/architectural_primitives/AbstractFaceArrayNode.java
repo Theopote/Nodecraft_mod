@@ -21,6 +21,39 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         super(id, nodeType);
     }
 
+    protected enum LayoutMode {
+        DISTRIBUTE,
+        FIXED_GAP,
+        BAY;
+
+        static @Nullable LayoutMode fromString(@Nullable String value) {
+            if (value == null || value.isBlank()) {
+                return DISTRIBUTE;
+            }
+            return switch (value.trim().toLowerCase()) {
+                case "distribute" -> DISTRIBUTE;
+                case "fixed_gap", "fixed-gap", "fixedgap" -> FIXED_GAP;
+                case "bay" -> BAY;
+                default -> null;
+            };
+        }
+    }
+
+    protected record LayoutSpacingOptions(
+        LayoutMode mode,
+        double horizontalGap,
+        double verticalGap,
+        double bayWidth
+    ) {
+        public LayoutSpacingOptions {
+            mode = mode == null ? LayoutMode.DISTRIBUTE : mode;
+        }
+
+        public static LayoutSpacingOptions distribute() {
+            return new LayoutSpacingOptions(LayoutMode.DISTRIBUTE, 0.0d, 0.0d, 0.0d);
+        }
+    }
+
     protected @Nullable FaceArrayLayout resolveFaceArrayLayout(
         BoxFaceData face,
         int columns,
@@ -30,11 +63,25 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         double margin,
         VerticalAnchor verticalAnchor
     ) {
+        return resolveFaceArrayLayout(face, columns, rows, elementWidth, elementHeight, margin, verticalAnchor,
+            LayoutSpacingOptions.distribute());
+    }
+
+    protected @Nullable FaceArrayLayout resolveFaceArrayLayout(
+        BoxFaceData face,
+        int columns,
+        int rows,
+        double elementWidth,
+        double elementHeight,
+        double margin,
+        VerticalAnchor verticalAnchor,
+        LayoutSpacingOptions spacingOptions
+    ) {
         ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
         if (frame == null) {
             return null;
         }
-        return resolveFaceArrayLayout(frame, columns, rows, elementWidth, elementHeight, margin, verticalAnchor);
+        return resolveFaceArrayLayout(frame, columns, rows, elementWidth, elementHeight, margin, verticalAnchor, spacingOptions);
     }
 
     protected @Nullable FaceArrayLayout resolveFaceArrayLayout(
@@ -46,6 +93,20 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         double margin,
         VerticalAnchor verticalAnchor
     ) {
+        return resolveFaceArrayLayout(frame, columns, rows, elementWidth, elementHeight, margin, verticalAnchor,
+            LayoutSpacingOptions.distribute());
+    }
+
+    protected @Nullable FaceArrayLayout resolveFaceArrayLayout(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        int columns,
+        int rows,
+        double elementWidth,
+        double elementHeight,
+        double margin,
+        VerticalAnchor verticalAnchor,
+        LayoutSpacingOptions spacingOptions
+    ) {
         double availableWidth = frame.width() - 2.0d * margin;
         double availableHeight = frame.height() - 2.0d * margin;
         if (availableWidth < elementWidth || availableHeight < elementHeight) {
@@ -56,9 +117,12 @@ abstract class AbstractFaceArrayNode extends BaseNode {
             return null;
         }
 
-        double spacingX = columns > 1 ? (availableWidth - columns * elementWidth) / (columns - 1) : 0.0d;
-        double spacingY = rows > 1 ? (availableHeight - rows * elementHeight) / (rows - 1) : 0.0d;
-        if (spacingX < -EPSILON || spacingY < -EPSILON) {
+        LayoutSpacingOptions options = spacingOptions == null ? LayoutSpacingOptions.distribute() : spacingOptions;
+        double spacingX = resolveAxisSpacing(
+            columns, elementWidth, availableWidth, options.mode(), options.horizontalGap(), options.bayWidth());
+        double spacingY = resolveAxisSpacing(
+            rows, elementHeight, availableHeight, options.mode(), options.verticalGap(), options.bayWidth());
+        if (spacingX == Double.NEGATIVE_INFINITY || spacingY == Double.NEGATIVE_INFINITY) {
             return null;
         }
 
@@ -68,6 +132,39 @@ abstract class AbstractFaceArrayNode extends BaseNode {
             case BOTTOM -> -frame.height() / 2.0d + margin + elementHeight / 2.0d;
         };
         return new FaceArrayLayout(frame, columns, rows, elementWidth, elementHeight, spacingX, spacingY, startX, startY, verticalAnchor);
+    }
+
+    private static double resolveAxisSpacing(
+        int count,
+        double elementSize,
+        double availableSize,
+        LayoutMode mode,
+        double gapOrBay,
+        double bayWidthForBayMode
+    ) {
+        if (count <= 1) {
+            return 0.0d;
+        }
+        return switch (mode) {
+            case DISTRIBUTE -> {
+                double spacing = (availableSize - count * elementSize) / (count - 1);
+                yield spacing < -EPSILON ? Double.NEGATIVE_INFINITY : spacing;
+            }
+            case FIXED_GAP -> {
+                if (gapOrBay < -EPSILON) {
+                    yield Double.NEGATIVE_INFINITY;
+                }
+                double required = count * elementSize + (count - 1) * gapOrBay;
+                yield required > availableSize + EPSILON ? Double.NEGATIVE_INFINITY : gapOrBay;
+            }
+            case BAY -> {
+                if (bayWidthForBayMode <= elementSize + EPSILON) {
+                    yield Double.NEGATIVE_INFINITY;
+                }
+                double required = elementSize + (count - 1) * bayWidthForBayMode;
+                yield required > availableSize + EPSILON ? Double.NEGATIVE_INFINITY : bayWidthForBayMode - elementSize;
+            }
+        };
     }
 
     protected List<FaceArrayPlacement> enumeratePlacements(FaceArrayLayout layout) {
