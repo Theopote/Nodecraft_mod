@@ -118,10 +118,16 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         }
 
         LayoutSpacingOptions options = spacingOptions == null ? LayoutSpacingOptions.distribute() : spacingOptions;
+        // BAY applies Bay Width only on the horizontal axis; vertical uses FIXED_GAP (if
+        // verticalGap > 0) or DISTRIBUTE so floor rhythm is not driven by bay width.
+        LayoutMode horizontalMode = options.mode();
+        LayoutMode verticalMode = options.mode() == LayoutMode.BAY
+            ? (options.verticalGap() > EPSILON ? LayoutMode.FIXED_GAP : LayoutMode.DISTRIBUTE)
+            : options.mode();
         double spacingX = resolveAxisSpacing(
-            columns, elementWidth, availableWidth, options.mode(), options.horizontalGap(), options.bayWidth());
+            columns, elementWidth, availableWidth, horizontalMode, options.horizontalGap(), options.bayWidth());
         double spacingY = resolveAxisSpacing(
-            rows, elementHeight, availableHeight, options.mode(), options.verticalGap(), options.bayWidth());
+            rows, elementHeight, availableHeight, verticalMode, options.verticalGap(), options.bayWidth());
         if (spacingX == Double.NEGATIVE_INFINITY || spacingY == Double.NEGATIVE_INFINITY) {
             return null;
         }

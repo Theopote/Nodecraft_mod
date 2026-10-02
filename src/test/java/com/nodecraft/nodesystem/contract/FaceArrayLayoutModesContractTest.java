@@ -97,6 +97,45 @@ class FaceArrayLayoutModesContractTest {
         assertEquals(3.0d, centers.get(1).getX() - centers.get(0).getX(), 0.05d);
     }
 
+    @Test
+    void bayModeDoesNotApplyBayWidthToVerticalSpacing() {
+        WindowArrayProbe node = new WindowArrayProbe();
+        node.connectInput("input_columns", NodeDataType.INTEGER);
+        node.connectInput("input_rows", NodeDataType.INTEGER);
+        node.connectInput("input_window_width", NodeDataType.DOUBLE);
+        node.connectInput("input_window_height", NodeDataType.DOUBLE);
+        node.connectInput("input_margin", NodeDataType.DOUBLE);
+        node.connectInput("input_layout_mode", NodeDataType.STRING);
+        node.connectInput("input_bay_width", NodeDataType.DOUBLE);
+        node.connectInput("input_vertical_gap", NodeDataType.DOUBLE);
+        // Tall face: bay width 3.0 would not fit as vertical center spacing for 2 rows of height 1.
+        node.setInput("input_face", sampleFace(10.0d, 6.0d));
+        node.setInput("input_columns", 2);
+        node.setInput("input_rows", 2);
+        node.setInput("input_window_width", 1.0d);
+        node.setInput("input_window_height", 1.0d);
+        node.setInput("input_margin", 0.5d);
+        node.setInput("input_layout_mode", "bay");
+        node.setInput("input_bay_width", 3.0d);
+        node.setInput("input_vertical_gap", 0.5d);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"),
+            String.valueOf(node.getOutput("output_error")));
+
+        @SuppressWarnings("unchecked")
+        List<PointData> centers = (List<PointData>) node.getOutput("output_centers");
+        assertEquals(4, centers.size());
+        // Horizontal: bay center spacing
+        assertEquals(3.0d, centers.get(1).getX() - centers.get(0).getX(), 0.05d);
+        // Vertical: FIXED_GAP 0.5 → center delta = height + gap = 1.5, NOT bay width 3.0
+        PointData topLeft = centers.get(0);
+        PointData bottomLeft = centers.stream()
+            .filter(c -> Math.abs(c.getX() - topLeft.getX()) < 0.05d && c.getY() < topLeft.getY())
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("missing lower row center"));
+        assertEquals(1.5d, topLeft.getY() - bottomLeft.getY(), 0.05d);
+    }
+
     private static BoxFaceData sampleFace(double width, double height) {
         double halfW = width / 2.0d;
         List<Vector3d> corners = List.of(

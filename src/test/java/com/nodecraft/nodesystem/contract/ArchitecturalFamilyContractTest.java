@@ -69,7 +69,6 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new RoofGeneratorNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new RoofGeneratorNode(), "output_eave_path", NodeDataType.PATH);
         assertPortType(new WindowArrayNode(), "output_openings", NodeDataType.GEOMETRY);
-        assertPortType(new WindowArrayNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new DoorArrayNode(), "output_openings", NodeDataType.GEOMETRY);
         assertPortType(new StaircaseNode(), "output_geometry", NodeDataType.GEOMETRY);
         assertPortType(new WallWithOpeningsNode(), "output_valid", NodeDataType.BOOLEAN);

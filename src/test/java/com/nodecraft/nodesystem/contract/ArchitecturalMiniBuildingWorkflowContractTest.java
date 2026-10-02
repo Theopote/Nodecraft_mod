@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFrameNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.BoxFaceBoundaryPathNode;
@@ -71,8 +72,21 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
 
         BoxGeometryData box = assertInstanceOf(BoxGeometryData.class, volume.getOutput("output_box_geometry"));
         BoxFaceData floorFace = requireFace(box, "Bottom");
-        BoxFaceData frontFace = requireFace(box, "Front");
         BoxFaceData roofFace = requireFace(box, "Top");
+
+        // Dedicated thin wall volume so Front Face → +Z solid matches Window Array openings.
+        BaseNode frontVolume = (BaseNode) registry.createNodeInstance("geometry.primitives.box_from_corner_size");
+        frontVolume.setNodeState(java.util.Map.of(
+            "cornerX", 0.0d,
+            "cornerY", 0.0d,
+            "cornerZ", 8.0d,
+            "sizeX", 10.0d,
+            "sizeY", 3.0d,
+            "sizeZ", 0.5d
+        ));
+        frontVolume.processNode(null);
+        BoxGeometryData frontBox = assertInstanceOf(BoxGeometryData.class, frontVolume.getOutput("output_box_geometry"));
+        BoxFaceData frontFace = requireFace(frontBox, "Front");
         Vector3d faceNormal = frontFace.getNormal();
 
         FloorSlabNode floor = new FloorSlabNode();
@@ -93,7 +107,20 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         walls.setInput("input_thickness", 0.4d);
         walls.processNode(null);
         assertEquals(Boolean.TRUE, walls.getOutput("output_valid"));
-        GeometryData wallGeom = assertInstanceOf(GeometryData.class, walls.getOutput("output_geometry"));
+        GeometryData perimeterWalls = assertInstanceOf(GeometryData.class, walls.getOutput("output_geometry"));
+
+        // Front host wall uses the same Face→+Z solid contract as Window Array openings.
+        WallWithOpeningsNode frontWall = new WallWithOpeningsNode();
+        frontWall.setInput("input_face", frontFace);
+        frontWall.setInput("input_columns", 1);
+        frontWall.setInput("input_rows", 1);
+        frontWall.setInput("input_wall_thickness", 0.4d);
+        frontWall.setInput("input_opening_width", 0.5d);
+        frontWall.setInput("input_opening_height", 0.5d);
+        frontWall.setInput("input_margin", 0.4d);
+        frontWall.processNode(null);
+        assertEquals(Boolean.TRUE, frontWall.getOutput("output_valid"));
+        GeometryData frontWallGeom = assertInstanceOf(GeometryData.class, frontWall.getOutput("output_geometry"));
 
         WindowArrayProbe windows = new WindowArrayProbe();
         windows.connectInput("input_columns", NodeDataType.INTEGER);
@@ -108,7 +135,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         windows.setInput("input_window_width", 1.5d);
         windows.setInput("input_window_height", 1.2d);
         windows.setInput("input_margin", 0.4d);
-        windows.setInput("input_depth", 1.0d);
+        windows.setInput("input_depth", 0.5d);
         windows.processNode(null);
         assertEquals(Boolean.TRUE, windows.getOutput("output_valid"));
         assertEquals(2, windows.getOutput("output_count"));
@@ -117,11 +144,11 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         List<PointData> centers = (List<PointData>) windows.getOutput("output_centers");
 
         BaseNode difference = (BaseNode) registry.createNodeInstance("geometry.boolean.difference");
-        difference.setInput("input_base", wallGeom);
+        difference.setInput("input_base", frontWallGeom);
         difference.setInput("input_cutter", openings);
         difference.processNode(null);
         assertEquals(Boolean.TRUE, difference.getOutput("output_valid"));
-        GeometryData cutWalls = assertInstanceOf(GeometryData.class, difference.getOutput("output_geometry"));
+        GeometryData cutFrontWall = assertInstanceOf(GeometryData.class, difference.getOutput("output_geometry"));
 
         WindowFrameProbe windowFrame = new WindowFrameProbe();
         windowFrame.connectInput("input_frame_width", NodeDataType.DOUBLE);
@@ -156,14 +183,17 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         GeometryData roofGeom = assertInstanceOf(GeometryData.class, roof.getOutput("output_geometry"));
 
         BaseNode combine = (BaseNode) registry.createNodeInstance("geometry.combine.geometry");
+        combine.setNodeState(java.util.Map.of("inputCount", 5));
         connectInput(combine, "input_geometry_0", NodeDataType.GEOMETRY);
         connectInput(combine, "input_geometry_1", NodeDataType.GEOMETRY);
         connectInput(combine, "input_geometry_2", NodeDataType.GEOMETRY);
         connectInput(combine, "input_geometry_3", NodeDataType.GEOMETRY);
+        connectInput(combine, "input_geometry_4", NodeDataType.GEOMETRY);
         combine.setInput("input_geometry_0", floorGeom);
-        combine.setInput("input_geometry_1", cutWalls);
-        combine.setInput("input_geometry_2", frameInstances);
-        combine.setInput("input_geometry_3", roofGeom);
+        combine.setInput("input_geometry_1", perimeterWalls);
+        combine.setInput("input_geometry_2", cutFrontWall);
+        combine.setInput("input_geometry_3", frameInstances);
+        combine.setInput("input_geometry_4", roofGeom);
         combine.processNode(null);
         CompositeGeometryData building = assertInstanceOf(CompositeGeometryData.class, combine.getOutput("output_geometry"));
 
@@ -173,15 +203,14 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         BlockPosList blocks = assertInstanceOf(BlockPosList.class, voxelize.getOutput("output_blocks"));
         assertTrue(blocks.size() > 40);
 
-        BlockPosList solidWallBlocks = GeometryVoxelizer.voxelize(wallGeom, true);
-        BlockPosList cutWallBlocks = GeometryVoxelizer.voxelize(cutWalls, true);
-        Set<net.minecraft.util.math.BlockPos> cutSolid = ArchitecturalVoxelAssert.toSolidSet(cutWallBlocks);
-        Set<net.minecraft.util.math.BlockPos> fullSolid = ArchitecturalVoxelAssert.toSolidSet(solidWallBlocks);
+        BlockPosList solidFront = GeometryVoxelizer.voxelize(frontWallGeom, true);
+        BlockPosList cutFrontBlocks = GeometryVoxelizer.voxelize(cutFrontWall, true);
+        Set<net.minecraft.util.math.BlockPos> cutSolid = ArchitecturalVoxelAssert.toSolidSet(cutFrontBlocks);
+        Set<net.minecraft.util.math.BlockPos> fullSolid = ArchitecturalVoxelAssert.toSolidSet(solidFront);
         ArchitecturalVoxelAssert.assertFewerBlocksThan(cutSolid, fullSolid);
         ArchitecturalVoxelAssert.assertOpeningCentersEmpty(cutSolid, centers);
         ArchitecturalVoxelAssert.assertPierBetweenWindowsHasBlock(cutSolid, centers.get(0), centers.get(1), faceNormal);
-        // Sill/lintel/wall-end margins are covered by WallWithWindowsWorkflowContractTest
-        // (WallWithOpenings host). WallAlongPath miter corners make face-edge samples unreliable.
+        // Sill/lintel covered by WallWithWindowsWorkflowContractTest on the same Face→+Z host.
 
         PreviewGeometryNode preview = (PreviewGeometryNode) registry.createNodeInstance("output.preview.preview_geometry");
         preview.setInput("input_geometry", building);

@@ -2126,7 +2126,7 @@
         {
           "id": "architectural.workflow.wall_with_windows",
           "displayName": "Wall + Windows",
-          "description": "Wall →Difference (Window Array openings) + Window Frame on frames →Combine →Preview.",
+          "description": "Wall slab →Difference (Window Array openings as sole cutter) + Window Frame on frames →Combine →Preview. Window Array owns opening count/size/placement.",
           "kind": "composite",
           "nodes": [
             {
@@ -2150,6 +2150,60 @@
               }
             },
             {
+              "ref": "win_cols",
+              "typeId": "input.numeric.integer",
+              "x": 280,
+              "y": 360,
+              "state": {
+                "value": 2
+              }
+            },
+            {
+              "ref": "win_rows",
+              "typeId": "input.numeric.integer",
+              "x": 280,
+              "y": 500,
+              "state": {
+                "value": 1
+              }
+            },
+            {
+              "ref": "win_width",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 640,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
+              "ref": "win_height",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 780,
+              "state": {
+                "value": 1.4
+              }
+            },
+            {
+              "ref": "win_margin",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 920,
+              "state": {
+                "value": 0.4
+              }
+            },
+            {
+              "ref": "wall_thickness",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 1060,
+              "state": {
+                "value": 0.4
+              }
+            },
+            {
               "ref": "wall",
               "typeId": "geometry.architectural_primitives.wall_with_openings",
               "x": 520,
@@ -2161,20 +2215,20 @@
               "x": 520,
               "y": 300,
               "state": {
-                "defaultDepth": 0.3
+                "defaultDepth": 0.5
               }
             },
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
               "x": 520,
-              "y": 420
+              "y": 480
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
               "x": 760,
-              "y": 240
+              "y": 300
             },
             {
               "ref": "cut",
@@ -2215,13 +2269,61 @@
               "toPort": "input_face"
             },
             {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "wall",
+              "toPort": "input_wall_thickness"
+            },
+            {
+              "fromRef": "win_cols",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_columns"
+            },
+            {
+              "fromRef": "win_rows",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_rows"
+            },
+            {
+              "fromRef": "win_width",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_window_width"
+            },
+            {
+              "fromRef": "win_height",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_window_height"
+            },
+            {
+              "fromRef": "win_margin",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_margin"
+            },
+            {
+              "fromRef": "win_width",
+              "fromPort": "output_value",
+              "toRef": "window_frame",
+              "toPort": "input_frame_width"
+            },
+            {
+              "fromRef": "win_height",
+              "fromPort": "output_value",
+              "toRef": "window_frame",
+              "toPort": "input_frame_height"
+            },
+            {
               "fromRef": "wall",
               "fromPort": "output_geometry",
               "toRef": "cut",
               "toPort": "input_base"
             },
             {
-              "fromRef": "wall",
+              "fromRef": "windows",
               "fromPort": "output_openings",
               "toRef": "cut",
               "toPort": "input_cutter"
@@ -4244,7 +4346,7 @@
               "toPort": "input_base"
             },
             {
-              "fromRef": "wall",
+              "fromRef": "windows",
               "fromPort": "output_openings",
               "toRef": "cut_frame",
               "toPort": "input_cutter"

@@ -189,7 +189,7 @@ class ArchitecturalWorkflowPresetsContractTest {
     @Test
     void builtinPresetsForbidOpeningPortsWiredDirectlyToCombine() {
         GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
-        Set<String> openingPorts = Set.of("output_openings", "output_geometry");
+        Set<String> openingPorts = Set.of("output_openings");
         Set<String> openingNodeTypes = Set.of(
             "geometry.architectural_primitives.window_array",
             "geometry.architectural_primitives.door_array"
@@ -247,13 +247,21 @@ class ArchitecturalWorkflowPresetsContractTest {
             "transform.placement.place_geometry_on_frames".equals(n.typeId)));
 
         assertTrue(preset.connections.stream().anyMatch(c ->
-            "wall".equals(c.fromRef) && "output_openings".equals(c.fromPort) && "cut".equals(c.toRef)));
+            "windows".equals(c.fromRef) && "output_openings".equals(c.fromPort) && "cut".equals(c.toRef)));
         assertTrue(preset.connections.stream().anyMatch(c ->
             "place_frames".equals(c.fromRef) && "combine".equals(c.toRef)));
         assertFalse(preset.connections.stream().anyMatch(c ->
+            "wall".equals(c.fromRef) && "output_openings".equals(c.fromPort)));
+        assertFalse(preset.connections.stream().anyMatch(c ->
             "windows".equals(c.fromRef)
-                && ("output_openings".equals(c.fromPort) || "output_geometry".equals(c.fromPort))
+                && "output_openings".equals(c.fromPort)
                 && "combine".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "win_width".equals(c.fromRef) && "windows".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "win_width".equals(c.fromRef) && "window_frame".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "win_height".equals(c.fromRef) && "window_frame".equals(c.toRef)));
     }
 
     @Test

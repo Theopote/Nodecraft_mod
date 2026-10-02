@@ -46,9 +46,6 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     private static final String INPUT_BAY_WIDTH_ID = "input_bay_width";
 
     private static final String OUTPUT_OPENINGS_ID = "output_openings";
-    /** Legacy alias; same value as {@link #OUTPUT_OPENINGS_ID}. */
-    @Deprecated
-    private static final String OUTPUT_GEOMETRY_LEGACY_ID = "output_geometry";
     private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_CENTERS_ID = "output_centers";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -64,20 +61,20 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_DOOR_WIDTH_ID, "Door Width", "Door opening width in blocks/meters", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_DOOR_HEIGHT_ID, "Door Height", "Door opening height in blocks/meters", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Outer margin from the face edge to the first opening", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth", "Inset depth of each opening into the solid", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth",
+            "Inset depth of each opening into the host solid along +face normal", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_LAYOUT_MODE_ID, "Layout Mode",
             "Spacing mode: distribute, fixed_gap, or bay", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_HORIZONTAL_GAP_ID, "Horizontal Gap",
             "Fixed pier width between columns when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_VERTICAL_GAP_ID, "Vertical Gap",
-            "Fixed pier height between rows when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this));
+            "Fixed pier height between rows when Layout Mode is fixed_gap (also used for BAY vertical spacing)",
+            NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BAY_WIDTH_ID, "Bay Width",
-            "Center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
+            "Horizontal center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_OPENINGS_ID, "Openings",
-            "Composite geometry containing all door opening boxes for boolean cutting", NodeDataType.GEOMETRY, this));
-        addOutputPort(new BasePort(OUTPUT_GEOMETRY_LEGACY_ID, "Geometry (Legacy)",
-            "Legacy alias for Openings — kept for saved graphs", NodeDataType.GEOMETRY, this));
+            "Opening boxes for Difference (cutters along +face normal into the host)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each door center (face-aligned)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Door center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of door opening boxes created", NodeDataType.INTEGER, this));
@@ -185,7 +182,6 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
 
         var packedOpenings = GeometryOutputUtils.packGeometry(openings);
         outputValues.put(OUTPUT_OPENINGS_ID, packedOpenings);
-        outputValues.put(OUTPUT_GEOMETRY_LEGACY_ID, packedOpenings);
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_CENTERS_ID, centers);
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
@@ -194,8 +190,9 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     }
 
     private @Nullable List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
+        // Face normal (+zAxis) points into the host solid — same contract as WallWithOpenings.
         return buildFaceArray(layout, placement -> {
-            Vector3d center = placement.centerOnFace().fma(-depth / 2.0d, layout.frame().zAxis());
+            Vector3d center = placement.centerOnFace().fma(depth / 2.0d, layout.frame().zAxis());
             Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, depth / 2.0d);
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
@@ -204,7 +201,6 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
 
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_OPENINGS_ID, null);
-        outputValues.put(OUTPUT_GEOMETRY_LEGACY_ID, null);
         outputValues.put(OUTPUT_FRAMES_ID, null);
         outputValues.put(OUTPUT_CENTERS_ID, null);
         outputValues.put(OUTPUT_COUNT_ID, 0);
