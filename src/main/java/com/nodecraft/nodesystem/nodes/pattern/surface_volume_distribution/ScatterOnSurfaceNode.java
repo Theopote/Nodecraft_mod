@@ -94,9 +94,9 @@ public class ScatterOnSurfaceNode extends AbstractSurfaceVolumeDistributionNode 
             return;
         }
 
-        Double minDist = resolveNonNegativeFinite(INPUT_MIN_DISTANCE_ID, minDistance);
+        Double minDist = resolveMinDistance(INPUT_MIN_DISTANCE_ID, minDistance);
         if (minDist == null) {
-            writeFail("Min Distance connected but invalid (must be finite and >= 0)");
+            writeFail("Min Distance connected but invalid (must be finite, >= 0, and have a finite square)");
             return;
         }
 

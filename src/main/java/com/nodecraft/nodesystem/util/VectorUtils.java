@@ -47,6 +47,13 @@ public final class VectorUtils {
         return Double.isFinite(value);
     }
 
+    /**
+     * True when {@code distance >= 0} is finite and {@code distance²} is also finite.
+     */
+    public static boolean isFiniteSquaredDistance(double distance) {
+        return isFinite(distance) && distance >= 0.0d && isFinite(distance * distance);
+    }
+
     public static boolean isNonZero(@Nullable Vector3d vector) {
         double length = safeLength(vector);
         return isFinite(length) && length > EPS;

@@ -160,7 +160,8 @@ public final class GenerationLimits {
      * When {@code minDistance <= 0}, spacing work is skipped (shuffle/subList path).
      * <ul>
      *   <li>RANDOM: {@code candidateCount × targetCount}</li>
-     *   <li>BLUE_NOISE_APPROX: {@code SCATTER_BLUE_NOISE_PROBES × targetCount²}</li>
+     *   <li>BLUE_NOISE_APPROX: {@code SCATTER_BLUE_NOISE_PROBES × targetCount²
+     *       + candidateCount × targetCount} (probes plus fallback pool scan)</li>
      * </ul>
      *
      * @return null when valid; otherwise an error message
@@ -183,10 +184,12 @@ public final class GenerationLimits {
         long work;
         try {
             if (mode == MinDistanceScatterSelector.DistributionMode.BLUE_NOISE_APPROX) {
-                work = Math.multiplyExact(
+                long probeWork = Math.multiplyExact(
                     Math.multiplyExact(SCATTER_BLUE_NOISE_PROBES, (long) targetCount),
                     (long) targetCount
                 );
+                long fallbackWork = Math.multiplyExact(candidateCount, (long) targetCount);
+                work = Math.addExact(probeWork, fallbackWork);
             } else {
                 work = Math.multiplyExact(candidateCount, (long) targetCount);
             }

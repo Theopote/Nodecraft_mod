@@ -109,6 +109,14 @@ public final class MinDistanceScatterSelector {
                 }
             }
             if (bestIndex < 0) {
+                for (int i = 0; i < pool.size(); i++) {
+                    if (isFarEnough(pool.get(i), selected, minDistanceSq)) {
+                        bestIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (bestIndex < 0) {
                 break;
             }
             selected.add(new Vector3d(pool.remove(bestIndex)));

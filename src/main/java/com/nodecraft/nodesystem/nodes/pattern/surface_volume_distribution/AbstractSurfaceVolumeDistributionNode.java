@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared Valid/Error/Complete helpers for pattern.surface_volume_distribution (Graph V82).
+ * Shared Valid/Error/Complete helpers for pattern.surface_volume_distribution.
  */
 abstract class AbstractSurfaceVolumeDistributionNode extends BaseNode {
 
@@ -108,6 +108,14 @@ abstract class AbstractSurfaceVolumeDistributionNode extends BaseNode {
         return resolved;
     }
 
+    protected final @Nullable Double resolveMinDistance(String portId, double propertyFallback) {
+        Double resolved = resolveNonNegativeFinite(portId, propertyFallback);
+        if (resolved == null || !VectorUtils.isFiniteSquaredDistance(resolved)) {
+            return null;
+        }
+        return resolved;
+    }
+
     protected final @Nullable Double resolvePositiveFinite(
         String portId,
         double propertyFallback
@@ -178,6 +186,13 @@ abstract class AbstractSurfaceVolumeDistributionNode extends BaseNode {
         for (Vector3d normal : normals) {
             if (normal == null || !VectorUtils.isFinite(normal) || !VectorUtils.isNonZero(normal)) {
                 markInvalid("Degenerate or non-finite normal");
+                putEmptyListOutputs(pointsId, normalsId);
+                putIntOutputs(0, countId);
+                return false;
+            }
+            double length = VectorUtils.safeLength(normal);
+            if (!Double.isFinite(length) || Math.abs(length - 1.0d) > VectorUtils.EPS) {
+                markInvalid("Normal must be unit length");
                 putEmptyListOutputs(pointsId, normalsId);
                 putIntOutputs(0, countId);
                 return false;

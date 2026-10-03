@@ -15,7 +15,6 @@ import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -25,6 +24,7 @@ import com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution.Sample
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PrimitiveVolumeSampler;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,12 +41,13 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Surface / Volume Distribution Language v2 (Graph V82).
+ * Language fence for Surface / Volume Distribution Language v2.
  */
 class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
 
@@ -76,16 +77,6 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV82() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV105() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -152,6 +143,7 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         assertEquals(Boolean.TRUE, node.getOutput("output_complete"));
         assertEquals(12, node.getOutput("output_count"));
         assertEquals("", node.getOutput("output_error"));
+        assertUnitNormals(node);
     }
 
     @Test
@@ -394,7 +386,179 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         assertEquals(7, probe.getOutput("output_count"));
     }
 
+    @Test
+    void scatterSurfaceAndSphereEmitUnitNormals() {
+        BaseNode surface = node("pattern.surface_volume_distribution.scatter_surface");
+        surface.setInput("input_geometry", new SphereData(new Vector3d(), 2.0d));
+        surface.setNodeState(Map.of(
+            "targetCount", 12,
+            "minDistance", 0.0d,
+            "seed", 4,
+            "distributionMode", "RANDOM"
+        ));
+        surface.processNode(null);
+        assertEquals(Boolean.TRUE, surface.getOutput("output_valid"));
+        assertUnitNormals(surface);
 
+        BaseNode sphere = node("pattern.surface_volume_distribution.sample_sphere_surface");
+        sphere.setInput("input_sphere", new SphereData(new Vector3d(), 2.0d));
+        sphere.setNodeState(Map.of("sampleCount", 16, "seed", 2, "sampleMode", "RANDOM_UNIFORM"));
+        sphere.processNode(null);
+        assertEquals(Boolean.TRUE, sphere.getOutput("output_valid"));
+        assertUnitNormals(sphere);
+    }
+
+    @Test
+    void thinTorusVolumeScatterDoesNotFailAcrossSeeds() {
+        TorusGeometryData torus = new TorusGeometryData(
+            new Vector3d(), new Vector3d(0, 1, 0), 100.0d, 0.1d);
+        for (int seed : List.of(1, 7, 13, 99, 12345)) {
+            BaseNode volume = node("pattern.surface_volume_distribution.scatter_volume");
+            volume.setInput("input_geometry", torus);
+            volume.setNodeState(Map.of(
+                "targetCount", 12,
+                "minDistance", 0.0d,
+                "seed", seed,
+                "distributionMode", "RANDOM"
+            ));
+            volume.processNode(null);
+            assertEquals(Boolean.TRUE, volume.getOutput("output_valid"), "seed=" + seed);
+            assertEquals(Boolean.TRUE, volume.getOutput("output_complete"), "seed=" + seed);
+            assertEquals(12, volume.getOutput("output_count"), "seed=" + seed);
+            @SuppressWarnings("unchecked")
+            List<PointData> points = assertInstanceOf(List.class, volume.getOutput("output_points"));
+            for (PointData point : points) {
+                assertTrue(PrimitiveVolumeSampler.containsPoint(torus, point.position()), "seed=" + seed);
+            }
+        }
+    }
+
+    @Test
+    void oversizedMinDistanceSquareFailsClosed() {
+        BaseNode surface = node("pattern.surface_volume_distribution.scatter_surface");
+        surface.setInput("input_geometry", new SphereData(new Vector3d(), 2.0d));
+        surface.setNodeState(Map.of("targetCount", 8, "minDistance", 1.0e308d, "seed", 1));
+        surface.processNode(null);
+        assertEquals(Boolean.FALSE, surface.getOutput("output_valid"));
+        assertTrue(String.valueOf(surface.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
+        assertEquals(0, surface.getOutput("output_count"));
+    }
+
+    @Test
+    void sameSeedRepeatsPointSequenceAndDifferentSeedChangesIt() {
+        assertDeterministicScatter(
+            "pattern.surface_volume_distribution.scatter_surface",
+            n -> n.setInput("input_geometry", new SphereData(new Vector3d(), 2.0d)),
+            Map.of("targetCount", 8, "minDistance", 0.0d, "distributionMode", "RANDOM")
+        );
+        assertDeterministicScatter(
+            "pattern.surface_volume_distribution.scatter_volume",
+            n -> n.setInput("input_geometry", new SphereData(new Vector3d(), 3.0d)),
+            Map.of("targetCount", 8, "minDistance", 0.0d, "distributionMode", "RANDOM")
+        );
+
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 1, 0), new Vector3d(1, 1, 0), new Vector3d(2, 1, 0))
+        );
+        assertDeterministicScatter(
+            "pattern.surface_volume_distribution.scatter_surface_strip",
+            n -> n.setInput("input_surface_strip",
+                new com.nodecraft.nodesystem.datatypes.SurfaceStripData(sections, List.of(false, false))),
+            Map.of("targetCount", 8, "minDistance", 0.0d)
+        );
+
+        BaseNode sphereA = node("pattern.surface_volume_distribution.sample_sphere_surface");
+        BaseNode sphereB = node("pattern.surface_volume_distribution.sample_sphere_surface");
+        BaseNode sphereC = node("pattern.surface_volume_distribution.sample_sphere_surface");
+        sphereA.setInput("input_sphere", new SphereData(new Vector3d(), 2.0d));
+        sphereB.setInput("input_sphere", new SphereData(new Vector3d(), 2.0d));
+        sphereC.setInput("input_sphere", new SphereData(new Vector3d(), 2.0d));
+        Map<String, Object> sphereState = Map.of("sampleCount", 10, "sampleMode", "RANDOM_UNIFORM");
+        sphereA.setNodeState(withSeed(sphereState, 11));
+        sphereB.setNodeState(withSeed(sphereState, 11));
+        sphereC.setNodeState(withSeed(sphereState, 12));
+        sphereA.processNode(null);
+        sphereB.processNode(null);
+        sphereC.processNode(null);
+        assertEquals(pointSequence(sphereA), pointSequence(sphereB));
+        assertNotEquals(pointSequence(sphereA), pointSequence(sphereC));
+
+        ImageProbe imageA = wiredImageScatter();
+        ImageProbe imageB = wiredImageScatter();
+        ImageProbe imageC = wiredImageScatter();
+        Map<String, Object> imageState = Map.of("targetCount", 6, "spanU", 2.0d, "spanV", 2.0d);
+        imageA.setNodeState(withSeed(imageState, 21));
+        imageB.setNodeState(withSeed(imageState, 21));
+        imageC.setNodeState(withSeed(imageState, 22));
+        imageA.processNode(null);
+        imageB.processNode(null);
+        imageC.processNode(null);
+        assertEquals(Boolean.TRUE, imageA.getOutput("output_valid"));
+        assertEquals(pointSequence(imageA), pointSequence(imageB));
+        assertNotEquals(pointSequence(imageA), pointSequence(imageC));
+    }
+
+    private static void assertDeterministicScatter(
+        String typeId,
+        java.util.function.Consumer<BaseNode> setup,
+        Map<String, Object> state
+    ) {
+        BaseNode a = node(typeId);
+        BaseNode b = node(typeId);
+        BaseNode c = node(typeId);
+        setup.accept(a);
+        setup.accept(b);
+        setup.accept(c);
+        a.setNodeState(withSeed(state, 41));
+        b.setNodeState(withSeed(state, 41));
+        c.setNodeState(withSeed(state, 42));
+        a.processNode(null);
+        b.processNode(null);
+        c.processNode(null);
+        assertEquals(Boolean.TRUE, a.getOutput("output_valid"));
+        assertEquals(Boolean.TRUE, b.getOutput("output_valid"));
+        assertEquals(Boolean.TRUE, c.getOutput("output_valid"));
+        assertEquals(pointSequence(a), pointSequence(b));
+        assertNotEquals(pointSequence(a), pointSequence(c));
+    }
+
+    private static Map<String, Object> withSeed(Map<String, Object> state, int seed) {
+        Map<String, Object> copy = new HashMap<>(state);
+        copy.put("seed", seed);
+        return copy;
+    }
+
+    private static List<String> pointSequence(BaseNode node) {
+        @SuppressWarnings("unchecked")
+        List<PointData> points = assertInstanceOf(List.class, node.getOutput("output_points"));
+        List<String> keys = new ArrayList<>(points.size());
+        for (PointData point : points) {
+            Vector3d p = point.position();
+            keys.add(String.format(Locale.ROOT, "%.9f,%.9f,%.9f", p.x, p.y, p.z));
+        }
+        return keys;
+    }
+
+    private static void assertUnitNormals(BaseNode node) {
+        @SuppressWarnings("unchecked")
+        List<Vector3d> normals = assertInstanceOf(List.class, node.getOutput("output_normals"));
+        assertFalse(normals.isEmpty());
+        for (Vector3d normal : normals) {
+            assertEquals(1.0d, VectorUtils.safeLength(normal), VectorUtils.EPS);
+        }
+    }
+
+    private static ImageProbe wiredImageScatter() {
+        ImageProbe probe = new ImageProbe();
+        probe.connectInput("input_density_values", NodeDataType.DOUBLE_LIST);
+        probe.connectInput("input_image_width", NodeDataType.INTEGER);
+        probe.connectInput("input_image_height", NodeDataType.INTEGER);
+        probe.putRawInput("input_density_values", List.of(0.2d, 0.4d, 0.6d, 0.8d));
+        probe.putRawInput("input_image_width", 2);
+        probe.putRawInput("input_image_height", 2);
+        return probe;
+    }
 
     private static BaseNode node(String typeId) {
         return assertInstanceOf(BaseNode.class, registry.createNodeInstance(typeId));

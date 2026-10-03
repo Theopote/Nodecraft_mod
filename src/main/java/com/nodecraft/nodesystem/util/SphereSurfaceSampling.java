@@ -57,14 +57,7 @@ public final class SphereSurfaceSampling {
      * Strict normalize for graph-facing samplers (Graph V82): zero/non-finite → null (no world-Up repair).
      */
     public static @Nullable Vector3d normalizeStrict(@Nullable Vector3d value) {
-        if (value == null
-                || !Double.isFinite(value.x)
-                || !Double.isFinite(value.y)
-                || !Double.isFinite(value.z)
-                || value.lengthSquared() < 1.0e-12d) {
-            return null;
-        }
-        return new Vector3d(value).normalize();
+        return VectorUtils.safeNormalize(value);
     }
 
     private static List<Vector3d> sampleFibonacci(int count) {

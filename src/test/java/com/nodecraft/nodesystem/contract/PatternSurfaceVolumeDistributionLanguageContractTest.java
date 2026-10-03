@@ -11,7 +11,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution.ImageBasedScatterNode;
 import com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution.PoissonDiskOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.pattern.surface_volume_distribution.SampleSphereSurfaceNode;
@@ -35,8 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Surface / Volume Distribution v1 language fence (Graph V44) — historical inventory.
- * Count budget / OptionalPortDrive strictness owned by Language v2 (V82).
+ * Surface / Volume Distribution v1 language fence — inventory and spacing semantics.
+ * Count budget / OptionalPortDrive strictness owned by Language v2.
  */
 class PatternSurfaceVolumeDistributionLanguageContractTest {
 

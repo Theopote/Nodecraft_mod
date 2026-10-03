@@ -18,10 +18,10 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Continuous analytic surface sampling for supported primitive geometry types (Graph V82/V105).
+ * Continuous analytic surface sampling for supported primitive geometry types.
  * <p>
  * Area-uniform RANDOM sampling: Sphere, Hemisphere, Box (face-weighted), Cylinder lateral,
- * Cone lateral (Graph V105), Torus (Graph V105). Ellipsoid is analytic continuous but
+ * Cone lateral, Torus. Ellipsoid is analytic continuous but
  * not area-uniform. Cylinder/Cone sample the lateral surface only. Degenerate primitives
  * fail closed — no world-axis repair.
  */
@@ -134,7 +134,7 @@ public final class PrimitiveGeometrySurfaceSampler {
             Vector3d axis = new Vector3d(cylinder.getEnd()).sub(cylinder.getStart());
             if (!PointUtils.isFinite(cylinder.getStart()) || !PointUtils.isFinite(cylinder.getEnd())
                     || !Double.isFinite(cylinder.getRadius()) || cylinder.getRadius() <= 0.0d
-                    || axis.lengthSquared() <= EPS) {
+                    || !VectorUtils.isNonZero(axis)) {
                 return "Cylinder surface is degenerate";
             }
             return null;
@@ -151,7 +151,7 @@ public final class PrimitiveGeometrySurfaceSampler {
             Vector3d axis = new Vector3d(cone.getBaseCenter()).sub(cone.getApex());
             if (!PointUtils.isFinite(cone.getApex()) || !PointUtils.isFinite(cone.getBaseCenter())
                     || !Double.isFinite(cone.getBaseRadius()) || cone.getBaseRadius() <= 0.0d
-                    || axis.lengthSquared() <= EPS) {
+                    || !VectorUtils.isNonZero(axis)) {
                 return "Cone surface is degenerate";
             }
             return null;
@@ -260,22 +260,21 @@ public final class PrimitiveGeometrySurfaceSampler {
     private static @Nullable SurfaceSample sampleCylinderLateralSurface(CylinderGeometryData cylinder, Random random) {
         Vector3d start = cylinder.getStart();
         Vector3d end = cylinder.getEnd();
-        Vector3d axis = new Vector3d(end).sub(start);
-        double height = axis.length();
-        if (height <= EPS) {
+        Vector3d axisDelta = new Vector3d(end).sub(start);
+        double height = VectorUtils.safeLength(axisDelta);
+        Vector3d axis = VectorUtils.normalizeByLength(axisDelta, height);
+        if (axis == null) {
             return null;
         }
-        axis.div(height);
 
         Vector3d tangent = orthonormalTangent(axis, random);
         if (tangent == null) {
             return null;
         }
-        Vector3d bitangent = new Vector3d(axis).cross(tangent);
-        if (bitangent.lengthSquared() <= EPS) {
+        Vector3d bitangent = VectorUtils.safeNormalize(new Vector3d(axis).cross(tangent));
+        if (bitangent == null) {
             return null;
         }
-        bitangent.normalize();
         double angle = random.nextDouble() * Math.PI * 2.0d;
         Vector3d radial = new Vector3d(tangent).mul(Math.cos(angle)).add(new Vector3d(bitangent).mul(Math.sin(angle)));
         Vector3d normal = SphereSurfaceSampling.normalizeStrict(radial);
@@ -289,7 +288,7 @@ public final class PrimitiveGeometrySurfaceSampler {
     }
 
     private static @Nullable SurfaceSample sampleTorusSurface(TorusGeometryData torus, Random random) {
-        Vector3d axis = SphereSurfaceSampling.normalizeStrict(torus.axis());
+        Vector3d axis = VectorUtils.safeNormalize(torus.axis());
         if (axis == null) {
             return null;
         }
@@ -297,11 +296,10 @@ public final class PrimitiveGeometrySurfaceSampler {
         if (tangent == null) {
             return null;
         }
-        Vector3d bitangent = new Vector3d(axis).cross(tangent);
-        if (bitangent.lengthSquared() <= EPS) {
+        Vector3d bitangent = VectorUtils.safeNormalize(new Vector3d(axis).cross(tangent));
+        if (bitangent == null) {
             return null;
         }
-        bitangent.normalize();
 
         double major = torus.majorRadius();
         double minor = torus.minorRadius();
@@ -326,12 +324,12 @@ public final class PrimitiveGeometrySurfaceSampler {
     private static @Nullable SurfaceSample sampleConeLateralSurface(ConeGeometryData cone, Random random) {
         Vector3d apex = cone.getApex();
         Vector3d baseCenter = cone.getBaseCenter();
-        Vector3d axis = new Vector3d(baseCenter).sub(apex);
-        double height = axis.length();
-        if (height <= EPS) {
+        Vector3d axisDelta = new Vector3d(baseCenter).sub(apex);
+        double height = VectorUtils.safeLength(axisDelta);
+        Vector3d axis = VectorUtils.normalizeByLength(axisDelta, height);
+        if (axis == null) {
             return null;
         }
-        axis.div(height);
 
         double t = Math.sqrt(random.nextDouble());
         double r = cone.getBaseRadius() * t;
@@ -339,11 +337,10 @@ public final class PrimitiveGeometrySurfaceSampler {
         if (tangent == null) {
             return null;
         }
-        Vector3d bitangent = new Vector3d(axis).cross(tangent);
-        if (bitangent.lengthSquared() <= EPS) {
+        Vector3d bitangent = VectorUtils.safeNormalize(new Vector3d(axis).cross(tangent));
+        if (bitangent == null) {
             return null;
         }
-        bitangent.normalize();
         double angle = random.nextDouble() * Math.PI * 2.0d;
         Vector3d radial = new Vector3d(tangent).mul(Math.cos(angle)).add(new Vector3d(bitangent).mul(Math.sin(angle)));
         Vector3d point = new Vector3d(apex).add(new Vector3d(axis).mul(height * t)).add(new Vector3d(radial).mul(r));
@@ -428,7 +425,8 @@ public final class PrimitiveGeometrySurfaceSampler {
     private static double triangleArea(Vector3d a, Vector3d b, Vector3d c) {
         Vector3d ab = new Vector3d(b).sub(a);
         Vector3d ac = new Vector3d(c).sub(a);
-        return ab.cross(ac).length() * 0.5d;
+        double length = VectorUtils.safeLength(ab.cross(ac));
+        return Double.isFinite(length) ? length * 0.5d : 0.0d;
     }
 
     /** Package-visible for unit tests in {@code com.nodecraft.nodesystem.util}. */
