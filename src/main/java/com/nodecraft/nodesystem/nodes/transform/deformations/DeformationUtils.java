@@ -31,18 +31,21 @@ final class DeformationUtils {
         if (!VectorUtils.isNonZero(axisDirection) || !VectorUtils.isNonZero(bendNormal)) {
             return null;
         }
-        Vector3d axis = new Vector3d(axisDirection).normalize();
-        Vector3d normal = new Vector3d(bendNormal);
-        normal.sub(new Vector3d(axis).mul(normal.dot(axis)));
-        if (!VectorUtils.isNonZero(normal)) {
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        Vector3d normal = VectorUtils.safeNormalize(bendNormal);
+        if (axis == null || normal == null) {
             return null;
         }
-        normal.normalize();
-        Vector3d binormal = new Vector3d(axis).cross(normal);
-        if (!VectorUtils.isNonZero(binormal)) {
+        double nDotA = VectorUtils.safeDot(normal, axis);
+        Vector3d projected = VectorUtils.safeSubtract(normal, VectorUtils.safeScale(axis, nDotA));
+        normal = VectorUtils.safeNormalize(projected);
+        if (normal == null) {
             return null;
         }
-        binormal.normalize();
+        Vector3d binormal = VectorUtils.safeNormalize(VectorUtils.safeCross(axis, normal));
+        if (binormal == null) {
+            return null;
+        }
         return new BendFrame(axis, normal, binormal);
     }
 

@@ -735,7 +735,7 @@
 | Noise Displace Point List | `transform.deformations.noise_displace` | Applies deterministic pseudo-noise displacement to a point list | `NoiseDisplacePointListNode` |
 | Spherical Displace | `transform.deformations.spherical_displace` | Applies radial displacement with spherical distance falloff around a center point. | `SphericalDisplaceNode` |
 | Path Attract Point List | `transform.deformations.curve_attract` | Pulls points toward a path with quadratic falloff; optional displacement along full vector, tangent only, or perpendicular-to-tangent only | `CurveAttractPointListNode` |
-| Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed) | `RelaxPointListNode` |
+| Relax Point List | `transform.deformations.relax_points` | Laplacian-style smoothing using k nearest neighbors | `RelaxPointListNode` |
 | Lattice Deform Point List | `transform.deformations.lattice_deform` | Free-form deformation: trilinear blend of control displacements on a uniform (nx+1)(ny+1)(nz+1) lattice in an axis-aligned box | `LatticeDeformPointListNode` |
 | Twist SDF | `transform.deformations.twist_sdf` | Applies an axial twist domain deformation to a signed distance field | `TwistSdfNode` |
 | Bend SDF | `transform.deformations.bend_sdf` | Applies an axial bend domain deformation to a signed distance field | `BendSdfNode` |

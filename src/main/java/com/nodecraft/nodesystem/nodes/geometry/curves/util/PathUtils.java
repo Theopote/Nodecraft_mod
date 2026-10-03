@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.SafeSegmentClosestPoint3d;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -390,7 +391,7 @@ public final class PathUtils {
         }
 
         int segCount = closed ? unique.size() : unique.size() - 1;
-        double bestDistSq = Double.MAX_VALUE;
+        double bestDistance = Double.POSITIVE_INFINITY;
         Vector3d bestPoint = null;
         int bestSeg = 0;
         double bestT = 0.0d;
@@ -398,12 +399,15 @@ public final class PathUtils {
         for (int i = 0; i < segCount; i++) {
             Vector3d a = unique.get(i);
             Vector3d b = unique.get((i + 1) % unique.size());
-            SegmentClosest sc = closestOnSegment(query, a, b);
-            if (sc.distSq() < bestDistSq) {
-                bestDistSq = sc.distSq();
-                bestPoint = sc.closest();
+            SafeSegmentClosestPoint3d.Hit hit = SafeSegmentClosestPoint3d.onSegment(a, b, query);
+            if (hit == null) {
+                return null;
+            }
+            if (hit.distance() < bestDistance) {
+                bestDistance = hit.distance();
+                bestPoint = hit.closest();
                 bestSeg = i;
-                bestT = sc.t();
+                bestT = hit.t();
             }
         }
 
@@ -427,7 +431,7 @@ public final class PathUtils {
 
         return new ClosestPointResult(
             new Vector3d(bestPoint),
-            Math.sqrt(bestDistSq),
+            bestDistance,
             arcLen / total,
             arcLen
         );
@@ -529,21 +533,6 @@ public final class PathUtils {
             return 0.0d;
         }
         return Math.max(0.0d, Math.min(1.0d, value));
-    }
-
-    private static SegmentClosest closestOnSegment(Vector3d p, Vector3d a, Vector3d b) {
-        Vector3d ab = new Vector3d(b).sub(a);
-        double abLenSq = ab.lengthSquared();
-        if (abLenSq < EPS * EPS) {
-            return new SegmentClosest(new Vector3d(a), p.distanceSquared(a), 0.0d);
-        }
-        double t = new Vector3d(p).sub(a).dot(ab) / abLenSq;
-        double tClamped = Math.max(0.0d, Math.min(1.0d, t));
-        Vector3d closest = new Vector3d(a).lerp(b, tClamped);
-        return new SegmentClosest(closest, p.distanceSquared(closest), tClamped);
-    }
-
-    private record SegmentClosest(Vector3d closest, double distSq, double t) {
     }
 
     private static @Nullable List<Vector3d> verticesFromCurve(@Nullable Curve curve) {

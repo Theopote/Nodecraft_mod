@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 
 /**
@@ -37,13 +38,15 @@ public class BentSdfData implements SignedDistanceFieldData {
         if (source == null) {
             throw new IllegalArgumentException("Bent SDF requires a source field");
         }
-        if (axisOrigin == null || !isFinite(axisOrigin)) {
+        if (axisOrigin == null || !VectorUtils.isFinite(axisOrigin)) {
             throw new IllegalArgumentException("Bent SDF requires a finite axis origin");
         }
-        if (axisDirection == null || !isFinite(axisDirection) || axisDirection.lengthSquared() <= EPS) {
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        Vector3d incomingNormal = VectorUtils.safeNormalize(bendNormal);
+        if (axis == null) {
             throw new IllegalArgumentException("Bent SDF requires a non-zero finite axis direction");
         }
-        if (bendNormal == null || !isFinite(bendNormal) || bendNormal.lengthSquared() <= EPS) {
+        if (incomingNormal == null) {
             throw new IllegalArgumentException("Bent SDF requires a non-zero finite bend normal");
         }
         if (!Double.isFinite(bendDegrees)) {
@@ -53,18 +56,16 @@ public class BentSdfData implements SignedDistanceFieldData {
             throw new IllegalArgumentException("Bent SDF requires a positive bend length");
         }
 
-        Vector3d axis = new Vector3d(axisDirection).normalize();
-        Vector3d projected = new Vector3d(bendNormal);
-        projected.sub(new Vector3d(axis).mul(projected.dot(axis)));
-        if (projected.lengthSquared() <= EPS) {
+        double nDotA = VectorUtils.safeDot(incomingNormal, axis);
+        Vector3d projected = VectorUtils.safeSubtract(incomingNormal, VectorUtils.safeScale(axis, nDotA));
+        projected = VectorUtils.safeNormalize(projected);
+        if (projected == null) {
             throw new IllegalArgumentException("Bend normal must not be parallel to axis direction");
         }
-        projected.normalize();
-        Vector3d binormal = new Vector3d(axis).cross(projected);
-        if (binormal.lengthSquared() <= EPS) {
+        Vector3d binormal = VectorUtils.safeNormalize(VectorUtils.safeCross(axis, projected));
+        if (binormal == null) {
             throw new IllegalArgumentException("Degenerate bend frame");
         }
-        binormal.normalize();
 
         this.source = source;
         this.axisOrigin = new Vector3d(axisOrigin);
@@ -144,10 +145,6 @@ public class BentSdfData implements SignedDistanceFieldData {
             case REPEAT -> normalizedDistance - Math.floor(normalizedDistance);
             case UNBOUNDED -> normalizedDistance;
         };
-    }
-
-    private static boolean isFinite(Vector3d value) {
-        return Double.isFinite(value.x) && Double.isFinite(value.y) && Double.isFinite(value.z);
     }
 
     private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double angle) {

@@ -15,7 +15,6 @@ import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -47,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Deformations Language v2 (Graph V78).
+ * Language fence for transform.deformations: typed POINT_LIST / SDF split, Valid/Error, paired SDF bounds.
  */
 class DeformationsLanguageV2ContractTest {
 
@@ -76,13 +75,7 @@ class DeformationsLanguageV2ContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV78() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void exactlyElevenNodesWithUniqueOrdersZeroToTen() {
+    void deformationsHasElevenCanonicalNodes() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("transform.deformations."))
             .sorted()

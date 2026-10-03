@@ -74,7 +74,6 @@ public class LatticeDeformPointListNode extends AbstractDeformationNode {
             inputValues.get(INPUT_POINTS_ID), GenerationLimits.MAX_LIST_ELEMENTS);
         Vector3d min = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MIN_ID));
         Vector3d max = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MAX_ID));
-        List<Vector3d> controls = VectorUtils.resolveStrictVectorList(inputValues.get(INPUT_OFFSETS_ID));
 
         if (pointsInput == null) {
             failPointList("Invalid or oversized point list");
@@ -82,10 +81,6 @@ public class LatticeDeformPointListNode extends AbstractDeformationNode {
         }
         if (!PointUtils.isFinite(min) || !PointUtils.isFinite(max)) {
             failPointList("Invalid lattice bounds");
-            return;
-        }
-        if (controls == null) {
-            failPointList("Invalid control offsets");
             return;
         }
         if (!(min.x < max.x && min.y < max.y && min.z < max.z)) {
@@ -104,6 +99,13 @@ public class LatticeDeformPointListNode extends AbstractDeformationNode {
         int cy = ny + 1;
         int cz = nz + 1;
         int expected = cx * cy * cz;
+        List<Vector3d> controls = VectorUtils.resolveStrictVectorListBounded(
+            inputValues.get(INPUT_OFFSETS_ID), expected);
+
+        if (controls == null) {
+            failPointList("Invalid control offsets");
+            return;
+        }
         if (controls.size() != expected) {
             failPointList("Control count mismatch");
             return;

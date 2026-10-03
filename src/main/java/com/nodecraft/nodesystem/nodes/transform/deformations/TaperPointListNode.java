@@ -90,6 +90,11 @@ public class TaperPointListNode extends AbstractDeformationNode {
             failPointList("Axis direction must be non-zero");
             return;
         }
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        if (axis == null) {
+            failPointList("Axis direction must be a finite non-zero vector");
+            return;
+        }
         if (resolvedStartScale == null || resolvedEndScale == null) {
             failPointList("Invalid scale");
             return;
@@ -102,8 +107,6 @@ public class TaperPointListNode extends AbstractDeformationNode {
             failPointList("Scale must be non-negative");
             return;
         }
-
-        Vector3d axis = new Vector3d(axisDirection).normalize();
 
         List<Vector3d> taperedPoints = new ArrayList<>(pointsInput.size());
         for (Vector3d point : pointsInput) {

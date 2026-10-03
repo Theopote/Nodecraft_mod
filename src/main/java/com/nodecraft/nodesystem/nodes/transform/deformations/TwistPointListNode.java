@@ -90,6 +90,11 @@ public class TwistPointListNode extends AbstractDeformationNode {
             failPointList("Axis direction must be non-zero");
             return;
         }
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        if (axis == null) {
+            failPointList("Axis direction must be a finite non-zero vector");
+            return;
+        }
         if (resolvedAngleDegrees == null) {
             failPointList("Invalid angle");
             return;
@@ -98,8 +103,6 @@ public class TwistPointListNode extends AbstractDeformationNode {
             failPointList("Twist length must be positive");
             return;
         }
-
-        Vector3d axis = new Vector3d(axisDirection).normalize();
         double totalAngleRadians = Math.toRadians(resolvedAngleDegrees);
 
         List<Vector3d> twistedPoints = new ArrayList<>(pointsInput.size());

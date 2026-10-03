@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -98,9 +99,9 @@ public class SphericalDisplaceNode extends AbstractDeformationNode {
 
         List<Vector3d> out = new ArrayList<>(inputPoints.size());
         for (Vector3d point : inputPoints) {
-            Vector3d radial = new Vector3d(point).sub(center);
-            double distance = radial.length();
-            if (distance <= 1.0e-12d) {
+            Vector3d radial = VectorUtils.safeSubtract(point, center);
+            double distance = VectorUtils.safeLength(radial);
+            if (!Double.isFinite(distance) || distance <= 1.0e-12d) {
                 out.add(new Vector3d(point));
                 continue;
             }
@@ -113,7 +114,11 @@ public class SphericalDisplaceNode extends AbstractDeformationNode {
             double clamped = Math.max(0.0d, Math.min(1.0d, 1.0d - normalized));
             double weight = Math.pow(clamped, resolvedPower);
 
-            Vector3d dir = radial.normalize();
+            Vector3d dir = VectorUtils.safeNormalize(radial);
+            if (dir == null) {
+                out.add(new Vector3d(point));
+                continue;
+            }
             out.add(new Vector3d(point).add(dir.mul(resolvedStrength * weight)));
         }
 

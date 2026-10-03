@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared Valid/Error helpers for transform.deformations (Graph V78).
+ * Shared Valid/Error helpers for transform.deformations.
  */
 abstract class AbstractDeformationNode extends BaseNode {
 

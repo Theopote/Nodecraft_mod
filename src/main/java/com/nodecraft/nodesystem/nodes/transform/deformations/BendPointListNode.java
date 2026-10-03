@@ -91,6 +91,11 @@ public class BendPointListNode extends AbstractDeformationNode {
             failPointList("Axis direction must be non-zero");
             return;
         }
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        if (axis == null) {
+            failPointList("Axis direction must be a finite non-zero vector");
+            return;
+        }
         if (resolvedBendDegrees == null) {
             failPointList("Invalid bend angle");
             return;
@@ -100,25 +105,30 @@ public class BendPointListNode extends AbstractDeformationNode {
             return;
         }
 
-        Vector3d candidateNormal = resolveBendNormal(new Vector3d(axisDirection).normalize());
+        Vector3d candidateNormal = resolveBendNormal(axis);
         if (candidateNormal == null) {
             failPointList("Invalid bend normal");
             return;
         }
-        DeformationUtils.BendFrame frame = DeformationUtils.resolveBendFrame(axisDirection, candidateNormal);
+        DeformationUtils.BendFrame frame = DeformationUtils.resolveBendFrame(axis, candidateNormal);
         if (frame == null) {
             if (bendPlaneMode == BendPlaneMode.CUSTOM) {
                 failPointList("Bend normal must not be parallel to axis direction");
                 return;
             }
             // AUTO / fixed-plane modes: fall back to a default normal perpendicular to axis.
-            frame = DeformationUtils.resolveBendFrame(axisDirection, defaultNormal(new Vector3d(axisDirection).normalize()));
+            Vector3d fallback = defaultNormal(axis);
+            if (fallback == null) {
+                failPointList("Degenerate bend frame");
+                return;
+            }
+            frame = DeformationUtils.resolveBendFrame(axis, fallback);
             if (frame == null) {
                 failPointList("Degenerate bend frame");
                 return;
             }
         }
-        Vector3d axis = frame.axis();
+        axis = frame.axis();
         Vector3d normal = frame.normal();
         Vector3d binormal = frame.binormal();
 
@@ -198,10 +208,11 @@ public class BendPointListNode extends AbstractDeformationNode {
         };
     }
 
-    private Vector3d defaultNormal(Vector3d axis) {
+    private @Nullable Vector3d defaultNormal(Vector3d axis) {
         Vector3d fallback = Math.abs(axis.y) < 0.9d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
-        fallback.sub(new Vector3d(axis).mul(fallback.dot(axis)));
-        return fallback.normalize();
+        double along = VectorUtils.safeDot(fallback, axis);
+        Vector3d projected = VectorUtils.safeSubtract(fallback, VectorUtils.safeScale(axis, along));
+        return VectorUtils.safeNormalize(projected);
     }
 
     private @Nullable Vector3d resolveBendNormal(Vector3d axis) {

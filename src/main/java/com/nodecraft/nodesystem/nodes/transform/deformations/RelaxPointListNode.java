@@ -22,7 +22,7 @@ import java.util.Map;
     effect = NodeEffect.PURE,
     id = "transform.deformations.relax_points",
     displayName = "Relax Point List",
-    description = "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed)",
+    description = "Laplacian-style smoothing using k nearest neighbors",
     category = "transform.deformations",
     order = 7
 )
@@ -59,7 +59,7 @@ public class RelaxPointListNode extends AbstractDeformationNode {
 
     @Override
     public String getDescription() {
-        return "Laplacian-style smoothing using k nearest neighbors (uniform grid hash for speed)";
+        return "Laplacian-style smoothing using k nearest neighbors";
     }
 
     @Override
@@ -103,10 +103,11 @@ public class RelaxPointListNode extends AbstractDeformationNode {
         int[] idxBuf = new int[k];
         List<Vector3d> current = new ArrayList<>(pts);
         for (int it = 0; it < iters; it++) {
+            PointListKnn3d.Index index = PointListKnn3d.Index.build(current);
             List<Vector3d> next = new ArrayList<>(current.size());
             for (int i = 0; i < current.size(); i++) {
                 Vector3d p = current.get(i);
-                PointListKnn3d.fillKNearest(current, i, k, idxBuf);
+                index.queryKNearest(i, k, idxBuf);
                 Vector3d centroid = new Vector3d();
                 int used = 0;
                 for (int t = 0; t < k; t++) {

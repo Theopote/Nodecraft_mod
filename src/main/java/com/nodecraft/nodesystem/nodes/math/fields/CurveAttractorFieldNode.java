@@ -76,7 +76,10 @@ public class CurveAttractorFieldNode extends BaseNode {
 
         VectorFieldData field = (point, dest) -> {
             Vector3d closest = new Vector3d();
-            PolylineClosestPoint3d.closestPoint(polyline, point, closest);
+            if (!PolylineClosestPoint3d.closestPoint(polyline, point, closest)) {
+                dest.zero();
+                return;
+            }
             dest.set(closest).sub(point);
             double lenSq = dest.lengthSquared();
             if (lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {

@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 
 /**
@@ -32,10 +33,11 @@ public class TwistedSdfData implements SignedDistanceFieldData {
         if (source == null) {
             throw new IllegalArgumentException("Twisted SDF requires a source field");
         }
-        if (axisOrigin == null || !isFinite(axisOrigin)) {
+        if (axisOrigin == null || !VectorUtils.isFinite(axisOrigin)) {
             throw new IllegalArgumentException("Twisted SDF requires a finite axis origin");
         }
-        if (axisDirection == null || !isFinite(axisDirection) || axisDirection.lengthSquared() <= EPS) {
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        if (axis == null) {
             throw new IllegalArgumentException("Twisted SDF requires a non-zero finite axis direction");
         }
         if (!Double.isFinite(angleDegrees)) {
@@ -47,7 +49,7 @@ public class TwistedSdfData implements SignedDistanceFieldData {
 
         this.source = source;
         this.axisOrigin = new Vector3d(axisOrigin);
-        this.axisDirection = new Vector3d(axisDirection).normalize();
+        this.axisDirection = axis;
         this.angleRadians = Math.toRadians(angleDegrees);
         this.twistLength = twistLength;
         this.clampMode = clampMode == null ? ClampMode.CLAMP : clampMode;
@@ -109,10 +111,6 @@ public class TwistedSdfData implements SignedDistanceFieldData {
             case REPEAT -> normalizedDistance - Math.floor(normalizedDistance);
             case UNBOUNDED -> normalizedDistance;
         };
-    }
-
-    private static boolean isFinite(Vector3d value) {
-        return Double.isFinite(value.x) && Double.isFinite(value.y) && Double.isFinite(value.z);
     }
 
     private static Vector3d rotateAroundAxis(Vector3d vector, Vector3d axis, double angle) {

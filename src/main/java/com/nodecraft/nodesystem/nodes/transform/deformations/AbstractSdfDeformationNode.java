@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Shared SDF source resolution and bounds pairing for Twist/Bend SDF nodes (Graph V78).
+ * Shared SDF source resolution and bounds pairing for Twist/Bend SDF nodes.
  */
 abstract class AbstractSdfDeformationNode extends AbstractDeformationNode {
 
@@ -62,6 +62,9 @@ abstract class AbstractSdfDeformationNode extends AbstractDeformationNode {
                 return null;
             }
             bounds = AxisAlignedBounds.from(estimated.min(), estimated.max()).expanded(boundsPadding);
+            if (bounds == null || !bounds.isValid()) {
+                return null;
+            }
         }
         return new SdfSource(sdf, bounds.min, bounds.max);
     }
@@ -133,6 +136,12 @@ abstract class AbstractSdfDeformationNode extends AbstractDeformationNode {
         }
 
         AxisAlignedBounds expanded(double padding) {
+            if (!Double.isFinite(padding)) {
+                return new AxisAlignedBounds(
+                    new Vector3d(Double.NaN, Double.NaN, Double.NaN),
+                    new Vector3d(Double.NaN, Double.NaN, Double.NaN)
+                );
+            }
             return new AxisAlignedBounds(
                 new Vector3d(min).sub(padding, padding, padding),
                 new Vector3d(max).add(padding, padding, padding)

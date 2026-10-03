@@ -100,6 +100,11 @@ public class TwistSdfNode extends AbstractSdfDeformationNode {
             failSdfOutputs("Axis direction must be non-zero");
             return;
         }
+        Vector3d axis = VectorUtils.safeNormalize(axisDirection);
+        if (axis == null) {
+            failSdfOutputs("Axis direction must be a finite non-zero vector");
+            return;
+        }
         if (resolvedAngle == null) {
             failSdfOutputs("Invalid angle");
             return;
@@ -109,7 +114,6 @@ public class TwistSdfNode extends AbstractSdfDeformationNode {
             return;
         }
 
-        Vector3d axis = new Vector3d(axisDirection).normalize();
         TwistedSdfData twisted = new TwistedSdfData(
             source.sdf(),
             axisOrigin,
@@ -165,21 +169,23 @@ public class TwistSdfNode extends AbstractSdfDeformationNode {
         AxisAlignedBounds bounds = null;
         int samples = GenerationLimits.clampBoundsSamples(samplesPerAxis);
         for (int ix = 0; ix < samples; ix++) {
-            double x = lerp(sourceMin.x, sourceMax.x, ix / (double) (samples - 1));
+            double x = VectorUtils.safeScalarLerp(sourceMin.x, sourceMax.x, ix / (double) (samples - 1));
             for (int iy = 0; iy < samples; iy++) {
-                double y = lerp(sourceMin.y, sourceMax.y, iy / (double) (samples - 1));
+                double y = VectorUtils.safeScalarLerp(sourceMin.y, sourceMax.y, iy / (double) (samples - 1));
                 for (int iz = 0; iz < samples; iz++) {
-                    double z = lerp(sourceMin.z, sourceMax.z, iz / (double) (samples - 1));
+                    double z = VectorUtils.safeScalarLerp(sourceMin.z, sourceMax.z, iz / (double) (samples - 1));
+                    if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z)) {
+                        return null;
+                    }
                     Vector3d p = twisted.twistPoint(new Vector3d(x, y, z));
+                    if (!VectorUtils.isFinite(p)) {
+                        return null;
+                    }
                     bounds = bounds == null ? AxisAlignedBounds.from(p, p) : bounds.include(p);
                 }
             }
         }
         return bounds == null ? null : bounds.expanded(padding);
-    }
-
-    private static double lerp(double a, double b, double t) {
-        return a + (b - a) * t;
     }
 
     public double getAngleDegrees() {

@@ -10,7 +10,8 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
-import com.nodecraft.nodesystem.util.SpatialTolerance;
+import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -111,8 +112,16 @@ public class CurveAttractPointListNode extends AbstractDeformationNode {
         Vector3d closest = new Vector3d();
         Vector3d tangent = new Vector3d();
         for (Vector3d p : pointsInput) {
-            boolean tangentResolved = closestPointAndRealTangent(poly, p, closest, tangent);
-            double d = p.distance(closest);
+            if (!PolylineClosestPoint3d.closestPointAndTangent(poly, p, closest, tangent)) {
+                failPointList("Failed to project onto path");
+                return;
+            }
+            boolean tangentResolved = VectorUtils.isNonZero(tangent);
+            double d = PointUtils.safeDistance(p, closest);
+            if (!Double.isFinite(d)) {
+                failPointList("Failed to project onto path");
+                return;
+            }
             if (d >= rad) {
                 out.add(new Vector3d(p));
                 continue;
@@ -140,48 +149,6 @@ public class CurveAttractPointListNode extends AbstractDeformationNode {
         }
 
         commitPointList(out);
-    }
-
-    /**
-     * Closest point on polyline; writes a real unit tangent only when the winning segment is non-degenerate.
-     * @return true when {@code destTangent} is a usable path direction (no world-+X fallback)
-     */
-    private static boolean closestPointAndRealTangent(
-            List<Vector3d> polyline,
-            Vector3d query,
-            Vector3d destClosest,
-            Vector3d destTangent
-    ) {
-        double bestD2 = Double.POSITIVE_INFINITY;
-        Vector3d best = new Vector3d(polyline.getFirst());
-        Vector3d bestTan = null;
-        for (int i = 0; i < polyline.size() - 1; i++) {
-            Vector3d a = polyline.get(i);
-            Vector3d b = polyline.get(i + 1);
-            Vector3d ab = new Vector3d(b).sub(a);
-            double ab2 = ab.lengthSquared();
-            double t = ab2 < SpatialTolerance.EPS_SQ
-                    ? 0.0d
-                    : Math.max(0.0d, Math.min(1.0d, new Vector3d(query).sub(a).dot(ab) / ab2));
-            Vector3d cand = new Vector3d(a).fma(t, ab);
-            double d2 = cand.distanceSquared(query);
-            if (d2 < bestD2) {
-                bestD2 = d2;
-                best.set(cand);
-                if (ab2 >= SpatialTolerance.EPS_SQ) {
-                    bestTan = new Vector3d(ab).normalize();
-                } else {
-                    bestTan = null;
-                }
-            }
-        }
-        destClosest.set(best);
-        if (bestTan != null) {
-            destTangent.set(bestTan);
-            return true;
-        }
-        destTangent.set(0, 0, 0);
-        return false;
     }
 
     @Override
