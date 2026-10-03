@@ -38,7 +38,7 @@ public class BentSdfData implements SignedDistanceFieldData {
         if (source == null) {
             throw new IllegalArgumentException("Bent SDF requires a source field");
         }
-        if (axisOrigin == null || !VectorUtils.isFinite(axisOrigin)) {
+        if (!VectorUtils.isFinite(axisOrigin)) {
             throw new IllegalArgumentException("Bent SDF requires a finite axis origin");
         }
         Vector3d axis = VectorUtils.safeNormalize(axisDirection);

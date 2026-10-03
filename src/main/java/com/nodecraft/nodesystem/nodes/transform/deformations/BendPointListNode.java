@@ -234,7 +234,9 @@ public class BendPointListNode extends AbstractDeformationNode {
                     if (!VectorUtils.isNonZero(custom)) {
                         yield null;
                     }
-                    yield new Vector3d(custom);
+                    if (custom != null) {
+                        yield new Vector3d(custom);
+                    }
                 }
                 yield defaultNormal(axis);
             }

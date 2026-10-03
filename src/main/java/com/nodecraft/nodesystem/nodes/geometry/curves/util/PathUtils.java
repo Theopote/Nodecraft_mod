@@ -83,8 +83,8 @@ public final class PathUtils {
         if (curveObj instanceof Curve curve) {
             return verticesFromCurve(curve);
         }
-        if (polyObj instanceof PolylineData poly) {
-            return toVector3dList(poly.points());
+        if (polyObj instanceof PolylineData(List<Vec3d> points)) {
+            return toVector3dList(points);
         }
         if (lineObj instanceof LineData line) {
             return verticesFromLine(line);
@@ -547,8 +547,14 @@ public final class PathUtils {
     }
 
     private static List<Vector3d> verticesFromLine(@Nullable LineData line) {
-        Vec3d a = line.start();
-        Vec3d b = line.end();
+        Vec3d a = null;
+        if (line != null) {
+            a = line.start();
+        }
+        Vec3d b = null;
+        if (line != null) {
+            b = line.end();
+        }
         return List.of(new Vector3d(a.x, a.y, a.z), new Vector3d(b.x, b.y, b.z));
     }
 

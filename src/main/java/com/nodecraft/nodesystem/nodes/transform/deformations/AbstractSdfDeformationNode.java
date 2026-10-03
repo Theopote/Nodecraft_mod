@@ -62,7 +62,7 @@ abstract class AbstractSdfDeformationNode extends AbstractDeformationNode {
                 return null;
             }
             bounds = AxisAlignedBounds.from(estimated.min(), estimated.max()).expanded(boundsPadding);
-            if (bounds == null || !bounds.isValid()) {
+            if (!bounds.isValid()) {
                 return null;
             }
         }

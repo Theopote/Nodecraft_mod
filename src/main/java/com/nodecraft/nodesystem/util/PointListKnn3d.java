@@ -4,6 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -65,7 +66,7 @@ public final class PointListKnn3d {
                 if (Double.isFinite(distance)) {
                     if (worstFirst.size() < k) {
                         worstFirst.add(new Neighbor(node.pointIndex, distance));
-                    } else if (distance < worstFirst.peek().distance) {
+                    } else if (worstFirst.peek() != null && distance < worstFirst.peek().distance) {
                         worstFirst.poll();
                         worstFirst.add(new Neighbor(node.pointIndex, distance));
                     }
@@ -79,7 +80,7 @@ public final class PointListKnn3d {
             search(nearer, query, k, worstFirst);
 
             double planeDist = Math.abs(queryCoord - splitCoord);
-            if (Double.isFinite(planeDist) && (worstFirst.size() < k || planeDist < worstFirst.peek().distance)) {
+            if (worstFirst.peek() != null && Double.isFinite(planeDist) && (worstFirst.size() < k || planeDist < worstFirst.peek().distance)) {
                 search(farther, query, k, worstFirst);
             }
         }
@@ -94,7 +95,7 @@ public final class PointListKnn3d {
             for (int i = 0; i < count; i++) {
                 slice[i] = ids[lo + i];
             }
-            Arrays.sort(slice, (a, b) -> Double.compare(coord(points.get(a), axis), coord(points.get(b), axis)));
+            Arrays.sort(slice, Comparator.comparingDouble(a -> coord(points.get(a), axis)));
             for (int i = 0; i < count; i++) {
                 ids[lo + i] = slice[i];
             }

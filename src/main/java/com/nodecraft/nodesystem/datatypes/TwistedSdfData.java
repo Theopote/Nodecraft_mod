@@ -33,7 +33,7 @@ public class TwistedSdfData implements SignedDistanceFieldData {
         if (source == null) {
             throw new IllegalArgumentException("Twisted SDF requires a source field");
         }
-        if (axisOrigin == null || !VectorUtils.isFinite(axisOrigin)) {
+        if (!VectorUtils.isFinite(axisOrigin)) {
             throw new IllegalArgumentException("Twisted SDF requires a finite axis origin");
         }
         Vector3d axis = VectorUtils.safeNormalize(axisDirection);
