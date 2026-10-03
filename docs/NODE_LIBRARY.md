@@ -97,8 +97,8 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of inset window opening boxes on a box face | `WindowArrayNode` |
-| Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of inset door openings with placement frames | `DoorArrayNode` |
+| Window Array | `geometry.architectural_primitives.window_array` | Generates a rectangular array of window opening cutters centered on a box face | `WindowArrayNode` |
+| Door Array | `geometry.architectural_primitives.door_array` | Generates a rectangular array of door opening cutters centered on a box face | `DoorArrayNode` |
 | Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns with base/top points and placement frames | `ColumnGridNode` |
 | Railing | `geometry.architectural_primitives.railing` | Generates a railing or balustrade along a joined offset path (line or polyline) | `RailingNode` |
 | Roof Base | `geometry.architectural_primitives.roof_base` | Generates a core roof (flat, shed, or gable) from a box face footprint | `RoofBaseNode` |

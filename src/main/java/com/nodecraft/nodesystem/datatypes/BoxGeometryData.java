@@ -40,6 +40,7 @@ public class BoxGeometryData implements GeometryData {
         "Front"
     };
 
+    /** Outward unit normals in local box space (Bottom −Y … Front +Z). */
     private static final Vector3d[] FACE_LOCAL_NORMALS = {
         new Vector3d(0.0d, -1.0d, 0.0d),
         new Vector3d(0.0d, 1.0d, 0.0d),

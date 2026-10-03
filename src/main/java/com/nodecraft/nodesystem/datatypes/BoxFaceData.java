@@ -8,6 +8,9 @@ import java.util.Objects;
 
 /**
  * Represents a single face of a box geometry with corner indices, world-space corners and derived plane data.
+ *
+ * <p>{@link #getNormal()} is always the <strong>outward</strong> face normal (leaving the box).
+ * Architectural cutters must not treat {@code +normal} as “into the host”.
  */
 public final class BoxFaceData {
     private final int index;

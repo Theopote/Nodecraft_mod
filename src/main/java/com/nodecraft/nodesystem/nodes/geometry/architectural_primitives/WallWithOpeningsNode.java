@@ -22,6 +22,11 @@ import java.util.UUID;
 /**
  * Generates a solid wall slab and a separate opening-volume set.
  * <p>
+ * Host slab grows on the <strong>+face normal (outward)</strong> side of the
+ * footprint face. That is this node's host-side rule — not a redefinition of
+ * {@code BoxFace.normal}. Window/Door Array cutters are independent and centered
+ * on the face plane.
+ * <p>
  * Does <strong>not</strong> boolean-subtract openings into the wall. Connect
  * {@code output_geometry} and {@code output_openings} to a Difference node
  * when a cut wall is required.
@@ -190,6 +195,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
     }
 
     private BoxGeometryData createWall(ArchitecturalPrimitiveSupport.FaceFrame frame, double wallThickness) {
+        // Host slab occupies 0…thickness along +outward normal from the face plane.
         Vector3d center = new Vector3d(frame.center()).fma(wallThickness / 2.0d, frame.zAxis());
         Vector3d halfExtents = new Vector3d(frame.width() / 2.0d, frame.height() / 2.0d, wallThickness / 2.0d);
         return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());

@@ -12,20 +12,19 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * Generates a rectangular array of inset door openings with placement frames.
+ * Generates a rectangular array of door opening cutters centered on a box face.
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.door_array",
     displayName = "Door Array",
-    description = "Generates a rectangular array of inset door openings with placement frames",
+    description = "Generates a rectangular array of door opening cutters centered on a box face",
     category = "geometry.architectural_primitives",
     order = 1
 )
@@ -62,7 +61,7 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_DOOR_HEIGHT_ID, "Door Height", "Door opening height in blocks/meters", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Outer margin from the face edge to the first opening", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth",
-            "Inset depth of each opening into the host solid along +face normal", NodeDataType.DOUBLE, this));
+            "Cutter thickness across the face plane (centered; ±Depth/2 along the outward normal)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_LAYOUT_MODE_ID, "Layout Mode",
             "Spacing mode: distribute, fixed_gap, or bay", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_HORIZONTAL_GAP_ID, "Horizontal Gap",
@@ -74,7 +73,7 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
             "Horizontal center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_OPENINGS_ID, "Openings",
-            "Opening boxes for Difference (cutters along +face normal into the host)", NodeDataType.GEOMETRY, this));
+            "Opening boxes for Difference (centered on the face; thickness = Depth)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each door center (face-aligned)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Door center points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of door opening boxes created", NodeDataType.INTEGER, this));
@@ -84,7 +83,7 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
 
     @Override
     public String getDescription() {
-        return "Generates a rectangular array of inset door openings with placement frames";
+        return "Generates a rectangular array of door opening cutters centered on a box face";
     }
 
     @Override
@@ -190,13 +189,13 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     }
 
     private @Nullable List<BoxGeometryData> buildOpeningBoxes(FaceArrayLayout layout, double depth) {
-        // Face normal (+zAxis) points into the host solid — same contract as WallWithOpenings.
-        return buildFaceArray(layout, placement -> {
-            Vector3d center = placement.centerOnFace().fma(depth / 2.0d, layout.frame().zAxis());
-            Vector3d halfExtents = new Vector3d(layout.elementWidth() / 2.0d, layout.elementHeight() / 2.0d, depth / 2.0d);
-            return ArchitecturalPrimitiveSupport.createOrientedBox(
-                center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
-        });
+        return buildFaceArray(layout, placement -> ArchitecturalPrimitiveSupport.createCenteredFaceOpening(
+            placement.centerOnFace(),
+            layout.frame(),
+            layout.elementWidth(),
+            layout.elementHeight(),
+            depth
+        ));
     }
 
     private void writeInvalid(String error) {

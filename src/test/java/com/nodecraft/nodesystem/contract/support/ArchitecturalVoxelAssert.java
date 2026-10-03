@@ -123,6 +123,27 @@ public final class ArchitecturalVoxelAssert {
         return solid.contains(blockAt(base));
     }
 
+    public static void assertOpeningCutsThroughThickness(
+        Set<BlockPos> solid,
+        Vector3d openingCenterOnFace,
+        Vector3d outwardNormal,
+        double halfDepth
+    ) {
+        Vector3d normal = new Vector3d(outwardNormal);
+        if (normal.lengthSquared() > 1.0e-12d) {
+            normal.normalize();
+        } else {
+            normal.zero();
+        }
+        double[] offsets = {halfDepth * 0.5d, 0.0d, -halfDepth * 0.5d};
+        String[] labels = {"outward half", "face plane", "inward half"};
+        for (int i = 0; i < offsets.length; i++) {
+            Vector3d sample = new Vector3d(openingCenterOnFace).fma(offsets[i], normal);
+            BlockPos pos = blockAt(sample);
+            assertFalse(solid.contains(pos), labels[i] + " of opening should be air at " + pos);
+        }
+    }
+
     public static void assertFewerBlocksThan(Set<BlockPos> cutWall, Set<BlockPos> solidWall) {
         assertTrue(cutWall.size() < solidWall.size(),
             "cut wall should have fewer voxels than uncut wall: cut=" + cutWall.size()

@@ -44,6 +44,7 @@ public final class ArchitecturalPrimitiveSupport {
             return null;
         }
         zAxis.normalize();
+        // FaceFrame.zAxis matches BoxFace.normal: always outward (leaving the box).
         if (zAxis.dot(face.getNormal()) < 0.0d) {
             zAxis.negate();
         }
@@ -130,6 +131,30 @@ public final class ArchitecturalPrimitiveSupport {
         return new BoxGeometryData(center, halfExtents, createOrientation(xAxis, yAxis, zAxis), true);
     }
 
+    /**
+     * Difference cutter for a face opening: thickness {@code depth} along the outward
+     * face normal, <strong>centered on the face plane</strong> (extents {@code ±depth/2}).
+     */
+    public static BoxGeometryData createCenteredFaceOpening(
+        Vector3d centerOnFace,
+        FaceFrame frame,
+        double width,
+        double height,
+        double depth
+    ) {
+        Vector3d halfExtents = new Vector3d(width / 2.0d, height / 2.0d, depth / 2.0d);
+        return createOrientedBox(
+            new Vector3d(centerOnFace),
+            halfExtents,
+            frame.xAxis(),
+            frame.yAxis(),
+            frame.zAxis()
+        );
+    }
+
+    /**
+     * @param zAxis outward face normal (same as {@link BoxFaceData#getNormal()})
+     */
     public record FaceFrame(
         Vector3d center,
         Vector3d xAxis,

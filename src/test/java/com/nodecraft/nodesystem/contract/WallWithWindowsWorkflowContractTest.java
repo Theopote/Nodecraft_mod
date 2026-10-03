@@ -74,7 +74,7 @@ class WallWithWindowsWorkflowContractTest {
         windows.setInput("input_window_width", 1.2d);
         windows.setInput("input_window_height", 1.0d);
         windows.setInput("input_margin", 1.0d);
-        windows.setInput("input_depth", 0.5d);
+        windows.setInput("input_depth", 0.8d);
         windows.processNode(null);
         assertEquals(Boolean.TRUE, windows.getOutput("output_valid"));
         assertEquals(2, windows.getOutput("output_count"));
@@ -88,7 +88,7 @@ class WallWithWindowsWorkflowContractTest {
         assertTrue(openingBlocks.size() > 0, "openings must produce voxels");
         assertTrue(setsOverlap(ArchitecturalVoxelAssert.toSolidSet(solidWall),
                 ArchitecturalVoxelAssert.toSolidSet(openingBlocks)),
-            "Window Array openings (+face normal) must spatially overlap the wall slab");
+            "Window Array openings (centered on the face plane) must spatially overlap the wall slab");
 
         BaseNode difference = (BaseNode) registry.createNodeInstance("geometry.boolean.difference");
         difference.setInput("input_base", wallGeom);
@@ -132,7 +132,7 @@ class WallWithWindowsWorkflowContractTest {
         windows.setInput("input_rows", 1);
         windows.setInput("input_window_width", 1.2d);
         windows.setInput("input_window_height", 1.4d);
-        windows.setInput("input_depth", 0.5d);
+        windows.setInput("input_depth", 0.8d);
         windows.processNode(null);
 
         WindowFrameProbe frame = new WindowFrameProbe();

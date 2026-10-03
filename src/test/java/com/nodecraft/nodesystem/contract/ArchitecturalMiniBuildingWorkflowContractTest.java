@@ -74,7 +74,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         BoxFaceData floorFace = requireFace(box, "Bottom");
         BoxFaceData roofFace = requireFace(box, "Top");
 
-        // Dedicated thin wall volume so Front Face → +Z solid matches Window Array openings.
+        // Dedicated thin wall volume: WallWithOpenings host slab on +outward side of Front.
         BaseNode frontVolume = (BaseNode) registry.createNodeInstance("geometry.primitives.box_from_corner_size");
         frontVolume.setNodeState(java.util.Map.of(
             "cornerX", 0.0d,
@@ -109,7 +109,8 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         assertEquals(Boolean.TRUE, walls.getOutput("output_valid"));
         GeometryData perimeterWalls = assertInstanceOf(GeometryData.class, walls.getOutput("output_geometry"));
 
-        // Front host wall uses the same Face→+Z solid contract as Window Array openings.
+        // Front host wall occupies +outward normal from the face (WallWithOpenings host-side rule).
+        // Window Array cutters are centered on the same face plane.
         WallWithOpeningsNode frontWall = new WallWithOpeningsNode();
         frontWall.setInput("input_face", frontFace);
         frontWall.setInput("input_columns", 1);
@@ -135,7 +136,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         windows.setInput("input_window_width", 1.5d);
         windows.setInput("input_window_height", 1.2d);
         windows.setInput("input_margin", 0.4d);
-        windows.setInput("input_depth", 0.5d);
+        windows.setInput("input_depth", 0.8d);
         windows.processNode(null);
         assertEquals(Boolean.TRUE, windows.getOutput("output_valid"));
         assertEquals(2, windows.getOutput("output_count"));
@@ -210,7 +211,7 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         ArchitecturalVoxelAssert.assertFewerBlocksThan(cutSolid, fullSolid);
         ArchitecturalVoxelAssert.assertOpeningCentersEmpty(cutSolid, centers);
         ArchitecturalVoxelAssert.assertPierBetweenWindowsHasBlock(cutSolid, centers.get(0), centers.get(1), faceNormal);
-        // Sill/lintel covered by WallWithWindowsWorkflowContractTest on the same Face→+Z host.
+        // Sill/lintel covered by WallWithWindowsWorkflowContractTest.
 
         PreviewGeometryNode preview = (PreviewGeometryNode) registry.createNodeInstance("output.preview.preview_geometry");
         preview.setInput("input_geometry", building);
