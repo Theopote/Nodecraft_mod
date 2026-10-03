@@ -15,7 +15,6 @@ import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -28,6 +27,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,7 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Pattern Linear Language v2 (Graph V79).
+ * Language fence for pattern.linear: four canonical nodes, Valid/Error, typed arrays.
  */
 class PatternLinearLanguageV2ContractTest {
 
@@ -73,13 +73,6 @@ class PatternLinearLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV79() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -156,6 +149,50 @@ class PatternLinearLanguageV2ContractTest {
         linear.processNode(null);
         assertEquals(Boolean.FALSE, linear.getOutput("output_valid"));
         assertEquals(0, linear.getOutput("output_count"));
+    }
+
+    @Test
+    void linearArrayDistanceMustBePositiveWhenCountGreaterThanOne() {
+        BaseNode zero = node("pattern.linear.linear_array");
+        zero.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        zero.setNodeState(Map.of("distance", 0.0d, "count", 2));
+        zero.processNode(null);
+        assertEquals(Boolean.FALSE, zero.getOutput("output_valid"));
+        assertTrue(String.valueOf(zero.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
+
+        BaseNode negative = node("pattern.linear.linear_array");
+        negative.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        negative.setNodeState(Map.of("distance", -2.0d, "count", 2));
+        negative.processNode(null);
+        assertEquals(Boolean.FALSE, negative.getOutput("output_valid"));
+        assertTrue(String.valueOf(negative.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
+    }
+
+    @Test
+    void linearArrayCountOneIgnoresDistance() {
+        BaseNode linear = node("pattern.linear.linear_array");
+        linear.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        linear.setNodeState(Map.of("distance", 0.0d, "count", 1));
+        linear.processNode(null);
+        assertEquals(Boolean.TRUE, linear.getOutput("output_valid"));
+        assertEquals(1, linear.getOutput("output_count"));
+    }
+
+    @Test
+    void linearArrayHugeFiniteDirectionFailsClosedOrStaysFinite() {
+        LinearArrayProbe probe = new LinearArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        probe.setNodeState(Map.of("distance", 1.0d, "count", 2));
+        probe.connectInput("input_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_direction", new Vector3d(1e308d, 1e308d, 1e308d));
+        probe.processNode(null);
+        if (Boolean.TRUE.equals(probe.getOutput("output_valid"))) {
+            assertEquals(2, probe.getOutput("output_count"));
+            assertNotNull(probe.getOutput("output_geometry"));
+        } else {
+            assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+            assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("direction"));
+        }
     }
 
     @Test
@@ -355,6 +392,45 @@ class PatternLinearLanguageV2ContractTest {
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("budget")
             || String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("spacing"));
+    }
+
+    @Test
+    @Timeout(90)
+    void curveArrayClosedSpacingAtInstanceBudgetSucceeds() {
+        CurveArrayProbe probe = new CurveArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 0.5d));
+        double side = GenerationLimits.MAX_GEOMETRY_INSTANCES / 4.0d;
+        probe.setInput("input_path", new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(side, 0, 0),
+            new Vec3d(side, side, 0),
+            new Vec3d(0, side, 0),
+            new Vec3d(0, 0, 0)
+        )));
+        probe.connectInput("input_spacing", NodeDataType.DOUBLE);
+        probe.putRawInput("input_spacing", 1.0d);
+        probe.setNodeState(Map.of("orientToPath", false, "includeEnds", true));
+        probe.processNode(null);
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"), String.valueOf(probe.getOutput("output_error")));
+        assertEquals(GenerationLimits.MAX_GEOMETRY_INSTANCES, probe.getOutput("output_count"));
+    }
+
+    @Test
+    void curveArrayHugeUpVectorFailsClosedOrStaysFinite() {
+        CurveArrayProbe probe = new CurveArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 0.5d));
+        probe.setInput("input_path", new PolylineData(List.of(new Vec3d(0, 0, 0), new Vec3d(10, 0, 0))));
+        probe.connectInput("input_count", NodeDataType.INTEGER);
+        probe.putRawInput("input_count", 2);
+        probe.connectInput("input_up_vector", NodeDataType.VECTOR);
+        probe.putRawInput("input_up_vector", new Vector3d(1e308d, 1e308d, 1e308d));
+        probe.processNode(null);
+        if (Boolean.TRUE.equals(probe.getOutput("output_valid"))) {
+            assertEquals(2, probe.getOutput("output_count"));
+        } else {
+            assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+            assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("up"));
+        }
     }
 
     @Test

@@ -95,6 +95,10 @@ public class LinearArrayNode extends AbstractPatternLinearNode {
             writeFail("Count must be >= 1");
             return;
         }
+        if (resolvedCount > 1 && !(resolvedDistance > 0.0d)) {
+            writeFail("Distance must be > 0");
+            return;
+        }
         if (resolvedCount > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
             writeFail("Count exceeds MAX_GEOMETRY_INSTANCES");
             return;

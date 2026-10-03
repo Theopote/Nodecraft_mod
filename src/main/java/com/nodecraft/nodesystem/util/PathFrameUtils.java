@@ -23,8 +23,6 @@ import java.util.List;
  */
 public final class PathFrameUtils {
 
-    public static final double EPS = 1.0e-9d;
-
     private PathFrameUtils() {
     }
 
@@ -112,14 +110,14 @@ public final class PathFrameUtils {
      * When Up ∥ tangent, falls back to a least-aligned cardinal (tolerant).
      */
     public static Frame initialFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
-        Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
+        Vector3d zAxis = normalizeOr(tangent, null);
         if (zAxis == null) {
             return Frame.identity(origin);
         }
 
         Vector3d reference = null;
         if (upHint != null) {
-            Vector3d up = normalizeOr(new Vector3d(upHint), null);
+            Vector3d up = normalizeOr(upHint, null);
             if (up != null) {
                 reference = up;
             }
@@ -128,21 +126,19 @@ public final class PathFrameUtils {
             reference = leastAlignedCardinal(zAxis);
         }
 
-        Vector3d xAxis = new Vector3d(reference).cross(zAxis);
-        if (xAxis.lengthSquared() <= EPS) {
+        Vector3d xAxis = VectorUtils.safeNormalize(new Vector3d(reference).cross(zAxis));
+        if (xAxis == null) {
             reference = leastAlignedCardinal(zAxis);
-            xAxis = new Vector3d(reference).cross(zAxis);
+            xAxis = VectorUtils.safeNormalize(new Vector3d(reference).cross(zAxis));
         }
-        if (xAxis.lengthSquared() <= EPS) {
+        if (xAxis == null) {
             return Frame.identity(origin);
         }
-        xAxis.normalize();
 
-        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPS) {
+        Vector3d yAxis = VectorUtils.safeNormalize(new Vector3d(zAxis).cross(xAxis));
+        if (yAxis == null) {
             return Frame.identity(origin);
         }
-        yAxis.normalize();
 
         return new Frame(new Vector3d(origin), xAxis, yAxis, zAxis);
     }
@@ -154,24 +150,22 @@ public final class PathFrameUtils {
      * @return null when Up is missing, zero, or parallel to tangent
      */
     public static @Nullable Frame initialFrameRequireUp(Vector3d origin, Vector3d tangent, Vector3d upHint) {
-        Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
+        Vector3d zAxis = normalizeOr(tangent, null);
         if (zAxis == null) {
             return null;
         }
-        Vector3d up = normalizeOr(new Vector3d(upHint), null);
+        Vector3d up = normalizeOr(upHint, null);
         if (up == null) {
             return null;
         }
-        Vector3d xAxis = new Vector3d(up).cross(zAxis);
-        if (xAxis.lengthSquared() <= EPS) {
+        Vector3d xAxis = VectorUtils.safeNormalize(new Vector3d(up).cross(zAxis));
+        if (xAxis == null) {
             return null;
         }
-        xAxis.normalize();
-        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPS) {
+        Vector3d yAxis = VectorUtils.safeNormalize(new Vector3d(zAxis).cross(xAxis));
+        if (yAxis == null) {
             return null;
         }
-        yAxis.normalize();
         return new Frame(new Vector3d(origin), xAxis, yAxis, zAxis);
     }
 
@@ -251,7 +245,7 @@ public final class PathFrameUtils {
         Frame last = frames.get(n - 1);
         Frame closeProbe = transport(last, first.origin(), first.zAxis());
         double error = signedAngleAboutAxis(first.xAxis(), closeProbe.xAxis(), first.zAxis());
-        if (!Double.isFinite(error) || Math.abs(error) <= EPS) {
+        if (!Double.isFinite(error) || Math.abs(error) <= SpatialTolerance.EPS) {
             return frames;
         }
 
@@ -262,7 +256,7 @@ public final class PathFrameUtils {
             total += origins.get(i).distance(origins.get(i - 1));
             arc[i] = total;
         }
-        if (total <= EPS) {
+        if (total <= SpatialTolerance.EPS) {
             return frames;
         }
 
@@ -275,23 +269,20 @@ public final class PathFrameUtils {
     }
 
     private static Frame rotateSectionAboutTangent(Frame frame, double angleRadians) {
-        if (Math.abs(angleRadians) <= EPS) {
+        if (Math.abs(angleRadians) <= SpatialTolerance.EPS) {
             return frame;
         }
         Vector3d z = frame.zAxis();
         Vector3d x = rotateAroundUnitAxis(frame.xAxis(), z, angleRadians);
-        Vector3d y = rotateAroundUnitAxis(frame.yAxis(), z, angleRadians);
-        // Re-orthonormalize
         x.sub(new Vector3d(z).mul(x.dot(z)));
-        if (x.lengthSquared() <= EPS) {
+        x = VectorUtils.safeNormalize(x);
+        if (x == null) {
             return frame;
         }
-        x.normalize();
-        y = new Vector3d(z).cross(x);
-        if (y.lengthSquared() <= EPS) {
+        Vector3d y = VectorUtils.safeNormalize(new Vector3d(z).cross(x));
+        if (y == null) {
             return frame;
         }
-        y.normalize();
         return new Frame(new Vector3d(frame.origin()), x, y, new Vector3d(z));
     }
 
@@ -303,11 +294,11 @@ public final class PathFrameUtils {
         a.sub(new Vector3d(axis).mul(a.dot(axis)));
         Vector3d b = new Vector3d(to);
         b.sub(new Vector3d(axis).mul(b.dot(axis)));
-        if (a.lengthSquared() <= EPS || b.lengthSquared() <= EPS) {
+        a = VectorUtils.safeNormalize(a);
+        b = VectorUtils.safeNormalize(b);
+        if (a == null || b == null) {
             return 0.0d;
         }
-        a.normalize();
-        b.normalize();
         double sin = new Vector3d(a).cross(b).dot(axis);
         double cos = a.dot(b);
         return Math.atan2(sin, cos);
@@ -317,13 +308,17 @@ public final class PathFrameUtils {
      * Rotates the previous frame's section axes onto the new tangent with minimum rotation.
      */
     public static Frame transport(Frame previous, Vector3d origin, Vector3d tangent) {
-        Vector3d zAxis = normalizeOr(new Vector3d(tangent), null);
+        Vector3d zAxis = normalizeOr(tangent, null);
         if (zAxis == null) {
             return Frame.identity(origin);
         }
 
         Vector3d prevZ = previous.zAxis();
-        double cos = clamp(prevZ.dot(zAxis), -1.0d, 1.0d);
+        double rawCos = VectorUtils.safeDot(prevZ, zAxis);
+        if (!Double.isFinite(rawCos)) {
+            return Frame.identity(origin);
+        }
+        double cos = clamp(rawCos, -1.0d, 1.0d);
         Vector3d xAxis;
         Vector3d yAxis;
 
@@ -331,44 +326,44 @@ public final class PathFrameUtils {
             xAxis = new Vector3d(previous.xAxis());
             yAxis = new Vector3d(previous.yAxis());
         } else if (cos < -1.0d + 1.0e-8d) {
-            // 180°: rotate section axes around a stable perpendicular.
             Vector3d pivot = leastAlignedCardinal(prevZ);
-            Vector3d axis = new Vector3d(prevZ).cross(pivot);
-            if (axis.lengthSquared() <= EPS) {
+            Vector3d axis = VectorUtils.safeNormalize(new Vector3d(prevZ).cross(pivot));
+            if (axis == null) {
                 axis = new Vector3d(1.0d, 0.0d, 0.0d);
             }
-            axis.normalize();
             xAxis = rotateAroundUnitAxis(previous.xAxis(), axis, Math.PI);
             yAxis = rotateAroundUnitAxis(previous.yAxis(), axis, Math.PI);
         } else {
-            Vector3d axis = new Vector3d(prevZ).cross(zAxis);
-            if (axis.lengthSquared() <= EPS) {
+            Vector3d axis = VectorUtils.safeNormalize(new Vector3d(prevZ).cross(zAxis));
+            if (axis == null) {
                 xAxis = new Vector3d(previous.xAxis());
                 yAxis = new Vector3d(previous.yAxis());
             } else {
-                axis.normalize();
                 double angle = Math.acos(cos);
                 xAxis = rotateAroundUnitAxis(previous.xAxis(), axis, angle);
                 yAxis = rotateAroundUnitAxis(previous.yAxis(), axis, angle);
             }
         }
 
-        // Re-orthonormalize against the new tangent.
         xAxis.sub(new Vector3d(zAxis).mul(xAxis.dot(zAxis)));
-        if (xAxis.lengthSquared() <= EPS) {
+        Vector3d unitX = VectorUtils.safeNormalize(xAxis);
+        if (unitX == null) {
             yAxis.sub(new Vector3d(zAxis).mul(yAxis.dot(zAxis)));
-            if (yAxis.lengthSquared() <= EPS) {
+            Vector3d unitY = VectorUtils.safeNormalize(yAxis);
+            if (unitY == null) {
                 return initialFrame(origin, zAxis, null);
             }
-            yAxis.normalize();
-            xAxis = new Vector3d(yAxis).cross(zAxis).normalize();
+            yAxis = unitY;
+            xAxis = VectorUtils.safeNormalize(new Vector3d(yAxis).cross(zAxis));
+            if (xAxis == null) {
+                return initialFrame(origin, zAxis, null);
+            }
         } else {
-            xAxis.normalize();
-            yAxis = new Vector3d(zAxis).cross(xAxis);
-            if (yAxis.lengthSquared() <= EPS) {
+            xAxis = unitX;
+            yAxis = VectorUtils.safeNormalize(new Vector3d(zAxis).cross(xAxis));
+            if (yAxis == null) {
                 return initialFrame(origin, zAxis, null);
             }
-            yAxis.normalize();
         }
 
         return new Frame(new Vector3d(origin), xAxis, yAxis, zAxis);
@@ -460,10 +455,11 @@ public final class PathFrameUtils {
                 normal.z += (current.x - next.x) * (current.y + next.y);
             }
         }
-        if (normal.lengthSquared() <= EPS) {
+        Vector3d unitNormal = VectorUtils.safeNormalize(normal);
+        if (unitNormal == null) {
             normal.set(0.0d, 1.0d, 0.0d);
         } else {
-            normal.normalize();
+            normal = unitNormal;
         }
         return new PlaneData(new Vector3d(center), normal);
     }
@@ -491,10 +487,11 @@ public final class PathFrameUtils {
     }
 
     private static @Nullable Vector3d normalizeOr(Vector3d vector, @Nullable Vector3d fallback) {
-        if (vector.lengthSquared() <= EPS) {
-            return fallback == null ? null : new Vector3d(fallback);
+        Vector3d unit = VectorUtils.safeNormalize(vector);
+        if (unit != null) {
+            return unit;
         }
-        return vector.normalize();
+        return fallback == null ? null : new Vector3d(fallback);
     }
 
     private static double clamp(double value, double min, double max) {

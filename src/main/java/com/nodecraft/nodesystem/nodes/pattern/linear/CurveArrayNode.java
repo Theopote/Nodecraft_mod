@@ -16,6 +16,8 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryStructureUtils;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
+import com.nodecraft.nodesystem.util.PathSpacingPlan;
+import com.nodecraft.nodesystem.util.SpatialTolerance;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -34,8 +36,6 @@ import java.util.UUID;
     order = 3
 )
 public class CurveArrayNode extends AbstractPatternLinearNode {
-
-    private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Orient To Path", category = "Array", order = 1)
     private boolean orientToPath = true;
@@ -99,7 +99,7 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
         List<Vector3d> unique = closedVerts.vertices();
         boolean closed = closedVerts.closed();
         double[] cumulative = PathUtils.buildCumulative(unique, closed);
-        if (cumulative == null || cumulative[cumulative.length - 1] <= EPS) {
+        if (cumulative == null || cumulative[cumulative.length - 1] <= SpatialTolerance.EPS) {
             writeFail("Path length is zero");
             return;
         }
@@ -139,19 +139,13 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
 
         List<Vector3d> sampleOrigins = new ArrayList<>(distances.size());
         List<Vector3d> sampleTangents = new ArrayList<>(distances.size());
-        double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
         for (double distance : distances) {
             Vector3d origin = PathUtils.sampleAtDistance(unique, closed, cumulative, distance);
-            double backDistance = closed ? wrapDistance(distance - delta, total) : Math.max(0.0d, distance - delta);
-            double forwardDistance = closed ? wrapDistance(distance + delta, total) : Math.min(total, distance + delta);
-            Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
-            Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
-            Vector3d tangent = new Vector3d(next).sub(prev);
-            if (tangent.lengthSquared() <= EPS) {
+            Vector3d tangent = PathUtils.sampleTangentAtDistance(unique, closed, cumulative, distance);
+            if (tangent == null) {
                 writeFail("Degenerate tangent at requested sample");
                 return;
             }
-            tangent.normalize();
             sampleOrigins.add(origin);
             sampleTangents.add(tangent);
         }
@@ -241,19 +235,14 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
             writeFail("Spacing connected but invalid");
             return null;
         }
-        if (!(spacing > EPS)) {
+        if (!(spacing > 0.0d) || !Double.isFinite(spacing)) {
             writeFail("Spacing must be > 0 when Count is not connected");
             return null;
         }
 
-        long estimated = estimateSpacingInstanceCount(total, spacing);
-        if (estimated > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
-            writeFail("Spacing would exceed instance budget");
-            return null;
-        }
-
-        List<Double> distances = buildSpacingDistances(total, closed, spacing);
-        if (distances.size() > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
+        List<Double> distances = PathSpacingPlan.distances(
+            total, closed, includeEnds, spacing, GenerationLimits.MAX_GEOMETRY_INSTANCES);
+        if (distances == null || distances.isEmpty()) {
             writeFail("Spacing would exceed instance budget");
             return null;
         }
@@ -277,38 +266,6 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
             }
         }
         return distances;
-    }
-
-    private List<Double> buildSpacingDistances(double total, boolean closed, double spacing) {
-        List<Double> distances = new ArrayList<>();
-        for (double d = includeEnds ? 0.0d : spacing; d <= total + EPS; d += spacing) {
-            if (closed && d >= total - EPS) {
-                break;
-            }
-            distances.add(Math.min(d, total));
-            if (distances.size() > GenerationLimits.MAX_GEOMETRY_INSTANCES) {
-                break;
-            }
-        }
-        if (!closed && includeEnds
-            && (distances.isEmpty() || distances.getLast() < total - EPS)
-            && distances.size() < GenerationLimits.MAX_GEOMETRY_INSTANCES) {
-            distances.add(total);
-        }
-        return distances;
-    }
-
-    private static long estimateSpacingInstanceCount(double span, double spacing) {
-        if (!Double.isFinite(span) || !Double.isFinite(spacing) || spacing <= 0.0d) {
-            return Long.MAX_VALUE;
-        }
-        long raw = (long) Math.ceil(span / spacing) + 1L;
-        return Math.max(1L, raw);
-    }
-
-    private static double wrapDistance(double value, double length) {
-        double wrapped = value % length;
-        return wrapped < 0.0d ? wrapped + length : wrapped;
     }
 
     private void writeFail(String error) {

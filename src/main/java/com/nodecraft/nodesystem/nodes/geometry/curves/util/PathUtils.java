@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.SafeSegmentClosestPoint3d;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -138,6 +139,35 @@ public final class PathUtils {
             }
         }
         return new Vector3d(unique.getFirst());
+    }
+
+    /**
+     * Finite-difference unit tangent at an arc-length sample. Returns null when degenerate.
+     */
+    public static @Nullable Vector3d sampleTangentAtDistance(List<Vector3d> unique,
+                                                             boolean closed,
+                                                             double[] cumulative,
+                                                             double targetDistance) {
+        if (unique == null || cumulative == null || cumulative.length < 2) {
+            return null;
+        }
+        double total = cumulative[cumulative.length - 1];
+        if (!Double.isFinite(total) || total <= 0.0d || !Double.isFinite(targetDistance)) {
+            return null;
+        }
+        double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
+        double backDistance = closed ? wrapDistance(targetDistance - delta, total) : Math.max(0.0d, targetDistance - delta);
+        double forwardDistance = closed
+            ? wrapDistance(targetDistance + delta, total)
+            : Math.min(total, targetDistance + delta);
+        Vector3d prev = sampleAtDistance(unique, closed, cumulative, backDistance);
+        Vector3d next = sampleAtDistance(unique, closed, cumulative, forwardDistance);
+        return VectorUtils.safeNormalize(VectorUtils.safeSubtract(next, prev));
+    }
+
+    private static double wrapDistance(double value, double length) {
+        double wrapped = value % length;
+        return wrapped < 0.0d ? wrapped + length : wrapped;
     }
 
     public static List<Vec3d> toVec3dList(List<Vector3d> points, boolean closed) {

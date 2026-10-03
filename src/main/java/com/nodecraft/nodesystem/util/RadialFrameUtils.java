@@ -43,13 +43,6 @@ public final class RadialFrameUtils {
     }
 
     public static @Nullable Vector3d normalizeTangent(Vector3d tangent) {
-        if (tangent == null
-                || !Double.isFinite(tangent.x)
-                || !Double.isFinite(tangent.y)
-                || !Double.isFinite(tangent.z)
-                || tangent.lengthSquared() <= PathFrameUtils.EPS) {
-            return null;
-        }
-        return new Vector3d(tangent).normalize();
+        return VectorUtils.safeNormalize(tangent);
     }
 }
