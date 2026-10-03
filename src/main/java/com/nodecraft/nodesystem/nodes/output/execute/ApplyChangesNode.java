@@ -15,6 +15,8 @@ import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PlacementPreflight;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
@@ -27,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
     effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.apply_changes",
     displayName = "Apply Changes",
-    description = "Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID.",
+    description = "Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID. Sync mode waits for the queued bake task to reach a terminal state.",
     category = "output.execute",
     order = 0
 )
@@ -148,9 +149,12 @@ public class ApplyChangesNode extends BaseCustomUINode {
         Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
         Object torusGeometryObj = inputValues.get(INPUT_TORUS_GEOMETRY_ID);
         Object blockTypeObj = inputValues.get(INPUT_BLOCK_TYPE_ID);
-        Object notifyObj = inputValues.get(INPUT_NOTIFY_ID);
 
-        boolean notify = notifyObj != null ? coerceBoolean(notifyObj) : notifyOnComplete;
+        Boolean notify = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyOnComplete);
+        if (notify == null) {
+            publishOutputs(false, 0, 0, "Notify is connected but null or invalid.", "", false);
+            return;
+        }
         String blockType = (blockTypeObj instanceof String) ? (String) blockTypeObj : "minecraft:stone";
 
         boolean manualTrigger = applyRequested.getAndSet(false);
@@ -226,26 +230,6 @@ public class ApplyChangesNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_STATUS_ID, status);
         outputValues.put(OUTPUT_TASK_ID, taskId);
         outputValues.put(OUTPUT_IS_ASYNC, isAsync);
-    }
-
-    private boolean coerceBoolean(Object value) {
-        if (value instanceof Boolean booleanValue) {
-            return booleanValue;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        if (value instanceof String text) {
-            String normalized = text.trim();
-            if (normalized.isEmpty()) {
-                return false;
-            }
-            return switch (normalized.toLowerCase(Locale.ROOT)) {
-                case "true", "yes", "1", "on" -> true;
-                default -> false;
-            };
-        }
-        return true;
     }
 
     private GeometryVoxelizationResult resolveBlocksStrict(Object blocksObj,
@@ -516,7 +500,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     public void setExecutionTimeout(int value) {
-        value = Math.max(5, value);
+        value = Math.max(5, Math.min(GenerationLimits.MAX_EXECUTION_TIMEOUT_SECONDS, value));
         if (executionTimeout != value) {
             executionTimeout = value;
             markDirty();
@@ -596,7 +580,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     public void setBlocksPerTick(int value) {
-        int resolved = Math.max(1, value);
+        int resolved = Math.max(1, Math.min(GenerationLimits.MAX_BLOCKS_PER_TICK, value));
         if (blocksPerTick != resolved) {
             blocksPerTick = resolved;
             markDirty();
@@ -608,7 +592,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
     }
 
     public void setTickBudgetMillis(int value) {
-        int resolved = Math.max(1, value);
+        int resolved = Math.max(1, Math.min(GenerationLimits.MAX_TICK_BUDGET_MS, value));
         if (tickBudgetMillis != resolved) {
             tickBudgetMillis = resolved;
             markDirty();

@@ -5,9 +5,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeHistory;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -67,13 +69,12 @@ public class RedoLastBakeNode extends BaseCustomUINode {
             } else if (history.redoSize() == 0) {
                 status = "No recorded mutation redo history";
             } else {
-                BakeHistory.UndoRecord record = null;
-                // redo stack is not peeked publicly; size check is enough for cap using last undo inverse size if needed
-                if (!useAsync) {
-                    // Peek via async path is unavailable; reject oversized using undo peek of inverse is not possible.
-                    // Cap using remaining redo is enforced when enqueueing placements inside BakeHistory.
-                }
-                if (useAsync) {
+                BakeHistory.UndoRecord record = history.peekRedo();
+                int redoCount = record == null ? 0 : record.size();
+                if (!useAsync && redoCount > GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS) {
+                    status = "Sync redo exceeds MAX_SYNC_WORLD_WRITE_BLOCKS ("
+                        + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + "); use async";
+                } else if (useAsync) {
                     UUID redoTaskId = service.redoLastAsync(actorId, context.getWorld());
                     success = redoTaskId != null;
 

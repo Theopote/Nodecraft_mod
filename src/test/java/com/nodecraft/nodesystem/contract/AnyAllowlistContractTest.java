@@ -57,7 +57,6 @@ class AnyAllowlistContractTest {
         "output.debug.",
         "output.export.",
         "output.execute.clear_preview",
-        "output.execute.bake_status",
         "world."
     );
 

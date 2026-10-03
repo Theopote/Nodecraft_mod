@@ -18,53 +18,42 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WorldWriteTransactionNbtContractTest {
 
-    private static final List<String> CAPTURE_BEFORE_MUTATE_SOURCES = List.of(
+    private static final List<String> BAKE_MUTATORS = List.of(
         "SetBlockNode.java",
         "SetBlocksNode.java",
         "FillRegionNode.java",
         "ReplaceBlocksNode.java",
         "CloneRegionNode.java",
         "RemoveBlocksNode.java",
-        "SetBlockNbtNode.java",
-        "WriteSignTextNode.java"
+        "SetBlockNbtNode.java"
     );
 
     @Test
-    void setBlockCapturesSnapshotBeforeMutation() throws Exception {
-        for (String file : CAPTURE_BEFORE_MUTATE_SOURCES) {
+    void blockMutatorsEnqueueBakePlacements() throws Exception {
+        for (String file : BAKE_MUTATORS) {
             String src = Files.readString(Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/" + file));
-            assertTrue(src.contains("WorldWriteUndoJournal.captureCurrent("), file + " must captureCurrent");
-            assertTrue(src.contains("tx.recordSuccess(before)"), file + " must recordSuccess(before)");
-            assertFalse(src.contains("tx.recordSuccess(context,"), file + " must not re-read NBT after mutate");
-            int captureIdx = src.indexOf("WorldWriteUndoJournal.captureCurrent(");
-            int mutateIdx = firstMutateIndex(src);
-            assertTrue(captureIdx >= 0 && mutateIdx > captureIdx,
-                file + " must captureCurrent before setBlockState/breakBlock");
+            assertTrue(src.contains("WorldWriteBakeBridge.enqueueAndAwait("), file + " must enqueue bake");
+            assertTrue(src.contains("WorldWriteBakeBridge.placement(") || src.contains("BakeTask.Placement"),
+                file + " must build bake placements");
         }
+        String bakeTask = Files.readString(Path.of("src/main/java/com/nodecraft/nodesystem/bake/BakeTask.java"));
+        int capture = bakeTask.indexOf("before = captureCell(");
+        int mutate = bakeTask.indexOf("world.setBlockState(");
+        assertTrue(capture >= 0 && mutate > capture, "BakeTask must capture BE NBT before setBlockState");
+        assertTrue(bakeTask.contains("WorldWriteNbtUtils.extractBlockEntityNbt("));
+        assertTrue(bakeTask.contains("WorldWriteNbtUtils.applyToBlockEntity("));
     }
 
     @Test
-    void setBlockRecordsSuccessOnlyAfterFullCellSuccess() throws Exception {
+    void writeSignTextStillCapturesBeforeMutate() throws Exception {
         String src = Files.readString(Path.of(
-            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/SetBlockNode.java"));
-        int nbtApply = src.indexOf("WorldWriteNbtUtils.applyToBlockEntity(");
-        int recordSuccess = src.indexOf("tx.recordSuccess(before)");
-        int restore = src.indexOf("WorldWriteUndoJournal.restore(context, before)");
-        assertTrue(nbtApply >= 0 && recordSuccess > nbtApply,
-            "SetBlock must apply NBT before recordSuccess");
-        assertTrue(restore >= 0 && restore < recordSuccess,
-            "SetBlock must restore on NBT fail before committing undo");
-        assertFalse(src.contains("Block placed, but NBT was not applied"));
-    }
-
-    @Test
-    void setBlocksRestoresCellWhenNbtFails() throws Exception {
-        String src = Files.readString(Path.of(
-            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/SetBlocksNode.java"));
-        assertTrue(src.contains("WorldWriteUndoJournal.restore(context, before)"));
-        int restore = src.indexOf("WorldWriteUndoJournal.restore(context, before)");
-        int recordFailure = src.indexOf("tx.recordFailure()", restore);
-        assertTrue(recordFailure > restore, "NBT fail must restore then recordFailure");
+            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/WriteSignTextNode.java"));
+        assertTrue(src.contains("WorldWriteUndoJournal.captureCurrent("));
+        assertTrue(src.contains("tx.recordSuccess(before)"));
+        assertFalse(src.contains("tx.recordSuccess(context,"));
+        int captureIdx = src.indexOf("WorldWriteUndoJournal.captureCurrent(");
+        int mutateIdx = src.indexOf("setText(");
+        assertTrue(captureIdx >= 0 && mutateIdx > captureIdx);
     }
 
     @Test
@@ -77,7 +66,7 @@ class WorldWriteTransactionNbtContractTest {
     }
 
     @Test
-    void undoRedoCaptureInverseViaExecutionContext() throws Exception {
+    void historyFacadeDelegatesToBakeHistory() throws Exception {
         String history = Files.readString(Path.of(
             "src/main/java/com/nodecraft/nodesystem/nodes/world/write/WorldWriteHistoryService.java"));
         String undoNode = Files.readString(Path.of(
@@ -87,9 +76,9 @@ class WorldWriteTransactionNbtContractTest {
 
         assertTrue(history.contains("undoLast(UUID actorId, ExecutionContext context)"));
         assertTrue(history.contains("redoLast(UUID actorId, ExecutionContext context)"));
-        assertTrue(history.contains("WorldWriteUndoJournal.captureCurrent(context, pos)"));
-        assertFalse(history.contains("skip NBT capture on inverse"));
-        assertTrue(history.contains("applyBlockEntityNbt(restored, targetNbt, context)"));
+        assertTrue(history.contains("BakePlacementService.getInstance().getHistory"));
+        assertTrue(history.contains("service.undoLast(actorId, context.getWorld())"));
+        assertTrue(history.contains("service.redoLast(actorId, context.getWorld())"));
         assertTrue(undoNode.contains("service.undoLast(actorId, context)"));
         assertTrue(redoNode.contains("service.redoLast(actorId, context)"));
         assertFalse(undoNode.contains("undoLast(actorId, context.getWorld())"));
@@ -122,18 +111,5 @@ class WorldWriteTransactionNbtContractTest {
         assertFalse(tx.isComplete());
         assertNull(WorldWriteUndoJournal.captureCurrent(null, pos));
         assertFalse(WorldWriteUndoJournal.restore(null, null));
-    }
-
-    private static int firstMutateIndex(String src) {
-        int set = indexOrMax(src, "setBlockState(");
-        int brk = indexOrMax(src, "breakBlock(");
-        int apply = indexOrMax(src, "applyBlockEntityNbt(");
-        int setText = indexOrMax(src, "setText(");
-        return Math.min(Math.min(set, brk), Math.min(apply, setText));
-    }
-
-    private static int indexOrMax(String src, String token) {
-        int idx = src.indexOf(token);
-        return idx < 0 ? Integer.MAX_VALUE : idx;
     }
 }

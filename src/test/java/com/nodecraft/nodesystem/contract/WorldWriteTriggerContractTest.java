@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.nodes.geometry.voxel.VoxelizeGeometryNode;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
+import com.nodecraft.nodesystem.nodes.output.execute.CancelBakeNode;
 import com.nodecraft.nodesystem.nodes.output.execute.RedoLastBakeNode;
 import com.nodecraft.nodesystem.nodes.output.execute.UndoLastBakeNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -38,6 +39,7 @@ class WorldWriteTriggerContractTest {
         assertTriggerIsExec(new ApplyChangesNode());
         assertTriggerIsExec(new UndoLastBakeNode());
         assertTriggerIsExec(new RedoLastBakeNode());
+        assertTriggerIsExec(new CancelBakeNode());
     }
 
     @Test
@@ -45,6 +47,7 @@ class WorldWriteTriggerContractTest {
         assertCatalogTriggerIsExec("output.execute.apply_changes");
         assertCatalogTriggerIsExec("output.execute.undo_last_bake");
         assertCatalogTriggerIsExec("output.execute.redo_last_bake");
+        assertCatalogTriggerIsExec("output.execute.cancel_bake");
     }
 
     @Test

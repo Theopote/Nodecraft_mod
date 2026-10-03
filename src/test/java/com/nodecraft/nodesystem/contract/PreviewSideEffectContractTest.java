@@ -161,8 +161,29 @@ class PreviewSideEffectContractTest {
         assertTrue(NodeEffectResolver.inferFromTypeId("world.read.get_block").isAllowedInPreview());
         assertEquals(NodeEffect.PURE, NodeEffectResolver.inferFromTypeId("output.execute.merge_block_placements"));
         assertEquals(NodeEffect.PREVIEW_WRITE, NodeEffectResolver.inferFromTypeId("output.execute.clear_preview"));
+        assertEquals(NodeEffect.CONTEXT_READ, NodeEffectResolver.inferFromTypeId("output.execute.bake_status"));
         assertEquals(NodeEffect.CONTEXT_READ, NodeEffectResolver.inferFromTypeId("world.write.peek_last_undo"));
         assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.inferFromTypeId("world.write.clear_undo_history"));
+    }
+
+    @Test
+    void bakeStatusRunsInPreviewWhileApplyUndoRedoCancelDoNot() {
+        ExecutionPlan preview = ExecutionPlan.preview(null);
+        INode status = createOrResolve("output.execute.bake_status", registry.getNodeInfo("output.execute.bake_status"));
+        assertFalse(PreviewSideEffectPolicy.shouldSkipNode(preview, status));
+        assertTrue(NodeEffect.CONTEXT_READ.isAllowedInPreview());
+
+        for (String nodeId : List.of(
+                "output.execute.apply_changes",
+                "output.execute.undo_last_bake",
+                "output.execute.redo_last_bake",
+                "output.execute.cancel_bake"
+        )) {
+            NodeInfo info = registry.getNodeInfo(nodeId);
+            INode node = createOrResolve(nodeId, info);
+            assertEquals(NodeEffect.WORLD_WRITE, NodeEffectResolver.resolve(info.getNodeClass(), nodeId), nodeId);
+            assertTrue(PreviewSideEffectPolicy.shouldSkipNode(preview, node), nodeId);
+        }
     }
 
     private static INode createOrResolve(String nodeId, NodeInfo info) {

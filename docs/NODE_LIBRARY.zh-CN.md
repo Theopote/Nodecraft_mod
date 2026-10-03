@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**529**
+- **节点总数**：**530**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -42,7 +42,7 @@
 | `math.trigonometry` | 10 |
 | `math.vector` | 1 |
 | `output.debug` | 4 |
-| `output.execute` | 8 |
+| `output.execute` | 9 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
@@ -548,17 +548,18 @@
 | Execution Timer | `output.debug.execution_timer` | 测量连接到此节点的计算分支所花费的时间 | `ExecutionTimerNode` |
 | Panel | `output.debug.data_inspector` | 显示连接到其输入端口的原始数据（文本形式） | `PanelNode` |
 
-## output.execute（8）
+## output.execute（9）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Apply Changes | `output.execute.apply_changes` | Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID. | `ApplyChangesNode` |
-| Bake Status | `output.execute.bake_status` | Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts. | `BakeStatusNode` |
+| Apply Changes | `output.execute.apply_changes` | Submits explicit placements, placement trees, or voxelized geometry to the world. Async mode queues a single bake task and returns its task ID. Sync mode waits for the queued bake task to reach a terminal state. | `ApplyChangesNode` |
+| Bake Status | `output.execute.bake_status` | Polls BakePlacementService for a task ID owned by the current actor and reports state, progress, placed, skipped, and rollback-failed counts. | `BakeStatusNode` |
 | Clear Preview | `output.execute.clear_preview` | Clears all active previews | `ClearAllPreviewsNode` |
-| Undo Last Bake | `output.execute.undo_last_bake` | Reverts the most recent recorded bake or apply-changes operation | `UndoLastBakeNode` |
+| Undo Last Change | `output.execute.undo_last_bake` | Reverts the most recent recorded world mutation (Apply Changes or world.write blocks) from the unified history stack | `UndoLastBakeNode` |
 | Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
-| Redo Last Bake | `output.execute.redo_last_bake` | Reapplies the most recently undone bake or apply-changes operation | `RedoLastBakeNode` |
+| Redo Last Change | `output.execute.redo_last_bake` | Reapplies the most recently undone world mutation from the unified history stack | `RedoLastBakeNode` |
 | SDF To Blocks | `output.execute.sdf_to_blocks` | Voxelizes a signed distance field directly into Minecraft block coordinates | `SdfToBlocksNode` |
+| Cancel Bake | `output.execute.cancel_bake` | Cancels an in-flight bake or apply-changes task owned by the current actor and rolls back its in-world progress | `CancelBakeNode` |
 | Merge Block Placements | `output.execute.merge_block_placements` | Merges block placement lists and placement trees into execution-ready placements | `MergeBlockPlacementsNode` |
 
 ## output.export（4）

@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -174,41 +176,55 @@ public class MergeBlockPlacementsNode extends BaseNode {
                 merged.put(placement.pos(), entry);
             }
         }
-        List<PlacementEntry> entries = new ArrayList<>(merged.values());
-        return new MergeResult(toPlacements(entries), buildPlacementTree(entries), duplicateCount, conflictCount);
+        List<PlacementEntry> resolvedEntries = new ArrayList<>(merged.values());
+        return new MergeResult(toPlacements(resolvedEntries), buildPlacementTree(resolvedEntries), duplicateCount, conflictCount);
     }
 
-    private List<PlacementEntry> collectPlacementEntries() {
+    private CollectResult collectPlacementEntries() {
         List<PlacementEntry> entries = new ArrayList<>();
+        int inputEntries = 0;
+        int skippedInvalidCount = 0;
         for (int i = 0; i < inputCount; i++) {
-            collectListPlacements(inputValues.get(inputPortId(i)), List.of(i), entries);
-            collectTreePlacements(inputValues.get(treeInputPortId(i)), entries);
-        }
-        return entries;
-    }
-
-    private void collectListPlacements(Object value, List<Integer> path, List<PlacementEntry> entries) {
-        if (!(value instanceof List<?> list)) {
-            return;
-        }
-        for (Object item : list) {
-            if (item instanceof BlockPlacementData placement && isValidPlacement(placement)) {
-                entries.add(new PlacementEntry(placement, path));
+            String listPortId = inputPortId(i);
+            if (OptionalPortDrive.isConnected(this, listPortId)) {
+                Object value = inputValues.get(listPortId);
+                if (!(value instanceof List<?> list)) {
+                    return CollectResult.invalid("Connected placement list is not a BLOCK_PLACEMENT_LIST.");
+                }
+                for (Object item : list) {
+                    inputEntries++;
+                    if (inputEntries > GenerationLimits.MAX_BLOCK_PLACEMENTS) {
+                        return CollectResult.invalid("Placement count exceeds MAX_BLOCK_PLACEMENTS");
+                    }
+                    if (!(item instanceof BlockPlacementData placement) || !isValidPlacement(placement)) {
+                        return CollectResult.invalid("Connected placement list contains a non-placement or invalid member.");
+                    }
+                    entries.add(new PlacementEntry(placement, List.of(i)));
+                }
             }
-        }
-    }
 
-    private void collectTreePlacements(Object value, List<PlacementEntry> entries) {
-        if (!(value instanceof DataTreeData tree) || tree.getBranchCount() == 0) {
-            return;
-        }
-        for (DataTreeData.Branch branch : tree.getBranches()) {
-            for (Object item : branch.items()) {
-                if (item instanceof BlockPlacementData placement && isValidPlacement(placement)) {
-                    entries.add(new PlacementEntry(placement, branch.path()));
+            String treePortId = treeInputPortId(i);
+            if (OptionalPortDrive.isConnected(this, treePortId)) {
+                Object value = inputValues.get(treePortId);
+                if (!(value instanceof DataTreeData tree)) {
+                    return CollectResult.invalid("Connected placement tree is not a DATA_TREE.");
+                }
+                for (DataTreeData.Branch branch : tree.getBranches()) {
+                    for (Object item : branch.items()) {
+                        inputEntries++;
+                        if (inputEntries > GenerationLimits.MAX_BLOCK_PLACEMENTS) {
+                            return CollectResult.invalid("Placement count exceeds MAX_BLOCK_PLACEMENTS");
+                        }
+                        if (item instanceof BlockPlacementData placement && isValidPlacement(placement)) {
+                            entries.add(new PlacementEntry(placement, branch.path()));
+                        } else {
+                            skippedInvalidCount++;
+                        }
+                    }
                 }
             }
         }
+        return CollectResult.ok(entries, inputEntries, skippedInvalidCount);
     }
 
     private List<BlockPlacementData> toPlacements(List<PlacementEntry> entries) {
@@ -354,6 +370,22 @@ public class MergeBlockPlacementsNode extends BaseNode {
         }
     }
 
-private record MergeResult(List<BlockPlacementData> placements, DataTreeData placementsTree, int duplicateCount, int conflictCount) {
+    private record MergeResult(List<BlockPlacementData> placements, DataTreeData placementsTree, int duplicateCount, int conflictCount) {
+    }
+
+    private record CollectResult(
+        boolean valid,
+        String error,
+        List<PlacementEntry> entries,
+        int inputCount,
+        int skippedInvalidCount
+    ) {
+        static CollectResult ok(List<PlacementEntry> entries, int inputCount, int skippedInvalidCount) {
+            return new CollectResult(true, "", entries, inputCount, skippedInvalidCount);
+        }
+
+        static CollectResult invalid(String error) {
+            return new CollectResult(false, error, List.of(), 0, 0);
+        }
     }
 }
