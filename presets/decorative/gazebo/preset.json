@@ -118,6 +118,15 @@
           "y": 200.0
         },
         "parameters": {
+          "cornerX": {
+            "value": -5.0
+          },
+          "cornerY": {
+            "value": 0.0
+          },
+          "cornerZ": {
+            "value": -5.0
+          },
           "sizeX": {
             "value": 10.0
           },
@@ -185,7 +194,7 @@
             "value": 4.0
           },
           "endY": {
-            "value": 3.0
+            "value": 3.5
           },
           "endZ": {
             "value": 0.0

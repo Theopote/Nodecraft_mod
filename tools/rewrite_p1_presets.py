@@ -136,8 +136,8 @@ P1_PRESETS: dict[str, dict] = {
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
             node("run_vector", "reference.vectors.vector", 0, 220, {"x": 12.0, "y": 3.0, "z": 0.0}),
-            node("unit_distance", "input.numeric.float", 0, 400, {"value": 1.0}),
-            node("path_end", "reference.points.point_along_vector", 280, 280, {"normalizeDirection": False}),
+            node("unit_distance", "input.numeric.float", 0, 400, {"value": (12.0 ** 2 + 3.0 ** 2) ** 0.5}),
+            node("path_end", "reference.points.point_along_vector", 280, 280),
             node("point_list", "math.list.create_list", 280, 80, {"inputCount": 2}),
             node("stair_path", "geometry.curves.points_to_path", 560, 80),
             node("step_count", "input.numeric.integer", 560, 280, {"value": 12}),

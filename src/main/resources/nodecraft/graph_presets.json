@@ -286,16 +286,37 @@
               "y": 40
             },
             {
-              "ref": "local_origin",
-              "typeId": "reference.frames.world_frame",
-              "x": 220,
-              "y": 40
+              "ref": "span_x",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 80,
+              "state": {
+                "value": 0.0
+              }
             },
             {
-              "ref": "world_origin_deconstruct",
-              "typeId": "reference.frames.deconstruct_frame",
+              "ref": "deck_elevation",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 140,
+              "state": {
+                "value": 5.0
+              }
+            },
+            {
+              "ref": "span_z",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 200,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "span_start",
+              "typeId": "reference.points.construct_point",
               "x": 220,
-              "y": 120
+              "y": 140
             },
             {
               "ref": "run_vector",
@@ -303,7 +324,7 @@
               "x": 0,
               "y": 180,
               "state": {
-                "x": 16.0,
+                "x": 1.0,
                 "y": 0.0,
                 "z": 0.0
               }
@@ -314,7 +335,7 @@
               "x": 0,
               "y": 320,
               "state": {
-                "value": 1.0
+                "value": 16.0
               }
             },
             {
@@ -521,18 +542,6 @@
           ],
           "connections": [
             {
-              "fromRef": "local_origin",
-              "fromPort": "output_frame",
-              "toRef": "world_origin_deconstruct",
-              "toPort": "input_frame"
-            },
-            {
-              "fromRef": "world_origin_deconstruct",
-              "fromPort": "output_origin",
-              "toRef": "path_end",
-              "toPort": "input_point"
-            },
-            {
               "fromRef": "run_vector",
               "fromPort": "output_vector",
               "toRef": "path_end",
@@ -707,12 +716,6 @@
               "toPort": "input_block_placements"
             },
             {
-              "fromRef": "world_origin_deconstruct",
-              "fromPort": "output_origin",
-              "toRef": "span_path",
-              "toPort": "input_start"
-            },
-            {
               "fromRef": "path_end",
               "fromPort": "output_point",
               "toRef": "span_path",
@@ -753,13 +756,43 @@
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "span_x",
+              "fromPort": "output_value",
+              "toRef": "span_start",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "deck_elevation",
+              "fromPort": "output_value",
+              "toRef": "span_start",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "span_z",
+              "fromPort": "output_value",
+              "toRef": "span_start",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "span_start",
+              "fromPort": "output_point",
+              "toRef": "path_end",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "span_start",
+              "fromPort": "output_point",
+              "toRef": "span_path",
+              "toPort": "input_start"
             }
           ]
         },
         {
           "id": "architectural.infrastructure.watchtower",
           "displayName": "Medieval Watchtower",
-          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement →Preview Geometry and block preview chain.",
+          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Polar Array battlements on the roof rim → Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -849,6 +882,9 @@
               "x": 0,
               "y": 740,
               "state": {
+                "cornerX": 4.4,
+                "cornerY": 14.0,
+                "cornerZ": -0.4,
                 "sizeX": 1.2,
                 "sizeY": 0.8,
                 "sizeZ": 0.8
@@ -856,23 +892,21 @@
             },
             {
               "ref": "battlement_array",
-              "typeId": "pattern.linear.linear_array",
+              "typeId": "pattern.radial.polar_array",
               "x": 280,
               "y": 740,
               "state": {
-                "count": 4,
-                "distance": 2.5
+                "count": 8,
+                "includeEnd": false
               }
             },
             {
-              "ref": "array_dir",
-              "typeId": "reference.vectors.vector",
+              "ref": "battlement_count",
+              "typeId": "input.numeric.integer",
               "x": 0,
               "y": 900,
               "state": {
-                "x": 1.0,
-                "y": 0.0,
-                "z": 0.0
+                "value": 8
               }
             },
             {
@@ -980,12 +1014,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "array_dir",
-              "fromPort": "output_vector",
-              "toRef": "battlement_array",
-              "toPort": "input_direction"
-            },
-            {
               "fromRef": "roof",
               "fromPort": "output_eave_path",
               "toRef": "eave_railing",
@@ -1080,6 +1108,12 @@
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "battlement_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_array",
+              "toPort": "input_count"
             }
           ]
         },
@@ -1150,6 +1184,15 @@
               "typeId": "geometry.architectural_primitives.wall_along_path",
               "x": 760,
               "y": 40
+            },
+            {
+              "ref": "wall_height",
+              "typeId": "input.numeric.float",
+              "x": 520,
+              "y": 200,
+              "state": {
+                "value": 4.0
+              }
             },
             {
               "ref": "windows",
@@ -1546,6 +1589,12 @@
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "wall_height",
+              "fromPort": "output_value",
+              "toRef": "walls",
+              "toPort": "input_height"
             }
           ]
         },
@@ -1616,6 +1665,15 @@
               "typeId": "geometry.architectural_primitives.wall_along_path",
               "x": 760,
               "y": 40
+            },
+            {
+              "ref": "wall_height",
+              "typeId": "input.numeric.float",
+              "x": 520,
+              "y": 200,
+              "state": {
+                "value": 4.0
+              }
             },
             {
               "ref": "windows",
@@ -1934,6 +1992,12 @@
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "wall_height",
+              "fromPort": "output_value",
+              "toRef": "walls",
+              "toPort": "input_height"
             }
           ]
         },
@@ -3479,7 +3543,7 @@
               "x": 0,
               "y": 180,
               "state": {
-                "x": 2.0,
+                "x": 1.0,
                 "y": 0.0,
                 "z": 0.0
               }
@@ -3490,7 +3554,7 @@
               "x": 0,
               "y": 320,
               "state": {
-                "value": 1.0
+                "value": 2.0
               }
             },
             {
@@ -3873,7 +3937,7 @@
               "x": 0,
               "y": 400,
               "state": {
-                "value": 1.0
+                "value": 12.36931687685298
               }
             },
             {
@@ -4954,6 +5018,9 @@
               "x": 0,
               "y": 200,
               "state": {
+                "cornerX": -5.0,
+                "cornerY": 0.0,
+                "cornerZ": -5.0,
                 "sizeX": 10.0,
                 "sizeY": 3.5,
                 "sizeZ": 10.0
@@ -4993,7 +5060,7 @@
                 "startY": 0.0,
                 "startZ": 0.0,
                 "endX": 4.0,
-                "endY": 3.0,
+                "endY": 3.5,
                 "endZ": 0.0,
                 "radius": 0.25
               }
@@ -6088,6 +6155,9 @@
               "x": 0,
               "y": 200,
               "state": {
+                "cornerX": 1.0,
+                "cornerY": 0.0,
+                "cornerZ": 1.0,
                 "sizeX": 12.0,
                 "sizeY": 8.0,
                 "sizeZ": 12.0

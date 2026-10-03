@@ -347,6 +347,8 @@ Volume → Floor / Walls / Windows / Roof → Combine
 | Double translation | ✅ CI | 玩家附近位置感 |
 | Split preview chain | ✅ CI | Ghost 重合 |
 | Apply ↔ Preview | ☐ 部分 CI | 实体方块一致 |
+| Point Along Vector span | ✅ CI（Distance 为真实跨度；Direction 始终单位化） | Stone Bridge 16、Straight Stair hypot(12,3)、Spiral chord 2 |
+| Geometric scale (P3 showcase) | ✅ CI（结构尺度契约，非包围盒仿真） | 桥面 y=5、垛口 polar@屋顶、凉亭居中、墙高=sizeY、Keep 内缩、Straight Stair Distance≥run |
 | Undo / Redo | ☐ | 仅 Mini Building 必测 |
 | Mini Building @ 原点 | 设计如此 | 确认团队接受或后续加 Move |
 

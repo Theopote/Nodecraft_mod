@@ -28,8 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Preset Library v2 semantic contracts for canonical teaching presets.
  *
  * <p>Static port/type checks live in {@link GraphPresetResourceTest}. This class
- * catches dead material branches, missing preview sinks, and unused voxelize
- * outputs that those structural tests still accept.</p>
+ * catches dead material branches, missing preview sinks, unused voxelize
+ * outputs, Point Along Vector spans encoded in Direction magnitude
+ * (Direction is always normalized; Distance is the actual move), and
+ * selected geometric-scale contracts for showcase presets.</p>
  */
 class PresetSemanticAuditTest {
 
@@ -216,6 +218,9 @@ class PresetSemanticAuditTest {
 
         errors.addAll(findDeadMaterialBranches(preset));
         errors.addAll(requireMaterialBlockTypeConnected(preset, typeByRef));
+        errors.addAll(requirePointAlongVectorUsesDistanceAsSpan(preset, typeByRef));
+        errors.addAll(requireStraightStaircasePathCoversRun(preset, typeByRef));
+        errors.addAll(requireCanonicalGeometricScaleContracts(preset, typeByRef));
         errors.addAll(findUnconsumedNonSinkNodes(preset, typeByRef));
         errors.addAll(requireExplicitStateOnRepeatedPrimitives(preset, typeByRef));
 
@@ -240,6 +245,267 @@ class PresetSemanticAuditTest {
             if (!hasIncomingConnection(preset, entry.getKey(), "input_block_type")) {
                 errors.add(preset.id + ": material node '" + entry.getKey()
                         + "' has no connection to required input_block_type");
+            }
+        }
+        return errors;
+    }
+
+    /**
+     * Point Along Vector always normalizes Direction, then moves by Distance.
+     * Presets that encode the span in the Vector magnitude with Distance=1
+     * collapse to a 1-unit path at runtime.
+     */
+    private static List<String> requirePointAlongVectorUsesDistanceAsSpan(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        if (preset.connections == null || preset.nodes == null) {
+            return errors;
+        }
+        Map<String, GraphPresetRules.PresetNode> nodeByRef = new HashMap<>();
+        for (GraphPresetRules.PresetNode node : preset.nodes) {
+            if (node != null && node.ref != null) {
+                nodeByRef.put(node.ref, node);
+            }
+        }
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if (!"reference.points.point_along_vector".equals(entry.getValue())) {
+                continue;
+            }
+            String moveRef = entry.getKey();
+            String vectorRef = incomingFromRef(preset, moveRef, "input_vector");
+            String distanceRef = incomingFromRef(preset, moveRef, "input_distance");
+            if (vectorRef == null || distanceRef == null) {
+                continue;
+            }
+            GraphPresetRules.PresetNode vectorNode = nodeByRef.get(vectorRef);
+            GraphPresetRules.PresetNode distanceNode = nodeByRef.get(distanceRef);
+            if (vectorNode == null || distanceNode == null) {
+                continue;
+            }
+            if (!"reference.vectors.vector".equals(vectorNode.typeId)) {
+                continue;
+            }
+            double magnitude = vectorStateMagnitude(vectorNode.state);
+            Double distance = numericStateValue(distanceNode.state, "value");
+            if (magnitude <= 0.0d || distance == null) {
+                continue;
+            }
+            if (Math.abs(distance) <= 1.05d && magnitude > 1.25d) {
+                errors.add(preset.id + ": Point Along Vector '" + moveRef
+                        + "' uses Distance=" + distance
+                        + " but Direction magnitude=" + magnitude
+                        + " — direction is normalized, so the path span is Distance, not |vector|");
+            }
+        }
+        return errors;
+    }
+
+    private static String incomingFromRef(
+            GraphPresetRules.GraphPresetDefinition preset,
+            String targetRef,
+            String targetPort) {
+        if (preset.connections == null) {
+            return null;
+        }
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (connection == null) {
+                continue;
+            }
+            if (targetRef.equals(connection.toRef) && targetPort.equals(connection.toPort)) {
+                return connection.fromRef;
+            }
+        }
+        return null;
+    }
+
+    private static double vectorStateMagnitude(Map<String, Object> state) {
+        if (state == null) {
+            return 0.0d;
+        }
+        double x = numericStateValue(state, "x") == null ? 0.0d : numericStateValue(state, "x");
+        double y = numericStateValue(state, "y") == null ? 0.0d : numericStateValue(state, "y");
+        double z = numericStateValue(state, "z") == null ? 0.0d : numericStateValue(state, "z");
+        return Math.sqrt(x * x + y * y + z * z);
+    }
+
+    private static Double numericStateValue(Map<String, Object> state, String key) {
+        if (state == null) {
+            return null;
+        }
+        Object value = state.get(key);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        return null;
+    }
+
+    private static Map<String, GraphPresetRules.PresetNode> nodeByRefMap(
+            GraphPresetRules.GraphPresetDefinition preset) {
+        Map<String, GraphPresetRules.PresetNode> nodeByRef = new HashMap<>();
+        if (preset.nodes == null) {
+            return nodeByRef;
+        }
+        for (GraphPresetRules.PresetNode node : preset.nodes) {
+            if (node != null && node.ref != null) {
+                nodeByRef.put(node.ref, node);
+            }
+        }
+        return nodeByRef;
+    }
+
+    /**
+     * Straight staircase fails closed when path.length &lt; stepCount × stepRun + landing.
+     * With Point Along Vector, path length equals Distance (direction is normalized).
+     */
+    private static List<String> requireStraightStaircasePathCoversRun(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        if (!"building_elements.stairs.straight_staircase".equals(preset.id)) {
+            return errors;
+        }
+        Map<String, GraphPresetRules.PresetNode> nodeByRef = nodeByRefMap(preset);
+        String stairRef = null;
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if ("geometry.architectural_primitives.staircase".equals(entry.getValue())) {
+                stairRef = entry.getKey();
+                break;
+            }
+        }
+        if (stairRef == null) {
+            return errors;
+        }
+        String stepCountRef = incomingFromRef(preset, stairRef, "input_step_count");
+        String stepRunRef = incomingFromRef(preset, stairRef, "input_step_run");
+        String pathRef = incomingFromRef(preset, stairRef, "input_path");
+        if (stepCountRef == null || stepRunRef == null || pathRef == null) {
+            return errors;
+        }
+        GraphPresetRules.PresetNode stepCountNode = nodeByRef.get(stepCountRef);
+        GraphPresetRules.PresetNode stepRunNode = nodeByRef.get(stepRunRef);
+        if (stepCountNode == null || stepRunNode == null) {
+            return errors;
+        }
+        Double stepCount = numericStateValue(stepCountNode.state, "value");
+        Double stepRun = numericStateValue(stepRunNode.state, "value");
+        if (stepCount == null || stepRun == null) {
+            return errors;
+        }
+        double required = stepCount * stepRun;
+        // Sphere-by-diameter path: start → Point Along Vector end; length = Distance.
+        String pathEndRef = null;
+        if (preset.connections != null) {
+            for (GraphPresetRules.PresetConnection connection : preset.connections) {
+                if (connection == null) {
+                    continue;
+                }
+                if (pathRef.equals(connection.toRef) && "input_end".equals(connection.toPort)) {
+                    pathEndRef = connection.fromRef;
+                    break;
+                }
+            }
+        }
+        if (pathEndRef == null || !"reference.points.point_along_vector".equals(typeByRef.get(pathEndRef))) {
+            return errors;
+        }
+        String distanceRef = incomingFromRef(preset, pathEndRef, "input_distance");
+        GraphPresetRules.PresetNode distanceNode = distanceRef == null ? null : nodeByRef.get(distanceRef);
+        if (distanceNode == null) {
+            return errors;
+        }
+        Double distance = numericStateValue(distanceNode.state, "value");
+        if (distance == null) {
+            return errors;
+        }
+        if (distance + 1.0e-6d < required) {
+            errors.add(preset.id + ": Straight Staircase path Distance=" + distance
+                    + " is shorter than required run stepCount×stepRun=" + required);
+        }
+        return errors;
+    }
+
+    /**
+     * Showcase presets that previously collapsed / misaligned at runtime.
+     * These are structural scale contracts, not a full bounding-box simulator.
+     */
+    private static List<String> requireCanonicalGeometricScaleContracts(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        Map<String, GraphPresetRules.PresetNode> nodeByRef = nodeByRefMap(preset);
+        switch (preset.id) {
+            case "architectural.infrastructure.stone_bridge" -> {
+                GraphPresetRules.PresetNode elevation = nodeByRef.get("deck_elevation");
+                GraphPresetRules.PresetNode leftPier = nodeByRef.get("left_pier");
+                if (elevation == null || leftPier == null) {
+                    errors.add(preset.id + ": missing deck_elevation / left_pier for deck-at-pier-top scale");
+                    break;
+                }
+                Double deckY = numericStateValue(elevation.state, "value");
+                Double pierH = numericStateValue(leftPier.state, "sizeY");
+                if (deckY == null || pierH == null || Math.abs(deckY - pierH) > 0.05d) {
+                    errors.add(preset.id + ": deck_elevation must match pier sizeY (deck sits on pier tops)");
+                }
+                if (!"deck_elevation".equals(incomingFromRef(preset, "span_start", "input_y"))) {
+                    errors.add(preset.id + ": span_start.input_y must come from deck_elevation");
+                }
+            }
+            case "architectural.infrastructure.watchtower" -> {
+                GraphPresetRules.PresetNode array = nodeByRef.get("battlement_array");
+                GraphPresetRules.PresetNode box = nodeByRef.get("battlement_box");
+                if (array == null || !"pattern.radial.polar_array".equals(array.typeId)) {
+                    errors.add(preset.id + ": battlements must use polar_array on the roof rim"
+                            + " (linear_array at ground origin misplaces merlons)");
+                }
+                Double cornerY = box == null ? null : numericStateValue(box.state, "cornerY");
+                if (cornerY == null || cornerY < 10.0d) {
+                    errors.add(preset.id + ": battlement_box.cornerY must sit near roof height (~14)");
+                }
+            }
+            case "decorative.gazebo" -> {
+                GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
+                Double cornerX = volume == null ? null : numericStateValue(volume.state, "cornerX");
+                Double cornerZ = volume == null ? null : numericStateValue(volume.state, "cornerZ");
+                if (cornerX == null || cornerZ == null || cornerX >= -0.1d || cornerZ >= -0.1d) {
+                    errors.add(preset.id + ": volume must be centered (negative cornerX/Z)"
+                            + " so polar columns at r=4 stay on the floor slab");
+                }
+            }
+            case "styles.medieval.castle_keep" -> {
+                GraphPresetRules.PresetNode keep = nodeByRef.get("keep_body");
+                Double cornerX = keep == null ? null : numericStateValue(keep.state, "cornerX");
+                Double cornerZ = keep == null ? null : numericStateValue(keep.state, "cornerZ");
+                if (cornerX == null || cornerZ == null || cornerX < 0.5d || cornerZ < 0.5d) {
+                    errors.add(preset.id + ": keep_body must be inset from footprint corner"
+                            + " so Column Grid towers remain at outer corners");
+                }
+            }
+            case "architectural.residential.simple_house",
+                 "architectural.residential.medieval_cottage" -> {
+                if (!typeByRef.containsValue("geometry.architectural_primitives.wall_along_path")) {
+                    break;
+                }
+                GraphPresetRules.PresetNode wallHeight = nodeByRef.get("wall_height");
+                GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
+                Double height = wallHeight == null ? null : numericStateValue(wallHeight.state, "value");
+                Double sizeY = volume == null ? null : numericStateValue(volume.state, "sizeY");
+                if (height == null || sizeY == null || Math.abs(height - sizeY) > 0.05d) {
+                    errors.add(preset.id + ": wall_height must match volume.sizeY"
+                            + " (Wall Along Path defaults to 3, shorter than the host volume)");
+                }
+                String wallsRef = null;
+                for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+                    if ("geometry.architectural_primitives.wall_along_path".equals(entry.getValue())) {
+                        wallsRef = entry.getKey();
+                        break;
+                    }
+                }
+                if (wallsRef != null && incomingFromRef(preset, wallsRef, "input_height") == null) {
+                    errors.add(preset.id + ": Wall Along Path has no input_height connection");
+                }
+            }
+            default -> {
             }
         }
         return errors;

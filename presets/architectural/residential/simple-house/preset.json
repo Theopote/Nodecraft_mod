@@ -23,7 +23,7 @@
     "category": "architectural",
     "difficulty": "beginner",
     "estimated_build_time": "3 minutes",
-    "estimated_node_count": 26
+    "estimated_node_count": 27
   },
   "thumbnails": {
     "main": "",
@@ -183,6 +183,19 @@
           "y": 40.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_wall_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 520.0,
+          "y": 200.0
+        },
+        "parameters": {
+          "value": {
+            "value": 4.0
+          }
+        }
       },
       {
         "id": "node_windows",
@@ -687,6 +700,16 @@
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_wall_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_walls",
+          "port": "input_height"
         }
       }
     ]

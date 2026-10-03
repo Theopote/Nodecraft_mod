@@ -65,6 +65,7 @@ def cottage_chain(
         node("perimeter", "geometry.curves.face_boundary_curve", 520, 40),
         node("floor", "geometry.architectural_primitives.floor_slab", 520, 180),
         node("walls", "geometry.architectural_primitives.wall_along_path", 760, 40),
+        node("wall_height", "input.numeric.float", 520, 200, {"value": float(volume_state.get("sizeY", 4.0))}),
         node("windows", "geometry.architectural_primitives.window_array", 760, 260, {"defaultDepth": 0.3}),
         node("roof", "geometry.architectural_primitives.roof_base", 760, 480),
         node("roof_type", "input.values.text_input", 520, 480, {"text": roof_type, "multiline": False}),
@@ -98,6 +99,7 @@ def cottage_chain(
         conn("floor_face", "output_face", "perimeter", "input_face"),
         conn("floor_face", "output_face", "floor", "input_face"),
         conn("perimeter", "output_polyline", "walls", "input_path"),
+        conn("wall_height", "output_value", "walls", "input_height"),
         conn("front_face", "output_face", "windows", "input_face"),
         conn("roof_face", "output_face", "roof", "input_face"),
         conn("roof_type", "output_text", "roof", "input_roof_type"),
@@ -169,10 +171,13 @@ P3_PRESETS: dict[str, dict] = {
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
-            local_origin_node(),
-            node("run_vector", "reference.vectors.vector", 0, 180, {"x": 16.0, "y": 0.0, "z": 0.0}),
-            node("unit_distance", "input.numeric.float", 0, 320, {"value": 1.0}),
-            node("path_end", "reference.points.point_along_vector", 280, 240, {"normalizeDirection": False}),
+            node("span_x", "input.numeric.float", 0, 80, {"value": 0.0}),
+            node("deck_elevation", "input.numeric.float", 0, 140, {"value": 5.0}),
+            node("span_z", "input.numeric.float", 0, 200, {"value": 0.0}),
+            node("span_start", "reference.points.construct_point", 220, 140),
+            node("run_vector", "reference.vectors.vector", 0, 260, {"x": 1.0, "y": 0.0, "z": 0.0}),
+            node("unit_distance", "input.numeric.float", 0, 320, {"value": 16.0}),
+            node("path_end", "reference.points.point_along_vector", 280, 240),
             node("point_list", "math.list.create_list", 280, 40, {"inputCount": 2}),
             node("span_path", "geometry.curves.points_to_path", 560, 40),
             node("deck", "geometry.architectural_primitives.beam_along_path", 820, 40),
@@ -201,10 +206,13 @@ P3_PRESETS: dict[str, dict] = {
             *block_tail_nodes(),
         ],
         "connections": [
-            conn("local_origin", "output_origin", "path_end", "input_point"),
+            conn("span_x", "output_value", "span_start", "input_x"),
+            conn("deck_elevation", "output_value", "span_start", "input_y"),
+            conn("span_z", "output_value", "span_start", "input_z"),
+            conn("span_start", "output_point", "path_end", "input_point"),
             conn("run_vector", "output_vector", "path_end", "input_vector"),
             conn("unit_distance", "output_value", "path_end", "input_distance"),
-            conn("local_origin", "output_origin", "point_list", "input_0"),
+            conn("span_start", "output_point", "point_list", "input_0"),
             conn("path_end", "output_point", "point_list", "input_1"),
             conn("point_list", "output_list", "span_path", "input_points"),
             conn("span_path", "output_path", "deck", "input_path"),
@@ -238,7 +246,7 @@ P3_PRESETS: dict[str, dict] = {
         "id": "architectural.infrastructure.watchtower",
         "displayName": "Medieval Watchtower",
         "description": (
-            "Hollow cylinder tower + Roof Base + Eave Railing + Linear Array battlement → "
+            "Hollow cylinder tower + Roof Base + Eave Railing + Polar Array battlements on the roof rim → "
             "Preview Geometry and block preview chain."
         ),
         "kind": "composite",
@@ -261,12 +269,13 @@ P3_PRESETS: dict[str, dict] = {
             node("roof", "geometry.architectural_primitives.roof_base", 560, 560),
             node("roof_type", "input.values.text_input", 280, 700, {"text": "shed", "multiline": False}),
             node("battlement_box", "geometry.primitives.box_from_corner_size", 0, 740, {
+                "cornerX": 4.4, "cornerY": 14.0, "cornerZ": -0.4,
                 "sizeX": 1.2, "sizeY": 0.8, "sizeZ": 0.8,
             }),
-            node("battlement_array", "pattern.linear.linear_array_geometry", 280, 740, {
-                "count": 4, "distance": 2.5,
+            node("battlement_array", "pattern.radial.polar_array", 280, 740, {
+                "count": 8, "includeEnd": False,
             }),
-            node("array_dir", "reference.vectors.vector", 0, 900, {"x": 1.0, "y": 0.0, "z": 0.0}),
+            node("battlement_count", "input.numeric.integer", 0, 900, {"value": 8}),
             node("eave_railing", "geometry.architectural_primitives.railing", 560, 720),
             node("combine", "geometry.combine.geometry", 820, 480, {"inputCount": 4}),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 1060, 480),
@@ -279,7 +288,7 @@ P3_PRESETS: dict[str, dict] = {
             conn("roof_face", "output_face", "roof", "input_face"),
             conn("roof_type", "output_text", "roof", "input_roof_type"),
             conn("battlement_box", "output_geometry", "battlement_array", "input_geometry"),
-            conn("array_dir", "output_vector", "battlement_array", "input_direction"),
+            conn("battlement_count", "output_value", "battlement_array", "input_count"),
             conn("roof", "output_eave_path", "eave_railing", "input_path"),
             conn("hollow", "output_geometry", "combine", "input_geometry_0"),
             conn("roof", "output_geometry", "combine", "input_geometry_1"),
@@ -343,6 +352,7 @@ P3_PRESETS: dict[str, dict] = {
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
             node("volume", "geometry.primitives.box_from_corner_size", 0, 200, {
+                "cornerX": -5.0, "cornerY": 0.0, "cornerZ": -5.0,
                 "sizeX": 10.0, "sizeY": 3.5, "sizeZ": 10.0,
             }),
             node("floor_face", "reference.points.get_box_face", 280, 120, {"defaultFaceName": "bottom"}),
@@ -350,7 +360,7 @@ P3_PRESETS: dict[str, dict] = {
             node("floor", "geometry.architectural_primitives.floor_slab", 520, 120),
             node("column", "geometry.primitives.cylinder", 0, 480, {
                 "startX": 4.0, "startY": 0.0, "startZ": 0.0,
-                "endX": 4.0, "endY": 3.0, "endZ": 0.0, "radius": 0.25,
+                "endX": 4.0, "endY": 3.5, "endZ": 0.0, "radius": 0.25,
             }),
             node("column_count", "input.numeric.integer", 280, 480, {"value": 8}),
             node("column_span", "input.numeric.float", 280, 620, {"value": 360.0}),
@@ -438,6 +448,7 @@ P3_PRESETS: dict[str, dict] = {
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
             node("keep_body", "geometry.primitives.box_from_corner_size", 0, 200, {
+                "cornerX": 1.0, "cornerY": 0.0, "cornerZ": 1.0,
                 "sizeX": 12.0, "sizeY": 8.0, "sizeZ": 12.0,
             }),
             node("footprint", "geometry.primitives.box_from_corner_size", 0, 380, {

@@ -23,7 +23,7 @@
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
-    "estimated_node_count": 31
+    "estimated_node_count": 33
   },
   "thumbnails": {
     "main": "",
@@ -122,20 +122,50 @@
         "parameters": {}
       },
       {
-        "id": "node_local_origin",
-        "type": "reference.frames.world_frame",
+        "id": "node_span_x",
+        "type": "input.numeric.float",
         "position": {
-          "x": 220.0,
-          "y": 40.0
+          "x": 0.0,
+          "y": 80.0
         },
-        "parameters": {}
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
       },
       {
-        "id": "node_world_origin_deconstruct",
-        "type": "reference.frames.deconstruct_frame",
+        "id": "node_deck_elevation",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 140.0
+        },
+        "parameters": {
+          "value": {
+            "value": 5.0
+          }
+        }
+      },
+      {
+        "id": "node_span_z",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 200.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_span_start",
+        "type": "reference.points.construct_point",
         "position": {
           "x": 220.0,
-          "y": 120.0
+          "y": 140.0
         },
         "parameters": {}
       },
@@ -148,7 +178,7 @@
         },
         "parameters": {
           "x": {
-            "value": 16.0
+            "value": 1.0
           },
           "y": {
             "value": 0.0
@@ -167,7 +197,7 @@
         },
         "parameters": {
           "value": {
-            "value": 1.0
+            "value": 16.0
           }
         }
       },
@@ -486,26 +516,6 @@
     "connections": [
       {
         "from": {
-          "node": "node_local_origin",
-          "port": "output_frame"
-        },
-        "to": {
-          "node": "node_world_origin_deconstruct",
-          "port": "input_frame"
-        }
-      },
-      {
-        "from": {
-          "node": "node_world_origin_deconstruct",
-          "port": "output_origin"
-        },
-        "to": {
-          "node": "node_path_end",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
           "node": "node_run_vector",
           "port": "output_vector"
         },
@@ -796,16 +806,6 @@
       },
       {
         "from": {
-          "node": "node_world_origin_deconstruct",
-          "port": "output_origin"
-        },
-        "to": {
-          "node": "node_span_path",
-          "port": "input_start"
-        }
-      },
-      {
-        "from": {
           "node": "node_path_end",
           "port": "output_point"
         },
@@ -872,6 +872,56 @@
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_x",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_deck_elevation",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_z",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_path_end",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_span_path",
+          "port": "input_start"
         }
       }
     ]

@@ -236,6 +236,15 @@
           "y": 740.0
         },
         "parameters": {
+          "cornerX": {
+            "value": 4.4
+          },
+          "cornerY": {
+            "value": 14.0
+          },
+          "cornerZ": {
+            "value": -0.4
+          },
           "sizeX": {
             "value": 1.2
           },
@@ -249,36 +258,30 @@
       },
       {
         "id": "node_battlement_array",
-        "type": "pattern.linear.linear_array",
+        "type": "pattern.radial.polar_array",
         "position": {
           "x": 280.0,
           "y": 740.0
         },
         "parameters": {
           "count": {
-            "value": 4
+            "value": 8
           },
-          "distance": {
-            "value": 2.5
+          "includeEnd": {
+            "value": false
           }
         }
       },
       {
-        "id": "node_array_dir",
-        "type": "reference.vectors.vector",
+        "id": "node_battlement_count",
+        "type": "input.numeric.integer",
         "position": {
           "x": 0.0,
           "y": 900.0
         },
         "parameters": {
-          "x": {
-            "value": 1.0
-          },
-          "y": {
-            "value": 0.0
-          },
-          "z": {
-            "value": 0.0
+          "value": {
+            "value": 8
           }
         }
       },
@@ -444,16 +447,6 @@
       },
       {
         "from": {
-          "node": "node_array_dir",
-          "port": "output_vector"
-        },
-        "to": {
-          "node": "node_battlement_array",
-          "port": "input_direction"
-        }
-      },
-      {
-        "from": {
           "node": "node_roof",
           "port": "output_eave_path"
         },
@@ -610,6 +603,16 @@
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_array",
+          "port": "input_count"
         }
       }
     ]

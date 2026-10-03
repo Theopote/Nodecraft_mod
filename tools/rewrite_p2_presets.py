@@ -233,9 +233,9 @@ P2_PRESETS: dict[str, dict] = {
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
             local_origin_node(220, 40),
-            node("tangent_vector", "reference.vectors.vector", 0, 180, {"x": 2.0, "y": 0.0, "z": 0.0}),
-            node("unit_distance", "input.numeric.float", 0, 320, {"value": 1.0}),
-            node("path_end", "reference.points.point_along_vector", 280, 240, {"normalizeDirection": False}),
+            node("tangent_vector", "reference.vectors.vector", 0, 180, {"x": 1.0, "y": 0.0, "z": 0.0}),
+            node("unit_distance", "input.numeric.float", 0, 320, {"value": 2.0}),
+            node("path_end", "reference.points.point_along_vector", 280, 240),
             node("point_list", "math.list.create_list", 280, 40, {"inputCount": 2}),
             node("stair_path", "geometry.curves.points_to_path", 560, 40),
             node("step_count", "input.numeric.integer", 560, 220, {"value": 18}),
