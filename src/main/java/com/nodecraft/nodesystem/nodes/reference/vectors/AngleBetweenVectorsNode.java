@@ -17,7 +17,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.vectors.angle_between",
     displayName = "Angle Between Vectors",
-    description = "Angle between two vectors in degrees; optional reference vector yields a signed angle",
+    description = "Angle between two vectors in degrees. Optional reference is used only to determine signed-angle sign; it need not be perpendicular to A and B.",
     category = "reference.vectors",
     order = 12
 )
@@ -61,7 +61,7 @@ public class AngleBetweenVectorsNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Angle between two vectors in degrees; optional reference vector yields a signed angle";
+        return "Angle between two vectors in degrees. Optional reference is used only to determine signed-angle sign; it need not be perpendicular to A and B.";
     }
 
     @Override
@@ -160,8 +160,8 @@ public class AngleBetweenVectorsNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIGNED_ANGLE_ID, Double.NaN);
+        outputValues.put(OUTPUT_ANGLE_ID, 0.0d);
+        outputValues.put(OUTPUT_SIGNED_ANGLE_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

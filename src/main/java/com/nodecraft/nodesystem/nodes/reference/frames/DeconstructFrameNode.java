@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -63,9 +64,9 @@ public class DeconstructFrameNode extends BaseNode {
         }
 
         outputValues.put(OUTPUT_ORIGIN_ID, frame.getOriginPoint());
-        outputValues.put(OUTPUT_X_AXIS_ID, frame.getXAxis());
-        outputValues.put(OUTPUT_Y_AXIS_ID, frame.getYAxis());
-        outputValues.put(OUTPUT_Z_AXIS_ID, frame.getZAxis());
+        outputValues.put(OUTPUT_X_AXIS_ID, VectorUtils.toVectorPort(frame.getXAxis()));
+        outputValues.put(OUTPUT_Y_AXIS_ID, VectorUtils.toVectorPort(frame.getYAxis()));
+        outputValues.put(OUTPUT_Z_AXIS_ID, VectorUtils.toVectorPort(frame.getZAxis()));
         outputValues.put(OUTPUT_PLANE_ID, frame.toPlane());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");

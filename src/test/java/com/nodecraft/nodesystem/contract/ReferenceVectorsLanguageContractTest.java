@@ -199,10 +199,23 @@ class ReferenceVectorsLanguageContractTest {
     }
 
     @Test
-    void vectorScalarDivideNearZeroScalarFailsClosed() {
+    void vectorScalarDivideTinyScalarRemainsValid() {
         BaseNode divide = node("reference.vectors.vector_scalar_divide");
         divide.setInput("input_vector", new Vector3d(1, 0, 0));
         divide.setInput("input_scalar", 1.0e-15d);
+        divide.processNode(null);
+        assertEquals(Boolean.TRUE, divide.getOutput("output_valid"));
+        Vector3d result = requireVector(divide.getOutput("output_vector_quotient"));
+        assertEquals(1.0e15d, result.x, 1.0e6d);
+        assertEquals(0.0d, result.y, 1.0e-9d);
+        assertEquals(0.0d, result.z, 1.0e-9d);
+    }
+
+    @Test
+    void vectorScalarDivideZeroFailsClosed() {
+        BaseNode divide = node("reference.vectors.vector_scalar_divide");
+        divide.setInput("input_vector", new Vector3d(1, 0, 0));
+        divide.setInput("input_scalar", 0.0d);
         divide.processNode(null);
         assertEquals(Boolean.FALSE, divide.getOutput("output_valid"));
         assertNull(divide.getOutput("output_vector_quotient"));
@@ -311,7 +324,8 @@ class ReferenceVectorsLanguageContractTest {
         angle.putRawInput("input_reference", null);
         angle.processNode(null);
         assertEquals(Boolean.FALSE, angle.getOutput("output_valid"));
-        assertEquals(Double.NaN, angle.getOutput("output_angle"));
+        assertEquals(0.0d, angle.getOutput("output_angle"));
+        assertEquals(0.0d, angle.getOutput("output_signed_angle"));
     }
 
     @Test
@@ -338,7 +352,7 @@ class ReferenceVectorsLanguageContractTest {
         assertEquals(Boolean.FALSE, project.getOutput("output_valid"));
         assertNull(project.getOutput("output_projection"));
         assertNull(project.getOutput("output_rejection"));
-        assertEquals(Double.NaN, project.getOutput("output_scale"));
+        assertEquals(0.0d, project.getOutput("output_scale"));
     }
 
     @Test

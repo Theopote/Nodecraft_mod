@@ -116,7 +116,7 @@ public class SphereSurfaceFrameNode extends BaseNode {
 
         outputValues.put(OUTPUT_FRAME_ID, frame);
         outputValues.put(OUTPUT_ORIGIN_ID, new PointData(origin));
-        outputValues.put(OUTPUT_NORMAL_ID, normal);
+        outputValues.put(OUTPUT_NORMAL_ID, VectorUtils.toVectorPort(normal));
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

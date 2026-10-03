@@ -21,7 +21,7 @@ import java.util.function.DoubleConsumer;
     effect = NodeEffect.PURE,
     id = "reference.vectors.vector2_input",
     displayName = "2D Vector Input",
-    description = "Inputs a 2D vector (X/Y) and outputs Vector3d(x, y, 0).",
+    description = "Inputs a 2D vector (X/Y) and outputs VECTOR(x, y, 0).",
     category = "reference.vectors",
     order = 1
 )
@@ -43,7 +43,7 @@ public class Vector2InputNode extends BaseCustomUINode {
 
     public Vector2InputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector2_input");
-        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "2D vector as Vector3d(x,y,0)", NodeDataType.VECTOR, this));
+        addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "VECTOR(x, y, 0)", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when X and Y are finite", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
         updateOutput();
@@ -51,7 +51,7 @@ public class Vector2InputNode extends BaseCustomUINode {
 
     @Override
     public String getDescription() {
-        return "Inputs a 2D vector (X/Y) and outputs Vector3d(x, y, 0).";
+        return "Inputs a 2D vector (X/Y) and outputs VECTOR(x, y, 0).";
     }
 
     @Override

@@ -72,7 +72,7 @@ public class VectorLengthNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
+        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

@@ -67,12 +67,18 @@ public class VectorScalarDivideNode extends BaseNode {
             writeInvalid("Scalar must be exact finite DOUBLE");
             return;
         }
-        if (Math.abs(scalar) < VectorUtils.EPS) {
-            writeInvalid("Scalar magnitude must be greater than EPS");
+        if (scalar == 0.0d) {
+            writeInvalid("Scalar must be non-zero");
             return;
         }
 
-        Vector3d result = VectorUtils.safeScale(vector, 1.0d / scalar);
+        double reciprocal = 1.0d / scalar;
+        if (!VectorUtils.isFinite(reciprocal)) {
+            writeInvalid("Scalar reciprocal is not finite");
+            return;
+        }
+
+        Vector3d result = VectorUtils.safeScale(vector, reciprocal);
         VectorData output = VectorUtils.toVectorPort(result);
         if (output == null) {
             writeInvalid("Divided vector is not finite");

@@ -212,6 +212,11 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     public void setX(double x) {
+        if (!VectorUtils.isFinite(x)) {
+            writeInvalid("X must be finite DOUBLE");
+            markDirty();
+            return;
+        }
         if (Double.compare(this.x, x) != 0) {
             this.x = x;
             updateOutput();
@@ -224,6 +229,11 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     public void setY(double y) {
+        if (!VectorUtils.isFinite(y)) {
+            writeInvalid("Y must be finite DOUBLE");
+            markDirty();
+            return;
+        }
         if (Double.compare(this.y, y) != 0) {
             this.y = y;
             updateOutput();
@@ -236,6 +246,11 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     public void setZ(double z) {
+        if (!VectorUtils.isFinite(z)) {
+            writeInvalid("Z must be finite DOUBLE");
+            markDirty();
+            return;
+        }
         if (Double.compare(this.z, z) != 0) {
             this.z = z;
             updateOutput();
@@ -282,13 +297,13 @@ public class VectorInputNode extends BaseCustomUINode {
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            if (map.get("x") instanceof Number number) {
+            if (map.get("x") instanceof Number number && VectorUtils.isFinite(number.doubleValue())) {
                 this.x = number.doubleValue();
             }
-            if (map.get("y") instanceof Number number) {
+            if (map.get("y") instanceof Number number && VectorUtils.isFinite(number.doubleValue())) {
                 this.y = number.doubleValue();
             }
-            if (map.get("z") instanceof Number number) {
+            if (map.get("z") instanceof Number number && VectorUtils.isFinite(number.doubleValue())) {
                 this.z = number.doubleValue();
             }
             if (map.get("showLabel") instanceof Boolean show) {

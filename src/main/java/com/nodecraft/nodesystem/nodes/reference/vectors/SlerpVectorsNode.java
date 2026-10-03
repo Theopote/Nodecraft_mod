@@ -21,7 +21,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.vectors.slerp",
     displayName = "Slerp Vectors",
-    description = "Performs spherical linear interpolation between two direction vectors.",
+    description = "Performs spherical linear interpolation between two direction vectors. T is not clamped; extrapolation is allowed.",
     category = "reference.vectors",
     order = 14
 )
@@ -61,7 +61,7 @@ public class SlerpVectorsNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Performs spherical linear interpolation between two direction vectors.";
+        return "Performs spherical linear interpolation between two direction vectors. T is not clamped; extrapolation is allowed.";
     }
 
     @Override
@@ -203,7 +203,7 @@ public class SlerpVectorsNode extends BaseNode {
 
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_RESULT_ID, null);
-        outputValues.put(OUTPUT_ANGLE_ID, Double.NaN);
+        outputValues.put(OUTPUT_ANGLE_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.vectors.AngleBetweenVectorsNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.SlerpVectorsNode;
 import com.nodecraft.nodesystem.nodes.reference.vectors.Vector2InputNode;
@@ -77,11 +76,6 @@ class ReferenceVectorsLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV88() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -172,6 +166,25 @@ class ReferenceVectorsLanguageV2ContractTest {
     }
 
     @Test
+    void vectorInputStateLoadSkipsNonFiniteValues() {
+        VectorInputNode input = new VectorInputNode();
+        input.setNodeState(java.util.Map.of("x", Double.NaN, "y", 3.0d, "z", 4.0d));
+        input.processNode(null);
+        assertValid(input);
+        assertEquals(0.0d, input.getX());
+        assertEquals(3.0d, input.getY());
+        assertEquals(4.0d, input.getZ());
+    }
+
+    @Test
+    void vectorInputNonFinitePropertyFailsCleanly() {
+        VectorInputNode input = new VectorInputNode();
+        input.setX(Double.NaN);
+        assertInvalid(input);
+        assertEquals(0.0d, input.getX());
+    }
+
+    @Test
     void constructVectorRejectsIntegerComponent() {
         BaseNode construct = node("reference.vectors.construct_vector");
         construct.setInput("input_x", 1);
@@ -233,7 +246,7 @@ class ReferenceVectorsLanguageV2ContractTest {
         dot.setInput("input_vector_b", new Vector3d(1e308d, 0, 0));
         dot.processNode(null);
         assertInvalid(dot);
-        assertEquals(Double.NaN, dot.getOutput("output_dot_product"));
+        assertEquals(0.0d, dot.getOutput("output_dot_product"));
     }
 
     @Test
@@ -329,6 +342,8 @@ class ReferenceVectorsLanguageV2ContractTest {
         angle.putRawInput("input_reference", null);
         angle.processNode(null);
         assertInvalid(angle);
+        assertEquals(0.0d, angle.getOutput("output_angle"));
+        assertEquals(0.0d, angle.getOutput("output_signed_angle"));
     }
 
     @Test

@@ -7,10 +7,12 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -64,17 +66,24 @@ public class DeconstructFramesNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> xAxes = new ArrayList<>(frames.size());
-        List<Vector3d> yAxes = new ArrayList<>(frames.size());
-        List<Vector3d> zAxes = new ArrayList<>(frames.size());
+        List<VectorData> xAxes = new ArrayList<>(frames.size());
+        List<VectorData> yAxes = new ArrayList<>(frames.size());
+        List<VectorData> zAxes = new ArrayList<>(frames.size());
         List<PlaneData> planes = new ArrayList<>(frames.size());
         List<Vector3d> origins = new ArrayList<>(frames.size());
 
         for (FrameData frame : frames) {
+            VectorData x = VectorUtils.toVectorPort(frame.getXAxis());
+            VectorData y = VectorUtils.toVectorPort(frame.getYAxis());
+            VectorData z = VectorUtils.toVectorPort(frame.getZAxis());
+            if (x == null || y == null || z == null) {
+                writeEmpty("Every frame axis must be a finite VECTOR");
+                return;
+            }
             origins.add(new Vector3d(frame.getOrigin()));
-            xAxes.add(new Vector3d(frame.getXAxis()));
-            yAxes.add(new Vector3d(frame.getYAxis()));
-            zAxes.add(new Vector3d(frame.getZAxis()));
+            xAxes.add(x);
+            yAxes.add(y);
+            zAxes.add(z);
             planes.add(frame.toPlane());
         }
 

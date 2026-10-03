@@ -117,7 +117,7 @@ public class ProjectVectorNode extends BaseNode {
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_PROJECTION_ID, null);
         outputValues.put(OUTPUT_REJECTION_ID, null);
-        outputValues.put(OUTPUT_SCALE_ID, Double.NaN);
+        outputValues.put(OUTPUT_SCALE_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

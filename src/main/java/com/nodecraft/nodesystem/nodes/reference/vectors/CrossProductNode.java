@@ -90,7 +90,7 @@ public class CrossProductNode extends BaseNode {
 
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_CROSS_PRODUCT_ID, null);
-        outputValues.put(OUTPUT_MAGNITUDE_ID, Double.NaN);
+        outputValues.put(OUTPUT_MAGNITUDE_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
