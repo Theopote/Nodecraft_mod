@@ -73,7 +73,7 @@
 | 3 | `building_elements.stairs.spiral_staircase` | Spiral Staircase | Local → Move | 否 |
 | 4 | `decorative.fountain_circular` | Circular Fountain | Local → Move | 否 |
 | 5 | `styles.modern.glass_box_building` | Modern Glass Box Building | Local → Move（双材质） | 否 |
-| 6 | `architectural.residential.mini_building_v1` | Mini Building | **Local @ 原点（无 Move）** | **是** |
+| 6 | `architectural.residential.mini_building_v1` | Mini Building | Local → Move（Player） | **是** |
 
 ---
 
@@ -265,29 +265,27 @@ Glass + Frame → Combine → move_to_pos → Preview Geometry ┘
 ### 案例 6 — Mini Building（完整 Apply 链）
 
 **Preset ID：** `architectural.residential.mini_building_v1`  
-**测什么：** 建筑组件链 + Preview Blocks + **Apply Changes** + Undo。
-
-> **注意（当前 preset 设计）：** 此 preset **不含** Player Position / Move Geometry。  
-> 预览与 Apply 默认出现在 **世界原点附近**，而非玩家脚边。  
-> 本案例重点验收 **Apply 链与 preview 一致性**，不是“建筑跟随玩家”。
+**测什么：** 建筑组件链 + Player Move + Block Type + Preview Blocks + **Apply Changes** + Undo。
 
 **主链：**
 ```text
 Volume → Floor / Walls / Windows / Roof → Combine
-  ├→ Preview Geometry
-  └→ Voxelize → Material → Preview Blocks
-                           └→ Apply Changes
+  → Move Geometry ← Player Position
+       ├→ Preview Geometry
+       └→ Voxelize → Assign Block Type ← Block Type Selector
+                       ├→ Preview Blocks
+                       └→ Apply Changes
 ```
 
 **操作步骤：**
 
 | 步骤 | 操作 | Pass |
 |------|------|------|
-| 1 | 加载 preset；**先走到离原点较远处**（便于区分） | ☐ |
-| 2 | 执行图 — Geometry + Block Preview 出现在 **(0,0,0) 附近** | ☐ |
+| 1 | 加载 preset；站在开阔处 | ☐ |
+| 2 | 执行图 — Geometry + Block Preview 出现在 **玩家位置附近**（非世界原点） | ☐ |
 | 3 | **D** Geometry 与 Block Preview 重合（小建筑轮廓：墙+窗+顶） | ☐ |
 | 4 | **E** 选中 volume，将 `sizeX` 从 `10` 改为 `12` | ☐ |
-| 5 | 建筑变宽，两种 preview 同步 | ☐ |
+| 5 | 建筑变宽，两种 preview 同步且仍锚定玩家 | ☐ |
 | 6 | **F** 触发 Apply Changes（EXEC） | ☐ |
 | 7 | **G** 真实方块与 Apply 前 Block Preview **一致** | ☐ |
 | 8 | **H** Undo — 方块全部撤销，无残留 ghost/实体 | ☐ |

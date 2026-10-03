@@ -215,12 +215,33 @@ class PresetSemanticAuditTest {
         }
 
         errors.addAll(findDeadMaterialBranches(preset));
+        errors.addAll(requireMaterialBlockTypeConnected(preset, typeByRef));
         errors.addAll(findUnconsumedNonSinkNodes(preset, typeByRef));
         errors.addAll(requireExplicitStateOnRepeatedPrimitives(preset, typeByRef));
 
         // Structural connectability still owned by GraphPresetResourceTest; re-check ports
         // here so semantic failures surface with the same resource load.
         errors.addAll(validatePortsExist(preset, typeByRef));
+        return errors;
+    }
+
+    /**
+     * Assign Block Type requires {@code input_block_type} at runtime; a connected
+     * placements output alone does not make the material branch executable.
+     */
+    private static List<String> requireMaterialBlockTypeConnected(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if (!MATERIAL_TYPE_IDS.contains(entry.getValue())) {
+                continue;
+            }
+            if (!hasIncomingConnection(preset, entry.getKey(), "input_block_type")) {
+                errors.add(preset.id + ": material node '" + entry.getKey()
+                        + "' has no connection to required input_block_type");
+            }
+        }
         return errors;
     }
 

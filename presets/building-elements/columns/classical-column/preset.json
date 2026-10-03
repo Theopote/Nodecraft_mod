@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 24
+    "estimated_node_count": 25
   },
   "thumbnails": {
     "main": "",
@@ -349,6 +349,19 @@
           "y": 240.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 2260.0,
+          "y": 1100.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:smooth_quartz"
+          }
+        }
       }
     ],
     "connections": [
@@ -620,6 +633,16 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
         }
       }
     ]

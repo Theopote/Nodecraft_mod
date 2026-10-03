@@ -23,7 +23,7 @@
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "3 minutes",
-    "estimated_node_count": 20
+    "estimated_node_count": 21
   },
   "thumbnails": {
     "main": "",
@@ -366,6 +366,19 @@
           "y": 480.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 1100.0,
+          "y": 980.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:stone_bricks"
+          }
+        }
       }
     ],
     "connections": [
@@ -587,6 +600,16 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
         }
       }
     ]

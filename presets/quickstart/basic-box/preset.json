@@ -23,7 +23,7 @@
     "category": "quickstart",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 6
+    "estimated_node_count": 7
   },
   "thumbnails": {
     "main": "",
@@ -137,6 +137,19 @@
           "y": 240.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 1180.0,
+          "y": 320.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:stone"
+          }
+        }
       }
     ],
     "connections": [
@@ -188,6 +201,16 @@
         "to": {
           "node": "node_preview_blocks",
           "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
         }
       }
     ]

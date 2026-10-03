@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "1 minute",
-    "estimated_node_count": 23
+    "estimated_node_count": 24
   },
   "thumbnails": {
     "main": "",
@@ -334,6 +334,19 @@
           "y": 280.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 2160.0,
+          "y": 1300.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:glass"
+          }
+        }
       }
     ],
     "connections": [
@@ -499,7 +512,7 @@
       },
       {
         "from": {
-          "node": "node_wall",
+          "node": "node_windows",
           "port": "output_openings"
         },
         "to": {
@@ -645,6 +658,16 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
         }
       }
     ]

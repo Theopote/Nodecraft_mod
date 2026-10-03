@@ -23,7 +23,8 @@ final class PresetCoordinateSpaceAuditor {
     enum ViolationKind {
         DOUBLE_TRANSLATION,
         SPLIT_PREVIEW_CHAIN,
-        WORLD_SPACE_WITHOUT_MOVE
+        WORLD_SPACE_WITHOUT_MOVE,
+        WORLD_WRITE_WITHOUT_ANCHOR
     }
 
     record Violation(ViolationKind kind, String detail) {
@@ -36,6 +37,7 @@ final class PresetCoordinateSpaceAuditor {
     private static final String MOVE_GEOMETRY_TYPE = "transform.basic_transforms.move_geometry";
     private static final String PREVIEW_GEOMETRY_TYPE = "output.preview.preview_geometry";
     private static final String VOXELIZE_TYPE = "geometry.voxel.voxelize_geometry";
+    private static final String APPLY_CHANGES_TYPE = "output.execute.apply_changes";
     private static final String CREATE_LIST_TYPE = "math.list.create_list";
     private static final String DECONSTRUCT_POINT_TYPE = "reference.points.deconstruct_point";
     private static final String CONSTRUCT_VECTOR_TYPE = "reference.vectors.construct_vector";
@@ -422,7 +424,9 @@ final class PresetCoordinateSpaceAuditor {
 
     static List<Violation> auditIncludingWorldSpacePolicy(GraphPresetRules.GraphPresetDefinition preset) {
         List<Violation> violations = new ArrayList<>(audit(preset));
-        violations.addAll(findWorldSpaceWithoutMove(preset, typeByRef(preset)));
+        Map<String, String> typeByRef = typeByRef(preset);
+        violations.addAll(findWorldSpaceWithoutMove(preset, typeByRef));
+        violations.addAll(findWorldWriteWithoutAnchor(preset, typeByRef));
         return violations;
     }
 
@@ -432,5 +436,67 @@ final class PresetCoordinateSpaceAuditor {
             codes.add(violation.code());
         }
         return codes;
+    }
+
+    /**
+     * Apply Changes writes to world coordinates. Presets that include Apply must
+     * have a final Move Geometry fed by Player Position feeding Voxelize.
+     * Teaching allowlist entries must not also contain Apply Changes.
+     */
+    static List<Violation> findWorldWriteWithoutAnchor(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<Violation> violations = new ArrayList<>();
+        Set<String> applyRefs = refsOfType(typeByRef, APPLY_CHANGES_TYPE);
+        if (applyRefs.isEmpty()) {
+            return violations;
+        }
+
+        if (isWorldSpaceAnchorAllowlisted(preset.id)) {
+            violations.add(new Violation(
+                    ViolationKind.WORLD_WRITE_WITHOUT_ANCHOR,
+                    "preset is on WORLD_SPACE_ANCHOR_ALLOWLIST but also contains Apply Changes — "
+                            + "remove from allowlist or add Player→Move anchor"));
+            return violations;
+        }
+
+        Set<String> playerAnchoredMoves = playerAnchoredMoveRefs(preset, typeByRef);
+        if (playerAnchoredMoves.isEmpty()) {
+            violations.add(new Violation(
+                    ViolationKind.WORLD_WRITE_WITHOUT_ANCHOR,
+                    "Apply Changes present without Player Position → Move Geometry "
+                            + "(world write would land at local/origin coordinates)"));
+            return violations;
+        }
+
+        Set<String> voxelizeRefs = refsOfType(typeByRef, VOXELIZE_TYPE);
+        if (voxelizeRefs.isEmpty()) {
+            return violations;
+        }
+        if (preset.connections == null) {
+            violations.add(new Violation(
+                    ViolationKind.WORLD_WRITE_WITHOUT_ANCHOR,
+                    "Apply Changes present but Move Geometry does not feed Voxelize"));
+            return violations;
+        }
+        boolean moveFeedsVoxelize = false;
+        for (GraphPresetRules.PresetConnection connection : preset.connections) {
+            if (connection == null) {
+                continue;
+            }
+            if (playerAnchoredMoves.contains(connection.fromRef)
+                    && "output_geometry".equals(connection.fromPort)
+                    && voxelizeRefs.contains(connection.toRef)
+                    && "input_geometry".equals(connection.toPort)) {
+                moveFeedsVoxelize = true;
+                break;
+            }
+        }
+        if (!moveFeedsVoxelize) {
+            violations.add(new Violation(
+                    ViolationKind.WORLD_WRITE_WITHOUT_ANCHOR,
+                    "Apply Changes present but player-anchored Move Geometry does not feed Voxelize"));
+        }
+        return violations;
     }
 }

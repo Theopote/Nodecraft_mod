@@ -23,7 +23,7 @@
     "category": "decorative",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
-    "estimated_node_count": 19
+    "estimated_node_count": 20
   },
   "thumbnails": {
     "main": "",
@@ -334,6 +334,19 @@
           "y": 280.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 1080.0,
+          "y": 840.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:oak_planks"
+          }
+        }
       }
     ],
     "connections": [
@@ -545,6 +558,16 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
         }
       }
     ]

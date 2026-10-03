@@ -45,6 +45,15 @@
               "typeId": "output.preview.preview_geometry",
               "x": 560,
               "y": 240
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 900.0,
+              "y": 320.0,
+              "state": {
+                "selectedBlock": "minecraft:stone"
+              }
             }
           ],
           "connections": [
@@ -71,6 +80,12 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -493,6 +508,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1120.0,
               "y": 360.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1360.0,
+              "y": 1180.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -723,6 +747,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -901,6 +931,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 860.0,
               "y": 480.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1100.0,
+              "y": 980.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -1035,6 +1074,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -1268,6 +1313,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1280.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1520.0,
+              "y": 1120.0,
+              "state": {
+                "selectedBlock": "minecraft:oak_planks"
+              }
             }
           ],
           "connections": [
@@ -1486,6 +1540,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -1677,6 +1737,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1040.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1280.0,
+              "y": 840.0,
+              "state": {
+                "selectedBlock": "minecraft:smooth_quartz"
+              }
             }
           ],
           "connections": [
@@ -1859,13 +1928,19 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor →Wall Along Path →Difference (Window openings) →Window Frame on frames →Roof →Voxelize →Material →Preview/Apply.",
+          "description": "Floor → Wall Along Path → Difference (Window openings) → Window Frame on frames → Roof → Move to Player → Voxelize → Material → Preview/Apply.",
           "kind": "composite",
           "nodes": [
             {
@@ -1992,6 +2067,39 @@
               "typeId": "output.execute.apply_changes",
               "x": 1720,
               "y": 500
+            },
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0,
+              "y": 40
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1120,
+              "y": 240
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 820,
+              "y": 280
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1040,
+              "y": 280
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1760.0,
+              "y": 580.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -2092,13 +2200,13 @@
               "toPort": "input_geometry_3"
             },
             {
-              "fromRef": "combine",
+              "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "voxelize",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "combine",
+              "fromRef": "move_to_pos",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
               "toPort": "input_geometry"
@@ -2120,6 +2228,48 @@
               "fromPort": "output_placements",
               "toRef": "apply_changes",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -2752,6 +2902,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1240.0,
               "y": 240.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 2260.0,
+              "y": 1100.0,
+              "state": {
+                "selectedBlock": "minecraft:smooth_quartz"
+              }
             }
           ],
           "connections": [
@@ -2916,6 +3075,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -3006,6 +3171,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 380.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1420.0,
+              "y": 460.0,
+              "state": {
+                "selectedBlock": "minecraft:oak_planks"
+              }
             }
           ],
           "connections": [
@@ -3080,6 +3254,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -3171,6 +3351,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 620.0,
               "y": 260.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1660.0,
+              "y": 460.0,
+              "state": {
+                "selectedBlock": "minecraft:spruce_planks"
+              }
             }
           ],
           "connections": [
@@ -3251,6 +3440,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -3461,6 +3656,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1160.0,
               "y": 620.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 2180.0,
+              "y": 1420.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -3631,6 +3835,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -3754,6 +3964,15 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1680,
               "y": 320
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1720.0,
+              "y": 920.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -3846,6 +4065,12 @@
               "fromPort": "output_point",
               "toRef": "stair_path",
               "toPort": "input_end"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -3970,6 +4195,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 880.0,
               "y": 360.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1920.0,
+              "y": 600.0,
+              "state": {
+                "selectedBlock": "minecraft:glass"
+              }
             }
           ],
           "connections": [
@@ -4068,6 +4302,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -4246,6 +4486,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 1140.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 2160.0,
+              "y": 1300.0,
+              "state": {
+                "selectedBlock": "minecraft:glass"
+              }
             }
           ],
           "connections": [
@@ -4434,6 +4683,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         }
@@ -4571,6 +4826,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 600.0,
               "y": 420.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 840.0,
+              "y": 800.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -4663,6 +4927,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -4821,6 +5091,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 840.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1080.0,
+              "y": 840.0,
+              "state": {
+                "selectedBlock": "minecraft:oak_planks"
+              }
             }
           ],
           "connections": [
@@ -4949,6 +5228,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         }
@@ -5004,6 +5289,15 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1140,
               "y": 240
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1180.0,
+              "y": 320.0,
+              "state": {
+                "selectedBlock": "minecraft:stone"
+              }
             }
           ],
           "connections": [
@@ -5036,6 +5330,12 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -5083,6 +5383,15 @@
               "typeId": "output.preview.preview_blocks",
               "x": 1140,
               "y": 240
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1180.0,
+              "y": 320.0,
+              "state": {
+                "selectedBlock": "minecraft:stone"
+              }
             }
           ],
           "connections": [
@@ -5115,6 +5424,12 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -5205,6 +5520,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 380.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1460.0,
+              "y": 480.0,
+              "state": {
+                "selectedBlock": "minecraft:cobblestone"
+              }
             }
           ],
           "connections": [
@@ -5279,6 +5603,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -5371,6 +5701,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 380.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1460.0,
+              "y": 480.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -5445,6 +5784,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         }
@@ -5603,6 +5948,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 600.0,
               "y": 520.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 840.0,
+              "y": 1000.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -5707,6 +6061,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
@@ -5845,6 +6205,15 @@
               "typeId": "reference.vectors.construct_vector",
               "x": 860.0,
               "y": 280.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1100.0,
+              "y": 1020.0,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             }
           ],
           "connections": [
@@ -5955,6 +6324,12 @@
               "fromPort": "output_vector",
               "toRef": "move_to_pos",
               "toPort": "input_translation"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
             }
           ]
         },
