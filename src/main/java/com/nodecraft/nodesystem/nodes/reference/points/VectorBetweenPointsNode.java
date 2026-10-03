@@ -5,8 +5,10 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -86,7 +88,13 @@ public class VectorBetweenPointsNode extends BaseNode {
             return;
         }
 
-        outputValues.put(OUTPUT_VECTOR_ID, vector);
+        VectorData output = VectorUtils.toVectorPort(vector);
+        if (output == null) {
+            writeInvalid("Displacement vector is not finite");
+            return;
+        }
+
+        outputValues.put(OUTPUT_VECTOR_ID, output);
         outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -94,7 +102,7 @@ public class VectorBetweenPointsNode extends BaseNode {
 
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_VECTOR_ID, null);
-        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
+        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

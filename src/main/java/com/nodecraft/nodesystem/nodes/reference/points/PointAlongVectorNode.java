@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.StrictDoubleUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -83,15 +84,15 @@ public class PointAlongVectorNode extends BaseNode {
             return;
         }
 
-        Vector3d unitDirection = new Vector3d(direction);
-        if (unitDirection.lengthSquared() <= PointUtils.EPS_SQ) {
-            writeInvalid("Direction must be non-zero");
+        Vector3d unitDirection = VectorUtils.safeNormalize(direction);
+        if (unitDirection == null) {
+            writeInvalid("Direction must be finite and non-zero");
             return;
         }
-        unitDirection.normalize();
 
-        Vector3d result = new Vector3d(point).fma(distance, unitDirection);
-        if (!PointUtils.isFinite(result)) {
+        Vector3d displacement = VectorUtils.safeScale(unitDirection, distance);
+        Vector3d result = VectorUtils.safeAdd(point, displacement);
+        if (result == null) {
             writeInvalid("Resulting point is not finite");
             return;
         }

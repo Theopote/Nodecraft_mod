@@ -63,9 +63,9 @@ public class DeconstructPointNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Vector3d point = PointUtils.toPointPosition(inputValues.get(INPUT_POINT_ID));
         if (!PointUtils.isFinite(point)) {
-            outputValues.put(OUTPUT_X_ID, Double.NaN);
-            outputValues.put(OUTPUT_Y_ID, Double.NaN);
-            outputValues.put(OUTPUT_Z_ID, Double.NaN);
+            outputValues.put(OUTPUT_X_ID, 0.0d);
+            outputValues.put(OUTPUT_Y_ID, 0.0d);
+            outputValues.put(OUTPUT_Z_ID, 0.0d);
             outputValues.put(OUTPUT_VALID_ID, false);
             outputValues.put(OUTPUT_ERROR_ID, "Point must be a finite POINT");
             return;

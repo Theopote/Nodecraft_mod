@@ -8,9 +8,11 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BoxFaceValidator;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -89,11 +91,17 @@ public class DeconstructBoxFaceNode extends BaseNode {
             ));
         }
 
+        VectorData normalOut = VectorUtils.toVectorPort(face.getNormal());
+        if (normalOut == null) {
+            writeInvalid("Face normal is not finite");
+            return;
+        }
+
         outputValues.put(OUTPUT_NAME_ID, face.getName());
         outputValues.put(OUTPUT_INDEX_ID, face.getIndex());
         outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(corners));
         outputValues.put(OUTPUT_CENTER_ID, new PointData(face.getCenter()));
-        outputValues.put(OUTPUT_NORMAL_ID, face.getNormal());
+        outputValues.put(OUTPUT_NORMAL_ID, normalOut);
         outputValues.put(OUTPUT_PLANE_ID, face.getPlane());
         outputValues.put(OUTPUT_EDGES_ID, List.copyOf(edges));
         outputValues.put(OUTPUT_CORNER_INDICES_ID, List.copyOf(face.getCornerIndices()));

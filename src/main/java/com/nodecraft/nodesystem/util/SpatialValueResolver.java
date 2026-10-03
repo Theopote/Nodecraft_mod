@@ -16,8 +16,9 @@ import java.util.List;
  * consistently consume world positions, centers, and point-like values.
  * <p>
  * Graph language uses {@code POINT} / {@code POINT_LIST}; internal algorithms typically consume
- * {@link Vector3d}. Prefer {@link #resolvePointList(Object)} at list-input boundaries so
- * {@link PointData} and legacy {@link Vector3d} entries both work.
+ * {@link Vector3d}. Graph-facing {@code POINT_LIST} ingest must use
+ * {@link PointUtils#resolveStrictPointListBounded}; {@link #resolvePointList(Object)} is a
+ * legacy helper that silently skips invalid entries.
  * <p>
  * Direction ports use {@link #resolveVector(Object)} (strict): points and block positions are
  * not treated as vectors.
@@ -84,9 +85,10 @@ public final class SpatialValueResolver {
     }
 
     /**
-     * Resolves a collection of point-like entries into continuous locations for algorithms.
-     * Accepts {@link PointData}, {@link Vector3d}, legacy position/vector wrappers, and
-     * {@link BlockPos} (canonical cell center). Unknown entries are skipped.
+     * Legacy compatibility helper: resolves a collection of point-like entries into continuous
+     * locations, <strong>silently skipping</strong> unknown or non-finite entries.
+     * Do not use for new graph-facing {@code POINT_LIST} ingest — use
+     * {@link PointUtils#resolveStrictPointListBounded} so one invalid item fails the whole list.
      */
     public static List<Vector3d> resolvePointList(@Nullable Object value) {
         if (!(value instanceof Collection<?> collection)) {

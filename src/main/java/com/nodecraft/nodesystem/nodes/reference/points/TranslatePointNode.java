@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -73,8 +74,8 @@ public class TranslatePointNode extends BaseNode {
             return;
         }
 
-        Vector3d result = new Vector3d(point).add(offset);
-        if (!PointUtils.isFinite(result)) {
+        Vector3d result = VectorUtils.safeAdd(point, offset);
+        if (result == null) {
             writeInvalid("Translated point is not finite");
             return;
         }

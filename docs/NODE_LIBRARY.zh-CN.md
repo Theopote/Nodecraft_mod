@@ -679,7 +679,7 @@
 | Mid Point | `reference.points.mid_point` | Computes the midpoint between two input points | `MidpointNode` |
 | Distance Between Points | `reference.points.distance_between_points` | Computes the distance between two input points | `DistanceNode` |
 | Vector Between Points | `reference.points.vector_between_points` | Computes the displacement vector from one geometric point to another (To − From) | `VectorBetweenPointsNode` |
-| Closest Point | `reference.points.closest_point` | Finds the closest geometric point in a point list to a reference point | `ClosestPointNode` |
+| Closest Point | `reference.points.closest_point` | Finds the closest geometric point in a point list to a reference point. Equal-distance ties keep the lowest input index. | `ClosestPointNode` |
 | Point List Center | `reference.points.point_list_center` | Calculates the average geometric center of a point list | `PointListCenterNode` |
 | Point List Bounds | `reference.points.point_list_bounds` | Calculates an axis-aligned bounding box from a list of geometric points | `PointListBoundsNode` |
 | Get Box Corner | `reference.points.get_box_corner` | Gets a single corner from box geometry by index | `GetBoxCornerNode` |

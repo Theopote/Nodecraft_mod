@@ -11,9 +11,9 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.points.CoordinateInputNode;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.nodes.reference.points.PointAlongVectorNode;
@@ -91,11 +91,6 @@ class ReferencePointsLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV87() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -202,6 +197,30 @@ class ReferencePointsLanguageV2ContractTest {
     }
 
     @Test
+    void moveAlongDirectionHugeComponentsFailClosed() {
+        BaseNode move = node("reference.points.point_along_vector");
+        move.setInput("input_point", new PointData(0, 0, 0));
+        move.setInput("input_vector", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        move.setInput("input_distance", 1.0d);
+        move.processNode(null);
+        assertInvalid(move);
+    }
+
+    @Test
+    void vectorBetweenPointsPublishesVectorData() {
+        BaseNode vector = node("reference.points.vector_between_points");
+        vector.setInput("input_from", new PointData(1, 2, 3));
+        vector.setInput("input_to", new PointData(4, 6, 3));
+        vector.processNode(null);
+        assertValid(vector);
+        VectorData out = assertInstanceOf(VectorData.class, vector.getOutput("output_vector"));
+        assertEquals(3.0d, out.x(), 1.0e-9d);
+        assertEquals(4.0d, out.y(), 1.0e-9d);
+        assertEquals(0.0d, out.z(), 1.0e-9d);
+        assertEquals(5.0d, vector.getOutput("output_length"));
+    }
+
+    @Test
     void translatePointOverflowFailsClosed() {
         BaseNode translate = node("reference.points.translate_point");
         translate.setInput("input_point", new PointData(1e308d, 0, 0));
@@ -224,23 +243,24 @@ class ReferencePointsLanguageV2ContractTest {
     }
 
     @Test
-    void distanceNonFiniteOutputsNaNWithError() {
+    void distanceNonFiniteOutputsZeroWithError() {
         BaseNode distance = node("reference.points.distance_between_points");
         distance.setInput("input_point_a", new PointData(1e308d, 0, 0));
         distance.setInput("input_point_b", new PointData(-1e308d, 0, 0));
         distance.processNode(null);
         assertInvalid(distance);
-        assertEquals(Double.NaN, distance.getOutput("output_distance"));
+        assertEquals(0.0d, distance.getOutput("output_distance"));
     }
 
     @Test
-    void vectorBetweenPointsNonFiniteOutputsNaNWithError() {
+    void vectorBetweenPointsNonFiniteOutputsZeroWithError() {
         BaseNode vector = node("reference.points.vector_between_points");
-        vector.setInput("input_point_a", new PointData(1e308d, 0, 0));
-        vector.setInput("input_point_b", new PointData(-1e308d, 0, 0));
+        vector.setInput("input_from", new PointData(1e308d, 0, 0));
+        vector.setInput("input_to", new PointData(-1e308d, 0, 0));
         vector.processNode(null);
         assertInvalid(vector);
-        assertEquals(Double.NaN, vector.getOutput("output_length"));
+        assertEquals(0.0d, vector.getOutput("output_length"));
+        assertEquals(null, vector.getOutput("output_vector"));
     }
 
     @Test
@@ -419,6 +439,8 @@ class ReferencePointsLanguageV2ContractTest {
         assertValid(deconstruct);
         assertEquals(2.0d, deconstruct.getOutput("output_length"));
         assertInstanceOf(PointData.class, deconstruct.getOutput("output_midpoint"));
+        assertInstanceOf(VectorData.class, deconstruct.getOutput("output_direction"));
+        assertInstanceOf(VectorData.class, deconstruct.getOutput("output_vector"));
     }
 
     @Test
@@ -431,11 +453,11 @@ class ReferencePointsLanguageV2ContractTest {
     }
 
     @Test
-    void deconstructPointInvalidOutputsNaN() {
+    void deconstructPointInvalidOutputsZero() {
         BaseNode deconstruct = node("reference.points.deconstruct_point");
         deconstruct.processNode(null);
         assertInvalid(deconstruct);
-        assertEquals(Double.NaN, deconstruct.getOutput("output_x"));
+        assertEquals(0.0d, deconstruct.getOutput("output_x"));
     }
 
     @Test

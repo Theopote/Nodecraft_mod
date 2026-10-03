@@ -134,9 +134,9 @@ public class PointListBoundsNode extends BaseNode {
         outputValues.put(OUTPUT_MIN_POINT_ID, null);
         outputValues.put(OUTPUT_MAX_POINT_ID, null);
         outputValues.put(OUTPUT_CENTER_POINT_ID, null);
-        outputValues.put(OUTPUT_SIZE_X_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIZE_Y_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIZE_Z_ID, Double.NaN);
+        outputValues.put(OUTPUT_SIZE_X_ID, 0.0d);
+        outputValues.put(OUTPUT_SIZE_Y_ID, 0.0d);
+        outputValues.put(OUTPUT_SIZE_Z_ID, 0.0d);
         outputValues.put(OUTPUT_COUNT_ID, 0);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);

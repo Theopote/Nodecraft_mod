@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -99,11 +100,18 @@ public class DeconstructFaceEdgeNode extends BaseNode {
             return;
         }
 
+        var directionOut = VectorUtils.toVectorPort(direction);
+        var vectorOut = VectorUtils.toVectorPort(vector);
+        if (directionOut == null || vectorOut == null) {
+            writeInvalid("Edge vector is not finite");
+            return;
+        }
+
         outputValues.put(OUTPUT_START_ID, new PointData(start.x, start.y, start.z));
         outputValues.put(OUTPUT_END_ID, new PointData(end.x, end.y, end.z));
         outputValues.put(OUTPUT_MIDPOINT_ID, new PointData(midpoint));
-        outputValues.put(OUTPUT_DIRECTION_ID, direction);
-        outputValues.put(OUTPUT_VECTOR_ID, vector);
+        outputValues.put(OUTPUT_DIRECTION_ID, directionOut);
+        outputValues.put(OUTPUT_VECTOR_ID, vectorOut);
         outputValues.put(OUTPUT_LENGTH_ID, length);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -115,7 +123,7 @@ public class DeconstructFaceEdgeNode extends BaseNode {
         outputValues.put(OUTPUT_MIDPOINT_ID, null);
         outputValues.put(OUTPUT_DIRECTION_ID, null);
         outputValues.put(OUTPUT_VECTOR_ID, null);
-        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
+        outputValues.put(OUTPUT_LENGTH_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

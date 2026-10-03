@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.points.CoordinateInputNode;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -137,13 +136,13 @@ class ReferencePointsLanguageContractTest {
     }
 
     @Test
-    void deconstructPointInvalidOutputsAreNaN() {
+    void deconstructPointInvalidOutputsAreZero() {
         BaseNode deconstruct = node("reference.points.deconstruct_point");
         deconstruct.processNode(null);
         assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
-        assertEquals(Double.NaN, deconstruct.getOutput("output_x"));
-        assertEquals(Double.NaN, deconstruct.getOutput("output_y"));
-        assertEquals(Double.NaN, deconstruct.getOutput("output_z"));
+        assertEquals(0.0d, deconstruct.getOutput("output_x"));
+        assertEquals(0.0d, deconstruct.getOutput("output_y"));
+        assertEquals(0.0d, deconstruct.getOutput("output_z"));
     }
 
     @Test
@@ -154,7 +153,7 @@ class ReferencePointsLanguageContractTest {
         closest.processNode(null);
         assertEquals(Boolean.FALSE, closest.getOutput("output_valid"));
         assertEquals(-1, closest.getOutput("output_index"));
-        assertEquals(Double.NaN, closest.getOutput("output_distance"));
+        assertEquals(0.0d, closest.getOutput("output_distance"));
     }
 
     @Test
@@ -268,7 +267,7 @@ class ReferencePointsLanguageContractTest {
         deconstruct.setInput("input_edge", new LineData(new Vec3d(1, 2, 3), new Vec3d(1, 2, 3)));
         deconstruct.processNode(null);
         assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
-        assertEquals(Double.NaN, deconstruct.getOutput("output_length"));
+        assertEquals(0.0d, deconstruct.getOutput("output_length"));
     }
 
     @Test

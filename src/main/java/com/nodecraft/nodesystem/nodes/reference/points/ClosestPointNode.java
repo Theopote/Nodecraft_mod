@@ -23,7 +23,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "reference.points.closest_point",
     displayName = "Closest Point",
-    description = "Finds the closest geometric point in a point list to a reference point",
+    description = "Finds the closest geometric point in a point list to a reference point. Equal-distance ties keep the lowest input index.",
     category = "reference.points",
     order = 11
 )
@@ -67,7 +67,7 @@ public class ClosestPointNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Finds the closest geometric point in a point list to a reference point";
+        return "Finds the closest geometric point in a point list to a reference point. Equal-distance ties keep the lowest input index.";
     }
 
     @Override
@@ -115,7 +115,7 @@ public class ClosestPointNode extends BaseNode {
 
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_CLOSEST_POINT_ID, null);
-        outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
+        outputValues.put(OUTPUT_DISTANCE_ID, 0.0d);
         outputValues.put(OUTPUT_INDEX_ID, -1);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
