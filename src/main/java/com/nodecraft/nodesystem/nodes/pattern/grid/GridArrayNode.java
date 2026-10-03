@@ -9,10 +9,12 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryStructureUtils;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.SpatialTolerance;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -27,7 +29,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "pattern.grid.grid_array",
     displayName = "Grid Array",
-    description = "Creates rectangular or box arrays of geometry using first/second/third array axes",
+    description = "Creates 2D/3D lattice arrays of geometry; custom directions may form an oblique grid",
     category = "pattern.grid",
     order = 0
 )
@@ -73,13 +75,13 @@ public class GridArrayNode extends AbstractPatternGridNode {
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_X_DIRECTION_ID, "X Direction", "First array axis direction", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_X_DISTANCE_ID, "X Distance", "Spacing along X Direction (signed allowed)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_X_DISTANCE_ID, "X Distance", "Positive spacing along X Direction", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_X_COUNT_ID, "X Count", "Number of positions along X Direction", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_Y_DIRECTION_ID, "Y Direction", "Second array axis direction", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_Y_DISTANCE_ID, "Y Distance", "Spacing along Y Direction (signed allowed)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Y_DISTANCE_ID, "Y Distance", "Positive spacing along Y Direction", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Y_COUNT_ID, "Y Count", "Number of positions along Y Direction", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_Z_DIRECTION_ID, "Z Direction", "Optional third array axis for box arrays", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_Z_DISTANCE_ID, "Z Distance", "Spacing along Z Direction (signed allowed)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_Z_DISTANCE_ID, "Z Distance", "Positive spacing along Z Direction", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Z_COUNT_ID, "Z Count", "Number of positions along Z Direction. Use 1 for rectangular arrays.", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all grid copies", NodeDataType.GEOMETRY, this));
@@ -92,7 +94,7 @@ public class GridArrayNode extends AbstractPatternGridNode {
 
     @Override
     public String getDescription() {
-        return "Creates rectangular or box arrays of geometry using first/second/third array axes";
+        return "Creates 2D/3D lattice arrays of geometry; custom directions may form an oblique grid";
     }
 
     @Override
@@ -126,18 +128,35 @@ public class GridArrayNode extends AbstractPatternGridNode {
             return;
         }
 
-        Vector3d xStep = resolveAxisStep(INPUT_X_DIRECTION_ID, INPUT_X_DISTANCE_ID,
-            new Vector3d(1, 0, 0), xDistance, "X");
+        Vector3d xDir = resolveOptionalNonZeroDirection(this, INPUT_X_DIRECTION_ID, new Vector3d(1, 0, 0));
+        if (xDir == null) {
+            writeFail("X Direction connected but invalid or zero");
+            return;
+        }
+        Vector3d yDir = resolveOptionalNonZeroDirection(this, INPUT_Y_DIRECTION_ID, new Vector3d(0, 1, 0));
+        if (yDir == null) {
+            writeFail("Y Direction connected but invalid or zero");
+            return;
+        }
+        Vector3d zDir = resolveOptionalNonZeroDirection(this, INPUT_Z_DIRECTION_ID, new Vector3d(0, 0, 1));
+        if (zDir == null) {
+            writeFail("Z Direction connected but invalid or zero");
+            return;
+        }
+        if (!axesLinearlyIndependent(xDir, yDir, zDir, resolvedXCount, resolvedYCount, resolvedZCount)) {
+            writeFail("Active grid axes must be linearly independent");
+            return;
+        }
+
+        Vector3d xStep = resolveAxisStep(INPUT_X_DISTANCE_ID, xDir, xDistance, resolvedXCount, "X");
         if (xStep == null) {
             return;
         }
-        Vector3d yStep = resolveAxisStep(INPUT_Y_DIRECTION_ID, INPUT_Y_DISTANCE_ID,
-            new Vector3d(0, 1, 0), yDistance, "Y");
+        Vector3d yStep = resolveAxisStep(INPUT_Y_DISTANCE_ID, yDir, yDistance, resolvedYCount, "Y");
         if (yStep == null) {
             return;
         }
-        Vector3d zStep = resolveAxisStep(INPUT_Z_DIRECTION_ID, INPUT_Z_DISTANCE_ID,
-            new Vector3d(0, 0, 1), zDistance, "Z");
+        Vector3d zStep = resolveAxisStep(INPUT_Z_DISTANCE_ID, zDir, zDistance, resolvedZCount, "Z");
         if (zStep == null) {
             return;
         }
@@ -183,17 +202,12 @@ public class GridArrayNode extends AbstractPatternGridNode {
     }
 
     private @Nullable Vector3d resolveAxisStep(
-        String directionId,
         String distanceId,
-        Vector3d defaultDirection,
+        Vector3d direction,
         double distanceProperty,
+        int count,
         String axisLabel
     ) {
-        Vector3d direction = resolveOptionalNonZeroDirection(this, directionId, defaultDirection);
-        if (direction == null) {
-            writeFail(axisLabel + " Direction connected but invalid or zero");
-            return null;
-        }
         Double distance = OptionalPortDrive.resolveOptionalDouble(this, distanceId, distanceProperty);
         if (distance == null) {
             writeFail(axisLabel + " Distance connected but invalid");
@@ -203,7 +217,36 @@ public class GridArrayNode extends AbstractPatternGridNode {
             writeFail(axisLabel + " Distance must be finite");
             return null;
         }
-        return new Vector3d(direction).mul(distance);
+        if (count > 1 && !(distance > 0.0d)) {
+            writeFail(axisLabel + " Distance must be > 0");
+            return null;
+        }
+        return new Vector3d(direction).mul(count > 1 ? distance : 0.0d);
+    }
+
+    private static boolean axesLinearlyIndependent(
+        Vector3d xDir,
+        Vector3d yDir,
+        Vector3d zDir,
+        int xCount,
+        int yCount,
+        int zCount
+    ) {
+        if (xCount > 1 && yCount > 1 && FrameUtils.areParallel(xDir, yDir)) {
+            return false;
+        }
+        if (xCount > 1 && zCount > 1 && FrameUtils.areParallel(xDir, zDir)) {
+            return false;
+        }
+        if (yCount > 1 && zCount > 1 && FrameUtils.areParallel(yDir, zDir)) {
+            return false;
+        }
+        if (xCount > 1 && yCount > 1 && zCount > 1) {
+            Vector3d cross = VectorUtils.safeCross(xDir, yDir);
+            double volume = VectorUtils.safeDot(zDir, cross);
+            return Double.isFinite(volume) && Math.abs(volume) > SpatialTolerance.EPS;
+        }
+        return true;
     }
 
     private void writeFail(String error) {

@@ -591,7 +591,7 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Grid Array | `pattern.grid.grid_array` | Creates rectangular or box arrays of geometry using first/second/third array axes | `GridArrayNode` |
+| Grid Array | `pattern.grid.grid_array` | Creates 2D/3D lattice arrays of geometry; custom directions may form an oblique grid | `GridArrayNode` |
 | Facade Grid | `pattern.grid.facade_grid` | Generates facade cell centers and boundaries on a box face | `FacadeGridNode` |
 | Staggered Grid | `pattern.grid.staggered_grid` | Generates staggered grid anchor points with parity-controlled row offsets | `StaggeredGridNode` |
 | Hex Grid | `pattern.grid.hex_grid` | Generates hexagonal lattice anchor points on the X/Z plane | `HexGridNode` |

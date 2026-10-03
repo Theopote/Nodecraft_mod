@@ -35,7 +35,8 @@ public class HexGridNode extends AbstractPatternGridNode {
     @NodeProperty(displayName = "Orientation", category = "Grid", order = 1)
     private Orientation orientation = Orientation.FLAT_TOP;
 
-    @NodeProperty(displayName = "Radius", category = "Grid", order = 2)
+    @NodeProperty(displayName = "Hex Radius", category = "Grid", order = 2,
+        description = "Distance from hex center to a corner; also equals hex side length")
     private double radius = 1.0d;
 
     @NodeProperty(displayName = "Q Count", category = "Grid", order = 3)
@@ -55,7 +56,8 @@ public class HexGridNode extends AbstractPatternGridNode {
     public HexGridNode() {
         super(UUID.randomUUID(), "pattern.grid.hex_grid");
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Grid origin anchor point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Hex cell spacing radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Hex Radius",
+            "Distance from hex center to a corner; also equals hex side length", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Q_COUNT_ID, "Q Count", "Number of columns along the q axis", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_R_COUNT_ID, "R Count", "Number of rows along the r axis", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Hex grid anchor points", NodeDataType.POINT_LIST, this));

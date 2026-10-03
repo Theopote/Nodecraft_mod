@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
@@ -35,7 +36,8 @@ public class StaggeredGridNode extends AbstractPatternGridNode {
     @NodeProperty(displayName = "Row Parity Mode", category = "Pattern", order = 1)
     private RowParityMode rowParityMode = RowParityMode.OFFSET_ODD_ROWS;
 
-    @NodeProperty(displayName = "Alternate Row Height", category = "Pattern", order = 2)
+    @NodeProperty(displayName = "Alternate Row Y Offset", category = "Pattern", order = 2,
+        description = "Vertical world-Y offset applied to alternating rows")
     private double alternateRowHeight = 0.0d;
 
     @NodeProperty(displayName = "Step Distance", category = "Pattern", order = 3)
@@ -67,8 +69,8 @@ public class StaggeredGridNode extends AbstractPatternGridNode {
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Grid origin anchor point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_STEP_DIRECTION_ID, "Step Direction", "Direction for each repeated step", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_ROW_DIRECTION_ID, "Row Direction", "Direction for each row", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_STEP_DISTANCE_ID, "Step Distance", "Distance between repeated steps (signed allowed)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROW_DISTANCE_ID, "Row Distance", "Distance between rows (signed allowed)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_STEP_DISTANCE_ID, "Step Distance", "Positive distance between repeated steps", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ROW_DISTANCE_ID, "Row Distance", "Positive distance between rows", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_STAGGER_OFFSET_ID, "Stagger Offset", "Offset applied to staggered rows (signed allowed)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_STEP_COUNT_ID, "Step Count", "Total copies per row (including offset 0)", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_ROW_COUNT_ID, "Row Count", "Total number of rows (including offset 0)", NodeDataType.INTEGER, this));
@@ -85,7 +87,7 @@ public class StaggeredGridNode extends AbstractPatternGridNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (!Double.isFinite(alternateRowHeight)) {
-            writeFail("Alternate Row Height must be finite");
+            writeFail("Alternate Row Y Offset must be finite");
             return;
         }
 
@@ -123,6 +125,10 @@ public class StaggeredGridNode extends AbstractPatternGridNode {
             writeFail("Row Direction connected but invalid or zero");
             return;
         }
+        if (resolvedStepCount > 1 && resolvedRowCount > 1 && FrameUtils.areParallel(stepDir, rowDir)) {
+            writeFail("Step Direction must not be parallel to Row Direction");
+            return;
+        }
 
         Double resolvedStepDistance = OptionalPortDrive.resolveOptionalDouble(this, INPUT_STEP_DISTANCE_ID, stepDistance);
         Double resolvedRowDistance = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ROW_DISTANCE_ID, rowDistance);
@@ -132,6 +138,14 @@ public class StaggeredGridNode extends AbstractPatternGridNode {
         }
         if (resolvedRowDistance == null) {
             writeFail("Row Distance connected but invalid");
+            return;
+        }
+        if (resolvedStepCount > 1 && !(resolvedStepDistance > 0.0d)) {
+            writeFail("Step Distance must be > 0");
+            return;
+        }
+        if (resolvedRowCount > 1 && !(resolvedRowDistance > 0.0d)) {
+            writeFail("Row Distance must be > 0");
             return;
         }
 

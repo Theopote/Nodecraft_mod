@@ -110,9 +110,13 @@ public final class BoxFaceValidator {
             return "Box face edges must be non-zero";
         }
 
-        Vector3d e01n = new Vector3d(e01).normalize();
-        Vector3d e03n = new Vector3d(e03).normalize();
-        if (Math.abs(e01n.dot(e03n)) > COPLANAR_EPS) {
+        Vector3d e01n = VectorUtils.safeNormalize(e01);
+        Vector3d e03n = VectorUtils.safeNormalize(e03);
+        if (e01n == null || e03n == null) {
+            return "Box face edges must be finite";
+        }
+        double adjacentDot = VectorUtils.safeDot(e01n, e03n);
+        if (!Double.isFinite(adjacentDot) || Math.abs(adjacentDot) > COPLANAR_EPS) {
             return "Box face adjacent edges must be perpendicular";
         }
 
@@ -123,8 +127,14 @@ public final class BoxFaceValidator {
             return "Box face opposite edges must be parallel";
         }
 
-        if (!lengthsApproximatelyEqual(e01.length(), e23.length())
-                || !lengthsApproximatelyEqual(e03.length(), e12.length())) {
+        double len01 = VectorUtils.safeLength(e01);
+        double len23 = VectorUtils.safeLength(e23);
+        double len03 = VectorUtils.safeLength(e03);
+        double len12 = VectorUtils.safeLength(e12);
+        if (!Double.isFinite(len01) || !Double.isFinite(len23)
+                || !Double.isFinite(len03) || !Double.isFinite(len12)
+                || !lengthsApproximatelyEqual(len01, len23)
+                || !lengthsApproximatelyEqual(len03, len12)) {
             return "Box face opposite edges must have equal length";
         }
 
@@ -133,13 +143,13 @@ public final class BoxFaceValidator {
             return "Box face center must match corner average";
         }
 
-        Vector3d edgeNormal = new Vector3d(e01).cross(e03);
-        if (!FrameUtils.isUsableAxis(edgeNormal)) {
+        Vector3d edgeNormal = VectorUtils.safeNormalize(VectorUtils.safeCross(e01, e03));
+        Vector3d storedNormal = VectorUtils.safeNormalize(normal);
+        if (edgeNormal == null || storedNormal == null) {
             return "Box face must form a rectangle";
         }
-        edgeNormal.normalize();
-        Vector3d storedNormal = new Vector3d(normal).normalize();
-        if (Math.abs(storedNormal.dot(edgeNormal)) < 1.0d - COPLANAR_EPS) {
+        double aligned = VectorUtils.safeDot(storedNormal, edgeNormal);
+        if (!Double.isFinite(aligned) || Math.abs(aligned) < 1.0d - COPLANAR_EPS) {
             return "Box face normal must align with edge cross product";
         }
 

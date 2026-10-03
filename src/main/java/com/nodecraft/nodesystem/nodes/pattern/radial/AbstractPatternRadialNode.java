@@ -87,10 +87,7 @@ abstract class AbstractPatternRadialNode extends BaseNode {
         Vector3d defaultDirection
     ) {
         Vector3d resolved = OptionalPortDrive.resolveOptionalVector(node, portId, defaultDirection);
-        if (resolved == null || !VectorUtils.isNonZero(resolved)) {
-            return null;
-        }
-        return new Vector3d(resolved).normalize();
+        return VectorUtils.safeNormalize(resolved);
     }
 
     /**

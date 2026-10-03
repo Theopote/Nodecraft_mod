@@ -14,8 +14,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -42,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Pattern Grid Language v2 (Graph V80).
+ * Language fence for pattern.grid: five canonical nodes, Valid/Error, lattice arrays.
  */
 class PatternGridLanguageV2ContractTest {
 
@@ -70,12 +68,6 @@ class PatternGridLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV80() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -147,6 +139,78 @@ class PatternGridLanguageV2ContractTest {
         List<Vector3d> offsets = assertInstanceOf(List.class, grid.getOutput("output_offsets"));
         assertEquals(15, offsets.size());
         assertEquals("", grid.getOutput("output_error"));
+    }
+
+    @Test
+    void gridArrayDistanceMustBePositiveWhenCountGreaterThanOne() {
+        BaseNode zero = node("pattern.grid.grid_array");
+        zero.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        zero.setNodeState(Map.of("xDistance", 0.0d, "xCount", 2, "yCount", 1, "zCount", 1));
+        zero.processNode(null);
+        assertEquals(Boolean.FALSE, zero.getOutput("output_valid"));
+        assertTrue(String.valueOf(zero.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
+
+        BaseNode negative = node("pattern.grid.grid_array");
+        negative.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        negative.setNodeState(Map.of("xDistance", -2.0d, "xCount", 2, "yCount", 1, "zCount", 1));
+        negative.processNode(null);
+        assertEquals(Boolean.FALSE, negative.getOutput("output_valid"));
+        assertTrue(String.valueOf(negative.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
+    }
+
+    @Test
+    void gridArrayCountOneIgnoresDistance() {
+        BaseNode grid = node("pattern.grid.grid_array");
+        grid.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        grid.setNodeState(Map.of("xDistance", 0.0d, "xCount", 1, "yCount", 1, "zCount", 1));
+        grid.processNode(null);
+        assertEquals(Boolean.TRUE, grid.getOutput("output_valid"));
+        assertEquals(1, grid.getOutput("output_count"));
+    }
+
+    @Test
+    void gridArrayParallelActiveAxesFailClosed() {
+        GridArrayProbe probe = new GridArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        probe.setNodeState(Map.of("xCount", 2, "yCount", 2, "zCount", 1, "xDistance", 1.0d, "yDistance", 1.0d));
+        probe.connectInput("input_x_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_x_direction", new Vector3d(1, 0, 0));
+        probe.connectInput("input_y_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_y_direction", new Vector3d(1, 0, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("independent")
+            || String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
+    }
+
+    @Test
+    void gridArrayObliqueActiveAxesSucceed() {
+        GridArrayProbe probe = new GridArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        probe.setNodeState(Map.of("xCount", 2, "yCount", 2, "zCount", 1, "xDistance", 1.0d, "yDistance", 1.0d));
+        probe.connectInput("input_x_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_x_direction", new Vector3d(1, 0, 0));
+        probe.connectInput("input_y_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_y_direction", new Vector3d(1, 1, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertEquals(4, probe.getOutput("output_count"));
+    }
+
+    @Test
+    void gridArrayHugeFiniteDirectionFailsClosedOrStaysFinite() {
+        GridArrayProbe probe = new GridArrayProbe();
+        probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
+        probe.setNodeState(Map.of("xCount", 2, "yCount", 1, "zCount", 1, "xDistance", 1.0d));
+        probe.connectInput("input_x_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_x_direction", new Vector3d(1e308d, 1e308d, 1e308d));
+        probe.processNode(null);
+        if (Boolean.TRUE.equals(probe.getOutput("output_valid"))) {
+            assertEquals(2, probe.getOutput("output_count"));
+        } else {
+            assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+            assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("direction"));
+        }
     }
 
     @Test
@@ -296,6 +360,28 @@ class PatternGridLanguageV2ContractTest {
         @SuppressWarnings("unchecked")
         List<?> points = assertInstanceOf(List.class, grid.getOutput("output_points"));
         assertTrue(points.isEmpty());
+    }
+
+    @Test
+    void staggeredParallelStepAndRowFailClosed() {
+        StaggeredProbe probe = new StaggeredProbe();
+        probe.setNodeState(Map.of("stepCount", 2, "rowCount", 2, "stepDistance", 1.0d, "rowDistance", 1.0d));
+        probe.connectInput("input_step_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_step_direction", new Vector3d(1, 0, 0));
+        probe.connectInput("input_row_direction", NodeDataType.VECTOR);
+        probe.putRawInput("input_row_direction", new Vector3d(1, 0, 0));
+        probe.processNode(null);
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
+    }
+
+    @Test
+    void staggeredDistanceMustBePositiveWhenCountGreaterThanOne() {
+        BaseNode grid = node("pattern.grid.staggered_grid");
+        grid.setNodeState(Map.of("stepCount", 2, "rowCount", 2, "stepDistance", 0.0d, "rowDistance", 1.0d));
+        grid.processNode(null);
+        assertEquals(Boolean.FALSE, grid.getOutput("output_valid"));
+        assertTrue(String.valueOf(grid.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("distance"));
     }
 
     @Test
