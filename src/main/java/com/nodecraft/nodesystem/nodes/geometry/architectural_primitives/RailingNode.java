@@ -32,7 +32,7 @@ import java.util.UUID;
 )
 public class RailingNode extends BaseNode {
 
-    private static final Set<String> POST_UP_MODES = Set.of("world_vertical", "path_normal");
+    private static final Set<String> VERTICAL_MODES = Set.of("world_vertical", "path_normal");
     private static final Vector3d WORLD_UP = new Vector3d(0.0d, 1.0d, 0.0d);
 
     private static final String INPUT_PATH_ID = "input_path";
@@ -43,7 +43,8 @@ public class RailingNode extends BaseNode {
     private static final String INPUT_RAIL_RADIUS_ID = "input_rail_radius";
     private static final String INPUT_OFFSET_ID = "input_offset";
     private static final String INPUT_JOIN_ID = "input_join";
-    private static final String INPUT_POST_UP_ID = "input_post_up";
+    /** Port id kept for graph compatibility; display name is Vertical Mode. */
+    private static final String INPUT_VERTICAL_MODE_ID = "input_post_up";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -55,14 +56,15 @@ public class RailingNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Path used for the railing run (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_POST_COUNT_ID, "Post Count", "Number of posts placed along the path", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Railing height measured upward from the path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height",
+            "Railing height along Vertical Mode (posts and rail offsets share this axis)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_POST_RADIUS_ID, "Post Radius", "Radius of the balustrade posts", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RAIL_COUNT_ID, "Rail Count", "Number of horizontal rails", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_RAIL_RADIUS_ID, "Rail Radius", "Radius of the horizontal rails", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_JOIN_ID, "Join", "Corner join policy: miter, bevel, or butt", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_POST_UP_ID, "Post Up",
-            "Post upright direction: world_vertical (default architectural posts) or path_normal",
+        addInputPort(new BasePort(INPUT_VERTICAL_MODE_ID, "Vertical Mode",
+            "Height direction for posts and rails: world_vertical (default) or path_normal",
             NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the railing components", NodeDataType.GEOMETRY, this));
@@ -137,10 +139,10 @@ public class RailingNode extends BaseNode {
             writeInvalid("Join must be one of: miter, bevel, butt");
             return;
         }
-        String postUp = ArchitecturalInputUtils.resolveKnownStringEnum(
-            this, INPUT_POST_UP_ID, "world_vertical", POST_UP_MODES);
-        if (postUp == null) {
-            writeInvalid("Post Up must be one of: world_vertical, path_normal");
+        String verticalMode = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_VERTICAL_MODE_ID, "world_vertical", VERTICAL_MODES);
+        if (verticalMode == null) {
+            writeInvalid("Vertical Mode must be one of: world_vertical, path_normal");
             return;
         }
 
@@ -176,7 +178,7 @@ public class RailingNode extends BaseNode {
         }
 
         List<GeometryData> railing = buildRailing(
-            offsetPath, segments, postCount, railCount, height, postRadius, railRadius, postUp);
+            offsetPath, segments, postCount, railCount, height, postRadius, railRadius, verticalMode);
         if (railing.isEmpty()) {
             writeInvalid("Unable to generate railing geometry from the given path and parameters");
             return;
@@ -196,16 +198,16 @@ public class RailingNode extends BaseNode {
         double height,
         double postRadius,
         double railRadius,
-        String postUp
+        String verticalMode
     ) {
         List<GeometryData> results = new ArrayList<>();
-        boolean worldVertical = "world_vertical".equals(postUp);
+        boolean worldVertical = "world_vertical".equals(verticalMode);
 
         List<ArchitecturalPathSupport.SampleFrame> posts = ArchitecturalPathSupport.sampleEvenly(path, postCount);
         for (ArchitecturalPathSupport.SampleFrame frame : posts) {
             Vector3d base = new Vector3d(frame.origin());
-            Vector3d up = worldVertical ? WORLD_UP : frame.up();
-            Vector3d top = new Vector3d(base).fma(height, up);
+            Vector3d heightAxis = heightAxis(worldVertical, frame.up());
+            Vector3d top = new Vector3d(base).fma(height, heightAxis);
             results.add(new CylinderGeometryData(base, top, postRadius));
         }
 
@@ -216,8 +218,9 @@ public class RailingNode extends BaseNode {
                 Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
                 ArchitecturalPathSupport.SampleFrame frame =
                     ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
-                Vector3d railStart = new Vector3d(segment.start()).fma(railHeight, frame.up());
-                Vector3d railEnd = new Vector3d(segment.end()).fma(railHeight, frame.up());
+                Vector3d heightAxis = heightAxis(worldVertical, frame.up());
+                Vector3d railStart = new Vector3d(segment.start()).fma(railHeight, heightAxis);
+                Vector3d railEnd = new Vector3d(segment.end()).fma(railHeight, heightAxis);
                 if (railStart.distanceSquared(railEnd) > 1.0e-12d) {
                     results.add(new CylinderGeometryData(railStart, railEnd, railRadius));
                 }
@@ -225,6 +228,10 @@ public class RailingNode extends BaseNode {
         }
 
         return List.copyOf(results);
+    }
+
+    private static Vector3d heightAxis(boolean worldVertical, Vector3d pathUp) {
+        return worldVertical ? WORLD_UP : new Vector3d(pathUp);
     }
 
     private void writeInvalid(String error) {

@@ -211,6 +211,48 @@ class ArchitecturalPathFollowingContractTest {
     }
 
     @Test
+    void railingWorldVerticalRailsSharePostHeightAxisOnSlope() {
+        RailingProbe railing = new RailingProbe();
+        railing.connectInput("input_post_count", NodeDataType.INTEGER);
+        railing.connectInput("input_rail_count", NodeDataType.INTEGER);
+        railing.connectInput("input_post_up", NodeDataType.STRING);
+        railing.setInput("input_path", slopedPath());
+        railing.setInput("input_post_count", 2);
+        railing.setInput("input_rail_count", 1);
+        railing.setInput("input_height", 1.2d);
+        railing.setInput("input_post_up", "world_vertical");
+        railing.processNode(null);
+
+        assertEquals(Boolean.TRUE, railing.getOutput("output_valid"),
+            String.valueOf(railing.getOutput("output_error")));
+
+        List<CylinderGeometryData> rails = railsFrom(railing.getOutput("output_geometry"));
+        assertEquals(1, rails.size());
+        CylinderGeometryData rail = rails.getFirst();
+        // Path (0,0,0)->(10,5,0); world_vertical raises both ends by Height on world Y.
+        assertTrue(near(rail.getStart(), 0.0d, 1.2d, 0.0d), "rail start: " + rail.getStart());
+        assertTrue(near(rail.getEnd(), 10.0d, 6.2d, 0.0d), "rail end: " + rail.getEnd());
+
+        List<CylinderGeometryData> posts = postsFrom(railing.getOutput("output_geometry"));
+        assertEquals(2, posts.size());
+        for (CylinderGeometryData post : posts) {
+            assertEquals(post.getStart().y + 1.2d, post.getEnd().y, 0.05d);
+        }
+        // Top of start post meets the rail height axis (world Y).
+        assertEquals(posts.getFirst().getEnd().y, rail.getStart().y, 0.05d);
+    }
+
+    @Test
+    void railingVerticalModePortDisplayName() {
+        RailingNode node = new RailingNode();
+        BasePort verticalMode = (BasePort) node.getInputPorts().stream()
+            .filter(port -> "input_post_up".equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertEquals("Vertical Mode", verticalMode.getDisplayName());
+    }
+
+    @Test
     void straightStaircaseCornerStepsStayContinuous() {
         StaircaseProbe stair = new StaircaseProbe();
         stair.connectInput("input_layout", NodeDataType.STRING);
@@ -334,6 +376,15 @@ class ArchitecturalPathFollowingContractTest {
             .map(CylinderGeometryData.class::cast)
             // Posts are height-length (~1.2); rails follow the long slope (~11).
             .filter(cylinder -> cylinder.getStart().distance(cylinder.getEnd()) < 2.5d)
+            .toList();
+    }
+
+    private static List<CylinderGeometryData> railsFrom(Object geometryOutput) {
+        CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, geometryOutput);
+        return geometry.geometries().stream()
+            .filter(CylinderGeometryData.class::isInstance)
+            .map(CylinderGeometryData.class::cast)
+            .filter(cylinder -> cylinder.getStart().distance(cylinder.getEnd()) >= 2.5d)
             .toList();
     }
 
