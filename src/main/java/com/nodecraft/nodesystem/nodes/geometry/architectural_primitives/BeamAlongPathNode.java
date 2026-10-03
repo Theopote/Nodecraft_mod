@@ -46,8 +46,10 @@ public class BeamAlongPathNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.architectural_primitives.beam_along_path");
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Beam centerline path", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Beam width across the path", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Beam depth measured along local up", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width",
+            "Beam width along local side (path right), not world axes", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height",
+            "Beam depth along local frame up (follows path tilt; not world Y)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Beams along the path", NodeDataType.GEOMETRY, this));

@@ -106,7 +106,7 @@ public class ArrayAlongCurveNode extends BaseNode {
             return;
         }
 
-        List<Double> sampleDistances = resolveSampleDistances(total);
+        List<Double> sampleDistances = resolveSampleDistances(total, closed);
         if (sampleDistances == null) {
             return;
         }
@@ -233,7 +233,7 @@ public class ArrayAlongCurveNode extends BaseNode {
         return null;
     }
 
-    private @Nullable List<Double> resolveSampleDistances(double total) {
+    private @Nullable List<Double> resolveSampleDistances(double total, boolean closed) {
         boolean spacingConnected = ArchitecturalInputUtils.isConnected(this, INPUT_SPACING_ID);
         boolean countConnected = ArchitecturalInputUtils.isConnected(this, INPUT_COUNT_ID);
 
@@ -245,15 +245,7 @@ public class ArrayAlongCurveNode extends BaseNode {
                     + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
                 return null;
             }
-            List<Double> sampleDistances = new ArrayList<>(count);
-            if (count == 1) {
-                sampleDistances.add(0.0d);
-                return sampleDistances;
-            }
-            for (int i = 0; i < count; i++) {
-                sampleDistances.add(total * i / (double) (count - 1));
-            }
-            return sampleDistances;
+            return ArchitecturalPathSupport.sampleDistancesEvenly(total, count, closed);
         }
 
         Double spacing = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_SPACING_ID, 1.0d);
@@ -262,27 +254,12 @@ public class ArrayAlongCurveNode extends BaseNode {
             return null;
         }
 
-        long rawInstances = (long) Math.ceil(total / spacing) + 1L;
-        if (rawInstances > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
+        List<Double> sampleDistances = ArchitecturalPathSupport.sampleDistancesBySpacing(
+            total, spacing, closed, GenerationLimits.MAX_ARCHITECTURAL_INSTANCES);
+        if (sampleDistances == null) {
             writeInvalid("Spacing-derived instance count exceeds MAX_ARCHITECTURAL_INSTANCES ("
                 + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
             return null;
-        }
-
-        List<Double> sampleDistances = new ArrayList<>((int) rawInstances);
-        for (double d = 0.0d; d <= total + EPSILON; d += spacing) {
-            sampleDistances.add(Math.min(d, total));
-            if (sampleDistances.size() >= GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
-                break;
-            }
-        }
-        if (sampleDistances.isEmpty() || sampleDistances.getLast() < total - EPSILON) {
-            if (sampleDistances.size() >= GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
-                writeInvalid("Spacing-derived instance count exceeds MAX_ARCHITECTURAL_INSTANCES ("
-                    + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
-                return null;
-            }
-            sampleDistances.add(total);
         }
         return sampleDistances;
     }

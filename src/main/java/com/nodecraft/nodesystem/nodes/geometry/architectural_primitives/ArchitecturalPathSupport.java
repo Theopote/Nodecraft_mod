@@ -79,24 +79,89 @@ final class ArchitecturalPathSupport {
     }
 
     /**
-     * Evenly spaced samples along the path (inclusive of start and end when count ≥ 2).
+     * Arc-length sample distances for evenly spaced instances.
+     * Closed paths omit the seam duplicate at {@code length} (same point as 0).
+     * Open paths include start and end when {@code count ≥ 2}.
+     */
+    static List<Double> sampleDistancesEvenly(double length, int count, boolean closed) {
+        int safeCount = Math.max(1, count);
+        List<Double> distances = new ArrayList<>(safeCount);
+        if (safeCount == 1 || length <= EPSILON) {
+            distances.add(0.0d);
+            return List.copyOf(distances);
+        }
+        if (closed) {
+            for (int i = 0; i < safeCount; i++) {
+                distances.add(length * i / (double) safeCount);
+            }
+        } else {
+            for (int i = 0; i < safeCount; i++) {
+                double t = i / (double) (safeCount - 1);
+                if (i == safeCount - 1) {
+                    t = 1.0d;
+                }
+                distances.add(length * t);
+            }
+        }
+        return List.copyOf(distances);
+    }
+
+    /**
+     * Arc-length sample distances at a fixed spacing.
+     * Closed paths sample {@code [0, length)} and never append the seam at {@code length}.
+     * Open paths include the end point.
+     *
+     * @return distances, or {@code null} when the derived instance count would exceed {@code maxInstances}
+     */
+    static @Nullable List<Double> sampleDistancesBySpacing(
+        double length,
+        double spacing,
+        boolean closed,
+        int maxInstances
+    ) {
+        if (!(spacing > EPSILON) || length <= EPSILON || maxInstances < 1) {
+            return List.of();
+        }
+        long estimated = closed
+            ? (long) Math.floor((length - EPSILON) / spacing) + 1L
+            : (long) Math.ceil(length / spacing) + 1L;
+        if (estimated > maxInstances) {
+            return null;
+        }
+
+        List<Double> distances = new ArrayList<>((int) Math.min(estimated, maxInstances));
+        if (closed) {
+            for (double d = 0.0d; d < length - EPSILON; d += spacing) {
+                if (distances.size() >= maxInstances) {
+                    return null;
+                }
+                distances.add(d);
+            }
+            return List.copyOf(distances);
+        }
+
+        for (double d = 0.0d; d <= length + EPSILON; d += spacing) {
+            distances.add(Math.min(d, length));
+            if (distances.size() >= maxInstances) {
+                break;
+            }
+        }
+        if (distances.isEmpty() || distances.getLast() < length - EPSILON) {
+            if (distances.size() >= maxInstances) {
+                return null;
+            }
+            distances.add(length);
+        }
+        return List.copyOf(distances);
+    }
+
+    /**
+     * Evenly spaced samples along the path (inclusive of start and end when count ≥ 2 on open paths).
      */
     static List<SampleFrame> sampleEvenly(PathGeometry path, int count) {
-        int safeCount = Math.max(1, count);
-        List<SampleFrame> frames = new ArrayList<>(safeCount);
-        if (safeCount == 1) {
-            frames.add(sampleAt(path, 0.0d));
-            return List.copyOf(frames);
-        }
-        double span = path.length();
-        for (int i = 0; i < safeCount; i++) {
-            double t = i / (double) (safeCount - (path.closed() ? 0 : 1));
-            if (!path.closed() && i == safeCount - 1) {
-                t = 1.0d;
-            }
-            double distance = path.closed()
-                ? (span * i / (double) safeCount)
-                : (span * t);
+        List<Double> distances = sampleDistancesEvenly(path.length(), count, path.closed());
+        List<SampleFrame> frames = new ArrayList<>(distances.size());
+        for (double distance : distances) {
             frames.add(sampleAt(path, distance));
         }
         return List.copyOf(frames);

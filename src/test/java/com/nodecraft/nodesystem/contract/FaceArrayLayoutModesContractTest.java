@@ -4,16 +4,22 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FacadePanelArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FaceArrayLayoutModesContractTest {
@@ -136,6 +142,92 @@ class FaceArrayLayoutModesContractTest {
         assertEquals(1.5d, topLeft.getY() - bottomLeft.getY(), 0.05d);
     }
 
+    @Test
+    void facadePanelDistributeModeSpacesPanelsEvenly() {
+        FacadeProbe node = new FacadeProbe();
+        node.connectInput("input_columns", NodeDataType.INTEGER);
+        node.connectInput("input_rows", NodeDataType.INTEGER);
+        node.connectInput("input_panel_width", NodeDataType.DOUBLE);
+        node.connectInput("input_panel_height", NodeDataType.DOUBLE);
+        node.connectInput("input_margin", NodeDataType.DOUBLE);
+        node.connectInput("input_layout_mode", NodeDataType.STRING);
+        node.setInput("input_face", sampleFace(10.0d, 4.0d));
+        node.setInput("input_columns", 3);
+        node.setInput("input_rows", 1);
+        node.setInput("input_panel_width", 1.0d);
+        node.setInput("input_panel_height", 1.0d);
+        node.setInput("input_margin", 1.0d);
+        node.setInput("input_layout_mode", "distribute");
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+
+        List<Vector3d> centers = facadeCenters(node.getOutput("output_geometry"));
+        assertEquals(3, centers.size());
+        double span = centers.get(2).x - centers.get(0).x;
+        assertTrue(span > 2.0d, "distribute should spread panels across the face");
+    }
+
+    @Test
+    void facadePanelFixedGapModeUsesExplicitPierWidth() {
+        FacadeProbe node = new FacadeProbe();
+        node.connectInput("input_columns", NodeDataType.INTEGER);
+        node.connectInput("input_rows", NodeDataType.INTEGER);
+        node.connectInput("input_panel_width", NodeDataType.DOUBLE);
+        node.connectInput("input_panel_height", NodeDataType.DOUBLE);
+        node.connectInput("input_margin", NodeDataType.DOUBLE);
+        node.connectInput("input_layout_mode", NodeDataType.STRING);
+        node.connectInput("input_horizontal_gap", NodeDataType.DOUBLE);
+        node.setInput("input_face", sampleFace(10.0d, 4.0d));
+        node.setInput("input_columns", 2);
+        node.setInput("input_rows", 1);
+        node.setInput("input_panel_width", 1.0d);
+        node.setInput("input_panel_height", 1.0d);
+        node.setInput("input_margin", 1.0d);
+        node.setInput("input_layout_mode", "fixed_gap");
+        node.setInput("input_horizontal_gap", 2.0d);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+
+        List<Vector3d> centers = facadeCenters(node.getOutput("output_geometry"));
+        double gap = centers.get(1).x - centers.get(0).x - 1.0d;
+        assertEquals(2.0d, gap, 0.05d);
+    }
+
+    @Test
+    void facadePanelBayModeUsesCenterToCenterSpacing() {
+        FacadeProbe node = new FacadeProbe();
+        node.connectInput("input_columns", NodeDataType.INTEGER);
+        node.connectInput("input_rows", NodeDataType.INTEGER);
+        node.connectInput("input_panel_width", NodeDataType.DOUBLE);
+        node.connectInput("input_panel_height", NodeDataType.DOUBLE);
+        node.connectInput("input_margin", NodeDataType.DOUBLE);
+        node.connectInput("input_layout_mode", NodeDataType.STRING);
+        node.connectInput("input_bay_width", NodeDataType.DOUBLE);
+        node.setInput("input_face", sampleFace(10.0d, 4.0d));
+        node.setInput("input_columns", 2);
+        node.setInput("input_rows", 1);
+        node.setInput("input_panel_width", 1.0d);
+        node.setInput("input_panel_height", 1.0d);
+        node.setInput("input_margin", 1.0d);
+        node.setInput("input_layout_mode", "bay");
+        node.setInput("input_bay_width", 3.0d);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+
+        List<Vector3d> centers = facadeCenters(node.getOutput("output_geometry"));
+        assertEquals(3.0d, centers.get(1).x - centers.get(0).x, 0.05d);
+    }
+
+    private static List<Vector3d> facadeCenters(Object geometryOutput) {
+        CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, geometryOutput);
+        List<Vector3d> centers = new ArrayList<>();
+        for (var leaf : geometry.geometries()) {
+            centers.add(assertInstanceOf(BoxGeometryData.class, leaf).getCenter());
+        }
+        centers.sort(Comparator.comparingDouble(c -> c.x));
+        return centers;
+    }
+
     private static BoxFaceData sampleFace(double width, double height) {
         double halfW = width / 2.0d;
         List<Vector3d> corners = List.of(
@@ -160,6 +252,12 @@ class FaceArrayLayoutModesContractTest {
     }
 
     private static final class WindowArrayProbe extends WindowArrayNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            FaceArrayLayoutModesContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class FacadeProbe extends FacadePanelArrayNode {
         void connectInput(String portId, NodeDataType outputType) {
             FaceArrayLayoutModesContractTest.connectInput(this, portId, outputType);
         }

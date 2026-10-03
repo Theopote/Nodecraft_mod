@@ -75,23 +75,24 @@ public class MoldingProfileNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates decorative molding cross-section profiles";
+        return "Generates decorative molding cross-section profiles (profile only; sweep/extrude separately)";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        PlaneData plane = resolvePlane();
-        if (plane == null) {
+        ResolvedPlane resolved = resolvePlaneAndBasis();
+        if (resolved == null) {
             writeInvalid("Face or Plane is required");
             return;
         }
+        PlaneData plane = resolved.plane();
         Vector3d center = resolveCenter(plane);
         if (center == null) {
             writeInvalid("Center must be a finite Point when connected");
             return;
         }
 
-        Basis basis = createBasis(plane);
+        Basis basis = resolved.basis();
         if (basis == null) {
             writeInvalid("Plane normal must be a finite non-zero vector");
             return;
@@ -279,12 +280,17 @@ public class MoldingProfileNode extends BaseNode {
         return new Vector3d(center).fma(x, basis.xAxis()).fma(y, basis.yAxis());
     }
 
-    private @Nullable PlaneData resolvePlane() {
+    private @Nullable ResolvedPlane resolvePlaneAndBasis() {
         Object faceObj = getInput(INPUT_FACE_ID);
         if (faceObj instanceof BoxFaceData face) {
             ArchitecturalPrimitiveSupport.FaceFrame frame = ArchitecturalPrimitiveSupport.resolveFaceFrame(face);
             if (frame != null) {
-                return new PlaneData(frame.center(), frame.zAxis());
+                PlaneData plane = new PlaneData(frame.center(), frame.zAxis());
+                Basis basis = new Basis(
+                    new Vector3d(frame.xAxis()),
+                    new Vector3d(frame.yAxis()),
+                    new Vector3d(frame.zAxis()));
+                return new ResolvedPlane(plane, basis);
             }
             if (ArchitecturalInputUtils.isConnected(this, INPUT_FACE_ID)) {
                 return null;
@@ -293,11 +299,19 @@ public class MoldingProfileNode extends BaseNode {
             return null;
         }
 
+        PlaneData plane = null;
         if (ArchitecturalInputUtils.isConnected(this, INPUT_PLANE_ID)) {
-            return OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+            plane = OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+        } else {
+            Object planeObj = getInput(INPUT_PLANE_ID);
+            if (planeObj instanceof PlaneData value) {
+                plane = value;
+            }
         }
-        Object planeObj = getInput(INPUT_PLANE_ID);
-        return planeObj instanceof PlaneData plane ? plane : null;
+        if (plane == null) {
+            return null;
+        }
+        return new ResolvedPlane(plane, createBasis(plane));
     }
 
     private @Nullable Vector3d resolveCenter(PlaneData plane) {
@@ -347,5 +361,8 @@ public class MoldingProfileNode extends BaseNode {
     }
 
     private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) {
+    }
+
+    private record ResolvedPlane(PlaneData plane, @Nullable Basis basis) {
     }
 }

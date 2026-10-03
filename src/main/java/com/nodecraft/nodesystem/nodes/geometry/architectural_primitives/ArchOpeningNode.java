@@ -53,7 +53,8 @@ public class ArchOpeningNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the opening reference surface", NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Opening width across the face", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Rectangular stem height below the arch", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Stem Height",
+            "Rectangular stem height below the arch (total opening height = stem + arch rise)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth", "Opening depth along the face normal", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_ARCH_TYPE_ID, "Arch Type", "Arch type: rectangle, round, or pointed", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Curve segments used to approximate the arch", NodeDataType.INTEGER, this));
@@ -91,7 +92,7 @@ public class ArchOpeningNode extends BaseNode {
         }
         Double stemHeight = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_HEIGHT_ID, 2.0d);
         if (stemHeight == null) {
-            writeInvalid("Height must be a finite positive DOUBLE");
+            writeInvalid("Stem Height must be a finite positive DOUBLE");
             return;
         }
         Double depth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(this, INPUT_DEPTH_ID, 1.0d);
@@ -137,7 +138,10 @@ public class ArchOpeningNode extends BaseNode {
         Vector3d inward = new Vector3d(frame.zAxis());
 
         if ("rectangle".equals(archType)) {
-            Vector3d boxCenter = new Vector3d(center).fma((stemHeight / 2.0d) - depth / 2.0d, inward);
+            // Align with round/pointed: stem sits on the face bottom edge; depth extrudes along +zAxis.
+            Vector3d boxCenter = new Vector3d(center)
+                .fma(-frame.height() / 2.0d + stemHeight / 2.0d, frame.yAxis())
+                .fma(depth / 2.0d, inward);
             Vector3d halfExtents = new Vector3d(halfWidth, stemHeight / 2.0d, depth / 2.0d);
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 boxCenter, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());
@@ -198,15 +202,14 @@ public class ArchOpeningNode extends BaseNode {
         double apexY = archBaseY + radius;
         List<Vector3d> points = new ArrayList<>();
 
+        // Arch polyline includes springing points at t=0/t=1; do not add them again.
         points.add(localPoint(center, frame, -halfWidth, -frame.height() / 2.0d));
-        points.add(localPoint(center, frame, -halfWidth, archBaseY));
         for (int index = 0; index <= segments; index++) {
             double t = (double) index / segments;
             double x = -halfWidth + (halfWidth * 2.0d) * t;
             double archLift = apexY - Math.abs((t * 2.0d) - 1.0d) * radius;
             points.add(localPoint(center, frame, x, archLift));
         }
-        points.add(localPoint(center, frame, halfWidth, archBaseY));
         points.add(localPoint(center, frame, halfWidth, -frame.height() / 2.0d));
         points.add(localPoint(center, frame, -halfWidth, -frame.height() / 2.0d));
         return points;
