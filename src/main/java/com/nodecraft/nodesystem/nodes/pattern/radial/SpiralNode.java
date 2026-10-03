@@ -65,7 +65,7 @@ public class SpiralNode extends AbstractPatternRadialNode {
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Spiral origin anchor point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_TURNS_ID, "Turns", "Number of spiral turns (signed allowed)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of spiral anchors", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_START_RADIUS_ID, "Start Radius", "Initial spiral radius (signed/finite)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_RADIUS_ID, "Start Radius", "Initial spiral radius (non-negative magnitude)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RADIUS_STEP_ID, "Radius Step", "Radius change per anchor (signed allowed)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_HEIGHT_STEP_ID, "Height Step", "Vertical step per anchor (signed allowed)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Initial angle offset in degrees", NodeDataType.DOUBLE, this));
@@ -129,6 +129,14 @@ public class SpiralNode extends AbstractPatternRadialNode {
             writeFail("Start Angle connected but invalid");
             return;
         }
+        if (!Double.isFinite(resolvedStartRadius) || resolvedStartRadius < 0.0d) {
+            writeFail("Start Radius must be >= 0");
+            return;
+        }
+        if (!Double.isFinite(resolvedRadiusStep)) {
+            writeFail("Radius Step must be finite");
+            return;
+        }
 
         double startAngleRadians = Math.toRadians(resolvedStartAngle);
         double invSteps = resolvedCount == 1 ? 1.0d : 1.0d / (resolvedCount - 1);
@@ -141,6 +149,10 @@ public class SpiralNode extends AbstractPatternRadialNode {
             double t = resolvedCount == 1 ? 0.0d : (double) i * invSteps;
             double angle = resolvedTurns * Math.PI * 2.0d * t + startAngleRadians;
             double radius = resolvedStartRadius + resolvedRadiusStep * i;
+            if (!Double.isFinite(radius) || radius < 0.0d) {
+                writeFail("Generated spiral radius must be >= 0");
+                return;
+            }
 
             double cosA = Math.cos(angle);
             double sinA = Math.sin(angle);

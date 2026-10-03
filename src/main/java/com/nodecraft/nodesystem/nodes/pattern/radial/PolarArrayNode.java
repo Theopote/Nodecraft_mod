@@ -68,7 +68,7 @@ public class PolarArrayNode extends AbstractPatternRadialNode {
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances around the center", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Full circles (multiple of 360°) never emit a duplicate at 360°. Zero is legal.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Exact full-circle multiples of 360° sample one signed revolution (no duplicate seam). Zero is only legal when Count is 1.", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
@@ -124,6 +124,10 @@ public class PolarArrayNode extends AbstractPatternRadialNode {
             writeFail("Total Angle must be finite");
             return;
         }
+        if (resolvedCount > 1 && Math.abs(resolvedAngle) <= ANGLE_EPS) {
+            writeFail("Total Angle must be non-zero");
+            return;
+        }
 
         long maxInstances = GenerationLimits.MAX_GEOMETRY_INSTANCES;
         long sourceLeaves = GeometryStructureUtils.countLeavesBounded(geometry, maxInstances);
@@ -134,12 +138,15 @@ public class PolarArrayNode extends AbstractPatternRadialNode {
         }
 
         boolean fullCircle = isFullCircle(resolvedAngle);
+        double samplingAngle = fullCircle
+            ? Math.copySign(360.0d, resolvedAngle)
+            : resolvedAngle;
         boolean useInclusiveEnd = includeEnd && !fullCircle && resolvedCount >= 2;
         List<GeometryData> copies = new ArrayList<>(resolvedCount);
         for (int i = 0; i < resolvedCount; i++) {
             double degrees = useInclusiveEnd
-                ? resolvedAngle * i / (double) (resolvedCount - 1)
-                : resolvedAngle * i / (double) resolvedCount;
+                ? samplingAngle * i / (double) (resolvedCount - 1)
+                : samplingAngle * i / (double) resolvedCount;
             if (Math.abs(degrees) <= ANGLE_EPS) {
                 copies.add(geometry);
                 continue;

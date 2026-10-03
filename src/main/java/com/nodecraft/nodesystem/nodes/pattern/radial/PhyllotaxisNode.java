@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.RadialFrameUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -152,7 +153,7 @@ public class PhyllotaxisNode extends AbstractPatternRadialNode {
                 resolvedHeightStep
             );
             if (point == null) {
-                writeFail("Non-finite phyllotaxis radius");
+                writeFail("Non-finite phyllotaxis point");
                 return;
             }
             points.add(point);
@@ -199,7 +200,11 @@ public class PhyllotaxisNode extends AbstractPatternRadialNode {
         }
         double cosA = Math.cos(angle);
         double sinA = Math.sin(angle);
-        return new Vector3d(origin).add(cosA * radius, heightStep * index, sinA * radius);
+        Vector3d point = new Vector3d(origin).add(cosA * radius, heightStep * index, sinA * radius);
+        if (!PointUtils.isFinite(point)) {
+            return null;
+        }
+        return point;
     }
 
     private static @Nullable Vector3d tangentFromPoints(List<Vector3d> points,
