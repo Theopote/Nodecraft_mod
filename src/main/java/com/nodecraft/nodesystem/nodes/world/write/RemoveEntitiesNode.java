@@ -109,6 +109,10 @@ public class RemoveEntitiesNode extends BaseNode {
         List<Entity> failed = new ArrayList<>();
         for (Entity entity : entities) {
             try {
+                if (!WorldWriteUtils.isChunkLoaded(context, entity.getBlockPos())) {
+                    failed.add(entity);
+                    continue;
+                }
                 // Prefer discard; drop-items path is not fully modeled for arbitrary entity types.
                 entity.discard();
                 removed++;

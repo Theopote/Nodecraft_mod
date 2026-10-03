@@ -104,6 +104,10 @@ public class SetBlockNbtNode extends BaseNode {
             publish(false, false, null, false, "Missing execution world");
             return;
         }
+        if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+            publish(false, false, null, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         BlockEntity blockEntity = context.getWorld().getBlockEntity(pos);
         if (blockEntity == null) {
@@ -111,12 +115,12 @@ public class SetBlockNbtNode extends BaseNode {
             return;
         }
 
-        BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+        BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
         if (before == null) {
-            publish(false, false, null, false, "Missing execution world");
+            publish(false, false, null, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
             return;
         }
-        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
 
         NbtCompound incoming = nbtResult.nbt();
         NbtCompound current = WorldWriteNbtUtils.extractBlockEntityNbt(blockEntity, context);
@@ -125,17 +129,22 @@ public class SetBlockNbtNode extends BaseNode {
         target.putInt("y", pos.getY());
         target.putInt("z", pos.getZ());
 
-        boolean success = WorldWriteNbtUtils.applyBlockEntityNbt(blockEntity, target, context);
-        if (success) {
-            tx.recordSuccess(before);
-            blockEntity.markDirty();
-            if (notify) {
-                context.getWorld().updateListeners(pos, before.state(), context.getWorld().getBlockState(pos), 3);
+        try {
+            boolean success = WorldWriteNbtUtils.applyBlockEntityNbt(blockEntity, target, context);
+            if (success) {
+                tx.recordSuccess(before);
+                blockEntity.markDirty();
+                if (notify) {
+                    context.getWorld().updateListeners(pos, before.state(), context.getWorld().getBlockState(pos), 3);
+                }
+                tx.pushIfNeeded(context, recordUndo);
+                publish(true, true, target, true, "");
+            } else {
+                WorldWriteUndoJournal.restore(context, before);
+                publish(false, true, null, true, "Failed to apply block entity NBT");
             }
-            tx.pushIfNeeded(context, recordUndo);
-            publish(true, true, target, true, "");
-        } else {
-            tx.recordFailure();
+        } catch (Exception e) {
+            WorldWriteUndoJournal.restore(context, before);
             publish(false, true, null, true, "Failed to apply block entity NBT");
         }
     }

@@ -47,7 +47,7 @@ public class FillRegionNode extends BaseNode {
     private static final String OUTPUT_ERROR_ID = WorldWriteUtils.OUTPUT_ERROR_ID;
 
     @NodeProperty(displayName = "Trigger", category = "Execution", order = 0,
-        description = "When true (or Trigger port true), this write may run. Default false; V63 graphs migrate to true.")
+        description = "When true (or Trigger port true), this write may run. Default false.")
     private boolean trigger = false;
 
     private boolean notifyUpdate = true;
@@ -69,7 +69,7 @@ public class FillRegionNode extends BaseNode {
         addInputPort(new BasePort(INPUT_EXCLUDE_AIR_ID, "Exclude Air", "Only replace non-air blocks", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_SPAWN_DROPS_ID, "Spawn Drops", "Whether replaced blocks should drop items first", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_SYNC_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_FILLED_BLOCKS_ID, "Filled Blocks", "Number of successful writes", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_AFFECTED_BLOCKS_ID, "Affected Blocks", "Number of positions that reached write attempts", NodeDataType.INTEGER, this));
@@ -105,14 +105,14 @@ public class FillRegionNode extends BaseNode {
         Boolean notify = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyUpdate);
         Boolean dropItems = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_SPAWN_DROPS_ID, spawnDrops);
         Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
-            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS);
         if (hollowValue == null || excludeAirValue == null || notify == null || dropItems == null) {
             publish(0, 0, 0, 0, 0, new BlockPosList(), false, false, false, "Boolean drive is connected but null or invalid.");
             return;
         }
         if (blockLimit == null) {
             publish(0, 0, 0, 0, 0, new BlockPosList(), false, false, false,
-                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + ".");
             return;
         }
 
@@ -146,7 +146,7 @@ public class FillRegionNode extends BaseNode {
         BlockPos minCorner = region.getMinCorner();
         BlockPos maxCorner = region.getMaxCorner();
         int flags = WorldWriteUtils.flags(notify);
-        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
         BlockPosList coordinates = new BlockPosList();
         int affectedBlocks = 0;
         int totalCount = 0;
@@ -157,13 +157,18 @@ public class FillRegionNode extends BaseNode {
             if (hollowValue && !isShell(pos, minCorner, maxCorner)) {
                 continue;
             }
+            if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+                affectedBlocks++;
+                tx.recordFailure();
+                continue;
+            }
             if (excludeAirValue && context.getWorld().isAir(pos)) {
                 continue;
             }
 
             affectedBlocks++;
             try {
-                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
                 if (before == null) {
                     tx.recordFailure();
                     continue;
@@ -239,7 +244,7 @@ public class FillRegionNode extends BaseNode {
     public void setHollow(boolean hollow) { this.hollow = hollow; markDirty(); }
     public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS));
         markDirty();
     }
     public boolean isRecordUndo() { return recordUndo; }

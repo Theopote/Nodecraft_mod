@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -129,9 +130,7 @@ public final class WorldWriteHistoryService {
             }
             undoStack.add(record);
             redoStack.clear();
-            while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
-                undoStack.removeFirst();
-            }
+            trimUndoStack(undoStack);
         }
 
         private UndoRecord peek() {
@@ -184,9 +183,7 @@ public final class WorldWriteHistoryService {
                     redoStack.add(record.withoutApplied(outcome.appliedIndices()));
                 }
                 undoStack.add(outcome.inverse());
-                while (undoStack.size() > MAX_UNDO_STACK_SIZE) {
-                    undoStack.removeFirst();
-                }
+                trimUndoStack(undoStack);
             } else if (outcome.failureCount() > 0) {
                 redoStack.add(record);
                 return UndoApplyResult.failed("Redo failed to apply");
@@ -203,7 +200,31 @@ public final class WorldWriteHistoryService {
             while (redoStack.size() > MAX_UNDO_STACK_SIZE) {
                 redoStack.removeFirst();
             }
+            trimUndoStack(redoStack);
         }
+    }
+
+    static void trimUndoStack(List<UndoRecord> stack) {
+        if (stack == null) {
+            return;
+        }
+        while (stack.size() > MAX_UNDO_STACK_SIZE && !stack.isEmpty()) {
+            stack.removeFirst();
+        }
+        while (snapshotCount(stack) > GenerationLimits.MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR && !stack.isEmpty()) {
+            stack.removeFirst();
+        }
+    }
+
+    static int snapshotCount(List<UndoRecord> stack) {
+        if (stack == null) {
+            return 0;
+        }
+        int total = 0;
+        for (UndoRecord record : stack) {
+            total += record.size();
+        }
+        return total;
     }
 
     private record ApplyOutcome(UndoRecord inverse, int successCount, int failureCount, List<Integer> appliedIndices) {
@@ -284,7 +305,7 @@ public final class WorldWriteHistoryService {
             for (int i = 0; i < snapshots.size(); i++) {
                 BlockSnapshot target = snapshots.get(i);
                 BlockPos pos = target.pos();
-                BlockSnapshot current = WorldWriteTransaction.captureCurrent(context, pos);
+                BlockSnapshot current = WorldWriteUndoJournal.captureCurrent(context, pos);
                 if (current == null) {
                     failure++;
                     continue;

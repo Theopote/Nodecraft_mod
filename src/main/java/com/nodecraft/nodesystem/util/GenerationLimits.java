@@ -435,8 +435,14 @@ public final class GenerationLimits {
     /** Hard upper bound for Flow Accumulation iterations (independent of work product). */
     public static final int MAX_TERRAIN_FLOW_ITERATIONS = 4_096;
 
-    /** Hard safety ceiling for world.write Max Blocks / region volume budgets. */
+    /** Bake / history ceiling for world.write Max Blocks / region volume budgets. */
     public static final int MAX_WORLD_WRITE_BLOCKS = 262_144;
+
+    /** Fail-closed Max Blocks hard cap for sync SetBlocks / Fill / Replace / Clone / Remove. */
+    public static final int MAX_SYNC_WORLD_WRITE_BLOCKS = 32_768;
+
+    /** Drop oldest undo records on push until total snapshots per actor+world stay at or below this. */
+    public static final int MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR = 262_144;
 
     /** Hard safety ceiling for world.write Max Count entity mutate budgets. */
     public static final int MAX_WORLD_WRITE_ENTITIES = 4_096;

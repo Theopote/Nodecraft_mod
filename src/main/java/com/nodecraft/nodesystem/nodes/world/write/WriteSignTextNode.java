@@ -124,7 +124,12 @@ public class WriteSignTextNode extends BaseNode {
             publish(false, false, "", false, "Missing execution world");
             return;
         }
+        if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+            publish(false, false, "", false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
+        BlockSnapshot before = null;
         try {
             var blockEntity = context.getWorld().getBlockEntity(pos);
             if (!(blockEntity instanceof SignBlockEntity sign)) {
@@ -132,12 +137,12 @@ public class WriteSignTextNode extends BaseNode {
                 return;
             }
 
-            BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+            before = WorldWriteUndoJournal.captureCurrent(context, pos);
             if (before == null) {
-                publish(false, false, "", false, "Missing execution world");
+                publish(false, false, "", false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
                 return;
             }
-            WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+            WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
 
             String signType = Registries.BLOCK.getId(before.state().getBlock()).toString();
             var signText = sign.getFrontText()
@@ -156,11 +161,14 @@ public class WriteSignTextNode extends BaseNode {
                 tx.pushIfNeeded(context, recordUndo);
                 publish(true, true, signType, true, "");
             } else {
-                tx.recordFailure();
+                WorldWriteUndoJournal.restore(context, before);
                 publish(false, true, signType, true, "World rejected sign text update");
             }
         } catch (Exception e) {
-            publish(false, false, "", true, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            if (before != null) {
+                WorldWriteUndoJournal.restore(context, before);
+            }
+            publish(false, false, "", true, "World write failed");
         }
     }
 

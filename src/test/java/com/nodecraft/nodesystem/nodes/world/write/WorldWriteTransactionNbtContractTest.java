@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Locks capture-before-mutate + NBT restore failure accounting for Graph V64.
+ * Locks capture-before-mutate + NBT restore failure accounting.
  */
 class WorldWriteTransactionNbtContractTest {
 
@@ -33,14 +33,47 @@ class WorldWriteTransactionNbtContractTest {
     void setBlockCapturesSnapshotBeforeMutation() throws Exception {
         for (String file : CAPTURE_BEFORE_MUTATE_SOURCES) {
             String src = Files.readString(Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/" + file));
-            assertTrue(src.contains("WorldWriteTransaction.captureCurrent("), file + " must captureCurrent");
+            assertTrue(src.contains("WorldWriteUndoJournal.captureCurrent("), file + " must captureCurrent");
             assertTrue(src.contains("tx.recordSuccess(before)"), file + " must recordSuccess(before)");
             assertFalse(src.contains("tx.recordSuccess(context,"), file + " must not re-read NBT after mutate");
-            int captureIdx = src.indexOf("WorldWriteTransaction.captureCurrent(");
+            int captureIdx = src.indexOf("WorldWriteUndoJournal.captureCurrent(");
             int mutateIdx = firstMutateIndex(src);
             assertTrue(captureIdx >= 0 && mutateIdx > captureIdx,
                 file + " must captureCurrent before setBlockState/breakBlock");
         }
+    }
+
+    @Test
+    void setBlockRecordsSuccessOnlyAfterFullCellSuccess() throws Exception {
+        String src = Files.readString(Path.of(
+            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/SetBlockNode.java"));
+        int nbtApply = src.indexOf("WorldWriteNbtUtils.applyToBlockEntity(");
+        int recordSuccess = src.indexOf("tx.recordSuccess(before)");
+        int restore = src.indexOf("WorldWriteUndoJournal.restore(context, before)");
+        assertTrue(nbtApply >= 0 && recordSuccess > nbtApply,
+            "SetBlock must apply NBT before recordSuccess");
+        assertTrue(restore >= 0 && restore < recordSuccess,
+            "SetBlock must restore on NBT fail before committing undo");
+        assertFalse(src.contains("Block placed, but NBT was not applied"));
+    }
+
+    @Test
+    void setBlocksRestoresCellWhenNbtFails() throws Exception {
+        String src = Files.readString(Path.of(
+            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/SetBlocksNode.java"));
+        assertTrue(src.contains("WorldWriteUndoJournal.restore(context, before)"));
+        int restore = src.indexOf("WorldWriteUndoJournal.restore(context, before)");
+        int recordFailure = src.indexOf("tx.recordFailure()", restore);
+        assertTrue(recordFailure > restore, "NBT fail must restore then recordFailure");
+    }
+
+    @Test
+    void journalExposesRestoreAndLoadedCapture() throws Exception {
+        String src = Files.readString(Path.of(
+            "src/main/java/com/nodecraft/nodesystem/nodes/world/write/WorldWriteUndoJournal.java"));
+        assertTrue(src.contains("public static boolean restore(ExecutionContext context, BlockSnapshot snapshot)"));
+        assertTrue(src.contains("WorldWriteUtils.isChunkLoaded(context, pos)"));
+        assertTrue(src.contains("WorldWriteUtils.isChunkLoaded(context, snapshot.pos())"));
     }
 
     @Test
@@ -54,7 +87,7 @@ class WorldWriteTransactionNbtContractTest {
 
         assertTrue(history.contains("undoLast(UUID actorId, ExecutionContext context)"));
         assertTrue(history.contains("redoLast(UUID actorId, ExecutionContext context)"));
-        assertTrue(history.contains("WorldWriteTransaction.captureCurrent(context, pos)"));
+        assertTrue(history.contains("WorldWriteUndoJournal.captureCurrent(context, pos)"));
         assertFalse(history.contains("skip NBT capture on inverse"));
         assertTrue(history.contains("applyBlockEntityNbt(restored, targetNbt, context)"));
         assertTrue(undoNode.contains("service.undoLast(actorId, context)"));
@@ -83,13 +116,12 @@ class WorldWriteTransactionNbtContractTest {
         BlockPos pos = new BlockPos(1, 64, 2);
         NbtCompound nbt = new NbtCompound();
         nbt.putString("Lock", "diamonds");
-        // state null is unacceptable at runtime; use a placeholder snapshot via package ctor with null-safe path:
-        // BlockSnapshot requires BlockState — skip live BlockState by verifying transaction API signature only:
-        WorldWriteTransaction tx = new WorldWriteTransaction("minecraft:overworld");
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal("minecraft:overworld");
         tx.recordSuccess(null);
         assertEquals(1, tx.failureCount());
         assertFalse(tx.isComplete());
-        assertNull(WorldWriteTransaction.captureCurrent(null, pos));
+        assertNull(WorldWriteUndoJournal.captureCurrent(null, pos));
+        assertFalse(WorldWriteUndoJournal.restore(null, null));
     }
 
     private static int firstMutateIndex(String src) {

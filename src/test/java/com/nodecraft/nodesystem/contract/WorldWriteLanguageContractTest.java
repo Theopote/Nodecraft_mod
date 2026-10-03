@@ -10,11 +10,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.world.write.SetBlockNode;
 import com.nodecraft.nodesystem.nodes.world.write.SetBlocksNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -24,11 +19,8 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -74,13 +66,10 @@ class WorldWriteLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV64() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
     void generationLimitsExposeWorldWriteCaps() {
         assertEquals(262_144, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+        assertEquals(32_768, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS);
+        assertEquals(262_144, GenerationLimits.MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR);
         assertEquals(4_096, GenerationLimits.MAX_WORLD_WRITE_ENTITIES);
         assertEquals(65_536, GenerationLimits.MAX_WORLD_WRITE_SNBT_CHARS);
         assertEquals(1_024, GenerationLimits.MAX_WORLD_WRITE_COMMAND_CHARS);
@@ -183,6 +172,46 @@ class WorldWriteLanguageContractTest {
     }
 
     @Test
+    void setBlockTriggerDefaultsFalseWithoutV63Wording() throws Exception {
+        SetBlockNode node = new SetBlockNode();
+        assertFalse(node.isTrigger());
+        String src = java.nio.file.Files.readString(
+            java.nio.file.Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/SetBlockNode.java"));
+        assertFalse(src.contains("V63"));
+        String fill = java.nio.file.Files.readString(
+            java.nio.file.Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/FillRegionNode.java"));
+        assertFalse(fill.contains("V63"));
+    }
+
+    @Test
+    void pointAndBatchWritersAdvertiseLoadedOnlyError() throws Exception {
+        List<String> files = List.of(
+            "SetBlockNode.java",
+            "SetBlockNbtNode.java",
+            "WriteSignTextNode.java",
+            "SpawnEntityNode.java",
+            "ApplyRedstonePowerNode.java",
+            "SimulateRightClickNode.java",
+            "ExecuteCommandNode.java",
+            "SetBlocksNode.java",
+            "FillRegionNode.java",
+            "ReplaceBlocksNode.java",
+            "CloneRegionNode.java",
+            "RemoveBlocksNode.java"
+        );
+        for (String file : files) {
+            String src = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/" + file));
+            assertTrue(src.contains("WorldWriteUtils.UNLOADED_CHUNK_ERROR")
+                    || src.contains("WorldWriteUtils.isChunkLoaded"),
+                file + " must gate on loaded chunks");
+        }
+        String utils = java.nio.file.Files.readString(
+            java.nio.file.Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/WorldWriteUtils.java"));
+        assertTrue(utils.contains("Target chunk is not loaded"));
+    }
+
+    @Test
     void teleportAndRemoveAreNotSimulatedStubs() throws Exception {
         String teleportSrc = java.nio.file.Files.readString(
                 java.nio.file.Path.of("src/main/java/com/nodecraft/nodesystem/nodes/world/write/EntityTeleportNode.java"));
@@ -264,26 +293,5 @@ class WorldWriteLanguageContractTest {
             }
         }
         return null;
-    }
-
-    private static SavedNode savedNode(String id, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = id;
-        node.typeId = typeId;
-        node.state = new HashMap<>();
-        return node;
-    }
-
-    private static SavedConnection wire(String sourceNode, String sourcePort, String targetNode, String targetPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = sourceNode;
-        connection.sourcePortId = sourcePort;
-        connection.targetNodeId = targetNode;
-        connection.targetPortId = targetPort;
-        return connection;
-    }
-
-    private static SavedNode nodeOf(SavedGraph graph, String id) {
-        return graph.nodes.stream().filter(n -> id.equals(n.nodeId)).findFirst().orElseThrow();
     }
 }

@@ -15,6 +15,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -114,6 +115,11 @@ public class SpawnEntityNode extends BaseNode {
             publish(null, false, "", false, "Missing execution world");
             return;
         }
+        BlockPos spawnPos = BlockPos.ofFloored(position.getX(), position.getY(), position.getZ());
+        if (!WorldWriteUtils.isChunkLoaded(context, spawnPos)) {
+            publish(null, false, "", false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         Identifier entityId;
         try {
@@ -173,7 +179,7 @@ public class SpawnEntityNode extends BaseNode {
                 publish(null, false, "", true, "World rejected entity spawn.");
             }
         } catch (Exception e) {
-            publish(null, false, "", true, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            publish(null, false, "", true, "World write failed");
         }
     }
 

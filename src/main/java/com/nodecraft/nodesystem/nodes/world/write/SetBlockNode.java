@@ -43,7 +43,7 @@ public class SetBlockNode extends BaseNode {
     private static final String OUTPUT_PREVIOUS_BLOCK_ID = "output_previous_block";
 
     @NodeProperty(displayName = "Trigger", category = "Execution", order = 0,
-        description = "When true (or Trigger port true), this write may run. Default false; V63 graphs migrate to true.")
+        description = "When true (or Trigger port true), this write may run. Default false.")
     private boolean trigger = false;
 
     private boolean notifyUpdate = true;
@@ -119,44 +119,55 @@ public class SetBlockNode extends BaseNode {
             publish(false, false, false, "Missing execution world", null);
             return;
         }
+        if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+            publish(false, false, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR, null);
+            return;
+        }
 
         boolean success = false;
         boolean nbtSuccess = false;
         String error = "";
         Object previousBlock = null;
+        BlockSnapshot before = null;
 
         try {
-            BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+            before = WorldWriteUndoJournal.captureCurrent(context, pos);
             if (before == null) {
-                publish(false, false, false, "Missing execution world", null);
+                publish(false, false, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR, null);
                 return;
             }
             previousBlock = before.state();
-            WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+            WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
             int flags = WorldWriteUtils.flags(notify);
             if (dropItems && !context.getWorld().isAir(pos)) {
                 context.getWorld().breakBlock(pos, true);
             }
-            success = context.getWorld().setBlockState(pos, targetState, flags);
-            if (success) {
-                tx.recordSuccess(before);
-                NbtCompound incomingNbt = nbtResult.nbt();
-                if (incomingNbt != null) {
-                    nbtSuccess = WorldWriteNbtUtils.applyToBlockEntity(
-                        context, pos, incomingNbt, mergeNbt, notify);
-                    if (!nbtSuccess) {
-                        error = "Block placed, but NBT was not applied";
-                        tx.markIncomplete();
-                    }
-                }
-                tx.pushIfNeeded(context, recordUndo);
-            } else {
+            boolean placed = context.getWorld().setBlockState(pos, targetState, flags);
+            if (!placed) {
                 error = "World rejected block placement";
-                tx.recordFailure();
+                publish(false, false, true, error, previousBlock);
+                return;
             }
+            NbtCompound incomingNbt = nbtResult.nbt();
+            if (incomingNbt != null) {
+                nbtSuccess = WorldWriteNbtUtils.applyToBlockEntity(
+                    context, pos, incomingNbt, mergeNbt, notify);
+                if (!nbtSuccess) {
+                    WorldWriteUndoJournal.restore(context, before);
+                    publish(false, false, true, "Failed to apply block entity NBT", previousBlock);
+                    return;
+                }
+            }
+            tx.recordSuccess(before);
+            tx.pushIfNeeded(context, recordUndo);
+            success = true;
         } catch (Exception e) {
             success = false;
-            error = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            nbtSuccess = false;
+            if (before != null) {
+                WorldWriteUndoJournal.restore(context, before);
+            }
+            error = "World write failed";
         }
 
         publish(success, nbtSuccess, true, error, previousBlock);

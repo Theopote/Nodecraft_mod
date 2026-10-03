@@ -90,6 +90,10 @@ public class SimulateRightClickNode extends BaseNode {
             publish(false, "", "PASS", false, "Missing execution world");
             return;
         }
+        if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+            publish(false, "", "PASS", false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         Object playerObj = inputValues.get(INPUT_PLAYER_ID);
         ServerPlayerEntity player = playerObj instanceof ServerPlayerEntity provided ? provided : context.getPlayer();
@@ -113,7 +117,7 @@ public class SimulateRightClickNode extends BaseNode {
             }
             publish(success, blockType, String.valueOf(result), true, success ? "" : "Interaction not accepted");
         } catch (Exception e) {
-            publish(false, "", "ERROR", true, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            publish(false, "", "ERROR", true, "World write failed");
         }
     }
 

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.world.write;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.BlockInfoData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockListUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockStateData;
@@ -10,6 +11,7 @@ import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
@@ -30,6 +32,7 @@ final class WorldWriteUtils {
     static final String OUTPUT_ERROR_ID = "output_error";
     static final String OUTPUT_COMPLETE_ID = "output_complete";
     static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
+    static final String UNLOADED_CHUNK_ERROR = "Target chunk is not loaded";
 
     enum TriggerResult {
         RUN,
@@ -218,5 +221,12 @@ final class WorldWriteUtils {
 
     static boolean exceedsWriteBlockCap(long count) {
         return count < 0L || count > GenerationLimits.MAX_WORLD_WRITE_BLOCKS;
+    }
+
+    static boolean isChunkLoaded(@Nullable ExecutionContext context, @Nullable BlockPos pos) {
+        if (context == null || context.getWorld() == null || pos == null) {
+            return false;
+        }
+        return new WorldQueryAccess(context.getWorld()).isLoaded(pos);
     }
 }

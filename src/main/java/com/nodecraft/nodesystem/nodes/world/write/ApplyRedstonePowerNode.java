@@ -101,11 +101,17 @@ public class ApplyRedstonePowerNode extends BaseNode {
             publish(false, "", false, "Missing execution world");
             return;
         }
+        BlockPos supportPos = targetPos.up();
+        BlockPos sourcePos = supportPos.up();
+        if (!WorldWriteUtils.isChunkLoaded(context, targetPos)
+            || !WorldWriteUtils.isChunkLoaded(context, supportPos)
+            || !WorldWriteUtils.isChunkLoaded(context, sourcePos)) {
+            publish(false, "", false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         try {
             String blockType = Registries.BLOCK.getId(context.getWorld().getBlockState(targetPos).getBlock()).toString();
-            BlockPos supportPos = targetPos.up();
-            BlockPos sourcePos = supportPos.up();
 
             BlockState previousSupportState = context.getWorld().getBlockState(supportPos);
             BlockState previousSourceState = context.getWorld().getBlockState(sourcePos);
@@ -139,7 +145,7 @@ public class ApplyRedstonePowerNode extends BaseNode {
             );
             publish(true, blockType, true, "");
         } catch (Exception e) {
-            publish(false, "", true, e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            publish(false, "", true, "World write failed");
         }
     }
 

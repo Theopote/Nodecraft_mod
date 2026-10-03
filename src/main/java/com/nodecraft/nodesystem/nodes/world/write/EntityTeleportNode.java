@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -123,6 +124,11 @@ public class EntityTeleportNode extends BaseNode {
             publish(0, 0, 0, false, List.of(), false, false, "Missing execution world");
             return;
         }
+        BlockPos destPos = BlockPos.ofFloored(destination.getX(), destination.getY(), destination.getZ());
+        if (!WorldWriteUtils.isChunkLoaded(context, destPos)) {
+            publish(0, 0, 0, false, List.of(), false, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         List<Entity> entities = collectEntities(inputValues.get(INPUT_ENTITY_ID), inputValues.get(INPUT_ENTITY_LIST_ID));
         if (entities == null) {
@@ -143,6 +149,10 @@ public class EntityTeleportNode extends BaseNode {
         for (Entity entity : entities) {
             try {
                 if (entity.getEntityWorld() != world) {
+                    failureCount++;
+                    continue;
+                }
+                if (!WorldWriteUtils.isChunkLoaded(context, entity.getBlockPos())) {
                     failureCount++;
                     continue;
                 }

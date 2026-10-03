@@ -96,7 +96,7 @@ public class CloneRegionNode extends BaseNode {
         addInputPort(new BasePort(INPUT_INCLUDE_AIR_ID, "Include Air", "Whether to clone air blocks", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_CLONE_MODE_ID, "Clone Mode", "0=Normal, 1=Force, 2=Move, 3=Masked", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_SYNC_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_CLONED_BLOCKS_ID, "Cloned Blocks", "Number of blocks cloned", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", "Successful placements", NodeDataType.INTEGER, this));
@@ -131,14 +131,14 @@ public class CloneRegionNode extends BaseNode {
         Boolean includeAirValue = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_INCLUDE_AIR_ID, includeAir);
         Boolean notify = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyUpdate);
         Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
-            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS);
         if (includeEntitiesValue == null || includeAirValue == null || notify == null) {
             publish(0, 0, 0, 0, null, false, false, false, false, "Boolean drive is connected but null or invalid.");
             return;
         }
         if (blockLimit == null) {
             publish(0, 0, 0, 0, null, false, false, false, false,
-                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + ".");
             return;
         }
 
@@ -190,7 +190,7 @@ public class CloneRegionNode extends BaseNode {
             return;
         }
 
-        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
         Map<BlockPos, BlockState> blocksToCopy = new HashMap<>();
         int totalCount = 0;
 
@@ -198,6 +198,10 @@ public class CloneRegionNode extends BaseNode {
             totalCount++;
             BlockPos immutablePos = pos.toImmutable();
             try {
+                if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
+                    tx.recordFailure();
+                    continue;
+                }
                 BlockState blockState = context.getWorld().getBlockState(immutablePos);
                 boolean isAir = context.getWorld().isAir(immutablePos);
                 if (isAir && !includeAirValue) {
@@ -216,7 +220,11 @@ public class CloneRegionNode extends BaseNode {
         for (Map.Entry<BlockPos, BlockState> entry : blocksToCopy.entrySet()) {
             BlockPos pos = entry.getKey();
             try {
-                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+                    tx.recordFailure();
+                    continue;
+                }
+                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
                 if (before == null) {
                     tx.recordFailure();
                     continue;
@@ -240,7 +248,11 @@ public class CloneRegionNode extends BaseNode {
                     continue;
                 }
                 try {
-                    BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, immutablePos);
+                    if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
+                        tx.recordFailure();
+                        continue;
+                    }
+                    BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, immutablePos);
                     if (before == null) {
                         tx.recordFailure();
                         continue;
@@ -351,7 +363,7 @@ public class CloneRegionNode extends BaseNode {
     public void setCloneMode(CloneMode cloneMode) { this.cloneMode = cloneMode; markDirty(); }
     public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS));
         markDirty();
     }
     public boolean isRecordUndo() { return recordUndo; }

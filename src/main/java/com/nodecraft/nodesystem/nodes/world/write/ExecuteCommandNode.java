@@ -102,6 +102,13 @@ public class ExecuteCommandNode extends BaseNode {
             publish(false, 0, "", null, false, "Missing execution world");
             return;
         }
+        ServerPlayerEntity executorPlayer = inputValues.get(INPUT_EXECUTOR_ID) instanceof ServerPlayerEntity provided
+            ? provided
+            : context.getPlayer();
+        if (executorPlayer != null && !WorldWriteUtils.isChunkLoaded(context, executorPlayer.getBlockPos())) {
+            publish(false, 0, "", null, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
+            return;
+        }
 
         try {
             if (!CommandValidator.getInstance().validateCommand("/" + normalized)) {
@@ -127,8 +134,7 @@ public class ExecuteCommandNode extends BaseNode {
             Object parsed = parseOutput ? output.messages() : null;
             publish(success, resultCode, resultText, parsed, true, success ? "" : "Command returned " + resultCode);
         } catch (Exception e) {
-            publish(false, -1, "Error executing command: " + e.getMessage(), null, true,
-                e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            publish(false, -1, "Error executing command", null, true, "Command execution failed");
         }
     }
 

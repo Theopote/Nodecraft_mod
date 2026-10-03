@@ -59,7 +59,7 @@ public class RemoveBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_SPAWN_DROPS_ID, "Spawn Drops", "Whether removed blocks should drop items", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_SYNC_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_REMOVED_BLOCKS_ID, "Removed Blocks", "Number of non-air blocks removed", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_COUNT_ID, "Success Count", "Number of successful operations", NodeDataType.INTEGER, this));
@@ -92,14 +92,14 @@ public class RemoveBlocksNode extends BaseNode {
         Boolean notify = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_NOTIFY_ID, notifyUpdate);
         Boolean dropItems = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_SPAWN_DROPS_ID, spawnDrops);
         Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
-            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS);
         if (notify == null || dropItems == null) {
             publish(0, 0, 0, 0, List.of(), false, false, false, "Boolean drive is connected but null or invalid.");
             return;
         }
         if (blockLimit == null) {
             publish(0, 0, 0, 0, List.of(), false, false, false,
-                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + ".");
             return;
         }
 
@@ -120,7 +120,7 @@ public class RemoveBlocksNode extends BaseNode {
 
         BlockState airState = Blocks.AIR.getDefaultState();
         int flags = WorldWriteUtils.flags(notify);
-        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
         List<Object> previousBlocks = new ArrayList<>();
         int removedBlocks = 0;
         int successCount = 0;
@@ -129,7 +129,11 @@ public class RemoveBlocksNode extends BaseNode {
         for (BlockPos pos : coordinates) {
             totalCount++;
             try {
-                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+                    tx.recordFailure();
+                    continue;
+                }
+                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
                 if (before == null) {
                     tx.recordFailure();
                     continue;
@@ -200,7 +204,7 @@ public class RemoveBlocksNode extends BaseNode {
     public void setSpawnDrops(boolean spawnDrops) { this.spawnDrops = spawnDrops; markDirty(); }
     public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS));
         markDirty();
     }
     public boolean isRecordUndo() { return recordUndo; }

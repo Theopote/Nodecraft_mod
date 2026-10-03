@@ -14,9 +14,10 @@ import java.util.List;
 
 /**
  * Accumulates before-snapshots for a single world.write execution, then pushes undo history.
- * Callers must {@link #captureCurrent} before mutation, then {@link #recordSuccess} with that snapshot.
+ * Callers must {@link #captureCurrent} before mutation, then {@link #recordSuccess} only after
+ * the full cell (state + optional NBT) succeeds. This is an undo journal, not an ACID transaction.
  */
-public final class WorldWriteTransaction {
+public final class WorldWriteUndoJournal {
 
     private final String worldKey;
     private final List<BlockSnapshot> beforeSnapshots = new ArrayList<>();
@@ -25,7 +26,7 @@ public final class WorldWriteTransaction {
     private boolean hitLimit;
     private boolean complete = true;
 
-    public WorldWriteTransaction(String worldKey) {
+    public WorldWriteUndoJournal(String worldKey) {
         this.worldKey = worldKey == null ? "unknown" : worldKey;
     }
 
@@ -64,9 +65,13 @@ public final class WorldWriteTransaction {
 
     /**
      * Captures current block state + block-entity NBT at {@code pos} before any mutation.
+     * Refuses unloaded chunks (never force-loads).
      */
     public static @Nullable BlockSnapshot captureCurrent(ExecutionContext context, BlockPos pos) {
         if (context == null || context.getWorld() == null || pos == null) {
+            return null;
+        }
+        if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
             return null;
         }
         World world = context.getWorld();
@@ -77,6 +82,36 @@ public final class WorldWriteTransaction {
             nbt = WorldWriteNbtUtils.extractBlockEntityNbt(be, context);
         }
         return new BlockSnapshot(pos, state, nbt);
+    }
+
+    /**
+     * Restores {@code snapshot} (state + optional BE NBT). Used by atomic single-cell rollback.
+     */
+    public static boolean restore(ExecutionContext context, BlockSnapshot snapshot) {
+        if (context == null || context.getWorld() == null || snapshot == null) {
+            return false;
+        }
+        if (!WorldWriteUtils.isChunkLoaded(context, snapshot.pos())) {
+            return false;
+        }
+        World world = context.getWorld();
+        BlockPos pos = snapshot.pos();
+        boolean placed = world.setBlockState(pos, snapshot.state(), 3);
+        if (!placed) {
+            return false;
+        }
+        NbtCompound nbt = snapshot.blockEntityNbt();
+        if (nbt != null) {
+            BlockEntity restored = world.getBlockEntity(pos);
+            if (restored == null) {
+                return false;
+            }
+            if (!WorldWriteNbtUtils.applyBlockEntityNbt(restored, nbt, context)) {
+                return false;
+            }
+            restored.markDirty();
+        }
+        return true;
     }
 
     /**

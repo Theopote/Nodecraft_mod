@@ -69,7 +69,7 @@ public class SetBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify Update", "Whether neighbor and listener updates should fire", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_SPAWN_DROPS_ID, "Spawn Drops", "Whether replacing blocks should drop items first", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_MAX_BLOCKS_ID, "Max Blocks", "User budget hard-capped by MAX_SYNC_WORLD_WRITE_BLOCKS", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_NBT_ID, "NBT", "Optional shared block-entity NBT", NodeDataType.NBT_COMPOUND, this));
         addInputPort(new BasePort(INPUT_NBT_STRING_ID, "NBT String", "Optional shared SNBT string", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_MERGE_NBT_ID, "Merge NBT", "Merge incoming NBT with each block entity NBT", NodeDataType.BOOLEAN, this));
@@ -101,14 +101,14 @@ public class SetBlocksNode extends BaseNode {
         Boolean dropItems = WorldWriteUtils.resolveOptionalBoolean(this, INPUT_SPAWN_DROPS_ID, spawnDrops);
         Boolean mergeNbt = WorldWriteNbtUtils.resolveMergeNbt(this, mergeNbtProperty);
         Integer blockLimit = WorldWriteUtils.resolveUserBudgetExactInteger(
-            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS);
+            this, INPUT_MAX_BLOCKS_ID, maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS);
         if (notify == null || dropItems == null || mergeNbt == null) {
             publish(0, 0, 0, 0, false, false, false, false, "Boolean drive is connected but null or invalid.");
             return;
         }
         if (blockLimit == null) {
             publish(0, 0, 0, 0, false, false, false, false,
-                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_WORLD_WRITE_BLOCKS + ".");
+                "Max Blocks must be an exact INTEGER between 1 and " + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + ".");
             return;
         }
 
@@ -163,7 +163,7 @@ public class SetBlocksNode extends BaseNode {
             return;
         }
 
-        WorldWriteTransaction tx = new WorldWriteTransaction(WorldWriteUtils.worldKey(context.getWorld()));
+        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
         int flags = WorldWriteUtils.flags(notify);
         int nbtSuccessCount = 0;
         int totalCount = 0;
@@ -174,7 +174,11 @@ public class SetBlocksNode extends BaseNode {
             totalCount++;
             BlockState targetState = sharedState != null ? sharedState : perPosStates.get(i);
             try {
-                BlockSnapshot before = WorldWriteTransaction.captureCurrent(context, pos);
+                if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+                    tx.recordFailure();
+                    continue;
+                }
+                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
                 if (before == null) {
                     tx.recordFailure();
                     continue;
@@ -183,17 +187,20 @@ public class SetBlocksNode extends BaseNode {
                     context.getWorld().breakBlock(pos, true);
                 }
                 boolean success = context.getWorld().setBlockState(pos, targetState, flags);
-                if (success) {
-                    tx.recordSuccess(before);
-                    if (incomingNbt != null) {
-                        if (WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify)) {
-                            nbtSuccessCount++;
-                        } else {
-                            tx.recordFailure();
-                        }
+                if (!success) {
+                    tx.recordFailure();
+                    continue;
+                }
+                if (incomingNbt != null) {
+                    if (WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify)) {
+                        nbtSuccessCount++;
+                        tx.recordSuccess(before);
+                    } else {
+                        WorldWriteUndoJournal.restore(context, before);
+                        tx.recordFailure();
                     }
                 } else {
-                    tx.recordFailure();
+                    tx.recordSuccess(before);
                 }
             } catch (Exception e) {
                 tx.recordFailure();
@@ -246,7 +253,7 @@ public class SetBlocksNode extends BaseNode {
     public void setSpawnDrops(boolean spawnDrops) { this.spawnDrops = spawnDrops; markDirty(); }
     public int getMaxBlocks() { return maxBlocks; }
     public void setMaxBlocks(int maxBlocks) {
-        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_WORLD_WRITE_BLOCKS));
+        this.maxBlocks = Math.max(1, Math.min(maxBlocks, GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS));
         markDirty();
     }
     public boolean isRecordUndo() { return recordUndo; }
