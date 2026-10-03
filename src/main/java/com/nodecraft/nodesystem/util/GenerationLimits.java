@@ -279,10 +279,10 @@ public final class GenerationLimits {
     public static final int MAX_VORONOI_LLOYD_SITES = 4096;
 
     /**
-     * Hard cap on estimated nearest-site distance tests:
+     * Interactive cap on estimated nearest-site distance tests:
      * cells^3 * siteCount * iterations.
      */
-    public static final long MAX_LLOYD_DISTANCE_TESTS = 100_000_000L;
+    public static final long MAX_LLOYD_DISTANCE_TESTS = 10_000_000L;
 
     /** Maximum L-system rewrite iterations. */
     public static final int MAX_LSYSTEM_ITERATIONS = 16;
@@ -476,8 +476,22 @@ public final class GenerationLimits {
         if (iterations <= 0) {
             return false;
         }
-        long cellsCubed = (long) cellsPerAxis * cellsPerAxis * cellsPerAxis;
-        return cellsCubed * (long) siteCount * (long) iterations > MAX_LLOYD_DISTANCE_TESTS;
+        if (cellsPerAxis < 0 || siteCount < 0) {
+            return true;
+        }
+        try {
+            long cellsCubed = Math.multiplyExact(
+                Math.multiplyExact((long) cellsPerAxis, (long) cellsPerAxis),
+                (long) cellsPerAxis
+            );
+            long work = Math.multiplyExact(
+                Math.multiplyExact(cellsCubed, (long) siteCount),
+                (long) iterations
+            );
+            return work > MAX_LLOYD_DISTANCE_TESTS;
+        } catch (ArithmeticException overflow) {
+            return true;
+        }
     }
 
     /**

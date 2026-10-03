@@ -32,7 +32,7 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
     private static final double SITE_DISTINCT_EPS_SQ = 1.0e-12d;
 
     @NodeProperty(displayName = "Cells Per Axis", category = "Grid", order = 1,
-        description = "Resolution of the internal uniform grid (higher = slower, more accurate)")
+        description = "Uniform grid resolution per axis. Work is cells³ × sites × iterations and is capped.")
     private int cellsPerAxis = 24;
 
     @NodeProperty(displayName = "Iterations", category = "Lloyd", order = 2)
@@ -106,8 +106,12 @@ public class Voronoi3DLloydRelaxNode extends BaseNode {
         Vector3d max = new Vector3d(cornerB);
         normalizeBounds(min, max);
 
-        if (max.x - min.x <= BOUNDS_EPS || max.y - min.y <= BOUNDS_EPS || max.z - min.z <= BOUNDS_EPS) {
-            writeInvalid("Bounds must be non-degenerate in 3D");
+        double spanX = max.x - min.x;
+        double spanY = max.y - min.y;
+        double spanZ = max.z - min.z;
+        if (!Double.isFinite(spanX) || !Double.isFinite(spanY) || !Double.isFinite(spanZ)
+                || spanX <= BOUNDS_EPS || spanY <= BOUNDS_EPS || spanZ <= BOUNDS_EPS) {
+            writeInvalid("Bounds must be finite and non-degenerate in 3D");
             return;
         }
 

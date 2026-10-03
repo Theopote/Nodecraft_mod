@@ -9,7 +9,8 @@ import java.util.List;
  * Lloyd relaxation for 3D sites using a uniform axis-aligned grid: each cell center votes for its
  * nearest site; sites move to the centroid of cells they own. This is an approximation, not an exact 3D Voronoi diagram.
  * <p>
- * Sites owning zero grid samples retain their previous position (Graph V107 empty-cell policy).
+ * Sites owning zero grid samples retain their previous position.
+ * Equal-distance ties are assigned to the lowest input site index.
  * <p>
  * Callers must validate bounds, site count, cells, and iterations before invoking {@link #relax}.
  */
@@ -41,7 +42,8 @@ public final class Voronoi3DGridLloyd {
         }
 
         Vector3d span = new Vector3d(max).sub(min);
-        if (span.x <= 1.0e-12d || span.y <= 1.0e-12d || span.z <= 1.0e-12d) {
+        if (!Double.isFinite(span.x) || !Double.isFinite(span.y) || !Double.isFinite(span.z)
+                || span.x <= 1.0e-12d || span.y <= 1.0e-12d || span.z <= 1.0e-12d) {
             return List.of();
         }
 
@@ -92,6 +94,9 @@ public final class Voronoi3DGridLloyd {
         return List.copyOf(working);
     }
 
+    /**
+     * Nearest site by squared Euclidean distance. Equal-distance ties keep the lowest input index.
+     */
     private static int nearestIndex(double x, double y, double z, List<Vector3d> sites) {
         int best = 0;
         double bestD2 = Double.POSITIVE_INFINITY;

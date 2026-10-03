@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.voronoi_3d.Voronoi3DLloydRelaxNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -32,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Pattern Voronoi 3D Language v2 (Graph V83).
+ * Language fence for Pattern Voronoi 3D Language v2.
  */
 class PatternVoronoi3DLanguageV2ContractTest {
 
@@ -56,16 +55,6 @@ class PatternVoronoi3DLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV83() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV107() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -269,6 +258,18 @@ class PatternVoronoi3DLanguageV2ContractTest {
     }
 
     @Test
+    void extremeFiniteCornersWithInfiniteSpanFailClosed() {
+        BaseNode node = createLloyd();
+        node.setInput("input_sites", List.of(new PointData(0, 0, 0)));
+        node.setInput("input_corner_a", new PointData(-1.0e308d, -1.0e308d, -1.0e308d));
+        node.setInput("input_corner_b", new PointData(1.0e308d, 1.0e308d, 1.0e308d));
+        node.setNodeState(Map.of("cellsPerAxis", 4, "iterations", 1));
+        node.processNode(null);
+        assertInvalid(node);
+        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("bound"));
+    }
+
+    @Test
     void siteOutsideBoundsFailsClosed() {
         BaseNode node = createLloyd();
         node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(11, 5, 5)));
@@ -371,6 +372,7 @@ class PatternVoronoi3DLanguageV2ContractTest {
 
     @Test
     void workBudgetExceededFailsClosed() {
+        assertEquals(10_000_000L, GenerationLimits.MAX_LLOYD_DISTANCE_TESTS);
         assertTrue(GenerationLimits.exceedsLloydWorkBudget(40, 100, 20));
 
         BaseNode node = createLloyd();

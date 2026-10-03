@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.voronoi_3d.Voronoi3DLloydRelaxNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -28,8 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern Voronoi 3D v1 language fence (Graph V45).
- * OptionalPortDrive / Error semantics are owned by Pattern Voronoi 3D Language v2 (V83).
+ * Pattern Voronoi 3D v1 language fence — inventory and Lloyd basics.
+ * OptionalPortDrive / Error semantics are owned by Pattern Voronoi 3D Language v2.
  */
 class PatternVoronoi3DLanguageContractTest {
 
