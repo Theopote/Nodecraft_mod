@@ -17,6 +17,8 @@ import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -29,6 +31,8 @@ import java.util.*;
     order = 2
 )
 public class SubgraphNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SubgraphNode.class);
 
     private String displayName = "Subgraph";
 
@@ -140,7 +144,8 @@ public class SubgraphNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, success);
             outputValues.put(OUTPUT_ERROR_ID, success ? "" : "Nested node execution reported failure");
         } catch (Exception e) {
-            writeFailure(e.getMessage() == null ? "Subgraph execution failed" : e.getMessage());
+            LOGGER.debug("Subgraph execution failed", e);
+            writeFailure("Subgraph execution failed");
         } finally {
             if (context != null && previousDefinitions != null) {
                 context.setSubgraphDefinitions(previousDefinitions);
@@ -187,15 +192,6 @@ public class SubgraphNode extends BaseNode {
         if (subgraph == null) {
             return;
         }
-        List<UUID> graphIoNodeIds = new ArrayList<>();
-        for (var node : subgraph.getNodes()) {
-            String typeId = node.getTypeId();
-            if (SubgraphInterfaceScanner.GRAPH_INPUT_TYPE_ID.equals(typeId)
-                    || SubgraphInterfaceScanner.GRAPH_OUTPUT_TYPE_ID.equals(typeId)) {
-                graphIoNodeIds.add(node.getId());
-            }
-        }
-        subgraph.getExecutionCache().invalidateAll(graphIoNodeIds);
         subgraph.getExecutionCache().clear();
     }
 

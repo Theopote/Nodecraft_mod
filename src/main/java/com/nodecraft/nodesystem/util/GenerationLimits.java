@@ -345,6 +345,12 @@ public final class GenerationLimits {
     /** Maximum dilate/erode iterations per morphology operation. */
     public static final int MAX_MORPHOLOGY_ITERATIONS = 64;
 
+    /**
+     * Cumulative neighbor-probe budget across morphology rounds:
+     * sum of {@code currentBlockCount × neighborhoodSize}.
+     */
+    public static final long MAX_MORPHOLOGY_NEIGHBOR_PROBES = 10_000_000L;
+
     /** Maximum nested subgraph call depth (hard budget; not user-tunable). */
     public static final int MAX_SUBGRAPH_CALL_DEPTH = 8;
 
@@ -497,6 +503,27 @@ public final class GenerationLimits {
             return work > MAX_LLOYD_DISTANCE_TESTS;
         } catch (ArithmeticException overflow) {
             return true;
+        }
+    }
+
+    /**
+     * Adds one morphology round's work {@code blockCount × neighborhoodSize} with overflow-safe arithmetic.
+     *
+     * @return updated consumed total, or {@code -1} when overflow or {@link #MAX_MORPHOLOGY_NEIGHBOR_PROBES} is exceeded
+     */
+    public static long addMorphologyNeighborWork(long consumed, int blockCount, int neighborhoodSize) {
+        if (consumed < 0L || blockCount < 0 || neighborhoodSize < 0) {
+            return -1L;
+        }
+        try {
+            long roundWork = Math.multiplyExact(blockCount, (long) neighborhoodSize);
+            long next = Math.addExact(consumed, roundWork);
+            if (next > MAX_MORPHOLOGY_NEIGHBOR_PROBES) {
+                return -1L;
+            }
+            return next;
+        } catch (ArithmeticException overflow) {
+            return -1L;
         }
     }
 

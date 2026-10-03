@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -38,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Block Morphology v1 language fence (Graph V57).
+ * Block Morphology v1 language fence.
  */
 class BlockMorphologyLanguageContractTest {
 
@@ -52,11 +51,6 @@ class BlockMorphologyLanguageContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV57() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -182,6 +176,41 @@ class BlockMorphologyLanguageContractTest {
         assertEquals(0, outputs.get("output_output_count"));
         assertEquals(0, outputs.get("output_delta_count"));
         assertTrue(((BlockPosList) outputs.get("output_blocks")).isEmpty());
+    }
+
+    @Test
+    void setIterationsClampsProperty() {
+        BlockListMorphologyNode node = new BlockListMorphologyNode();
+        node.setIterations(-100);
+        assertEquals(1, node.getIterations());
+        node.setIterations(GenerationLimits.MAX_MORPHOLOGY_ITERATIONS + 50);
+        assertEquals(GenerationLimits.MAX_MORPHOLOGY_ITERATIONS, node.getIterations());
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    void erosionExceedingNeighborProbeBudgetFailsClosed() {
+        BlockListMorphologyNode node = new BlockListMorphologyNode();
+        node.setOperation(BlockListMorphologyNode.MorphOp.ERODE);
+        node.setConnectivity(BlockListMorphologyNode.Connectivity.TWENTY_SIX);
+        node.setIterations(4);
+
+        BlockPosList blocks = new BlockPosList();
+        for (int x = 0; x < 50; x++) {
+            for (int y = 0; y < 50; y++) {
+                for (int z = 0; z < 50; z++) {
+                    blocks.add(new BlockPos(x, y, z));
+                }
+            }
+        }
+        assertTrue(blocks.size() <= GenerationLimits.MAX_MORPHOLOGY_BLOCKS);
+
+        Map<String, Object> outputs = node.compute(Map.of("input_blocks", blocks));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(0, outputs.get("output_output_count"));
+        assertEquals(0, outputs.get("output_delta_count"));
+        assertTrue(((BlockPosList) outputs.get("output_blocks")).isEmpty());
+        assertTrue(String.valueOf(outputs.get("output_error")).contains("neighbor probes"));
     }
 
     @Test

@@ -168,8 +168,19 @@ public class BlockListMorphologyNode extends BaseNode {
 
         int[][] offsets = connectivity == Connectivity.TWENTY_SIX ? D26 : D6;
         MorphOp resolvedOperation = operation == null ? MorphOp.DILATE : operation;
+        long neighborWork = 0L;
 
         for (int i = 0; i < resolvedIterations; i++) {
+            neighborWork = GenerationLimits.addMorphologyNeighborWork(
+                neighborWork,
+                current.size(),
+                offsets.length
+            );
+            if (neighborWork < 0L) {
+                writeFailure(inputCount, "Morphology exceeds max neighbor probes "
+                    + GenerationLimits.MAX_MORPHOLOGY_NEIGHBOR_PROBES);
+                return;
+            }
             StepResult stepResult;
             if (resolvedOperation == MorphOp.DILATE) {
                 stepResult = dilateOnce(current, offsets);
@@ -276,8 +287,11 @@ public class BlockListMorphologyNode extends BaseNode {
     }
 
     public void setIterations(int iterations) {
-        this.iterations = iterations;
-        markDirty();
+        int clamped = Math.max(1, Math.min(GenerationLimits.MAX_MORPHOLOGY_ITERATIONS, iterations));
+        if (this.iterations != clamped) {
+            this.iterations = clamped;
+            markDirty();
+        }
     }
 
     public Connectivity getConnectivity() {

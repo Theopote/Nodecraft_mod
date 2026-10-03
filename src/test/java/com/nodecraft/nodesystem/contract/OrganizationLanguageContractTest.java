@@ -19,7 +19,6 @@ import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.SubgraphInterfaceScanner;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedGraphComment;
@@ -50,7 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Organization & Subgraph v1 language fence (Graph V58).
+ * Organization & Subgraph v1 language fence.
  */
 class OrganizationLanguageContractTest {
 
@@ -85,11 +84,6 @@ class OrganizationLanguageContractTest {
                 0,
                 ChainedSideEffectProbe.class
         ));
-    }
-
-    @Test
-    void currentGraphFormatIsV58() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
