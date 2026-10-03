@@ -10,18 +10,14 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
-import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterGridPointsNode;
 import com.nodecraft.nodesystem.nodes.world.query.FilterPointsByRuleNode;
 import com.nodecraft.nodesystem.nodes.world.query.FloodFillNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetEntitiesInRegionNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetEntityNode;
+import com.nodecraft.nodesystem.nodes.world.query.GetFluidLevelNode;
+import com.nodecraft.nodesystem.nodes.world.query.GetLightLevelNode;
 import com.nodecraft.nodesystem.nodes.world.query.GetNeighborBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.query.IsGridPointNode;
 import com.nodecraft.nodesystem.nodes.world.query.RaycastNode;
@@ -32,8 +28,6 @@ import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * World Query v1 language fence (Graph V60).
+ * World Query v1 language fence.
  */
 class WorldQueryLanguageContractTest {
 
@@ -86,11 +80,6 @@ class WorldQueryLanguageContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV60() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -254,6 +243,96 @@ class WorldQueryLanguageContractTest {
         assertPortType(node, "output_entities_list", NodeDataType.MINECRAFT_ENTITY_LIST);
         assertPortType(node, "output_entity_type_ids", NodeDataType.STRING_LIST);
         assertPortType(node, "output_entity_positions", NodeDataType.POINT_LIST);
+        assertTrue(hasPort(node, "output_complete"));
+    }
+
+    @Test
+    void getEntityHasNoFindNearestPort() {
+        GetEntityNode node = new GetEntityNode();
+        assertFalse(hasPort(node, "input_find_nearest"));
+        assertPortType(node, "input_max_distance", NodeDataType.DOUBLE);
+    }
+
+    @Test
+    void getEntityTypeLookupWithoutPlayerIsValidNotFound() {
+        GetEntityNode node = new GetEntityNode();
+        node.setInput("input_entity_type", "minecraft:pig");
+        node.setInput("input_max_distance", 64.0d);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_found"));
+        assertEquals("", node.getOutput("output_error"));
+    }
+
+    @Test
+    void getEntityInvalidUuidFailsClosedWithoutJdkDetail() {
+        GetEntityProbe node = new GetEntityProbe();
+        node.connectInput("input_uuid", NodeDataType.STRING);
+        node.setInput("input_uuid", "not-a-uuid");
+        node.setInput("input_max_distance", 64.0d);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        String error = String.valueOf(node.getOutput("output_error"));
+        assertTrue(error.contains("Invalid UUID"));
+        assertFalse(error.toLowerCase(Locale.ROOT).contains("illegal"));
+        assertFalse(error.toLowerCase(Locale.ROOT).contains("fromstring"));
+    }
+
+    @Test
+    void getEntityAndRaycastRejectCoercedIntegerDoubles() {
+        GetEntityNode entity = new GetEntityNode();
+        entity.setInput("input_max_distance", 64);
+        entity.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, entity.getOutput("output_valid"));
+
+        RaycastNode raycast = new RaycastNode();
+        raycast.setInput("input_origin", new PointData(0, 0, 0));
+        raycast.setInput("input_direction", new VectorData(0, -1, 0));
+        raycast.setInput("input_max_distance", 16);
+        raycast.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, raycast.getOutput("output_valid"));
+    }
+
+    @Test
+    void floodFillRejectsMaxDistanceAboveHardCap() {
+        FloodFillProbe node = new FloodFillProbe();
+        node.setInput("input_seed", new BlockPos(0, 0, 0));
+        node.setInput("input_max_distance", (int) GenerationLimits.MAX_WORLD_QUERY_DISTANCE + 1);
+        node.setInput("input_max_blocks", 10);
+        node.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error"))
+                .contains(String.valueOf((int) GenerationLimits.MAX_WORLD_QUERY_DISTANCE)));
+    }
+
+    @Test
+    void floodFillExposesWorldReadCountAndWorkBudgetStopReason() {
+        FloodFillNode node = new FloodFillNode();
+        assertTrue(hasPort(node, "output_world_read_count"));
+        assertTrue(hasPort(node, "output_stopped_reason"));
+        IPort reason = findPort(node, "output_stopped_reason");
+        assertNotNull(reason);
+        assertTrue(reason.getDescription().contains("work_budget"));
+        assertTrue(reason.getDescription().contains("unloaded_chunk"));
+    }
+
+    @Test
+    void pointQueriesFailClosedWithoutWorld() {
+        GetLightLevelNode light = new GetLightLevelNode();
+        light.setInput("input_coordinate", new BlockPos(0, 64, 0));
+        light.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, light.getOutput("output_valid"));
+
+        GetFluidLevelNode fluid = new GetFluidLevelNode();
+        fluid.setInput("input_coordinate", new BlockPos(0, 64, 0));
+        fluid.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, fluid.getOutput("output_valid"));
+    }
+
+    @Test
+    void worldQueryHardCapsAreDocumented() {
+        assertEquals(1_000_000L, GenerationLimits.MAX_WORLD_BLOCK_READS_PER_NODE);
+        assertEquals(4096, GenerationLimits.MAX_ENTITY_QUERY_RESULTS);
     }
 
 
@@ -410,22 +489,6 @@ class WorldQueryLanguageContractTest {
         target.getInput(inputPortId);
     }
 
-    private static SavedNode savedNode(String nodeId, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = nodeId;
-        node.typeId = typeId;
-        return node;
-    }
-
-    private static SavedConnection wire(String src, String srcPort, String dst, String dstPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = src;
-        connection.sourcePortId = srcPort;
-        connection.targetNodeId = dst;
-        connection.targetPortId = dstPort;
-        return connection;
-    }
-
     private static final class PortStubNode extends BaseNode {
         PortStubNode(NodeDataType outputType) {
             super(UUID.randomUUID(), "test.port_stub");
@@ -465,5 +528,8 @@ class WorldQueryLanguageContractTest {
     }
 
     private static final class GetEntityProbe extends GetEntityNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldQueryLanguageContractTest.connectInput(this, portId, outputType);
+        }
     }
 }

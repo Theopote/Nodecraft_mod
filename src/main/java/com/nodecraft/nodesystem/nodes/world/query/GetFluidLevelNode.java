@@ -1,12 +1,12 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.tag.FluidTags;
@@ -76,8 +76,14 @@ public class GetFluidLevelNode extends BaseNode {
         } else if (!(coordinateObj instanceof BlockPos pos)) {
             error = "Coordinate input must be a block position.";
         } else {
-            try {
-                FluidState fluidState = context.getWorld().getFluidState(pos);
+            WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+            WorldQueryAccess.FluidRead read = access.getFluidState(pos);
+            if (read.status() == WorldQueryAccess.Status.UNLOADED) {
+                error = "Target chunk is not loaded";
+            } else if (read.status() == WorldQueryAccess.Status.BUDGET || read.state() == null) {
+                error = "World read budget exceeded.";
+            } else {
+                FluidState fluidState = read.state();
                 hasFluid = !fluidState.isEmpty();
                 valid = true;
 
@@ -89,9 +95,6 @@ public class GetFluidLevelNode extends BaseNode {
                     isWater = fluidState.isIn(FluidTags.WATER);
                     isLava = fluidState.isIn(FluidTags.LAVA);
                 }
-            } catch (Exception e) {
-                error = "Error getting fluid level at " + pos + ": " + e.getMessage();
-                NodeCraft.LOGGER.warn(error);
             }
         }
 

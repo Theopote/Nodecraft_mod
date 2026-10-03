@@ -11,7 +11,7 @@ import com.nodecraft.nodesystem.util.BlockPosMath;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
-import net.minecraft.block.BlockState;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -19,6 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -51,12 +52,22 @@ public class FloodFillNode extends BaseNode {
     private static final String OUTPUT_SKIPPED_COUNT_ID = "output_skipped_count";
     private static final String OUTPUT_HIT_LIMIT_ID = "output_hit_limit";
     private static final String OUTPUT_COMPLETE_ID = "output_complete";
+    private static final String OUTPUT_WORLD_READ_COUNT_ID = "output_world_read_count";
+
+    private static final int MAX_DISTANCE_CAP = (int) GenerationLimits.MAX_WORLD_QUERY_DISTANCE;
 
     private static final int[][] OFFSETS_6 = new int[][] {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}
     };
 
     private static final int[][] OFFSETS_26 = buildOffsets26();
+
+    private enum CellKind {
+        TARGET,
+        NON_TARGET,
+        UNLOADED,
+        BUDGET
+    }
 
     public FloodFillNode() {
         super(UUID.randomUUID(), "world.query.flood_fill");
@@ -73,11 +84,12 @@ public class FloodFillNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_BLOCKS_ID, "Boundary Blocks", "Subset of filled blocks touching non-target neighbors", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether flood fill was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when flood fill fails", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VISITED_COUNT_ID, "Visited Count", "Number of positions visited by the search", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_SKIPPED_COUNT_ID, "Skipped Count", "Number of candidate neighbors skipped before enqueue", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Blocks stopped the search", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the search finished naturally", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_WORLD_READ_COUNT_ID, "World Read Count", "Number of loaded-chunk block-state reads", NodeDataType.INTEGER, this));
     }
 
     @Override
@@ -95,6 +107,10 @@ public class FloodFillNode extends BaseNode {
         Integer maxDistance = resolveMaxDistance();
         if (maxDistance == null || maxDistance < 0) {
             writeInvalid("Max Distance must be an exact INTEGER greater than or equal to 0.");
+            return;
+        }
+        if (maxDistance > MAX_DISTANCE_CAP) {
+            writeInvalid("Max Distance exceeds hard cap of " + MAX_DISTANCE_CAP + ".");
             return;
         }
 
@@ -129,31 +145,64 @@ public class FloodFillNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        BlockPos start = seed.toImmutable();
+        if (!access.isLoaded(start)) {
+            writeInvalid("Target chunk is not loaded");
+            return;
+        }
+
         String targetBlockId;
+        CellKind seedKind;
         if (inputValues.get(INPUT_TARGET_BLOCK_ID) instanceof String blockId && !blockId.isBlank()) {
             targetBlockId = blockId;
+            seedKind = classify(access, start, targetBlockId);
         } else {
-            BlockState seedState = context.getWorld().getBlockState(seed);
-            targetBlockId = Registries.BLOCK.getId(seedState.getBlock()).toString();
+            WorldQueryAccess.BlockRead seedRead = access.getBlockState(start);
+            if (seedRead.status() == WorldQueryAccess.Status.BUDGET) {
+                publish(new BlockPosList(), new BlockPosList(), "", 0, 0, false, false, "work_budget", "",
+                        (int) access.readCount());
+                return;
+            }
+            if (seedRead.status() != WorldQueryAccess.Status.OK || seedRead.state() == null) {
+                writeInvalid("Target chunk is not loaded");
+                return;
+            }
+            targetBlockId = Registries.BLOCK.getId(seedRead.state().getBlock()).toString();
+            seedKind = CellKind.TARGET;
         }
 
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
         List<BlockPos> filled = new ArrayList<>();
+        Set<BlockPos> boundary = new LinkedHashSet<>();
         int skippedCount = 0;
+        boolean sawUnloaded = false;
+        boolean budgetStop = false;
 
-        BlockPos start = seed.toImmutable();
-        if (!matchesTarget(context, start, targetBlockId)) {
-            publish(new BlockPosList(), new BlockPosList(), targetBlockId, visited.size(), 0, false, true, "completed", "");
+        if (seedKind == CellKind.BUDGET) {
+            publish(new BlockPosList(), new BlockPosList(), targetBlockId, 0, 0, false, false, "work_budget", "",
+                    (int) access.readCount());
+            return;
+        }
+        if (seedKind == CellKind.UNLOADED) {
+            writeInvalid("Target chunk is not loaded");
+            return;
+        }
+        if (seedKind != CellKind.TARGET) {
+            publish(new BlockPosList(), new BlockPosList(), targetBlockId, visited.size(), 0, false, true, "completed", "",
+                    (int) access.readCount());
             return;
         }
 
         queue.add(start);
         visited.add(start);
 
+        search:
         while (!queue.isEmpty() && filled.size() < maxBlocks) {
             BlockPos pos = queue.pollFirst();
             filled.add(pos);
+            boolean physicalBoundary = false;
 
             for (int[] d : offsets) {
                 Optional<BlockPos> nextOpt = BlockPosMath.tryOffset(pos, d[0], d[1], d[2]);
@@ -168,21 +217,62 @@ public class FloodFillNode extends BaseNode {
                 if (distanceChebyshev(seed, next) > maxDistance) {
                     continue;
                 }
-                if (!matchesTarget(context, next, targetBlockId)) {
+                CellKind kind = classify(access, next, targetBlockId);
+                if (kind == CellKind.BUDGET) {
+                    budgetStop = true;
+                    break search;
+                }
+                if (kind == CellKind.UNLOADED) {
+                    sawUnloaded = true;
+                    skippedCount++;
+                    continue;
+                }
+                if (kind == CellKind.NON_TARGET) {
+                    physicalBoundary = true;
                     skippedCount++;
                     continue;
                 }
                 visited.add(next);
                 queue.addLast(next);
             }
+            if (physicalBoundary) {
+                boundary.add(pos);
+            }
         }
 
-        boolean hitLimit = filled.size() >= maxBlocks && !queue.isEmpty();
-        boolean complete = !hitLimit;
-        String stoppedReason = hitLimit ? "max_blocks" : "completed";
-        BlockPosList blocks = new BlockPosList(filled);
-        BlockPosList boundary = new BlockPosList(resolveBoundary(context, filled, targetBlockId, offsets));
-        publish(blocks, boundary, targetBlockId, visited.size(), skippedCount, hitLimit, complete, stoppedReason, "");
+        boolean hitLimit = !budgetStop && filled.size() >= maxBlocks && !queue.isEmpty();
+        boolean complete = !hitLimit && !budgetStop && !sawUnloaded;
+        String stoppedReason = budgetStop
+                ? "work_budget"
+                : hitLimit
+                ? "max_blocks"
+                : sawUnloaded
+                ? "unloaded_chunk"
+                : "completed";
+        publish(
+                new BlockPosList(filled),
+                new BlockPosList(boundary),
+                targetBlockId,
+                visited.size(),
+                skippedCount,
+                hitLimit,
+                complete,
+                stoppedReason,
+                "",
+                (int) access.readCount()
+        );
+    }
+
+    private CellKind classify(WorldQueryAccess access, BlockPos pos, String targetBlockId) {
+        WorldQueryAccess.BlockRead read = access.getBlockState(pos);
+        if (read.status() == WorldQueryAccess.Status.UNLOADED) {
+            return CellKind.UNLOADED;
+        }
+        if (read.status() == WorldQueryAccess.Status.BUDGET || read.state() == null) {
+            return CellKind.BUDGET;
+        }
+        String blockId = Registries.BLOCK.getId(read.state().getBlock()).toString();
+        return targetBlockId.equals(blockId) ? CellKind.TARGET : CellKind.NON_TARGET;
     }
 
     private @Nullable Integer resolveMaxDistance() {
@@ -215,7 +305,8 @@ public class FloodFillNode extends BaseNode {
                          boolean hitLimit,
                          boolean complete,
                          String stoppedReason,
-                         String error) {
+                         String error,
+                         int worldReadCount) {
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_COUNT_ID, blocks.size());
         outputValues.put(OUTPUT_TARGET_BLOCK_ID, targetBlockId);
@@ -227,38 +318,7 @@ public class FloodFillNode extends BaseNode {
         outputValues.put(OUTPUT_SKIPPED_COUNT_ID, skippedCount);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
         outputValues.put(OUTPUT_COMPLETE_ID, complete);
-    }
-
-    private boolean matchesTarget(ExecutionContext context, BlockPos pos, String targetBlockId) {
-        BlockState state = context.getWorld().getBlockState(pos);
-        String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
-        return targetBlockId.equals(blockId);
-    }
-
-    private List<BlockPos> resolveBoundary(ExecutionContext context, List<BlockPos> filled, String targetBlockId, int[][] offsets) {
-        Set<BlockPos> filledSet = new HashSet<>(filled);
-        List<BlockPos> boundary = new ArrayList<>();
-        for (BlockPos pos : filled) {
-            boolean isBoundary = false;
-            for (int[] d : offsets) {
-                Optional<BlockPos> neighborOpt = BlockPosMath.tryOffset(pos, d[0], d[1], d[2]);
-                if (neighborOpt.isEmpty()) {
-                    isBoundary = true;
-                    break;
-                }
-                BlockPos neighbor = neighborOpt.get().toImmutable();
-                if (!filledSet.contains(neighbor)) {
-                    if (!matchesTarget(context, neighbor, targetBlockId)) {
-                        isBoundary = true;
-                        break;
-                    }
-                }
-            }
-            if (isBoundary) {
-                boundary.add(pos.toImmutable());
-            }
-        }
-        return boundary;
+        outputValues.put(OUTPUT_WORLD_READ_COUNT_ID, worldReadCount);
     }
 
     private long distanceChebyshev(BlockPos a, BlockPos b) {
@@ -280,6 +340,7 @@ public class FloodFillNode extends BaseNode {
         outputValues.put(OUTPUT_SKIPPED_COUNT_ID, 0);
         outputValues.put(OUTPUT_HIT_LIMIT_ID, false);
         outputValues.put(OUTPUT_COMPLETE_ID, false);
+        outputValues.put(OUTPUT_WORLD_READ_COUNT_ID, 0);
     }
 
     private static int[][] buildOffsets26() {

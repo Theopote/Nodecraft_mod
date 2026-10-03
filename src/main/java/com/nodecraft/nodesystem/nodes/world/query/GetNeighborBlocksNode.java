@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.util.BlockPosMath;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
@@ -107,12 +108,29 @@ public class GetNeighborBlocksNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        if (!access.isLoaded(center)) {
+            writeInvalid("Target chunk is not loaded");
+            return;
+        }
+
         BlockPosList coordinates = new BlockPosList();
         List<String> ids = new ArrayList<>(neighbors.size());
         List<Map<String, Object>> infos = new ArrayList<>(neighbors.size());
 
         for (BlockPos pos : neighbors) {
-            BlockState state = context.getWorld().getBlockState(pos);
+            if (!access.isLoaded(pos)) {
+                continue;
+            }
+            WorldQueryAccess.BlockRead read = access.getBlockState(pos);
+            if (read.status() == WorldQueryAccess.Status.BUDGET) {
+                writeInvalid("World read budget exceeded.");
+                return;
+            }
+            if (read.status() != WorldQueryAccess.Status.OK || read.state() == null) {
+                continue;
+            }
+            BlockState state = read.state();
             String id = Registries.BLOCK.getId(state.getBlock()).toString();
             coordinates.add(pos.toImmutable());
             ids.add(id);
@@ -121,14 +139,19 @@ public class GetNeighborBlocksNode extends BaseNode {
             info.put("pos", pos.toImmutable());
             info.put("block_id", id);
             info.put("is_air", state.isAir());
-            info.put("light_level", context.getWorld().getLightLevel(pos));
+            WorldQueryAccess.LightRead light = access.getLight(pos);
+            if (light.status() == WorldQueryAccess.Status.BUDGET) {
+                writeInvalid("World read budget exceeded.");
+                return;
+            }
+            info.put("light_level", light.status() == WorldQueryAccess.Status.OK ? light.combined() : 0);
             infos.add(info);
         }
 
         outputValues.put(OUTPUT_COORDINATES_ID, coordinates);
         outputValues.put(OUTPUT_BLOCK_IDS_ID, ids);
         outputValues.put(OUTPUT_BLOCK_INFOS_ID, infos);
-        outputValues.put(OUTPUT_COUNT_ID, neighbors.size());
+        outputValues.put(OUTPUT_COUNT_ID, coordinates.size());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

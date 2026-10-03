@@ -373,6 +373,15 @@ public final class GenerationLimits {
     public static final int MAX_FLOOD_FILL_BLOCKS = 262_144;
 
     /**
+     * Per-node cap on loaded-chunk world block reads
+     * ({@code getBlockState} / {@code getFluidState} / light).
+     */
+    public static final long MAX_WORLD_BLOCK_READS_PER_NODE = 1_000_000L;
+
+    /** Maximum entities materialized by Get Entities In Region. */
+    public static final int MAX_ENTITY_QUERY_RESULTS = 4096;
+
+    /**
      * Hard upper bound for continuous world-query distances (Raycast / Get Entity Max Distance).
      * Values above this fail closed — never clamped.
      */

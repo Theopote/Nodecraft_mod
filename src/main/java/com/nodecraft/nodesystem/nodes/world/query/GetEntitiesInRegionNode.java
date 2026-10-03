@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -54,6 +55,7 @@ public class GetEntitiesInRegionNode extends BaseNode {
     private static final String OUTPUT_ENTITY_TYPE_IDS_ID = "output_entity_type_ids";
     private static final String OUTPUT_ENTITY_POSITIONS_ID = "output_entity_positions";
     private static final String OUTPUT_ITEM_COUNT_ID = "output_item_count";
+    private static final String OUTPUT_COMPLETE_ID = "output_complete";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
@@ -73,6 +75,7 @@ public class GetEntitiesInRegionNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_ENTITY_TYPE_IDS_ID, "Entity Type IDs", "Registry ids for included entity types", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_ENTITY_POSITIONS_ID, "Entity Positions", "World positions for included entities", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_ITEM_COUNT_ID, "Item Count", "Number of item entities in the result", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the AABB was fully loaded and the result was not truncated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the region query was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when the region query fails", NodeDataType.STRING, this));
     }
@@ -141,8 +144,10 @@ public class GetEntitiesInRegionNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        boolean boxFullyLoaded = access.isBoxFullyLoaded(box);
+
         List<Entity> entitiesList = new ArrayList<>();
-        int count = 0;
         int playerCount = 0;
         int itemCount = 0;
         Entity nearestEntity = null;
@@ -150,6 +155,7 @@ public class GetEntitiesInRegionNode extends BaseNode {
         List<String> uuids = new ArrayList<>();
         List<String> typeIds = new ArrayList<>();
         List<PointData> positions = new ArrayList<>();
+        boolean truncated = false;
 
         List<Entity> entities = new ArrayList<>(context.getWorld().getOtherEntities(null, box));
         if (context.getPlayer() != null
@@ -175,8 +181,12 @@ public class GetEntitiesInRegionNode extends BaseNode {
                 }
             }
 
+            if (entitiesList.size() >= GenerationLimits.MAX_ENTITY_QUERY_RESULTS) {
+                truncated = true;
+                break;
+            }
+
             entitiesList.add(entity);
-            count++;
             if (isPlayer) {
                 playerCount++;
             }
@@ -194,19 +204,19 @@ public class GetEntitiesInRegionNode extends BaseNode {
                     nearestDistance = distance;
                     nearestEntity = entity;
                 }
-            } else if (nearestEntity == null) {
-                nearestEntity = entity;
             }
         }
 
+        boolean complete = boxFullyLoaded && !truncated;
         outputValues.put(OUTPUT_ENTITIES_LIST_ID, entitiesList);
-        outputValues.put(OUTPUT_COUNT_ID, count);
+        outputValues.put(OUTPUT_COUNT_ID, entitiesList.size());
         outputValues.put(OUTPUT_PLAYER_COUNT_ID, playerCount);
         outputValues.put(OUTPUT_NEAREST_ENTITY_ID, nearestEntity);
         outputValues.put(OUTPUT_ENTITY_UUIDS_ID, uuids);
         outputValues.put(OUTPUT_ENTITY_TYPE_IDS_ID, typeIds);
         outputValues.put(OUTPUT_ENTITY_POSITIONS_ID, positions);
         outputValues.put(OUTPUT_ITEM_COUNT_ID, itemCount);
+        outputValues.put(OUTPUT_COMPLETE_ID, complete);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
@@ -220,6 +230,7 @@ public class GetEntitiesInRegionNode extends BaseNode {
         outputValues.put(OUTPUT_ENTITY_TYPE_IDS_ID, List.of());
         outputValues.put(OUTPUT_ENTITY_POSITIONS_ID, List.of());
         outputValues.put(OUTPUT_ITEM_COUNT_ID, 0);
+        outputValues.put(OUTPUT_COMPLETE_ID, false);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

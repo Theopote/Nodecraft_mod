@@ -821,7 +821,7 @@
 | Get Fluid Level | `world.query.get_fluid_level` | Gets the fluid state, type, and level for a block position | `GetFluidLevelNode` |
 | Filter Points By Rule | `world.query.filter_points_by_rule` | Filters point sets by height and optional surface slope rules. | `FilterPointsByRuleNode` |
 | Get Entities In Region | `world.query.get_entities_in_region` | Gets entities inside a region with optional filtering | `GetEntitiesInRegionNode` |
-| Get Entity | `world.query.get_entity` | Finds an entity by UUID or by type near the current player. | `GetEntityNode` |
+| Get Entity | `world.query.get_entity` | Finds an entity by UUID or the nearest matching type near the current player. | `GetEntityNode` |
 
 ## world.read（11）
 

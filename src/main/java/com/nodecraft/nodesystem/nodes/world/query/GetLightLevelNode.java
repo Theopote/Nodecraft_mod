@@ -1,14 +1,13 @@
 package com.nodecraft.nodesystem.nodes.world.query;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.LightType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -68,16 +67,19 @@ public class GetLightLevelNode extends BaseNode {
         } else if (!(coordinateObj instanceof BlockPos pos)) {
             error = "Coordinate input must be a block position.";
         } else {
-            try {
-                lightLevel = context.getWorld().getLightLevel(pos);
-                skyLight = context.getWorld().getLightLevel(LightType.SKY, pos);
-                blockLight = context.getWorld().getLightLevel(LightType.BLOCK, pos);
+            WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+            WorldQueryAccess.LightRead light = access.getLight(pos);
+            if (light.status() == WorldQueryAccess.Status.UNLOADED) {
+                error = "Target chunk is not loaded";
+            } else if (light.status() == WorldQueryAccess.Status.BUDGET) {
+                error = "World read budget exceeded.";
+            } else {
+                lightLevel = light.combined();
+                skyLight = light.sky();
+                blockLight = light.block();
                 isDay = context.getWorld().isDay();
-                canSeeSky = context.getWorld().isSkyVisible(pos);
+                canSeeSky = light.skyVisible();
                 valid = true;
-            } catch (Exception e) {
-                error = "Error getting light level at " + pos + ": " + e.getMessage();
-                NodeCraft.LOGGER.warn(error);
             }
         }
 

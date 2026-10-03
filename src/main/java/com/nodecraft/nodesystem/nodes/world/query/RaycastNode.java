@@ -11,7 +11,9 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PointUtils;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.hit.BlockHitResult;
@@ -137,6 +139,13 @@ public class RaycastNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        BlockPos originBlock = BlockPos.ofFloored(origin.x, origin.y, origin.z);
+        if (!access.isLoaded(originBlock)) {
+            writeNoHit(false, "Target chunk is not loaded");
+            return;
+        }
+
         Vector3d dir = new Vector3d(direction).normalize();
         Vec3d start = new Vec3d(origin.x, origin.y, origin.z);
         Vec3d end = new Vec3d(
@@ -144,6 +153,10 @@ public class RaycastNode extends BaseNode {
             origin.y + dir.y * maxDistance,
             origin.z + dir.z * maxDistance
         );
+        if (!access.isSegmentLoaded(start, end)) {
+            writeNoHit(true, "");
+            return;
+        }
 
         RaycastContext.FluidHandling fluidHandling = includeFluids
             ? RaycastContext.FluidHandling.ANY
@@ -192,36 +205,24 @@ public class RaycastNode extends BaseNode {
 
     private @Nullable Double resolveMaxDistance() {
         if (OptionalPortDrive.isConnected(this, INPUT_MAX_DISTANCE_ID)) {
-            Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
+            return StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_MAX_DISTANCE_ID));
         }
         Object value = inputValues.get(INPUT_MAX_DISTANCE_ID);
-        if (value instanceof Number number) {
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
+        if (value == null) {
+            return 16.0d;
         }
-        return 16.0d;
+        return StrictDoubleUtils.requireExactFiniteDouble(value);
     }
 
     private @Nullable Double resolveEntityRadius() {
         if (OptionalPortDrive.isConnected(this, INPUT_ENTITY_RADIUS_ID)) {
-            Object value = inputValues.get(INPUT_ENTITY_RADIUS_ID);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
+            return StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_ENTITY_RADIUS_ID));
         }
         Object value = inputValues.get(INPUT_ENTITY_RADIUS_ID);
-        if (value instanceof Number number) {
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
+        if (value == null) {
+            return 0.15d;
         }
-        return 0.15d;
+        return StrictDoubleUtils.requireExactFiniteDouble(value);
     }
 
     private HitCandidate raycastEntities(ExecutionContext context,
