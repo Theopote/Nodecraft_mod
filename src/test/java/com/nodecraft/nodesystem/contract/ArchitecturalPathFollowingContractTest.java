@@ -142,6 +142,75 @@ class ArchitecturalPathFollowingContractTest {
     }
 
     @Test
+    void straightStairFailsWhenLandingExceedsPath() {
+        StaircaseProbe stair = new StaircaseProbe();
+        stair.connectInput("input_layout", NodeDataType.STRING);
+        stair.connectInput("input_step_count", NodeDataType.INTEGER);
+        stair.connectInput("input_step_run", NodeDataType.DOUBLE);
+        stair.connectInput("input_step_rise", NodeDataType.DOUBLE);
+        stair.connectInput("input_width", NodeDataType.DOUBLE);
+        stair.connectInput("input_landing_length", NodeDataType.DOUBLE);
+        // Steps alone fit (10 × 0.5 = 5), but steps + landing = 8 exceeds path length 6.
+        stair.setInput("input_path", shortPath(6.0d));
+        stair.setInput("input_layout", "straight");
+        stair.setInput("input_step_count", 10);
+        stair.setInput("input_step_run", 0.5d);
+        stair.setInput("input_step_rise", 0.2d);
+        stair.setInput("input_width", 1.0d);
+        stair.setInput("input_landing_length", 3.0d);
+        stair.processNode(null);
+
+        assertEquals(Boolean.FALSE, stair.getOutput("output_valid"));
+        String error = (String) stair.getOutput("output_error");
+        assertTrue(error.toLowerCase().contains("too short"), "error=" + error);
+        assertTrue(error.toLowerCase().contains("landing"), "error=" + error);
+    }
+
+    @Test
+    void railingDefaultPostsAreWorldVerticalOnSlope() {
+        RailingProbe railing = new RailingProbe();
+        railing.connectInput("input_post_count", NodeDataType.INTEGER);
+        railing.connectInput("input_rail_count", NodeDataType.INTEGER);
+        railing.setInput("input_path", slopedPath());
+        railing.setInput("input_post_count", 2);
+        railing.setInput("input_rail_count", 1);
+        railing.setInput("input_height", 1.2d);
+        railing.processNode(null);
+
+        assertEquals(Boolean.TRUE, railing.getOutput("output_valid"),
+            String.valueOf(railing.getOutput("output_error")));
+        List<CylinderGeometryData> posts = postsFrom(railing.getOutput("output_geometry"));
+        assertEquals(2, posts.size());
+        for (CylinderGeometryData post : posts) {
+            Vector3d axis = new Vector3d(post.getEnd()).sub(post.getStart()).normalize();
+            assertTrue(Math.abs(axis.y) > 0.99d, "world-vertical post axis: " + axis);
+            assertTrue(Math.abs(axis.x) < 0.1d && Math.abs(axis.z) < 0.1d, "post axis: " + axis);
+        }
+    }
+
+    @Test
+    void railingPathNormalPostsTiltWithSlope() {
+        RailingProbe railing = new RailingProbe();
+        railing.connectInput("input_post_count", NodeDataType.INTEGER);
+        railing.connectInput("input_rail_count", NodeDataType.INTEGER);
+        railing.connectInput("input_post_up", NodeDataType.STRING);
+        railing.setInput("input_path", slopedPath());
+        railing.setInput("input_post_count", 2);
+        railing.setInput("input_rail_count", 1);
+        railing.setInput("input_height", 1.2d);
+        railing.setInput("input_post_up", "path_normal");
+        railing.processNode(null);
+
+        assertEquals(Boolean.TRUE, railing.getOutput("output_valid"),
+            String.valueOf(railing.getOutput("output_error")));
+        List<CylinderGeometryData> posts = postsFrom(railing.getOutput("output_geometry"));
+        assertEquals(2, posts.size());
+        Vector3d axis = new Vector3d(posts.getFirst().getEnd()).sub(posts.getFirst().getStart()).normalize();
+        assertTrue(Math.abs(axis.y) < 0.99d, "path-normal post should tilt: " + axis);
+        assertTrue(Math.abs(axis.x) > 0.2d, "path-normal post should lean along slope: " + axis);
+    }
+
+    @Test
     void straightStaircaseCornerStepsStayContinuous() {
         StaircaseProbe stair = new StaircaseProbe();
         stair.connectInput("input_layout", NodeDataType.STRING);
@@ -249,6 +318,23 @@ class ArchitecturalPathFollowingContractTest {
             new Vec3d(0.0d, 0.0d, 0.0d),
             new Vec3d(length, 0.0d, 0.0d)
         ));
+    }
+
+    private static PathData slopedPath() {
+        return PathData.fromLine(new com.nodecraft.nodesystem.datatypes.LineData(
+            new Vec3d(0.0d, 0.0d, 0.0d),
+            new Vec3d(10.0d, 5.0d, 0.0d)
+        ));
+    }
+
+    private static List<CylinderGeometryData> postsFrom(Object geometryOutput) {
+        CompositeGeometryData geometry = assertInstanceOf(CompositeGeometryData.class, geometryOutput);
+        return geometry.geometries().stream()
+            .filter(CylinderGeometryData.class::isInstance)
+            .map(CylinderGeometryData.class::cast)
+            // Posts are height-length (~1.2); rails follow the long slope (~11).
+            .filter(cylinder -> cylinder.getStart().distance(cylinder.getEnd()) < 2.5d)
+            .toList();
     }
 
     private static PolylineData lShapedPath() {

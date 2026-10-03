@@ -44,8 +44,7 @@ final class FloorStructureSupport {
         double beamWidth,
         double beamDepth,
         double beamDrop,
-        double margin,
-        double slabThickness
+        double margin
     ) {
         double usableWidth = frame.width() - 2.0d * margin;
         double usableHeight = frame.height() - 2.0d * margin;

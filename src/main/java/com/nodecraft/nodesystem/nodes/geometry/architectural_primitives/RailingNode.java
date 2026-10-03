@@ -16,6 +16,7 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -31,6 +32,9 @@ import java.util.UUID;
 )
 public class RailingNode extends BaseNode {
 
+    private static final Set<String> POST_UP_MODES = Set.of("world_vertical", "path_normal");
+    private static final Vector3d WORLD_UP = new Vector3d(0.0d, 1.0d, 0.0d);
+
     private static final String INPUT_PATH_ID = "input_path";
     private static final String INPUT_POST_COUNT_ID = "input_post_count";
     private static final String INPUT_HEIGHT_ID = "input_height";
@@ -39,6 +43,7 @@ public class RailingNode extends BaseNode {
     private static final String INPUT_RAIL_RADIUS_ID = "input_rail_radius";
     private static final String INPUT_OFFSET_ID = "input_offset";
     private static final String INPUT_JOIN_ID = "input_join";
+    private static final String INPUT_POST_UP_ID = "input_post_up";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
     private static final String OUTPUT_COUNT_ID = "output_count";
@@ -56,6 +61,9 @@ public class RailingNode extends BaseNode {
         addInputPort(new BasePort(INPUT_RAIL_RADIUS_ID, "Rail Radius", "Radius of the horizontal rails", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_JOIN_ID, "Join", "Corner join policy: miter, bevel, or butt", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_POST_UP_ID, "Post Up",
+            "Post upright direction: world_vertical (default architectural posts) or path_normal",
+            NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the railing components", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of railing components created", NodeDataType.INTEGER, this));
@@ -129,6 +137,12 @@ public class RailingNode extends BaseNode {
             writeInvalid("Join must be one of: miter, bevel, butt");
             return;
         }
+        String postUp = ArchitecturalInputUtils.resolveKnownStringEnum(
+            this, INPUT_POST_UP_ID, "world_vertical", POST_UP_MODES);
+        if (postUp == null) {
+            writeInvalid("Post Up must be one of: world_vertical, path_normal");
+            return;
+        }
 
         ArchitecturalPathSupport.PathGeometry offsetPath =
             ArchitecturalPathJoinSupport.offsetPath(path, offset, join);
@@ -162,7 +176,7 @@ public class RailingNode extends BaseNode {
         }
 
         List<GeometryData> railing = buildRailing(
-            offsetPath, segments, postCount, railCount, height, postRadius, railRadius);
+            offsetPath, segments, postCount, railCount, height, postRadius, railRadius, postUp);
         if (railing.isEmpty()) {
             writeInvalid("Unable to generate railing geometry from the given path and parameters");
             return;
@@ -181,14 +195,17 @@ public class RailingNode extends BaseNode {
         int railCount,
         double height,
         double postRadius,
-        double railRadius
+        double railRadius,
+        String postUp
     ) {
         List<GeometryData> results = new ArrayList<>();
+        boolean worldVertical = "world_vertical".equals(postUp);
 
         List<ArchitecturalPathSupport.SampleFrame> posts = ArchitecturalPathSupport.sampleEvenly(path, postCount);
         for (ArchitecturalPathSupport.SampleFrame frame : posts) {
             Vector3d base = new Vector3d(frame.origin());
-            Vector3d top = new Vector3d(base).fma(height, frame.up());
+            Vector3d up = worldVertical ? WORLD_UP : frame.up();
+            Vector3d top = new Vector3d(base).fma(height, up);
             results.add(new CylinderGeometryData(base, top, postRadius));
         }
 

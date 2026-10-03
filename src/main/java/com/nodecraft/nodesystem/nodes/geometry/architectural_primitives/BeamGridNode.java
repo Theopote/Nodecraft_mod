@@ -6,14 +6,12 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -35,7 +33,6 @@ public class BeamGridNode extends BaseNode {
     private static final String INPUT_BEAM_WIDTH_ID = "input_beam_width";
     private static final String INPUT_BEAM_DEPTH_ID = "input_beam_depth";
     private static final String INPUT_BEAM_DROP_ID = "input_beam_drop";
-    private static final String INPUT_SLAB_THICKNESS_ID = "input_slab_thickness";
     private static final String INPUT_MARGIN_ID = "input_margin";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
@@ -57,9 +54,6 @@ public class BeamGridNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BEAM_WIDTH_ID, "Beam Width", "Beam width across its short axis", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BEAM_DEPTH_ID, "Beam Depth", "Beam depth along the face normal", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_BEAM_DROP_ID, "Beam Drop", "Distance beams hang below the face / slab", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SLAB_THICKNESS_ID, "Slab Thickness",
-            "Deprecated — ignored. Connect Floor Slab Bottom Face to Face instead of duplicating slab thickness",
-            NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Margin from the face edge to the beam grid", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Beam solids", NodeDataType.GEOMETRY, this));
@@ -99,7 +93,15 @@ public class BeamGridNode extends BaseNode {
             writeInvalid("Rows must be an exact positive integer");
             return;
         }
-        if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {
+        long beamCount;
+        try {
+            beamCount = Math.addExact((long) columns, (long) rows);
+        } catch (ArithmeticException overflow) {
+            writeInvalid("Requested instance count exceeds limit ("
+                + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
+            return;
+        }
+        if (beamCount > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES) {
             writeInvalid("Requested instance count exceeds limit ("
                 + GenerationLimits.MAX_ARCHITECTURAL_INSTANCES + ")");
             return;
@@ -120,12 +122,6 @@ public class BeamGridNode extends BaseNode {
             writeInvalid("Beam Drop must be a non-negative finite number");
             return;
         }
-        Double slabThickness = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(
-            this, INPUT_SLAB_THICKNESS_ID, 0.0d);
-        if (slabThickness == null) {
-            writeInvalid("Slab Thickness must be a non-negative finite number");
-            return;
-        }
         Double margin = ArchitecturalInputUtils.resolveOptionalNonNegativeFiniteDouble(this, INPUT_MARGIN_ID, 0.0d);
         if (margin == null) {
             writeInvalid("Margin must be a non-negative finite number");
@@ -133,7 +129,7 @@ public class BeamGridNode extends BaseNode {
         }
 
         FloorStructureSupport.BeamGridResult result = FloorStructureSupport.buildBeamGrid(
-            frame, columns, rows, beamWidth, beamDepth, beamDrop, margin, slabThickness);
+            frame, columns, rows, beamWidth, beamDepth, beamDrop, margin);
         if (result.beams().isEmpty()) {
             writeInvalid("Requested beam grid does not fit on face");
             return;

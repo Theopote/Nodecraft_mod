@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -123,7 +124,7 @@ class ArchitecturalRoofGeometryContractTest {
     }
 
     @Test
-    void shedRoofTopologyIncludesHighEave() {
+    void shedRoofTopologyUsesFourRealEdges() {
         RoofBaseProbe roof = new RoofBaseProbe();
         roof.connectInput("input_roof_type", NodeDataType.STRING);
         roof.setInput("input_face", sampleFace(10.0d, 8.0d));
@@ -134,7 +135,34 @@ class ArchitecturalRoofGeometryContractTest {
         assertEquals(Boolean.TRUE, roof.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
         List<PathData> eaves = (List<PathData>) roof.getOutput("output_eaves");
-        assertEquals(5, eaves.size(), "shed: 4 low perimeter eaves + 1 high eave");
+        assertEquals(4, eaves.size(), "shed: low eave + high eave + left/right rakes");
+
+        double highMidZ = eaves.stream()
+            .mapToDouble(ArchitecturalRoofGeometryContractTest::pathMidZ)
+            .max().orElseThrow();
+        double lowMidZ = eaves.stream()
+            .mapToDouble(ArchitecturalRoofGeometryContractTest::pathMidZ)
+            .min().orElseThrow();
+        assertTrue(highMidZ > 1.5d, "high eave should sit near roof height; midZ=" + highMidZ);
+        assertTrue(lowMidZ < 0.25d, "low eave should sit near footprint; midZ=" + lowMidZ);
+
+        // No false footprint edge at the high-depth side with both ends near z=0.
+        boolean falseHighFootprint = eaves.stream().anyMatch(path -> {
+            var line = path.getLine();
+            if (line == null) {
+                return false;
+            }
+            double midY = (line.start().y + line.end().y) * 0.5d;
+            double maxZ = Math.max(line.start().z, line.end().z);
+            return midY > 6.0d && maxZ < 0.25d;
+        });
+        assertFalse(falseHighFootprint, "shed must not emit footprint high-side edge at z≈0");
+    }
+
+    private static double pathMidZ(PathData path) {
+        var line = path.getLine();
+        assertNotNull(line);
+        return (line.start().z + line.end().z) * 0.5d;
     }
 
     private static BoxFaceData sampleFace(double width, double height) {

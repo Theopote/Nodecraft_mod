@@ -20,6 +20,7 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFr
 import com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -124,6 +125,44 @@ class ArchitecturalWorkflowPresetsContractTest {
         combine.processNode(null);
         assertEquals(Boolean.TRUE, combine.getOutput("output_valid"));
         assertInstanceOf(GeometryData.class, combine.getOutput("output_geometry"));
+    }
+
+    @Test
+    void beamGridBudgetUsesColumnsPlusRowsNotProduct() {
+        int columns = GenerationLimits.MAX_ARCHITECTURAL_INSTANCES / 2 + 1;
+        int rows = 2;
+        assertTrue((long) columns * rows > GenerationLimits.MAX_ARCHITECTURAL_INSTANCES);
+        assertTrue((long) columns + rows <= GenerationLimits.MAX_ARCHITECTURAL_INSTANCES);
+
+        double beamWidth = 0.001d;
+        double faceSize = Math.max(columns, rows) * beamWidth + 2.0d;
+        List<Vector3d> corners = List.of(
+            new Vector3d(0.0d, 0.0d, 0.0d),
+            new Vector3d(faceSize, 0.0d, 0.0d),
+            new Vector3d(faceSize, faceSize, 0.0d),
+            new Vector3d(0.0d, faceSize, 0.0d)
+        );
+        BoxFaceData face = new BoxFaceData(0, "top", List.of(0, 1, 2, 3), corners,
+            new Vector3d(faceSize / 2.0d, faceSize / 2.0d, 0.0d), new Vector3d(0.0d, 0.0d, 1.0d));
+
+        BeamGridNode beams = new BeamGridNode();
+        connectInput(beams, "input_columns", NodeDataType.INTEGER);
+        connectInput(beams, "input_rows", NodeDataType.INTEGER);
+        connectInput(beams, "input_beam_width", NodeDataType.DOUBLE);
+        beams.setInput("input_face", face);
+        beams.setInput("input_columns", columns);
+        beams.setInput("input_rows", rows);
+        beams.setInput("input_beam_width", beamWidth);
+        beams.setInput("input_beam_depth", 0.2d);
+        beams.setInput("input_beam_drop", 0.0d);
+        beams.setInput("input_margin", 0.0d);
+        beams.processNode(null);
+
+        assertEquals(Boolean.TRUE, beams.getOutput("output_valid"),
+            String.valueOf(beams.getOutput("output_error")));
+        assertEquals(columns + rows, beams.getOutput("output_count"));
+        assertTrue(beams.getInputPorts().stream().noneMatch(p -> "input_slab_thickness".equals(p.getId())),
+            "Slab Thickness port must be removed");
     }
 
     @Test

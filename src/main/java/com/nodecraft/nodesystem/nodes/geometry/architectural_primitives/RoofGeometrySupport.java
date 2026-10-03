@@ -259,16 +259,24 @@ final class RoofGeometrySupport {
         double roofDepth,
         double height
     ) {
-        List<PathData> lowEaves = rectangleEaves(frame, eaveCenter, roofWidth, roofDepth);
+        // Outer shed rim only: low eave, high eave, left/right rakes (no false footprint high edge).
         Vector3d hx = new Vector3d(frame.xAxis()).mul(roofWidth / 2.0d);
-        Vector3d highY = new Vector3d(frame.yAxis()).mul(roofDepth / 2.0d);
+        Vector3d hy = new Vector3d(frame.yAxis()).mul(roofDepth / 2.0d);
         Vector3d highZ = new Vector3d(frame.zAxis()).mul(height);
-        Vector3d highLeft = new Vector3d(eaveCenter).sub(hx).add(highY).add(highZ);
-        Vector3d highRight = new Vector3d(eaveCenter).add(hx).add(highY).add(highZ);
-        List<PathData> eaves = new java.util.ArrayList<>(lowEaves.size() + 1);
-        eaves.addAll(lowEaves);
-        eaves.add(linePath(highLeft, highRight));
-        return new RoofTopology(eaves, List.of(), List.of());
+        Vector3d lowLeft = new Vector3d(eaveCenter).sub(hx).sub(hy);
+        Vector3d lowRight = new Vector3d(eaveCenter).add(hx).sub(hy);
+        Vector3d highLeft = new Vector3d(eaveCenter).sub(hx).add(hy).add(highZ);
+        Vector3d highRight = new Vector3d(eaveCenter).add(hx).add(hy).add(highZ);
+        return new RoofTopology(
+            List.of(
+                linePath(lowLeft, lowRight),
+                linePath(highLeft, highRight),
+                linePath(lowLeft, highLeft),
+                linePath(lowRight, highRight)
+            ),
+            List.of(),
+            List.of()
+        );
     }
 
     private static RoofTopology gableTopology(
