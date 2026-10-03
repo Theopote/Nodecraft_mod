@@ -74,7 +74,6 @@ public class FaceCenterFrameNode extends BaseNode {
             writeInvalid("Could not derive usable face axes");
             return;
         }
-        zAxis.normalize();
 
         FrameData frame = FrameData.orthonormal(center, xAxis, yAxis, zAxis);
         if (frame == null) {

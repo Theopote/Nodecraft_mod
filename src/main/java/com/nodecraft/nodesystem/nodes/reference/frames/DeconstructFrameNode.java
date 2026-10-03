@@ -57,17 +57,16 @@ public class DeconstructFrameNode extends BaseNode {
             return;
         }
 
-        FrameData canonical = frame.orthonormalized();
-        if (canonical == null) {
-            writeInvalid("Frame must be usable and finite");
+        if (!frame.isCanonical()) {
+            writeInvalid("Frame must be canonical");
             return;
         }
 
-        outputValues.put(OUTPUT_ORIGIN_ID, canonical.getOriginPoint());
-        outputValues.put(OUTPUT_X_AXIS_ID, canonical.getXAxis());
-        outputValues.put(OUTPUT_Y_AXIS_ID, canonical.getYAxis());
-        outputValues.put(OUTPUT_Z_AXIS_ID, canonical.getZAxis());
-        outputValues.put(OUTPUT_PLANE_ID, canonical.toPlane());
+        outputValues.put(OUTPUT_ORIGIN_ID, frame.getOriginPoint());
+        outputValues.put(OUTPUT_X_AXIS_ID, frame.getXAxis());
+        outputValues.put(OUTPUT_Y_AXIS_ID, frame.getYAxis());
+        outputValues.put(OUTPUT_Z_AXIS_ID, frame.getZAxis());
+        outputValues.put(OUTPUT_PLANE_ID, frame.toPlane());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

@@ -14,7 +14,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.frames.ConstructFrameNode;
 import com.nodecraft.nodesystem.nodes.reference.frames.FrameFromPlaneNode;
 import com.nodecraft.nodesystem.nodes.reference.frames.SphereSurfaceFrameNode;
@@ -86,16 +85,6 @@ class ReferenceFramesLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV85() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV108() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -261,7 +250,7 @@ class ReferenceFramesLanguageV2ContractTest {
     }
 
     @Test
-    void transformCanonicalizesNonOrthonormalInput() {
+    void transformRejectsNonCanonicalInput() {
         FrameData scaled = new FrameData(
             new Vector3d(0, 0, 0),
             new Vector3d(2, 0, 0),
@@ -272,11 +261,23 @@ class ReferenceFramesLanguageV2ContractTest {
         transform.setInput("input_frame", scaled);
         transform.processNode(null);
 
-        assertValid(transform);
-        FrameData out = assertInstanceOf(FrameData.class, transform.getOutput("output_frame"));
-        assertEquals(1.0d, out.getXAxis().length(), 1.0e-9d);
-        assertEquals(1.0d, out.getYAxis().length(), 1.0e-9d);
-        assertEquals(1.0d, out.getZAxis().length(), 1.0e-9d);
+        assertInvalid(transform);
+    }
+
+    @Test
+    void transformRejectsNonFiniteRadians() {
+        FrameData input = new FrameData(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1, 0, 0),
+            new Vector3d(0, 1, 0),
+            new Vector3d(0, 0, 1)
+        );
+        TransformProbe probe = new TransformProbe();
+        probe.setInput("input_frame", input);
+        probe.connectInput("input_rotation_x", NodeDataType.DOUBLE);
+        probe.putRawInput("input_rotation_x", Double.POSITIVE_INFINITY);
+        probe.processNode(null);
+        assertInvalid(probe);
     }
 
     @Test
@@ -396,7 +397,7 @@ class ReferenceFramesLanguageV2ContractTest {
         deconstruct.setInput("input_frames", oversizedFrameList(valid));
         deconstruct.processNode(null);
         assertInvalid(deconstruct);
-        assertTrue(String.valueOf(deconstruct.getOutput("output_error")).contains("MAX_LIST_ELEMENTS"));
+        assertTrue(String.valueOf(deconstruct.getOutput("output_error")).contains("MAX_FRAME_LIST_ELEMENTS"));
     }
 
     @Test
@@ -420,7 +421,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
             @Override
             public int size() {
-                return GenerationLimits.MAX_LIST_ELEMENTS + 1;
+                return GenerationLimits.MAX_FRAME_LIST_ELEMENTS + 1;
             }
         };
     }

@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import org.joml.Vector3d;
@@ -183,7 +182,7 @@ class ReferenceFramesLanguageContractTest {
     }
 
     @Test
-    void deconstructFrameCanonicalizesNonOrthonormalAxes() {
+    void deconstructFrameRejectsNonCanonicalAxes() {
         FrameData scaled = new FrameData(
                 new Vector3d(1, 2, 3),
                 new Vector3d(2, 0, 0),
@@ -194,14 +193,8 @@ class ReferenceFramesLanguageContractTest {
         deconstruct.setInput("input_frame", scaled);
         deconstruct.processNode(null);
 
-        assertEquals(Boolean.TRUE, deconstruct.getOutput("output_valid"));
-        Vector3d x = assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_x_axis"));
-        Vector3d y = assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_y_axis"));
-        Vector3d z = assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_z_axis"));
-        assertEquals(1.0d, x.length(), 1.0e-9d);
-        assertEquals(1.0d, y.length(), 1.0e-9d);
-        assertEquals(1.0d, z.length(), 1.0e-9d);
-        assertEquals(0.0d, x.dot(y), 1.0e-9d);
+        assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
+        assertFalse(String.valueOf(deconstruct.getOutput("output_error")).isBlank());
     }
 
     @Test

@@ -211,7 +211,7 @@ class PlacementLanguageContractTest {
         PlaceFramesProbe place = new PlaceFramesProbe();
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
-        // Second frame has zero-length axes â?orthonormalized() fails â?placeOnFrame null
+        // Second frame has zero-length axes → not canonical → fail closed
         FrameData good = new FrameData(
                 new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         );

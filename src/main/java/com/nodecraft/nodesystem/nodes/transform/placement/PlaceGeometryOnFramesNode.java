@@ -110,13 +110,12 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
         if (geometry == null || frame == null) {
             return null;
         }
-        FrameData basis = frame.orthonormalized();
-        if (basis == null) {
+        if (!frame.isCanonical()) {
             return null;
         }
-        Matrix3d rotation = basis.toRotationMatrix();
+        Matrix3d rotation = frame.toRotationMatrix();
         Vector3d rotatedPivot = rotation.transform(new Vector3d(pivot), new Vector3d());
-        Vector3d translation = new Vector3d(basis.getOrigin()).sub(rotatedPivot);
+        Vector3d translation = new Vector3d(frame.getOrigin()).sub(rotatedPivot);
         return GeometryTransform.transform(geometry, translation, rotation, 1.0d);
     }
 
@@ -149,7 +148,7 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
         }
 
         Object frameObj = getInput(INPUT_FRAME_ID);
-        if (!(frameObj instanceof FrameData frame)) {
+        if (!(frameObj instanceof FrameData frame) || !frame.isCanonical()) {
             writeFail("Frame connected but invalid");
             return null;
         }

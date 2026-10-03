@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -76,13 +77,22 @@ public class SphereSurfaceFrameNode extends BaseNode {
             return;
         }
 
-        Vector3d radial = new Vector3d(point).sub(center);
+        Vector3d radial = VectorUtils.safeSubtract(point, center);
         if (!FrameUtils.isUsableAxis(radial)) {
             writeInvalid("Point must not coincide with sphere center");
             return;
         }
-        Vector3d normal = radial.normalize();
-        Vector3d origin = new Vector3d(normal).mul(radius).add(center);
+        Vector3d normal = VectorUtils.safeNormalize(radial);
+        if (normal == null) {
+            writeInvalid("Point must not coincide with sphere center");
+            return;
+        }
+        Vector3d scaled = VectorUtils.safeScale(normal, radius);
+        Vector3d origin = VectorUtils.safeAdd(scaled, center);
+        if (origin == null) {
+            writeInvalid("Projected surface point became non-finite");
+            return;
+        }
 
         FrameData frame;
         if (OptionalPortDrive.isConnected(this, INPUT_X_HINT_ID)) {

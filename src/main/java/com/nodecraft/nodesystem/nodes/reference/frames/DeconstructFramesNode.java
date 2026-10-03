@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
@@ -54,37 +55,27 @@ public class DeconstructFramesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object raw = inputValues.get(INPUT_FRAMES_ID);
-        if (!(raw instanceof List<?> list) || list.isEmpty()) {
-            writeEmpty("Frames input must be a non-empty FRAME_LIST");
-            return;
-        }
-        if (list.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
-            writeEmpty("Frame count exceeds MAX_LIST_ELEMENTS");
+        List<FrameData> frames = FrameUtils.resolveStrictFrameListBounded(
+            inputValues.get(INPUT_FRAMES_ID),
+            GenerationLimits.MAX_FRAME_LIST_ELEMENTS
+        );
+        if (frames == null) {
+            writeEmpty("Frames input must be a non-empty canonical FRAME_LIST within MAX_FRAME_LIST_ELEMENTS");
             return;
         }
 
-        List<Vector3d> xAxes = new ArrayList<>(list.size());
-        List<Vector3d> yAxes = new ArrayList<>(list.size());
-        List<Vector3d> zAxes = new ArrayList<>(list.size());
-        List<PlaneData> planes = new ArrayList<>(list.size());
-        List<Vector3d> origins = new ArrayList<>(list.size());
+        List<Vector3d> xAxes = new ArrayList<>(frames.size());
+        List<Vector3d> yAxes = new ArrayList<>(frames.size());
+        List<Vector3d> zAxes = new ArrayList<>(frames.size());
+        List<PlaneData> planes = new ArrayList<>(frames.size());
+        List<Vector3d> origins = new ArrayList<>(frames.size());
 
-        for (Object item : list) {
-            if (!(item instanceof FrameData frame)) {
-                writeEmpty("Every FRAME_LIST entry must be FRAME");
-                return;
-            }
-            FrameData canonical = frame.orthonormalized();
-            if (canonical == null) {
-                writeEmpty("Every frame must be usable and finite");
-                return;
-            }
-            origins.add(new Vector3d(canonical.getOrigin()));
-            xAxes.add(new Vector3d(canonical.getXAxis()));
-            yAxes.add(new Vector3d(canonical.getYAxis()));
-            zAxes.add(new Vector3d(canonical.getZAxis()));
-            planes.add(canonical.toPlane());
+        for (FrameData frame : frames) {
+            origins.add(new Vector3d(frame.getOrigin()));
+            xAxes.add(new Vector3d(frame.getXAxis()));
+            yAxes.add(new Vector3d(frame.getYAxis()));
+            zAxes.add(new Vector3d(frame.getZAxis()));
+            planes.add(frame.toPlane());
         }
 
         outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));
@@ -92,7 +83,7 @@ public class DeconstructFramesNode extends BaseNode {
         outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
         outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
-        outputValues.put(OUTPUT_COUNT_ID, list.size());
+        outputValues.put(OUTPUT_COUNT_ID, frames.size());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

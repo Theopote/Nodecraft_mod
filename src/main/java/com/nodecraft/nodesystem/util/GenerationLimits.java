@@ -86,6 +86,9 @@ public final class GenerationLimits {
      */
     public static final int MAX_LAYOUT_INSTANCES = 16_384;
 
+    /** Hard cap on FRAME_LIST materialization (heavier than scalar lists). */
+    public static final int MAX_FRAME_LIST_ELEMENTS = MAX_LAYOUT_INSTANCES;
+
     /**
      * Candidate oversampling factor per target for surface/volume scatter preflight.
      */
@@ -481,7 +484,7 @@ public final class GenerationLimits {
         }
         try {
             long cellsCubed = Math.multiplyExact(
-                Math.multiplyExact((long) cellsPerAxis, (long) cellsPerAxis),
+                Math.multiplyExact(cellsPerAxis, (long) cellsPerAxis),
                 (long) cellsPerAxis
             );
             long work = Math.multiplyExact(
@@ -504,7 +507,7 @@ public final class GenerationLimits {
             return -1L;
         }
         try {
-            long roundWork = Math.multiplyExact((long) stringLength, (long) ruleCount);
+            long roundWork = Math.multiplyExact(stringLength, (long) ruleCount);
             long next = Math.addExact(consumed, roundWork);
             if (next > MAX_LSYSTEM_REWRITE_MATCH_TESTS) {
                 return -1L;

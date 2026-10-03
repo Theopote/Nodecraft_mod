@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -66,22 +67,13 @@ public class TransformPointsByFramesNode extends AbstractBasicTransformNode {
         }
 
         Object framesObj = inputValues.get(INPUT_FRAMES_ID);
-        if (!(framesObj instanceof List<?> raw) || raw.isEmpty()) {
-            writeInvalid("Frame list is required");
+        List<FrameData> frames = FrameUtils.resolveStrictFrameListBounded(
+            framesObj,
+            GenerationLimits.MAX_LIST_ELEMENTS
+        );
+        if (frames == null) {
+            writeInvalid("Frame list is required, over budget, or contains a non-canonical FRAME");
             return;
-        }
-        if (raw.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
-            writeInvalid("Frame list exceeds limit (" + GenerationLimits.MAX_LIST_ELEMENTS + ")");
-            return;
-        }
-
-        List<FrameData> frames = new ArrayList<>(raw.size());
-        for (Object element : raw) {
-            if (!(element instanceof FrameData frame)) {
-                writeInvalid("Frame list contains an invalid entry");
-                return;
-            }
-            frames.add(frame);
         }
 
         long outputCount = (long) frames.size() * (long) localPoints.size();
@@ -92,19 +84,10 @@ public class TransformPointsByFramesNode extends AbstractBasicTransformNode {
 
         List<Vector3d> out = new ArrayList<>((int) outputCount);
         for (FrameData frame : frames) {
-            if (frame == null) {
-                writeInvalid("Frame list contains an invalid entry");
-                return;
-            }
-            FrameData basis = frame.orthonormalized();
-            if (basis == null) {
-                writeInvalid("Frame cannot be orthonormalized");
-                return;
-            }
-            Vector3d origin = basis.getOrigin();
-            Vector3d x = basis.getXAxis();
-            Vector3d y = basis.getYAxis();
-            Vector3d z = basis.getZAxis();
+            Vector3d origin = frame.getOrigin();
+            Vector3d x = frame.getXAxis();
+            Vector3d y = frame.getYAxis();
+            Vector3d z = frame.getZAxis();
 
             for (Vector3d local : localPoints) {
                 Vector3d world = new Vector3d(origin)

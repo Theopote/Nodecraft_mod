@@ -193,7 +193,7 @@ class FramePlaneLanguageContractTest {
     }
 
     @Test
-    void transformPointsByFramesUsesOrthonormalBasisNotRawAxisScale() {
+    void transformPointsByFramesRejectsNonCanonicalAxes() {
         FrameData scaledAxes = new FrameData(
             new Vector3d(0, 0, 0),
             new Vector3d(2, 0, 0),
@@ -206,11 +206,7 @@ class FramePlaneLanguageContractTest {
         transform.setInput("input_frames", List.of(scaledAxes));
         transform.processNode(null);
 
-        assertEquals(Boolean.TRUE, transform.getOutput("output_valid"));
-        PointData world = assertInstanceOf(PointData.class, ((List<?>) transform.getOutput("output_points")).getFirst());
-        assertEquals(1.0d, world.position().x, 1.0e-6d);
-        assertEquals(1.0d, world.position().y, 1.0e-6d);
-        assertEquals(1.0d, world.position().z, 1.0e-6d);
+        assertEquals(Boolean.FALSE, transform.getOutput("output_valid"));
     }
 
     @Test

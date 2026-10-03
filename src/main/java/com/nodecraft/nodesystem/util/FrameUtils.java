@@ -92,7 +92,7 @@ public final class FrameUtils {
         }
         Vector3d cross = VectorUtils.safeCross(an, bn);
         double crossLength = VectorUtils.safeLength(cross);
-        return Double.isFinite(crossLength) && crossLength * crossLength <= EPS;
+        return Double.isFinite(crossLength) && crossLength <= EPS;
     }
 
     /**

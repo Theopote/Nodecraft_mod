@@ -40,6 +40,6 @@ public class WorldFrameNode extends BaseNode {
         Vector3d x = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d y = new Vector3d(0.0d, 1.0d, 0.0d);
         Vector3d z = new Vector3d(0.0d, 0.0d, 1.0d);
-        outputValues.put(OUTPUT_FRAME_ID, new FrameData(origin, x, y, z));
+        outputValues.put(OUTPUT_FRAME_ID, FrameData.orthonormal(origin, x, y, z));
     }
 }

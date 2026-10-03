@@ -72,9 +72,9 @@ public class OrientGeometryToFrameNode extends AbstractPlacementNode {
             return;
         }
 
-        FrameData basis = frame.orthonormalized();
+        FrameData basis = frame.isCanonical() ? frame : null;
         if (basis == null) {
-            writeResult(null, "Frame axes are invalid");
+            writeResult(null, "Frame must be canonical");
             return;
         }
 

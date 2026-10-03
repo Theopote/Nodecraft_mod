@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -76,10 +77,8 @@ public class TransformFrameNode extends BaseNode {
             writeInvalid("Frame input must be FRAME");
             return;
         }
-
-        FrameData canonical = frame.orthonormalized();
-        if (canonical == null) {
-            writeInvalid("Input frame must be usable and finite");
+        if (!frame.isCanonical()) {
+            writeInvalid("Frame must be canonical");
             return;
         }
 
@@ -110,16 +109,24 @@ public class TransformFrameNode extends BaseNode {
             return;
         }
 
-        Matrix3d rotation = new Matrix3d().rotateXYZ(
-            Math.toRadians(rx),
-            Math.toRadians(ry),
-            Math.toRadians(rz)
-        );
+        double rxRad = Math.toRadians(rx);
+        double ryRad = Math.toRadians(ry);
+        double rzRad = Math.toRadians(rz);
+        if (!Double.isFinite(rxRad) || !Double.isFinite(ryRad) || !Double.isFinite(rzRad)) {
+            writeInvalid("World Rotation is too large");
+            return;
+        }
 
-        Vector3d outX = rotation.transform(new Vector3d(canonical.getXAxis()));
-        Vector3d outY = rotation.transform(new Vector3d(canonical.getYAxis()));
-        Vector3d outZ = rotation.transform(new Vector3d(canonical.getZAxis()));
-        Vector3d outOrigin = canonical.getOrigin().add(translation, new Vector3d());
+        Matrix3d rotation = new Matrix3d().rotateXYZ(rxRad, ryRad, rzRad);
+
+        Vector3d outX = rotation.transform(new Vector3d(frame.getXAxis()));
+        Vector3d outY = rotation.transform(new Vector3d(frame.getYAxis()));
+        Vector3d outZ = rotation.transform(new Vector3d(frame.getZAxis()));
+        Vector3d outOrigin = VectorUtils.safeAdd(frame.getOrigin(), translation);
+        if (outOrigin == null) {
+            writeInvalid("Transformed frame origin became non-finite");
+            return;
+        }
 
         FrameData outFrame = FrameData.orthonormal(outOrigin, outX, outY, outZ);
         if (outFrame == null) {

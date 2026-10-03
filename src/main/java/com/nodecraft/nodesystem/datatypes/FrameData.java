@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SpatialTolerance;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
@@ -18,13 +19,15 @@ import java.util.Objects;
  * uses {@link #isCanonical()}.
  */
 public class FrameData {
-    private static final double EPS = 1.0e-12d;
+    private static final double EPS = SpatialTolerance.EPS;
 
     private final Vector3d origin;
     private final Vector3d xAxis;
     private final Vector3d yAxis;
     private final Vector3d zAxis;
 
+    /** Raw copy constructor — does not orthonormalize. Prefer {@link #orthonormal}. */
+    @Deprecated
     public FrameData(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         this.origin = new Vector3d(origin);
         this.xAxis = new Vector3d(xAxis);
@@ -32,6 +35,7 @@ public class FrameData {
         this.zAxis = new Vector3d(zAxis);
     }
 
+    @Deprecated
     public FrameData(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         this(origin.position(), xAxis, yAxis, zAxis);
     }
