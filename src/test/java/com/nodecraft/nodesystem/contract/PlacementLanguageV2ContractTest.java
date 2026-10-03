@@ -18,11 +18,11 @@ import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.nodes.transform.placement.RotateBlockPositionsNode;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -53,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Placement Language v2 / Semantics & Budgeting v3 (Graph V76 / V100).
+ * Language fence for Placement Language v2 / Semantics & Budgeting v3.
  */
 class PlacementLanguageV2ContractTest {
 
@@ -76,12 +77,6 @@ class PlacementLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV76() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -341,6 +336,64 @@ class PlacementLanguageV2ContractTest {
     }
 
     @Test
+    void mirrorZeroNormalPointPlusNormalFailsClosed() {
+        MirrorProbe mirror = new MirrorProbe();
+        mirror.setInput("input_block_positions", singleBlockList());
+        mirror.connectInput("input_point", NodeDataType.POINT);
+        mirror.connectInput("input_normal", NodeDataType.VECTOR);
+        mirror.setInput("input_point", new PointData(0, 0, 0));
+        mirror.setInput("input_normal", new Vector3d(0, 0, 0));
+        assertDoesNotThrow(() -> mirror.processNode(null));
+        assertEquals(Boolean.FALSE, mirror.getOutput("output_valid"));
+        assertFalse(String.valueOf(mirror.getOutput("output_error")).isBlank());
+        assertEquals(0, ((BlockPosList) mirror.getOutput("output_block_positions")).size());
+    }
+
+    @Test
+    void mirrorHugeNonNormalizableNormalFailsClosed() {
+        MirrorProbe mirror = new MirrorProbe();
+        mirror.setInput("input_block_positions", singleBlockList());
+        mirror.connectInput("input_point", NodeDataType.POINT);
+        mirror.connectInput("input_normal", NodeDataType.VECTOR);
+        mirror.setInput("input_point", new PointData(0, 0, 0));
+        mirror.setInput("input_normal", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        assertDoesNotThrow(() -> mirror.processNode(null));
+        assertEquals(Boolean.FALSE, mirror.getOutput("output_valid"));
+        assertFalse(String.valueOf(mirror.getOutput("output_error")).isBlank());
+        assertEquals(0, ((BlockPosList) mirror.getOutput("output_block_positions")).size());
+    }
+
+    @Test
+    void rotateHugeAxisFailsClosed() {
+        RotateProbe rotate = new RotateProbe();
+        rotate.setInput("input_block_positions", singleBlockList());
+        rotate.connectInput("input_axis", NodeDataType.VECTOR);
+        rotate.setInput("input_axis", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        rotate.processNode(null);
+        assertEquals(Boolean.FALSE, rotate.getOutput("output_valid"));
+        assertEquals(0, ((BlockPosList) rotate.getOutput("output_block_positions")).size());
+    }
+
+    @Test
+    void rotateNonFiniteDegreesFailsClosed() {
+        RotateProbe rotate = new RotateProbe();
+        rotate.setInput("input_block_positions", singleBlockList());
+        rotate.connectInput("input_angle", NodeDataType.DOUBLE);
+        rotate.setInput("input_angle", Double.POSITIVE_INFINITY);
+        rotate.processNode(null);
+        assertEquals(Boolean.FALSE, rotate.getOutput("output_valid"));
+        assertEquals(0, ((BlockPosList) rotate.getOutput("output_block_positions")).size());
+    }
+
+    @Test
+    void rotateStateLoadSkipsNonFiniteAngle() {
+        RotateBlockPositionsNode rotate = new RotateBlockPositionsNode();
+        rotate.setDefaultAngle(45.0d);
+        rotate.setNodeState(java.util.Map.of("defaultAngle", Double.NaN));
+        assertEquals(45.0d, rotate.getDefaultAngle());
+    }
+
+    @Test
     void offsetHugeVectorFailsCheckedRound() {
         OffsetSingleProbe offset = new OffsetSingleProbe();
         offset.setInput("input_block_position", new BlockPos(0, 0, 0));
@@ -520,6 +573,13 @@ class PlacementLanguageV2ContractTest {
 
     private static final class MirrorProbe
             extends com.nodecraft.nodesystem.nodes.transform.placement.MirrorBlockPositionsNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            PlacementLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class RotateProbe
+            extends com.nodecraft.nodesystem.nodes.transform.placement.RotateBlockPositionsNode {
         void connectInput(String portId, NodeDataType outputType) {
             PlacementLanguageV2ContractTest.connectInput(this, portId, outputType);
         }

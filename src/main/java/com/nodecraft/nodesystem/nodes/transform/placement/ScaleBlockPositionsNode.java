@@ -18,7 +18,7 @@ import org.joml.Vector3d;
     effect = NodeEffect.PURE,
     id = "transform.placement.scale_block_positions",
     displayName = "Scale Block Positions",
-    description = "Scales a list of block positions relative to a center point",
+    description = "Scales a list of block positions relative to a center point. Scale components must be > 0; use Mirror for reflection.",
     category = "transform.placement",
     order = 6
 )
@@ -49,7 +49,7 @@ public class ScaleBlockPositionsNode extends AbstractPlacementNode {
 
     @Override
     public String getDescription() {
-        return "Scales a list of block positions relative to a center point";
+        return "Scales a list of block positions relative to a center point. Scale components must be > 0; use Mirror for reflection.";
     }
 
     @Override

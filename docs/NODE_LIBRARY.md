@@ -758,10 +758,10 @@
 | Place Geometry On Frames | `transform.placement.place_geometry_on_frames` | Places geometry copies onto FRAME / FRAME_LIST: pivot maps to each frame origin and local axes align to frame X/Y/Z | `PlaceGeometryOnFramesNode` |
 | Place Geometry On Plane | `transform.placement.place_geometry_on_plane` | Places geometry onto a plane: builds a FRAME (Z=normal, X from hint) then maps pivot to plane origin | `PlaceGeometryOnPlaneNode` |
 | Apply Frame Orientation | `transform.placement.orient_geometry_to_frame` | Applies FRAME rotation relative to existing geometry coordinates while keeping the pivot fixed in world space (not an absolute set-to-frame) | `OrientGeometryToFrameNode` |
-| Offset Block Position | `transform.placement.offset_block_position` | Offsets a single block position by integer X, Y, Z amounts or a rounded vector | `OffsetBlockPositionNode` |
-| Offset Block Positions | `transform.placement.offset_block_positions` | Offsets a list of block positions by a rounded vector | `OffsetBlockPositionsNode` |
+| Offset Block Position | `transform.placement.offset_block_position` | Offsets a single block position by integer X, Y, Z amounts or a vector rounded with Java Math.round (nearest integer, half ties toward +∞) | `OffsetBlockPositionNode` |
+| Offset Block Positions | `transform.placement.offset_block_positions` | Offsets a list of block positions by a vector rounded with Java Math.round (nearest integer, half ties toward +∞) | `OffsetBlockPositionsNode` |
 | Rotate Block Positions | `transform.placement.rotate_block_positions` | Rotates a list of block positions around a point and axis | `RotateBlockPositionsNode` |
-| Scale Block Positions | `transform.placement.scale_block_positions` | Scales a list of block positions relative to a center point | `ScaleBlockPositionsNode` |
+| Scale Block Positions | `transform.placement.scale_block_positions` | Scales a list of block positions relative to a center point. Scale components must be > 0; use Mirror for reflection. | `ScaleBlockPositionsNode` |
 | Mirror Block Positions | `transform.placement.mirror_block_positions` | Mirrors a block position list across a plane and snaps results to the block grid | `MirrorBlockPositionsNode` |
 
 ## utilities.assist (5)

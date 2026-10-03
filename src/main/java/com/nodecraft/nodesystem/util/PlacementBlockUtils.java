@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Safe block-grid arithmetic and snap helpers for transform.placement (Graph V76).
+ * Safe block-grid arithmetic and snap helpers for transform.placement.
  */
 public final class PlacementBlockUtils {
 

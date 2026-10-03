@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryStructureUtils;
 import com.nodecraft.nodesystem.util.GeometryTransform;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -115,7 +116,13 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
         }
         Matrix3d rotation = frame.toRotationMatrix();
         Vector3d rotatedPivot = rotation.transform(new Vector3d(pivot), new Vector3d());
-        Vector3d translation = new Vector3d(frame.getOrigin()).sub(rotatedPivot);
+        if (!VectorUtils.isFinite(rotatedPivot)) {
+            return null;
+        }
+        Vector3d translation = VectorUtils.safeSubtract(frame.getOrigin(), rotatedPivot);
+        if (translation == null) {
+            return null;
+        }
         return GeometryTransform.transform(geometry, translation, rotation, 1.0d);
     }
 

@@ -92,13 +92,24 @@ public class RotateBlockPositionsNode extends AbstractPlacementNode {
         Vector3d center = OptionalPortDrive.resolveOptionalPoint(this, INPUT_CENTER_ID, new Vector3d());
         Vector3d axis = OptionalPortDrive.resolveOptionalVector(this, INPUT_AXIS_ID, axisFromProperty());
         Double angleDegrees = OptionalPortDrive.resolveOptionalDouble(this, INPUT_ANGLE_ID, defaultAngle);
-        if (center == null || axis == null || angleDegrees == null || !VectorUtils.isNonZero(axis)) {
+        if (center == null || axis == null || angleDegrees == null) {
             writeInvalid("Rotation center, axis, or angle invalid", null, Double.NaN);
             return;
         }
 
-        axis = new Vector3d(axis).normalize();
-        Quaterniond rotation = new Quaterniond(new AxisAngle4d(Math.toRadians(angleDegrees), axis.x, axis.y, axis.z));
+        Vector3d unitAxis = VectorUtils.safeNormalize(axis);
+        if (unitAxis == null) {
+            writeInvalid("Rotation axis must be a finite non-zero VECTOR", null, Double.NaN);
+            return;
+        }
+
+        double angleRad = Math.toRadians(angleDegrees);
+        if (!Double.isFinite(angleRad)) {
+            writeInvalid("Rotation angle too large", null, Double.NaN);
+            return;
+        }
+
+        Quaterniond rotation = new Quaterniond(new AxisAngle4d(angleRad, unitAxis.x, unitAxis.y, unitAxis.z));
 
         BlockPosList result = new BlockPosList();
         for (BlockPos pos : coordinates) {
@@ -115,7 +126,7 @@ public class RotateBlockPositionsNode extends AbstractPlacementNode {
         }
 
         outputValues.put(OUTPUT_BLOCK_POSITIONS_ID, result);
-        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, VectorUtils.toVectorPort(axis));
+        outputValues.put(OUTPUT_EFFECTIVE_AXIS_ID, VectorUtils.toVectorPort(unitAxis));
         outputValues.put(OUTPUT_EFFECTIVE_ANGLE_ID, angleDegrees);
         outputValues.put(OUTPUT_COUNT_ID, result.size());
         markSuccess();
@@ -154,6 +165,9 @@ public class RotateBlockPositionsNode extends AbstractPlacementNode {
     }
 
     public void setDefaultAngle(double defaultAngle) {
+        if (!Double.isFinite(defaultAngle)) {
+            return;
+        }
         if (Double.compare(this.defaultAngle, defaultAngle) != 0) {
             this.defaultAngle = defaultAngle;
             markDirty();

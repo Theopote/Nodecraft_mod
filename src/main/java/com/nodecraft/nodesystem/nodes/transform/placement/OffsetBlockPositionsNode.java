@@ -17,7 +17,7 @@ import org.joml.Vector3d;
     effect = NodeEffect.PURE,
     id = "transform.placement.offset_block_positions",
     displayName = "Offset Block Positions",
-    description = "Offsets a list of block positions by a rounded vector",
+    description = "Offsets a list of block positions by a vector rounded with Java Math.round (nearest integer, half ties toward +∞)",
     category = "transform.placement",
     order = 4
 )
@@ -34,7 +34,9 @@ public class OffsetBlockPositionsNode extends AbstractPlacementNode {
         super("transform.placement.offset_block_positions");
 
         addInputPort(new BasePort(INPUT_BLOCK_POSITIONS_ID, "Block Positions", "The block positions to offset", NodeDataType.BLOCK_LIST, this));
-        addInputPort(new BasePort(INPUT_OFFSET_VECTOR_ID, "Offset Vector", "Vector to translate by", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_OFFSET_VECTOR_ID, "Offset Vector",
+            "Vector rounded with Java Math.round (nearest integer, half ties toward +∞)",
+            NodeDataType.VECTOR, this));
 
         addOutputPort(new BasePort(OUTPUT_BLOCK_POSITIONS_ID, "Block Positions", "Offset block positions", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_OFFSET_ID, "Effective Offset", "Integer block offset actually applied", NodeDataType.VECTOR, this));
@@ -44,7 +46,7 @@ public class OffsetBlockPositionsNode extends AbstractPlacementNode {
 
     @Override
     public String getDescription() {
-        return "Offsets a list of block positions by a rounded vector";
+        return "Offsets a list of block positions by a vector rounded with Java Math.round (nearest integer, half ties toward +∞)";
     }
 
     @Override

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared Valid/Error helpers for transform.placement (Graph V76).
+ * Shared Valid/Error helpers for transform.placement.
  */
 abstract class AbstractPlacementNode extends BaseNode {
 

@@ -139,11 +139,11 @@ public class MirrorBlockPositionsNode extends AbstractPlacementNode {
             if (point == null || normal == null) {
                 return new PlaneResolution(null, "Point or Normal connected but invalid");
             }
-            try {
-                return new PlaneResolution(PlaneData.canonical(point, normal), null);
-            } catch (IllegalArgumentException ex) {
-                return new PlaneResolution(null, "Mirror plane normal is zero-length");
+            PlaneData plane = PlaneData.canonical(point, normal);
+            if (plane == null) {
+                return new PlaneResolution(null, "Mirror plane point/normal must define a valid finite plane");
             }
+            return new PlaneResolution(plane, null);
         }
 
         return new PlaneResolution(switch (mirrorPlane == null ? MirrorPlane.XZ : mirrorPlane) {
