@@ -770,9 +770,9 @@
 |---|---|---|---|
 | String Format | `utilities.assist.string_format` | Formats strings with placeholders like {0}, {1} from dynamic values. | `StringFormatNode` |
 | Validate | `utilities.assist.validate` | Validates a boolean condition and gates a pass-through value. | `ValidateNode` |
-| Coalesce | `utilities.assist.coalesce` | Returns the first non-null connected branch input by priority. | `CoalesceNode` |
+| Coalesce | `utilities.assist.coalesce` | Returns the first non-null connected branch. When Prefer Primary is disabled, scans branches in reverse order. | `CoalesceNode` |
 | Relay | `utilities.assist.relay` | Passes a signal through, optionally with a visual semantic tag. | `RelayNode` |
-| Signal Fork | `utilities.assist.signal_fork` | 将一路输入透传到两路输出，便于连线分流 | `SignalForkNode` |
+| Signal Fork | `utilities.assist.signal_fork` | Passes one input through to multiple outputs by identity for layout/forking. | `SignalForkNode` |
 
 ## utilities.fileio (3)
 

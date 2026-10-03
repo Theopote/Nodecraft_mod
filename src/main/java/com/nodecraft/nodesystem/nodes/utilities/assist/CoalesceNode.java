@@ -23,7 +23,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "utilities.assist.coalesce",
     displayName = "Coalesce",
-    description = "Returns the first non-null connected branch input by priority.",
+    description = "Returns the first non-null connected branch. When Prefer Primary is disabled, scans branches in reverse order.",
     category = "utilities.assist",
     order = 2
 )
@@ -53,7 +53,7 @@ public class CoalesceNode extends BaseCustomUINode {
         addInputPort(new BasePort(
             INPUT_PREFER_PRIMARY_ID,
             "Prefer Primary",
-            "Whether to scan primary-first (boolean)",
+            "When true, scan primary-first; when false, scan branches in reverse order",
             NodeDataType.BOOLEAN,
             this
         ));
@@ -91,6 +91,11 @@ public class CoalesceNode extends BaseCustomUINode {
             NodeDataType.STRING,
             this
         ));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Returns the first non-null connected branch. When Prefer Primary is disabled, scans branches in reverse order.";
     }
 
     @Override

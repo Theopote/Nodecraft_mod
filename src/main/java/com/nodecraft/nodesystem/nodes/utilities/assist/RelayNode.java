@@ -183,13 +183,5 @@ public class RelayNode extends BaseNode {
             }
             return;
         }
-        if (state instanceof Object[] values && values.length >= 2) {
-            if (values[0] instanceof String valueTag) {
-                setTag(valueTag);
-            }
-            if (values[1] instanceof String valueColor) {
-                setColor(valueColor);
-            }
-        }
     }
 }

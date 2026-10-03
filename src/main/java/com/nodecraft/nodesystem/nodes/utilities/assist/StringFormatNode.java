@@ -126,7 +126,8 @@ public class StringFormatNode extends BaseNode {
 
     /**
      * Connected Values must be a List (empty allowed).
-     * Unconnected uses connected Value 0-2 ports only.
+     * Unconnected uses Value 0-2 by port index (no compaction). Unconnected slots
+     * in the span are {@link StringFormatEngine#MISSING}; connected null stays null.
      *
      * @return null when connected Values is invalid
      */
@@ -142,15 +143,26 @@ public class StringFormatNode extends BaseNode {
             return new ArrayList<>(list);
         }
 
-        List<Object> values = new ArrayList<>(3);
-        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_0_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_0_ID));
+        boolean value0 = OptionalPortDrive.isConnected(this, INPUT_VALUE_0_ID);
+        boolean value1 = OptionalPortDrive.isConnected(this, INPUT_VALUE_1_ID);
+        boolean value2 = OptionalPortDrive.isConnected(this, INPUT_VALUE_2_ID);
+        if (!value0 && !value1 && !value2) {
+            return List.of();
         }
-        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_1_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_1_ID));
+
+        int size = value2 ? 3 : (value1 ? 2 : 1);
+        List<Object> values = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            values.add(StringFormatEngine.MISSING);
         }
-        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_2_ID)) {
-            values.add(inputValues.get(INPUT_VALUE_2_ID));
+        if (value0) {
+            values.set(0, inputValues.get(INPUT_VALUE_0_ID));
+        }
+        if (value1) {
+            values.set(1, inputValues.get(INPUT_VALUE_1_ID));
+        }
+        if (value2) {
+            values.set(2, inputValues.get(INPUT_VALUE_2_ID));
         }
         return values;
     }

@@ -12,7 +12,6 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -40,8 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Assist Utilities v1 language fence (Graph V55).
- * Superseded by {@link AssistUtilitiesLanguageV2ContractTest} at Graph V89+.
+ * Assist Utilities v1 language fence.
+ * Superseded by {@link AssistUtilitiesLanguageV2ContractTest}.
  */
 class AssistUtilitiesLanguageContractTest {
 
@@ -68,11 +67,6 @@ class AssistUtilitiesLanguageContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV55() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test

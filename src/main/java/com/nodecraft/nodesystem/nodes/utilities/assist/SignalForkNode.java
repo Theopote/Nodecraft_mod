@@ -15,13 +15,13 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 分线节点：将一路输入透传到两路输出，用于整理连线布局。
+ * Forks one input to multiple outputs by identity (same runtime reference).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "utilities.assist.signal_fork",
     displayName = "Signal Fork",
-    description = "将一路输入透传到两路输出，便于连线分流",
+    description = "Passes one input through to multiple outputs by identity for layout/forking.",
     category = "utilities.assist",
     order = 4
 )
@@ -39,8 +39,8 @@ public class SignalForkNode extends BaseCustomUINode {
 
         BasePort input = new BasePort(
             INPUT_SIGNAL_ID,
-            "输入",
-            "需要分流的输入信号",
+            "Input",
+            "Signal to fork",
             NodeDataType.ANY,
             this
         );
@@ -48,6 +48,11 @@ public class SignalForkNode extends BaseCustomUINode {
         addInputPort(input);
 
         syncOutputBranchPorts(DEFAULT_OUTPUT_BRANCHES);
+    }
+
+    @Override
+    public String getDescription() {
+        return "Passes one input through to multiple outputs by identity for layout/forking.";
     }
 
     @Override
@@ -123,18 +128,18 @@ public class SignalForkNode extends BaseCustomUINode {
 
     private static String getOutputDisplayName(int index) {
         if (index <= 0) {
-            return "输出";
+            return "Output";
         }
         char suffix = (char) ('A' + (index - 1));
-        return "输出 " + suffix;
+        return "Output " + suffix;
     }
 
     private static String getOutputDescription(int index) {
         if (index <= 0) {
-            return "分流输出";
+            return "Fork output";
         }
         char suffix = (char) ('A' + (index - 1));
-        return "分流输出 " + suffix;
+        return "Fork output " + suffix;
     }
 
     private void ensureOutputPortExists(int index) {

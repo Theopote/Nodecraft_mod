@@ -20,6 +20,9 @@ import java.util.regex.Pattern;
  */
 public final class StringFormatEngine {
 
+    /** Unconnected Value slot; not the same as a connected null (which formats as {@code "null"}). */
+    public static final Object MISSING = new Object();
+
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\{(\\d+)}");
 
     private StringFormatEngine() {
@@ -94,7 +97,7 @@ public final class StringFormatEngine {
                 continue;
             }
 
-            if (index >= 0 && index < values.size()) {
+            if (index >= 0 && index < values.size() && values.get(index) != MISSING) {
                 if (!appendValue(context, values.get(index), safePrecision, 0)) {
                     return FormatResult.graphFailure(context.error);
                 }
@@ -118,7 +121,7 @@ public final class StringFormatEngine {
             }
         }
 
-        int missingCount = countMissingPlaceholders(resolvedTemplate, values.size());
+        int missingCount = countMissingPlaceholders(resolvedTemplate, values);
         if (missingCount > 0) {
             return FormatResult.semanticFailure(
                 context.output.toString(),
@@ -131,7 +134,7 @@ public final class StringFormatEngine {
         return FormatResult.success(context.output.toString(), usedCount);
     }
 
-    private static int countMissingPlaceholders(String text, int valueCount) {
+    private static int countMissingPlaceholders(String text, List<Object> values) {
         Matcher matcher = PLACEHOLDER_PATTERN.matcher(text);
         int missing = 0;
         while (matcher.find()) {
@@ -141,7 +144,7 @@ public final class StringFormatEngine {
             } catch (NumberFormatException ignored) {
                 continue;
             }
-            if (index < 0 || index >= valueCount) {
+            if (index < 0 || index >= values.size() || values.get(index) == MISSING) {
                 missing++;
             }
         }

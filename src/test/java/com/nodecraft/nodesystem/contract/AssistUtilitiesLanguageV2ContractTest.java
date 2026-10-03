@@ -13,7 +13,6 @@ import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.utilities.assist.CoalesceNode;
@@ -45,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Assist Utilities Language v2 (Graph V89).
+ * Language fence for Assist Utilities Language v2.
  */
 class AssistUtilitiesLanguageV2ContractTest {
 
@@ -72,11 +71,6 @@ class AssistUtilitiesLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV89() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -340,6 +334,56 @@ class AssistUtilitiesLanguageV2ContractTest {
     @Test
     void stringFormatConnectedNullValueZeroFormatsNullLiteral() {
         StringFormatProbe format = new StringFormatProbe();
+        format.connectInput("input_value_0", NodeDataType.ANY);
+        format.setInput("input_value_0", null);
+        format.processNode(null);
+        assertValid(format);
+        assertEquals("null", format.getOutput("output_text"));
+    }
+
+    @Test
+    void onlyValue1ConnectedMapsToPlaceholder1() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.setNodeState(Map.of("template", "{1}"));
+        format.connectInput("input_value_1", NodeDataType.ANY);
+        format.setInput("input_value_1", "B");
+        format.processNode(null);
+        assertValid(format);
+        assertEquals("B", format.getOutput("output_text"));
+        assertEquals("", format.getOutput("output_error"));
+    }
+
+    @Test
+    void onlyValue2ConnectedMapsToPlaceholder2() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.setNodeState(Map.of("template", "{2}"));
+        format.connectInput("input_value_2", NodeDataType.ANY);
+        format.setInput("input_value_2", "C");
+        format.processNode(null);
+        assertValid(format);
+        assertEquals("C", format.getOutput("output_text"));
+        assertEquals("", format.getOutput("output_error"));
+    }
+
+    @Test
+    void value0AndValue2DoNotCompactValue2IntoIndex1() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.setNodeState(Map.of("template", "{0} {1} {2}"));
+        format.connectInput("input_value_0", NodeDataType.ANY);
+        format.connectInput("input_value_2", NodeDataType.ANY);
+        format.setInput("input_value_0", "A");
+        format.setInput("input_value_2", "C");
+        format.processNode(null);
+        assertEquals(Boolean.FALSE, format.getOutput("output_valid"));
+        assertEquals("A {1} C", format.getOutput("output_text"));
+        assertTrue(String.valueOf(format.getOutput("output_message")).contains("Missing"));
+        assertEquals("", format.getOutput("output_error"));
+    }
+
+    @Test
+    void connectedNullStillFormatsLiteralNull() {
+        StringFormatProbe format = new StringFormatProbe();
+        format.setNodeState(Map.of("template", "{0}"));
         format.connectInput("input_value_0", NodeDataType.ANY);
         format.setInput("input_value_0", null);
         format.processNode(null);
