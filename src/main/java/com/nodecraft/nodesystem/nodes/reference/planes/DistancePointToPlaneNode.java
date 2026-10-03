@@ -83,13 +83,12 @@ public class DistancePointToPlaneNode extends BaseNode {
             return;
         }
 
-        PlaneData canonical = plane.normalized();
-        if (canonical == null) {
-            writeInvalid("Plane must be finite with non-zero normal");
+        if (!plane.isCanonical()) {
+            writeInvalid("Plane must be canonical");
             return;
         }
 
-        double signedDistance = canonical.signedDistanceTo(point);
+        double signedDistance = plane.signedDistanceTo(point);
         if (!Double.isFinite(signedDistance)) {
             writeInvalid("Signed distance is not finite");
             return;
@@ -102,8 +101,8 @@ public class DistancePointToPlaneNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_DISTANCE_ID, Double.NaN);
-        outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, Double.NaN);
+        outputValues.put(OUTPUT_DISTANCE_ID, 0.0d);
+        outputValues.put(OUTPUT_SIGNED_DISTANCE_ID, 0.0d);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }

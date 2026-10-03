@@ -11,9 +11,9 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.reference.planes.OffsetPlaneNode;
 import com.nodecraft.nodesystem.nodes.reference.planes.PlaneSelectorNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -70,11 +71,6 @@ class ReferencePlanesLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV86() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -147,8 +143,8 @@ class ReferencePlanesLanguageV2ContractTest {
 
         PointData origin = assertInstanceOf(PointData.class, deconstruct.getOutput("output_origin"));
         assertVectorEquals(new Vector3d(1, 2, 3), origin.position(), 1.0e-9d);
-        Vector3d normal = assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_normal"));
-        assertEquals(1.0d, normal.length(), 1.0e-9d);
+        VectorData normal = assertInstanceOf(VectorData.class, deconstruct.getOutput("output_normal"));
+        assertEquals(1.0d, normal.components().length(), 1.0e-9d);
     }
 
     @Test
@@ -191,6 +187,36 @@ class ReferencePlanesLanguageV2ContractTest {
         PlaneData plane = assertInstanceOf(PlaneData.class, world.getOutput("output_plane"));
         assertEquals(1.0d, plane.getNormal().length(), 1.0e-9d);
         assertVectorEquals(expectedNormal, plane.getNormal(), 1.0e-9d);
+    }
+
+    @Test
+    void constructPlaneAcceptsCanonicalVectorData() {
+        BaseNode construct = node("reference.planes.construct_plane");
+        construct.setInput("input_origin", new PointData(1, 2, 3));
+        construct.setInput("input_normal", VectorData.canonical(new Vector3d(0, 1, 0)));
+        construct.processNode(null);
+        assertValid(construct);
+        PlaneData plane = assertInstanceOf(PlaneData.class, construct.getOutput("output_plane"));
+        assertTrue(plane.isCanonical());
+        assertVectorEquals(new Vector3d(0, 1, 0), plane.getNormal(), 1.0e-9d);
+    }
+
+    @Test
+    void constructVectorFeedsConstructPlaneNormal() {
+        BaseNode vector = node("reference.vectors.construct_vector");
+        vector.setInput("input_x", 0.0d);
+        vector.setInput("input_y", 1.0d);
+        vector.setInput("input_z", 0.0d);
+        vector.processNode(null);
+        assertValid(vector);
+
+        BaseNode construct = node("reference.planes.construct_plane");
+        construct.setInput("input_origin", new PointData(0, 0, 0));
+        construct.setInput("input_normal", vector.getOutput("output_vector"));
+        construct.processNode(null);
+        assertValid(construct);
+        PlaneData plane = assertInstanceOf(PlaneData.class, construct.getOutput("output_plane"));
+        assertVectorEquals(new Vector3d(0, 1, 0), plane.getNormal(), 1.0e-9d);
     }
 
     @Test
@@ -256,6 +282,15 @@ class ReferencePlanesLanguageV2ContractTest {
         assertNotNull(unitValid);
         assertNotNull(scaledValid);
         assertVectorEquals(unitValid.getNormal(), scaledValid.getNormal(), 1.0e-9d);
+    }
+
+    @Test
+    void planeFromPointsOverflowingSubtractFailsClosed() {
+        assertNull(PlaneUtils.fromThreePoints(
+            new Vector3d(-1.0e308d, 0, 0),
+            new Vector3d(1.0e308d, 0, 0),
+            new Vector3d(0, 1, 0)
+        ));
     }
 
     @Test
@@ -343,13 +378,13 @@ class ReferencePlanesLanguageV2ContractTest {
     }
 
     @Test
-    void distancePointToPlaneInvalidOutputsNaNWithError() {
+    void distancePointToPlaneInvalidOutputsZeroWithError() {
         BaseNode distance = node("reference.planes.distance_point_to_plane");
         distance.setInput("input_point", new PointData(1, 0, 0));
         distance.processNode(null);
         assertInvalid(distance);
-        assertEquals(Double.NaN, distance.getOutput("output_distance"));
-        assertEquals(Double.NaN, distance.getOutput("output_signed_distance"));
+        assertEquals(0.0d, distance.getOutput("output_distance"));
+        assertEquals(0.0d, distance.getOutput("output_signed_distance"));
     }
 
     @Test

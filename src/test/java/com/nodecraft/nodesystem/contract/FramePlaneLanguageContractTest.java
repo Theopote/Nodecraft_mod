@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
@@ -161,7 +162,7 @@ class FramePlaneLanguageContractTest {
         deconstruct.processNode(null);
         assertEquals(Boolean.TRUE, deconstruct.getOutput("output_valid"));
         assertInstanceOf(PointData.class, deconstruct.getOutput("output_origin"));
-        assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_normal"));
+        assertInstanceOf(VectorData.class, deconstruct.getOutput("output_normal"));
     }
 
     @Test

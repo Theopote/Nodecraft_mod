@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -137,6 +138,10 @@ class ReferencePlanesLanguageContractTest {
         construct.processNode(null);
         assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));
         assertInstanceOf(PlaneData.class, construct.getOutput("output_plane"));
+
+        construct.setInput("input_normal", VectorData.canonical(new Vector3d(0, 0, 1)));
+        construct.processNode(null);
+        assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));
     }
 
     @Test
@@ -188,19 +193,19 @@ class ReferencePlanesLanguageContractTest {
         deconstruct.processNode(null);
 
         assertEquals(Boolean.TRUE, deconstruct.getOutput("output_valid"));
-        Vector3d normal = assertInstanceOf(Vector3d.class, deconstruct.getOutput("output_normal"));
-        assertEquals(1.0d, normal.length(), 1.0e-9d);
-        assertVectorEquals(new Vector3d(0, 1, 0), normal, 1.0e-9d);
+        VectorData normal = assertInstanceOf(VectorData.class, deconstruct.getOutput("output_normal"));
+        assertEquals(1.0d, normal.components().length(), 1.0e-9d);
+        assertVectorEquals(new Vector3d(0, 1, 0), normal.components(), 1.0e-9d);
     }
 
     @Test
-    void distancePointToPlaneInvalidPlaneFailsClosedWithNaN() {
+    void distancePointToPlaneInvalidPlaneFailsClosedWithZero() {
         BaseNode distance = node("reference.planes.distance_point_to_plane");
         distance.setInput("input_point", new PointData(1, 0, 0));
         distance.processNode(null);
         assertEquals(Boolean.FALSE, distance.getOutput("output_valid"));
-        assertEquals(Double.NaN, distance.getOutput("output_distance"));
-        assertEquals(Double.NaN, distance.getOutput("output_signed_distance"));
+        assertEquals(0.0d, distance.getOutput("output_distance"));
+        assertEquals(0.0d, distance.getOutput("output_signed_distance"));
     }
 
     @Test

@@ -11,6 +11,7 @@ public final class PlaneUtils {
 
     public static final double EPS = SpatialTolerance.EPS;
     public static final double EPS_SQ = SpatialTolerance.EPS_SQ;
+    public static final double ANGULAR_SIN_EPS = SpatialTolerance.ANGULAR_SIN_EPS;
 
     private PlaneUtils() {
     }
@@ -39,13 +40,24 @@ public final class PlaneUtils {
         if (!isFinite(a) || !isFinite(b) || !isFinite(c)) {
             return null;
         }
-        Vector3d ab = new Vector3d(b).sub(a);
-        Vector3d ac = new Vector3d(c).sub(a);
-        Vector3d cross = ab.cross(ac, new Vector3d());
-        double crossSq = cross.lengthSquared();
-        double abSq = ab.lengthSquared();
-        double acSq = ac.lengthSquared();
-        if (crossSq <= EPS * abSq * acSq) {
+        Vector3d ab = VectorUtils.safeSubtract(b, a);
+        Vector3d ac = VectorUtils.safeSubtract(c, a);
+        if (ab == null || ac == null) {
+            return null;
+        }
+        double abLen = VectorUtils.safeLength(ab);
+        double acLen = VectorUtils.safeLength(ac);
+        Vector3d cross = VectorUtils.safeCross(ab, ac);
+        double crossLen = VectorUtils.safeLength(cross);
+        if (!Double.isFinite(abLen) || !Double.isFinite(acLen) || !Double.isFinite(crossLen)) {
+            return null;
+        }
+        double denom = abLen * acLen;
+        if (!Double.isFinite(denom) || denom <= EPS) {
+            return null;
+        }
+        double sinAbs = crossLen / denom;
+        if (!Double.isFinite(sinAbs) || sinAbs <= ANGULAR_SIN_EPS) {
             return null;
         }
         return PlaneData.canonical(a, cross);

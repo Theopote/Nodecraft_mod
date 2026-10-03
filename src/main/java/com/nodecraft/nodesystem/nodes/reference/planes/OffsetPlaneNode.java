@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -55,14 +56,18 @@ public class OffsetPlaneNode extends BaseNode {
             return;
         }
 
-        PlaneData canonical = plane.normalized();
-        if (canonical == null) {
-            writeInvalid("Plane must be finite with non-zero normal");
+        if (!plane.isCanonical()) {
+            writeInvalid("Plane must be canonical");
             return;
         }
 
-        Vector3d normal = canonical.getNormal();
-        Vector3d newOrigin = canonical.getPoint().add(new Vector3d(normal).mul(distance));
+        Vector3d normal = plane.getNormal();
+        Vector3d offsetVec = VectorUtils.safeScale(normal, distance);
+        Vector3d newOrigin = VectorUtils.safeAdd(plane.getPoint(), offsetVec);
+        if (newOrigin == null) {
+            writeInvalid("Offset plane origin became non-finite");
+            return;
+        }
         PlaneData offset = PlaneUtils.fromOriginNormal(newOrigin, normal);
         if (offset == null) {
             writeInvalid("Plane construction failed");

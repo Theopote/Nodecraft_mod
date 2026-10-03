@@ -57,12 +57,7 @@ public class ConstructPlaneNode extends BaseNode {
             return;
         }
 
-        Object normalObj = inputValues.get(INPUT_NORMAL_ID);
-        if (!(normalObj instanceof Vector3d)) {
-            writeInvalid("Normal must be a finite non-zero VECTOR");
-            return;
-        }
-        Vector3d normal = SpatialValueResolver.resolveVector(normalObj);
+        Vector3d normal = SpatialValueResolver.resolveVector(inputValues.get(INPUT_NORMAL_ID));
         if (!PlaneUtils.isUsableNormal(normal)) {
             writeInvalid("Normal must be a finite non-zero VECTOR");
             return;

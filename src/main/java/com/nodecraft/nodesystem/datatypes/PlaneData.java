@@ -95,6 +95,28 @@ public class PlaneData {
         return canonical(origin, getNormal());
     }
 
+    /**
+     * True when origin is finite, normal is unit, and the stored equation matches {@code n·origin + d}.
+     */
+    public boolean isCanonical() {
+        if (!FrameUtils.isFinite(origin)) {
+            return false;
+        }
+        Vector3d normal = getNormal();
+        double length = VectorUtils.safeLength(normal);
+        if (!Double.isFinite(length) || Math.abs(length - 1.0d) > EPS) {
+            return false;
+        }
+        if (!Double.isFinite(plane.w)) {
+            return false;
+        }
+        double alignment = VectorUtils.safeDot(normal, origin);
+        if (!Double.isFinite(alignment)) {
+            return false;
+        }
+        return Math.abs(alignment + plane.w) <= EPS;
+    }
+
     public PlaneData(Vector3d origin, Vector3d normal) {
         PlaneData canonical = canonical(origin, normal);
         if (canonical == null) {
@@ -169,17 +191,16 @@ public class PlaneData {
     }
 
     public double signedDistanceTo(Vector3d point) {
-        return plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w;
+        Vector3d delta = VectorUtils.safeSubtract(point, origin);
+        double distance = VectorUtils.safeDot(delta, getNormal());
+        return Double.isFinite(distance) ? distance : Double.NaN;
     }
 
     public Vector3d projectPoint(Vector3d point) {
-        double t = -(plane.x * point.x + plane.y * point.y + plane.z * point.z + plane.w)
-                / (plane.x * plane.x + plane.y * plane.y + plane.z * plane.z);
-        return new Vector3d(
-                point.x + plane.x * t,
-                point.y + plane.y * t,
-                point.z + plane.z * t
-        );
+        double signed = signedDistanceTo(point);
+        Vector3d offset = VectorUtils.safeScale(getNormal(), signed);
+        Vector3d projected = VectorUtils.safeSubtract(point, offset);
+        return projected != null ? projected : new Vector3d(Double.NaN, Double.NaN, Double.NaN);
     }
 
     @Override

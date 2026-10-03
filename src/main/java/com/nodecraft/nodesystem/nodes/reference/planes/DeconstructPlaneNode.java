@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -47,14 +48,13 @@ public class DeconstructPlaneNode extends BaseNode {
             return;
         }
 
-        PlaneData canonical = plane.normalized();
-        if (canonical == null) {
-            writeInvalid("Plane must be finite with non-zero normal");
+        if (!plane.isCanonical()) {
+            writeInvalid("Plane must be canonical");
             return;
         }
 
-        outputValues.put(OUTPUT_ORIGIN_ID, new PointData(canonical.getPoint()));
-        outputValues.put(OUTPUT_NORMAL_ID, canonical.getNormal());
+        outputValues.put(OUTPUT_ORIGIN_ID, new PointData(plane.getPoint()));
+        outputValues.put(OUTPUT_NORMAL_ID, VectorUtils.toVectorPort(plane.getNormal()));
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
