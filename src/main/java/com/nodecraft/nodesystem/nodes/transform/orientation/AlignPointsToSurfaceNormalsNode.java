@@ -124,12 +124,11 @@ public class AlignPointsToSurfaceNormalsNode extends AbstractOrientationNode {
         for (int i = 0; i < points.size(); i++) {
             Vector3d p = points.get(i);
             Vector3d n = normals.get(i);
-            if (!VectorUtils.isNonZero(n)) {
+            Vector3d up = VectorUtils.safeNormalize(n);
+            if (up == null) {
                 writeInvalid("Normals list contains a zero-length vector");
                 return;
             }
-
-            Vector3d up = new Vector3d(n).normalize();
             Vector3d tangent = resolveTangent(up, connectedHint, hintConnected);
             if (tangent == null) {
                 writeInvalid(hintConnected

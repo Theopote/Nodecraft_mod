@@ -88,8 +88,7 @@ public class ProjectPointToPlaneNode extends AbstractOrientationNode {
     }
 
     private void writeInvalid(String error) {
-        putNullOutputs(OUTPUT_POINT_ID);
-        putDoubleOutputs(Double.NaN, OUTPUT_DISTANCE_ID, OUTPUT_SIGNED_DISTANCE_ID);
+        putNullOutputs(OUTPUT_POINT_ID, OUTPUT_DISTANCE_ID, OUTPUT_SIGNED_DISTANCE_ID);
         markInvalid(error);
     }
 }

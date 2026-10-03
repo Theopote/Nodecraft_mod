@@ -76,8 +76,9 @@ public class RotateVectorNode extends AbstractOrientationNode {
             writeInvalid("Axis is missing or invalid");
             return;
         }
-        if (!VectorUtils.isNonZero(axis)) {
-            writeInvalid("Axis is zero-length");
+        axis = VectorUtils.safeNormalize(axis);
+        if (axis == null) {
+            writeInvalid("Axis must be a finite non-zero vector");
             return;
         }
 
@@ -87,9 +88,12 @@ public class RotateVectorNode extends AbstractOrientationNode {
             return;
         }
 
-        axis = new Vector3d(axis).normalize();
         Quaterniond rotation = new Quaterniond(new AxisAngle4d(Math.toRadians(angleDegrees), axis.x, axis.y, axis.z));
         Vector3d result = rotation.transform(new Vector3d(vector));
+        if (!VectorUtils.isFinite(result)) {
+            writeInvalid("Rotation produced a non-finite vector");
+            return;
+        }
 
         outputValues.put(OUTPUT_ROTATED_VECTOR_ID, VectorUtils.toVectorPort(result));
         markSuccess();

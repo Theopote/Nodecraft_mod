@@ -25,7 +25,7 @@ public final class FrameUtils {
 
     /**
      * Strict FRAME_LIST resolution: null / non-List / empty → null;
-     * any non-{@link FrameData} entry → null; otherwise a copy (no filtering).
+     * any non-{@link FrameData} or non-canonical frame → null; otherwise a copy (no filtering).
      */
     public static @Nullable List<FrameData> resolveStrictFrameList(@Nullable Object value) {
         if (!(value instanceof List<?> list) || list.isEmpty()) {
@@ -33,7 +33,7 @@ public final class FrameUtils {
         }
         List<FrameData> frames = new ArrayList<>(list.size());
         for (Object entry : list) {
-            if (!(entry instanceof FrameData frame)) {
+            if (!(entry instanceof FrameData frame) || !frame.isCanonical()) {
                 return null;
             }
             frames.add(frame);
@@ -43,7 +43,7 @@ public final class FrameUtils {
 
     /**
      * Like {@link #resolveStrictFrameList} but fails closed when {@code list.size() > maxElements}
-     * before allocating the copy (Graph V100 placement budgeting).
+     * before allocating the copy.
      */
     public static @Nullable List<FrameData> resolveStrictFrameListBounded(
             @Nullable Object value,
@@ -74,31 +74,25 @@ public final class FrameUtils {
     }
 
     public static boolean isUsableAxis(@Nullable Vector3d axis) {
-        return isFinite(axis) && axis.lengthSquared() > EPS_SQ;
+        return VectorUtils.isNonZero(axis);
     }
 
     public static @Nullable Vector3d normalizedDirection(@Nullable Vector3d from, @Nullable Vector3d to) {
-        if (!isFinite(from) || !isFinite(to)) {
-            return null;
-        }
-        Vector3d axis = new Vector3d(to).sub(from);
-        if (!isUsableAxis(axis)) {
-            return null;
-        }
-        return axis.normalize();
+        return unit(VectorUtils.safeSubtract(to, from));
     }
 
     /**
      * Returns true when both axes are usable and parallel within epsilon.
      */
     public static boolean areParallel(@Nullable Vector3d a, @Nullable Vector3d b) {
-        if (!isUsableAxis(a) || !isUsableAxis(b)) {
+        Vector3d an = unit(a);
+        Vector3d bn = unit(b);
+        if (an == null || bn == null) {
             return false;
         }
-        Vector3d an = new Vector3d(a).normalize();
-        Vector3d bn = new Vector3d(b).normalize();
-        double crossLengthSq = an.cross(bn, new Vector3d()).lengthSquared();
-        return crossLengthSq <= EPS;
+        Vector3d cross = VectorUtils.safeCross(an, bn);
+        double crossLength = VectorUtils.safeLength(cross);
+        return Double.isFinite(crossLength) && crossLength * crossLength <= EPS;
     }
 
     /**
@@ -123,17 +117,18 @@ public final class FrameUtils {
         if (!isFinite(plane.getPoint()) || !isUsableAxis(plane.getNormal())) {
             return null;
         }
-        Vector3d z = new Vector3d(plane.getNormal()).normalize();
-        Vector3d x = projectOntoPlane(xHint, z);
-        if (!isUsableAxis(x)) {
+        Vector3d z = unit(plane.getNormal());
+        if (z == null) {
             return null;
         }
-        x.normalize();
-        Vector3d y = new Vector3d(z).cross(x);
-        if (!isUsableAxis(y)) {
+        Vector3d x = unit(projectOntoPlane(xHint, z));
+        if (x == null) {
             return null;
         }
-        y.normalize();
+        Vector3d y = unit(VectorUtils.safeCross(z, x));
+        if (y == null) {
+            return null;
+        }
         return FrameData.orthonormal(plane.getPoint(), x, y, z);
     }
 
@@ -149,7 +144,10 @@ public final class FrameUtils {
         if (!isFinite(origin) || !isUsableAxis(normal)) {
             return null;
         }
-        Vector3d z = new Vector3d(normal).normalize();
+        Vector3d z = unit(normal);
+        if (z == null) {
+            return null;
+        }
 
         Vector3d x = projectOntoPlane(resolveHint(xHint), z);
         if (!isUsableAxis(x)) {
@@ -163,16 +161,15 @@ public final class FrameUtils {
                 }
             }
         }
-        if (!isUsableAxis(x)) {
+        x = unit(x);
+        if (x == null) {
             return null;
         }
-        x.normalize();
 
-        Vector3d y = new Vector3d(z).cross(x);
-        if (!isUsableAxis(y)) {
+        Vector3d y = unit(VectorUtils.safeCross(z, x));
+        if (y == null) {
             return null;
         }
-        y.normalize();
 
         return FrameData.orthonormal(origin, x, y, z);
     }
@@ -188,17 +185,18 @@ public final class FrameUtils {
         if (!isFinite(origin) || !isUsableAxis(normal) || !isUsableAxis(xHint)) {
             return null;
         }
-        Vector3d z = new Vector3d(normal).normalize();
-        Vector3d x = projectOntoPlane(new Vector3d(xHint), z);
-        if (!isUsableAxis(x)) {
+        Vector3d z = unit(normal);
+        if (z == null) {
             return null;
         }
-        x.normalize();
-        Vector3d y = new Vector3d(z).cross(x);
-        if (!isUsableAxis(y)) {
+        Vector3d x = unit(projectOntoPlane(new Vector3d(xHint), z));
+        if (x == null) {
             return null;
         }
-        y.normalize();
+        Vector3d y = unit(VectorUtils.safeCross(z, x));
+        if (y == null) {
+            return null;
+        }
         return FrameData.orthonormal(origin, x, y, z);
     }
 
@@ -210,13 +208,11 @@ public final class FrameUtils {
         if (!isUsableAxis(hint) || !isUsableAxis(normal)) {
             return null;
         }
-        Vector3d z = new Vector3d(normal).normalize();
-        Vector3d projected = projectOntoPlane(new Vector3d(hint), z);
-        if (!isUsableAxis(projected)) {
+        Vector3d z = unit(normal);
+        if (z == null) {
             return null;
         }
-        projected.normalize();
-        return projected;
+        return unit(projectOntoPlane(new Vector3d(hint), z));
     }
 
     /**
@@ -242,9 +238,13 @@ public final class FrameUtils {
             return null;
         }
         LocalUpAxis resolved = axis == null ? LocalUpAxis.Y : axis;
-        Vector3d up = new Vector3d(unitNormal).normalize();
-        Vector3d tangent = new Vector3d(unitTangent).normalize();
-        if (Math.abs(up.dot(tangent)) > 1.0d - EPS) {
+        Vector3d up = unit(unitNormal);
+        Vector3d tangent = unit(unitTangent);
+        if (up == null || tangent == null) {
+            return null;
+        }
+        double alignment = VectorUtils.safeDot(up, tangent);
+        if (!Double.isFinite(alignment) || Math.abs(alignment) > 1.0d - EPS) {
             return null;
         }
 
@@ -255,28 +255,33 @@ public final class FrameUtils {
             case X -> {
                 x = new Vector3d(up);
                 y = new Vector3d(tangent);
-                z = new Vector3d(up).cross(tangent);
+                z = VectorUtils.safeCross(up, tangent);
             }
             case Y -> {
                 x = new Vector3d(tangent);
                 y = new Vector3d(up);
                 // Z = X × Y = tangent × up (not up × tangent) so orthonormal() keeps +Y
-                z = new Vector3d(tangent).cross(up);
+                z = VectorUtils.safeCross(tangent, up);
             }
             case Z -> {
                 x = new Vector3d(tangent);
-                y = new Vector3d(up).cross(tangent);
+                y = VectorUtils.safeCross(up, tangent);
                 z = new Vector3d(up);
             }
             default -> {
                 return null;
             }
         }
-        if (!isUsableAxis(z)) {
+        z = unit(z);
+        y = unit(y);
+        if (z == null || y == null) {
             return null;
         }
-        z.normalize();
         return FrameData.orthonormal(origin, x, y, z);
+    }
+
+    private static @Nullable Vector3d unit(@Nullable Vector3d vector) {
+        return VectorUtils.safeNormalize(vector);
     }
 
     private static @Nullable Vector3d resolveHint(@Nullable Vector3d xHint) {
@@ -290,7 +295,10 @@ public final class FrameUtils {
         if (vector == null || !isUsableAxis(vector)) {
             return new Vector3d();
         }
-        return new Vector3d(vector).sub(new Vector3d(normal).mul(vector.dot(normal)));
+        double alongNormal = VectorUtils.safeDot(vector, normal);
+        Vector3d scaled = VectorUtils.safeScale(normal, alongNormal);
+        Vector3d projected = VectorUtils.safeSubtract(vector, scaled);
+        return projected == null ? new Vector3d() : projected;
     }
 
     private static Vector3d leastAlignedCardinal(Vector3d axis) {

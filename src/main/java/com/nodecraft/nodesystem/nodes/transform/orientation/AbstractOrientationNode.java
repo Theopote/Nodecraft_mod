@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared Valid/Error helpers for transform.orientation (Graph V77).
+ * Shared Valid/Error helpers for transform.orientation.
  */
 abstract class AbstractOrientationNode extends BaseNode {
 

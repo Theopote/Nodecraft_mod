@@ -17,7 +17,6 @@ import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -46,7 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Orientation Language v1 / Frame Handedness & Projected Path Validity v2 (Graph V99).
+ * Language fence for transform.orientation: six typed nodes, fail-closed lists, right-handed frames.
  */
 class OrientationLanguageContractTest {
 
@@ -70,13 +69,7 @@ class OrientationLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV77() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void exactlySixNodesWithUniqueOrdersZeroToFive() {
+    void orientationHasExactlySixCanonicalNodes() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("transform.orientation."))
             .sorted()
@@ -100,7 +93,7 @@ class OrientationLanguageContractTest {
     }
 
     @Test
-    void allNodesHaveValidAndErrorWithoutBannedPortTypes() {
+    void orientationNodesUseCurrentTypedLanguage() {
         List<String> errors = new ArrayList<>();
         for (String id : CANONICAL_IDS) {
             INode node = registry.createNodeInstance(id);

@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.datatypes;
 
 import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.PlaneUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
 import org.joml.Vector3d;
@@ -36,18 +37,25 @@ public class PlaneData {
      * Returns {@code null} when origin or normal is invalid.
      */
     public static @Nullable PlaneData canonical(@Nullable Vector3d origin, @Nullable Vector3d normal) {
-        if (!FrameUtils.isFinite(origin) || !PlaneUtils.isUsableNormal(normal)) {
+        if (!FrameUtils.isFinite(origin)) {
             return null;
         }
-        Vector3d normalizedNormal = new Vector3d(normal).normalize();
+        Vector3d normalizedNormal = VectorUtils.safeNormalize(normal);
+        if (normalizedNormal == null) {
+            return null;
+        }
         Vector3d canonicalOrigin = new Vector3d(origin);
+        double planeConstant = VectorUtils.safeDot(normalizedNormal, canonicalOrigin);
+        if (!Double.isFinite(planeConstant)) {
+            return null;
+        }
         return new PlaneData(
                 canonicalOrigin,
                 new Vector4d(
                         normalizedNormal.x,
                         normalizedNormal.y,
                         normalizedNormal.z,
-                        -normalizedNormal.dot(canonicalOrigin))
+                        -planeConstant)
         );
     }
 
@@ -58,20 +66,20 @@ public class PlaneData {
         if (equation == null) {
             return null;
         }
-        double nx = equation.x;
-        double ny = equation.y;
-        double nz = equation.z;
-        double normalLengthSq = nx * nx + ny * ny + nz * nz;
-        if (!Double.isFinite(normalLengthSq) || normalLengthSq <= PlaneUtils.EPS_SQ) {
+        Vector3d normal = new Vector3d(equation.x, equation.y, equation.z);
+        double length = VectorUtils.safeLength(normal);
+        if (!Double.isFinite(length) || length <= PlaneUtils.EPS) {
             return null;
         }
-        double invLength = 1.0d / Math.sqrt(normalLengthSq);
-        Vector4d normalized = new Vector4d(
-                nx * invLength,
-                ny * invLength,
-                nz * invLength,
-                equation.w * invLength
-        );
+        Vector3d unit = VectorUtils.normalizeByLength(normal, length);
+        if (unit == null || !Double.isFinite(equation.w)) {
+            return null;
+        }
+        double scaledW = equation.w / length;
+        if (!Double.isFinite(scaledW)) {
+            return null;
+        }
+        Vector4d normalized = new Vector4d(unit.x, unit.y, unit.z, scaledW);
         Vector3d reconstructedOrigin = reconstructAnyPoint(normalized);
         if (!FrameUtils.isFinite(reconstructedOrigin)) {
             return null;

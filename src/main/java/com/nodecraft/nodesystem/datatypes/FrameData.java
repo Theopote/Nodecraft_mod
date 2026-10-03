@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -13,7 +14,8 @@ import java.util.Objects;
  * FRAME is orientation only — not scale/shear. Prefer {@link #orthonormal} /
  * {@link #orthonormalized()} at construction boundaries; placement uses
  * {@link #toRotationMatrix()} so local {@code (1,0,0)/(0,1,0)/(0,0,1)} map to
- * frame X/Y/Z.
+ * frame X/Y/Z. The public copy constructor does not canonicalize; list ingest
+ * uses {@link #isCanonical()}.
  */
 public class FrameData {
     private static final double EPS = 1.0e-12d;
@@ -42,37 +44,39 @@ public class FrameData {
         if (origin == null || xIn == null || yIn == null) {
             return null;
         }
-        if (!isFinite(origin) || !isFinite(xIn) || !isFinite(yIn)) {
+        if (!VectorUtils.isFinite(origin)) {
             return null;
         }
-        Vector3d x = new Vector3d(xIn);
-        if (x.lengthSquared() <= EPS) {
+        Vector3d x = VectorUtils.safeNormalize(xIn);
+        if (x == null) {
             return null;
         }
-        x.normalize();
 
-        Vector3d y = new Vector3d(yIn).sub(new Vector3d(x).mul(x.dot(yIn)));
-        if (y.lengthSquared() <= EPS) {
-            Vector3d hint = zHint != null && isFinite(zHint) && zHint.lengthSquared() > EPS
-                ? new Vector3d(zHint)
-                : leastAlignedCardinal(x);
-            y = new Vector3d(hint).cross(x);
-            if (y.lengthSquared() <= EPS) {
+        double yDotX = VectorUtils.safeDot(yIn, x);
+        Vector3d y = null;
+        if (Double.isFinite(yDotX)) {
+            y = VectorUtils.safeNormalize(VectorUtils.safeSubtract(yIn, VectorUtils.safeScale(x, yDotX)));
+        }
+        if (y == null) {
+            Vector3d hint = VectorUtils.isNonZero(zHint) ? new Vector3d(zHint) : leastAlignedCardinal(x);
+            y = VectorUtils.safeNormalize(VectorUtils.safeCross(hint, x));
+            if (y == null) {
                 return null;
             }
         }
-        y.normalize();
 
-        Vector3d z = new Vector3d(x).cross(y);
-        if (z.lengthSquared() <= EPS) {
+        Vector3d z = VectorUtils.safeNormalize(VectorUtils.safeCross(x, y));
+        if (z == null) {
             return null;
         }
-        z.normalize();
 
         // Prefer matching the caller's Z handedness hint when it clearly flips the basis.
-        if (zHint != null && isFinite(zHint) && zHint.lengthSquared() > EPS && z.dot(zHint) < 0.0d) {
-            y.negate();
-            z.negate();
+        if (VectorUtils.isNonZero(zHint)) {
+            double alignment = VectorUtils.safeDot(z, zHint);
+            if (Double.isFinite(alignment) && alignment < 0.0d) {
+                y.negate();
+                z.negate();
+            }
         }
 
         return new FrameData(origin, x, y, z);
@@ -81,6 +85,24 @@ public class FrameData {
     /** Returns an orthonormal right-handed copy of this frame, or {@code null} if degenerate. */
     public @Nullable FrameData orthonormalized() {
         return orthonormal(origin, xAxis, yAxis, zAxis);
+    }
+
+    /**
+     * True when origin is finite and axes are finite unit, pairwise orthogonal, and right-handed.
+     */
+    public boolean isCanonical() {
+        if (!VectorUtils.isFinite(origin)) {
+            return false;
+        }
+        if (!isUnit(xAxis) || !isUnit(yAxis) || !isUnit(zAxis)) {
+            return false;
+        }
+        if (!isOrthogonal(xAxis, yAxis) || !isOrthogonal(yAxis, zAxis) || !isOrthogonal(zAxis, xAxis)) {
+            return false;
+        }
+        Vector3d yCrossZ = VectorUtils.safeCross(yAxis, zAxis);
+        double triple = VectorUtils.safeDot(xAxis, yCrossZ);
+        return Double.isFinite(triple) && Math.abs(triple - 1.0d) <= EPS;
     }
 
     /**
@@ -133,8 +155,14 @@ public class FrameData {
         return new Vector3d(0.0d, 0.0d, 1.0d);
     }
 
-    private static boolean isFinite(Vector3d vector) {
-        return Double.isFinite(vector.x) && Double.isFinite(vector.y) && Double.isFinite(vector.z);
+    private static boolean isUnit(Vector3d axis) {
+        double length = VectorUtils.safeLength(axis);
+        return Double.isFinite(length) && Math.abs(length - 1.0d) <= EPS;
+    }
+
+    private static boolean isOrthogonal(Vector3d a, Vector3d b) {
+        double dot = VectorUtils.safeDot(a, b);
+        return Double.isFinite(dot) && Math.abs(dot) <= EPS;
     }
 
     @Override

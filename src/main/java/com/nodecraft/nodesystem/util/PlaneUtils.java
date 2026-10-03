@@ -20,7 +20,7 @@ public final class PlaneUtils {
     }
 
     public static boolean isUsableNormal(@Nullable Vector3d normal) {
-        return isFinite(normal) && normal.lengthSquared() > EPS_SQ;
+        return VectorUtils.isNonZero(normal);
     }
 
     public static @Nullable PlaneData fromOriginNormal(@Nullable Vector3d origin, @Nullable Vector3d normal) {
