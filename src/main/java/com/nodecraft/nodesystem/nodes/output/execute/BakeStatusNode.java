@@ -21,10 +21,10 @@ import java.util.UUID;
  * Monitors an async bake task submitted by {@link ApplyChangesNode} or undo/redo nodes.
  */
 @NodeInfo(
-    effect = NodeEffect.UI_EFFECT,
+    effect = NodeEffect.CONTEXT_READ,
     id = "output.execute.bake_status",
     displayName = "Bake Status",
-    description = "Polls BakePlacementService for a task ID and reports state, progress, placed, skipped, and rollback-failed counts.",
+    description = "Polls BakePlacementService for a task ID owned by the current actor and reports state, progress, placed, skipped, and rollback-failed counts.",
     category = "output.execute",
     order = 1
 )
@@ -45,7 +45,6 @@ public class BakeStatusNode extends BaseCustomUINode {
     private volatile int remainingCount = 0;
     private volatile String statusMessage = "Provide a Task ID";
 
-    private static final String INPUT_TRIGGER_ID = "input_trigger";
     private static final String INPUT_TASK_ID_ID = "input_task_id";
 
     private static final String OUTPUT_FOUND_ID = "output_found";
@@ -57,10 +56,11 @@ public class BakeStatusNode extends BaseCustomUINode {
     private static final String OUTPUT_TOTAL_ID = "output_total";
     private static final String OUTPUT_REMAINING_ID = "output_remaining";
     private static final String OUTPUT_STATUS_ID = "output_status";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public BakeStatusNode() {
         super(UUID.randomUUID(), "output.execute.bake_status");
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional poll trigger", NodeDataType.ANY, this));
         addInputPort(new BasePort(INPUT_TASK_ID_ID, "Task ID", "Bake task UUID from Apply Changes", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the task snapshot was found", NodeDataType.BOOLEAN, this));
@@ -72,21 +72,16 @@ public class BakeStatusNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_TOTAL_ID, "Total", "Total blocks in the task", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_REMAINING_ID, "Remaining", "Blocks remaining in the task", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Human-readable bake status", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the Task ID is well-formed and readable by this actor", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why status could not be read", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object triggerObj = inputValues.get(INPUT_TRIGGER_ID);
         Object taskIdObj = inputValues.get(INPUT_TASK_ID_ID);
-
-        if (triggerObj == null && taskIdObj == null) {
-            publishIdle("Waiting for Task ID");
-            return;
-        }
-
         String taskIdText = normalizeTaskId(taskIdObj);
         if (taskIdText.isEmpty()) {
-            publishIdle("Missing Task ID");
+            publishIdle("Waiting for Task ID", true, "");
             return;
         }
 
@@ -94,13 +89,38 @@ public class BakeStatusNode extends BaseCustomUINode {
         try {
             taskId = UUID.fromString(taskIdText);
         } catch (IllegalArgumentException e) {
-            publishNotFound("Invalid Task ID: " + taskIdText);
+            publishIdle("Invalid Task ID", false, "Invalid Task ID");
             return;
         }
 
-        BakePlacementService.TaskSnapshot snapshot = BakePlacementService.getInstance().getTaskSnapshot(taskId);
+        BakePlacementService service = BakePlacementService.getInstance();
+        BakePlacementService.TaskSnapshot snapshot = service.getTaskSnapshot(taskId);
         if (snapshot == null) {
-            publishNotFound("Task not found: " + taskId);
+            found = false;
+            state = "Not Found";
+            progress = 0.0f;
+            placedCount = 0;
+            skippedCount = 0;
+            rollbackFailedCount = 0;
+            totalCount = 0;
+            remainingCount = 0;
+            statusMessage = "Task not found: " + taskId;
+            publishOutputs(true, "");
+            return;
+        }
+
+        UUID actorId = BakePlacementService.resolveActorId(context != null ? context.getPlayer() : null);
+        if (!service.canAccessTask(actorId, taskId)) {
+            found = false;
+            state = "Not Found";
+            progress = 0.0f;
+            placedCount = 0;
+            skippedCount = 0;
+            rollbackFailedCount = 0;
+            totalCount = 0;
+            remainingCount = 0;
+            statusMessage = "Task is not owned by the current actor";
+            publishOutputs(false, "Task is not owned by the current actor");
             return;
         }
 
@@ -113,19 +133,10 @@ public class BakeStatusNode extends BaseCustomUINode {
         totalCount = snapshot.totalCount();
         remainingCount = snapshot.remainingCount();
         statusMessage = formatStatus(snapshot);
-
-        outputValues.put(OUTPUT_FOUND_ID, true);
-        outputValues.put(OUTPUT_STATE_ID, state);
-        outputValues.put(OUTPUT_PROGRESS_ID, progress);
-        outputValues.put(OUTPUT_PLACED_ID, placedCount);
-        outputValues.put(OUTPUT_SKIPPED_ID, skippedCount);
-        outputValues.put(OUTPUT_ROLLBACK_FAILED_ID, rollbackFailedCount);
-        outputValues.put(OUTPUT_TOTAL_ID, totalCount);
-        outputValues.put(OUTPUT_REMAINING_ID, remainingCount);
-        outputValues.put(OUTPUT_STATUS_ID, statusMessage);
+        publishOutputs(true, "");
     }
 
-    private void publishIdle(String message) {
+    private void publishIdle(String message, boolean valid, String error) {
         found = false;
         state = "Idle";
         progress = 0.0f;
@@ -135,23 +146,10 @@ public class BakeStatusNode extends BaseCustomUINode {
         totalCount = 0;
         remainingCount = 0;
         statusMessage = message;
-        publishOutputs();
+        publishOutputs(valid, error);
     }
 
-    private void publishNotFound(String message) {
-        found = false;
-        state = "Not Found";
-        progress = 0.0f;
-        placedCount = 0;
-        skippedCount = 0;
-        rollbackFailedCount = 0;
-        totalCount = 0;
-        remainingCount = 0;
-        statusMessage = message;
-        publishOutputs();
-    }
-
-    private void publishOutputs() {
+    private void publishOutputs(boolean valid, String error) {
         outputValues.put(OUTPUT_FOUND_ID, found);
         outputValues.put(OUTPUT_STATE_ID, state);
         outputValues.put(OUTPUT_PROGRESS_ID, progress);
@@ -161,6 +159,8 @@ public class BakeStatusNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_TOTAL_ID, totalCount);
         outputValues.put(OUTPUT_REMAINING_ID, remainingCount);
         outputValues.put(OUTPUT_STATUS_ID, statusMessage);
+        outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     private static String normalizeTaskId(@Nullable Object taskIdObj) {

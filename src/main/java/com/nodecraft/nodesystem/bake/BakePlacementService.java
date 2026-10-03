@@ -764,7 +764,7 @@ public class BakePlacementService {
         if (snapshot == null) {
             return false;
         }
-        return resolved.equals(snapshot.actorId());
+        return resolveActorId(actorId).equals(snapshot.actorId());
     }
 
     private record HistoryKey(UUID actorId, String worldKey) {

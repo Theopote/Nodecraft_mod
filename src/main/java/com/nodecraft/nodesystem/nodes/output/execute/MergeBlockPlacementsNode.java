@@ -78,11 +78,23 @@ public class MergeBlockPlacementsNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of merged placements", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort("output_duplicate_count", "Duplicate Count", "Number of duplicate positions encountered while merging", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort("output_conflict_count", "Conflict Count", "Number of duplicate positions whose block id or state data differed", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort("output_input_count", "Input Count", "Total placement entries read from connected inputs before merge", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort("output_skipped_invalid_count", "Skipped Invalid Count", "Invalid tree items skipped while merging", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort("output_valid", "Valid", "Whether merge preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort("output_error", "Error", "Why merge failed", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        MergeResult mergeResult = lastWins ? mergeWithOverwrite() : mergeByConcatenation();
+        CollectResult collected = collectPlacementEntries();
+        if (!collected.valid()) {
+            publishInvalid(collected.error());
+            return;
+        }
+
+        MergeResult mergeResult = lastWins
+            ? mergeWithOverwrite(collected.entries())
+            : mergeByConcatenation(collected.entries());
         List<BlockPlacementData> merged = mergeResult.placements();
         BlockPosList positions = new BlockPosList();
         List<String> blockIds = new ArrayList<>(merged.size());
@@ -101,15 +113,33 @@ public class MergeBlockPlacementsNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, merged.size());
         outputValues.put("output_duplicate_count", mergeResult.duplicateCount());
         outputValues.put("output_conflict_count", mergeResult.conflictCount());
+        outputValues.put("output_input_count", collected.inputCount());
+        outputValues.put("output_skipped_invalid_count", collected.skippedInvalidCount());
+        outputValues.put("output_valid", true);
+        outputValues.put("output_error", "");
     }
 
-    private MergeResult mergeByConcatenation() {
+    private void publishInvalid(String error) {
+        outputValues.put(OUTPUT_PLACEMENTS_ID, List.of());
+        outputValues.put(OUTPUT_PLACEMENTS_TREE_ID, new DataTreeData(List.of()));
+        outputValues.put(OUTPUT_POSITIONS_ID, new BlockPosList());
+        outputValues.put(OUTPUT_BLOCK_IDS_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put("output_duplicate_count", 0);
+        outputValues.put("output_conflict_count", 0);
+        outputValues.put("output_input_count", 0);
+        outputValues.put("output_skipped_invalid_count", 0);
+        outputValues.put("output_valid", false);
+        outputValues.put("output_error", error == null ? "" : error);
+    }
+
+    private MergeResult mergeByConcatenation(List<PlacementEntry> entries) {
         List<PlacementEntry> merged = new ArrayList<>();
         int duplicateCount = 0;
         int conflictCount = 0;
         Map<BlockPos, BlockPlacementData> seen = new HashMap<>();
 
-        for (PlacementEntry entry : collectPlacementEntries()) {
+        for (PlacementEntry entry : entries) {
             BlockPlacementData placement = entry.placement();
             BlockPlacementData existing = seen.get(placement.pos());
             if (existing != null) {
@@ -125,12 +155,12 @@ public class MergeBlockPlacementsNode extends BaseNode {
         return new MergeResult(toPlacements(merged), buildPlacementTree(merged), duplicateCount, conflictCount);
     }
 
-    private MergeResult mergeWithOverwrite() {
+    private MergeResult mergeWithOverwrite(List<PlacementEntry> entries) {
         Map<BlockPos, PlacementEntry> merged = new LinkedHashMap<>();
         int duplicateCount = 0;
         int conflictCount = 0;
 
-        for (PlacementEntry entry : collectPlacementEntries()) {
+        for (PlacementEntry entry : entries) {
             BlockPlacementData placement = entry.placement();
             PlacementEntry existingEntry = merged.get(placement.pos());
             if (existingEntry != null) {

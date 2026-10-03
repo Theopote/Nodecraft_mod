@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 public class BakeHistory {
 
-    private static final int MAX_UNDO_STACK_SIZE = 32;
+    public static final int MAX_UNDO_STACK_SIZE = 32;
 
     private final List<UndoRecord> undoStack = new ArrayList<>();
     private final List<UndoRecord> redoStack = new ArrayList<>();
@@ -67,6 +67,10 @@ public class BakeHistory {
 
     public UndoRecord peek() {
         return undoStack.isEmpty() ? null : undoStack.getLast();
+    }
+
+    public UndoRecord peekRedo() {
+        return redoStack.isEmpty() ? null : redoStack.getLast();
     }
 
     /**

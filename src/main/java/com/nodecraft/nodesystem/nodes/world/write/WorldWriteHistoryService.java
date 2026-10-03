@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.world.write;
 import com.nodecraft.nodesystem.bake.BakeHistory;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -107,12 +108,30 @@ public final class WorldWriteHistoryService {
         BakePlacementService.getInstance().clearHistory(actorId);
     }
 
-    static void trimUndoStack(List<BakeHistory.UndoRecord> stack) {
-        BakeHistory.snapshotCount(stack);
+    /**
+     * Facade helper matching BakeHistory.push / trimUndoStack(undoStack) record and block caps.
+     */
+    static void trimUndoStack(List<UndoRecord> stack) {
+        if (stack == null) {
+            return;
+        }
+        while (stack.size() > BakeHistory.MAX_UNDO_STACK_SIZE && !stack.isEmpty()) {
+            stack.removeFirst();
+        }
+        while (snapshotCount(stack) > GenerationLimits.MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR && !stack.isEmpty()) {
+            stack.removeFirst();
+        }
     }
 
-    static int snapshotCount(List<BakeHistory.UndoRecord> stack) {
-        return BakeHistory.snapshotCount(stack);
+    static int snapshotCount(List<UndoRecord> stack) {
+        if (stack == null) {
+            return 0;
+        }
+        int total = 0;
+        for (UndoRecord record : stack) {
+            total += record.size();
+        }
+        return total;
     }
 
     public record UndoApplyResult(boolean success, boolean complete, int successCount, int failureCount, String error) {

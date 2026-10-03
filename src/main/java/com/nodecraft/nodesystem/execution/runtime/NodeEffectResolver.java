@@ -20,7 +20,7 @@ public final class NodeEffectResolver {
             "output.execute.clear_preview", NodeEffect.PREVIEW_WRITE,
             "world.write.peek_last_undo", NodeEffect.CONTEXT_READ,
             "world.write.clear_undo_history", NodeEffect.CONTEXT_WRITE,
-            "output.execute.bake_status", NodeEffect.UI_EFFECT
+            "output.execute.bake_status", NodeEffect.CONTEXT_READ
     );
 
     private NodeEffectResolver() {
