@@ -1,8 +1,11 @@
 package com.nodecraft.nodesystem.bake;
 
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -142,7 +145,9 @@ public class BakeHistory {
         for (int i = 0; i < undoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
                 undoRecord.getPositions().get(i),
-                undoRecord.getPreviousStates().get(i)
+                undoRecord.getPreviousStates().get(i),
+                undoRecord.getPreviousNbt().get(i),
+                false
             ));
         }
 
@@ -186,7 +191,9 @@ public class BakeHistory {
         for (int i = 0; i < redoRecord.size(); i++) {
             placements.add(new BakeTask.Placement(
                 redoRecord.getPositions().get(i),
-                redoRecord.getPreviousStates().get(i)
+                redoRecord.getPreviousStates().get(i),
+                redoRecord.getPreviousNbt().get(i),
+                false
             ));
         }
 
@@ -226,9 +233,23 @@ public class BakeHistory {
     }
 
     private void trim(List<UndoRecord> stack) {
-        while (stack.size() > MAX_UNDO_STACK_SIZE) {
+        while (stack.size() > MAX_UNDO_STACK_SIZE && !stack.isEmpty()) {
             stack.removeFirst();
         }
+        while (snapshotCount(stack) > GenerationLimits.MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR && !stack.isEmpty()) {
+            stack.removeFirst();
+        }
+    }
+
+    static int snapshotCount(List<UndoRecord> stack) {
+        if (stack == null) {
+            return 0;
+        }
+        int total = 0;
+        for (UndoRecord record : stack) {
+            total += record.size();
+        }
+        return total;
     }
 
     private static BlockStateAccess worldAccess(World world) {
@@ -351,33 +372,30 @@ public class BakeHistory {
         }
     }
 
-    public static class UndoRecord {
+        public static class UndoRecord {
         private final UUID bakeId;
-        /** First-write-wins original states; preserves insertion order for apply/async enqueue. */
-        private final LinkedHashMap<BlockPos, BlockState> originalStates = new LinkedHashMap<>();
+        /** First-write-wins original cells; preserves insertion order for apply/async enqueue. */
+        private final LinkedHashMap<BlockPos, Cell> originalStates = new LinkedHashMap<>();
 
         public UndoRecord(UUID bakeId) {
             this.bakeId = bakeId;
         }
 
-        /**
-         * Creates a non-empty record for stack-semantics unit tests without bootstrapping MC registries.
-         */
         static UndoRecord syntheticForStackTest(UUID bakeId) {
             UndoRecord record = new UndoRecord(bakeId);
-            record.originalStates.put(BlockPos.ORIGIN, null);
+            record.originalStates.put(BlockPos.ORIGIN, new Cell(null, null));
             return record;
         }
 
-        /**
-         * Records the pre-transaction state for {@code pos}. Subsequent calls for the same
-         * position are ignored so history stores transaction-start state only.
-         */
         public void add(BlockPos pos, BlockState previousState) {
+            add(pos, previousState, null);
+        }
+
+        public void add(BlockPos pos, BlockState previousState, @Nullable NbtCompound previousNbt) {
             if (pos == null || previousState == null) {
                 return;
             }
-            originalStates.putIfAbsent(pos.toImmutable(), previousState);
+            originalStates.putIfAbsent(pos.toImmutable(), new Cell(previousState, previousNbt));
         }
 
         public int size() {
@@ -397,8 +415,12 @@ public class BakeHistory {
         }
 
         UndoApplyResult applyAndCaptureInverseStrict(BlockStateAccess access) {
+            LinkedHashMap<BlockPos, BlockState> states = new LinkedHashMap<>();
+            for (Map.Entry<BlockPos, Cell> entry : originalStates.entrySet()) {
+                states.put(entry.getKey(), entry.getValue().state());
+            }
             TransactionalApply.Result<BlockState> applied = TransactionalApply.applyAllOrRollback(
-                    originalStates,
+                    states,
                     access::getBlockState,
                     access::setBlockState);
             if (!applied.fullySucceeded() || applied.restoredCount() != size()) {
@@ -424,7 +446,25 @@ public class BakeHistory {
         }
 
         public List<BlockState> getPreviousStates() {
-            return List.copyOf(originalStates.values());
+            List<BlockState> states = new ArrayList<>(originalStates.size());
+            for (Cell cell : originalStates.values()) {
+                states.add(cell.state());
+            }
+            return List.copyOf(states);
+        }
+
+        public List<NbtCompound> getPreviousNbt() {
+            List<NbtCompound> nbts = new ArrayList<>(originalStates.size());
+            for (Cell cell : originalStates.values()) {
+                nbts.add(cell.nbt());
+            }
+            return List.copyOf(nbts);
+        }
+
+        private record Cell(@Nullable BlockState state, @Nullable NbtCompound nbt) {
+            private Cell {
+                nbt = nbt == null ? null : nbt.copy();
+            }
         }
     }
 }

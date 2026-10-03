@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.bake.BakeHistory;
 import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -16,8 +17,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.undo_last_bake",
-    displayName = "Undo Last Bake",
-    description = "Reverts the most recent recorded bake or apply-changes operation",
+    displayName = "Undo Last Change",
+    description = "Reverts the most recent recorded world mutation (Apply Changes or world.write blocks) from the unified history stack",
     category = "output.execute",
     order = 2
 )
@@ -57,7 +58,10 @@ public class UndoLastBakeNode extends BaseCustomUINode {
         int restoredCount = 0;
         UUID actorId = context != null ? BakePlacementService.resolveActorId(context.getPlayer()) : BakePlacementService.SERVER_ACTOR_ID;
         BakePlacementService service = BakePlacementService.getInstance();
-        int remainingHistory = service.getHistory(actorId).size();
+        BakeHistory history = context != null
+            ? service.getHistory(actorId, context.getWorld())
+            : service.getHistory(actorId);
+        int remainingHistory = history.size();
         String status = "No undo executed";
         String taskId = "";
 
@@ -65,16 +69,18 @@ public class UndoLastBakeNode extends BaseCustomUINode {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
             } else {
-                BakeHistory history = service.getHistory(actorId);
                 BakeHistory.UndoRecord record = history.peek();
 
                 if (record == null) {
-                    status = "No recorded bake history";
+                    status = "No recorded mutation history";
                 } else {
                     restoredCount = record.size();
 
-                    if (useAsync) {
-                        // Use async undo - prevents server lag on large builds
+                    if (!useAsync && restoredCount > GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS) {
+                        status = "Sync undo exceeds MAX_SYNC_WORLD_WRITE_BLOCKS ("
+                            + GenerationLimits.MAX_SYNC_WORLD_WRITE_BLOCKS + "); use async";
+                        restoredCount = 0;
+                    } else if (useAsync) {
                         UUID undoTaskId = service.undoLastAsync(actorId, context.getWorld());
                         success = undoTaskId != null;
                         remainingHistory = history.size();
@@ -87,11 +93,10 @@ public class UndoLastBakeNode extends BaseCustomUINode {
                             restoredCount = 0;
                         }
                     } else {
-                        // Use sync undo - WARNING: can cause lag on large builds
                         success = service.undoLast(actorId, context.getWorld());
                         remainingHistory = history.size();
                         status = success
-                            ? "Restored " + restoredCount + " blocks (sync)"
+                            ? "Restored " + restoredCount + " blocks (sync; waited for terminal bake state)"
                             : "Undo failed";
                         if (!success) {
                             restoredCount = 0;

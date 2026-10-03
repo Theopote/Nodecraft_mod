@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
@@ -14,6 +15,8 @@ import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -145,11 +148,11 @@ public class FillRegionNode extends BaseNode {
 
         BlockPos minCorner = region.getMinCorner();
         BlockPos maxCorner = region.getMaxCorner();
-        int flags = WorldWriteUtils.flags(notify);
-        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
+        List<BakeTask.Placement> placements = new ArrayList<>();
         BlockPosList coordinates = new BlockPosList();
         int affectedBlocks = 0;
         int totalCount = 0;
+        int skippedUnloaded = 0;
 
         for (BlockPos mutablePos : BlockPos.iterate(minCorner, maxCorner)) {
             totalCount++;
@@ -159,48 +162,30 @@ public class FillRegionNode extends BaseNode {
             }
             if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
                 affectedBlocks++;
-                tx.recordFailure();
+                skippedUnloaded++;
                 continue;
             }
             if (excludeAirValue && context.getWorld().isAir(pos)) {
                 continue;
             }
-
             affectedBlocks++;
-            try {
-                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
-                if (before == null) {
-                    tx.recordFailure();
-                    continue;
-                }
-                if (dropItems && !before.state().isAir()) {
-                    context.getWorld().breakBlock(pos, true);
-                }
-                boolean success = context.getWorld().setBlockState(pos, targetState, flags);
-                if (success) {
-                    tx.recordSuccess(before);
-                    coordinates.add(pos);
-                } else {
-                    tx.recordFailure();
-                }
-            } catch (Exception e) {
-                tx.recordFailure();
-            }
+            coordinates.add(pos);
+            placements.add(WorldWriteBakeBridge.placement(pos, targetState));
         }
 
-        tx.pushIfNeeded(context, recordUndo);
-        String error = tx.failureCount() > 0 ? "Partial write: " + tx.failureCount() + " failure(s)" : "";
+        WorldWriteBakeBridge.Outcome outcome = WorldWriteBakeBridge.enqueueAndAwait(
+            context, placements, recordUndo, skippedUnloaded);
         publish(
-            tx.successCount(),
+            outcome.successCount(),
             affectedBlocks,
-            tx.successCount(),
-            tx.failureCount(),
+            outcome.successCount(),
+            outcome.failureCount(),
             totalCount,
             coordinates,
             true,
-            tx.hitLimit(),
-            tx.isComplete(),
-            error
+            false,
+            outcome.complete(),
+            outcome.error()
         );
     }
 

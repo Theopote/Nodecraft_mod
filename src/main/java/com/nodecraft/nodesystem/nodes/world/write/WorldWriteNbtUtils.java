@@ -10,12 +10,13 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-final class WorldWriteNbtUtils {
+public final class WorldWriteNbtUtils {
 
     static final String INPUT_NBT_ID = "input_nbt";
     static final String INPUT_NBT_STRING_ID = "input_nbt_string";
@@ -180,10 +181,15 @@ final class WorldWriteNbtUtils {
         return success;
     }
 
-    static @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, @Nullable ExecutionContext context) {
-        Object lookup = context != null && context.getWorld() != null
-            ? context.getWorld().getRegistryManager()
-            : null;
+    public static @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, @Nullable ExecutionContext context) {
+        return extractBlockEntityNbt(blockEntity, context != null ? context.getWorld() : null);
+    }
+
+    public static @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, @Nullable World world) {
+        if (blockEntity == null) {
+            return null;
+        }
+        Object lookup = world != null ? world.getRegistryManager() : null;
         Method[] methods = blockEntity.getClass().getMethods();
         for (Method method : methods) {
             if (!method.getName().startsWith("createNbt")) {
@@ -203,10 +209,15 @@ final class WorldWriteNbtUtils {
         return null;
     }
 
-    static boolean applyBlockEntityNbt(BlockEntity blockEntity, NbtCompound nbt, @Nullable ExecutionContext context) {
-        Object lookup = context != null && context.getWorld() != null
-            ? context.getWorld().getRegistryManager()
-            : null;
+    public static boolean applyBlockEntityNbt(BlockEntity blockEntity, NbtCompound nbt, @Nullable ExecutionContext context) {
+        return applyBlockEntityNbt(blockEntity, nbt, context != null ? context.getWorld() : null);
+    }
+
+    public static boolean applyBlockEntityNbt(BlockEntity blockEntity, NbtCompound nbt, @Nullable World world) {
+        if (blockEntity == null || nbt == null) {
+            return false;
+        }
+        Object lookup = world != null ? world.getRegistryManager() : null;
         Method[] methods = blockEntity.getClass().getMethods();
         for (Method method : methods) {
             String name = method.getName();
@@ -228,5 +239,32 @@ final class WorldWriteNbtUtils {
             }
         }
         return false;
+    }
+
+    public static boolean applyToBlockEntity(World world,
+                                             BlockPos pos,
+                                             NbtCompound incoming,
+                                             boolean merge,
+                                             boolean notify) {
+        if (world == null || pos == null || incoming == null) {
+            return false;
+        }
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity == null) {
+            return false;
+        }
+        NbtCompound current = extractBlockEntityNbt(blockEntity, world);
+        NbtCompound target = merge && current != null ? mergeNbt(current.copy(), incoming) : incoming.copy();
+        target.putInt("x", pos.getX());
+        target.putInt("y", pos.getY());
+        target.putInt("z", pos.getZ());
+        boolean success = applyBlockEntityNbt(blockEntity, target, world);
+        if (success) {
+            blockEntity.markDirty();
+            if (notify) {
+                world.updateListeners(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
+            }
+        }
+        return success;
     }
 }

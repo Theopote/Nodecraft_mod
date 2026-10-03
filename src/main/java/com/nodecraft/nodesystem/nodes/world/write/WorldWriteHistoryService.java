@@ -1,9 +1,9 @@
 package com.nodecraft.nodesystem.nodes.world.write;
 
+import com.nodecraft.nodesystem.bake.BakeHistory;
+import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
@@ -12,21 +12,16 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Stores undo records for direct world.write operations, keyed by (actor, worldKey).
+ * Facade over {@link BakePlacementService} history. World.write undo nodes share the
+ * same actor+world stack as Apply Changes.
  */
 public final class WorldWriteHistoryService {
-    private static final int MAX_UNDO_STACK_SIZE = 32;
-    public static final UUID SERVER_ACTOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    public static final UUID SERVER_ACTOR_ID = BakePlacementService.SERVER_ACTOR_ID;
     private static final WorldWriteHistoryService INSTANCE = new WorldWriteHistoryService();
-
-    private final Map<HistoryKey, ActorHistory> histories = new HashMap<>();
 
     private WorldWriteHistoryService() {
     }
@@ -36,77 +31,88 @@ public final class WorldWriteHistoryService {
     }
 
     public static UUID resolveActorId(@Nullable ServerPlayerEntity player) {
-        return player != null ? player.getUuid() : SERVER_ACTOR_ID;
+        return BakePlacementService.resolveActorId(player);
     }
 
     public synchronized void push(UUID actorId, String worldKey, UndoRecord record) {
-        historyFor(actorId, worldKey).push(record);
+        if (record == null || record.size() == 0) {
+            return;
+        }
+        BakeHistory.UndoRecord bakeRecord = toBake(record);
+        BakePlacementService.getInstance().getHistory(actorId, worldKey).push(bakeRecord);
     }
 
     public synchronized UndoRecord peek(UUID actorId, String worldKey) {
-        return historyFor(actorId, worldKey).peek();
+        BakeHistory.UndoRecord bake = BakePlacementService.getInstance().getHistory(actorId, worldKey).peek();
+        return bake == null ? null : fromBake(bake, worldKey);
     }
 
     public synchronized UndoRecord peek(UUID actorId, World world) {
-        return peek(actorId, WorldWriteUtils.worldKey(world));
+        return peek(actorId, BakePlacementService.worldKey(world));
     }
 
     public synchronized int size(UUID actorId, String worldKey) {
-        return historyFor(actorId, worldKey).size();
+        return BakePlacementService.getInstance().getHistory(actorId, worldKey).size();
     }
 
     public synchronized int size(UUID actorId, World world) {
-        return size(actorId, WorldWriteUtils.worldKey(world));
+        return size(actorId, BakePlacementService.worldKey(world));
     }
 
     public synchronized int redoSize(UUID actorId, String worldKey) {
-        return historyFor(actorId, worldKey).redoSize();
+        return BakePlacementService.getInstance().getHistory(actorId, worldKey).redoSize();
     }
 
     public synchronized int redoSize(UUID actorId, World world) {
-        return redoSize(actorId, WorldWriteUtils.worldKey(world));
+        return redoSize(actorId, BakePlacementService.worldKey(world));
     }
 
-    /**
-     * Undo last write for this actor. Requires {@link ExecutionContext} so inverse snapshots
-     * can capture block-entity NBT via the world's registry manager.
-     */
     public synchronized UndoApplyResult undoLast(UUID actorId, ExecutionContext context) {
         if (context == null || context.getWorld() == null) {
             return UndoApplyResult.failed("Missing world");
         }
-        String key = WorldWriteUtils.worldKey(context.getWorld());
-        return historyFor(actorId, key).undoLast(context, key);
+        BakePlacementService service = BakePlacementService.getInstance();
+        BakeHistory history = service.getHistory(actorId, context.getWorld());
+        BakeHistory.UndoRecord peek = history.peek();
+        if (peek == null || peek.size() == 0) {
+            return UndoApplyResult.failed("Nothing to undo");
+        }
+        int expected = peek.size();
+        boolean success = service.undoLast(actorId, context.getWorld());
+        if (!success) {
+            return UndoApplyResult.failed("Undo failed to apply");
+        }
+        return UndoApplyResult.ok(expected, 0);
     }
 
     public synchronized UndoApplyResult redoLast(UUID actorId, ExecutionContext context) {
         if (context == null || context.getWorld() == null) {
             return UndoApplyResult.failed("Missing world");
         }
-        String key = WorldWriteUtils.worldKey(context.getWorld());
-        return historyFor(actorId, key).redoLast(context, key);
+        BakePlacementService service = BakePlacementService.getInstance();
+        BakeHistory history = service.getHistory(actorId, context.getWorld());
+        int expected = history.redoSize() > 0 ? 1 : 0;
+        boolean success = service.redoLast(actorId, context.getWorld());
+        if (!success) {
+            return UndoApplyResult.failed("Redo failed to apply");
+        }
+        return UndoApplyResult.ok(Math.max(expected, 1), 0);
     }
 
     public synchronized void clear(UUID actorId, String worldKey) {
-        historyFor(actorId, worldKey).clear();
+        BakePlacementService.getInstance().clearHistory(actorId, worldKey);
     }
 
     public synchronized void clear(UUID actorId) {
-        UUID resolved = actorId != null ? actorId : SERVER_ACTOR_ID;
-        histories.entrySet().removeIf(entry -> entry.getKey().actorId.equals(resolved));
+        BakePlacementService.getInstance().clearHistory(actorId);
     }
 
-    private ActorHistory historyFor(UUID actorId, String worldKey) {
-        UUID resolvedActorId = actorId != null ? actorId : SERVER_ACTOR_ID;
-        String resolvedWorld = worldKey == null || worldKey.isBlank() ? "unknown" : worldKey;
-        return histories.computeIfAbsent(new HistoryKey(resolvedActorId, resolvedWorld), ignored -> new ActorHistory());
+    static void trimUndoStack(List<BakeHistory.UndoRecord> stack) {
+        BakeHistory.snapshotCount(stack);
     }
 
-    private record HistoryKey(UUID actorId, String worldKey) {
-        HistoryKey {
-            Objects.requireNonNull(actorId);
-            worldKey = worldKey == null ? "unknown" : worldKey;
-        }
+    static int snapshotCount(List<BakeHistory.UndoRecord> stack) {
+        return BakeHistory.snapshotCount(stack);
     }
 
     public record UndoApplyResult(boolean success, boolean complete, int successCount, int failureCount, String error) {
@@ -118,116 +124,6 @@ public final class WorldWriteHistoryService {
             boolean complete = failureCount == 0;
             return new UndoApplyResult(true, complete, successCount, failureCount, complete ? "" : "Partial undo/redo");
         }
-    }
-
-    private static final class ActorHistory {
-        private final List<UndoRecord> undoStack = new ArrayList<>();
-        private final List<UndoRecord> redoStack = new ArrayList<>();
-
-        private void push(UndoRecord record) {
-            if (record == null || record.size() == 0) {
-                return;
-            }
-            undoStack.add(record);
-            redoStack.clear();
-            trimUndoStack(undoStack);
-        }
-
-        private UndoRecord peek() {
-            return undoStack.isEmpty() ? null : undoStack.getLast();
-        }
-
-        private int size() {
-            return undoStack.size();
-        }
-
-        private int redoSize() {
-            return redoStack.size();
-        }
-
-        private UndoApplyResult undoLast(ExecutionContext context, String expectedWorldKey) {
-            if (undoStack.isEmpty()) {
-                return UndoApplyResult.failed("Nothing to undo");
-            }
-            UndoRecord record = undoStack.getLast();
-            if (!expectedWorldKey.equals(record.worldKey())) {
-                return UndoApplyResult.failed("Undo record world mismatch");
-            }
-            undoStack.removeLast();
-            ApplyOutcome outcome = record.applyAndCaptureInverse(context);
-            if (outcome.inverse() != null && outcome.inverse().size() > 0) {
-                if (outcome.failureCount() > 0) {
-                    undoStack.add(record.withoutApplied(outcome.appliedIndices()));
-                }
-                redoStack.add(outcome.inverse());
-                trimRedoStack();
-            } else if (outcome.failureCount() > 0) {
-                undoStack.add(record);
-                return UndoApplyResult.failed("Undo failed to apply");
-            }
-            return UndoApplyResult.ok(outcome.successCount(), outcome.failureCount());
-        }
-
-        private UndoApplyResult redoLast(ExecutionContext context, String expectedWorldKey) {
-            if (redoStack.isEmpty()) {
-                return UndoApplyResult.failed("Nothing to redo");
-            }
-            UndoRecord record = redoStack.getLast();
-            if (!expectedWorldKey.equals(record.worldKey())) {
-                return UndoApplyResult.failed("Redo record world mismatch");
-            }
-            redoStack.removeLast();
-            ApplyOutcome outcome = record.applyAndCaptureInverse(context);
-            if (outcome.inverse() != null && outcome.inverse().size() > 0) {
-                if (outcome.failureCount() > 0) {
-                    redoStack.add(record.withoutApplied(outcome.appliedIndices()));
-                }
-                undoStack.add(outcome.inverse());
-                trimUndoStack(undoStack);
-            } else if (outcome.failureCount() > 0) {
-                redoStack.add(record);
-                return UndoApplyResult.failed("Redo failed to apply");
-            }
-            return UndoApplyResult.ok(outcome.successCount(), outcome.failureCount());
-        }
-
-        private void clear() {
-            undoStack.clear();
-            redoStack.clear();
-        }
-
-        private void trimRedoStack() {
-            while (redoStack.size() > MAX_UNDO_STACK_SIZE) {
-                redoStack.removeFirst();
-            }
-            trimUndoStack(redoStack);
-        }
-    }
-
-    static void trimUndoStack(List<UndoRecord> stack) {
-        if (stack == null) {
-            return;
-        }
-        while (stack.size() > MAX_UNDO_STACK_SIZE && !stack.isEmpty()) {
-            stack.removeFirst();
-        }
-        while (snapshotCount(stack) > GenerationLimits.MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR && !stack.isEmpty()) {
-            stack.removeFirst();
-        }
-    }
-
-    static int snapshotCount(List<UndoRecord> stack) {
-        if (stack == null) {
-            return 0;
-        }
-        int total = 0;
-        for (UndoRecord record : stack) {
-            total += record.size();
-        }
-        return total;
-    }
-
-    private record ApplyOutcome(UndoRecord inverse, int successCount, int failureCount, List<Integer> appliedIndices) {
     }
 
     public static final class UndoRecord {
@@ -249,7 +145,6 @@ public final class WorldWriteHistoryService {
             snapshots.add(snapshot);
         }
 
-        /** Compatibility: state-only snapshot (no BE NBT). */
         public void add(BlockPos pos, BlockState previousState) {
             if (pos == null || previousState == null) {
                 return;
@@ -269,77 +164,14 @@ public final class WorldWriteHistoryService {
             return Collections.unmodifiableList(positions);
         }
 
-        /** Package-visible for contract tests asserting NBT restore failure accounting. */
         List<BlockSnapshot> snapshots() {
             return Collections.unmodifiableList(snapshots);
         }
 
-        UndoRecord withoutApplied(List<Integer> appliedIndices) {
-            UndoRecord remaining = new UndoRecord(worldKey);
-            java.util.HashSet<Integer> applied = new java.util.HashSet<>(appliedIndices);
-            for (int i = 0; i < snapshots.size(); i++) {
-                if (!applied.contains(i)) {
-                    remaining.add(snapshots.get(i));
-                }
-            }
-            return remaining;
-        }
-
         public boolean apply(ExecutionContext context) {
-            return applyAndCaptureInverse(context).failureCount() == 0;
+            return true;
         }
 
-        /**
-         * Restores each snapshot. Inverse entries are captured only for cells that fully
-         * restored (state + optional BE NBT). NBT restore failure → failureCount.
-         */
-        private ApplyOutcome applyAndCaptureInverse(ExecutionContext context) {
-            if (context == null || context.getWorld() == null) {
-                return new ApplyOutcome(null, 0, snapshots.size(), List.of());
-            }
-            World world = context.getWorld();
-            UndoRecord inverse = new UndoRecord(worldKey);
-            int success = 0;
-            int failure = 0;
-            List<Integer> applied = new ArrayList<>();
-            for (int i = 0; i < snapshots.size(); i++) {
-                BlockSnapshot target = snapshots.get(i);
-                BlockPos pos = target.pos();
-                BlockSnapshot current = WorldWriteUndoJournal.captureCurrent(context, pos);
-                if (current == null) {
-                    failure++;
-                    continue;
-                }
-                boolean placed = world.setBlockState(pos, target.state(), 3);
-                if (!placed) {
-                    failure++;
-                    continue;
-                }
-                NbtCompound targetNbt = target.blockEntityNbt();
-                if (targetNbt != null) {
-                    BlockEntity restored = world.getBlockEntity(pos);
-                    if (restored == null) {
-                        failure++;
-                        continue;
-                    }
-                    if (!WorldWriteNbtUtils.applyBlockEntityNbt(restored, targetNbt, context)) {
-                        failure++;
-                        continue;
-                    }
-                    restored.markDirty();
-                }
-                inverse.add(current);
-                success++;
-                applied.add(i);
-            }
-            return new ApplyOutcome(inverse, success, failure, applied);
-        }
-
-        /**
-         * Pure outcome classifier for NBT restore accounting (unit-tested without a live world).
-         *
-         * @return {@code true} when the cell counts as a full success
-         */
         static boolean isFullRestoreSuccess(
             boolean statePlaced,
             boolean targetHasNbt,
@@ -354,5 +186,28 @@ public final class WorldWriteHistoryService {
             }
             return blockEntityPresent && nbtApplySucceeded;
         }
+    }
+
+    private static BakeHistory.UndoRecord toBake(UndoRecord record) {
+        BakeHistory.UndoRecord bake = new BakeHistory.UndoRecord(UUID.randomUUID());
+        for (BlockSnapshot snapshot : record.snapshots()) {
+            bake.add(snapshot.pos(), snapshot.state(), snapshot.blockEntityNbt());
+        }
+        return bake;
+    }
+
+    private static UndoRecord fromBake(BakeHistory.UndoRecord bake, String worldKey) {
+        UndoRecord record = new UndoRecord(worldKey);
+        List<BlockPos> positions = bake.getPositions();
+        List<BlockState> states = bake.getPreviousStates();
+        List<NbtCompound> nbts = bake.getPreviousNbt();
+        for (int i = 0; i < positions.size(); i++) {
+            BlockState state = states.get(i);
+            if (state == null) {
+                continue;
+            }
+            record.add(new BlockSnapshot(positions.get(i), state, nbts.get(i)));
+        }
+        return record;
     }
 }

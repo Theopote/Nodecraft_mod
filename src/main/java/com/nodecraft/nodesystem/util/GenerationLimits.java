@@ -444,6 +444,18 @@ public final class GenerationLimits {
     /** Drop oldest undo records on push until total snapshots per actor+world stay at or below this. */
     public static final int MAX_UNDO_TOTAL_BLOCKS_PER_ACTOR = 262_144;
 
+    /** Aggregate BlockPlacement list/tree cap (aligned with bake / world.write history ceiling). */
+    public static final int MAX_BLOCK_PLACEMENTS = MAX_WORLD_WRITE_BLOCKS;
+
+    /** Hard cap for Apply Changes / bake blocks-per-tick property. */
+    public static final int MAX_BLOCKS_PER_TICK = 16_384;
+
+    /** Hard cap for Apply Changes tick budget in milliseconds. */
+    public static final int MAX_TICK_BUDGET_MS = 50;
+
+    /** Hard cap for Apply Changes sync await timeout in seconds. */
+    public static final int MAX_EXECUTION_TIMEOUT_SECONDS = 600;
+
     /** Hard safety ceiling for world.write Max Count entity mutate budgets. */
     public static final int MAX_WORLD_WRITE_ENTITIES = 4_096;
 

@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
@@ -16,7 +17,9 @@ import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -190,54 +193,35 @@ public class CloneRegionNode extends BaseNode {
             return;
         }
 
-        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
-        Map<BlockPos, BlockState> blocksToCopy = new HashMap<>();
+        List<BakeTask.Placement> placements = new ArrayList<>();
+        int skippedUnloaded = 0;
         int totalCount = 0;
+        Map<BlockPos, BlockState> blocksToCopy = new HashMap<>();
 
         for (BlockPos pos : BlockPos.iterate(sourceMinCorner, sourceMaxCorner)) {
             totalCount++;
             BlockPos immutablePos = pos.toImmutable();
-            try {
-                if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
-                    tx.recordFailure();
-                    continue;
-                }
-                BlockState blockState = context.getWorld().getBlockState(immutablePos);
-                boolean isAir = context.getWorld().isAir(immutablePos);
-                if (isAir && !includeAirValue) {
-                    continue;
-                }
-                if (cloneModeValue == CloneMode.MASKED && isAir) {
-                    continue;
-                }
-                blocksToCopy.put(getPos(destinationPos, immutablePos, sourceMinCorner), blockState);
-            } catch (Exception e) {
-                tx.recordFailure();
+            if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
+                skippedUnloaded++;
+                continue;
             }
+            BlockState blockState = context.getWorld().getBlockState(immutablePos);
+            boolean isAir = context.getWorld().isAir(immutablePos);
+            if (isAir && !includeAirValue) {
+                continue;
+            }
+            if (cloneModeValue == CloneMode.MASKED && isAir) {
+                continue;
+            }
+            blocksToCopy.put(getPos(destinationPos, immutablePos, sourceMinCorner), blockState);
         }
 
-        int flags = WorldWriteUtils.flags(notify);
         for (Map.Entry<BlockPos, BlockState> entry : blocksToCopy.entrySet()) {
-            BlockPos pos = entry.getKey();
-            try {
-                if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
-                    tx.recordFailure();
-                    continue;
-                }
-                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
-                if (before == null) {
-                    tx.recordFailure();
-                    continue;
-                }
-                boolean blockSuccess = context.getWorld().setBlockState(pos, entry.getValue(), flags);
-                if (blockSuccess) {
-                    tx.recordSuccess(before);
-                } else {
-                    tx.recordFailure();
-                }
-            } catch (Exception e) {
-                tx.recordFailure();
+            if (!WorldWriteUtils.isChunkLoaded(context, entry.getKey())) {
+                skippedUnloaded++;
+                continue;
             }
+            placements.add(WorldWriteBakeBridge.placement(entry.getKey(), entry.getValue()));
         }
 
         if (cloneModeValue == CloneMode.MOVE) {
@@ -247,41 +231,27 @@ public class CloneRegionNode extends BaseNode {
                 if (destinationRegion.contains(immutablePos)) {
                     continue;
                 }
-                try {
-                    if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
-                        tx.recordFailure();
-                        continue;
-                    }
-                    BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, immutablePos);
-                    if (before == null) {
-                        tx.recordFailure();
-                        continue;
-                    }
-                    boolean clearSuccess = context.getWorld().setBlockState(immutablePos, airState, flags);
-                    if (clearSuccess) {
-                        tx.recordSuccess(before);
-                    } else {
-                        tx.recordFailure();
-                    }
-                } catch (Exception e) {
-                    tx.recordFailure();
+                if (!WorldWriteUtils.isChunkLoaded(context, immutablePos)) {
+                    skippedUnloaded++;
+                    continue;
                 }
+                placements.add(WorldWriteBakeBridge.placement(immutablePos, airState));
             }
         }
 
-        tx.pushIfNeeded(context, recordUndo);
-        String error = tx.failureCount() > 0 ? "Partial write: " + tx.failureCount() + " failure(s)" : "";
+        WorldWriteBakeBridge.Outcome outcome = WorldWriteBakeBridge.enqueueAndAwait(
+            context, placements, recordUndo, skippedUnloaded);
         publish(
-            tx.successCount(),
-            tx.successCount(),
-            tx.failureCount(),
+            outcome.successCount(),
+            outcome.successCount(),
+            outcome.failureCount(),
             totalCount,
             destinationRegion,
-            tx.failureCount() == 0,
+            outcome.failureCount() == 0,
             true,
-            tx.hitLimit(),
-            tx.isComplete(),
-            error
+            false,
+            outcome.complete(),
+            outcome.error()
         );
     }
 

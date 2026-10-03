@@ -4,14 +4,16 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeTask;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.block.BlockState;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -124,53 +126,17 @@ public class SetBlockNode extends BaseNode {
             return;
         }
 
-        boolean success = false;
-        boolean nbtSuccess = false;
-        String error = "";
-        Object previousBlock = null;
-        BlockSnapshot before = null;
-
-        try {
-            before = WorldWriteUndoJournal.captureCurrent(context, pos);
-            if (before == null) {
-                publish(false, false, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR, null);
-                return;
-            }
-            previousBlock = before.state();
-            WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
-            int flags = WorldWriteUtils.flags(notify);
-            if (dropItems && !context.getWorld().isAir(pos)) {
-                context.getWorld().breakBlock(pos, true);
-            }
-            boolean placed = context.getWorld().setBlockState(pos, targetState, flags);
-            if (!placed) {
-                error = "World rejected block placement";
-                publish(false, false, true, error, previousBlock);
-                return;
-            }
-            NbtCompound incomingNbt = nbtResult.nbt();
-            if (incomingNbt != null) {
-                nbtSuccess = WorldWriteNbtUtils.applyToBlockEntity(
-                    context, pos, incomingNbt, mergeNbt, notify);
-                if (!nbtSuccess) {
-                    WorldWriteUndoJournal.restore(context, before);
-                    publish(false, false, true, "Failed to apply block entity NBT", previousBlock);
-                    return;
-                }
-            }
-            tx.recordSuccess(before);
-            tx.pushIfNeeded(context, recordUndo);
-            success = true;
-        } catch (Exception e) {
-            success = false;
-            nbtSuccess = false;
-            if (before != null) {
-                WorldWriteUndoJournal.restore(context, before);
-            }
-            error = "World write failed";
+        List<BakeTask.Placement> placements = List.of(
+            WorldWriteBakeBridge.placement(pos, targetState, nbtResult.nbt(), mergeNbt));
+        WorldWriteBakeBridge.Outcome outcome = WorldWriteBakeBridge.enqueueAndAwait(
+            context, placements, recordUndo, 0);
+        boolean success = outcome.successCount() > 0 && outcome.failureCount() == 0;
+        boolean nbtSuccess = nbtResult.nbt() == null || success;
+        String error = outcome.error();
+        if (!success && error.isBlank()) {
+            error = "World rejected block placement";
         }
-
-        publish(success, nbtSuccess, true, error, previousBlock);
+        publish(success, nbtSuccess, true, error, null);
     }
 
     private void publish(boolean success, boolean nbtSuccess, boolean valid, String error, Object previousBlock) {

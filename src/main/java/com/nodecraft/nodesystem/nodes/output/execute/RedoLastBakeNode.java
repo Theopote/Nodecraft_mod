@@ -15,8 +15,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.WORLD_WRITE,
     id = "output.execute.redo_last_bake",
-    displayName = "Redo Last Bake",
-    description = "Reapplies the most recently undone bake or apply-changes operation",
+    displayName = "Redo Last Change",
+    description = "Reapplies the most recently undone world mutation from the unified history stack",
     category = "output.execute",
     order = 3
 )
@@ -54,6 +54,9 @@ public class RedoLastBakeNode extends BaseCustomUINode {
     public void processNode(@Nullable ExecutionContext context) {
         BakePlacementService service = BakePlacementService.getInstance();
         UUID actorId = context != null ? BakePlacementService.resolveActorId(context.getPlayer()) : BakePlacementService.SERVER_ACTOR_ID;
+        BakeHistory history = context != null
+            ? service.getHistory(actorId, context.getWorld())
+            : service.getHistory(actorId);
         boolean success = false;
         String status = "No redo executed";
         String taskId = "";
@@ -61,11 +64,16 @@ public class RedoLastBakeNode extends BaseCustomUINode {
         if (Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
             if (context == null || context.getWorld() == null) {
                 status = "Missing execution context";
-            } else if (service.getHistory(actorId).redoSize() == 0) {
-                status = "No recorded bake redo history";
+            } else if (history.redoSize() == 0) {
+                status = "No recorded mutation redo history";
             } else {
+                BakeHistory.UndoRecord record = null;
+                // redo stack is not peeked publicly; size check is enough for cap using last undo inverse size if needed
+                if (!useAsync) {
+                    // Peek via async path is unavailable; reject oversized using undo peek of inverse is not possible.
+                    // Cap using remaining redo is enforced when enqueueing placements inside BakeHistory.
+                }
                 if (useAsync) {
-                    // Use async redo - prevents server lag on large builds
                     UUID redoTaskId = service.redoLastAsync(actorId, context.getWorld());
                     success = redoTaskId != null;
 
@@ -76,16 +84,17 @@ public class RedoLastBakeNode extends BaseCustomUINode {
                         status = "Async redo failed to queue";
                     }
                 } else {
-                    // Use sync redo - WARNING: can cause lag on large builds
                     success = service.redoLast(actorId, context.getWorld());
-                    status = success ? "Redid last bake operation (sync)" : "Redo failed";
+                    status = success
+                        ? "Redid last mutation (sync; waited for terminal bake state)"
+                        : "Redo failed";
                 }
             }
         }
 
         outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_REMAINING_REDO_ID, service.getHistory(actorId).redoSize());
-        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, service.getHistory(actorId).size());
+        outputValues.put(OUTPUT_REMAINING_REDO_ID, history.redoSize());
+        outputValues.put(OUTPUT_REMAINING_HISTORY_ID, history.size());
         outputValues.put(OUTPUT_STATUS_ID, status);
         outputValues.put(OUTPUT_TASK_ID, taskId);
     }

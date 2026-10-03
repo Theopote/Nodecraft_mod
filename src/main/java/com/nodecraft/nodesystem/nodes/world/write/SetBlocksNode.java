@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -13,6 +14,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -163,65 +165,32 @@ public class SetBlocksNode extends BaseNode {
             return;
         }
 
-        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
-        int flags = WorldWriteUtils.flags(notify);
-        int nbtSuccessCount = 0;
-        int totalCount = 0;
+        List<BakeTask.Placement> placements = new ArrayList<>();
+        int skippedUnloaded = 0;
         NbtCompound incomingNbt = nbtResult.nbt();
-
         for (int i = 0; i < coordinates.size(); i++) {
             BlockPos pos = coordinates.get(i);
-            totalCount++;
             BlockState targetState = sharedState != null ? sharedState : perPosStates.get(i);
-            try {
-                if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
-                    tx.recordFailure();
-                    continue;
-                }
-                BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
-                if (before == null) {
-                    tx.recordFailure();
-                    continue;
-                }
-                if (dropItems && !context.getWorld().isAir(pos)) {
-                    context.getWorld().breakBlock(pos, true);
-                }
-                boolean success = context.getWorld().setBlockState(pos, targetState, flags);
-                if (!success) {
-                    tx.recordFailure();
-                    continue;
-                }
-                if (incomingNbt != null) {
-                    if (WorldWriteNbtUtils.applyToBlockEntity(context, pos, incomingNbt, mergeNbt, notify)) {
-                        nbtSuccessCount++;
-                        tx.recordSuccess(before);
-                    } else {
-                        WorldWriteUndoJournal.restore(context, before);
-                        tx.recordFailure();
-                    }
-                } else {
-                    tx.recordSuccess(before);
-                }
-            } catch (Exception e) {
-                tx.recordFailure();
+            if (!WorldWriteUtils.isChunkLoaded(context, pos)) {
+                skippedUnloaded++;
+                continue;
             }
+            placements.add(WorldWriteBakeBridge.placement(pos, targetState, incomingNbt, mergeNbt));
         }
 
-        tx.pushIfNeeded(context, recordUndo);
-        String error = "";
-        if (tx.failureCount() > 0) {
-            error = "Partial write: " + tx.failureCount() + " failure(s)";
-        }
+        WorldWriteBakeBridge.Outcome outcome = WorldWriteBakeBridge.enqueueAndAwait(
+            context, placements, recordUndo, skippedUnloaded);
+        int nbtSuccessCount = incomingNbt != null && outcome.failureCount() == 0 ? outcome.successCount() : 0;
         publish(
-            tx.successCount(),
-            tx.failureCount(),
+            outcome.successCount(),
+            outcome.failureCount(),
             nbtSuccessCount,
-            totalCount,
+            outcome.totalCount(),
             true,
-            tx.hitLimit(),
-            tx.isComplete(),
-            tx.failureCount() == 0,
-            error
+            false,
+            outcome.complete(),
+            outcome.failureCount() == 0,
+            outcome.error()
         );
     }
 

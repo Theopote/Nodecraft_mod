@@ -17,7 +17,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 /**
  * Server-tick driven placement queue for large block writes.
@@ -34,7 +37,7 @@ public class BakePlacementService {
     private static final int RECENT_TASK_SNAPSHOT_LIMIT = 128;
 
     private final Deque<BakeTask> queue = new ArrayDeque<>();
-    private final Map<UUID, BakeHistory> histories = new HashMap<>();
+    private final Map<HistoryKey, BakeHistory> histories = new HashMap<>();
     private final Map<UUID, TaskSnapshot> recentTaskSnapshots = new LinkedHashMap<>(
         RECENT_TASK_SNAPSHOT_LIMIT,
         0.75f,
@@ -68,6 +71,13 @@ public class BakePlacementService {
 
     private void onServerTick(MinecraftServer server) {
         processTick();
+    }
+
+    public static String worldKey(@Nullable World world) {
+        if (world == null || world.getRegistryKey() == null || world.getRegistryKey().getValue() == null) {
+            return "unknown";
+        }
+        return world.getRegistryKey().getValue().toString();
     }
 
     public static UUID resolveActorId(@Nullable ServerPlayerEntity player) {
@@ -474,9 +484,29 @@ public class BakePlacementService {
     }
 
     public BakeHistory getHistory(UUID actorId) {
+        return getHistory(actorId, "unknown");
+    }
+
+    public BakeHistory getHistory(UUID actorId, @Nullable World world) {
+        return getHistory(actorId, worldKey(world));
+    }
+
+    public BakeHistory getHistory(UUID actorId, @Nullable String worldKey) {
         UUID resolvedActorId = resolveActorId(actorId);
+        String resolvedWorld = worldKey == null || worldKey.isBlank() ? "unknown" : worldKey;
         synchronized (histories) {
-            return histories.computeIfAbsent(resolvedActorId, ignored -> new BakeHistory());
+            return histories.computeIfAbsent(new HistoryKey(resolvedActorId, resolvedWorld), ignored -> new BakeHistory());
+        }
+    }
+
+    public void clearHistory(UUID actorId, @Nullable String worldKey) {
+        getHistory(actorId, worldKey).clear();
+    }
+
+    public void clearHistory(UUID actorId) {
+        UUID resolved = resolveActorId(actorId);
+        synchronized (histories) {
+            histories.entrySet().removeIf(entry -> entry.getKey().actorId().equals(resolved));
         }
     }
 
@@ -484,7 +514,7 @@ public class BakePlacementService {
         if (world == null) {
             return false;
         }
-        BakeHistory history = getHistory(actorId);
+        BakeHistory history = getHistory(actorId, world);
         boolean success = history.undoLast(world);
         if (success) {
             NodeCraft.LOGGER.debug("Undid last baked transaction for actor {}", resolveActorId(actorId));
@@ -517,7 +547,7 @@ public class BakePlacementService {
         if (world == null) {
             return null;
         }
-        BakeHistory history = getHistory(actorId);
+        BakeHistory history = getHistory(actorId, world);
         UUID taskId = history.undoLastAsync(resolveActorId(actorId), world, blocksPerTick, tickBudgetNanos);
         if (taskId != null) {
             NodeCraft.LOGGER.debug("Queued async undo for actor {} (task: {})", resolveActorId(actorId), taskId);
@@ -529,7 +559,7 @@ public class BakePlacementService {
         if (world == null) {
             return false;
         }
-        BakeHistory history = getHistory(actorId);
+        BakeHistory history = getHistory(actorId, world);
         boolean success = history.redoLast(world);
         if (success) {
             NodeCraft.LOGGER.debug("Redid last baked transaction for actor {}", resolveActorId(actorId));
@@ -562,7 +592,7 @@ public class BakePlacementService {
         if (world == null) {
             return null;
         }
-        BakeHistory history = getHistory(actorId);
+        BakeHistory history = getHistory(actorId, world);
         UUID taskId = history.redoLastAsync(resolveActorId(actorId), world, blocksPerTick, tickBudgetNanos);
         if (taskId != null) {
             NodeCraft.LOGGER.debug("Queued async redo for actor {} (task: {})", resolveActorId(actorId), taskId);
@@ -581,7 +611,7 @@ public class BakePlacementService {
     }
 
     public void setDefaultBlocksPerTick(int defaultBlocksPerTick) {
-        this.defaultBlocksPerTick = Math.max(1, defaultBlocksPerTick);
+        this.defaultBlocksPerTick = Math.max(1, Math.min(defaultBlocksPerTick, GenerationLimits.MAX_BLOCKS_PER_TICK));
     }
 
     public long getDefaultTickBudgetNanos() {
@@ -589,7 +619,8 @@ public class BakePlacementService {
     }
 
     public void setDefaultTickBudgetNanos(long defaultTickBudgetNanos) {
-        this.defaultTickBudgetNanos = Math.max(1L, defaultTickBudgetNanos);
+        long maxNanos = GenerationLimits.MAX_TICK_BUDGET_MS * 1_000_000L;
+        this.defaultTickBudgetNanos = Math.max(1L, Math.min(defaultTickBudgetNanos, maxNanos));
     }
 
     private void finishTask(BakeTask task) {
@@ -701,10 +732,10 @@ public class BakePlacementService {
 
         BakeHistory.UndoRecord record = new BakeHistory.UndoRecord(task.getTaskId());
         for (BakeTask.BakeUndoRecord ur : task.getUndoRecords()) {
-            record.add(ur.pos(), ur.previousState());
+            record.add(ur.pos(), ur.previousState(), ur.previousNbt());
         }
 
-        BakeHistory history = getHistory(task.getActorId());
+        BakeHistory history = getHistory(task.getActorId(), task.getWorld());
         switch (task.getOperationKind()) {
             case APPLY -> history.push(record);
             case UNDO -> history.pushRedo(record);
@@ -718,14 +749,34 @@ public class BakePlacementService {
     }
 
     private int resolveBlocksPerTick(int blocksPerTick) {
-        return blocksPerTick > 0 ? blocksPerTick : defaultBlocksPerTick;
+        int resolved = blocksPerTick > 0 ? blocksPerTick : defaultBlocksPerTick;
+        return Math.max(1, Math.min(resolved, GenerationLimits.MAX_BLOCKS_PER_TICK));
     }
 
     private long resolveTickBudgetNanos(long tickBudgetNanos) {
-        return tickBudgetNanos > 0L ? tickBudgetNanos : defaultTickBudgetNanos;
+        long resolved = tickBudgetNanos > 0L ? tickBudgetNanos : defaultTickBudgetNanos;
+        long maxNanos = GenerationLimits.MAX_TICK_BUDGET_MS * 1_000_000L;
+        return Math.max(1L, Math.min(resolved, maxNanos));
+    }
+
+    public boolean canAccessTask(@Nullable UUID actorId, UUID taskId) {
+        TaskSnapshot snapshot = getTaskSnapshot(taskId);
+        if (snapshot == null) {
+            return false;
+        }
+        return resolved.equals(snapshot.actorId());
+    }
+
+    private record HistoryKey(UUID actorId, String worldKey) {
+        HistoryKey {
+            Objects.requireNonNull(actorId);
+            worldKey = worldKey == null || worldKey.isBlank() ? "unknown" : worldKey;
+        }
     }
 
     public record TaskSnapshot(UUID taskId,
+                               UUID actorId,
+                               String worldKey,
                                int placedCount,
                                int skippedCount,
                                int totalCount,
@@ -738,6 +789,8 @@ public class BakePlacementService {
         static TaskSnapshot from(BakeTask task) {
             return new TaskSnapshot(
                 task.getTaskId(),
+                task.getActorId(),
+                BakePlacementService.worldKey(task.getWorld()),
                 task.getPlacedCount(),
                 task.getSkippedCount(),
                 task.getTotalCount(),

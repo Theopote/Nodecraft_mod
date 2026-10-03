@@ -1,7 +1,10 @@
 package com.nodecraft.nodesystem.bake;
 
+import com.nodecraft.nodesystem.nodes.world.write.WorldWriteNbtUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -37,10 +40,11 @@ public class BakeTask {
     private final Runnable onComplete;
     private final Runnable onCancel;
 
-    /** Insertion-ordered original states; one entry per written BlockPos. */
-    private final LinkedHashMap<BlockPos, BlockState> originalStates = new LinkedHashMap<>();
+    /** Insertion-ordered original cells; one entry per written BlockPos. */
+    private final LinkedHashMap<BlockPos, OriginalCell> originalStates = new LinkedHashMap<>();
     /** Snapshot of originalStates entries for indexed LIFO rollback; set in beginTimeSlicedRollback. */
-    private List<Map.Entry<BlockPos, BlockState>> rollbackEntries = List.of();
+    private List<Map.Entry<BlockPos, OriginalCell>> rollbackEntries = List.of();
+    private int nbtFailedCount = 0;
     private int nextIndex = 0;
     /** During rollback: remaining entries to restore (counts down from size to 0). */
     private int rollbackRemaining = 0;
@@ -211,8 +215,15 @@ public class BakeTask {
         return invalidPlacementCount;
     }
 
+    public int getNbtFailedCount() {
+        return nbtFailedCount;
+    }
+
     public boolean hasIntegrityFailure() {
-        return chunkUnavailableCount > 0 || writeFailedCount > 0 || invalidPlacementCount > 0;
+        return chunkUnavailableCount > 0
+            || writeFailedCount > 0
+            || invalidPlacementCount > 0
+            || nbtFailedCount > 0;
     }
 
     public int getTotalCount() {
@@ -274,12 +285,24 @@ public class BakeTask {
                 continue;
             }
 
-            // Capture pre-transaction state once per position (first successful write wins).
-            BlockState previous = world.getBlockState(pos);
+            BlockPos immutable = pos.toImmutable();
+            OriginalCell before = originalStates.get(immutable);
+            if (before == null) {
+                before = captureCell(world, immutable);
+            }
             if (world.setBlockState(pos, targetState, Block.NOTIFY_ALL)) {
+                originalStates.putIfAbsent(immutable, before);
+                if (placement.blockEntityNbt() != null) {
+                    if (!WorldWriteNbtUtils.applyToBlockEntity(
+                        world, immutable, placement.blockEntityNbt(), placement.mergeNbt(), true)) {
+                        restoreCell(world, immutable, before);
+                        originalStates.remove(immutable);
+                        nbtFailedCount++;
+                        continue;
+                    }
+                }
                 placedThisTick++;
                 placedCount++;
-                originalStates.putIfAbsent(pos.toImmutable(), previous);
             } else {
                 writeFailedCount++;
             }
@@ -322,20 +345,18 @@ public class BakeTask {
 
         while (rollbackRemaining > limit && System.nanoTime() < deadline) {
             rollbackRemaining--;
-            Map.Entry<BlockPos, BlockState> entry = rollbackEntries.get(rollbackRemaining);
+            Map.Entry<BlockPos, OriginalCell> entry = rollbackEntries.get(rollbackRemaining);
             BlockPos pos = entry.getKey();
-            BlockState previous = entry.getValue();
+            OriginalCell previous = entry.getValue();
             rollbackAttemptedCount++;
-            if (pos == null || previous == null) {
+            if (pos == null || previous == null || previous.state() == null) {
                 rollbackFailedCount++;
                 continue;
             }
-            if (world.setBlockState(pos, previous, Block.NOTIFY_ALL)) {
+            if (restoreCell(world, pos, previous)) {
                 restoredThisTick++;
                 rollbackRestoredCount++;
             } else {
-                // Advance past the entry so the task can terminate, but record the failure
-                // so the terminal state is ROLLBACK_FAILED rather than a clean CANCELLED.
                 rollbackFailedCount++;
             }
         }
@@ -410,10 +431,38 @@ public class BakeTask {
      */
     public List<BakeUndoRecord> getUndoRecords() {
         List<BakeUndoRecord> out = new ArrayList<>(originalStates.size());
-        for (Map.Entry<BlockPos, BlockState> entry : originalStates.entrySet()) {
-            out.add(new BakeUndoRecord(entry.getKey(), entry.getValue()));
+        for (Map.Entry<BlockPos, OriginalCell> entry : originalStates.entrySet()) {
+            OriginalCell cell = entry.getValue();
+            out.add(new BakeUndoRecord(entry.getKey(), cell.state(), cell.nbt()));
         }
         return out;
+    }
+
+    private static OriginalCell captureCell(World world, BlockPos pos) {
+        BlockState state = world.getBlockState(pos);
+        NbtCompound nbt = null;
+        BlockEntity be = world.getBlockEntity(pos);
+        if (be != null) {
+            nbt = WorldWriteNbtUtils.extractBlockEntityNbt(be, world);
+        }
+        return new OriginalCell(state, nbt);
+    }
+
+    private static boolean restoreCell(World world, BlockPos pos, OriginalCell cell) {
+        if (!world.setBlockState(pos, cell.state(), Block.NOTIFY_ALL)) {
+            return false;
+        }
+        if (cell.nbt() != null) {
+            BlockEntity restored = world.getBlockEntity(pos);
+            if (restored == null) {
+                return false;
+            }
+            if (!WorldWriteNbtUtils.applyBlockEntityNbt(restored, cell.nbt(), world)) {
+                return false;
+            }
+            restored.markDirty();
+        }
+        return true;
     }
 
     private static List<Placement> toPlacements(List<BlockPos> positions, BlockState targetState) {
@@ -436,21 +485,41 @@ public class BakeTask {
         }
         for (Placement placement : placements) {
             if (placement != null && placement.pos() != null && placement.state() != null) {
-                out.add(new Placement(placement.pos(), placement.state()));
+                out.add(new Placement(
+                    placement.pos(),
+                    placement.state(),
+                    placement.blockEntityNbt(),
+                    placement.mergeNbt()));
             }
         }
         return out;
     }
 
-    public record Placement(BlockPos pos, BlockState state) {
+    public record Placement(BlockPos pos, BlockState state, @Nullable NbtCompound blockEntityNbt, boolean mergeNbt) {
+        public Placement(BlockPos pos, BlockState state) {
+            this(pos, state, null, false);
+        }
+
         public Placement {
             pos = pos != null ? pos.toImmutable() : null;
+            blockEntityNbt = blockEntityNbt == null ? null : blockEntityNbt.copy();
         }
     }
 
-    public record BakeUndoRecord(BlockPos pos, BlockState previousState) {
+    public record BakeUndoRecord(BlockPos pos, BlockState previousState, @Nullable NbtCompound previousNbt) {
+        public BakeUndoRecord(BlockPos pos, BlockState previousState) {
+            this(pos, previousState, null);
+        }
+
         public BakeUndoRecord {
             pos = pos != null ? pos.toImmutable() : null;
+            previousNbt = previousNbt == null ? null : previousNbt.copy();
+        }
+    }
+
+    private record OriginalCell(BlockState state, @Nullable NbtCompound nbt) {
+        private OriginalCell {
+            nbt = nbt == null ? null : nbt.copy();
         }
     }
 }

@@ -4,14 +4,17 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.UUID;
 
 @NodeInfo(
@@ -115,13 +118,6 @@ public class SetBlockNbtNode extends BaseNode {
             return;
         }
 
-        BlockSnapshot before = WorldWriteUndoJournal.captureCurrent(context, pos);
-        if (before == null) {
-            publish(false, false, null, false, WorldWriteUtils.UNLOADED_CHUNK_ERROR);
-            return;
-        }
-        WorldWriteUndoJournal tx = new WorldWriteUndoJournal(WorldWriteUtils.worldKey(context.getWorld()));
-
         NbtCompound incoming = nbtResult.nbt();
         NbtCompound current = WorldWriteNbtUtils.extractBlockEntityNbt(blockEntity, context);
         NbtCompound target = merge && current != null ? WorldWriteNbtUtils.mergeNbt(current.copy(), incoming) : incoming.copy();
@@ -129,23 +125,19 @@ public class SetBlockNbtNode extends BaseNode {
         target.putInt("y", pos.getY());
         target.putInt("z", pos.getZ());
 
-        try {
-            boolean success = WorldWriteNbtUtils.applyBlockEntityNbt(blockEntity, target, context);
-            if (success) {
-                tx.recordSuccess(before);
-                blockEntity.markDirty();
-                if (notify) {
-                    context.getWorld().updateListeners(pos, before.state(), context.getWorld().getBlockState(pos), 3);
-                }
-                tx.pushIfNeeded(context, recordUndo);
-                publish(true, true, target, true, "");
-            } else {
-                WorldWriteUndoJournal.restore(context, before);
-                publish(false, true, null, true, "Failed to apply block entity NBT");
-            }
-        } catch (Exception e) {
-            WorldWriteUndoJournal.restore(context, before);
-            publish(false, true, null, true, "Failed to apply block entity NBT");
+        BlockState state = context.getWorld().getBlockState(pos);
+        WorldWriteBakeBridge.Outcome outcome = WorldWriteBakeBridge.enqueueAndAwait(
+            context,
+            List.of(WorldWriteBakeBridge.placement(pos, state, target, false)),
+            recordUndo,
+            0
+        );
+        boolean success = outcome.successCount() > 0 && outcome.failureCount() == 0;
+        if (success) {
+            publish(true, true, target, true, "");
+        } else {
+            publish(false, true, null, true,
+                outcome.error().isBlank() ? "Failed to apply block entity NBT" : outcome.error());
         }
     }
 
