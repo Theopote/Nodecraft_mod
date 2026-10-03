@@ -68,6 +68,9 @@ public final class LSystemTurtle3DInterpreter {
         }
 
         double angRad = Math.toRadians(angleDegrees);
+        if (!Double.isFinite(angRad)) {
+            return TurtleResult.failure("Angle must be finite", false);
+        }
         Vector3d pos = new Vector3d(origin);
         Quaterniond orientation = new Quaterniond();
 

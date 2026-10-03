@@ -38,7 +38,7 @@ public class LSystemRuleNode extends BaseNode {
     public LSystemRuleNode() {
         super(UUID.randomUUID(), "pattern.lsystem.rule");
 
-        addInputPort(new BasePort(INPUT_SYMBOL_ID, "Symbol", "Symbol to rewrite", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_SYMBOL_ID, "Symbol", "Symbol to rewrite (whitespace is significant; only all-whitespace is invalid)", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_PRODUCTION_ID, "Production", "Replacement string (may be empty)", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_WEIGHT_ID, "Weight", "Relative weight for stochastic choice", NodeDataType.DOUBLE, this));
 

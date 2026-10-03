@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemRuleNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemTurtle3DNode;
@@ -32,8 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern L-System v1 language fence (Graph V46).
- * OptionalPortDrive / Error / Turtle transactional fail are owned by Language v2 (V84).
+ * Pattern L-System v1 language fence — inventory and expander/turtle basics.
+ * OptionalPortDrive / Error / Turtle transactional fail are owned by Language v2.
  */
 class PatternLSystemLanguageContractTest {
 

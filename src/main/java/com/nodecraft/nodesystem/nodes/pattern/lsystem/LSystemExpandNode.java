@@ -144,10 +144,6 @@ public class LSystemExpandNode extends BaseNode {
             writeInvalid("", 0, false, "Rule count exceeds MAX_LSYSTEM_RULES");
             return;
         }
-        if (GenerationLimits.exceedsLSystemRewriteMatchBudget(axiom.length(), rules.size(), iters)) {
-            writeInvalid("", 0, false, "L-System rewrite match budget exceeded");
-            return;
-        }
 
         LSystemStringExpander.ExpandResult expanded = LSystemStringExpander.expand(
                 axiom,

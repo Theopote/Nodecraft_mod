@@ -12,7 +12,6 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemExpandNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemRuleNode;
 import com.nodecraft.nodesystem.nodes.pattern.lsystem.LSystemTurtle3DNode;
@@ -38,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Pattern L-System Language v2 (Graph V84).
+ * Language fence for Pattern L-System Language v2.
  */
 class PatternLSystemLanguageV2ContractTest {
 
@@ -65,16 +64,6 @@ class PatternLSystemLanguageV2ContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV84() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV106() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -227,18 +216,13 @@ class PatternLSystemLanguageV2ContractTest {
 
     @Test
     void expandRewriteWorkloadFailsClosed() {
-        assertTrue(GenerationLimits.exceedsLSystemRewriteMatchBudget(
-            GenerationLimits.MAX_LSYSTEM_EXPANDED_LENGTH,
-            GenerationLimits.MAX_LSYSTEM_RULES,
-            GenerationLimits.MAX_LSYSTEM_ITERATIONS
-        ));
-
         ExpandProbe probe = new ExpandProbe();
-        probe.setInput("input_axiom", "F".repeat(1_000_000));
+        probe.setInput("input_axiom", "F".repeat(10_000));
         probe.setNodeState(Map.of("iterations", 16));
-        List<LSystemRule> rules = new ArrayList<>(4096);
-        for (int i = 0; i < 4096; i++) {
-            rules.add(new LSystemRule("Z" + i, "A"));
+        List<LSystemRule> rules = new ArrayList<>();
+        rules.add(new LSystemRule("F", "FF"));
+        for (int i = 0; i < 200; i++) {
+            rules.add(new LSystemRule("Z" + i, "Q"));
         }
         probe.connectInput("input_rules", NodeDataType.L_SYSTEM_RULE_LIST);
         probe.putRawInput("input_rules", rules);
@@ -246,6 +230,25 @@ class PatternLSystemLanguageV2ContractTest {
         assertInvalidExpand(probe);
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("budget")
             || String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("rewrite"));
+    }
+
+    @Test
+    void expandShrinkingLargeAxiomIsNotRejectedByPreflightEstimate() {
+        ExpandProbe probe = new ExpandProbe();
+        probe.setInput("input_axiom", "A".repeat(100_000));
+        probe.setNodeState(Map.of("iterations", 16));
+        List<LSystemRule> rules = new ArrayList<>();
+        rules.add(new LSystemRule("A", ""));
+        for (int i = 0; i < 99; i++) {
+            rules.add(new LSystemRule("Z" + i, "Q"));
+        }
+        probe.connectInput("input_rules", NodeDataType.L_SYSTEM_RULE_LIST);
+        probe.putRawInput("input_rules", rules);
+        probe.processNode(null);
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertEquals("", probe.getOutput("output_string"));
+        assertEquals(16, probe.getOutput("output_iterations_applied"));
+        assertEquals(Boolean.FALSE, probe.getOutput("output_hit_limit"));
     }
 
     @Test
@@ -309,6 +312,8 @@ class PatternLSystemLanguageV2ContractTest {
         probe.processNode(null);
         assertInvalidTurtle(probe);
         assertEquals(Boolean.TRUE, probe.getOutput("output_hit_limit"));
+        assertEquals(65_536, GenerationLimits.MAX_LSYSTEM_TURTLE_SEGMENTS);
+        assertEquals(65_536, cap);
         assertTrue(cap <= GenerationLimits.MAX_LIST_ELEMENTS / 2);
     }
 

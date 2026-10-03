@@ -294,7 +294,7 @@ public final class GenerationLimits {
     public static final int MAX_LSYSTEM_COMMAND_LENGTH = 1_000_000;
 
     /** Maximum draw segments emitted by L-system turtle interpretation. */
-    public static final int MAX_LSYSTEM_TURTLE_SEGMENTS = 1_000_000;
+    public static final int MAX_LSYSTEM_TURTLE_SEGMENTS = 65_536;
 
     /** Maximum turtle bracket stack depth. */
     public static final int MAX_LSYSTEM_TURTLE_STACK_DEPTH = 4096;
@@ -303,8 +303,8 @@ public final class GenerationLimits {
     public static final int MAX_LSYSTEM_RULES = 4096;
 
     /**
-     * Hard cap on estimated rewrite match work:
-     * stringLength × ruleCount × iterations (and per-round stringLength × ruleCount).
+     * Hard cap on actual cumulative rewrite match work:
+     * sum over rounds of (currentLength × ruleCount).
      */
     public static final long MAX_LSYSTEM_REWRITE_MATCH_TESTS = 100_000_000L;
 
@@ -481,18 +481,24 @@ public final class GenerationLimits {
     }
 
     /**
-     * Estimated L-system rewrite match tests for a full expansion request.
-     * {@code iterations <= 0} never exceeds (passthrough has no rewrite work).
+     * Adds one rewrite round's work {@code stringLength × ruleCount} with overflow-safe arithmetic.
+     *
+     * @return updated consumed total, or {@code -1} when overflow or {@link #MAX_LSYSTEM_REWRITE_MATCH_TESTS} is exceeded
      */
-    public static boolean exceedsLSystemRewriteMatchBudget(int stringLength, int ruleCount, int iterations) {
-        if (iterations <= 0 || stringLength <= 0 || ruleCount <= 0) {
-            return false;
+    public static long addLSystemRewriteWork(long consumed, int stringLength, int ruleCount) {
+        if (consumed < 0L || stringLength < 0 || ruleCount < 0) {
+            return -1L;
         }
-        long perRound = (long) stringLength * (long) ruleCount;
-        if (perRound > MAX_LSYSTEM_REWRITE_MATCH_TESTS) {
-            return true;
+        try {
+            long roundWork = Math.multiplyExact((long) stringLength, (long) ruleCount);
+            long next = Math.addExact(consumed, roundWork);
+            if (next > MAX_LSYSTEM_REWRITE_MATCH_TESTS) {
+                return -1L;
+            }
+            return next;
+        } catch (ArithmeticException overflow) {
+            return -1L;
         }
-        return perRound * (long) iterations > MAX_LSYSTEM_REWRITE_MATCH_TESTS;
     }
 
     /**

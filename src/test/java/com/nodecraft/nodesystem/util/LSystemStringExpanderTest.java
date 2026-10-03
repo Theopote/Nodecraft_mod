@@ -141,6 +141,24 @@ class LSystemStringExpanderTest {
         assertEquals(0, result.iterationsApplied());
     }
 
+    @Test
+    void shrinkingSystemDoesNotTripCumulativeRewriteBudget() {
+        java.util.ArrayList<LSystemRule> rules = new java.util.ArrayList<>();
+        rules.add(new LSystemRule("A", ""));
+        for (int i = 0; i < 99; i++) {
+            rules.add(new LSystemRule("Z" + i, "Q"));
+        }
+        LSystemStringExpander.ExpandResult result = LSystemStringExpander.expand(
+            "A".repeat(100_000),
+            rules,
+            16,
+            0L
+        );
+        assertTrue(result.ok());
+        assertEquals("", result.text());
+        assertEquals(16, result.iterationsApplied());
+    }
+
     private static final class ExpandProbe extends LSystemExpandNode {
         void putRawInput(String portId, Object value) {
             inputValues.put(portId, value);

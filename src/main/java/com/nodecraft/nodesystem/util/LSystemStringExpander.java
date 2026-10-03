@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -30,6 +30,9 @@ public final class LSystemStringExpander {
         public boolean ok() {
             return error == null;
         }
+    }
+
+    private record CompiledRules(List<String> symbolsByLengthDesc, Map<String, List<LSystemRule>> groups) {
     }
 
     public static ExpandResult expand(String axiom, List<LSystemRule> rules, int iterations, long seed) {
@@ -69,15 +72,18 @@ public final class LSystemStringExpander {
             return new ExpandResult("", false, 0, weightError);
         }
 
+        CompiledRules compiled = compileRuleGroups(sorted);
         Random random = new Random(seed);
         String current = axiom;
         int applied = 0;
         int ruleCount = sorted.size();
+        long consumed = 0L;
         for (int it = 0; it < iterations; it++) {
-            if (GenerationLimits.exceedsLSystemRewriteMatchBudget(current.length(), ruleCount, 1)) {
+            consumed = GenerationLimits.addLSystemRewriteWork(consumed, current.length(), ruleCount);
+            if (consumed < 0L) {
                 return new ExpandResult("", false, 0, "L-System rewrite match budget exceeded");
             }
-            ExpandOnceResult next = expandOnce(current, sorted, random, safeMaxLength);
+            ExpandOnceResult next = expandOnce(current, compiled, random, safeMaxLength);
             if (next.hitLimit()) {
                 return new ExpandResult(current, true, applied, null);
             }
@@ -87,8 +93,16 @@ public final class LSystemStringExpander {
         return new ExpandResult(current, false, applied, null);
     }
 
+    private static CompiledRules compileRuleGroups(List<LSystemRule> sortedByLengthDesc) {
+        Map<String, List<LSystemRule>> groups = new LinkedHashMap<>();
+        for (LSystemRule rule : sortedByLengthDesc) {
+            groups.computeIfAbsent(rule.symbol(), key -> new ArrayList<>()).add(rule);
+        }
+        return new CompiledRules(List.copyOf(groups.keySet()), groups);
+    }
+
     private static @Nullable String validateFiniteWeightTotals(List<LSystemRule> rules) {
-        Map<String, Double> totals = new HashMap<>();
+        Map<String, Double> totals = new LinkedHashMap<>();
         for (LSystemRule rule : rules) {
             if (rule.weight() <= 0.0d) {
                 continue;
@@ -108,27 +122,24 @@ public final class LSystemStringExpander {
 
     private static ExpandOnceResult expandOnce(
             String current,
-            List<LSystemRule> sortedRules,
+            CompiledRules compiled,
             Random random,
             int maxLength
     ) {
         StringBuilder out = new StringBuilder(Math.min(current.length() * 2, maxLength));
         int i = 0;
         while (i < current.length()) {
-            LSystemRule chosen = null;
-            int matchLen = 0;
-            for (LSystemRule rule : sortedRules) {
-                String sym = rule.symbol();
-                if (sym.isEmpty()) {
+            String matched = null;
+            for (String symbol : compiled.symbolsByLengthDesc()) {
+                if (symbol.isEmpty()) {
                     continue;
                 }
-                if (i + sym.length() <= current.length() && current.startsWith(sym, i)) {
-                    chosen = rule;
-                    matchLen = sym.length();
+                if (i + symbol.length() <= current.length() && current.startsWith(symbol, i)) {
+                    matched = symbol;
                     break;
                 }
             }
-            if (chosen == null) {
+            if (matched == null) {
                 if (out.length() + 1 > maxLength) {
                     return new ExpandOnceResult(out.toString(), true);
                 }
@@ -136,13 +147,8 @@ public final class LSystemStringExpander {
                 i++;
                 continue;
             }
-            List<LSystemRule> candidates = new ArrayList<>();
-            for (LSystemRule rule : sortedRules) {
-                if (rule.symbol().equals(chosen.symbol())) {
-                    candidates.add(rule);
-                }
-            }
-            String production = pickProduction(candidates, random);
+            int matchLen = matched.length();
+            String production = pickProduction(compiled.groups().get(matched), random);
             if (production == null) {
                 if (out.length() + matchLen > maxLength) {
                     return new ExpandOnceResult(out.toString(), true);
@@ -166,7 +172,7 @@ public final class LSystemStringExpander {
      * @return production string, or {@code null} when all candidate weights are &lt;= 0 (keep symbol)
      */
     private static @Nullable String pickProduction(List<LSystemRule> candidates, Random random) {
-        if (candidates.isEmpty()) {
+        if (candidates == null || candidates.isEmpty()) {
             return null;
         }
         List<LSystemRule> weighted = new ArrayList<>(candidates.size());
