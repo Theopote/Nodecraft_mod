@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -12,6 +11,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
+import com.nodecraft.nodesystem.world.WorldScanStatus;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -70,7 +71,7 @@ public class FindBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TOTAL_POSSIBLE_ID, "Total Possible", "Total positions in the region", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Results or Max Blocks stopped the search", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the entire region was scanned without hitting a limit", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_results, max_blocks, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_results, max_blocks, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the search inputs and world were valid", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when the search is invalid", NodeDataType.STRING, this));
     }
@@ -147,50 +148,52 @@ public class FindBlocksNode extends BaseNode {
             return;
         }
 
-        SearchResult result = new SearchResult();
-        blockSearch:
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldScanStatus scan = new WorldScanStatus();
+        BlockPosList foundBlocks = new BlockPosList();
+        BlockPos firstPos = null;
+        int visitedCount = 0;
+
+        search:
         for (BlockPos pos : BlockPos.iterate(min, max)) {
-            if (result.visitedCount >= maxBlocks) {
-                result.hitLimit = true;
-                result.stoppedReason = "max_blocks";
+            if (visitedCount >= maxBlocks) {
+                scan.markHitLimit("max_blocks");
                 break;
             }
 
             BlockPos immutablePos = pos.toImmutable();
-            result.visitedCount++;
-            try {
-                BlockState state = context.getWorld().getBlockState(immutablePos);
-                if (WorldReadUtils.matchesBlock(state, target, exactMatch)) {
-                    result.foundBlocks.add(immutablePos);
-                    if (result.firstPos == null) {
-                        result.firstPos = immutablePos;
-                    }
-                    if (result.foundBlocks.size() >= maxResultsValue) {
-                        result.hitLimit = true;
-                        result.stoppedReason = "max_results";
-                        break blockSearch;
-                    }
+            visitedCount++;
+            WorldQueryAccess.BlockRead read = access.getBlockState(immutablePos);
+            if (!scan.accept(read.status()) || read.state() == null) {
+                if (scan.budgetStop()) {
+                    visitedCount--;
+                    break;
                 }
-            } catch (Exception e) {
-                result.errorCount++;
-                if (result.firstError.isEmpty()) {
-                    result.firstError = "Error checking block at " + immutablePos + ": " + e.getMessage();
+                continue;
+            }
+            if (WorldReadUtils.matchesBlock(read.state(), target, exactMatch)) {
+                foundBlocks.add(immutablePos);
+                if (firstPos == null) {
+                    firstPos = immutablePos;
                 }
-                NodeCraft.LOGGER.warn("FindBlocksNode failed at {}: {}", immutablePos, e.getMessage());
+                if (foundBlocks.size() >= maxResultsValue) {
+                    scan.markHitLimit("max_results");
+                    break search;
+                }
             }
         }
 
-        outputValues.put(OUTPUT_FOUND_BLOCKS_ID, result.foundBlocks);
-        outputValues.put(OUTPUT_COUNT_ID, result.foundBlocks.size());
-        outputValues.put(OUTPUT_FIRST_POS_ID, result.firstPos);
-        outputValues.put(OUTPUT_FOUND_ANY_ID, !result.foundBlocks.isEmpty());
-        outputValues.put(OUTPUT_VISITED_COUNT_ID, result.visitedCount);
+        outputValues.put(OUTPUT_FOUND_BLOCKS_ID, foundBlocks);
+        outputValues.put(OUTPUT_COUNT_ID, foundBlocks.size());
+        outputValues.put(OUTPUT_FIRST_POS_ID, firstPos);
+        outputValues.put(OUTPUT_FOUND_ANY_ID, !foundBlocks.isEmpty());
+        outputValues.put(OUTPUT_VISITED_COUNT_ID, visitedCount);
         outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, totalPossible));
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, result.hitLimit);
-        outputValues.put(OUTPUT_COMPLETE_ID, !result.hitLimit);
-        outputValues.put(OUTPUT_STOPPED_REASON_ID, result.stoppedReason);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, result.errorCount > 0 ? result.firstError : "");
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, scan.hitLimit());
+        outputValues.put(OUTPUT_COMPLETE_ID, scan.complete());
+        outputValues.put(OUTPUT_STOPPED_REASON_ID, scan.stoppedReason());
+        outputValues.put(OUTPUT_VALID_ID, scan.valid());
+        outputValues.put(OUTPUT_ERROR_ID, scan.error());
     }
 
     private void publishInvalid(String error, long totalPossible) {
@@ -230,16 +233,5 @@ public class FindBlocksNode extends BaseNode {
         if (state instanceof Map<?, ?> map && map.get("maxResults") instanceof Number number) {
             setMaxResults(number.intValue());
         }
-    }
-
-    private static final class SearchResult {
-        final BlockPosList foundBlocks = new BlockPosList();
-        int visitedCount;
-        int errorCount;
-        boolean hitLimit;
-        String stoppedReason = "completed";
-        String firstError = "";
-        @Nullable
-        BlockPos firstPos;
     }
 }

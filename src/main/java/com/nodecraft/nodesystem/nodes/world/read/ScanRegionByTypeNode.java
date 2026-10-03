@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
+import com.nodecraft.nodesystem.world.WorldScanStatus;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +74,7 @@ public class ScanRegionByTypeNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TARGET_COUNT_ID, "Target Count", "Count of target block id if provided", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Blocks stopped the scan", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the stepped region was fully scanned", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether region scan was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when region scan is invalid", NodeDataType.STRING, this));
     }
@@ -140,33 +142,39 @@ public class ScanRegionByTypeNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldScanStatus scan = new WorldScanStatus();
         Map<String, Integer> counts = new LinkedHashMap<>();
         int totalScanned = 0;
-        boolean hitLimit = false;
-        String stoppedReason = "completed";
 
-        scan:
+        scanLoop:
         for (long x = min.getX(); x <= max.getX(); ) {
             for (long y = min.getY(); y <= max.getY(); ) {
                 for (long z = min.getZ(); z <= max.getZ(); ) {
                     if (totalScanned >= maxBlocks) {
-                        hitLimit = true;
-                        stoppedReason = "max_blocks";
-                        break scan;
+                        scan.markHitLimit("max_blocks");
+                        break scanLoop;
                     }
                     BlockPos pos = new BlockPos((int) x, (int) y, (int) z);
                     totalScanned++;
-                    boolean isAir = context.getWorld().isAir(pos);
-                    if (!includeAirValue && isAir) {
-                        Integer nextZ = WorldReadUtils.nextAxisCoordinate(z, sampleStep, max.getZ());
-                        if (nextZ == null) {
+                    WorldQueryAccess.BlockRead read = access.getBlockState(pos);
+                    if (!scan.accept(read.status()) || read.state() == null) {
+                        if (scan.budgetStop()) {
+                            totalScanned--;
+                            break scanLoop;
+                        }
+                        Integer skipZ = WorldReadUtils.nextAxisCoordinate(z, sampleStep, max.getZ());
+                        if (skipZ == null) {
                             break;
                         }
-                        z = nextZ;
+                        z = skipZ;
                         continue;
                     }
-                    String blockId = WorldReadUtils.blockId(context.getWorld().getBlockState(pos));
-                    counts.put(blockId, counts.getOrDefault(blockId, 0) + 1);
+                    boolean isAir = read.state().isAir();
+                    if (includeAirValue || !isAir) {
+                        String blockId = WorldReadUtils.blockId(read.state());
+                        counts.put(blockId, counts.getOrDefault(blockId, 0) + 1);
+                    }
 
                     Integer nextZ = WorldReadUtils.nextAxisCoordinate(z, sampleStep, max.getZ());
                     if (nextZ == null) {
@@ -216,11 +224,11 @@ public class ScanRegionByTypeNode extends BaseNode {
         outputValues.put(OUTPUT_MOST_COMMON_BLOCK_ID, mostCommonBlock);
         outputValues.put(OUTPUT_MOST_COMMON_COUNT_ID, mostCommonCount);
         outputValues.put(OUTPUT_TARGET_COUNT_ID, targetCount);
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-        outputValues.put(OUTPUT_COMPLETE_ID, !hitLimit);
-        outputValues.put(OUTPUT_STOPPED_REASON_ID, stoppedReason);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, scan.hitLimit());
+        outputValues.put(OUTPUT_COMPLETE_ID, scan.complete());
+        outputValues.put(OUTPUT_STOPPED_REASON_ID, scan.stoppedReason());
+        outputValues.put(OUTPUT_VALID_ID, scan.valid());
+        outputValues.put(OUTPUT_ERROR_ID, scan.error());
     }
 
     private void publishInvalid(String error, long totalPossible) {

@@ -11,6 +11,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
+import com.nodecraft.nodesystem.world.WorldScanStatus;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
@@ -73,7 +75,7 @@ public class GetSurfaceBlocksNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_DOMINANT_BLOCK_ID, "Dominant Surface Block", "Most common sampled surface block id", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Columns stopped sampling", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether all stepped columns were sampled", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_columns, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_columns, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether surface sampling was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when surface sampling is invalid", NodeDataType.STRING, this));
     }
@@ -135,29 +137,53 @@ public class GetSurfaceBlocksNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldScanStatus scan = new WorldScanStatus();
         List<BlockState> blocks = new ArrayList<>();
         BlockPosList positions = new BlockPosList();
         List<String> blockTypes = new ArrayList<>();
         int count = 0;
         int sampledColumns = 0;
-        boolean hitLimit = false;
-        String stoppedReason = "completed";
         Map<String, Integer> blockCounts = new HashMap<>();
 
         sample:
         for (long x = min.getX(); x <= max.getX(); ) {
             for (long z = min.getZ(); z <= max.getZ(); ) {
                 if (sampledColumns >= maxColumns) {
-                    hitLimit = true;
-                    stoppedReason = "max_columns";
+                    scan.markHitLimit("max_columns");
                     break sample;
                 }
                 sampledColumns++;
                 int xi = (int) x;
                 int zi = (int) z;
-                int topY = context.getWorld().getTopY(resolvedType, xi, zi) - 1;
-                BlockPos pos = new BlockPos(xi, topY, zi);
-                BlockState state = context.getWorld().getBlockState(pos);
+                WorldQueryAccess.TopYRead top = access.getTopY(resolvedType, xi, zi);
+                if (!scan.accept(top.status())) {
+                    if (scan.budgetStop()) {
+                        sampledColumns--;
+                        break sample;
+                    }
+                    Integer skipZ = WorldReadUtils.nextAxisCoordinate(z, step, max.getZ());
+                    if (skipZ == null) {
+                        break;
+                    }
+                    z = skipZ;
+                    continue;
+                }
+                BlockPos pos = new BlockPos(xi, top.topY() - 1, zi);
+                WorldQueryAccess.BlockRead read = access.getBlockState(pos);
+                if (!scan.accept(read.status()) || read.state() == null) {
+                    if (scan.budgetStop()) {
+                        sampledColumns--;
+                        break sample;
+                    }
+                    Integer skipZ = WorldReadUtils.nextAxisCoordinate(z, step, max.getZ());
+                    if (skipZ == null) {
+                        break;
+                    }
+                    z = skipZ;
+                    continue;
+                }
+                BlockState state = read.state();
                 if (!(resolvedExcludeAir && state.isAir())) {
                     String blockId = WorldReadUtils.blockId(state);
                     blocks.add(state);
@@ -191,11 +217,11 @@ public class GetSurfaceBlocksNode extends BaseNode {
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_TOTAL_COLUMNS_ID, (int) Math.min(Integer.MAX_VALUE, totalColumns));
         outputValues.put(OUTPUT_DOMINANT_BLOCK_ID, dominantBlock);
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-        outputValues.put(OUTPUT_COMPLETE_ID, !hitLimit);
-        outputValues.put(OUTPUT_STOPPED_REASON_ID, stoppedReason);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, scan.hitLimit());
+        outputValues.put(OUTPUT_COMPLETE_ID, scan.complete());
+        outputValues.put(OUTPUT_STOPPED_REASON_ID, scan.stoppedReason());
+        outputValues.put(OUTPUT_VALID_ID, scan.valid());
+        outputValues.put(OUTPUT_ERROR_ID, scan.error());
     }
 
     private void publishInvalid(String error, long totalColumns) {

@@ -6,12 +6,15 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 @NodeInfo(
@@ -23,6 +26,8 @@ import java.util.UUID;
     order = 8
 )
 public class GetBlockNbtNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GetBlockNbtNode.class);
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
     private static final String INPUT_MAX_STRING_LENGTH_ID = "input_max_string_length";
@@ -43,7 +48,7 @@ public class GetBlockNbtNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_HAS_BLOCK_ENTITY_ID, "Has Block Entity", "Whether this block has block-entity data", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NBT_ID, "NBT", "Block-entity NBT compound", NodeDataType.NBT_COMPOUND, this));
         addOutputPort(new BasePort(OUTPUT_NBT_STRING_ID, "NBT String", "SNBT string representation", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs and context were valid for the query", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether NBT extraction succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NBT_SIZE_ID, "NBT Size", "Length of the full SNBT string before truncation", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when NBT read fails", NodeDataType.STRING, this));
     }
@@ -71,7 +76,16 @@ public class GetBlockNbtNode extends BaseNode {
             return;
         }
 
-        BlockEntity blockEntity = context.getWorld().getBlockEntity(pos);
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldQueryAccess.BlockEntityRead entityRead = access.getBlockEntity(pos);
+        if (entityRead.status() != WorldQueryAccess.Status.OK) {
+            writeInvalid(entityRead.status() == WorldQueryAccess.Status.BUDGET
+                    ? "World read budget exceeded."
+                    : "Target chunk is not loaded");
+            return;
+        }
+
+        BlockEntity blockEntity = entityRead.entity();
         if (blockEntity == null) {
             outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, false);
             outputValues.put(OUTPUT_NBT_ID, null);
@@ -82,66 +96,46 @@ public class GetBlockNbtNode extends BaseNode {
             return;
         }
 
-        NbtCompound nbt = extractBlockEntityNbt(blockEntity, context);
-        String fullString = nbt != null ? nbt.toString() : "";
+        NbtCompound nbt;
+        try {
+            nbt = blockEntity.createNbtWithIdentifyingData(context.getWorld().getRegistryManager());
+        } catch (Exception e) {
+            LOGGER.debug("Unable to extract block entity NBT", e);
+            publishExtractionFailure(true);
+            return;
+        }
+        if (nbt == null) {
+            publishExtractionFailure(true);
+            return;
+        }
+
+        String fullString = WorldReadUtils.serializeNbtOrCap(nbt);
+        if (fullString == null) {
+            outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, true);
+            outputValues.put(OUTPUT_NBT_ID, null);
+            outputValues.put(OUTPUT_NBT_STRING_ID, "");
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+            outputValues.put(OUTPUT_ERROR_ID, "NBT exceeds serialization size cap of "
+                    + GenerationLimits.MAX_NBT_SERIALIZED_CHARS + ".");
+            return;
+        }
+
         outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, true);
         outputValues.put(OUTPUT_NBT_ID, nbt);
         outputValues.put(OUTPUT_NBT_STRING_ID, WorldReadUtils.truncate(fullString, maxStringLength));
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_NBT_SIZE_ID, fullString.length());
-        outputValues.put(OUTPUT_ERROR_ID, nbt != null ? "" : "Unable to extract block entity NBT.");
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private @Nullable NbtCompound extractBlockEntityNbt(BlockEntity blockEntity, ExecutionContext context) {
-        Object lookup = context.getWorld() != null ? context.getWorld().getRegistryManager() : null;
-        Method[] methods = blockEntity.getClass().getMethods();
-        for (Method method : methods) {
-            if (!method.getName().startsWith("createNbt")) {
-                continue;
-            }
-            try {
-                if (method.getParameterCount() == 0) {
-                    Object result = method.invoke(blockEntity);
-                    if (result instanceof NbtCompound nbt) {
-                        return nbt;
-                    }
-                } else if (method.getParameterCount() == 1 && lookup != null) {
-                    Object result = method.invoke(blockEntity, lookup);
-                    if (result instanceof NbtCompound nbt) {
-                        return nbt;
-                    }
-                }
-            } catch (Exception ignored) {
-            }
-        }
-
-        for (Method method : methods) {
-            if (!"writeNbt".equals(method.getName())) {
-                continue;
-            }
-            try {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
-                    NbtCompound out = new NbtCompound();
-                    Object result = method.invoke(blockEntity, out);
-                    if (result instanceof NbtCompound nbt) {
-                        return nbt;
-                    }
-                    return out;
-                }
-                if (method.getParameterCount() == 2
-                    && method.getParameterTypes()[0] == NbtCompound.class
-                    && lookup != null) {
-                    NbtCompound out = new NbtCompound();
-                    Object result = method.invoke(blockEntity, out, lookup);
-                    if (result instanceof NbtCompound nbt) {
-                        return nbt;
-                    }
-                    return out;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
+    private void publishExtractionFailure(boolean hasBlockEntity) {
+        outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, hasBlockEntity);
+        outputValues.put(OUTPUT_NBT_ID, null);
+        outputValues.put(OUTPUT_NBT_STRING_ID, "");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+        outputValues.put(OUTPUT_ERROR_ID, "Unable to extract block entity NBT.");
     }
 
     private void writeInvalid(String error) {

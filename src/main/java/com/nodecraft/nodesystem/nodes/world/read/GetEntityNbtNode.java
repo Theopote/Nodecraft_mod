@@ -6,11 +6,15 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.storage.NbtWriteView;
+import net.minecraft.util.ErrorReporter;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 @NodeInfo(
@@ -22,6 +26,8 @@ import java.util.UUID;
     order = 9
 )
 public class GetEntityNbtNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GetEntityNbtNode.class);
 
     private static final String INPUT_ENTITY_ID = "input_entity";
     private static final String INPUT_MAX_STRING_LENGTH_ID = "input_max_string_length";
@@ -44,7 +50,7 @@ public class GetEntityNbtNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_ENTITY_ID, "Entity", "Passthrough entity", NodeDataType.MINECRAFT_ENTITY, this));
         addOutputPort(new BasePort(OUTPUT_NBT_ID, "NBT", "Entity NBT compound", NodeDataType.NBT_COMPOUND, this));
         addOutputPort(new BasePort(OUTPUT_NBT_STRING_ID, "NBT String", "SNBT string representation", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs were valid for the query", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether NBT extraction succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_NBT_SIZE_ID, "NBT Size", "Length of the full SNBT string before truncation", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when NBT read fails", NodeDataType.STRING, this));
     }
@@ -78,8 +84,36 @@ public class GetEntityNbtNode extends BaseNode {
             return;
         }
 
-        NbtCompound nbt = extractEntityNbt(entity);
-        String fullString = nbt != null ? nbt.toString() : "";
+        NbtCompound nbt;
+        try {
+            NbtWriteView view = NbtWriteView.create(ErrorReporter.EMPTY, entity.getRegistryManager());
+            if (!entity.saveSelfData(view)) {
+                publishExtractionFailure(entity);
+                return;
+            }
+            nbt = view.getNbt();
+        } catch (Exception e) {
+            LOGGER.debug("Unable to extract entity NBT", e);
+            publishExtractionFailure(entity);
+            return;
+        }
+        if (nbt == null) {
+            publishExtractionFailure(entity);
+            return;
+        }
+
+        String fullString = WorldReadUtils.serializeNbtOrCap(nbt);
+        if (fullString == null) {
+            outputValues.put(OUTPUT_FOUND_ID, true);
+            outputValues.put(OUTPUT_ENTITY_ID, entity);
+            outputValues.put(OUTPUT_NBT_ID, null);
+            outputValues.put(OUTPUT_NBT_STRING_ID, "");
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+            outputValues.put(OUTPUT_ERROR_ID, "NBT exceeds serialization size cap of "
+                    + GenerationLimits.MAX_NBT_SERIALIZED_CHARS + ".");
+            return;
+        }
 
         outputValues.put(OUTPUT_FOUND_ID, true);
         outputValues.put(OUTPUT_ENTITY_ID, entity);
@@ -87,29 +121,17 @@ public class GetEntityNbtNode extends BaseNode {
         outputValues.put(OUTPUT_NBT_STRING_ID, WorldReadUtils.truncate(fullString, maxStringLength));
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_NBT_SIZE_ID, fullString.length());
-        outputValues.put(OUTPUT_ERROR_ID, nbt != null ? "" : "Unable to extract entity NBT.");
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private @Nullable NbtCompound extractEntityNbt(Entity entity) {
-        Method[] methods = entity.getClass().getMethods();
-        for (Method method : methods) {
-            String name = method.getName();
-            if (!"writeNbt".equals(name) && !"saveNbt".equals(name)) {
-                continue;
-            }
-            try {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0] == NbtCompound.class) {
-                    NbtCompound out = new NbtCompound();
-                    Object result = method.invoke(entity, out);
-                    if (result instanceof NbtCompound nbt) {
-                        return nbt;
-                    }
-                    return out;
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        return null;
+    private void publishExtractionFailure(Entity entity) {
+        outputValues.put(OUTPUT_FOUND_ID, true);
+        outputValues.put(OUTPUT_ENTITY_ID, entity);
+        outputValues.put(OUTPUT_NBT_ID, null);
+        outputValues.put(OUTPUT_NBT_STRING_ID, "");
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_NBT_SIZE_ID, 0);
+        outputValues.put(OUTPUT_ERROR_ID, "Unable to extract entity NBT.");
     }
 
     private void writeInvalid(String error) {

@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
+import com.nodecraft.nodesystem.world.WorldScanStatus;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.Heightmap;
 import org.jetbrains.annotations.Nullable;
@@ -70,7 +72,7 @@ public class GetHeightmapNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TOTAL_POSSIBLE_ID, "Total Possible", "Total X/Z columns in the region", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Columns stopped sampling", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether all stepped columns were sampled", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_columns, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_columns, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether heightmap sampling was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when heightmap sampling is invalid", NodeDataType.STRING, this));
     }
@@ -126,36 +128,48 @@ public class GetHeightmapNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldScanStatus scan = new WorldScanStatus();
         BlockPosList points = new BlockPosList();
         List<Integer> heights = new ArrayList<>();
         int columnCount = 0;
         int minHeight = 0;
         int maxHeight = 0;
         long heightSum = 0L;
-        boolean hitLimit = false;
-        String stoppedReason = "completed";
 
         sample:
         for (long x = min.getX(); x <= max.getX(); ) {
             for (long z = min.getZ(); z <= max.getZ(); ) {
                 if (columnCount >= maxColumns) {
-                    hitLimit = true;
-                    stoppedReason = "max_columns";
+                    scan.markHitLimit("max_columns");
                     break sample;
                 }
                 int xi = (int) x;
                 int zi = (int) z;
-                int topY = context.getWorld().getTopY(resolvedType, xi, zi) - 1;
+                columnCount++;
+                WorldQueryAccess.TopYRead top = access.getTopY(resolvedType, xi, zi);
+                if (!scan.accept(top.status())) {
+                    if (scan.budgetStop()) {
+                        columnCount--;
+                        break sample;
+                    }
+                    Integer skipZ = WorldReadUtils.nextAxisCoordinate(z, step, max.getZ());
+                    if (skipZ == null) {
+                        break;
+                    }
+                    z = skipZ;
+                    continue;
+                }
+                int topY = top.topY() - 1;
                 points.add(new BlockPos(xi, topY, zi));
                 heights.add(topY);
-                if (columnCount == 0 || topY < minHeight) {
+                if (heights.size() == 1 || topY < minHeight) {
                     minHeight = topY;
                 }
-                if (columnCount == 0 || topY > maxHeight) {
+                if (heights.size() == 1 || topY > maxHeight) {
                     maxHeight = topY;
                 }
                 heightSum += topY;
-                columnCount++;
 
                 Integer nextZ = WorldReadUtils.nextAxisCoordinate(z, step, max.getZ());
                 if (nextZ == null) {
@@ -176,13 +190,13 @@ public class GetHeightmapNode extends BaseNode {
         outputValues.put(OUTPUT_HEIGHTMAP_TYPE_ID, resolvedType.asString());
         outputValues.put(OUTPUT_MIN_HEIGHT_ID, minHeight);
         outputValues.put(OUTPUT_MAX_HEIGHT_ID, maxHeight);
-        outputValues.put(OUTPUT_AVERAGE_HEIGHT_ID, columnCount > 0 ? (double) heightSum / columnCount : 0.0d);
+        outputValues.put(OUTPUT_AVERAGE_HEIGHT_ID, heights.isEmpty() ? 0.0d : (double) heightSum / heights.size());
         outputValues.put(OUTPUT_TOTAL_POSSIBLE_ID, (int) Math.min(Integer.MAX_VALUE, totalPossible));
-        outputValues.put(OUTPUT_HIT_LIMIT_ID, hitLimit);
-        outputValues.put(OUTPUT_COMPLETE_ID, !hitLimit);
-        outputValues.put(OUTPUT_STOPPED_REASON_ID, stoppedReason);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        outputValues.put(OUTPUT_HIT_LIMIT_ID, scan.hitLimit());
+        outputValues.put(OUTPUT_COMPLETE_ID, scan.complete());
+        outputValues.put(OUTPUT_STOPPED_REASON_ID, scan.stoppedReason());
+        outputValues.put(OUTPUT_VALID_ID, scan.valid());
+        outputValues.put(OUTPUT_ERROR_ID, scan.error());
     }
 
     private void publishInvalid(String error, long totalPossible) {

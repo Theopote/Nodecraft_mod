@@ -1,15 +1,17 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
@@ -22,6 +24,8 @@ import java.util.UUID;
     order = 3
 )
 public class GetBiomeNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GetBiomeNode.class);
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
 
@@ -60,8 +64,17 @@ public class GetBiomeNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldQueryAccess.BiomeRead read = access.getBiome(pos);
+        if (read.status() != WorldQueryAccess.Status.OK || read.biome() == null) {
+            writeFailure(read.status() == WorldQueryAccess.Status.BUDGET
+                    ? "World read budget exceeded."
+                    : "Target chunk is not loaded");
+            return;
+        }
+
         try {
-            var biomeEntry = context.getWorld().getBiome(pos);
+            var biomeEntry = read.biome();
             var biome = biomeEntry.value();
             String biomeName = biomeEntry.getKey()
                 .map(RegistryKey::getValue)
@@ -74,9 +87,8 @@ public class GetBiomeNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, true);
             outputValues.put(OUTPUT_ERROR_ID, "");
         } catch (Exception e) {
-            String error = "Error getting biome at " + pos + ": " + e.getMessage();
-            NodeCraft.LOGGER.warn(error);
-            writeFailure(error);
+            LOGGER.debug("World read failed", e);
+            writeFailure("World read failed");
         }
     }
 

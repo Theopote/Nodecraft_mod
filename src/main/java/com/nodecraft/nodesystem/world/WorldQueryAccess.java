@@ -2,12 +2,16 @@ package com.nodecraft.nodesystem.world;
 
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.fluid.FluidState;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.Heightmap;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.Biome;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -56,6 +60,48 @@ public final class WorldQueryAccess {
 
         public static LightRead budget() {
             return new LightRead(0, 0, 0, false, Status.BUDGET);
+        }
+    }
+
+    public record BlockEntityRead(@Nullable BlockEntity entity, Status status) {
+        public static BlockEntityRead ok(@Nullable BlockEntity entity) {
+            return new BlockEntityRead(entity, Status.OK);
+        }
+
+        public static BlockEntityRead unloaded() {
+            return new BlockEntityRead(null, Status.UNLOADED);
+        }
+
+        public static BlockEntityRead budget() {
+            return new BlockEntityRead(null, Status.BUDGET);
+        }
+    }
+
+    public record BiomeRead(@Nullable RegistryEntry<Biome> biome, Status status) {
+        public static BiomeRead ok(RegistryEntry<Biome> biome) {
+            return new BiomeRead(biome, Status.OK);
+        }
+
+        public static BiomeRead unloaded() {
+            return new BiomeRead(null, Status.UNLOADED);
+        }
+
+        public static BiomeRead budget() {
+            return new BiomeRead(null, Status.BUDGET);
+        }
+    }
+
+    public record TopYRead(int topY, Status status) {
+        public static TopYRead ok(int topY) {
+            return new TopYRead(topY, Status.OK);
+        }
+
+        public static TopYRead unloaded() {
+            return new TopYRead(0, Status.UNLOADED);
+        }
+
+        public static TopYRead budget() {
+            return new TopYRead(0, Status.BUDGET);
         }
     }
 
@@ -162,6 +208,37 @@ public final class WorldQueryAccess {
                 world.isSkyVisible(pos),
                 Status.OK
         );
+    }
+
+    public BlockEntityRead getBlockEntity(BlockPos pos) {
+        if (!isLoaded(pos)) {
+            return BlockEntityRead.unloaded();
+        }
+        if (!charge()) {
+            return BlockEntityRead.budget();
+        }
+        return BlockEntityRead.ok(world.getBlockEntity(pos));
+    }
+
+    public BiomeRead getBiome(BlockPos pos) {
+        if (!isLoaded(pos)) {
+            return BiomeRead.unloaded();
+        }
+        if (!charge()) {
+            return BiomeRead.budget();
+        }
+        return BiomeRead.ok(world.getBiome(pos));
+    }
+
+    public TopYRead getTopY(Heightmap.Type type, int x, int z) {
+        BlockPos probe = new BlockPos(x, world.getBottomY(), z);
+        if (!isLoaded(probe)) {
+            return TopYRead.unloaded();
+        }
+        if (!charge()) {
+            return TopYRead.budget();
+        }
+        return TopYRead.ok(world.getTopY(type, x, z));
     }
 
     private boolean charge() {

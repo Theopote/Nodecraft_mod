@@ -1,16 +1,18 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.entity.SignBlockEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,8 @@ import java.util.UUID;
     order = 10
 )
 public class ReadSignTextNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReadSignTextNode.class);
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
 
@@ -65,19 +69,35 @@ public class ReadSignTextNode extends BaseNode {
             return;
         }
 
-        try {
-            var blockEntity = context.getWorld().getBlockEntity(pos);
-            if (!(blockEntity instanceof SignBlockEntity sign)) {
-                outputValues.put(OUTPUT_TEXT_LINES_ID, List.of());
-                outputValues.put(OUTPUT_COMBINED_TEXT_ID, "");
-                outputValues.put(OUTPUT_IS_SIGN_ID, false);
-                outputValues.put(OUTPUT_SIGN_TYPE_ID, "");
-                outputValues.put(OUTPUT_VALID_ID, true);
-                outputValues.put(OUTPUT_ERROR_ID, "");
-                return;
-            }
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldQueryAccess.BlockEntityRead entityRead = access.getBlockEntity(pos);
+        if (entityRead.status() != WorldQueryAccess.Status.OK) {
+            writeFailure(entityRead.status() == WorldQueryAccess.Status.BUDGET
+                    ? "World read budget exceeded."
+                    : "Target chunk is not loaded");
+            return;
+        }
 
-            String signType = Registries.BLOCK.getId(context.getWorld().getBlockState(pos).getBlock()).toString();
+        if (!(entityRead.entity() instanceof SignBlockEntity sign)) {
+            outputValues.put(OUTPUT_TEXT_LINES_ID, List.of());
+            outputValues.put(OUTPUT_COMBINED_TEXT_ID, "");
+            outputValues.put(OUTPUT_IS_SIGN_ID, false);
+            outputValues.put(OUTPUT_SIGN_TYPE_ID, "");
+            outputValues.put(OUTPUT_VALID_ID, true);
+            outputValues.put(OUTPUT_ERROR_ID, "");
+            return;
+        }
+
+        WorldQueryAccess.BlockRead blockRead = access.getBlockState(pos);
+        if (blockRead.status() != WorldQueryAccess.Status.OK || blockRead.state() == null) {
+            writeFailure(blockRead.status() == WorldQueryAccess.Status.UNLOADED
+                    ? "Target chunk is not loaded"
+                    : "World read budget exceeded.");
+            return;
+        }
+
+        try {
+            String signType = Registries.BLOCK.getId(blockRead.state().getBlock()).toString();
             var text = sign.getFrontText();
             List<String> textLines = new ArrayList<>(4);
             StringBuilder builder = new StringBuilder();
@@ -99,9 +119,8 @@ public class ReadSignTextNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, true);
             outputValues.put(OUTPUT_ERROR_ID, "");
         } catch (Exception e) {
-            String error = "Error reading sign text at " + pos + ": " + e.getMessage();
-            NodeCraft.LOGGER.warn(error);
-            writeFailure(error);
+            LOGGER.debug("World read failed", e);
+            writeFailure("World read failed");
         }
     }
 

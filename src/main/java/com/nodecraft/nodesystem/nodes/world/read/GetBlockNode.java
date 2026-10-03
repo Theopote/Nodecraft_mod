@@ -1,17 +1,19 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
@@ -24,6 +26,8 @@ import java.util.UUID;
     order = 0
 )
 public class GetBlockNode extends BaseNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GetBlockNode.class);
 
     private static final String INPUT_COORDINATE_ID = "input_coordinate";
 
@@ -76,17 +80,52 @@ public class GetBlockNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        if (!access.isLoaded(pos)) {
+            writeFailure("Target chunk is not loaded");
+            return;
+        }
+
+        WorldQueryAccess.BlockRead blockRead = access.getBlockState(pos);
+        if (blockRead.status() != WorldQueryAccess.Status.OK || blockRead.state() == null) {
+            writeFailure(blockRead.status() == WorldQueryAccess.Status.UNLOADED
+                    ? "Target chunk is not loaded"
+                    : "World read budget exceeded.");
+            return;
+        }
+        WorldQueryAccess.FluidRead fluidRead = access.getFluidState(pos);
+        if (fluidRead.status() != WorldQueryAccess.Status.OK || fluidRead.state() == null) {
+            writeFailure(fluidRead.status() == WorldQueryAccess.Status.UNLOADED
+                    ? "Target chunk is not loaded"
+                    : "World read budget exceeded.");
+            return;
+        }
+        WorldQueryAccess.LightRead lightRead = access.getLight(pos);
+        if (lightRead.status() != WorldQueryAccess.Status.OK) {
+            writeFailure(lightRead.status() == WorldQueryAccess.Status.UNLOADED
+                    ? "Target chunk is not loaded"
+                    : "World read budget exceeded.");
+            return;
+        }
+        WorldQueryAccess.BlockEntityRead entityRead = access.getBlockEntity(pos);
+        if (entityRead.status() != WorldQueryAccess.Status.OK) {
+            writeFailure(entityRead.status() == WorldQueryAccess.Status.UNLOADED
+                    ? "Target chunk is not loaded"
+                    : "World read budget exceeded.");
+            return;
+        }
+
         try {
-            BlockState blockState = context.getWorld().getBlockState(pos);
-            FluidState fluidState = context.getWorld().getFluidState(pos);
+            BlockState blockState = blockRead.state();
+            FluidState fluidState = fluidRead.state();
             boolean hasFluid = !fluidState.isEmpty();
 
             outputValues.put(OUTPUT_BLOCK_ID, blockState);
             outputValues.put(OUTPUT_BLOCK_TYPE_ID, WorldReadUtils.blockId(blockState));
             outputValues.put(OUTPUT_IS_AIR_ID, blockState.isAir());
             outputValues.put(OUTPUT_IS_SOLID_ID, blockState.isSolidBlock(context.getWorld(), pos));
-            outputValues.put(OUTPUT_LIGHT_LEVEL_ID, context.getWorld().getLightLevel(pos));
-            outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, context.getWorld().getBlockEntity(pos) != null);
+            outputValues.put(OUTPUT_LIGHT_LEVEL_ID, lightRead.combined());
+            outputValues.put(OUTPUT_HAS_BLOCK_ENTITY_ID, entityRead.entity() != null);
             outputValues.put(OUTPUT_FLUID_TYPE_ID, hasFluid ? Registries.FLUID.getId(fluidState.getFluid()).toString() : "");
             outputValues.put(OUTPUT_HAS_FLUID_ID, hasFluid);
             outputValues.put(OUTPUT_IS_REPLACEABLE_ID, blockState.isReplaceable());
@@ -94,9 +133,8 @@ public class GetBlockNode extends BaseNode {
             outputValues.put(OUTPUT_VALID_ID, true);
             outputValues.put(OUTPUT_ERROR_ID, "");
         } catch (Exception e) {
-            String error = "Error getting block at " + pos + ": " + e.getMessage();
-            NodeCraft.LOGGER.warn(error);
-            writeFailure(error);
+            LOGGER.debug("World read failed", e);
+            writeFailure("World read failed");
         }
     }
 

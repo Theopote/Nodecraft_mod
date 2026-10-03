@@ -408,6 +408,12 @@ public final class GenerationLimits {
     /** Hard safety ceiling for world.read Max Results (Find Blocks) budgets. */
     public static final int MAX_WORLD_READ_RESULTS = 262_144;
 
+    /**
+     * Hard cap on SNBT serialization of a single block-entity / entity NBT compound.
+     * Exceeding this fails closed; user Max String Length only truncates the output string.
+     */
+    public static final int MAX_NBT_SERIALIZED_CHARS = 1_048_576;
+
     /** Hard cap for materialized terrain X/Z lattice cells (512×512). */
     public static final int MAX_TERRAIN_GRID_CELLS = 262_144;
 

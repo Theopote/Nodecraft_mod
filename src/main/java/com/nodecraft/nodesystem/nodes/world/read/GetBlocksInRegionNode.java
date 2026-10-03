@@ -1,6 +1,5 @@
 package com.nodecraft.nodesystem.nodes.world.read;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
@@ -12,6 +11,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
+import com.nodecraft.nodesystem.world.WorldScanStatus;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -68,7 +69,7 @@ public class GetBlocksInRegionNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_TOTAL_POSSIBLE_ID, "Total Possible", "Total positions in the region", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Whether Max Blocks stopped the scan", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_COMPLETE_ID, "Complete", "Whether the entire region was scanned", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, or invalid", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_STOPPED_REASON_ID, "Stopped Reason", "completed, max_blocks, work_budget, unloaded_chunk, or invalid", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the region read was executed", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Error message when region read fails", NodeDataType.STRING, this));
     }
@@ -118,46 +119,45 @@ public class GetBlocksInRegionNode extends BaseNode {
             return;
         }
 
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        WorldScanStatus scan = new WorldScanStatus();
         List<BlockState> blocksList = new ArrayList<>();
         BlockPosList coordsList = new BlockPosList();
         int scannedCount = 0;
         int airCount = 0;
         int solidCount = 0;
-        int errorCount = 0;
-        boolean hitLimit = false;
-        String stoppedReason = "completed";
-        String firstError = "";
 
         for (BlockPos pos : BlockPos.iterate(min, max)) {
             if (scannedCount >= maxBlocks) {
-                hitLimit = true;
-                stoppedReason = "max_blocks";
+                scan.markHitLimit("max_blocks");
                 break;
             }
             BlockPos immutablePos = pos.toImmutable();
             scannedCount++;
-            try {
-                BlockState blockState = context.getWorld().getBlockState(immutablePos);
-                boolean isAir = blockState.isAir();
-                if (isAir) {
-                    airCount++;
-                } else {
-                    solidCount++;
+            WorldQueryAccess.BlockRead read = access.getBlockState(immutablePos);
+            if (!scan.accept(read.status()) || read.state() == null) {
+                if (scan.budgetStop()) {
+                    break;
                 }
-                if (!excludeAirValue || !isAir) {
-                    blocksList.add(blockState);
-                    coordsList.add(immutablePos);
-                }
-            } catch (Exception e) {
-                errorCount++;
-                if (firstError.isEmpty()) {
-                    firstError = "Error getting block at " + immutablePos + ": " + e.getMessage();
-                }
-                NodeCraft.LOGGER.warn("GetBlocksInRegionNode failed at {}: {}", immutablePos, e.getMessage());
+                continue;
+            }
+            BlockState blockState = read.state();
+            boolean isAir = blockState.isAir();
+            if (isAir) {
+                airCount++;
+            } else {
+                solidCount++;
+            }
+            if (!excludeAirValue || !isAir) {
+                blocksList.add(blockState);
+                coordsList.add(immutablePos);
             }
         }
 
-        boolean complete = !hitLimit;
+        if (scan.budgetStop() && scannedCount > 0) {
+            scannedCount--;
+        }
+
         publish(
             blocksList,
             coordsList,
@@ -165,11 +165,11 @@ public class GetBlocksInRegionNode extends BaseNode {
             scannedCount,
             airCount,
             solidCount,
-            hitLimit,
-            complete,
-            stoppedReason,
-            true,
-            errorCount > 0 ? firstError : ""
+            scan.hitLimit(),
+            scan.complete(),
+            scan.stoppedReason(),
+            scan.valid(),
+            scan.error()
         );
     }
 

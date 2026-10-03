@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.block.BlockState;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -256,6 +257,21 @@ final class WorldReadUtils {
             return value;
         }
         return value.substring(0, limit) + "...";
+    }
+
+    /**
+     * Serializes NBT to SNBT. Returns {@code null} when the string exceeds
+     * {@link GenerationLimits#MAX_NBT_SERIALIZED_CHARS}.
+     */
+    static @Nullable String serializeNbtOrCap(@Nullable NbtCompound nbt) {
+        if (nbt == null) {
+            return null;
+        }
+        String full = nbt.toString();
+        if (full.length() > GenerationLimits.MAX_NBT_SERIALIZED_CHARS) {
+            return null;
+        }
+        return full;
     }
 
     static boolean isConnected(@Nullable INode node, @Nullable String portId) {

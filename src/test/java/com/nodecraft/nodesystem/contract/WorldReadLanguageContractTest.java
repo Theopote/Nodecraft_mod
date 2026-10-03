@@ -8,11 +8,6 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.world.read.FindBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.read.GetBiomeNode;
 import com.nodecraft.nodesystem.nodes.world.read.GetBlockNbtNode;
@@ -30,8 +25,6 @@ import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * World Read v1 language fence (Graph V61).
+ * World Read v1 language fence.
  */
 class WorldReadLanguageContractTest {
 
@@ -83,11 +76,6 @@ class WorldReadLanguageContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV61() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -232,6 +220,63 @@ class WorldReadLanguageContractTest {
         assertTrue(hasPort(node, "output_complete"));
     }
 
+    @Test
+    void scannersAdvertiseUnloadedAndWorkBudgetStopReasons() {
+        IPort stopped = findPort(new GetBlocksInRegionNode(), "output_stopped_reason");
+        assertNotNull(stopped);
+        assertTrue(stopped.getDescription().contains("unloaded_chunk"));
+        assertTrue(stopped.getDescription().contains("work_budget"));
+        assertTrue(findPort(new FindBlocksNode(), "output_stopped_reason")
+                .getDescription().contains("unloaded_chunk"));
+        assertTrue(findPort(new GetHeightmapNode(), "output_stopped_reason")
+                .getDescription().contains("work_budget"));
+        assertTrue(findPort(new GetSurfaceBlocksNode(), "output_stopped_reason")
+                .getDescription().contains("unloaded_chunk"));
+        assertTrue(findPort(new ScanRegionByTypeNode(), "output_stopped_reason")
+                .getDescription().contains("work_budget"));
+    }
+
+    @Test
+    void pointReadsFailClosedWithoutWorld() {
+        BlockPos pos = new BlockPos(0, 64, 0);
+        ExecutionContext empty = ExecutionContext.createEmpty(null);
+
+        GetBlockNode block = new GetBlockNode();
+        block.setInput("input_coordinate", pos);
+        block.processNode(empty);
+        assertEquals(Boolean.FALSE, block.getOutput("output_valid"));
+
+        GetBiomeNode biome = new GetBiomeNode();
+        biome.setInput("input_coordinate", pos);
+        biome.processNode(empty);
+        assertEquals(Boolean.FALSE, biome.getOutput("output_valid"));
+
+        GetBlockNbtNode nbt = new GetBlockNbtNode();
+        nbt.setInput("input_coordinate", pos);
+        nbt.processNode(empty);
+        assertEquals(Boolean.FALSE, nbt.getOutput("output_valid"));
+
+        ReadSignTextNode sign = new ReadSignTextNode();
+        sign.setInput("input_coordinate", pos);
+        sign.processNode(empty);
+        assertEquals(Boolean.FALSE, sign.getOutput("output_valid"));
+    }
+
+    @Test
+    void getEntityNbtRejectsNonEntityWithoutSearchPorts() {
+        GetEntityNbtNode node = new GetEntityNbtNode();
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(Boolean.FALSE, node.getOutput("output_found"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Entity"));
+    }
+
+    @Test
+    void worldReadHardCapsAreDocumented() {
+        assertEquals(1_048_576, GenerationLimits.MAX_NBT_SERIALIZED_CHARS);
+        assertEquals(1_000_000L, GenerationLimits.MAX_WORLD_BLOCK_READS_PER_NODE);
+    }
+
 
     private static void assertPortType(INode node, String portId, NodeDataType expected) {
         IPort port = findPort(node, portId);
@@ -255,21 +300,5 @@ class WorldReadLanguageContractTest {
 
     private static boolean hasPort(INode node, String portId) {
         return findPort(node, portId) != null;
-    }
-
-    private static SavedNode savedNode(String nodeId, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = nodeId;
-        node.typeId = typeId;
-        return node;
-    }
-
-    private static SavedConnection wire(String src, String srcPort, String dst, String dstPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = src;
-        connection.sourcePortId = srcPort;
-        connection.targetNodeId = dst;
-        connection.targetPortId = dstPort;
-        return connection;
     }
 }
