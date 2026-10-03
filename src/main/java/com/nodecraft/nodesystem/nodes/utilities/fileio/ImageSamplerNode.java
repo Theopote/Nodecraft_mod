@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ImageData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -21,7 +22,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "utilities.fileio.image_sampler",
     displayName = "Image Sampler",
-    description = "Samples color, channels, and grayscale values from IMAGE using UV or pixel coordinates",
+    description = "Samples IMAGE using UV or pixel coordinates. UV 0..1 maps to inclusive pixel endpoints (u=1 is the last column); wrap applies after that mapping.",
     category = "utilities.fileio",
     order = 1
 )
@@ -82,8 +83,12 @@ public class ImageSamplerNode extends BaseNode {
         super(UUID.randomUUID(), "utilities.fileio.image_sampler");
 
         addInputPort(new BasePort(INPUT_IMAGE_ID, "Image", "IMAGE payload from Read Image", NodeDataType.IMAGE, this));
-        addInputPort(new BasePort(INPUT_U_ID, "U", "Normalized horizontal coordinate in 0..1", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_V_ID, "V", "Normalized vertical coordinate in 0..1", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_U_ID, "U",
+            "Normalized horizontal coordinate; 0..1 maps to inclusive endpoints (1 is last column)",
+            NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_V_ID, "V",
+            "Normalized vertical coordinate; 0..1 maps to inclusive endpoints (1 is last row)",
+            NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_X_ID, "X", "Pixel-space horizontal coordinate", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_Y_ID, "Y", "Pixel-space vertical coordinate", NodeDataType.DOUBLE, this));
 
@@ -107,7 +112,7 @@ public class ImageSamplerNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Samples color, channels, and grayscale values from IMAGE using UV or pixel coordinates";
+        return "Samples IMAGE using UV or pixel coordinates. UV 0..1 maps to inclusive pixel endpoints (u=1 is the last column); wrap applies after that mapping.";
     }
 
     @Override
@@ -122,8 +127,8 @@ public class ImageSamplerNode extends BaseNode {
         double x;
         double y;
         if (resolvedMode == CoordinateMode.PIXEL) {
-            Double px = requireFiniteDouble(INPUT_X_ID);
-            Double py = requireFiniteDouble(INPUT_Y_ID);
+            Double px = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_X_ID));
+            Double py = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_Y_ID));
             if (px == null || py == null) {
                 writeInvalid("Pixel coordinates must be finite doubles");
                 return;
@@ -131,8 +136,8 @@ public class ImageSamplerNode extends BaseNode {
             x = px;
             y = py;
         } else {
-            Double u = requireFiniteDouble(INPUT_U_ID);
-            Double v = requireFiniteDouble(INPUT_V_ID);
+            Double u = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_U_ID));
+            Double v = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_V_ID));
             if (u == null || v == null) {
                 writeInvalid("UV coordinates must be finite doubles");
                 return;
@@ -167,13 +172,25 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_VALID_ID, true);
     }
 
-    private @Nullable Double requireFiniteDouble(String portId) {
-        Object value = inputValues.get(portId);
-        if (!(value instanceof Number number)) {
-            return null;
+    public void setCoordinateMode(CoordinateMode coordinateMode) {
+        if (coordinateMode != null && this.coordinateMode != coordinateMode) {
+            this.coordinateMode = coordinateMode;
+            markDirty();
         }
-        double resolved = number.doubleValue();
-        return Double.isFinite(resolved) ? resolved : null;
+    }
+
+    public void setWrapMode(WrapMode wrapMode) {
+        if (wrapMode != null && this.wrapMode != wrapMode) {
+            this.wrapMode = wrapMode;
+            markDirty();
+        }
+    }
+
+    public void setFilterMode(FilterMode filterMode) {
+        if (filterMode != null && this.filterMode != filterMode) {
+            this.filterMode = filterMode;
+            markDirty();
+        }
     }
 
     private ColorData sampleNearest(ImageData image, double x, double y) {

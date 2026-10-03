@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.ImportAccessPolicy;
 import com.nodecraft.nodesystem.util.ImportPathUtil;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PlacementBlockUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,7 +30,7 @@ import java.util.UUID;
     effect = NodeEffect.FILE_IO,
     id = "utilities.fileio.import_vox",
     displayName = "Import VOX",
-    description = "Imports MagicaVoxel .vox structure as block coordinates, colors, and palette indices",
+    description = "Imports supported voxel model data as block coordinates, colors, and palette indices; not a full MagicaVoxel scene graph",
     category = "utilities.fileio",
     order = 2
 )
@@ -72,6 +73,11 @@ public class ImportVoxNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VERSION_ID, "VOX Version", "VOX file format version", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when import succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why import failed", NodeDataType.STRING, this));
+    }
+
+    @Override
+    public String getDescription() {
+        return "Imports supported voxel model data as block coordinates, colors, and palette indices; not a full MagicaVoxel scene graph";
     }
 
     @Override
@@ -162,10 +168,16 @@ public class ImportVoxNode extends BaseNode {
     }
 
     private BlockPos toMinecraftPos(MagicaVoxelVoxReader.Voxel voxel, BlockPos origin, boolean zUp) {
-        int x = origin.getX() + voxel.x();
-        int y = origin.getY() + (zUp ? voxel.z() : voxel.y());
-        int z = origin.getZ() + (zUp ? voxel.y() : voxel.z());
-        return new BlockPos(x, y, z);
+        BlockPos mapped = PlacementBlockUtils.addBlockPos(
+            origin,
+            voxel.x(),
+            zUp ? voxel.z() : voxel.y(),
+            zUp ? voxel.y() : voxel.z()
+        );
+        if (mapped == null) {
+            throw new IllegalArgumentException("Imported voxel coordinate overflow");
+        }
+        return mapped;
     }
 
     private @Nullable String getInputString(String portId) {

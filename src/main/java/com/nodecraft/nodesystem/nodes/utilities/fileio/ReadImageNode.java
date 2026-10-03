@@ -148,6 +148,15 @@ public class ReadImageNode extends BaseNode {
                 publishEmptyOutputs(resolvedPath.toString(), "Unsupported or unreadable image format");
                 return;
             }
+            if (meta.width() > GenerationLimits.MAX_IMAGE_SOURCE_DIMENSION
+                || meta.height() > GenerationLimits.MAX_IMAGE_SOURCE_DIMENSION) {
+                publishEmptyOutputs(
+                    resolvedPath.toString(),
+                    "Image source dimension exceeds MAX_IMAGE_SOURCE_DIMENSION "
+                        + GenerationLimits.MAX_IMAGE_SOURCE_DIMENSION
+                );
+                return;
+            }
 
             long sourcePixels;
             try {

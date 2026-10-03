@@ -779,8 +779,8 @@
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Read Image | `utilities.fileio.read_image` | Reads a local image file into an IMAGE payload with metadata-first safety caps | `ReadImageNode` |
-| Image Sampler | `utilities.fileio.image_sampler` | Samples color, channels, and grayscale values from IMAGE using UV or pixel coordinates | `ImageSamplerNode` |
-| Import VOX | `utilities.fileio.import_vox` | Imports MagicaVoxel .vox structure as block coordinates, colors, and palette indices | `ImportVoxNode` |
+| Image Sampler | `utilities.fileio.image_sampler` | Samples IMAGE using UV or pixel coordinates. UV 0..1 maps to inclusive pixel endpoints (u=1 is the last column); wrap applies after that mapping. | `ImageSamplerNode` |
+| Import VOX | `utilities.fileio.import_vox` | Imports supported voxel model data as block coordinates, colors, and palette indices; not a full MagicaVoxel scene graph | `ImportVoxNode` |
 
 ## utilities.morphology (1)
 

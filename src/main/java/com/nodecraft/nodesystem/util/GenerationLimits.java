@@ -314,6 +314,9 @@ public final class GenerationLimits {
     /** Maximum materializable image sample count (width × height after downsample). */
     public static final int MAX_IMAGE_PIXELS = 1_048_576;
 
+    /** Maximum source width or height accepted from image metadata before decode. */
+    public static final int MAX_IMAGE_SOURCE_DIMENSION = 32768;
+
     /** Maximum accepted raster image file size on disk. */
     public static final long MAX_IMAGE_FILE_BYTES = 64L * 1024 * 1024;
 

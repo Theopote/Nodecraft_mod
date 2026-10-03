@@ -11,7 +11,6 @@ import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ImageData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -52,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * FileIO v1 language fence (Graph V56).
+ * FileIO language fence.
  */
 class FileIoLanguageContractTest {
 
@@ -83,11 +82,6 @@ class FileIoLanguageContractTest {
     @AfterEach
     void resetPolicy() {
         ImportAccessPolicy.reset();
-    }
-
-    @Test
-    void currentGraphFormatIsAtLeastV56() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
@@ -178,6 +172,7 @@ class FileIoLanguageContractTest {
     @Test
     void generationLimitsExposeImageAndVoxBudgets() {
         assertEquals(1_048_576, GenerationLimits.MAX_IMAGE_PIXELS);
+        assertEquals(32768, GenerationLimits.MAX_IMAGE_SOURCE_DIMENSION);
         assertEquals(64L * 1024 * 1024, GenerationLimits.MAX_IMAGE_FILE_BYTES);
         assertEquals(64L * 1024 * 1024, GenerationLimits.MAX_VOX_FILE_BYTES);
         assertEquals(262_144, GenerationLimits.MAX_IMPORTED_VOXELS);
@@ -240,6 +235,60 @@ class FileIoLanguageContractTest {
     }
 
     @Test
+    void imageSamplerRejectsIntegerUv() {
+        ImageSamplerProbe sampler = new ImageSamplerProbe();
+        ImageData image = twoWideImage();
+        sampler.setInput("input_image", image);
+        sampler.connectInput("input_u", NodeDataType.DOUBLE);
+        sampler.connectInput("input_v", NodeDataType.DOUBLE);
+        sampler.setInput("input_u", 1);
+        sampler.setInput("input_v", 0.0d);
+        sampler.processNode(null);
+        assertEquals(Boolean.FALSE, sampler.getOutput("output_valid"));
+    }
+
+    @Test
+    void imageSamplerUvEndpointsStayLastColumnUnderWrap() {
+        ImageData image = twoWideImage();
+        for (ImageSamplerNode.WrapMode wrap : ImageSamplerNode.WrapMode.values()) {
+            ImageSamplerNode sampler = new ImageSamplerNode();
+            sampler.setFilterMode(ImageSamplerNode.FilterMode.NEAREST);
+            sampler.setWrapMode(wrap);
+            sampler.setInput("input_image", image);
+
+            sampler.setInput("input_u", 0.0d);
+            sampler.setInput("input_v", 0.0d);
+            sampler.processNode(null);
+            assertEquals(Boolean.TRUE, sampler.getOutput("output_valid"), wrap.name());
+            ColorData atZero = assertInstanceOf(ColorData.class, sampler.getOutput("output_color"));
+            assertEquals(1.0f, atZero.r(), 0.01f, wrap.name() + " u=0");
+            assertEquals(0.0f, atZero.g(), 0.01f, wrap.name() + " u=0");
+
+            sampler.setInput("input_u", 1.0d);
+            sampler.processNode(null);
+            assertEquals(Boolean.TRUE, sampler.getOutput("output_valid"), wrap.name());
+            ColorData atOne = assertInstanceOf(ColorData.class, sampler.getOutput("output_color"));
+            assertEquals(0.0f, atOne.r(), 0.01f, wrap.name() + " u=1");
+            assertEquals(1.0f, atOne.g(), 0.01f, wrap.name() + " u=1");
+        }
+    }
+
+    @Test
+    void readImageRejectsSourceDimensionOverCap() throws Exception {
+        Path file = tempDir.resolve("wide_meta.png");
+        Files.write(file, createPngWithIhdr(GenerationLimits.MAX_IMAGE_SOURCE_DIMENSION + 1, 1));
+
+        ReadImageNode reader = new ReadImageNode();
+        reader.setReadMode(ReadImageNode.ReadMode.METADATA_ONLY);
+        reader.setInput("input_path", file.toString());
+        reader.processNode(null);
+
+        assertEquals(Boolean.FALSE, reader.getOutput("output_valid"));
+        String error = assertInstanceOf(String.class, reader.getOutput("output_error"));
+        assertTrue(error.contains("MAX_IMAGE_SOURCE_DIMENSION"), error);
+    }
+
+    @Test
     void importVoxHasNoPlacementsOrStonePorts() {
         ImportVoxNode node = new ImportVoxNode();
         Set<String> ids = new java.util.HashSet<>();
@@ -283,6 +332,21 @@ class FileIoLanguageContractTest {
     }
 
     @Test
+    void importVoxOriginOverflowFailsClosedOnX() throws Exception {
+        assertVoxOriginOverflow(new BlockPos(Integer.MAX_VALUE, 0, 0), 1, 0, 0);
+    }
+
+    @Test
+    void importVoxOriginOverflowFailsClosedOnMappedY() throws Exception {
+        assertVoxOriginOverflow(new BlockPos(0, Integer.MAX_VALUE, 0), 0, 0, 1);
+    }
+
+    @Test
+    void importVoxOriginOverflowFailsClosedOnMappedZ() throws Exception {
+        assertVoxOriginOverflow(new BlockPos(0, 0, Integer.MAX_VALUE), 0, 1, 0);
+    }
+
+    @Test
     void importVoxLShapeMapsZUpAxes() throws Exception {
         Path file = tempDir.resolve("lshape.vox");
         Files.write(file, createLShapeVox());
@@ -307,6 +371,28 @@ class FileIoLanguageContractTest {
         List<?> indices = assertInstanceOf(List.class, probe.getOutput("output_color_indices"));
         assertEquals(3, colors.size());
         assertEquals(3, indices.size());
+    }
+
+    private static ImageData twoWideImage() {
+        return ImageData.create(2, 1, 2, 1, 1, List.of(ColorData.RED, ColorData.GREEN));
+    }
+
+    private void assertVoxOriginOverflow(BlockPos origin, int vx, int vy, int vz) throws Exception {
+        Path file = tempDir.resolve("overflow-" + vx + "-" + vy + "-" + vz + ".vox");
+        Files.write(file, createSingleVoxelVox(vx, vy, vz));
+
+        ImportVoxProbe probe = new ImportVoxProbe();
+        probe.connectInput("input_origin", NodeDataType.BLOCK_POS);
+        probe.setInput("input_path", file.toString());
+        probe.setInput("input_origin", origin);
+        probe.processNode(null);
+
+        assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
+        String error = assertInstanceOf(String.class, probe.getOutput("output_error"));
+        assertTrue(error.toLowerCase(Locale.ROOT).contains("overflow"), error);
+        BlockPosList blocks = assertInstanceOf(BlockPosList.class, probe.getOutput("output_blocks"));
+        assertEquals(0, blocks.size());
+        assertEquals(0, probe.getOutput("output_count"));
     }
 
 
@@ -364,6 +450,18 @@ class FileIoLanguageContractTest {
         out.write((value >>> 16) & 0xFF);
         out.write((value >>> 8) & 0xFF);
         out.write(value & 0xFF);
+    }
+
+    private static byte[] createSingleVoxelVox(int x, int y, int z) {
+        byte[] size = voxChunk("SIZE", ints(Math.max(x + 1, 1), Math.max(y + 1, 1), Math.max(z + 1, 1)), new byte[0]);
+        byte[] xyzi = voxChunk("XYZI", concat(
+                ints(1),
+                new byte[]{(byte) x, (byte) y, (byte) z, 1}
+        ), new byte[0]);
+        byte[] rgba = voxChunk("RGBA", voxPalette(), new byte[0]);
+        byte[] mainChildren = concat(size, xyzi, rgba);
+        return concat("VOX ".getBytes(StandardCharsets.US_ASCII), ints(150),
+                voxChunk("MAIN", new byte[0], mainChildren));
     }
 
     private static byte[] createLShapeVox() {
@@ -447,6 +545,12 @@ class FileIoLanguageContractTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
         assertTrue(output.connectTo(input), inputPortId + " connect failed");
+    }
+
+    private static final class ImageSamplerProbe extends ImageSamplerNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            FileIoLanguageContractTest.connectInput(this, portId, outputType);
+        }
     }
 
     private static final class ImportVoxProbe extends ImportVoxNode {
