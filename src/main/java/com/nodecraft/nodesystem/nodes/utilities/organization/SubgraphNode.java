@@ -14,6 +14,7 @@ import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.SubgraphInterfaceScanner;
 import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.nodes.variable.VariableScopeBridge;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
@@ -122,6 +123,7 @@ public class SubgraphNode extends BaseNode {
         SubgraphCallStackBridge.StackFrame stackFrame = SubgraphCallStackBridge.push(context, ref);
         SubgraphCallFrameBridge.FrameHandle frameHandle = SubgraphCallFrameBridge.push(context, ref, inputs);
         Map<String, SavedGraph> previousDefinitions = null;
+        VariableScopeBridge.CallScopeHandle variableScope = null;
         try {
             if (context == null) {
                 writeFailure("Execution context is required for subgraph execution");
@@ -130,6 +132,7 @@ public class SubgraphNode extends BaseNode {
 
             previousDefinitions = context.getSubgraphDefinitions();
             context.setSubgraphDefinitions(mergeDefinitions(previousDefinitions, definition));
+            variableScope = VariableScopeBridge.pushCallScope(context);
 
             NodeGraph subgraph = GraphSerializer.fromSavedGraph(definition);
             invalidateGraphIoCache(subgraph);
@@ -147,6 +150,7 @@ public class SubgraphNode extends BaseNode {
             LOGGER.debug("Subgraph execution failed", e);
             writeFailure("Subgraph execution failed");
         } finally {
+            VariableScopeBridge.restoreCallScope(variableScope);
             if (context != null && previousDefinitions != null) {
                 context.setSubgraphDefinitions(previousDefinitions);
             }

@@ -209,11 +209,13 @@ class VariableScopeNodeTest {
         setBeta.compute(Map.of("input_value", "B"), context);
 
         VariableListNode list = new VariableListNode();
-        list.compute(Map.of("input_prefix", "user."), context);
+        connectInput(list, "input_prefix", NodeDataType.STRING);
+        Map<String, Object> listed = list.compute(Map.of("input_prefix", "user."), context);
 
-        assertEquals(1, list.getOutput("output_count"));
-        assertEquals(List.of("user.alpha"), list.getOutput("output_names"));
-        assertEquals(List.of("A"), list.getOutput("output_values"));
+        assertTrue((Boolean) list.getOutput("output_valid"));
+        assertEquals(1, listed.get("output_count"));
+        assertEquals(List.of("user.alpha"), listed.get("output_names"));
+        assertEquals(List.of("A"), listed.get("output_values"));
     }
 
     private static void configureFrameLocal(FrameLocalVariableNode node, String frame, String name) {

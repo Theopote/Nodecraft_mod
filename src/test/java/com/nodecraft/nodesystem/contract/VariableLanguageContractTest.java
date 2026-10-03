@@ -10,18 +10,24 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.VariableEntry;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
-import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.graph.GraphSerializer;
+import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.datatypes.VectorData;
+import com.nodecraft.nodesystem.nodes.input.values.BooleanToggleNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.GraphInputNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.GraphOutputNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphNode;
+import com.nodecraft.nodesystem.nodes.utilities.organization.SubgraphPortIds;
 import com.nodecraft.nodesystem.nodes.variable.ClearVariablesNode;
 import com.nodecraft.nodesystem.nodes.variable.FrameLocalVariableNode;
 import com.nodecraft.nodesystem.nodes.variable.GetVariableNode;
 import com.nodecraft.nodesystem.nodes.variable.SetVariableNode;
 import com.nodecraft.nodesystem.nodes.variable.VariableListNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Variable Scope v1 language fence (Graph V59).
+ * Variable Scope v1 language fence.
  */
 class VariableLanguageContractTest {
 
@@ -62,10 +68,6 @@ class VariableLanguageContractTest {
         if (!registry.isInitialized()) {
             registry.initialize();
         }
-    }
-
-    @Test
-    void graphFormatV59ConstantExists() {
     }
 
     @Test
@@ -330,6 +332,192 @@ class VariableLanguageContractTest {
         assertNull(context.getVariable("userVar"));
     }
 
+    @Test
+    void parentAndChildVariablesAreIsolated() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        SetVariableProbe parentSet = new SetVariableProbe();
+        parentSet.setNodeState(Map.of("defaultName", "foo"));
+        parentSet.connectInput("input_value", NodeDataType.INTEGER);
+        parentSet.setInput("input_value", 1);
+        parentSet.processNode(context);
+        assertTrue((Boolean) parentSet.getOutput("output_valid"));
+
+        SavedGraph child = childGraphSetThenGet();
+        SubgraphNode subgraph = new SubgraphNode();
+        subgraph.setNodeState(Map.of("subgraphRef", "inner"));
+        subgraph.syncPortsFromDefinition(child);
+        context.setSubgraphDefinitions(Map.of("inner", child));
+        subgraph.setInput(SubgraphPortIds.dynamicInputPortId("in"), 2);
+        subgraph.processNode(context);
+
+        assertTrue((Boolean) subgraph.getOutput("output_valid"));
+        assertEquals(2, subgraph.getOutput(SubgraphPortIds.dynamicOutputPortId("out")));
+
+        GetVariableProbe parentGet = new GetVariableProbe();
+        parentGet.setNodeState(Map.of("defaultName", "foo"));
+        parentGet.connectInput("input_default_value", NodeDataType.INTEGER);
+        parentGet.processNode(context);
+        assertTrue((Boolean) parentGet.getOutput("output_valid"));
+        assertEquals(1, parentGet.getOutput("output_value"));
+    }
+
+    @Test
+    void childClearDoesNotClearParentVariables() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        SetVariableProbe parentSet = new SetVariableProbe();
+        parentSet.setNodeState(Map.of("defaultName", "foo"));
+        parentSet.connectInput("input_value", NodeDataType.INTEGER);
+        parentSet.setInput("input_value", 1);
+        parentSet.processNode(context);
+
+        SavedGraph child = childGraphClear();
+        SubgraphNode subgraph = new SubgraphNode();
+        subgraph.setNodeState(Map.of("subgraphRef", "inner"));
+        subgraph.syncPortsFromDefinition(child);
+        context.setSubgraphDefinitions(Map.of("inner", child));
+        subgraph.processNode(context);
+        assertTrue((Boolean) subgraph.getOutput("output_valid"));
+
+        GetVariableProbe parentGet = new GetVariableProbe();
+        parentGet.setNodeState(Map.of("defaultName", "foo"));
+        parentGet.connectInput("input_default_value", NodeDataType.INTEGER);
+        parentGet.processNode(context);
+        assertTrue((Boolean) parentGet.getOutput("output_valid"));
+        assertEquals(1, parentGet.getOutput("output_value"));
+    }
+
+    @Test
+    void frameLocalNamespaceDoesNotLeakAcrossSubgraphCalls() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+
+        FrameLocalProbe parentWrite = new FrameLocalProbe();
+        parentWrite.setNodeState(Map.of("defaultFrame", "session", "defaultName", "counter"));
+        parentWrite.connectInput("input_write", NodeDataType.BOOLEAN);
+        parentWrite.connectInput("input_value", NodeDataType.INTEGER);
+        parentWrite.setInput("input_write", true);
+        parentWrite.setInput("input_value", 1);
+        parentWrite.processNode(context);
+        assertTrue((Boolean) parentWrite.getOutput("output_valid"));
+
+        SavedGraph child = childGraphFrameLocalWrite();
+        SubgraphNode subgraph = new SubgraphNode();
+        subgraph.setNodeState(Map.of("subgraphRef", "inner"));
+        subgraph.syncPortsFromDefinition(child);
+        context.setSubgraphDefinitions(Map.of("inner", child));
+        subgraph.setInput(SubgraphPortIds.dynamicInputPortId("value"), 2);
+        subgraph.processNode(context);
+        assertTrue((Boolean) subgraph.getOutput("output_valid"));
+        assertEquals(2, subgraph.getOutput(SubgraphPortIds.dynamicOutputPortId("out")));
+
+        FrameLocalProbe parentRead = new FrameLocalProbe();
+        parentRead.setNodeState(Map.of("defaultFrame", "session", "defaultName", "counter"));
+        parentRead.connectInput("input_default", NodeDataType.INTEGER);
+        parentRead.processNode(context);
+        assertTrue((Boolean) parentRead.getOutput("output_valid"));
+        assertEquals(1, parentRead.getOutput("output_value"));
+    }
+
+    @Test
+    void variableListConnectedInvalidPrefixFailsClosed() {
+        VariableListProbe list = new VariableListProbe();
+        list.connectInput("input_prefix", NodeDataType.STRING);
+        list.setInput("input_prefix", null);
+        list.processNode(null);
+
+        assertFalse((Boolean) list.getOutput("output_valid"));
+        assertEquals(0, list.getOutput("output_count"));
+        assertEquals(List.of(), list.getOutput("output_names"));
+        assertEquals(List.of(), list.getOutput("output_values"));
+    }
+
+    @Test
+    void overLengthVariableNameFailsClosed() {
+        SetVariableProbe set = new SetVariableProbe();
+        set.setNodeState(Map.of("defaultName", "a".repeat(GenerationLimits.MAX_VARIABLE_NAME_CHARS + 1)));
+        set.connectInput("input_value", NodeDataType.INTEGER);
+        set.setInput("input_value", 1);
+        set.processNode(null);
+        assertFalse((Boolean) set.getOutput("output_valid"));
+        assertTrue(String.valueOf(set.getOutput("output_error")).contains("max length"));
+    }
+
+    @Test
+    void overCapSetVariableFailsClosed() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        for (int i = 0; i < GenerationLimits.MAX_USER_VARIABLES_PER_SCOPE; i++) {
+            SetVariableProbe fill = new SetVariableProbe();
+            fill.setNodeState(Map.of("defaultName", "v" + i));
+            fill.connectInput("input_value", NodeDataType.INTEGER);
+            fill.setInput("input_value", i);
+            fill.processNode(context);
+            assertTrue((Boolean) fill.getOutput("output_valid"), "v" + i);
+        }
+
+        SetVariableProbe overflow = new SetVariableProbe();
+        overflow.setNodeState(Map.of("defaultName", "overflow"));
+        overflow.connectInput("input_value", NodeDataType.INTEGER);
+        overflow.setInput("input_value", 0);
+        overflow.processNode(context);
+        assertFalse((Boolean) overflow.getOutput("output_valid"));
+        assertTrue(String.valueOf(overflow.getOutput("output_error")).contains("max user variables"));
+    }
+
+    private static SavedGraph childGraphSetThenGet() {
+        NodeGraph inner = new NodeGraph("inner-vars");
+        GraphInputNode input = new GraphInputNode();
+        input.setNodeState(Map.of("inputName", "in", "declaredType", "integer", "inferredType", "integer"));
+        SetVariableNode set = new SetVariableNode();
+        set.setNodeState(Map.of("defaultName", "foo"));
+        GetVariableNode get = new GetVariableNode();
+        get.setNodeState(Map.of("defaultName", "foo"));
+        GraphOutputNode output = new GraphOutputNode();
+        output.setNodeState(Map.of("outputName", "out", "declaredType", "integer", "inferredType", "integer"));
+        inner.addNode(input);
+        inner.addNode(set);
+        inner.addNode(get);
+        inner.addNode(output);
+        assertTrue(inner.connect(input.getId(), "output_value", set.getId(), "input_value"));
+        assertTrue(inner.connect(set.getId(), "output_value", get.getId(), "input_default_value"));
+        assertTrue(inner.connect(get.getId(), "output_value", output.getId(), "input_value"));
+        return GraphSerializer.toSavedGraph(inner);
+    }
+
+    private static SavedGraph childGraphClear() {
+        NodeGraph inner = new NodeGraph("inner-clear");
+        BooleanToggleNode toggle = new BooleanToggleNode();
+        toggle.setNodeState(Map.of("value", true));
+        ClearVariablesNode clear = new ClearVariablesNode();
+        GraphOutputNode output = new GraphOutputNode();
+        output.setNodeState(Map.of("outputName", "ok", "declaredType", "boolean", "inferredType", "boolean"));
+        inner.addNode(toggle);
+        inner.addNode(clear);
+        inner.addNode(output);
+        assertTrue(inner.connect(toggle.getId(), "output_value", clear.getId(), "input_clear"));
+        assertTrue(inner.connect(clear.getId(), "output_valid", output.getId(), "input_value"));
+        return GraphSerializer.toSavedGraph(inner);
+    }
+
+    private static SavedGraph childGraphFrameLocalWrite() {
+        NodeGraph inner = new NodeGraph("inner-frame");
+        GraphInputNode valueIn = new GraphInputNode();
+        valueIn.setNodeState(Map.of("inputName", "value", "declaredType", "integer", "inferredType", "integer"));
+        BooleanToggleNode writeToggle = new BooleanToggleNode();
+        writeToggle.setNodeState(Map.of("value", true));
+        FrameLocalVariableNode frameLocal = new FrameLocalVariableNode();
+        frameLocal.setNodeState(Map.of("defaultFrame", "session", "defaultName", "counter"));
+        GraphOutputNode output = new GraphOutputNode();
+        output.setNodeState(Map.of("outputName", "out", "declaredType", "integer", "inferredType", "integer"));
+        inner.addNode(valueIn);
+        inner.addNode(writeToggle);
+        inner.addNode(frameLocal);
+        inner.addNode(output);
+        assertTrue(inner.connect(valueIn.getId(), "output_value", frameLocal.getId(), "input_value"));
+        assertTrue(inner.connect(writeToggle.getId(), "output_value", frameLocal.getId(), "input_write"));
+        assertTrue(inner.connect(frameLocal.getId(), "output_value", output.getId(), "input_value"));
+        return GraphSerializer.toSavedGraph(inner);
+    }
 
     private static void assertEffect(String typeId, NodeEffect expected) {
         INode node = registry.createNodeInstance(typeId);
@@ -398,6 +586,12 @@ class VariableLanguageContractTest {
     }
 
     private static final class ClearVariablesProbe extends ClearVariablesNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            VariableLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class VariableListProbe extends VariableListNode {
         void connectInput(String portId, NodeDataType outputType) {
             VariableLanguageContractTest.connectInput(this, portId, outputType);
         }

@@ -4,9 +4,11 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.VariableEntry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class VariableScopeBridge {
 
     static final String INTERNAL_PREFIX = "__nodecraft.";
+    public static final String FRAME_LOCAL_SCOPE_ROOT_KEY = INTERNAL_PREFIX + "frame_local_scope";
 
     private static final Object NULL_VALUE = new Object();
     private static final ThreadLocal<String> ACTIVE_FALLBACK_SCOPE_ID = new ThreadLocal<>();
@@ -34,6 +37,54 @@ public final class VariableScopeBridge {
         }
         FALLBACK_SCOPES.remove(scopeId);
         FALLBACK_FRAME_SCOPES.remove(scopeId);
+    }
+
+    /**
+     * Isolates user variables and the Frame Local root for one subgraph call.
+     * Internal {@code __nodecraft.*} keys other than the frame-local root stay on the shared context.
+     */
+    public static CallScopeHandle pushCallScope(@Nullable ExecutionContext context) {
+        if (context == null) {
+            return new CallScopeHandle(null, Map.of(), null);
+        }
+        Map<String, Object> savedUser = new LinkedHashMap<>();
+        for (String key : new ArrayList<>(context.getAllVariables().keySet())) {
+            if (isInternalVariableName(key)) {
+                continue;
+            }
+            savedUser.put(key, context.getVariableStorage(key));
+            context.removeVariable(key);
+        }
+        Object savedFrameRoot = context.getVariableStorage(FRAME_LOCAL_SCOPE_ROOT_KEY);
+        context.setVariable(FRAME_LOCAL_SCOPE_ROOT_KEY, new ConcurrentHashMap<String, Map<String, Object>>());
+        return new CallScopeHandle(context, savedUser, savedFrameRoot);
+    }
+
+    public static void restoreCallScope(@Nullable CallScopeHandle handle) {
+        if (handle == null || handle.context() == null) {
+            return;
+        }
+        ExecutionContext context = handle.context();
+        for (String key : new ArrayList<>(context.getAllVariables().keySet())) {
+            if (!isInternalVariableName(key)) {
+                context.removeVariable(key);
+            }
+        }
+        if (handle.savedFrameRoot() == null) {
+            context.removeVariable(FRAME_LOCAL_SCOPE_ROOT_KEY);
+        } else {
+            context.setVariable(FRAME_LOCAL_SCOPE_ROOT_KEY, handle.savedFrameRoot());
+        }
+        for (Map.Entry<String, Object> entry : handle.savedUser().entrySet()) {
+            context.setVariable(entry.getKey(), entry.getValue());
+        }
+    }
+
+    public record CallScopeHandle(
+            @Nullable ExecutionContext context,
+            Map<String, Object> savedUser,
+            @Nullable Object savedFrameRoot
+    ) {
     }
 
     static Map<String, Object> getOrCreateFallbackFrameMap(String frame) {
@@ -113,6 +164,11 @@ public final class VariableScopeBridge {
 
         Object previous = existing == null ? null : existing.value();
         NodeDataType previousType = existing == null ? null : existing.type();
+        if (existing == null && countUserVariables(context) >= GenerationLimits.MAX_USER_VARIABLES_PER_SCOPE) {
+            return PutResult.failure(
+                    "Variable scope exceeds max user variables " + GenerationLimits.MAX_USER_VARIABLES_PER_SCOPE
+            );
+        }
         storeEntry(context, key, VariableEntry.of(slotType, value));
         return PutResult.success(previous, previousType, existing != null);
     }
@@ -189,7 +245,30 @@ public final class VariableScopeBridge {
         if (isInternalVariableName(name)) {
             return "Variable names starting with " + INTERNAL_PREFIX + " are reserved.";
         }
+        if (name.length() > GenerationLimits.MAX_VARIABLE_NAME_CHARS) {
+            return "Variable name exceeds max length " + GenerationLimits.MAX_VARIABLE_NAME_CHARS + ".";
+        }
         return null;
+    }
+
+    static @Nullable String frameNameError(@Nullable String frame) {
+        if (frame == null || frame.isBlank()) {
+            return "Frame name is required.";
+        }
+        if (frame.length() > GenerationLimits.MAX_VARIABLE_NAME_CHARS) {
+            return "Frame name exceeds max length " + GenerationLimits.MAX_VARIABLE_NAME_CHARS + ".";
+        }
+        return null;
+    }
+
+    static int countUserVariables(@Nullable ExecutionContext context) {
+        int count = 0;
+        for (String key : snapshot(context).keySet()) {
+            if (!isInternalVariableName(key)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     static boolean isInternalVariableName(String name) {
@@ -240,6 +319,11 @@ public final class VariableScopeBridge {
 
         Object previous = existing == null ? null : existing.value();
         NodeDataType previousType = existing == null ? null : existing.type();
+        if (existing == null && frameScope.size() >= GenerationLimits.MAX_FRAME_LOCAL_ENTRIES) {
+            return PutResult.failure(
+                    "Frame local map exceeds max entries " + GenerationLimits.MAX_FRAME_LOCAL_ENTRIES
+            );
+        }
         frameScope.put(key, VariableEntry.of(slotType, value));
         return PutResult.success(previous, previousType, existing != null);
     }

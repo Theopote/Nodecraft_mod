@@ -354,6 +354,18 @@ public final class GenerationLimits {
     /** Maximum nested subgraph call depth (hard budget; not user-tunable). */
     public static final int MAX_SUBGRAPH_CALL_DEPTH = 8;
 
+    /** Maximum user-variable keys in one graph/subgraph call scope. */
+    public static final int MAX_USER_VARIABLES_PER_SCOPE = 4096;
+
+    /** Maximum distinct Frame Local frame names in one call scope. */
+    public static final int MAX_FRAME_NAMES = 256;
+
+    /** Maximum entries in a single Frame Local frame map. */
+    public static final int MAX_FRAME_LOCAL_ENTRIES = 4096;
+
+    /** Maximum characters for a user variable name or Frame Local frame name. */
+    public static final int MAX_VARIABLE_NAME_CHARS = 256;
+
     /** Hard cap on neighbor cube-volume queries: {@code (2r+1)^3 - 1}. */
     public static final int MAX_NEIGHBOR_QUERY_BLOCKS = 262_144;
 

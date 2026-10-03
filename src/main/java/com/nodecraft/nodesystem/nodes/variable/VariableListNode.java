@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -29,14 +30,13 @@ public class VariableListNode extends BaseNode {
     @NodeProperty(displayName = "Sort Names", category = "Variable", order = 1)
     private boolean sortNames = true;
 
-    @NodeProperty(displayName = "Show Internal Variables", category = "Variable", order = 2)
-    private boolean showInternalVariables = false;
-
     private static final String INPUT_PREFIX_ID = "input_prefix";
 
     private static final String OUTPUT_NAMES_ID = "output_names";
     private static final String OUTPUT_VALUES_ID = "output_values";
     private static final String OUTPUT_COUNT_ID = "output_count";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public VariableListNode() {
         super(UUID.randomUUID(), "variable.list");
@@ -46,6 +46,8 @@ public class VariableListNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_NAMES_ID, "Names", "Variable names", NodeDataType.STRING_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALUES_ID, "Values", "Variable values", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of listed variables", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether prefix resolved correctly", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why listing failed", NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,7 +62,12 @@ public class VariableListNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        String prefix = resolvePrefix(inputValues.get(INPUT_PREFIX_ID));
+        String prefix = OptionalPortDrive.resolveOptionalString(this, INPUT_PREFIX_ID, "");
+        if (prefix == null) {
+            writeFailure("Prefix is connected but null or invalid.");
+            return;
+        }
+
         Map<String, Object> snapshot = VariableScopeBridge.snapshot(context);
 
         List<Map.Entry<String, Object>> entries = new ArrayList<>(snapshot.entrySet());
@@ -73,10 +80,10 @@ public class VariableListNode extends BaseNode {
 
         for (Map.Entry<String, Object> entry : entries) {
             String name = entry.getKey();
-            if (!showInternalVariables && VariableScopeBridge.isInternalVariableName(name)) {
+            if (VariableScopeBridge.isInternalVariableName(name)) {
                 continue;
             }
-            if (prefix != null && !prefix.isEmpty() && (name == null || !name.startsWith(prefix))) {
+            if (!prefix.isEmpty() && (name == null || !name.startsWith(prefix))) {
                 continue;
             }
 
@@ -87,20 +94,22 @@ public class VariableListNode extends BaseNode {
         outputValues.put(OUTPUT_NAMES_ID, names);
         outputValues.put(OUTPUT_VALUES_ID, values);
         outputValues.put(OUTPUT_COUNT_ID, names.size());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private String resolvePrefix(Object prefixObj) {
-        if (prefixObj instanceof String prefix) {
-            return prefix.trim();
-        }
-        return "";
+    private void writeFailure(String error) {
+        outputValues.put(OUTPUT_NAMES_ID, List.of());
+        outputValues.put(OUTPUT_VALUES_ID, List.of());
+        outputValues.put(OUTPUT_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("sortNames", sortNames);
-        state.put("showInternalVariables", showInternalVariables);
         return state;
     }
 
@@ -112,10 +121,6 @@ public class VariableListNode extends BaseNode {
         Object sortNamesValue = map.get("sortNames");
         if (sortNamesValue instanceof Boolean value) {
             sortNames = value;
-        }
-        Object showInternalVariablesValue = map.get("showInternalVariables");
-        if (showInternalVariablesValue instanceof Boolean value) {
-            showInternalVariables = value;
         }
     }
 }

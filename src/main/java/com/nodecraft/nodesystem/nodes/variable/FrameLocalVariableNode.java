@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.VariableEntry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 )
 public class FrameLocalVariableNode extends BaseNode {
 
-    private static final String LOCAL_SCOPE_ROOT_KEY = "__nodecraft.frame_local_scope";
+    private static final String LOCAL_SCOPE_ROOT_KEY = VariableScopeBridge.FRAME_LOCAL_SCOPE_ROOT_KEY;
 
     @NodeProperty(displayName = "Default Frame", category = "Frame Local", order = 1)
     private String defaultFrame = "default";
@@ -114,7 +115,13 @@ public class FrameLocalVariableNode extends BaseNode {
             return;
         }
 
-        Map<String, Object> frameScope = getOrCreateFrameScope(context, frame);
+        Map<String, Map<String, Object>> root = getOrCreateFrameRoot(context);
+        if (root != null && !root.containsKey(frame) && root.size() >= GenerationLimits.MAX_FRAME_NAMES) {
+            writeFailure(frame, name, "Too many frame names (max " + GenerationLimits.MAX_FRAME_NAMES + ").");
+            return;
+        }
+
+        Map<String, Object> frameScope = getOrCreateFrameScope(context, frame, root);
         boolean cleared = false;
         if (clearFrame) {
             frameScope.clear();
@@ -189,7 +196,11 @@ public class FrameLocalVariableNode extends BaseNode {
             if (OptionalPortDrive.isConnected(this, INPUT_FRAME_ID)) {
                 return "Frame is connected but null or invalid.";
             }
-            return "Frame name is required.";
+            return VariableScopeBridge.frameNameError(null);
+        }
+        String frameError = VariableScopeBridge.frameNameError(frame);
+        if (frameError != null) {
+            return frameError;
         }
         if (name == null) {
             if (OptionalPortDrive.isConnected(this, INPUT_NAME_ID)) {
@@ -213,16 +224,25 @@ public class FrameLocalVariableNode extends BaseNode {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> getOrCreateFrameScope(@Nullable ExecutionContext context, String frame) {
-        if (context != null) {
-            Object rootObj = context.getVariable(LOCAL_SCOPE_ROOT_KEY);
-            Map<String, Map<String, Object>> root;
-            if (rootObj instanceof Map<?, ?> existing) {
-                root = (Map<String, Map<String, Object>>) existing;
-            } else {
-                root = new ConcurrentHashMap<>();
-                context.setVariable(LOCAL_SCOPE_ROOT_KEY, root);
-            }
+    private @Nullable Map<String, Map<String, Object>> getOrCreateFrameRoot(@Nullable ExecutionContext context) {
+        if (context == null) {
+            return null;
+        }
+        Object rootObj = context.getVariable(LOCAL_SCOPE_ROOT_KEY);
+        if (rootObj instanceof Map<?, ?> existing) {
+            return (Map<String, Map<String, Object>>) existing;
+        }
+        Map<String, Map<String, Object>> root = new ConcurrentHashMap<>();
+        context.setVariable(LOCAL_SCOPE_ROOT_KEY, root);
+        return root;
+    }
+
+    private Map<String, Object> getOrCreateFrameScope(
+            @Nullable ExecutionContext context,
+            String frame,
+            @Nullable Map<String, Map<String, Object>> root
+    ) {
+        if (context != null && root != null) {
             return getOrCreateNullFriendlyFrameMap(root, frame);
         }
         return VariableScopeBridge.getOrCreateFallbackFrameMap(frame);
