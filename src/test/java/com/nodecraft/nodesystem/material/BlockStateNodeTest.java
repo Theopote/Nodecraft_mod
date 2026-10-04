@@ -19,8 +19,7 @@ class BlockStateNodeTest {
     @Test
     void buildBlockStateMergesBaseStateAndDynamicProperty() {
         BuildBlockStateNode node = new BuildBlockStateNode();
-        BlockStateData base = new BlockStateData();
-        base.setBooleanProperty("waterlogged", false);
+        BlockStateData base = new BlockStateData().withBooleanProperty("waterlogged", false);
 
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_base_state", base,
@@ -78,9 +77,7 @@ class BlockStateNodeTest {
                 "input_block_type", "minecraft:stone"
         ));
 
-        BlockStateData state = assertInstanceOf(BlockStateData.class, outputs.get("output_block_state"));
-        assertEquals("bar", state.get("foo"));
-        assertInstanceOf(String.class, outputs.get("output_error"));
+        assertNull(outputs.get("output_block_state"));
         Boolean valid = assertInstanceOf(Boolean.class, outputs.get("output_valid"));
         String error = (String) outputs.get("output_error");
         assertFalse(valid);

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BlockPaletteDataTest {
@@ -40,5 +42,17 @@ class BlockPaletteDataTest {
         );
         assertEquals(4.0d, palette.weights().getFirst(), 1.0e-12);
         assertTrue(palette.entries().get(1).weight() > 0.0d);
+    }
+
+    @Test
+    void compactCtorRejectsIllegalEntries() {
+        assertThrows(IllegalArgumentException.class, () -> new BlockPaletteEntry("", 1.0d));
+        assertThrows(IllegalArgumentException.class, () -> new BlockPaletteEntry("minecraft:stone", Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new BlockPaletteEntry("minecraft:stone", -1.0d));
+        assertThrows(IllegalArgumentException.class, () -> new BlockPaletteData(java.util.Arrays.asList(
+            new BlockPaletteEntry("minecraft:stone"),
+            null
+        )));
+        assertNull(BlockPaletteData.canonical(null));
     }
 }

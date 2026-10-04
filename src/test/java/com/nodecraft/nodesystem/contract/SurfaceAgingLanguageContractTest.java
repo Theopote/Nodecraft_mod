@@ -104,8 +104,7 @@ class SurfaceAgingLanguageContractTest {
 
     @Test
     void mossAndCrackPreserveStateDataThroughRemap() {
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "east");
+        BlockStateData state = new BlockStateData().withProperty("facing", "east");
 
         List<BlockPlacementData> placements = List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", state)

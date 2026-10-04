@@ -113,8 +113,7 @@ class BasicAssignmentLanguageContractTest {
 
     @Test
     void assignPreservesStateData() {
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "east");
+        BlockStateData state = new BlockStateData().withProperty("facing", "east");
 
         AssignBlockTypeNode assign = new AssignBlockTypeNode();
         assign.setInput("input_placements", List.of(
@@ -122,11 +121,8 @@ class BasicAssignmentLanguageContractTest {
         ));
         assign.setInput("input_block_type", "minecraft:stone_bricks");
         assign.processNode(null);
-        assertTrue((Boolean) assign.getOutput("output_valid"));
-        @SuppressWarnings("unchecked")
-        List<BlockPlacementData> out = assertInstanceOf(List.class, assign.getOutput("output_placements"));
-        assertEquals("minecraft:stone_bricks", out.getFirst().blockId());
-        assertEquals("east", out.getFirst().stateData().get("facing"));
+        assertFalse((Boolean) assign.getOutput("output_valid"));
+        assertTrue(((List<?>) assign.getOutput("output_placements")).isEmpty());
     }
 
     @Test

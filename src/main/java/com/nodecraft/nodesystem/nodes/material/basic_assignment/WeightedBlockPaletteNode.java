@@ -7,9 +7,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -20,8 +22,8 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "material.basic_assignment.weighted_palette",
-    displayName = "Weighted Block Palette",
-    description = "Assigns weighted random block types by position + seed via RandomOps. Remaps blockId only; preserves stateData.",
+    displayName = "Weighted Spatial Palette",
+    description = "Assigns a spatially coherent weighted material field (value noise + seed). Remaps blockId only; preserves stateData.",
     category = "material.basic_assignment",
     order = 2
 )
@@ -85,7 +87,7 @@ public class WeightedBlockPaletteNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Assigns weighted random block types by position + seed via RandomOps. Remaps blockId only; preserves stateData.";
+        return "Assigns a spatially coherent weighted material field (value noise + seed). Remaps blockId only; preserves stateData.";
     }
 
     @Override
@@ -93,7 +95,14 @@ public class WeightedBlockPaletteNode extends BaseNode {
         BlockPaletteData paletteData = BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID));
         List<String> palette = new ArrayList<>(paletteData.blockIds());
         int paletteSize = palette.size();
-        int seed = BasicAssignmentUtils.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        boolean seedDriven = OptionalPortDrive.isConnected(this, INPUT_SEED_ID) || isInputPresent(INPUT_SEED_ID);
+        BasicAssignmentUtils.IndexResult seedResult =
+            BasicAssignmentUtils.resolveSeed(inputValues.get(INPUT_SEED_ID), seedDriven);
+        if (!seedResult.valid()) {
+            emitFail(seedResult.error());
+            return;
+        }
+        int seed = seedResult.index();
 
         List<Double> weights;
         Object weightsObj = inputValues.get(INPUT_WEIGHTS_ID);
@@ -154,6 +163,9 @@ public class WeightedBlockPaletteNode extends BaseNode {
             case PLACEMENTS -> {
                 List<BlockPlacementData> placements =
                     mapFlatPlacements(source.placements(), palette, weights, seed);
+                if (placements == null) {
+                    return;
+                }
                 emitOk(placements, flatTree(placements), paletteSize, totalWeight);
             }
             case COORDINATES, GEOMETRY -> {
@@ -163,6 +175,9 @@ public class WeightedBlockPaletteNode extends BaseNode {
                 }
                 List<BlockPlacementData> placements =
                     mapFlatPlacements(source.placements(), palette, weights, seed);
+                if (placements == null) {
+                    return;
+                }
                 emitOk(placements, flatTree(placements), paletteSize, totalWeight);
             }
             case NONE -> emitFail("No placements, coordinates, geometry, or tree input");
@@ -175,7 +190,7 @@ public class WeightedBlockPaletteNode extends BaseNode {
         ));
     }
 
-    private List<BlockPlacementData> mapFlatPlacements(
+    private @Nullable List<BlockPlacementData> mapFlatPlacements(
             List<BlockPlacementData> sources,
             List<String> palette,
             List<Double> weights,
@@ -185,7 +200,13 @@ public class WeightedBlockPaletteNode extends BaseNode {
         for (BlockPlacementData placement : sources) {
             String blockId = BasicAssignmentUtils.pickWeightedBlockId(
                 placement.pos(), seed, palette, weights, placement.blockId());
-            remapped.add(new BlockPlacementData(placement.pos(), blockId, placement.stateData()));
+            BlockPlacementData next = new BlockPlacementData(placement.pos(), blockId, placement.stateData());
+            String error = BlockStateValidationUtils.remapIncompatibility(next);
+            if (error != null) {
+                emitFail(error);
+                return null;
+            }
+            remapped.add(next);
         }
         return remapped;
     }
@@ -223,6 +244,11 @@ public class WeightedBlockPaletteNode extends BaseNode {
                 BlockPlacementData remapped = stateSource != null
                     ? new BlockPlacementData(pos, blockId, stateSource.stateData())
                     : new BlockPlacementData(pos, blockId);
+                String error = BlockStateValidationUtils.remapIncompatibility(remapped);
+                if (error != null) {
+                    emitFail(error);
+                    return;
+                }
                 placements.add(remapped);
                 branchPlacements.add(remapped);
             }

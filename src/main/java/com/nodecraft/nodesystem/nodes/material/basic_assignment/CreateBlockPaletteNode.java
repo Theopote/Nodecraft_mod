@@ -7,12 +7,12 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
-import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -71,16 +71,22 @@ public class CreateBlockPaletteNode extends BaseNode {
         }
 
         List<String> blockIds = new ArrayList<>(blockIdsResult.values());
-        appendBlock(blockIds, INPUT_BLOCK_A_ID);
-        appendBlock(blockIds, INPUT_BLOCK_B_ID);
-        appendBlock(blockIds, INPUT_BLOCK_C_ID);
-        appendBlock(blockIds, INPUT_BLOCK_D_ID);
+        if (!appendBlock(blockIds, INPUT_BLOCK_A_ID, "Block A")
+            || !appendBlock(blockIds, INPUT_BLOCK_B_ID, "Block B")
+            || !appendBlock(blockIds, INPUT_BLOCK_C_ID, "Block C")
+            || !appendBlock(blockIds, INPUT_BLOCK_D_ID, "Block D")) {
+            return;
+        }
 
-        Object weightsObj = inputValues.get(INPUT_WEIGHTS_ID);
+        if (blockIds.size() > GenerationLimits.MAX_BLOCK_PALETTE_ENTRIES) {
+            emitFail("Palette exceeds MAX_BLOCK_PALETTE_ENTRIES");
+            return;
+        }
+
         List<Double> weights = null;
-        if (weightsObj != null) {
+        if (isDriven(INPUT_WEIGHTS_ID)) {
             BasicAssignmentUtils.ParseResult<Double> weightsResult =
-                BasicAssignmentUtils.parseDoubleList(weightsObj, "Weights");
+                BasicAssignmentUtils.parseDoubleList(inputValues.get(INPUT_WEIGHTS_ID), "Weights");
             if (!weightsResult.valid()) {
                 emitFail(weightsResult.error());
                 return;
@@ -98,11 +104,22 @@ public class CreateBlockPaletteNode extends BaseNode {
         emitOk(palette);
     }
 
-    private void appendBlock(List<String> blockIds, String portId) {
-        String blockId = MaterialMappingSupport.optionalBlockType(inputValues.get(portId));
-        if (blockId != null) {
-            blockIds.add(blockId.toLowerCase(Locale.ROOT));
+    private boolean appendBlock(List<String> blockIds, String portId, String label) {
+        if (!isDriven(portId)) {
+            return true;
         }
+        String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(
+            inputValues.get(portId) instanceof String text ? text : null);
+        if (canonical == null) {
+            emitFail(label + " connected but invalid");
+            return false;
+        }
+        blockIds.add(canonical);
+        return true;
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId);
     }
 
     private void emitFail(String message) {

@@ -38,10 +38,10 @@ public record BlockInfoData(
         String id = Registries.BLOCK.getId(state.getBlock()).toString();
         BlockStateData properties = new BlockStateData();
         try {
-            state.getProperties().forEach(property -> {
+            for (var property : state.getProperties()) {
                 Comparable<?> propertyValue = state.get(property);
-                properties.put(property.getName(), propertyValue.toString());
-            });
+                properties = properties.withProperty(property.getName(), propertyValue.toString());
+            }
         } catch (RuntimeException ignored) {
             // Keep empty properties on unexpected state shape.
         }

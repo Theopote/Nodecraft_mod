@@ -224,12 +224,11 @@ class BlockStateLanguageContractTest {
     void applyBlockStateMergesOverridesWithoutReplacingBase() {
         ApplyBlockStateNode node = new ApplyBlockStateNode();
 
-        BlockStateData baseState = new BlockStateData();
-        baseState.setProperty("facing", "north");
-        baseState.setProperty("half", "bottom");
+        BlockStateData baseState = new BlockStateData()
+            .withProperty("facing", "north")
+            .withProperty("half", "bottom");
 
-        BlockStateData override = new BlockStateData();
-        override.setProperty("facing", "east");
+        BlockStateData override = new BlockStateData().withProperty("facing", "east");
 
         BlockPlacementData placement = new BlockPlacementData(
                 new BlockPos(0, 64, 0),
@@ -265,9 +264,9 @@ class BlockStateLanguageContractTest {
     @Test
     void stairShapePreservesBlockId() {
         StairShapeNode node = new StairShapeNode();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "north");
-        state.setProperty("half", "bottom");
+        BlockStateData state = new BlockStateData()
+            .withProperty("facing", "north")
+            .withProperty("half", "bottom");
 
         BlockPlacementData placement = new BlockPlacementData(
                 new BlockPos(5, 64, 5),

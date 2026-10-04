@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
@@ -120,6 +121,9 @@ public class BlockPaletteNode extends BaseNode {
             }
             case PLACEMENTS -> {
                 List<BlockPlacementData> placements = mapFlatPlacements(source.placements(), palette, startIndex);
+                if (placements == null) {
+                    return;
+                }
                 emitOk(placements, flatTree(placements), paletteSize);
             }
             case COORDINATES, GEOMETRY -> {
@@ -128,6 +132,9 @@ public class BlockPaletteNode extends BaseNode {
                     return;
                 }
                 List<BlockPlacementData> placements = mapFlatPlacements(source.placements(), palette, startIndex);
+                if (placements == null) {
+                    return;
+                }
                 emitOk(placements, flatTree(placements), paletteSize);
             }
             case NONE -> emitFail("No placements, coordinates, geometry, or tree input");
@@ -140,7 +147,7 @@ public class BlockPaletteNode extends BaseNode {
         ));
     }
 
-    private List<BlockPlacementData> mapFlatPlacements(
+    private @Nullable List<BlockPlacementData> mapFlatPlacements(
             List<BlockPlacementData> sources,
             List<String> palette,
             int startIndex
@@ -150,7 +157,13 @@ public class BlockPaletteNode extends BaseNode {
         for (BlockPlacementData placement : sources) {
             String blockId = BasicAssignmentUtils.cyclicPaletteBlockId(
                 palette, startIndex + index, placement.blockId());
-            remapped.add(new BlockPlacementData(placement.pos(), blockId, placement.stateData()));
+            BlockPlacementData next = new BlockPlacementData(placement.pos(), blockId, placement.stateData());
+            String error = BlockStateValidationUtils.remapIncompatibility(next);
+            if (error != null) {
+                emitFail(error);
+                return null;
+            }
+            remapped.add(next);
             index++;
         }
         return remapped;
@@ -173,6 +186,11 @@ public class BlockPaletteNode extends BaseNode {
                 for (Object item : branch.items()) {
                     BlockPlacementData placement = toPlacementPreserving(item);
                     if (placement != null) {
+                        String error = BlockStateValidationUtils.remapIncompatibility(placement);
+                        if (error != null) {
+                            emitFail(error);
+                            return;
+                        }
                         placements.add(placement);
                         branchPlacements.add(placement);
                     }
@@ -183,6 +201,11 @@ public class BlockPaletteNode extends BaseNode {
                 for (Object item : branch.items()) {
                     BlockPlacementData placement = toPlacementWithBlockId(item, branchBlockId);
                     if (placement != null) {
+                        String error = BlockStateValidationUtils.remapIncompatibility(placement);
+                        if (error != null) {
+                            emitFail(error);
+                            return;
+                        }
                         placements.add(placement);
                         branchPlacements.add(placement);
                     }

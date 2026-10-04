@@ -462,6 +462,9 @@ public final class GenerationLimits {
     /** Aggregate BlockPlacement list/tree cap (aligned with bake / world.write history ceiling). */
     public static final int MAX_BLOCK_PLACEMENTS = MAX_WORLD_WRITE_BLOCKS;
 
+    /** Hard cap on typed BLOCK_PALETTE entries from Create Block Palette. */
+    public static final int MAX_BLOCK_PALETTE_ENTRIES = 1024;
+
     /**
      * Hard cap on aggregated REGION_LIST size (Multi-Region Selection and similar fan-out sources).
      */

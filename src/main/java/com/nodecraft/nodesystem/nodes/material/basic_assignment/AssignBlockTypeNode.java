@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
@@ -105,7 +106,13 @@ public class AssignBlockTypeNode extends BaseNode {
             case PLACEMENTS, COORDINATES, GEOMETRY -> {
                 List<BlockPlacementData> placements = new ArrayList<>(source.placements().size());
                 for (BlockPlacementData sourcePlacement : source.placements()) {
-                    placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockType));
+                    BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(sourcePlacement, blockType);
+                    String error = BlockStateValidationUtils.remapIncompatibility(remapped);
+                    if (error != null) {
+                        emitFail(error);
+                        return;
+                    }
+                    placements.add(remapped);
                 }
                 DataTreeData tree = new DataTreeData(List.of(
                     new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
@@ -125,6 +132,11 @@ public class AssignBlockTypeNode extends BaseNode {
             for (Object item : branch.items()) {
                 if (item instanceof BlockPlacementData existing) {
                     BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(existing, blockType);
+                    String error = BlockStateValidationUtils.remapIncompatibility(remapped);
+                    if (error != null) {
+                        emitFail(error);
+                        return;
+                    }
                     placements.add(remapped);
                     branchPlacements.add(remapped);
                 } else if (item instanceof BlockPos pos) {

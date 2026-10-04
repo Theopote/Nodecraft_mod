@@ -5,6 +5,8 @@ import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPaletteEntry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,11 +74,33 @@ public final class BasicAssignmentUtils {
             if (!(entry instanceof String text)) {
                 return ParseResult.fail(portName + " must contain only strings");
             }
-            if (!text.isBlank()) {
-                out.add(text.trim().toLowerCase(Locale.ROOT));
+            if (text.isBlank()) {
+                return ParseResult.fail(portName + " must not contain blank ids");
             }
+            String canonical = canonicalizePaletteBlockId(text);
+            if (canonical == null) {
+                return ParseResult.fail(portName + " contains invalid block id");
+            }
+            out.add(canonical);
         }
         return ParseResult.ok(out);
+    }
+
+    /**
+     * Identifier syntax only ({@code minecraft:} prefix when missing). Not a registry membership check.
+     */
+    public static @Nullable String canonicalizePaletteBlockId(@Nullable String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (!normalized.contains(":")) {
+            normalized = "minecraft:" + normalized;
+        }
+        return Identifier.tryParse(normalized) == null ? null : normalized;
     }
 
     public static ParseResult<Double> parseDoubleList(@Nullable Object value, String portName) {
@@ -155,12 +179,12 @@ public final class BasicAssignmentUtils {
     public static BlockPaletteData buildPalette(List<String> blockIds, @Nullable List<Double> weights) {
         List<BlockPaletteEntry> entries = new ArrayList<>(blockIds.size());
         for (int i = 0; i < blockIds.size(); i++) {
-            String blockId = blockIds.get(i);
-            if (blockId == null || blockId.isBlank()) {
-                continue;
+            String canonical = canonicalizePaletteBlockId(blockIds.get(i));
+            if (canonical == null) {
+                throw new IllegalArgumentException("Palette block id required");
             }
             double weight = weights != null ? weights.get(i) : 1.0d;
-            entries.add(new BlockPaletteEntry(blockId, weight));
+            entries.add(new BlockPaletteEntry(canonical, weight));
         }
         return new BlockPaletteData(entries);
     }
@@ -175,8 +199,12 @@ public final class BasicAssignmentUtils {
         return IndexResult.fail("Start Index must be INTEGER");
     }
 
-    public static int resolveSeed(@Nullable Object value) {
-        return RandomOps.resolveSeed(value);
+    public static IndexResult resolveSeed(@Nullable Object value, boolean driven) {
+        RandomInputResolver.IntegerResolveResult result = RandomInputResolver.resolveSeed(value, driven);
+        if (!result.valid()) {
+            return IndexResult.fail("Seed must be INTEGER");
+        }
+        return IndexResult.ok(result.value());
     }
 
     public static boolean hasNonPlacementSource(

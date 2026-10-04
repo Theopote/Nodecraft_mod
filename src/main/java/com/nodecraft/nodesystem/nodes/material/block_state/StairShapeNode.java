@@ -189,10 +189,10 @@ public class StairShapeNode extends BaseNode {
             StairPlacement stair,
             Map<BlockPos, StairPlacement> stairMap
     ) {
-        BlockStateData merged = copyState(existingState);
-        merged.setProperty("facing", stair.facing().asString());
-        merged.setProperty("half", stair.half());
-        merged.setProperty("shape", resolveShape(stair, stairMap));
+        BlockStateData merged = copyState(existingState)
+            .withProperty("facing", stair.facing().asString())
+            .withProperty("half", stair.half())
+            .withProperty("shape", resolveShape(stair, stairMap));
         return merged;
     }
 

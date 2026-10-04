@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
+import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.block.Block;
@@ -29,13 +30,13 @@ public final class BlockStateValidationUtils {
         }
     }
 
-    public record PropertiesTextResult(boolean valid, String error) {
-        public static PropertiesTextResult ok() {
-            return new PropertiesTextResult(true, "");
+    public record PropertiesTextResult(boolean valid, String error, BlockStateData state) {
+        public static PropertiesTextResult ok(BlockStateData state) {
+            return new PropertiesTextResult(true, "", state != null ? state : new BlockStateData());
         }
 
         public static PropertiesTextResult fail(String error) {
-            return new PropertiesTextResult(false, error);
+            return new PropertiesTextResult(false, error, new BlockStateData());
         }
     }
 
@@ -62,7 +63,20 @@ public final class BlockStateValidationUtils {
         }
     }
 
+    /**
+     * Empty state is always compatible. Non-empty state is checked against the target block registry.
+     */
+    public static ValidationResult validatePlacementState(@Nullable String blockType, @Nullable BlockStateData state) {
+        if (state == null || state.isEmpty()) {
+            return ValidationResult.ok();
+        }
+        return validateProperties(blockType, state);
+    }
+
     public static ValidationResult validateProperties(@Nullable String blockType, BlockStateData state) {
+        if (state == null) {
+            return ValidationResult.ok();
+        }
         if (blockType == null) {
             return ValidationResult.fail("Block type required for validation");
         }
@@ -80,9 +94,6 @@ public final class BlockStateValidationUtils {
 
         List<String> errors = new ArrayList<>();
         for (String key : state.keySet()) {
-            if (isIdentityKey(key)) {
-                continue;
-            }
             Property<?> property = findProperty(block, key);
             if (property == null) {
                 errors.add("Unsupported property '" + key + "' for " + blockType);
@@ -98,14 +109,26 @@ public final class BlockStateValidationUtils {
             : ValidationResult.fail(String.join("; ", errors));
     }
 
+    public static @Nullable String remapIncompatibility(@Nullable BlockPlacementData placement) {
+        if (placement == null) {
+            return null;
+        }
+        ValidationResult validation = validatePlacementState(placement.blockId(), placement.stateData());
+        if (validation.valid()) {
+            return null;
+        }
+        return "Invalid block state for " + placement.blockId() + ": " + validation.message();
+    }
+
     public static BlockStateData mergeStateData(@Nullable BlockStateData base, @Nullable BlockStateData override) {
         return BlockStateData.merge(base, override);
     }
 
     public static PropertiesTextResult applyPropertiesText(BlockStateData state, @Nullable String text) {
         if (text == null || text.isBlank()) {
-            return PropertiesTextResult.ok();
+            return PropertiesTextResult.ok(state);
         }
+        BlockStateData current = state != null ? state : new BlockStateData();
         String[] pairs = text.split(",");
         for (String pair : pairs) {
             String trimmed = pair.trim();
@@ -121,36 +144,22 @@ public final class BlockStateValidationUtils {
             if (name.isEmpty() || propertyValue.isEmpty()) {
                 return PropertiesTextResult.fail("Malformed property entry: " + trimmed);
             }
-            putProperty(state, name, propertyValue);
+            current = putProperty(current, name, propertyValue);
         }
-        return PropertiesTextResult.ok();
+        return PropertiesTextResult.ok(current);
     }
 
-    public static void putProperty(BlockStateData state, String rawName, String rawValue) {
-        if (rawName == null || rawValue == null) {
-            return;
-        }
-        String name = rawName.trim().toLowerCase(Locale.ROOT);
-        String value = rawValue.trim().toLowerCase(Locale.ROOT);
-        if (name.isEmpty() || value.isEmpty() || isIdentityKey(name)) {
-            return;
-        }
-        state.setProperty(name, value);
+    public static BlockStateData putProperty(BlockStateData state, String rawName, String rawValue) {
+        BlockStateData current = state != null ? state : new BlockStateData();
+        return current.withProperty(rawName, rawValue);
     }
 
-    public static int propertyCount(BlockStateData state) {
-        int count = 0;
-        for (String key : state.keySet()) {
-            if (!isIdentityKey(key)) {
-                count++;
-            }
-        }
-        return count;
+    public static int propertyCount(@Nullable BlockStateData state) {
+        return state == null ? 0 : state.size();
     }
 
-    public static void stripIdentityKeys(BlockStateData state) {
-        state.remove("blockId");
-        state.remove("id");
+    public static BlockStateData stripIdentityKeys(@Nullable BlockStateData state) {
+        return state != null ? state : new BlockStateData();
     }
 
     public static boolean isIdentityKey(@Nullable String key) {

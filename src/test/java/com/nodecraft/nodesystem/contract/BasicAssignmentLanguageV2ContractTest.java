@@ -5,10 +5,12 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.AssignBlockTypeNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.BasicAssignmentUtils;
+import com.nodecraft.nodesystem.nodes.material.basic_assignment.BlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPaletteNode;
 import com.nodecraft.nodesystem.nodes.material.basic_assignment.WeightedBlockPaletteNode;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -155,6 +157,68 @@ class BasicAssignmentLanguageV2ContractTest {
         node.setInput("input_weights", List.of(1.0d, 1.0d, 1.0d));
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
+    }
+
+    @Test
+    void assignStairsToStoneWithFacingFailsClosed() {
+        AssignBlockTypeNode node = new AssignBlockTypeNode();
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
+        ));
+        node.setInput("input_block_type", "minecraft:stone");
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void paletteStairsToStoneWithFacingFailsClosed() {
+        BlockPaletteNode node = new BlockPaletteNode();
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
+        ));
+        node.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone")));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void createPaletteRejectsBlankIds() {
+        CreateBlockPaletteNode node = new CreateBlockPaletteNode();
+        node.setInput("input_block_ids", List.of("stone", ""));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertEquals(0, node.getOutput("output_size"));
+    }
+
+    @Test
+    void createPaletteRejectsNanAndNegativeWeights() {
+        CreateBlockPaletteNode nan = new CreateBlockPaletteNode();
+        nan.setInput("input_block_ids", List.of("minecraft:stone"));
+        nan.setInput("input_weights", List.of(Double.NaN));
+        nan.processNode(null);
+        assertFalse((Boolean) nan.getOutput("output_valid"));
+
+        CreateBlockPaletteNode negative = new CreateBlockPaletteNode();
+        negative.setInput("input_block_ids", List.of("minecraft:stone"));
+        negative.setInput("input_weights", List.of(-1.0d));
+        negative.processNode(null);
+        assertFalse((Boolean) negative.getOutput("output_valid"));
+    }
+
+    @Test
+    void weightedDrivenStringSeedFails() {
+        WeightedProbe probe = new WeightedProbe();
+        probe.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        probe.putInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone")));
+        probe.putInput("input_seed", "0");
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
     }
 
     private static final class AssignProbe extends AssignBlockTypeNode {

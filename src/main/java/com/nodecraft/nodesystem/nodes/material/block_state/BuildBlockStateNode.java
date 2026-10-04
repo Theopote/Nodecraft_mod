@@ -67,79 +67,120 @@ public class BuildBlockStateNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockStateData state = inputValues.get(INPUT_BASE_STATE_ID) instanceof BlockStateData base
-            ? base.copy()
-            : new BlockStateData();
-        BlockStateValidationUtils.stripIdentityKeys(state);
+        BlockStateData state;
+        if (isDriven(INPUT_BASE_STATE_ID)) {
+            if (!(inputValues.get(INPUT_BASE_STATE_ID) instanceof BlockStateData base)) {
+                emitInvalid("Base State connected but invalid");
+                return;
+            }
+            state = BlockStateValidationUtils.stripIdentityKeys(base);
+        } else {
+            state = new BlockStateData();
+        }
 
         String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
 
         BlockStateValidationUtils.PropertiesTextResult textResult =
             BlockStateValidationUtils.applyPropertiesText(state, propertiesText);
         if (!textResult.valid()) {
-            emit(state, blockType, BlockStateValidationUtils.ValidationResult.fail(textResult.error()));
+            emitInvalid(textResult.error());
             return;
         }
+        state = textResult.state();
 
-        BlockStateValidationUtils.ValidationResult pairOk =
-            putDynamicPropertyPair(state, INPUT_PROPERTY_NAME_ID, INPUT_PROPERTY_VALUE_ID);
-        if (!pairOk.valid()) {
-            emit(state, blockType, pairOk);
+        PropertyPairResult pair = applyDynamicPropertyPair(state);
+        if (!pair.valid()) {
+            emitInvalid(pair.error());
             return;
         }
+        state = pair.state();
 
-        putShortcut(state, "facing", inputValues.get(INPUT_FACING_ID));
-        putShortcut(state, "axis", inputValues.get(INPUT_AXIS_ID));
-        putShortcut(state, "half", inputValues.get(INPUT_HALF_ID));
-        if (inputValues.get(INPUT_WATERLOGGED_ID) instanceof Boolean waterlogged) {
-            state.setBooleanProperty("waterlogged", waterlogged);
+        ShortcutResult shortcuts = applyShortcuts(state);
+        if (!shortcuts.valid()) {
+            emitInvalid(shortcuts.error());
+            return;
         }
+        state = shortcuts.state();
 
-        emit(state, blockType, BlockStateValidationUtils.validateProperties(blockType, state));
+        emit(state, BlockStateValidationUtils.validateProperties(blockType, state));
     }
 
-    private void emit(BlockStateData state, @Nullable String blockType, BlockStateValidationUtils.ValidationResult validation) {
+    private void emit(BlockStateData state, BlockStateValidationUtils.ValidationResult validation) {
+        if (!validation.valid()) {
+            emitInvalid(validation.message());
+            return;
+        }
         outputValues.put(OUTPUT_BLOCK_STATE_ID, state);
         outputValues.put(OUTPUT_PROPERTY_COUNT_ID, BlockStateValidationUtils.propertyCount(state));
-        outputValues.put(OUTPUT_VALID_ID, validation.valid());
-        outputValues.put(OUTPUT_ERROR_ID, validation.message());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private BlockStateValidationUtils.ValidationResult putDynamicPropertyPair(
-            BlockStateData state,
-            String namePortId,
-            String valuePortId
-    ) {
-        boolean nameDriven = isDriven(namePortId);
-        boolean valueDriven = isDriven(valuePortId);
+    private void emitInvalid(String error) {
+        outputValues.put(OUTPUT_BLOCK_STATE_ID, null);
+        outputValues.put(OUTPUT_PROPERTY_COUNT_ID, 0);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private PropertyPairResult applyDynamicPropertyPair(BlockStateData state) {
+        boolean nameDriven = isDriven(INPUT_PROPERTY_NAME_ID);
+        boolean valueDriven = isDriven(INPUT_PROPERTY_VALUE_ID);
         if (!nameDriven && !valueDriven) {
-            return BlockStateValidationUtils.ValidationResult.ok();
+            return PropertyPairResult.ok(state);
         }
         if (nameDriven != valueDriven) {
-            return BlockStateValidationUtils.ValidationResult.fail(
-                "Property and Value must both be connected or both unconnected"
-            );
+            return PropertyPairResult.fail("Property and Value must both be connected or both unconnected");
         }
-        Object nameObj = inputValues.get(namePortId);
-        Object valueObj = inputValues.get(valuePortId);
+        Object nameObj = inputValues.get(INPUT_PROPERTY_NAME_ID);
+        Object valueObj = inputValues.get(INPUT_PROPERTY_VALUE_ID);
         if (!(nameObj instanceof String name) || name.isBlank()
             || !(valueObj instanceof String value) || value.isBlank()) {
-            return BlockStateValidationUtils.ValidationResult.fail(
-                "Property and Value must be non-blank strings"
-            );
+            return PropertyPairResult.fail("Property and Value must be non-blank strings");
         }
-        BlockStateValidationUtils.putProperty(state, name, value);
-        return BlockStateValidationUtils.ValidationResult.ok();
+        return PropertyPairResult.ok(BlockStateValidationUtils.putProperty(state, name, value));
+    }
+
+    private ShortcutResult applyShortcuts(BlockStateData state) {
+        BlockStateData current = state;
+        ShortcutResult facing = applyStringShortcut(current, INPUT_FACING_ID, "facing", "Facing");
+        if (!facing.valid()) {
+            return facing;
+        }
+        current = facing.state();
+        ShortcutResult axis = applyStringShortcut(current, INPUT_AXIS_ID, "axis", "Axis");
+        if (!axis.valid()) {
+            return axis;
+        }
+        current = axis.state();
+        ShortcutResult half = applyStringShortcut(current, INPUT_HALF_ID, "half", "Half");
+        if (!half.valid()) {
+            return half;
+        }
+        current = half.state();
+
+        if (!isDriven(INPUT_WATERLOGGED_ID)) {
+            return ShortcutResult.ok(current);
+        }
+        if (!(inputValues.get(INPUT_WATERLOGGED_ID) instanceof Boolean waterlogged)) {
+            return ShortcutResult.fail("Waterlogged connected but invalid");
+        }
+        return ShortcutResult.ok(current.withBooleanProperty("waterlogged", waterlogged));
+    }
+
+    private ShortcutResult applyStringShortcut(BlockStateData state, String portId, String property, String label) {
+        if (!isDriven(portId)) {
+            return ShortcutResult.ok(state);
+        }
+        Object valueObj = inputValues.get(portId);
+        if (!(valueObj instanceof String value) || value.isBlank()) {
+            return ShortcutResult.fail(label + " connected but invalid");
+        }
+        return ShortcutResult.ok(BlockStateValidationUtils.putProperty(state, property, value));
     }
 
     private boolean isDriven(String portId) {
-        return OptionalPortDrive.isConnected(this, portId) || inputValues.get(portId) != null;
-    }
-
-    private void putShortcut(BlockStateData state, String property, Object valueObj) {
-        if (valueObj instanceof String value) {
-            BlockStateValidationUtils.putProperty(state, property, value);
-        }
+        return OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId);
     }
 
     public String getPropertiesText() {
@@ -161,6 +202,26 @@ public class BuildBlockStateNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map && map.get("propertiesText") instanceof String text) {
             setPropertiesText(text);
+        }
+    }
+
+    private record PropertyPairResult(boolean valid, BlockStateData state, String error) {
+        static PropertyPairResult ok(BlockStateData state) {
+            return new PropertyPairResult(true, state, "");
+        }
+
+        static PropertyPairResult fail(String error) {
+            return new PropertyPairResult(false, new BlockStateData(), error);
+        }
+    }
+
+    private record ShortcutResult(boolean valid, BlockStateData state, String error) {
+        static ShortcutResult ok(BlockStateData state) {
+            return new ShortcutResult(true, state, "");
+        }
+
+        static ShortcutResult fail(String error) {
+            return new ShortcutResult(false, new BlockStateData(), error);
         }
     }
 }

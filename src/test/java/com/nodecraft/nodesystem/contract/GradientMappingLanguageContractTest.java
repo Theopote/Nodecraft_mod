@@ -123,8 +123,7 @@ class GradientMappingLanguageContractTest {
     void heightGradientPreservesPartialBandsAndSingleYUsesBottom() {
         HeightGradientMapNode node = new HeightGradientMapNode();
 
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "north");
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
 
         BlockPlacementData low = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", state);
         BlockPlacementData high = new BlockPlacementData(new BlockPos(0, 10, 0), "minecraft:oak_planks", state);

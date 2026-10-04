@@ -53,15 +53,15 @@ public class ClientPlayerInteractionManagerMixin {
                         String blockId = Registries.BLOCK.getId(blockState.getBlock()).toString();
                         
                         com.nodecraft.nodesystem.util.BlockStateData blockStateData = new com.nodecraft.nodesystem.util.BlockStateData();
-                        blockState.getProperties().forEach(property -> {
+                        for (var property : blockState.getProperties()) {
                             try {
                                 String key = property.getName();
                                 String value = blockState.get(property).toString();
-                                blockStateData.setProperty(key, value);
+                                blockStateData = blockStateData.withProperty(key, value);
                             } catch (Exception e) {
                                 // 忽略无法获取的属性
                             }
-                        });
+                        }
                         
                         // 将交互转发给NodeCraft系统处理 - 使用新的左键点击API
                         com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager interactionManager = 

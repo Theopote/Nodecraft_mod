@@ -92,18 +92,17 @@ public class OrientBlockStateNode extends BaseNode {
         String half = vector.y < 0.0d ? "top" : "bottom";
 
         switch (mode) {
-            case "axis" -> state.setProperty("axis", axis);
-            case "stair" -> {
-                state.setProperty("facing", facing.asString());
-                state.setProperty("half", half);
-                state.setProperty("shape", state.getProperty("shape", "straight"));
-            }
-            case "horizontal_facing", "facing" -> state.setProperty("facing", facing.asString());
-            default -> state.setProperty("facing", facing.asString());
+            case "axis" -> state = state.withProperty("axis", axis);
+            case "stair" -> state = state
+                .withProperty("facing", facing.asString())
+                .withProperty("half", half)
+                .withProperty("shape", state.getProperty("shape", "straight"));
+            case "horizontal_facing", "facing" -> state = state.withProperty("facing", facing.asString());
+            default -> state = state.withProperty("facing", facing.asString());
         }
 
         if (Boolean.TRUE.equals(inputValues.get(INPUT_INCLUDE_WATERLOGGED_ID))) {
-            state.setBooleanProperty("waterlogged", Boolean.TRUE.equals(inputValues.get(INPUT_WATERLOGGED_ID)));
+            state = state.withBooleanProperty("waterlogged", Boolean.TRUE.equals(inputValues.get(INPUT_WATERLOGGED_ID)));
         }
 
         String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));

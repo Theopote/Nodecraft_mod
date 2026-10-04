@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -60,11 +61,15 @@ public class ApplyBlockStateNode extends BaseNode {
             return;
         }
 
-        BlockStateData override = inputValues.get(INPUT_BLOCK_STATE_ID) instanceof BlockStateData inputState
-            ? inputState.copy()
-            : null;
-        if (override != null) {
-            BlockStateValidationUtils.stripIdentityKeys(override);
+        BlockStateData override;
+        if (isDriven(INPUT_BLOCK_STATE_ID)) {
+            if (!(inputValues.get(INPUT_BLOCK_STATE_ID) instanceof BlockStateData inputState)) {
+                emitFail("Block State connected but invalid");
+                return;
+            }
+            override = BlockStateValidationUtils.stripIdentityKeys(inputState);
+        } else {
+            override = null;
         }
 
         List<BlockPlacementData> resolved = new ArrayList<>(parsed.placements().size());
@@ -72,10 +77,20 @@ public class ApplyBlockStateNode extends BaseNode {
             BlockStateData merged = override != null
                 ? BlockStateValidationUtils.mergeStateData(placement.stateData(), override)
                 : placement.stateData();
+            BlockStateValidationUtils.ValidationResult validation =
+                BlockStateValidationUtils.validatePlacementState(placement.blockId(), merged);
+            if (!validation.valid()) {
+                emitFail("Invalid block state for " + placement.blockId() + ": " + validation.message());
+                return;
+            }
             resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), merged));
         }
 
         emitOk(resolved);
+    }
+
+    private boolean isDriven(String portId) {
+        return OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId);
     }
 
     private void emitFail(String error) {

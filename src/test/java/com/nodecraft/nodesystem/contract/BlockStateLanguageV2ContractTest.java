@@ -18,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -65,8 +66,7 @@ class BlockStateLanguageV2ContractTest {
     @Test
     void stairDirectionConnectedZeroFailsClosed() {
         StairProbe probe = new StairProbe();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "north");
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
         probe.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
         ));
@@ -79,8 +79,7 @@ class BlockStateLanguageV2ContractTest {
     @Test
     void stairHalfConnectedBananaFailsClosed() {
         StairProbe probe = new StairProbe();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "north");
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
         probe.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
         ));
@@ -93,9 +92,9 @@ class BlockStateLanguageV2ContractTest {
     @Test
     void stairDirectionUndrivenWithStateFacingSucceeds() {
         StairShapeNode node = new StairShapeNode();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "east");
-        state.setProperty("half", "bottom");
+        BlockStateData state = new BlockStateData()
+            .withProperty("facing", "east")
+            .withProperty("half", "bottom");
         node.setInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
         ));
@@ -157,6 +156,76 @@ class BlockStateLanguageV2ContractTest {
         List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
         assertEquals(1, out.size());
         assertEquals("minecraft:stone", out.getFirst().blockId());
+    }
+
+    @Test
+    void applyStoneFacingOverrideFailsClosed() {
+        ApplyBlockStateNode node = new ApplyBlockStateNode();
+        BlockStateData facing = new BlockStateData().withProperty("facing", "north");
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        node.setInput("input_block_state", facing);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void applyMixedIdsOneIncompatibleOverrideFailsWholeList() {
+        ApplyBlockStateNode node = new ApplyBlockStateNode();
+        BlockStateData facing = new BlockStateData().withProperty("facing", "north");
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", null),
+            new BlockPlacementData(new BlockPos(1, 0, 0), "minecraft:stone", null)
+        ));
+        node.setInput("input_block_state", facing);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void applyConnectedInvalidOverrideFails() {
+        ApplyProbe probe = new ApplyProbe();
+        probe.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        probe.putInput("input_block_state", "not-a-block-state");
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertTrue(((List<?>) probe.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void buildBananaFacingEmitsNullState() {
+        BuildBlockStateNode node = new BuildBlockStateNode();
+        node.setInput("input_block_type", "minecraft:oak_stairs");
+        node.setInput("input_facing", "banana");
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_block_state"));
+        assertEquals(0, node.getOutput("output_property_count"));
+    }
+
+    @Test
+    void buildConnectedFacingIntegerFails() {
+        BuildProbe probe = new BuildProbe();
+        probe.putInput("input_block_type", "minecraft:oak_stairs");
+        probe.putInput("input_facing", 1);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertNull(probe.getOutput("output_block_state"));
+    }
+
+    @Test
+    void buildConnectedWaterloggedNullFails() {
+        BuildProbe probe = new BuildProbe();
+        probe.putInput("input_block_type", "minecraft:oak_stairs");
+        probe.putInput("input_waterlogged", null);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertNull(probe.getOutput("output_block_state"));
     }
 
     private static final class ApplyProbe extends ApplyBlockStateNode {

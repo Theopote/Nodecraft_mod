@@ -333,7 +333,7 @@
 | Assign Block Type | `material.basic_assignment.assign_block_type` | Assigns a single block type to placements or geometry. Remaps blockId only; preserves stateData. | `AssignBlockTypeNode` |
 | Create Block Palette | `material.basic_assignment.create_block_palette` | Builds a BLOCK_PALETTE from STRING_LIST block ids and optional DOUBLE_LIST weights | `CreateBlockPaletteNode` |
 | Block Palette | `material.basic_assignment.block_palette` | Assigns palette block types cyclically. Flat: per-item; tree: per-branch. Remaps blockId only; preserves stateData. | `BlockPaletteNode` |
-| Weighted Block Palette | `material.basic_assignment.weighted_palette` | Assigns weighted random block types by position + seed via RandomOps. Remaps blockId only; preserves stateData. | `WeightedBlockPaletteNode` |
+| Weighted Spatial Palette | `material.basic_assignment.weighted_palette` | Assigns a spatially coherent weighted material field (value noise + seed). Remaps blockId only; preserves stateData. | `WeightedBlockPaletteNode` |
 
 ## material.block_state（4）
 

@@ -14,20 +14,36 @@ import java.util.List;
  */
 public record BlockPaletteData(List<BlockPaletteEntry> entries) {
 
-    public BlockPaletteData(List<BlockPaletteEntry> entries) {
-        List<BlockPaletteEntry> copy = new ArrayList<>();
-        if (entries != null) {
-            for (BlockPaletteEntry entry : entries) {
-                if (entry != null && entry.isUsable()) {
-                    copy.add(entry);
-                }
-            }
+    public BlockPaletteData {
+        if (entries == null) {
+            throw new IllegalArgumentException("Palette entries required");
         }
-        this.entries = List.copyOf(copy);
+        List<BlockPaletteEntry> copy = new ArrayList<>(entries.size());
+        for (BlockPaletteEntry entry : entries) {
+            if (entry == null) {
+                throw new IllegalArgumentException("Palette entry must not be null");
+            }
+            copy.add(entry);
+        }
+        entries = List.copyOf(copy);
     }
 
     public static BlockPaletteData empty() {
         return new BlockPaletteData(List.of());
+    }
+
+    /**
+     * Graph-facing constructor: {@code null} when entries are missing or illegal.
+     */
+    public static @Nullable BlockPaletteData canonical(@Nullable List<BlockPaletteEntry> entries) {
+        try {
+            if (entries == null) {
+                return null;
+            }
+            return new BlockPaletteData(entries);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     public static BlockPaletteData ofBlockIds(List<String> blockIds) {
@@ -36,8 +52,9 @@ public record BlockPaletteData(List<BlockPaletteEntry> entries) {
         }
         List<BlockPaletteEntry> entries = new ArrayList<>(blockIds.size());
         for (String blockId : blockIds) {
-            if (blockId != null && !blockId.isBlank()) {
-                entries.add(new BlockPaletteEntry(blockId));
+            String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(blockId);
+            if (canonical != null) {
+                entries.add(new BlockPaletteEntry(canonical));
             }
         }
         return new BlockPaletteData(entries);
@@ -54,14 +71,17 @@ public record BlockPaletteData(List<BlockPaletteEntry> entries) {
         }
         List<BlockPaletteEntry> entries = new ArrayList<>(blockIds.size());
         for (int i = 0; i < blockIds.size(); i++) {
-            String blockId = blockIds.get(i);
-            if (blockId == null || blockId.isBlank()) {
+            String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(blockIds.get(i));
+            if (canonical == null) {
                 continue;
             }
             double weight = weights != null && i < weights.size() && weights.get(i) != null
                     ? weights.get(i)
                     : 1.0d;
-            entries.add(new BlockPaletteEntry(blockId, weight));
+            if (!Double.isFinite(weight) || weight < 0.0d) {
+                continue;
+            }
+            entries.add(new BlockPaletteEntry(canonical, weight));
         }
         return new BlockPaletteData(entries);
     }
@@ -77,15 +97,19 @@ public record BlockPaletteData(List<BlockPaletteEntry> entries) {
             return palette;
         }
         if (value instanceof String blockId) {
-            return blockId.isBlank() ? empty() : ofBlockIds(List.of(blockId));
+            String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(blockId);
+            return canonical == null ? empty() : ofBlockIds(List.of(canonical));
         }
         if (value instanceof List<?> list) {
             List<BlockPaletteEntry> entries = new ArrayList<>();
             for (Object entry : list) {
                 if (entry instanceof BlockPaletteEntry paletteEntry && paletteEntry.isUsable()) {
                     entries.add(paletteEntry);
-                } else if (entry instanceof String blockId && !blockId.isBlank()) {
-                    entries.add(new BlockPaletteEntry(blockId));
+                } else if (entry instanceof String blockId) {
+                    String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(blockId);
+                    if (canonical != null) {
+                        entries.add(new BlockPaletteEntry(canonical));
+                    }
                 }
             }
             return new BlockPaletteData(entries);

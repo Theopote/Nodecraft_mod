@@ -2,143 +2,195 @@ package com.nodecraft.nodesystem.util;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiConsumer;
 
 /**
- * 封装Minecraft方块状态数据
- * 例如: {facing="north", waterlogged="false", lit="true"}
+ * Immutable BLOCK_STATE payload: canonical non-blank property names and values.
+ * Identity keys ({@code blockId}, {@code id}) are never stored.
+ * Semantic property/block compatibility is {@link com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils}.
  */
-public class BlockStateData extends HashMap<String, String> {
-    
+public final class BlockStateData {
+
+    private final Map<String, String> properties;
+
     public BlockStateData() {
-        super();
+        this.properties = Map.of();
     }
-    
-    public BlockStateData(Map<String, String> stateMap) {
-        super(stateMap);
+
+    public BlockStateData(@Nullable Map<String, String> stateMap) {
+        this.properties = canonicalize(stateMap);
     }
-    
-    /**
-     * 获取方块状态属性
-     * @param property 属性名
-     * @param defaultValue 默认值
-     * @return 属性值
-     */
+
+    public BlockStateData(@Nullable BlockStateData other) {
+        this.properties = other == null ? Map.of() : other.properties;
+    }
+
+    public Map<String, String> properties() {
+        return properties;
+    }
+
+    public boolean isEmpty() {
+        return properties.isEmpty();
+    }
+
+    public int size() {
+        return properties.size();
+    }
+
+    public Set<String> keySet() {
+        return properties.keySet();
+    }
+
+    public Set<Map.Entry<String, String>> entrySet() {
+        return properties.entrySet();
+    }
+
+    public void forEach(BiConsumer<String, String> action) {
+        properties.forEach(action);
+    }
+
+    public @Nullable String get(@Nullable String property) {
+        return property == null ? null : properties.get(property);
+    }
+
     public String getProperty(String property, String defaultValue) {
-        return getOrDefault(property, defaultValue);
+        String value = get(property);
+        return value != null ? value : defaultValue;
     }
-    
-    /**
-     * 设置方块状态属性
-     * @param property 属性名
-     * @param value 属性值
-     */
-    public void setProperty(String property, String value) {
-        put(property, value);
+
+    public boolean hasProperty(String property) {
+        return property != null && properties.containsKey(property);
     }
-    
-    /**
-     * 获取布尔类型的属性
-     * @param property 属性名
-     * @param defaultValue 默认值
-     * @return 布尔值
-     */
+
     public boolean getBooleanProperty(String property, boolean defaultValue) {
         String value = get(property);
-        if (value == null) return defaultValue;
+        if (value == null) {
+            return defaultValue;
+        }
         return "true".equalsIgnoreCase(value);
     }
-    
-    /**
-     * 设置布尔类型的属性
-     * @param property 属性名
-     * @param value 布尔值
-     */
-    public void setBooleanProperty(String property, boolean value) {
-        put(property, String.valueOf(value));
-    }
-    
-    /**
-     * 获取整数类型的属性
-     * @param property 属性名
-     * @param defaultValue 默认值
-     * @return 整数值
-     */
+
     public int getIntProperty(String property, int defaultValue) {
         String value = get(property);
-        if (value == null) return defaultValue;
+        if (value == null) {
+            return defaultValue;
+        }
         try {
             return Integer.parseInt(value);
         } catch (NumberFormatException e) {
             return defaultValue;
         }
     }
-    
-    /**
-     * 设置整数类型的属性
-     * @param property 属性名
-     * @param value 整数值
-     */
-    public void setIntProperty(String property, int value) {
-        put(property, String.valueOf(value));
+
+    public BlockStateData withProperty(String property, String value) {
+        String name = canonicalizeKey(property);
+        String canonicalValue = canonicalizeValue(value);
+        if (name == null || canonicalValue == null) {
+            return this;
+        }
+        Map<String, String> next = new LinkedHashMap<>(properties);
+        next.put(name, canonicalValue);
+        return new BlockStateData(next);
     }
-    
-    /**
-     * 检查是否有指定属性
-     * @param property 属性名
-     * @return 是否存在
-     */
-    public boolean hasProperty(String property) {
-        return containsKey(property);
+
+    public BlockStateData withBooleanProperty(String property, boolean value) {
+        return withProperty(property, String.valueOf(value));
     }
-    
-    /**
-     * 创建状态数据的副本
-     * @return 新的BlockStateData实例
-     */
+
+    public BlockStateData withIntProperty(String property, int value) {
+        return withProperty(property, String.valueOf(value));
+    }
+
     public BlockStateData copy() {
-        return new BlockStateData(this);
+        return this;
     }
 
     /**
-     * Merges {@code override} into a copy of {@code base}; override keys win.
-     * Identity keys ({@code blockId}, {@code id}) are never copied from either side.
+     * Merges {@code override} into {@code base}; override keys win.
      */
     public static BlockStateData merge(@Nullable BlockStateData base, @Nullable BlockStateData override) {
-        BlockStateData merged = base != null ? base.copy() : new BlockStateData();
-        stripIdentityKeys(merged);
-        if (override != null) {
-            for (Map.Entry<String, String> entry : override.entrySet()) {
-                if (!isIdentityKey(entry.getKey())) {
-                    merged.setProperty(entry.getKey(), entry.getValue());
-                }
-            }
+        if (override == null || override.isEmpty()) {
+            return base != null ? base : new BlockStateData();
         }
-        return merged;
+        if (base == null || base.isEmpty()) {
+            return override;
+        }
+        Map<String, String> merged = new LinkedHashMap<>(base.properties);
+        merged.putAll(override.properties);
+        return new BlockStateData(merged);
     }
 
     public static void stripIdentityKeys(BlockStateData state) {
-        if (state == null) {
-            return;
+        // Identity keys are stripped at construction; kept for call-site compatibility.
+    }
+
+    private static Map<String, String> canonicalize(@Nullable Map<String, String> stateMap) {
+        if (stateMap == null || stateMap.isEmpty()) {
+            return Map.of();
         }
-        state.remove("blockId");
-        state.remove("id");
+        Map<String, String> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : stateMap.entrySet()) {
+            String name = canonicalizeKey(entry.getKey());
+            String value = canonicalizeValue(entry.getValue());
+            if (name != null && value != null) {
+                copy.put(name, value);
+            }
+        }
+        return copy.isEmpty() ? Map.of() : Map.copyOf(copy);
+    }
+
+    private static @Nullable String canonicalizeKey(@Nullable String key) {
+        if (key == null) {
+            return null;
+        }
+        String name = key.trim().toLowerCase(Locale.ROOT);
+        if (name.isEmpty() || isIdentityKey(name)) {
+            return null;
+        }
+        return name;
+    }
+
+    private static @Nullable String canonicalizeValue(@Nullable String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim().toLowerCase(Locale.ROOT);
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static boolean isIdentityKey(String key) {
         return "blockId".equals(key) || "id".equals(key);
     }
-    
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof BlockStateData that)) {
+            return false;
+        }
+        return properties.equals(that.properties);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(properties);
+    }
+
     @Override
     public String toString() {
         if (isEmpty()) {
             return "{}";
         }
-        
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
-        for (Map.Entry<String, String> entry : entrySet()) {
+        for (Map.Entry<String, String> entry : properties.entrySet()) {
             if (!first) {
                 sb.append(", ");
             }
@@ -148,4 +200,4 @@ public class BlockStateData extends HashMap<String, String> {
         sb.append("}");
         return sb.toString();
     }
-} 
+}

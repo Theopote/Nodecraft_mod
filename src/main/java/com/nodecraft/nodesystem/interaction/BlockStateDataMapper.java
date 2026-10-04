@@ -16,11 +16,11 @@ final class BlockStateDataMapper {
         }
 
         try {
-            blockState.getProperties().forEach(property -> {
+            for (var property : blockState.getProperties()) {
                 String propertyName = property.getName();
                 Comparable<?> propertyValue = blockState.get(property);
-                stateData.put(propertyName, propertyValue.toString());
-            });
+                stateData = stateData.withProperty(propertyName, propertyValue.toString());
+            }
         } catch (Exception e) {
             NodeCraft.LOGGER.error("创建BlockStateData时出错", e);
         }

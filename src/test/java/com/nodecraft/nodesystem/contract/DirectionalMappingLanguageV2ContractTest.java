@@ -174,8 +174,7 @@ class DirectionalMappingLanguageV2ContractTest {
     @Test
     void slopeSurfaceOnlySmoke() {
         SlopeMapNode node = new SlopeMapNode();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("axis", "y");
+        BlockStateData state = new BlockStateData().withProperty("axis", "y");
 
         BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", state);
         BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", state);

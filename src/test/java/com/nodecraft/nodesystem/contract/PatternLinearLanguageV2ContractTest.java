@@ -332,7 +332,7 @@ class PatternLinearLanguageV2ContractTest {
         probe.connectInput("input_count", NodeDataType.INTEGER);
         probe.putRawInput("input_count", 5);
         probe.processNode(null);
-        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"), String.valueOf(probe.getOutput("output_error")));
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
         assertEquals(5, probe.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<FrameData> frames = assertInstanceOf(List.class, probe.getOutput("output_frames"));

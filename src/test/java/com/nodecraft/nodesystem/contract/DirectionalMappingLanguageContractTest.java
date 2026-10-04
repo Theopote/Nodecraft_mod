@@ -97,8 +97,7 @@ class DirectionalMappingLanguageContractTest {
     void columnLayerMapPreservesStateAndPartialOverrides() {
         TopSideBottomMapNode node = new TopSideBottomMapNode();
 
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "north");
+        BlockStateData state = new BlockStateData().withProperty("facing", "north");
 
         BlockPlacementData top = new BlockPlacementData(new BlockPos(0, 2, 0), "minecraft:oak_planks", state);
         BlockPlacementData mid = new BlockPlacementData(new BlockPos(0, 1, 0), "minecraft:oak_planks", state);
@@ -144,8 +143,7 @@ class DirectionalMappingLanguageContractTest {
     void surfaceSlopeMapRemapsOnlyColumnTop() {
         SlopeMapNode node = new SlopeMapNode();
 
-        BlockStateData state = new BlockStateData();
-        state.setProperty("axis", "y");
+        BlockStateData state = new BlockStateData().withProperty("axis", "y");
 
         BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", state);
         BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", state);
@@ -187,8 +185,7 @@ class DirectionalMappingLanguageContractTest {
         assertTrue(empty.isEmpty());
 
         SlabStairAutofillNode node = new SlabStairAutofillNode();
-        BlockStateData state = new BlockStateData();
-        state.setProperty("facing", "east");
+        BlockStateData state = new BlockStateData().withProperty("facing", "east");
         BlockPlacementData stairPlacement = new BlockPlacementData(
                 new BlockPos(1, 64, 1),
                 "minecraft:oak_planks",
