@@ -116,6 +116,9 @@ public final class GeometryTransform {
         if (geometry == null) {
             return null;
         }
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
+            return null;
+        }
         return transform0(geometry, new Spec(translation, rotationXDeg, rotationYDeg, rotationZDeg, scale));
     }
 
@@ -126,6 +129,9 @@ public final class GeometryTransform {
         double scale
     ) {
         if (geometry == null) {
+            return null;
+        }
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
             return null;
         }
         return transform0(geometry, new Spec(translation, rotation, scale));

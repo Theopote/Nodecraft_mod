@@ -38,6 +38,9 @@ public final class GeometryBoundsResolver {
     }
 
     public static @Nullable BoundingBoxData resolve(@Nullable GeometryData geometry) {
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
+            return null;
+        }
         return switch (geometry) {
             case CompositeGeometryData composite -> resolveComposite(composite);
             case DifferenceGeometryData difference ->

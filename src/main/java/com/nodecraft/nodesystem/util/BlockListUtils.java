@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.datatypes.RegionData;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -70,6 +71,38 @@ public final class BlockListUtils {
             return null;
         }
         return resolveStrictBlockList(value);
+    }
+
+    /**
+     * Inclusive AABB of occupied block cells. Empty or null input → {@code null}.
+     */
+    public static @Nullable RegionData regionFromOccupiedBlocks(@Nullable Iterable<BlockPos> blocks) {
+        if (blocks == null) {
+            return null;
+        }
+        BlockPos minCorner = null;
+        BlockPos maxCorner = null;
+        for (BlockPos pos : blocks) {
+            if (pos == null) {
+                continue;
+            }
+            if (minCorner == null) {
+                minCorner = pos.toImmutable();
+                maxCorner = pos.toImmutable();
+                continue;
+            }
+            minCorner = new BlockPos(
+                Math.min(minCorner.getX(), pos.getX()),
+                Math.min(minCorner.getY(), pos.getY()),
+                Math.min(minCorner.getZ(), pos.getZ())
+            );
+            maxCorner = new BlockPos(
+                Math.max(maxCorner.getX(), pos.getX()),
+                Math.max(maxCorner.getY(), pos.getY()),
+                Math.max(maxCorner.getZ(), pos.getZ())
+            );
+        }
+        return minCorner != null && maxCorner != null ? new RegionData(minCorner, maxCorner) : null;
     }
 
     private static @Nullable LinkedHashSet<BlockPos> resolveSetFromIterable(Iterable<?> values) {

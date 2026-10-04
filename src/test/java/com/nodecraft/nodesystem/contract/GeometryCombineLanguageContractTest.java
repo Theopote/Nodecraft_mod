@@ -19,6 +19,7 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -39,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Combine v1 (Graph V70).
+ * Language fence for Geometry Combine v1 (current graph format).
  */
 class GeometryCombineLanguageContractTest {
 
@@ -54,7 +55,7 @@ class GeometryCombineLanguageContractTest {
     }
 
     @Test
-    void graphFormatIncludesV70CombineLanguage() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -141,6 +142,29 @@ class GeometryCombineLanguageContractTest {
         CompositeGeometryData out = assertInstanceOf(CompositeGeometryData.class, node.getOutput("output_geometry"));
         assertEquals(3, out.size());
         assertEquals(3, node.getOutput("output_count"));
+    }
+
+    @Test
+    void flattenedLeafBudgetFailsClosed() {
+        List<GeometryData> leaves = new ArrayList<>(GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES);
+        for (int i = 0; i < GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES; i++) {
+            leaves.add(unitBox(i, 0, 0));
+        }
+        CompositeGeometryData atCap = new CompositeGeometryData(leaves);
+        assertEquals(GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES, atCap.size());
+        assertThrows(IllegalArgumentException.class, () ->
+            new CompositeGeometryData(List.of(atCap, unitBox(-1, 0, 0))));
+
+        CombineGeometryNode node = new CombineGeometryNode();
+        connectInput(node, "input_geometry_0", NodeDataType.GEOMETRY);
+        connectInput(node, "input_geometry_1", NodeDataType.GEOMETRY);
+        node.setInput("input_geometry_0", atCap);
+        node.setInput("input_geometry_1", unitBox(-1, 0, 0));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_geometry"));
+        assertEquals(0, node.getOutput("output_count"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains(CompositeGeometryData.LEAF_BUDGET_EXCEEDED));
     }
 
     @Test

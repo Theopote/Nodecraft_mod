@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Voxel Language v1 (Graph V95).
+ * Language fence for Geometry Voxel Language v1 (current graph format).
  */
 class GeometryVoxelLanguageContractTest {
 
@@ -58,7 +58,7 @@ class GeometryVoxelLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV95() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -123,6 +123,48 @@ class GeometryVoxelLanguageContractTest {
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
         assertEquals(0, node.getOutput("output_count"));
         assertEquals("SUCCESS", node.getOutput("output_status"));
+        assertNull(node.getOutput("output_region"));
+    }
+
+    @Test
+    void occupiedRegionIsTightAabbOfGeneratedBlocks() {
+        BoxGeometryData box = unitBox(0, 0, 0);
+        VoxelizeGeometryNode node = new VoxelizeGeometryNode();
+        node.setInput("input_geometry", box);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        com.nodecraft.nodesystem.datatypes.RegionData region =
+            (com.nodecraft.nodesystem.datatypes.RegionData) node.getOutput("output_region");
+        assertNotNull(region);
+        assertEquals(new BlockPos(0, 0, 0), region.getMinCorner());
+        assertEquals(new BlockPos(0, 0, 0), region.getMaxCorner());
+    }
+
+    @Test
+    void singleGeometryAndOneBranchTreeShareOccupiedRegion() {
+        BoxGeometryData box = unitBox(2, 3, 4);
+        VoxelizeGeometryNode single = new VoxelizeGeometryNode();
+        single.setInput("input_geometry", box);
+        single.processNode(null);
+
+        VoxelizeGeometryNode tree = new VoxelizeGeometryNode();
+        connectInput(tree, "input_geometry_tree", NodeDataType.DATA_TREE);
+        tree.setInput("input_geometry_tree", new DataTreeData(List.of(
+            new DataTreeData.Branch(List.of(0), List.of(box))
+        )));
+        tree.processNode(null);
+
+        assertEquals(Boolean.TRUE, single.getOutput("output_valid"));
+        assertEquals(Boolean.TRUE, tree.getOutput("output_valid"));
+        assertEquals(single.getOutput("output_count"), tree.getOutput("output_count"));
+        com.nodecraft.nodesystem.datatypes.RegionData singleRegion =
+            (com.nodecraft.nodesystem.datatypes.RegionData) single.getOutput("output_region");
+        com.nodecraft.nodesystem.datatypes.RegionData treeRegion =
+            (com.nodecraft.nodesystem.datatypes.RegionData) tree.getOutput("output_region");
+        assertNotNull(singleRegion);
+        assertNotNull(treeRegion);
+        assertEquals(singleRegion.getMinCorner(), treeRegion.getMinCorner());
+        assertEquals(singleRegion.getMaxCorner(), treeRegion.getMaxCorner());
     }
 
     @Test
@@ -251,6 +293,18 @@ class GeometryVoxelLanguageContractTest {
         GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(nanSdf, true);
         assertFalse(result.success());
         assertEquals(VoxelizationStatus.EVALUATION_FAILURE, result.status());
+    }
+
+    @Test
+    void expressionDepthOverCapFailsClosed() {
+        GeometryData nested = unitBox(0, 0, 0);
+        for (int i = 0; i < GenerationLimits.MAX_GEOMETRY_EXPRESSION_DEPTH; i++) {
+            nested = new DifferenceGeometryData(nested, unitBox(0, 0, 0));
+        }
+        GeometryVoxelizationResult result = GeometryVoxelizer.voxelizeStrict(nested, true);
+        assertFalse(result.success());
+        assertEquals(VoxelizationStatus.UNSUPPORTED, result.status());
+        assertTrue(result.error().contains("geometry_expression_depth_exceeded"));
     }
 
     private static BoxGeometryData unitBox(double cx, double cy, double cz) {

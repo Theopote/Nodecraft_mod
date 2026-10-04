@@ -128,6 +128,12 @@ public final class GeometryVoxelizer {
      * Strict geometry→voxel evaluation. Distinguishes legal empty SUCCESS from FAILURE.
      */
     public static GeometryVoxelizationResult voxelizeStrict(@Nullable GeometryData geometry, boolean fillSolid) {
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
+            return GeometryVoxelizationResult.fail(
+                VoxelizationStatus.UNSUPPORTED,
+                GeometryExpressionLimits.DEPTH_EXCEEDED
+            );
+        }
         switch (geometry) {
             case null -> {
                 return GeometryVoxelizationResult.fail(VoxelizationStatus.UNSUPPORTED, "Geometry is null");
@@ -241,6 +247,9 @@ public final class GeometryVoxelizer {
     }
 
     public static @Nullable RegionData createBoundingRegion(GeometryData geometry) {
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
+            return null;
+        }
         if (geometry instanceof CompositeGeometryData compositeGeometry) {
             return createCompositeBoundingRegion(compositeGeometry);
         }

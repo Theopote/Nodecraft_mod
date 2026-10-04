@@ -81,7 +81,10 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> world = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
+        List<Vector3d> world = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_CONVEX_HULL_3D_POINTS
+        );
         if (world == null) {
             writeFailure("Valid point list is required");
             return;
@@ -150,8 +153,8 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("maxPoints") instanceof Number n) {
-            setMaxPoints(n.intValue());
+        if (map.get("maxPoints") instanceof Integer n) {
+            setMaxPoints(n);
         }
     }
 }

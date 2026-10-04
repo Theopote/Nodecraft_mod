@@ -96,6 +96,19 @@ public final class GenerationLimits {
     public static final int MAX_GEOMETRY_INSTANCES = 16_384;
 
     /**
+     * Hard cap on flattened leaf geometries in one {@code CompositeGeometryData}.
+     * Independent of {@link #MAX_GEOMETRY_VOXELS} (block count) and {@link #MAX_GEOMETRY_INSTANCES}
+     * (array/placement copies).
+     */
+    public static final int MAX_COMPOSITE_GEOMETRY_LEAVES = 4096;
+
+    /**
+     * Maximum nesting depth of Geometry expressions (composite, difference, intersection, SDF wrappers).
+     * Leaf geometry has depth 1.
+     */
+    public static final int MAX_GEOMETRY_EXPRESSION_DEPTH = 64;
+
+    /**
      * Hard cap for layout producers that emit POINT_LIST / VECTOR_LIST / FRAME_LIST together
      * (Spiral, Phyllotaxis, path-frame producers).
      */

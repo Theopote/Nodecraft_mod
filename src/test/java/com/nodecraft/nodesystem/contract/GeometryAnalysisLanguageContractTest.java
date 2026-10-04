@@ -30,6 +30,7 @@ import com.nodecraft.nodesystem.nodes.geometry.analysis.GeometryBoundsNode;
 import com.nodecraft.nodesystem.datatypes.TriangleMeshData;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
@@ -52,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Geometry Analysis v1 language fence (Graph V67).
+ * Geometry Analysis v1 language fence (current graph format).
  */
 class GeometryAnalysisLanguageContractTest {
 
@@ -73,7 +74,7 @@ class GeometryAnalysisLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV67() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -305,11 +306,6 @@ class GeometryAnalysisLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV96ForConvexHullV2() {
-        assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
-    }
-
-    @Test
     void convexHull3DPortDomains() {
         INode node = registry.createNodeInstance("geometry.analysis.convex_hull_3d");
         assertPortType(node, "input_points", NodeDataType.POINT_LIST);
@@ -342,7 +338,7 @@ class GeometryAnalysisLanguageContractTest {
         ConvexHull3DProbe node = new ConvexHull3DProbe();
         node.connectInput("input_points", NodeDataType.POINT_LIST);
         node.setMaxPoints(96);
-        List<Object> points = new ArrayList<>(100);
+        List<Object> points = new ArrayList<>(96);
         Vector3d[] unique = {
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
@@ -350,7 +346,7 @@ class GeometryAnalysisLanguageContractTest {
                 new Vector3d(0, 0, 1),
                 new Vector3d(0.5, 0.5, 0.5)
         };
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 96; i++) {
             points.add(new PointData(unique[i % unique.length]));
         }
         node.setInput("input_points", points);
@@ -399,7 +395,28 @@ class GeometryAnalysisLanguageContractTest {
         assertTrue(String.valueOf(node.getOutput("output_error")).contains("Max points"));
     }
 
+    @Test
+    void convexHull3DRejectsOversizedPointListBeforeDedupe() {
+        ConvexHull3DProbe node = new ConvexHull3DProbe();
+        node.connectInput("input_points", NodeDataType.POINT_LIST);
+        List<Object> points = new ArrayList<>(GenerationLimits.MAX_CONVEX_HULL_3D_POINTS + 1);
+        for (int i = 0; i < GenerationLimits.MAX_CONVEX_HULL_3D_POINTS + 1; i++) {
+            points.add(new PointData(new Vector3d(i, 0, 0)));
+        }
+        node.setInput("input_points", points);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+    }
 
+    @Test
+    void convexHull3DIgnoresDoubleMaxPointsRestore() {
+        ConvexHull3DFromPointsNode node = new ConvexHull3DFromPointsNode();
+        int original = node.getMaxPoints();
+        node.setNodeState(java.util.Map.of("maxPoints", 96.8d));
+        assertEquals(original, node.getMaxPoints());
+        node.setNodeState(java.util.Map.of("maxPoints", 4));
+        assertEquals(4, node.getMaxPoints());
+    }
 
     private static int orderOf(String typeId) {
         INode node = registry.createNodeInstance(typeId);

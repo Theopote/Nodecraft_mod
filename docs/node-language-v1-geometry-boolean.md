@@ -1,6 +1,6 @@
 # Geometry Boolean — Node Language v1
 
-**Status: PASSED / FROZEN** (Graph **V69**)
+**Status: PASSED / FROZEN** (current graph format)
 
 Geometry Boolean v1 freezes the two deferred **voxel-grid** boolean nodes under `geometry.boolean`, plus the shared strict voxel evaluation protocol used by Difference / Intersection / Composite and Boolean Preview.
 
@@ -29,6 +29,7 @@ No `geometry.boolean.union` (use `geometry.combine.geometry`). SDF Boolean remai
 
 - Status: `SUCCESS` / `UNSUPPORTED` / `OVER_BUDGET` / `INVALID_BOUNDS` / `CHILD_FAILURE`
 - Hard cap: [`GenerationLimits.MAX_GEOMETRY_VOXELS`](../src/main/java/com/nodecraft/nodesystem/util/GenerationLimits.java)
+- Expression depth: wrapping Difference/Intersection cannot exceed `MAX_GEOMETRY_EXPRESSION_DEPTH`
 - Composite / Diff / Inter: transactional — child failure → whole FAILURE (no partial union/subtract)
 - Empty cutter SUCCESS → Difference = base (legal)
 - Disjoint ∩ → SUCCESS + empty (legal)
@@ -43,14 +44,12 @@ Legacy `voxelize(...)` is lossy (FAILURE → empty list) for non-migrated caller
 
 Missing / non-geometry → `Valid=false` + actionable Error. No property fallback.
 
-## Bounds (unchanged from V67)
+## Bounds (scan envelope)
 
-- Difference AABB = minuend (conservative)
+- Difference AABB = minuend (conservative scan domain)
 - Intersection AABB = AABB ∩ (null when incomplete **or** disjoint — voxel path still distinguishes via strict child eval)
 
-## Migration (V68 → V69)
-
-Format bump only (Error ports additive; catalog order metadata).
+Graph format is stamp-only (`CURRENT = 1`); there is no V68→V69 wire remap.
 
 ## Verification
 

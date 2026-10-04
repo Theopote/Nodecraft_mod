@@ -1,6 +1,6 @@
 # Geometry Voxel — Language v1
 
-**Status: PASSED / FROZEN** (Graph **V95**)
+**Status: PASSED / FROZEN** (current graph format)
 
 Category: `geometry.voxel` (1 node: **Voxelize Geometry**). Converts `GEOMETRY` / `GEOMETRY` tree into `BLOCK_LIST` / `DATA_TREE`. **PURE** — does not write the Minecraft world; use **Apply Changes** after Material / Block State.
 
@@ -16,7 +16,7 @@ Canonical path: [`GeometryVoxelizer.voxelizeStrict`](src/main/java/com/nodecraft
 
 | Outcome | Valid | Blocks | Region | Error / Status |
 |---------|-------|--------|--------|----------------|
-| Success (incl. legal empty) | true | result | bounding region | `""` / `SUCCESS` |
+| Success (incl. legal empty) | true | result | occupied-block AABB (`null` if empty) | `""` / `SUCCESS` |
 | Failure | false | `[]` | `null` | actionable message / status enum name |
 
 **Rule:** `SUCCESS + empty ≠ FAILURE`. Never use lossy `voxelize()` on the public node.
@@ -45,6 +45,10 @@ Boolean Difference / Intersection with `Fill=false`: **solid CSG first**, then `
 2. **Unique flattened output:** `output_blocks` union ≤ `MAX_GEOMETRY_VOXELS`
 3. **Tree materialization:** sum of per-branch unique block counts in `output_blocks_tree` ≤ `MAX_VOXEL_TREE_BLOCK_ITEMS` (= `MAX_LIST_ELEMENTS`)
 4. **Tree geometry items:** total input geometry items ≤ `MAX_GEOMETRY_INSTANCES`
+5. **Composite leaves:** flattened `CompositeGeometryData` leaves ≤ `MAX_COMPOSITE_GEOMETRY_LEAVES`
+6. **Expression depth:** Composite / Difference / Intersection nesting ≤ `MAX_GEOMETRY_EXPRESSION_DEPTH`
+
+`output_region` is the inclusive AABB of **generated unique blocks** (same helper as Block Bounds), not the geometry scan envelope. Empty success → `Region=null`. Single Geometry and a one-branch Geometry Tree of the same operand share this Region.
 
 Per-branch Blocks Tree output is deduplicated (duplicate geometry children in one branch do not inflate branch block lists).
 
@@ -64,4 +68,4 @@ Non-finite SDF sample → `EVALUATION_FAILURE` (fail closed), not silent outside
 
 ## Contract tests
 
-`GeometryVoxelLanguageContractTest` (Graph V95); Boolean shell cases in `GeometryBooleanLanguageContractTest`.
+`GeometryVoxelLanguageContractTest` (current graph format); Boolean shell cases in `GeometryBooleanLanguageContractTest`.

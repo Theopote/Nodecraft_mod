@@ -42,6 +42,9 @@ public final class GeometryMirror {
         if (geometry == null || plane == null) {
             return null;
         }
+        if (GeometryExpressionLimits.exceedsMax(geometry)) {
+            return null;
+        }
         switch (geometry) {
             case CompositeGeometryData composite -> {
                 List<GeometryData> mirrored = new ArrayList<>(composite.size());

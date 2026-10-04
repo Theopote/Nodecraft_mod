@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
@@ -84,11 +85,23 @@ public class CombineGeometryNode extends BaseNode {
                 writeInvalid("Geometry " + (i + 1) + " is connected but invalid");
                 return;
             }
-            CompositeGeometryData.appendLeaves(leaves, geometry);
+            try {
+                CompositeGeometryData.appendLeaves(leaves, geometry);
+            } catch (IllegalArgumentException overflow) {
+                if (CompositeGeometryData.LEAF_BUDGET_EXCEEDED.equals(overflow.getMessage())) {
+                    writeInvalid(CompositeGeometryData.LEAF_BUDGET_EXCEEDED);
+                    return;
+                }
+                throw overflow;
+            }
         }
 
         if (leaves.isEmpty()) {
             writeInvalid("No geometry inputs are connected");
+            return;
+        }
+        if (leaves.size() > GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES) {
+            writeInvalid(CompositeGeometryData.LEAF_BUDGET_EXCEEDED);
             return;
         }
 

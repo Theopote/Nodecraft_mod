@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GeometryExpressionLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -62,6 +63,10 @@ public class DifferenceNode extends BaseNode {
         }
         if (!(cutterObj instanceof GeometryData cutterGeometry)) {
             writeInvalid("Cutter Geometry is required");
+            return;
+        }
+        if (!GeometryExpressionLimits.canWrap(baseGeometry, cutterGeometry)) {
+            writeInvalid(GeometryExpressionLimits.DEPTH_EXCEEDED);
             return;
         }
 

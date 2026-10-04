@@ -108,7 +108,7 @@ public class BlockBoundsNode extends BaseNode {
                 writeInvalid("Blocks list is empty");
                 return;
             }
-            RegionData region = regionFromBlocks(blocks);
+            RegionData region = BlockListUtils.regionFromOccupiedBlocks(blocks);
             if (region == null) {
                 writeInvalid("Unable to derive region from Blocks");
                 return;
@@ -199,28 +199,5 @@ public class BlockBoundsNode extends BaseNode {
     private boolean isInputConnected(String inputPortId) {
         return inputPorts.stream()
             .anyMatch(port -> inputPortId.equals(port.getId()) && port.isConnected());
-    }
-
-    private static @Nullable RegionData regionFromBlocks(List<BlockPos> blocks) {
-        BlockPos minCorner = null;
-        BlockPos maxCorner = null;
-        for (BlockPos pos : blocks) {
-            if (minCorner == null) {
-                minCorner = pos.toImmutable();
-                maxCorner = pos.toImmutable();
-                continue;
-            }
-            minCorner = new BlockPos(
-                Math.min(minCorner.getX(), pos.getX()),
-                Math.min(minCorner.getY(), pos.getY()),
-                Math.min(minCorner.getZ(), pos.getZ())
-            );
-            maxCorner = new BlockPos(
-                Math.max(maxCorner.getX(), pos.getX()),
-                Math.max(maxCorner.getY(), pos.getY()),
-                Math.max(maxCorner.getZ(), pos.getZ())
-            );
-        }
-        return minCorner != null && maxCorner != null ? new RegionData(minCorner, maxCorner) : null;
     }
 }

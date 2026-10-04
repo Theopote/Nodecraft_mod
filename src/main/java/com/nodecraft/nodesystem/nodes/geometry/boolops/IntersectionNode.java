@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GeometryExpressionLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -62,6 +63,10 @@ public class IntersectionNode extends BaseNode {
         }
         if (!(rightObj instanceof GeometryData rightGeometry)) {
             writeInvalid("Right Geometry is required");
+            return;
+        }
+        if (!GeometryExpressionLimits.canWrap(leftGeometry, rightGeometry)) {
+            writeInvalid(GeometryExpressionLimits.DEPTH_EXCEEDED);
             return;
         }
 

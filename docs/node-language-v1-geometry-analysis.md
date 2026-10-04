@@ -1,11 +1,11 @@
 # Geometry Analysis — Node Language v1
 
-**Status: PASSED / FROZEN** (Graph **V67**)
+**Status: PASSED / FROZEN** (current graph format)
 
 Geometry Analysis v1 freezes the language for the 2 bounds nodes below.
 Core rule: `BOUNDING_BOX` is a **continuous** geometric AABB; `REGION` / `BLOCK_POS` stay in the discrete Minecraft cell domain.
 
-**Convex Hull 3D** (`geometry.analysis.convex_hull_3d`, order 2) is governed separately by [node-language-v2-geometry-analysis-convex-hull.md](node-language-v2-geometry-analysis-convex-hull.md) (Graph V96).
+**Convex Hull 3D** (`geometry.analysis.convex_hull_3d`, order 2) is governed separately by [node-language-v2-geometry-analysis-convex-hull.md](node-language-v2-geometry-analysis-convex-hull.md).
 
 **Out of scope:** retargeting primitive / architectural deconstruct nodes still on `GeometryVoxelizer` bounds (follow-up).
 
@@ -36,7 +36,7 @@ Core rule: `BOUNDING_BOX` is a **continuous** geometric AABB; `REGION` / `BLOCK_
 | Min Block / Max Block | BLOCK_POS |
 | Center | POINT (midpoint of continuous envelope) |
 | Size X/Y/Z | INTEGER |
-| Volume | DOUBLE (`long`/`double` product) |
+| Volume | DOUBLE (cell count; long-safe, not continuous volume) |
 | Valid / Error | BOOLEAN / STRING |
 
 Rules:
@@ -68,12 +68,7 @@ Rules:
 - No Region / BLOCK_POS / INTEGER size ports.
 - Bounds may be **conservative** for some oriented / implicit shapes (cylinder, cone, hemisphere, torus, oriented ellipsoid, etc.); analysis guarantees a finite enclosing AABB, not the analytically tightest bound for every primitive.
 
-## Migration (V66 → V67)
-
-- Rename `geometry.boolean.bounding_box` → `geometry.analysis.block_bounds`
-- Rename `geometry.boolean.geometry_bounds` → `geometry.analysis.geometry_bounds`
-- Block Bounds port remap: `input_coordinates`→`input_blocks`, `output_min_corner`→`output_min_block`, `output_max_corner`→`output_max_block`
-- Drop wires to removed Geometry Bounds ports: `output_region`, `output_min_corner`, `output_max_corner`, `output_center`
+Graph format is stamp-only (`CURRENT = 1`). Historical notes: Block Bounds / Geometry Bounds ids moved out of `geometry.boolean.*`; Geometry Bounds no longer emits Region / discrete corners.
 
 ## Verification
 

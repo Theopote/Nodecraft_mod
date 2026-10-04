@@ -71,7 +71,6 @@ public final class VoxelInputUtils {
 
         Set<BlockPos> merged = new LinkedHashSet<>();
         List<DataTreeData.Branch> blockBranches = new ArrayList<>();
-        RegionData region = null;
         long treeMaterializedItems = 0L;
 
         for (DataTreeData.Branch branch : tree.getBranches()) {
@@ -109,7 +108,6 @@ public final class VoxelInputUtils {
                 if (mergeError != null) {
                     return TreeVoxelizationOutcome.fail(mergeError.status(), mergeError.error());
                 }
-                region = GeometryVoxelizer.unionBoundingRegions(region, GeometryVoxelizer.createBoundingRegion(geometry));
                 itemIndex++;
             }
 
@@ -136,7 +134,7 @@ public final class VoxelInputUtils {
         return TreeVoxelizationOutcome.ok(
             new BlockPosList(merged),
             new DataTreeData(blockBranches),
-            region
+            BlockListUtils.regionFromOccupiedBlocks(merged)
         );
     }
 

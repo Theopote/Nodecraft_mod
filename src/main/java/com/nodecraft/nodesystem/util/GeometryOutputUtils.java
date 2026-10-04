@@ -31,7 +31,11 @@ public final class GeometryOutputUtils {
         if (list.size() == 1) {
             return list.getFirst();
         }
-        return new CompositeGeometryData(list);
+        try {
+            return new CompositeGeometryData(list);
+        } catch (IllegalArgumentException overflow) {
+            return null;
+        }
     }
 
     /**

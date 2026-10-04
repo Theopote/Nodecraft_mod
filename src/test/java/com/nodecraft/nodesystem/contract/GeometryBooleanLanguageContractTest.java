@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Boolean v1 (Graph V69).
+ * Language fence for Geometry Boolean v1 (current graph format).
  */
 class GeometryBooleanLanguageContractTest {
 
@@ -57,7 +57,7 @@ class GeometryBooleanLanguageContractTest {
     }
 
     @Test
-    void graphFormatIncludesV69BooleanLanguage() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -306,6 +306,20 @@ class GeometryBooleanLanguageContractTest {
 
         assertTrue(shellInter.blocks().size() > wrongShellIntersect.size(),
             "shell(A∩B) must differ from shell(A)∩shell(B) for overlapping boxes");
+    }
+
+    @Test
+    void wrappingBeyondExpressionDepthFailsClosed() {
+        GeometryData deep = unitBox(0, 0, 0);
+        for (int i = 1; i < GenerationLimits.MAX_GEOMETRY_EXPRESSION_DEPTH; i++) {
+            deep = new DifferenceGeometryData(deep, unitBox(0, 0, 0));
+        }
+        DifferenceNode node = new DifferenceNode();
+        node.setInput("input_base", deep);
+        node.setInput("input_cutter", unitBox(1, 0, 0));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("geometry_expression_depth_exceeded"));
     }
 
     private static BoxGeometryData unitBox(double cx, double cy, double cz) {

@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,7 +171,14 @@ public class NoiseMaterialNode extends BaseNode {
             return;
         }
 
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
+        RandomInputResolver.IntegerResolveResult seedResult = RandomInputResolver.resolveSeed(
+            inputValues.get(INPUT_SEED_ID),
+            MaterialSourceResolver.isDriven(this, INPUT_SEED_ID));
+        if (!seedResult.valid()) {
+            emitFail("Seed must be an exact Integer");
+            return;
+        }
+        int seed = seedResult.value();
         List<BlockPlacementData> sources = source.placements();
         GradientMaterialUtils.Validation workOk = requireSampleWorkBudget(sources.size());
         if (!workOk.valid()) {

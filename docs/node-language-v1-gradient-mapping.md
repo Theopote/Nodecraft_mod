@@ -54,7 +54,8 @@ Unconnected band ports preserve `source.blockId`.
 ## Noise Material
 
 Octave stack of `RandomOps.valueNoise3`. Seed = Integer-only via
-`RandomOps.resolveSeed`. `scale > 0`; thresholds finite with `low < high`.
+`RandomInputResolver.resolveSeed` (undriven → 0; driven non-Integer → `Valid=false`).
+`scale > 0`; thresholds finite with `low < high`.
 `output_noise_values : DOUBLE_LIST`.
 
 ## Height Palette Map

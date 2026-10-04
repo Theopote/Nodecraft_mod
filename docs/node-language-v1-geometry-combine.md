@@ -1,6 +1,6 @@
 # Geometry Combine — Node Language v1
 
-**Status: PASSED / FROZEN** (Graph **V70**)
+**Status: PASSED / FROZEN** (current graph format)
 
 Geometry Combine v1 freezes the single structural combine node under `geometry.combine`, connection-aware transactional combine semantics, canonical 0/1/N output via `packGeometry`, leaf Count, Valid+Error ports, and `CompositeGeometryData` null rejection — completing the Composite entry/exit fail-closed loop started in V68–V69.
 
@@ -45,6 +45,7 @@ Zero connected valid leaves → `Valid=false`, `Geometry=null`, `Count=0`, actio
 - Null members → reject (`Objects.requireNonNull`), not silent skip
 - Shared [`flattenLeaves`](../src/main/java/com/nodecraft/nodesystem/datatypes/CompositeGeometryData.java) / `appendLeaves` used by constructor and Combine node
 - Nested Composite recursive flatten retained (associative combine)
+- Flattened leaf count cannot exceed `MAX_COMPOSITE_GEOMETRY_LEAVES` (`geometry_leaf_budget_exceeded`)
 
 Aligns with V68 `packGeometry` and V69 strict composite voxelization.
 
@@ -56,11 +57,9 @@ Aligns with V68 `packGeometry` and V69 strict composite voxelization.
 
 ## Downstream
 
-Combined output feeds Bounds / Voxel / Preview unchanged. Strict voxelization of Composite remains transactional (V69): child failure → whole FAILURE.
+Downstream Bounds / Voxel / Preview consume the combined `GEOMETRY`. Strict voxelization of Composite remains transactional: child failure → whole FAILURE.
 
-## Migration (V69 → V70)
-
-Format bump only (Error port additive; order is catalog metadata). Identity `migrateV69ToV70`.
+Graph format is stamp-only (`CURRENT = 1`); there is no V69→V70 wire remap.
 
 ## Verification
 

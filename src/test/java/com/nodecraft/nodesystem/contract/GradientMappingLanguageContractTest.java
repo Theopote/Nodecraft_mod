@@ -37,6 +37,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -200,10 +201,41 @@ class GradientMappingLanguageContractTest {
 
     @Test
     void noiseSeedIsIntegerOnly() {
-        assertEquals(7, RandomOps.resolveSeed(7));
-        assertEquals(0, RandomOps.resolveSeed(7.0d));
-        assertEquals(0, RandomOps.resolveSeed("7"));
-        assertEquals(0, RandomOps.resolveSeed(null));
+        BlockPlacementData placement = new BlockPlacementData(new BlockPos(2, 3, 4), "minecraft:dirt", null);
+
+        NoiseProbe decimal = new NoiseProbe();
+        decimal.putInput("input_placements", List.of(placement));
+        decimal.putInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")));
+        decimal.putInput("input_seed", 42.0d);
+        decimal.processNode(null);
+        assertFalse((Boolean) decimal.getOutput("output_valid"));
+        assertTrue(((List<?>) decimal.getOutput("output_placements")).isEmpty());
+
+        NoiseProbe text = new NoiseProbe();
+        text.putInput("input_placements", List.of(placement));
+        text.putInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")));
+        text.putInput("input_seed", "7");
+        text.processNode(null);
+        assertFalse((Boolean) text.getOutput("output_valid"));
+
+        NoiseMaterialNode undrivenA = new NoiseMaterialNode();
+        undrivenA.setInput("input_placements", List.of(placement));
+        undrivenA.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")));
+        undrivenA.processNode(null);
+        NoiseMaterialNode undrivenB = new NoiseMaterialNode();
+        undrivenB.setInput("input_placements", List.of(placement));
+        undrivenB.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")));
+        undrivenB.processNode(null);
+        assertTrue((Boolean) undrivenA.getOutput("output_valid"));
+        assertEquals(undrivenA.getOutput("output_noise_values"), undrivenB.getOutput("output_noise_values"));
+
+        NoiseMaterialNode integerSeed = new NoiseMaterialNode();
+        integerSeed.setInput("input_placements", List.of(placement));
+        integerSeed.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")));
+        integerSeed.setInput("input_seed", 7);
+        integerSeed.processNode(null);
+        assertTrue((Boolean) integerSeed.getOutput("output_valid"));
+        assertNotEquals(integerSeed.getOutput("output_noise_values"), undrivenA.getOutput("output_noise_values"));
     }
 
     @Test
@@ -346,5 +378,11 @@ class GradientMappingLanguageContractTest {
                         && sourcePort.equalsIgnoreCase(c.sourcePortId)
                         && targetNode.equals(c.targetNodeId)
                         && targetPort.equalsIgnoreCase(c.targetPortId));
+    }
+
+    private static final class NoiseProbe extends NoiseMaterialNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
     }
 }

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.BlockListUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
@@ -62,7 +63,8 @@ public class VoxelizeGeometryNode extends BaseNode {
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped by source geometry tree branch", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the geometry", NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
+            "Inclusive AABB of generated blocks (not the geometry scan envelope)", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when voxelization succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
@@ -116,7 +118,7 @@ public class VoxelizeGeometryNode extends BaseNode {
         DataTreeData blocksTree = blocks.isEmpty()
             ? DataTreeData.empty()
             : new DataTreeData(List.of(new DataTreeData.Branch(List.of(0), new ArrayList<>(blocks.getPositions()))));
-        RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
+        RegionData region = BlockListUtils.regionFromOccupiedBlocks(blocks.getPositions());
         writeSuccess(blocks, blocksTree, region);
     }
 

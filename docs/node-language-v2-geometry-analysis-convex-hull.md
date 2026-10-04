@@ -1,8 +1,8 @@
 # Geometry Analysis / Convex Hull 3D — Node Language v2
 
-**Status: PASSED / FROZEN** (Graph **V96**)
+**Status: PASSED / FROZEN** (current graph format)
 
-Focused remediation for `geometry.analysis.convex_hull_3d` only. **Block Bounds** and **Geometry Bounds** remain frozen under [node-language-v1-geometry-analysis.md](node-language-v1-geometry-analysis.md) (Graph V67).
+Focused remediation for `geometry.analysis.convex_hull_3d` only. **Block Bounds** and **Geometry Bounds** remain under [node-language-v1-geometry-analysis.md](node-language-v1-geometry-analysis.md).
 
 ## Node
 
@@ -64,9 +64,7 @@ Degenerate inputs (collinear, coplanar, `< 4` unique sites) → `Valid=false` (n
 | Valid | `false` |
 | Error | actionable message |
 
-## Migration (V95 → V96)
-
-Drop connections from `geometry.analysis.convex_hull_3d:output_faces` (type-incompatible). Reconnect downstream to `output_mesh` (`TRIANGLE_MESH`).
+Graph format is stamp-only (`CURRENT = 1`). Historical `output_faces` wires are gone; use `output_mesh` (`TRIANGLE_MESH`).
 
 ## Verification
 

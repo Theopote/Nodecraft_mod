@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
@@ -9,17 +10,24 @@ import java.util.Objects;
 /**
  * Composite geometry that groups multiple geometry objects into one value.
  * Structurally flat: nested composites are recursively flattened.
- * Null members are rejected (fail closed).
+ * Null members are rejected (fail closed). Flattened leaf count cannot exceed
+ * {@link GenerationLimits#MAX_COMPOSITE_GEOMETRY_LEAVES}.
  */
 public record CompositeGeometryData(List<GeometryData> geometries) implements GeometryData {
 
+    public static final String LEAF_BUDGET_EXCEEDED = "geometry_leaf_budget_exceeded";
+
     public CompositeGeometryData(List<GeometryData> geometries) {
-        this.geometries = flattenLeaves(geometries);
+        List<GeometryData> flattened = flattenLeaves(geometries);
+        if (flattened.size() > GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES) {
+            throw new IllegalArgumentException(LEAF_BUDGET_EXCEEDED);
+        }
+        this.geometries = flattened;
     }
 
     /**
      * Flattens a list of roots into leaf geometries (nested composites expanded).
-     * Rejects null members.
+     * Rejects null members. Throws {@link IllegalArgumentException} when the leaf budget is exceeded.
      */
     public static List<GeometryData> flattenLeaves(List<GeometryData> roots) {
         List<GeometryData> flattened = new ArrayList<>();
@@ -33,7 +41,7 @@ public record CompositeGeometryData(List<GeometryData> geometries) implements Ge
 
     /**
      * Appends leaf geometries from {@code geometry} into {@code target}, flattening nested composites.
-     * Rejects null.
+     * Rejects null. Throws {@link IllegalArgumentException} when the leaf budget is exceeded.
      */
     public static void appendLeaves(List<GeometryData> target, GeometryData geometry) {
         Objects.requireNonNull(geometry, "Composite geometry member must not be null");
@@ -42,6 +50,9 @@ public record CompositeGeometryData(List<GeometryData> geometries) implements Ge
                 appendLeaves(target, child);
             }
             return;
+        }
+        if (target.size() >= GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES) {
+            throw new IllegalArgumentException(LEAF_BUDGET_EXCEEDED);
         }
         target.add(geometry);
     }
