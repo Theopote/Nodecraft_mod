@@ -172,8 +172,8 @@ public class GearOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("teeth") instanceof Number n) teeth = n.intValue();
-        if (map.get("rootRadius") instanceof Number n) rootRadius = n.doubleValue();
-        if (map.get("tipRadius") instanceof Number n) tipRadius = n.doubleValue();
+        restoreInteger(map, "teeth", v -> teeth = v);
+        restoreFiniteDouble(map, "rootRadius", v -> rootRadius = v);
+        restoreFiniteDouble(map, "tipRadius", v -> tipRadius = v);
     }
 }

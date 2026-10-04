@@ -9,8 +9,15 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.TetrahedronGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
+
+import org.joml.Vector3d;
+
+import java.util.List;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -64,14 +71,26 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
             return;
         }
 
-        double edgeLength = tetrahedron.getEdgeLength();
-        if (edgeLength <= 0.0d) {
-            writeEmptyOutputs("Tetrahedron edge length must be > 0");
+        String error = PrimitiveGeometryValidator.validatePolyhedron(
+            tetrahedron.getCenter(), tetrahedron.getEdgeLength(), "edge length");
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
-        double surfaceArea = Math.sqrt(3.0d) * edgeLength * edgeLength;
-        double volume = (edgeLength * edgeLength * edgeLength) / (6.0d * Math.sqrt(2.0d));
+        double edgeLength = tetrahedron.getEdgeLength();
+        double circumradius = tetrahedron.getCircumradius();
+        double surfaceArea = PrimitiveNumericUtils.safeMul(Math.sqrt(3.0d), PrimitiveNumericUtils.safeSquare(edgeLength));
+        double volume = PrimitiveNumericUtils.safeMul(
+            PrimitiveNumericUtils.safeCube(edgeLength),
+            1.0d / (6.0d * Math.sqrt(2.0d)));
+        List<Vector3d> vertices = tetrahedron.getVertices();
+        if (!requireFiniteOutputs(edgeLength, circumradius, surfaceArea, volume)
+            || !PrimitiveNumericUtils.isFiniteMatrix(tetrahedron.getOrientationMatrix())
+            || !finitePoints(vertices)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(tetrahedron);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -81,7 +100,7 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
         outputValues.put(OUTPUT_CENTER_ID, new PointData(tetrahedron.getCenter()));
         outputValues.put(OUTPUT_EDGE_ID, edgeLength);
         outputValues.put(OUTPUT_CIRCUMRADIUS_ID, tetrahedron.getCircumradius());
-        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(tetrahedron.getVertices()));
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(vertices));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
@@ -93,7 +112,19 @@ public class DeconstructTetrahedronNode extends AbstractPrimitiveDeconstructNode
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
         putEmptyListOutputs(OUTPUT_VERTICES_ID);
-        putDoubleOutputs(0.0d, OUTPUT_EDGE_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_EDGE_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
         markInvalid(reason);
+    }
+
+    private static boolean finitePoints(List<Vector3d> vertices) {
+        if (vertices == null) {
+            return false;
+        }
+        for (Vector3d vertex : vertices) {
+            if (!VectorUtils.isFinite(vertex)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

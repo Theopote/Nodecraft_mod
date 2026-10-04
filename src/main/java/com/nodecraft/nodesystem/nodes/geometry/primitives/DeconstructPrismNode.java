@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -65,11 +66,37 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
             return;
         }
 
+        String error = PrimitiveGeometryValidator.validatePrism(prism);
+        if (error != null) {
+            writeEmptyOutputs(error);
+            return;
+        }
+
         List<Vector3d> basePoints = prism.baseVertices();
         List<Vector3d> topPoints = prism.getTopVertices();
         Vector3d extrusionVector = prism.extrusionVector();
         double height = prism.getHeight();
         int sideCount = prism.getSideCount();
+        if (topPoints.size() != basePoints.size() || sideCount != basePoints.size()) {
+            writeEmptyOutputs("Prism side count is inconsistent");
+            return;
+        }
+        for (Vector3d vertex : basePoints) {
+            if (!VectorUtils.isFinite(vertex)) {
+                writeEmptyOutputs("Prism base vertices must be finite");
+                return;
+            }
+        }
+        for (Vector3d vertex : topPoints) {
+            if (!VectorUtils.isFinite(vertex)) {
+                writeEmptyOutputs("Prism top vertices must be finite");
+                return;
+            }
+        }
+        if (!requireFiniteOutputs(height) || !VectorUtils.isFinite(extrusionVector)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(prism);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -90,7 +117,7 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
     private void writeEmptyOutputs(String reason) {
         putEmptyListOutputs(OUTPUT_BASE_POINTS_ID, OUTPUT_TOP_POINTS_ID);
         putNullOutputs(OUTPUT_EXTRUSION_VECTOR_ID, OUTPUT_SURFACE_STRIP_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
-        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_HEIGHT_ID);
         putIntOutputs(0, OUTPUT_SIDE_COUNT_ID);
         markInvalid(reason);
     }

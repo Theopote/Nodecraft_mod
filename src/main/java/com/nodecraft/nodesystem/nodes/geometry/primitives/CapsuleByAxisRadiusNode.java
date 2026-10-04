@@ -5,18 +5,15 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
-import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @NodeInfo(
@@ -114,16 +111,15 @@ public class CapsuleByAxisRadiusNode extends AbstractPrimitiveNode {
 
         Vector3d axis = PrimitiveGeometryValidator.requirePositiveAxis(start, end);
         double axisLength = PrimitiveGeometryValidator.requirePositiveAxisLength(start, end);
-        Vector3d unitAxis = VectorUtils.normalizeByLength(axis, axisLength);
-        if (unitAxis == null) {
+        if (axis == null || !Double.isFinite(axisLength)) {
             writeInvalid("Capsule axis length must be > 0");
             return;
         }
 
-        CylinderGeometryData cylinder = new CylinderGeometryData(start, end, resolvedRadius);
-        HemisphereGeometryData startCap = new HemisphereGeometryData(start, new Vector3d(unitAxis).negate(), resolvedRadius);
-        HemisphereGeometryData endCap = new HemisphereGeometryData(end, unitAxis, resolvedRadius);
-        GeometryData geometry = new CompositeGeometryData(List.of(cylinder, startCap, endCap));
+        CapsuleGeometryData geometry = new CapsuleGeometryData(start, end, resolvedRadius);
+        CylinderGeometryData cylinder = geometry.cylinder();
+        HemisphereGeometryData startCap = geometry.startHemisphere();
+        HemisphereGeometryData endCap = geometry.endHemisphere();
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_CYLINDER_ID, cylinder);

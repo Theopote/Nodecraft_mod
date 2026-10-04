@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.DodecahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,14 +66,34 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
             return;
         }
 
-        double edgeLength = dodeca.getEdgeLength();
-        if (edgeLength <= 0.0d) {
-            writeEmptyOutputs("Dodecahedron edge length must be > 0");
+        String error = PrimitiveGeometryValidator.validatePolyhedron(
+            dodeca.getCenter(), dodeca.getEdgeLength(), "edge length");
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
-        double surface = 3.0d * Math.sqrt(25.0d + 10.0d * Math.sqrt(5.0d)) * edgeLength * edgeLength;
-        double volume = ((15.0d + 7.0d * Math.sqrt(5.0d)) / 4.0d) * edgeLength * edgeLength * edgeLength;
+        double edgeLength = dodeca.getEdgeLength();
+        double circumradius = dodeca.getCircumradius();
+        double surface = PrimitiveNumericUtils.safeMul(
+            3.0d * Math.sqrt(25.0d + 10.0d * Math.sqrt(5.0d)),
+            PrimitiveNumericUtils.safeSquare(edgeLength));
+        double volume = PrimitiveNumericUtils.safeMul(
+            (15.0d + 7.0d * Math.sqrt(5.0d)) / 4.0d,
+            PrimitiveNumericUtils.safeCube(edgeLength));
+        java.util.List<org.joml.Vector3d> vertices = dodeca.getVertices();
+        if (!requireFiniteOutputs(edgeLength, circumradius, surface, volume)
+            || !PrimitiveNumericUtils.isFiniteMatrix(dodeca.getOrientationMatrix())
+            || vertices == null) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
+        for (org.joml.Vector3d vertex : vertices) {
+            if (!com.nodecraft.nodesystem.util.VectorUtils.isFinite(vertex)) {
+                writeEmptyOutputs("Derived analytical values are non-finite");
+                return;
+            }
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(dodeca);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -80,8 +102,8 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(dodeca.getCenter()));
         outputValues.put(OUTPUT_EDGE_LENGTH_ID, edgeLength);
-        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, dodeca.getCircumradius());
-        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(dodeca.getVertices()));
+        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, circumradius);
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(vertices));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surface);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
@@ -93,7 +115,7 @@ public class DeconstructDodecahedronNode extends AbstractPrimitiveDeconstructNod
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
         putEmptyListOutputs(OUTPUT_VERTICES_ID);
-        putDoubleOutputs(0.0d, OUTPUT_EDGE_LENGTH_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_EDGE_LENGTH_ID, OUTPUT_CIRCUMRADIUS_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
         markInvalid(reason);
     }
 }

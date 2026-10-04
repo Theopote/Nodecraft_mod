@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
@@ -82,6 +83,17 @@ public final class GeometryMirror {
                         mirrorPoint(cylinder.getEnd(), plane),
                         cylinder.getRadius()
                 );
+            }
+            case CapsuleGeometryData capsule -> {
+                try {
+                    return new CapsuleGeometryData(
+                            mirrorPoint(capsule.getStart(), plane),
+                            mirrorPoint(capsule.getEnd(), plane),
+                            capsule.getRadius()
+                    );
+                } catch (IllegalArgumentException ignored) {
+                    return null;
+                }
             }
             case ConeGeometryData cone -> {
                 return new ConeGeometryData(

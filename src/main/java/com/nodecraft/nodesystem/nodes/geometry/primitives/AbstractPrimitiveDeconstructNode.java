@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.util.BoxBlockGenerator;
 import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -33,6 +34,13 @@ abstract class AbstractPrimitiveDeconstructNode extends AbstractPrimitiveNode {
             return null;
         }
         RegionData region = BoxBlockGenerator.regionFromBoundingBox(box);
+        if (region == null || !region.isComplete()) {
+            return null;
+        }
         return new BoundsAndRegion(box, region);
+    }
+
+    protected final boolean requireFiniteOutputs(double... values) {
+        return PrimitiveNumericUtils.allFinite(values);
     }
 }

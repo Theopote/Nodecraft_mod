@@ -11,7 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Shared profile extrusion helpers for Extrude / Extrude Region (Graph V91).
+ * Shared profile extrusion helpers for Extrude / Extrude Region.
+ * Historical Graph V91 residue.
  */
 public final class ProfileExtrusionUtils {
 

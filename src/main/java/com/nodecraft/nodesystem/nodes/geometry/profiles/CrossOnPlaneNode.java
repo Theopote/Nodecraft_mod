@@ -92,7 +92,8 @@ public class CrossOnPlaneNode extends AbstractProfileNode {
             writeInvalid("Arm width must be a positive finite number");
             return;
         }
-        if (resolvedArmWidth >= resolvedArmLength * 2.0d) {
+        double halfWidth = resolvedArmWidth * 0.5d;
+        if (!Double.isFinite(halfWidth) || halfWidth >= resolvedArmLength) {
             writeInvalid("Arm width must be less than twice the arm length");
             return;
         }
@@ -105,12 +106,12 @@ public class CrossOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        if (!isWithinProfileVertices(12)) {
+        if (!ProfileConstructionUtils.requireUniqueVertices(12)) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
-        double h = resolvedArmWidth * 0.5d;
+        double h = halfWidth;
         double l = resolvedArmLength;
         double[][] local = {
             {-h, -l}, {h, -l}, {h, -h}, {l, -h}, {l, h}, {h, h},
@@ -163,7 +164,7 @@ public class CrossOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("armLength") instanceof Number n) armLength = n.doubleValue();
-        if (map.get("armWidth") instanceof Number n) armWidth = n.doubleValue();
+        restoreFiniteDouble(map, "armLength", v -> armLength = v);
+        restoreFiniteDouble(map, "armWidth", v -> armWidth = v);
     }
 }

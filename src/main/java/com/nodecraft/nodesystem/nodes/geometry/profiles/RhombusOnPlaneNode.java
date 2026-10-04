@@ -155,7 +155,7 @@ public class RhombusOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("diagonalX") instanceof Number n) diagonalX = n.doubleValue();
-        if (map.get("diagonalY") instanceof Number n) diagonalY = n.doubleValue();
+        restoreFiniteDouble(map, "diagonalX", v -> diagonalX = v);
+        restoreFiniteDouble(map, "diagonalY", v -> diagonalY = v);
     }
 }

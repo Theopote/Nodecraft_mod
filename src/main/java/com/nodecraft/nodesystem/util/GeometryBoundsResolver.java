@@ -2,6 +2,7 @@ package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
@@ -49,6 +50,7 @@ public final class GeometryBoundsResolver {
             case IntersectionGeometryData intersection ->
                     BoundingBoxData.intersection(resolve(intersection.left()), resolve(intersection.right()));
             case BoxGeometryData box -> resolveBox(box);
+            case CapsuleGeometryData capsule -> resolveCapsule(capsule);
             case ConeGeometryData cone -> resolveCone(cone);
             case FrustumConeGeometryData frustum -> resolveFrustum(frustum);
             case CylinderGeometryData cylinder -> resolveCylinder(cylinder);
@@ -81,6 +83,12 @@ public final class GeometryBoundsResolver {
             }
         }
         return merged;
+    }
+
+    private static @Nullable BoundingBoxData resolveCapsule(CapsuleGeometryData capsule) {
+        BoundingBoxData merged = resolveCylinder(capsule.cylinder());
+        merged = BoundingBoxData.union(merged, resolveHemisphere(capsule.startHemisphere()));
+        return BoundingBoxData.union(merged, resolveHemisphere(capsule.endHemisphere()));
     }
 
     private static @Nullable BoundingBoxData resolveBox(BoxGeometryData box) {

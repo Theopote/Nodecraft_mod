@@ -1,12 +1,14 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
+import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
@@ -207,6 +209,42 @@ public final class PrimitiveGeometryValidator {
             return "Capsule radius must be finite and > 0";
         }
         return null;
+    }
+
+    public static @Nullable String validateCapsule(@Nullable CapsuleGeometryData capsule) {
+        if (capsule == null) {
+            return "Capsule is missing";
+        }
+        return validateCapsule(capsule.getStart(), capsule.getEnd(), capsule.getRadius());
+    }
+
+    public static @Nullable String validatePrism(
+            @Nullable java.util.List<Vector3d> baseVertices,
+            @Nullable Vector3d extrusionVector
+    ) {
+        if (baseVertices == null || baseVertices.size() < 3) {
+            return "Prism requires at least three base vertices";
+        }
+        for (Vector3d vertex : baseVertices) {
+            if (!requireFinitePoint(vertex)) {
+                return "Prism base vertices must be finite";
+            }
+        }
+        if (!VectorUtils.isFinite(extrusionVector)) {
+            return "Prism extrusion vector must be finite";
+        }
+        double height = VectorUtils.safeLength(extrusionVector);
+        if (!Double.isFinite(height) || height < 0.0d) {
+            return "Prism height must be finite and >= 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validatePrism(@Nullable PrismGeometryData prism) {
+        if (prism == null) {
+            return "Prism is missing";
+        }
+        return validatePrism(prism.baseVertices(), prism.extrusionVector());
     }
 
     public static @Nullable String validateHemisphere(

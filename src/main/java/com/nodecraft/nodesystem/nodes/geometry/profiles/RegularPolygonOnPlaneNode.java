@@ -162,7 +162,7 @@ public class RegularPolygonOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
-        if (map.get("sides") instanceof Number n) sides = n.intValue();
+        restoreFiniteDouble(map, "radius", v -> radius = v);
+        restoreInteger(map, "sides", v -> sides = v);
     }
 }

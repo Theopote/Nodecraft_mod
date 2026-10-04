@@ -88,9 +88,10 @@ public class SemiCircleOnPlaneNode extends AbstractProfileNode {
             return;
         }
         Integer resolvedSegments = resolveBoundedInteger(
-            INPUT_SEGMENTS_ID, segments, 1, GenerationLimits.MAX_PROFILE_VERTICES);
+            INPUT_SEGMENTS_ID, segments, 1, GenerationLimits.MAX_PROFILE_VERTICES - 1);
         if (resolvedSegments == null) {
-            writeInvalid("Arc segments must be an exact integer from 1 to " + GenerationLimits.MAX_PROFILE_VERTICES);
+            writeInvalid("Arc segments must be an exact integer from 1 to "
+                + (GenerationLimits.MAX_PROFILE_VERTICES - 1));
             return;
         }
 
@@ -102,8 +103,8 @@ public class SemiCircleOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        int vertexCount = resolvedSegments + 2;
-        if (!isWithinProfileVertices(vertexCount)) {
+        int vertexCount = ProfileConstructionUtils.uniqueSemiCircleVertices(resolvedSegments);
+        if (!ProfileConstructionUtils.requireUniqueVertices(vertexCount)) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -152,7 +153,7 @@ public class SemiCircleOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "radius", v -> radius = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

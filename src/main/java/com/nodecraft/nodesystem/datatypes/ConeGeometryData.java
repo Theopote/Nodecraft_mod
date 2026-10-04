@@ -34,11 +34,12 @@ public class ConeGeometryData implements GeometryData {
     }
 
     public Vector3d getAxisVector() {
-        return new Vector3d(apex).sub(baseCenter);
+        Vector3d axis = PrimitiveGeometryValidator.requirePositiveAxis(baseCenter, apex);
+        return axis == null ? new Vector3d(Double.NaN, Double.NaN, Double.NaN) : axis;
     }
 
     public double getHeight() {
-        return baseCenter.distance(apex);
+        return PrimitiveGeometryValidator.requirePositiveAxisLength(baseCenter, apex);
     }
 
     @Override

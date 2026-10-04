@@ -118,14 +118,10 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("quadrantSegments") instanceof Number n) {
-            quadrantSegments = n.intValue();
-        }
+        restoreInteger(map, "quadrantSegments", v -> quadrantSegments = v);
         if (map.get("joinStyle") instanceof String s) {
             joinStyle = s;
         }
-        if (map.get("miterLimit") instanceof Number n) {
-            miterLimit = n.doubleValue();
-        }
+        restoreFiniteDouble(map, "miterLimit", v -> miterLimit = v);
     }
 }

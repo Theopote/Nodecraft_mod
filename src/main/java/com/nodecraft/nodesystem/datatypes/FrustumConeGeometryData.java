@@ -40,11 +40,12 @@ public class FrustumConeGeometryData implements GeometryData {
     }
 
     public Vector3d getAxisVector() {
-        return new Vector3d(topCenter).sub(baseCenter);
+        Vector3d axis = PrimitiveGeometryValidator.requirePositiveAxis(baseCenter, topCenter);
+        return axis == null ? new Vector3d(Double.NaN, Double.NaN, Double.NaN) : axis;
     }
 
     public double getHeight() {
-        return baseCenter.distance(topCenter);
+        return PrimitiveGeometryValidator.requirePositiveAxisLength(baseCenter, topCenter);
     }
 
     @Override

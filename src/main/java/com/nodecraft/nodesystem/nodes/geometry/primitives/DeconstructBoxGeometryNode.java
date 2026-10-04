@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -73,12 +75,27 @@ public class DeconstructBoxGeometryNode extends AbstractPrimitiveDeconstructNode
             return;
         }
 
+        String error = PrimitiveGeometryValidator.validateBox(geometry);
+        if (error != null) {
+            writeEmptyOutputs(error);
+            return;
+        }
+
         Vector3d xAxis = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d yAxis = new Vector3d(0.0d, 1.0d, 0.0d);
         Vector3d zAxis = new Vector3d(0.0d, 0.0d, 1.0d);
         geometry.getOrientationMatrix().transform(xAxis);
         geometry.getOrientationMatrix().transform(yAxis);
         geometry.getOrientationMatrix().transform(zAxis);
+        if (!VectorUtils.isFinite(geometry.getCenter())
+            || !VectorUtils.isFinite(geometry.getHalfExtents())
+            || !VectorUtils.isFinite(xAxis)
+            || !VectorUtils.isFinite(yAxis)
+            || !VectorUtils.isFinite(zAxis)
+            || !PrimitiveNumericUtils.isFiniteMatrix(geometry.getOrientationMatrix())) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
 
         List<Vector3d> corners = geometry.getCorners();
         List<BoxFaceData> faces = geometry.getFaces();

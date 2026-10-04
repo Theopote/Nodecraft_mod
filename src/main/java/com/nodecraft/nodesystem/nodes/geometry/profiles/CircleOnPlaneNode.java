@@ -106,7 +106,8 @@ public class CircleOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        if (!isWithinProfileVertices(resolvedSegments)) {
+        if (!ProfileConstructionUtils.requireUniqueVertices(
+            ProfileConstructionUtils.uniqueCircleVertices(resolvedSegments))) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -159,7 +160,7 @@ public class CircleOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "radius", v -> radius = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

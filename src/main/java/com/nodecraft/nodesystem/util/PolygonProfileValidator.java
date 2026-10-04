@@ -16,14 +16,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Shared validation for {@link PolygonProfileData} topology and budgets (Graph V73).
+ * Shared validation for {@link PolygonProfileData} topology and budgets.
  * <p>
  * Canonical invariant: POLYGON_PROFILE = simple, closed, planar polygon loop without holes.
+ * Historical Graph V73 residue.
  */
 public final class PolygonProfileValidator {
 
-    public static final double CLOSURE_EPS = 1.0e-6d;
-    public static final double COPLANAR_EPS = 1.0e-5d;
+    public static final double CLOSURE_EPS = SpatialTolerance.PROFILE_CLOSURE_EPS;
+    public static final double COPLANAR_EPS = SpatialTolerance.PROFILE_COPLANAR_EPS;
     private static final double EDGE_EPS_SQ = 1.0e-18d;
     private static final double AREA_EPS = 1.0e-12d;
     private static final double DISTINCT_EPS_SQ = 1.0e-12d;
@@ -107,8 +108,10 @@ public final class PolygonProfileValidator {
         }
 
         double signedArea = signedArea2d(canonical, normalizedPlane);
-        if (Math.abs(signedArea) <= AREA_EPS) {
-            return "Polygon profile has zero area";
+        if (!Double.isFinite(signedArea) || Math.abs(signedArea) <= AREA_EPS) {
+            return !Double.isFinite(signedArea)
+                ? "Polygon profile area is non-finite"
+                : "Polygon profile has zero area";
         }
 
         String topologyError = validateSimpleLoopTopology(canonical, normalizedPlane);
@@ -171,13 +174,29 @@ public final class PolygonProfileValidator {
 
     private static double signedArea2d(List<Vector3d> closedPoints, PlaneData plane) {
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        Vector2d origin = axes.to2d(closedPoints.getFirst());
         double area2 = 0.0d;
         for (int i = 0; i < closedPoints.size() - 1; i++) {
-            Vector2d a = axes.to2d(closedPoints.get(i));
-            Vector2d b = axes.to2d(closedPoints.get(i + 1));
-            area2 += (a.x * b.y - b.x * a.y);
+            Vector2d a = localUv(axes.to2d(closedPoints.get(i)), origin);
+            Vector2d b = localUv(axes.to2d(closedPoints.get(i + 1)), origin);
+            if (!Double.isFinite(a.x) || !Double.isFinite(a.y) || !Double.isFinite(b.x) || !Double.isFinite(b.y)) {
+                return Double.NaN;
+            }
+            double term = (a.x * b.y - b.x * a.y);
+            if (!Double.isFinite(term)) {
+                return Double.NaN;
+            }
+            area2 += term;
+            if (!Double.isFinite(area2)) {
+                return Double.NaN;
+            }
         }
-        return area2 * 0.5d;
+        double area = area2 * 0.5d;
+        return Double.isFinite(area) ? area : Double.NaN;
+    }
+
+    private static Vector2d localUv(Vector2d uv, Vector2d origin) {
+        return new Vector2d(uv.x - origin.x, uv.y - origin.y);
     }
 
     /**
@@ -185,9 +204,13 @@ public final class PolygonProfileValidator {
      */
     private static @Nullable String validateSimpleLoopTopology(List<Vector3d> closedPoints, PlaneData plane) {
         PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        Vector2d origin = axes.to2d(closedPoints.getFirst());
         Coordinate[] coords = new Coordinate[closedPoints.size()];
         for (int i = 0; i < closedPoints.size(); i++) {
-            Vector2d uv = axes.to2d(closedPoints.get(i));
+            Vector2d uv = localUv(axes.to2d(closedPoints.get(i)), origin);
+            if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
+                return "Polygon profile contains non-finite coordinates";
+            }
             coords[i] = new Coordinate(uv.x, uv.y);
         }
         try {

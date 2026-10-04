@@ -250,11 +250,7 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("clipMargin") instanceof Number n) {
-            setClipMargin(n.doubleValue());
-        }
-        if (map.get("maxSites") instanceof Number n) {
-            setMaxSites(n.intValue());
-        }
+        restoreFiniteDouble(map, "clipMargin", this::setClipMargin);
+        restoreInteger(map, "maxSites", this::setMaxSites);
     }
 }

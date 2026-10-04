@@ -8,9 +8,11 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -61,25 +63,23 @@ public class PolygonByPointsNode extends AbstractProfileNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> points = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (points.isEmpty()) {
-            writeFailure("At least 3 polygon points are required");
+        List<Vector3d> points = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_PROFILE_VERTICES + 1
+        );
+        if (points == null) {
+            writeFailure("Points must be a finite POINT_LIST within the vertex budget");
             return;
         }
 
         if (points.size() >= 2 && points.getFirst().distance(points.getLast()) <= PLANAR_TOLERANCE) {
             points = new ArrayList<>(points.subList(0, points.size() - 1));
         }
-        if (points.size() < 3) {
-            writeFailure("At least 3 polygon points are required");
+        if (!ProfileConstructionUtils.requireUniqueVertices(points.size())) {
+            writeFailure(points.size() < 3
+                ? "At least 3 polygon points are required"
+                : "Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
-        }
-
-        for (Vector3d point : points) {
-            if (point == null || !Double.isFinite(point.x) || !Double.isFinite(point.y) || !Double.isFinite(point.z)) {
-                writeFailure("Polygon points must be finite");
-                return;
-            }
         }
 
         PlaneData plane = computePlane(points);
@@ -102,12 +102,11 @@ public class PolygonByPointsNode extends AbstractProfileNode {
             return;
         }
 
-        Vector3d center = averagePoint(points);
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.closedPoints()));
         outputValues.put(OUTPUT_PROFILE_ID, profile);
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundaryPath());
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, points.size());
         markSuccess();
     }
@@ -123,11 +122,15 @@ public class PolygonByPointsNode extends AbstractProfileNode {
         Vector3d first = points.getFirst();
         for (int i = 1; i < points.size() - 1; i++) {
             for (int j = i + 1; j < points.size(); j++) {
-                Vector3d a = new Vector3d(points.get(i)).sub(first);
-                Vector3d b = new Vector3d(points.get(j)).sub(first);
-                Vector3d normal = a.cross(b, new Vector3d());
-                if (normal.lengthSquared() > PLANAR_TOLERANCE * PLANAR_TOLERANCE) {
-                    return PlaneData.canonical(first, normal.normalize());
+                Vector3d a = VectorUtils.safeSubtract(points.get(i), first);
+                Vector3d b = VectorUtils.safeSubtract(points.get(j), first);
+                Vector3d unit = VectorUtils.safeNormalize(VectorUtils.safeCross(a, b));
+                if (unit == null) {
+                    continue;
+                }
+                PlaneData plane = PlaneData.canonical(first, unit);
+                if (plane != null) {
+                    return plane;
                 }
             }
         }
@@ -141,13 +144,5 @@ public class PolygonByPointsNode extends AbstractProfileNode {
             }
         }
         return true;
-    }
-
-    private Vector3d averagePoint(List<Vector3d> points) {
-        Vector3d average = new Vector3d();
-        for (Vector3d point : points) {
-            average.add(point);
-        }
-        return average.div(points.size());
     }
 }

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -86,19 +87,29 @@ public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode
 
         Vector3d baseCenter = frustum.getBaseCenter();
         Vector3d topCenter = frustum.getTopCenter();
-        Vector3d axisVector = frustum.getAxisVector();
-        double height = frustum.getHeight();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(baseCenter, topCenter);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(baseCenter, topCenter);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Frustum height must be > 0");
+            return;
+        }
         double rb = frustum.getBaseRadius();
         double rt = frustum.getTopRadius();
-
         double dr = rb - rt;
-        double slant = Math.sqrt(height * height + dr * dr);
-        double baseArea = Math.PI * rb * rb;
-        double topArea = Math.PI * rt * rt;
-        double lateralArea = Math.PI * (rb + rt) * slant;
-        double surfaceArea = lateralArea + baseArea + topArea;
-        double volume = (Math.PI * height / 3.0d) * (rb * rb + rb * rt + rt * rt);
-
+        double slant = PrimitiveNumericUtils.safeHypot(height, dr);
+        double baseArea = PrimitiveNumericUtils.safeMul(Math.PI, PrimitiveNumericUtils.safeSquare(rb));
+        double topArea = PrimitiveNumericUtils.safeMul(Math.PI, PrimitiveNumericUtils.safeSquare(rt));
+        double lateralArea = PrimitiveNumericUtils.safeMul(Math.PI * (rb + rt), slant);
+        double surfaceArea = PrimitiveNumericUtils.safeAdd(PrimitiveNumericUtils.safeAdd(lateralArea, baseArea), topArea);
+        double volume = PrimitiveNumericUtils.safeMul(
+            PrimitiveNumericUtils.safeMul(Math.PI, height) / 3.0d,
+            PrimitiveNumericUtils.safeAdd(PrimitiveNumericUtils.safeAdd(PrimitiveNumericUtils.safeSquare(rb), PrimitiveNumericUtils.safeMul(rb, rt)), PrimitiveNumericUtils.safeSquare(rt))
+        );
+        if (!requireFiniteOutputs(height, rb, rt, slant, baseArea, topArea, lateralArea, surfaceArea, volume)
+            || !VectorUtils.isFinite(axisVector)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(frustum);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -132,7 +143,7 @@ public class DeconstructFrustumConeNode extends AbstractPrimitiveDeconstructNode
             OUTPUT_REGION_ID,
             OUTPUT_BOUNDING_BOX_ID
         );
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_HEIGHT_ID,
             OUTPUT_BASE_RADIUS_ID,
             OUTPUT_TOP_RADIUS_ID,

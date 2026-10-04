@@ -112,7 +112,8 @@ public class HeartOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        if (!isWithinProfileVertices(resolvedSegments)) {
+        if (!ProfileConstructionUtils.requireUniqueVertices(
+            ProfileConstructionUtils.uniqueCircleVertices(resolvedSegments))) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -178,8 +179,8 @@ public class HeartOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("width") instanceof Number n) width = n.doubleValue();
-        if (map.get("height") instanceof Number n) height = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "width", v -> width = v);
+        restoreFiniteDouble(map, "height", v -> height = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

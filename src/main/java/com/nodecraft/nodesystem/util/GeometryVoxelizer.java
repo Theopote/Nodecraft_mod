@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.util;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
@@ -178,6 +179,7 @@ public final class GeometryVoxelizer {
 
     private static boolean isSupportedLeafType(GeometryData geometry) {
         return geometry instanceof BoxGeometryData
+            || geometry instanceof CapsuleGeometryData
             || geometry instanceof ConeGeometryData
             || geometry instanceof FrustumConeGeometryData
             || geometry instanceof CylinderGeometryData
@@ -200,6 +202,9 @@ public final class GeometryVoxelizer {
     private static @Nullable BlockPosList voxelizeLeaf(GeometryData geometry, boolean fillSolid) {
         if (geometry instanceof BoxGeometryData boxGeometry) {
             return voxelizeBox(boxGeometry, fillSolid);
+        }
+        if (geometry instanceof CapsuleGeometryData capsuleGeometry) {
+            return voxelizeCapsule(capsuleGeometry, fillSolid);
         }
         if (geometry instanceof ConeGeometryData coneGeometry) {
             return voxelizeCone(coneGeometry, fillSolid);
@@ -268,6 +273,12 @@ public final class GeometryVoxelizer {
                     boxGeometry.getOrientationMatrix()
                 )
                 : createAxisAlignedRegion(boxGeometry);
+        }
+        if (geometry instanceof CapsuleGeometryData capsuleGeometry) {
+            RegionData merged = createBoundingRegion(capsuleGeometry.cylinder());
+            merged = unionBoundingRegions(merged, createBoundingRegion(capsuleGeometry.startHemisphere()));
+            merged = unionBoundingRegions(merged, createBoundingRegion(capsuleGeometry.endHemisphere()));
+            return merged;
         }
         if (geometry instanceof ConeGeometryData coneGeometry) {
             return ConeBlockGenerator.createBoundingRegion(coneGeometry);
@@ -577,6 +588,23 @@ public final class GeometryVoxelizer {
         RegionData region = TorusBlockGenerator.createBoundingRegion(geometry);
         TorusBlockGenerator.populateTorus(blocks, region, geometry, fillSolid);
         return blocks;
+    }
+
+    private static @Nullable BlockPosList voxelizeCapsule(CapsuleGeometryData geometry, boolean fillSolid) {
+        Set<BlockPos> mergedPositions = new LinkedHashSet<>();
+        GeometryVoxelizationResult mergeError = mergeIntoSet(mergedPositions, voxelizeCylinder(geometry.cylinder(), fillSolid));
+        if (mergeError != null) {
+            return null;
+        }
+        mergeError = mergeIntoSet(mergedPositions, voxelizeHemisphere(geometry.startHemisphere(), fillSolid));
+        if (mergeError != null) {
+            return null;
+        }
+        mergeError = mergeIntoSet(mergedPositions, voxelizeHemisphere(geometry.endHemisphere(), fillSolid));
+        if (mergeError != null) {
+            return null;
+        }
+        return new BlockPosList(mergedPositions);
     }
 
     public static BlockPosList voxelizeCylinder(CylinderGeometryData geometry, boolean fillSolid) {

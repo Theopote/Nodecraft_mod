@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
@@ -212,6 +213,17 @@ public final class GeometryTransform {
                 transformPoint(cylinder.getEnd(), t, r, s),
                 cylinder.getRadius() * s
             );
+        }
+        if (geometry instanceof CapsuleGeometryData capsule) {
+            try {
+                return new CapsuleGeometryData(
+                    transformPoint(capsule.getStart(), t, r, s),
+                    transformPoint(capsule.getEnd(), t, r, s),
+                    capsule.getRadius() * s
+                );
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
         }
         if (geometry instanceof ConeGeometryData cone) {
             return new ConeGeometryData(

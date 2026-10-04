@@ -4,17 +4,15 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
-import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-
-import java.util.List;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -72,46 +70,45 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        if (!(geometryObj instanceof GeometryData geometry)) {
+        if (!(geometryObj instanceof CapsuleGeometryData capsule)) {
             writeEmptyOutputs("Valid capsule geometry is required");
             return;
         }
 
-        CapsuleParts parts = resolveCapsuleParts(geometry);
-        if (parts == null) {
-            writeEmptyOutputs("Geometry must be a capsule (cylinder + two hemispheres)");
-            return;
-        }
-
-        CylinderGeometryData cylinder = parts.cylinder();
-        HemisphereGeometryData startCap = parts.startHemisphere();
-        HemisphereGeometryData endCap = parts.endHemisphere();
-
-        String cylinderError = PrimitiveGeometryValidator.validateCylinder(cylinder);
-        if (cylinderError != null) {
-            writeEmptyOutputs(cylinderError);
-            return;
-        }
-
-        Vector3d start = cylinder.getStart();
-        Vector3d end = cylinder.getEnd();
-        double radius = cylinder.getRadius();
-        String capsuleError = PrimitiveGeometryValidator.validateCapsule(start, end, radius);
+        String capsuleError = PrimitiveGeometryValidator.validateCapsule(capsule);
         if (capsuleError != null) {
             writeEmptyOutputs(capsuleError);
             return;
         }
 
-        double axisLength = new Vector3d(end).sub(start).length();
-        double totalLength = axisLength + 2.0d * radius;
-        double cylinderLateral = 2.0d * Math.PI * radius * axisLength;
-        double hemisphereCurved = 2.0d * Math.PI * radius * radius;
-        double surfaceArea = cylinderLateral + 2.0d * hemisphereCurved;
-        double cylinderVolume = Math.PI * radius * radius * axisLength;
-        double hemisphereVolume = (2.0d / 3.0d) * Math.PI * radius * radius * radius;
-        double volume = cylinderVolume + 2.0d * hemisphereVolume;
+        Vector3d start = capsule.getStart();
+        Vector3d end = capsule.getEnd();
+        double radius = capsule.getRadius();
+        Vector3d axis = PrimitiveGeometryValidator.requirePositiveAxis(start, end);
+        double axisLength = PrimitiveGeometryValidator.requirePositiveAxisLength(start, end);
+        if (axis == null || !Double.isFinite(axisLength)) {
+            writeEmptyOutputs("Capsule axis length must be > 0");
+            return;
+        }
 
-        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(geometry);
+        double totalLength = PrimitiveNumericUtils.safeAdd(axisLength, PrimitiveNumericUtils.safeMul(2.0d, radius));
+        double r2 = PrimitiveNumericUtils.safeSquare(radius);
+        double cylinderLateral = PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeMul(2.0d * Math.PI, radius), axisLength);
+        double hemisphereCurved = PrimitiveNumericUtils.safeMul(2.0d * Math.PI, r2);
+        double surfaceArea = PrimitiveNumericUtils.safeAdd(cylinderLateral, PrimitiveNumericUtils.safeMul(2.0d, hemisphereCurved));
+        double cylinderVolume = PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeMul(Math.PI, r2), axisLength);
+        double hemisphereVolume = PrimitiveNumericUtils.safeMul((2.0d / 3.0d) * Math.PI, PrimitiveNumericUtils.safeCube(radius));
+        double volume = PrimitiveNumericUtils.safeAdd(cylinderVolume, PrimitiveNumericUtils.safeMul(2.0d, hemisphereVolume));
+        if (!requireFiniteOutputs(axisLength, radius, totalLength, surfaceArea, volume)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
+
+        CylinderGeometryData cylinder = capsule.cylinder();
+        HemisphereGeometryData startCap = capsule.startHemisphere();
+        HemisphereGeometryData endCap = capsule.endHemisphere();
+
+        BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(capsule);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
             return;
@@ -133,49 +130,6 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
         markSuccess();
     }
 
-    private @Nullable CapsuleParts resolveCapsuleParts(GeometryData geometry) {
-        if (!(geometry instanceof CompositeGeometryData(List<GeometryData> leaves))) {
-            return null;
-        }
-
-        if (leaves.size() != 3) {
-            return null;
-        }
-
-        CylinderGeometryData cylinder = null;
-        HemisphereGeometryData startCap = null;
-        HemisphereGeometryData endCap = null;
-        for (GeometryData leaf : leaves) {
-            if (leaf instanceof CylinderGeometryData cylinderLeaf) {
-                cylinder = cylinderLeaf;
-            } else if (leaf instanceof HemisphereGeometryData hemisphere) {
-                if (startCap == null) {
-                    startCap = hemisphere;
-                } else {
-                    endCap = hemisphere;
-                }
-            } else {
-                return null;
-            }
-        }
-
-        if (cylinder == null || startCap == null || endCap == null) {
-            return null;
-        }
-
-        Vector3d start = cylinder.getStart();
-        Vector3d end = cylinder.getEnd();
-        double radius = cylinder.getRadius();
-        if (Math.abs(startCap.radius() - radius) > 1e-6d || Math.abs(endCap.radius() - radius) > 1e-6d) {
-            return null;
-        }
-        if (start.distance(startCap.center()) > 1e-6d || end.distance(endCap.center()) > 1e-6d) {
-            return null;
-        }
-
-        return new CapsuleParts(cylinder, startCap, endCap);
-    }
-
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(
             OUTPUT_START_ID,
@@ -187,7 +141,7 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
             OUTPUT_REGION_ID,
             OUTPUT_BOUNDING_BOX_ID
         );
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_AXIS_LENGTH_ID,
             OUTPUT_RADIUS_ID,
             OUTPUT_TOTAL_LENGTH_ID,
@@ -195,12 +149,5 @@ public class DeconstructCapsuleNode extends AbstractPrimitiveDeconstructNode {
             OUTPUT_VOLUME_ID
         );
         markInvalid(reason);
-    }
-
-    private record CapsuleParts(
-        CylinderGeometryData cylinder,
-        HemisphereGeometryData startHemisphere,
-        HemisphereGeometryData endHemisphere
-    ) {
     }
 }

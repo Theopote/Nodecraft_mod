@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
@@ -447,6 +448,7 @@ class BasicTransformsLanguageV2ContractTest {
                 List.of(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0.5, 0, 1)),
                 new Vector3d(0, 2, 0)
             ),
+            new CapsuleGeometryData(o, new Vector3d(0, 2, 0), 1.0d),
             new CompositeGeometryData(List.of(cylinder, startCap, endCap))
         );
     }

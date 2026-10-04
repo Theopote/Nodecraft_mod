@@ -8,7 +8,8 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Connection-aware profile input resolution (Graph V73).
+ * Connection-aware profile input resolution.
+ * Historical Graph V73 residue.
  */
 public final class ProfileInputUtils {
 
@@ -43,15 +44,10 @@ public final class ProfileInputUtils {
             return null;
         }
         Vector3d axis = OptionalPortDrive.resolveOptionalVector(node, portId, null);
-        if (axis == null || axis.lengthSquared() <= 1.0e-24d) {
+        if (!FrameUtils.isUsableAxis(axis)) {
             return null;
         }
-        Vector3d normal = plane.getNormal();
-        Vector3d projected = new Vector3d(axis).sub(new Vector3d(normal).mul(axis.dot(normal)));
-        if (projected.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        return projected;
+        return FrameUtils.projectOntoTangentPlane(axis, plane.getNormal());
     }
 
     public static @Nullable Integer resolveOptionalBoundedExactInteger(

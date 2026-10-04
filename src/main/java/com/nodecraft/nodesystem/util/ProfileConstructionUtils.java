@@ -8,11 +8,43 @@ import org.joml.Vector3d;
 import java.util.List;
 
 /**
- * Fail-closed construction helpers for {@link PolygonProfileData} (Graph V91).
+ * Fail-closed construction helpers for {@link PolygonProfileData}.
+ * Historical Graph V91 residue.
  */
 public final class ProfileConstructionUtils {
 
     private ProfileConstructionUtils() {
+    }
+
+    /**
+     * Unique-vertex budget used by {@link PolygonProfileValidator} ({@code canonical.size() - 1}).
+     */
+    public static boolean requireUniqueVertices(int uniqueCount) {
+        return GenerationLimits.isWithinProfileVertices(uniqueCount);
+    }
+
+    public static int uniqueCircleVertices(int segments) {
+        return segments;
+    }
+
+    public static int uniqueCapsuleVertices(int capSegments) {
+        return 2 * capSegments + 1;
+    }
+
+    public static int uniqueRoundedRectangleVertices(int cornerSegments, boolean sharp) {
+        return sharp ? 4 : 4 * cornerSegments;
+    }
+
+    public static int uniqueSemiCircleVertices(int arcSegments) {
+        return arcSegments + 1;
+    }
+
+    public static int uniqueSectorVertices(int arcSegments) {
+        return arcSegments + 2;
+    }
+
+    public static int uniqueAnnularSectorVertices(int arcSegments) {
+        return arcSegments * 2 + 2;
     }
 
     /**

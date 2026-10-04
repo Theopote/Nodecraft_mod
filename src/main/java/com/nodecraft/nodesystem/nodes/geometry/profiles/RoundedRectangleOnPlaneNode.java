@@ -128,8 +128,9 @@ public class RoundedRectangleOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        int vertexCount = radius <= 1.0e-9d ? 4 : 4 * resolvedCornerSegments;
-        if (!isWithinProfileVertices(vertexCount)) {
+        int vertexCount = ProfileConstructionUtils.uniqueRoundedRectangleVertices(
+            resolvedCornerSegments, radius <= 1.0e-9d);
+        if (!ProfileConstructionUtils.requireUniqueVertices(vertexCount)) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -201,9 +202,9 @@ public class RoundedRectangleOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("width") instanceof Number n) width = n.doubleValue();
-        if (map.get("height") instanceof Number n) height = n.doubleValue();
-        if (map.get("cornerRadius") instanceof Number n) cornerRadius = n.doubleValue();
-        if (map.get("cornerSegments") instanceof Number n) cornerSegments = n.intValue();
+        restoreFiniteDouble(map, "width", v -> width = v);
+        restoreFiniteDouble(map, "height", v -> height = v);
+        restoreFiniteDouble(map, "cornerRadius", v -> cornerRadius = v);
+        restoreInteger(map, "cornerSegments", v -> cornerSegments = v);
     }
 }

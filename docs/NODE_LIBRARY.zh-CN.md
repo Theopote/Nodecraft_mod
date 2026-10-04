@@ -209,7 +209,7 @@
 | Circle On Plane | `geometry.profiles.circle_profile` | Constructs a circular profile from radius and an optional center/plane (defaults to XZ) | `CircleOnPlaneNode` |
 | Ellipse On Plane | `geometry.profiles.ellipse_profile` | Constructs an ellipse profile from center, major/minor radii, plane, and segment count (defaults to XZ) | `EllipseOnPlaneNode` |
 | Regular Polygon On Plane | `geometry.profiles.polygon_profile` | Constructs a regular polygon from radius, sides, and an optional center/plane (defaults to XZ) | `RegularPolygonOnPlaneNode` |
-| Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a star polygon profile from center, inner/outer radii, point count, and plane (defaults to XZ) | `StarPolygonOnPlaneNode` |
+| Star Polygon On Plane | `geometry.profiles.star_polygon_profile` | Constructs a simple star-shaped outline from inner/outer radii (not a self-intersecting mathematical star polygon) | `StarPolygonOnPlaneNode` |
 | Rhombus On Plane | `geometry.profiles.rhombus_profile` | Constructs a rhombus profile from center, horizontal diagonal, vertical diagonal, and plane (defaults to XZ) | `RhombusOnPlaneNode` |
 | Cross On Plane | `geometry.profiles.cross_profile` | Constructs a plus-shaped cross profile from arm length, arm width, center, and plane | `CrossOnPlaneNode` |
 | Capsule On Plane | `geometry.profiles.capsule_profile` | Constructs a capsule (stadium) profile from center, length, radius, and plane | `CapsuleOnPlaneNode` |

@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.OctahedronGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,15 +64,32 @@ public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode 
             return;
         }
 
-        double size = octahedron.getVertexRadius();
-        if (size <= 0.0d) {
-            writeEmptyOutputs("Octahedron size must be > 0");
+        String error = PrimitiveGeometryValidator.validatePolyhedron(
+            octahedron.getCenter(), octahedron.getVertexRadius(), "radius");
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
-        double edgeLength = size * Math.sqrt(2.0d);
-        double surfaceArea = 2.0d * Math.sqrt(3.0d) * edgeLength * edgeLength;
-        double volume = (Math.sqrt(2.0d) / 3.0d) * edgeLength * edgeLength * edgeLength;
+        double size = octahedron.getVertexRadius();
+        double edgeLength = PrimitiveNumericUtils.safeMul(size, Math.sqrt(2.0d));
+        double surfaceArea = PrimitiveNumericUtils.safeMul(
+            2.0d * Math.sqrt(3.0d), PrimitiveNumericUtils.safeSquare(edgeLength));
+        double volume = PrimitiveNumericUtils.safeMul(
+            Math.sqrt(2.0d) / 3.0d, PrimitiveNumericUtils.safeCube(edgeLength));
+        java.util.List<org.joml.Vector3d> vertices = octahedron.getVertices();
+        if (!requireFiniteOutputs(size, surfaceArea, volume)
+            || !PrimitiveNumericUtils.isFiniteMatrix(octahedron.getOrientationMatrix())
+            || vertices == null) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
+        for (org.joml.Vector3d vertex : vertices) {
+            if (!com.nodecraft.nodesystem.util.VectorUtils.isFinite(vertex)) {
+                writeEmptyOutputs("Derived analytical values are non-finite");
+                return;
+            }
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(octahedron);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -79,7 +98,7 @@ public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode 
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(octahedron.getCenter()));
         outputValues.put(OUTPUT_SIZE_ID, size);
-        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(octahedron.getVertices()));
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(vertices));
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());
@@ -91,7 +110,7 @@ public class DeconstructOctahedronNode extends AbstractPrimitiveDeconstructNode 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID, OUTPUT_ORIENTATION_ID);
         putEmptyListOutputs(OUTPUT_VERTICES_ID);
-        putDoubleOutputs(0.0d, OUTPUT_SIZE_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_SIZE_ID, OUTPUT_SURFACE_AREA_ID, OUTPUT_VOLUME_ID);
         markInvalid(reason);
     }
 }

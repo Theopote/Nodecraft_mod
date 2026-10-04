@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
@@ -12,10 +14,8 @@ import java.util.Objects;
  */
 public record PrismGeometryData(List<Vector3d> baseVertices, Vector3d extrusionVector) implements GeometryData {
     public PrismGeometryData(List<Vector3d> baseVertices, Vector3d extrusionVector) {
-        if (baseVertices == null || baseVertices.size() < 3) {
-            throw new IllegalArgumentException("Prism requires at least three base vertices");
-        }
-
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validatePrism(baseVertices, extrusionVector));
         List<Vector3d> copiedVertices = new ArrayList<>(baseVertices.size());
         for (Vector3d vertex : baseVertices) {
             copiedVertices.add(new Vector3d(vertex));
@@ -55,7 +55,7 @@ public record PrismGeometryData(List<Vector3d> baseVertices, Vector3d extrusionV
     }
 
     public double getHeight() {
-        return extrusionVector.length();
+        return VectorUtils.safeLength(extrusionVector);
     }
 
     public int getSideCount() {

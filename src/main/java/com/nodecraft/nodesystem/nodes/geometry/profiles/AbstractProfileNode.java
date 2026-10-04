@@ -16,7 +16,10 @@ import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.DoubleConsumer;
+import java.util.function.IntConsumer;
 
 abstract class AbstractProfileNode extends BaseNode {
 
@@ -129,6 +132,18 @@ abstract class AbstractProfileNode extends BaseNode {
 
     protected final boolean isWithinProfileVertices(int vertexCount) {
         return GenerationLimits.isWithinProfileVertices(vertexCount);
+    }
+
+    protected static void restoreFiniteDouble(Map<?, ?> map, String key, DoubleConsumer setter) {
+        if (map.get(key) instanceof Double value && Double.isFinite(value)) {
+            setter.accept(value);
+        }
+    }
+
+    protected static void restoreInteger(Map<?, ?> map, String key, IntConsumer setter) {
+        if (map.get(key) instanceof Integer value) {
+            setter.accept(value);
+        }
     }
 
     /**

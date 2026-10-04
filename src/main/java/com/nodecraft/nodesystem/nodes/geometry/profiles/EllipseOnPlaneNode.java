@@ -112,7 +112,8 @@ public class EllipseOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        if (!isWithinProfileVertices(resolvedSegments)) {
+        if (!ProfileConstructionUtils.requireUniqueVertices(
+            ProfileConstructionUtils.uniqueCircleVertices(resolvedSegments))) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -162,8 +163,8 @@ public class EllipseOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("radiusX") instanceof Number n) radiusX = n.doubleValue();
-        if (map.get("radiusY") instanceof Number n) radiusY = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "radiusX", v -> radiusX = v);
+        restoreFiniteDouble(map, "radiusY", v -> radiusY = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

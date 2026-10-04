@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -82,14 +83,24 @@ public class DeconstructCylinderNode extends AbstractPrimitiveDeconstructNode {
 
         Vector3d start = cylinder.getStart();
         Vector3d end = cylinder.getEnd();
-        Vector3d axisVector = new Vector3d(end).sub(start);
-        double height = axisVector.length();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(start, end);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(start, end);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Cylinder axis length must be > 0");
+            return;
+        }
         double radius = cylinder.getRadius();
-        double diameter = radius * 2.0d;
-        double baseArea = Math.PI * radius * radius;
-        double lateralArea = 2.0d * Math.PI * radius * height;
-        double surfaceArea = 2.0d * baseArea + lateralArea;
-        double volume = baseArea * height;
+        double diameter = PrimitiveNumericUtils.safeMul(radius, 2.0d);
+        double r2 = PrimitiveNumericUtils.safeSquare(radius);
+        double baseArea = PrimitiveNumericUtils.safeMul(Math.PI, r2);
+        double lateralArea = PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeMul(2.0d * Math.PI, radius), height);
+        double surfaceArea = PrimitiveNumericUtils.safeAdd(PrimitiveNumericUtils.safeMul(2.0d, baseArea), lateralArea);
+        double volume = PrimitiveNumericUtils.safeMul(baseArea, height);
+        if (!requireFiniteOutputs(height, radius, diameter, baseArea, lateralArea, surfaceArea, volume)
+            || !VectorUtils.isFinite(axisVector)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(cylinder);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -121,7 +132,7 @@ public class DeconstructCylinderNode extends AbstractPrimitiveDeconstructNode {
             OUTPUT_REGION_ID,
             OUTPUT_BOUNDING_BOX_ID
         );
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_HEIGHT_ID,
             OUTPUT_RADIUS_ID,
             OUTPUT_DIAMETER_ID,

@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
@@ -12,9 +13,11 @@ import java.util.Objects;
 /**
  * Represents a lightweight planar polygon profile for construct/modeling workflows.
  * <p>
- * Graph V73 canonical internal representation: ordered closed point list with an exact
+ * Canonical internal representation: ordered closed point list with an exact
  * repeated first vertex at the end ({@code [p0, p1, ..., pn-1, p0]}).
  * POLYGON_PROFILE is a simple planar loop without holes.
+ * Vertex order is preserved (no winding rewrite); signed area vs the plane normal
+ * is orientation. Historical Graph V73 residue.
  */
 public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
     public PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
@@ -69,12 +72,11 @@ public record PolygonProfileData(List<Vector3d> closedPoints, PlaneData plane) {
     }
 
     public Vector3d getCenter() {
-        List<Vector3d> unique = getUniquePoints();
-        Vector3d center = new Vector3d();
-        for (Vector3d point : unique) {
-            center.add(point);
+        Vector3d center = PointUtils.safeListCenter(getUniquePoints());
+        if (center == null) {
+            throw new IllegalArgumentException("Polygon profile center is non-finite");
         }
-        return unique.isEmpty() ? center : center.div(unique.size());
+        return center;
     }
 
     @Override

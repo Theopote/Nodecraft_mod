@@ -156,7 +156,7 @@ public class RectangleOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("width") instanceof Number n) width = n.doubleValue();
-        if (map.get("height") instanceof Number n) height = n.doubleValue();
+        restoreFiniteDouble(map, "width", v -> width = v);
+        restoreFiniteDouble(map, "height", v -> height = v);
     }
 }

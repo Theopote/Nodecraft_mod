@@ -18,6 +18,12 @@ public final class SpatialTolerance {
     public static final double ANGULAR_SIN_EPS = 1.0e-6d;
     public static final double ANGULAR_SIN_EPS_SQ = ANGULAR_SIN_EPS * ANGULAR_SIN_EPS;
 
+    /** Absolute world distance for polygon-profile loop closure (not relative). */
+    public static final double PROFILE_CLOSURE_EPS = 1.0e-6d;
+
+    /** Absolute world distance for polygon-profile coplanarity. */
+    public static final double PROFILE_COPLANAR_EPS = 1.0e-5d;
+
     private SpatialTolerance() {
     }
 }

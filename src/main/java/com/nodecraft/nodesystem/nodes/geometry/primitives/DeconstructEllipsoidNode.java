@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -61,16 +63,25 @@ public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
             return;
         }
 
-        Vector3d center = ellipsoid.getCenter();
-        Vector3d radii = ellipsoid.getRadii();
-        if (radii.x <= 0.0d || radii.y <= 0.0d || radii.z <= 0.0d) {
-            writeEmptyOutputs("Ellipsoid radii must be > 0");
+        String error = PrimitiveGeometryValidator.validateEllipsoid(ellipsoid);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
-        Vector3d diameters = new Vector3d(radii).mul(2.0d);
-        double volume = (4.0d / 3.0d) * Math.PI * radii.x * radii.y * radii.z;
+        Vector3d center = ellipsoid.getCenter();
+        Vector3d radii = ellipsoid.getRadii();
+        Vector3d diameters = VectorUtils.safeScale(radii, 2.0d);
+        double volume = PrimitiveNumericUtils.safeMul(
+            (4.0d / 3.0d) * Math.PI,
+            PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeMul(radii.x, radii.y), radii.z));
         double surfaceArea = approximateSurfaceArea(radii.x, radii.y, radii.z);
+        if (diameters == null
+            || !requireFiniteOutputs(volume, surfaceArea, diameters.x, diameters.y, diameters.z)
+            || !VectorUtils.isFinite(radii)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(ellipsoid);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -89,15 +100,22 @@ public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_RADII_ID, OUTPUT_DIAMETERS_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
-        putDoubleOutputs(0.0d, OUTPUT_VOLUME_ID, OUTPUT_SURFACE_AREA_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_VOLUME_ID, OUTPUT_SURFACE_AREA_ID);
         markInvalid(reason);
     }
 
     private double approximateSurfaceArea(double a, double b, double c) {
         double p = 1.6075d;
-        double ap = Math.pow(a * b, p);
-        double bp = Math.pow(a * c, p);
-        double cp = Math.pow(b * c, p);
-        return 4.0d * Math.PI * Math.pow((ap + bp + cp) / 3.0d, 1.0d / p);
+        double ap = Math.pow(PrimitiveNumericUtils.safeMul(a, b), p);
+        double bp = Math.pow(PrimitiveNumericUtils.safeMul(a, c), p);
+        double cp = Math.pow(PrimitiveNumericUtils.safeMul(b, c), p);
+        if (!PrimitiveNumericUtils.allFinite(ap, bp, cp)) {
+            return Double.NaN;
+        }
+        double mean = PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeAdd(PrimitiveNumericUtils.safeAdd(ap, bp), cp), 1.0d / 3.0d);
+        if (!Double.isFinite(mean)) {
+            return Double.NaN;
+        }
+        return PrimitiveNumericUtils.safeMul(4.0d * Math.PI, Math.pow(mean, 1.0d / p));
     }
 }

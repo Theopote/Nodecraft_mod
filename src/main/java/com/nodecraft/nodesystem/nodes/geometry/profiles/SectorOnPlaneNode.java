@@ -116,9 +116,10 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
             return;
         }
         Integer resolvedSegments = resolveBoundedInteger(
-            INPUT_SEGMENTS_ID, segments, 1, GenerationLimits.MAX_PROFILE_VERTICES);
+            INPUT_SEGMENTS_ID, segments, 1, GenerationLimits.MAX_PROFILE_VERTICES - 2);
         if (resolvedSegments == null) {
-            writeInvalid("Arc segments must be an exact integer from 1 to " + GenerationLimits.MAX_PROFILE_VERTICES);
+            writeInvalid("Arc segments must be an exact integer from 1 to "
+                + (GenerationLimits.MAX_PROFILE_VERTICES - 2));
             return;
         }
 
@@ -130,8 +131,8 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        int vertexCount = resolvedSegments + 2;
-        if (!isWithinProfileVertices(vertexCount)) {
+        int vertexCount = ProfileConstructionUtils.uniqueSectorVertices(resolvedSegments);
+        if (!ProfileConstructionUtils.requireUniqueVertices(vertexCount)) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
@@ -183,9 +184,9 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
-        if (map.get("startAngle") instanceof Number n) startAngle = n.doubleValue();
-        if (map.get("endAngle") instanceof Number n) endAngle = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "radius", v -> radius = v);
+        restoreFiniteDouble(map, "startAngle", v -> startAngle = v);
+        restoreFiniteDouble(map, "endAngle", v -> endAngle = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

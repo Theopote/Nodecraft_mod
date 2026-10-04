@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -65,18 +67,24 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
             return;
         }
 
-        Vector3d center = hemisphere.center();
-        Vector3d axis = hemisphere.axis();
-        double r = hemisphere.radius();
-        if (r <= 0.0d) {
-            writeEmptyOutputs("Hemisphere radius must be > 0");
+        String error = PrimitiveGeometryValidator.validateHemisphere(hemisphere);
+        if (error != null) {
+            writeEmptyOutputs(error);
             return;
         }
 
-        double curved = 2.0d * Math.PI * r * r;
-        double flat = Math.PI * r * r;
-        double surface = curved + flat;
-        double volume = (2.0d / 3.0d) * Math.PI * r * r * r;
+        Vector3d center = hemisphere.center();
+        Vector3d axis = hemisphere.axis();
+        double r = hemisphere.radius();
+        double r2 = PrimitiveNumericUtils.safeSquare(r);
+        double curved = PrimitiveNumericUtils.safeMul(2.0d * Math.PI, r2);
+        double flat = PrimitiveNumericUtils.safeMul(Math.PI, r2);
+        double surface = PrimitiveNumericUtils.safeAdd(curved, flat);
+        double volume = PrimitiveNumericUtils.safeMul((2.0d / 3.0d) * Math.PI, PrimitiveNumericUtils.safeCube(r));
+        if (!requireFiniteOutputs(r, curved, flat, surface, volume) || !VectorUtils.isFinite(axis)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
 
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(hemisphere);
         if (boundsAndRegion == null) {
@@ -98,7 +106,7 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_AXIS_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_RADIUS_ID,
             OUTPUT_CURVED_AREA_ID,
             OUTPUT_FLAT_AREA_ID,

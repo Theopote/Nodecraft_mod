@@ -1,15 +1,15 @@
 # Node Language v2 — Planar Region / Profiles
 
-**Status: PASSED / FROZEN** (Graph **V92**; V91 = region-output fence; V73 = historical Polygon Profile Language v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only `1`; V73 / V91 / V92 remain historical residue)
 
 Type stack for planar modeling under `geometry.profiles` (+ `geometry.solids.extrude_region`):
 
 ```text
 PATH
   ↓
-POLYGON_PROFILE   (simple closed planar loop, no holes — V73 unchanged)
+POLYGON_PROFILE   (simple closed planar loop, no holes)
   ↓
-PLANAR_REGION     (outer + 0..N holes + plane — V91)
+PLANAR_REGION     (outer + 0..N holes + plane)
   ↓
 Region Boolean / Region Offset / Extrude Region
 ```
@@ -33,6 +33,10 @@ Composable chain:
 ```text
 Profile → Region → Boolean → Offset → Boolean → Extrude → Geometry
 ```
+
+## POLYGON_PROFILE winding
+
+`PolygonProfileData` preserves constructor / user vertex order. It does not rewrite CW/CCW. Signed area in the profile plane (relative to the plane normal) is orientation. Offset sign, extrusion direction, and hole semantics follow that orientation.
 
 ## PLANAR_REGION
 
@@ -61,7 +65,7 @@ Validated by [`PlanarRegionValidator`](../src/main/java/com/nodecraft/nodesystem
 
 ## Inventory
 
-`geometry.profiles`: **26** nodes (orders 0–25). New in V92: orders 23–25.
+`geometry.profiles`: **26** nodes (orders 0–25). Historical V92 added orders 23–25.
 
 ## Sector sweep language
 
@@ -82,7 +86,7 @@ hole prisms = extrude(each hole)
 geometry = Difference(outer, union(holes))
 ```
 
-Existing `geometry.solids.extrude` unchanged (`POLYGON_PROFILE` only).
+Existing `geometry.solids.extrude` unchanged (`POLYGON_PROFILE` only). Extrude / Sweep must `validate(profile)` and fail closed — they must not auto-close, dedupe, refit the plane, or repair self-intersection.
 
 ## Out of scope (P2)
 
@@ -93,6 +97,6 @@ Existing `geometry.solids.extrude` unchanged (`POLYGON_PROFILE` only).
 
 ## Contract tests
 
-- Historical: `GeometryProfilesLanguageContractTest` (V73 inventory)
-- v2: `GeometryProfilesLanguageV2ContractTest` (V91 region outputs)
-- v3: `GeometryProfilesLanguageV3ContractTest` (V92 region modeling composability)
+- Historical: `GeometryProfilesLanguageContractTest` (V73 inventory residue)
+- v2: `GeometryProfilesLanguageV2ContractTest` (V91 region outputs residue)
+- v3: `GeometryProfilesLanguageV3ContractTest` (V92 region modeling composability residue)

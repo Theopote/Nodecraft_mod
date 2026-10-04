@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -72,8 +73,16 @@ public class DeconstructTorusNode extends AbstractPrimitiveDeconstructNode {
         Vector3d axis = torus.axis();
         double majorRadius = torus.majorRadius();
         double minorRadius = torus.minorRadius();
-        double surfaceArea = 4.0d * Math.PI * Math.PI * majorRadius * minorRadius;
-        double volume = 2.0d * Math.PI * Math.PI * majorRadius * minorRadius * minorRadius;
+        double surfaceArea = PrimitiveNumericUtils.safeMul(
+            4.0d * Math.PI * Math.PI,
+            PrimitiveNumericUtils.safeMul(majorRadius, minorRadius));
+        double volume = PrimitiveNumericUtils.safeMul(
+            2.0d * Math.PI * Math.PI,
+            PrimitiveNumericUtils.safeMul(majorRadius, PrimitiveNumericUtils.safeSquare(minorRadius)));
+        if (!requireFiniteOutputs(majorRadius, minorRadius, surfaceArea, volume) || !VectorUtils.isFinite(axis)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
 
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(torus);
         if (boundsAndRegion == null) {
@@ -94,7 +103,7 @@ public class DeconstructTorusNode extends AbstractPrimitiveDeconstructNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_AXIS_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_MAJOR_RADIUS_ID,
             OUTPUT_MINOR_RADIUS_ID,
             OUTPUT_SURFACE_AREA_ID,

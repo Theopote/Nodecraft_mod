@@ -25,7 +25,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.profiles.star_polygon_profile",
     displayName = "Star Polygon On Plane",
-    description = "Constructs a star polygon profile from center, inner/outer radii, point count, and plane (defaults to XZ)",
+    description = "Constructs a simple star-shaped outline from inner/outer radii (not a self-intersecting mathematical star polygon)",
     category = "geometry.profiles",
     order = 6
 )
@@ -72,7 +72,7 @@ public class StarPolygonOnPlaneNode extends AbstractProfileNode {
 
     @Override
     public String getDescription() {
-        return "Constructs a star polygon profile from center, inner/outer radii, point count, and plane (defaults to XZ)";
+        return "Constructs a simple star-shaped outline from inner/outer radii (not a self-intersecting mathematical star polygon)";
     }
 
     @Override
@@ -168,8 +168,8 @@ public class StarPolygonOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("outerRadius") instanceof Number n) outerRadius = n.doubleValue();
-        if (map.get("innerRadius") instanceof Number n) innerRadius = n.doubleValue();
-        if (map.get("pointCount") instanceof Number n) pointCount = n.intValue();
+        restoreFiniteDouble(map, "outerRadius", v -> outerRadius = v);
+        restoreFiniteDouble(map, "innerRadius", v -> innerRadius = v);
+        restoreInteger(map, "pointCount", v -> pointCount = v);
     }
 }

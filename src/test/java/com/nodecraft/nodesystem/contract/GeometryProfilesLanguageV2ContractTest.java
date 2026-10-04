@@ -43,7 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Planar Region Language v2 (Graph V91).
+ * Language fence for Planar Region Language v2.
+ * Historical Graph V91 residue. {@link GraphFormatVersion#CURRENT} is stamp-only.
  */
 class GeometryProfilesLanguageV2ContractTest {
 

@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
@@ -15,32 +16,41 @@ import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.CapsuleOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.CircleOnPlaneNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.CrossOnPlaneNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.PolygonByPointsNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ProfileBoolean2DNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ProfileOffsetInPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ResamplePolygonProfileNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.StarPolygonOnPlaneNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Profiles / Polygon Profile Language v1 (Graph V73).
+ * Language fence for Geometry Profiles / Polygon Profile Language v1.
+ * Historical Graph V73 residue. {@link GraphFormatVersion#CURRENT} is stamp-only.
  */
 class GeometryProfilesLanguageContractTest {
 
@@ -55,7 +65,7 @@ class GeometryProfilesLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV73() {
+    void currentGraphFormatIsStampOnly() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -236,6 +246,149 @@ class GeometryProfilesLanguageContractTest {
         circle.processNode(null);
         assertEquals(Boolean.FALSE, circle.getOutput("output_valid"));
         assertTrue(String.valueOf(circle.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("plane"));
+    }
+
+    @Test
+    void polygonByPointsRequiresStrictPointDataList() {
+        PolygonByPointsNode valid = new PolygonByPointsNode();
+        connectInput(valid, "input_points", NodeDataType.POINT_LIST);
+        valid.setInput("input_points", List.of(
+            new PointData(0, 0, 0),
+            new PointData(4, 0, 0),
+            new PointData(4, 0, 4),
+            new PointData(0, 0, 4)
+        ));
+        valid.processNode(null);
+        assertEquals(Boolean.TRUE, valid.getOutput("output_valid"), String.valueOf(valid.getOutput("output_error")));
+        assertInstanceOf(PolygonProfileData.class, valid.getOutput("output_profile"));
+        PointData center = (PointData) valid.getOutput("output_center");
+        assertNotNull(center);
+        assertTrue(Double.isFinite(center.getX()) && Double.isFinite(center.getY()) && Double.isFinite(center.getZ()));
+
+        PolygonByPointsNode mixed = new PolygonByPointsNode();
+        connectInput(mixed, "input_points", NodeDataType.POINT_LIST);
+        mixed.setInput("input_points", List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(4, 0, 0),
+            new Vector3d(4, 0, 4),
+            new Vector3d(0, 0, 4)
+        ));
+        mixed.processNode(null);
+        assertEquals(Boolean.FALSE, mixed.getOutput("output_valid"));
+        assertNull(mixed.getOutput("output_profile"));
+    }
+
+    @Test
+    void polygonByPointsOverflowPlaneFailsClosed() {
+        PolygonByPointsNode node = new PolygonByPointsNode();
+        connectInput(node, "input_points", NodeDataType.POINT_LIST);
+        node.setInput("input_points", List.of(
+            new PointData(-1.0e308d, 0, 0),
+            new PointData(1.0e308d, 0, 0),
+            new PointData(0, 0, 1)
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_plane"));
+        assertNull(node.getOutput("output_profile"));
+    }
+
+    @Test
+    void translatedHugeRectangleHasFiniteAreaAndCenter() {
+        List<Vector3d> closed = List.of(
+            new Vector3d(1.0e150d, 0, 1.0e150d),
+            new Vector3d(1.0e150d + 1.0e140d, 0, 1.0e150d),
+            new Vector3d(1.0e150d + 1.0e140d, 0, 1.0e150d + 1.0e140d),
+            new Vector3d(1.0e150d, 0, 1.0e150d + 1.0e140d),
+            new Vector3d(1.0e150d, 0, 1.0e150d)
+        );
+        PolygonProfileData profile = new PolygonProfileData(closed, PlaneData.XZ_PLANE);
+        Vector3d center = profile.getCenter();
+        assertTrue(Double.isFinite(center.x) && Double.isFinite(center.y) && Double.isFinite(center.z));
+        assertFalse(Double.isInfinite(center.x));
+    }
+
+    @Test
+    void profileCenterNeverPublishesInfinity() {
+        List<Vector3d> closed = List.of(
+            new Vector3d(1.0e308d, 0, 0),
+            new Vector3d(1.0e308d, 0, 1),
+            new Vector3d(1.0e308d - 1.0e292d, 0, 1),
+            new Vector3d(1.0e308d - 1.0e292d, 0, 0),
+            new Vector3d(1.0e308d, 0, 0)
+        );
+        try {
+            PolygonProfileData profile = new PolygonProfileData(closed, PlaneData.XZ_PLANE);
+            Vector3d center = profile.getCenter();
+            assertTrue(Double.isFinite(center.x) && Double.isFinite(center.y) && Double.isFinite(center.z));
+        } catch (IllegalArgumentException ignored) {
+            // fail closed is acceptable when the loop is degenerate at this magnitude
+        }
+    }
+
+    @Test
+    void crossHugeArmLengthDoesNotPassViaInfinityCompare() {
+        CrossOnPlaneNode node = new CrossOnPlaneNode();
+        connectInput(node, "input_arm_length", NodeDataType.DOUBLE);
+        connectInput(node, "input_arm_width", NodeDataType.DOUBLE);
+        node.setInput("input_arm_length", 1.0e308d);
+        node.setInput("input_arm_width", 2.0d);
+        node.processNode(null);
+        if (Boolean.TRUE.equals(node.getOutput("output_valid"))) {
+            PointData center = (PointData) node.getOutput("output_center");
+            assertNotNull(center);
+            assertTrue(Double.isFinite(center.getX()));
+            assertInstanceOf(PolygonProfileData.class, node.getOutput("output_profile"));
+        } else {
+            assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+            assertNull(node.getOutput("output_profile"));
+        }
+    }
+
+    @Test
+    void capsuleHugeRadiusFailsClosedWithoutInfinityLengthCompare() {
+        CapsuleOnPlaneNode node = new CapsuleOnPlaneNode();
+        connectInput(node, "input_length", NodeDataType.DOUBLE);
+        connectInput(node, "input_radius", NodeDataType.DOUBLE);
+        node.setInput("input_length", 10.0d);
+        node.setInput("input_radius", 1.0e308d);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_profile"));
+    }
+
+    @Test
+    void capsuleUniqueVertexPreflightMatchesConstructedEdgeCount() {
+        CapsuleOnPlaneNode node = new CapsuleOnPlaneNode();
+        connectInput(node, "input_cap_segments", NodeDataType.INTEGER);
+        node.setInput("input_cap_segments", 8);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+        PolygonProfileData profile = assertInstanceOf(PolygonProfileData.class, node.getOutput("output_profile"));
+        assertEquals(ProfileConstructionUtils.uniqueCapsuleVertices(8), profile.getEdgeCount());
+        assertTrue(ProfileConstructionUtils.requireUniqueVertices(profile.getEdgeCount()));
+        assertEquals(17, ProfileConstructionUtils.uniqueCapsuleVertices(8));
+    }
+
+    @Test
+    void starPolygonDescribesSimpleStarShapedOutline() {
+        StarPolygonOnPlaneNode node = new StarPolygonOnPlaneNode();
+        String description = node.getDescription().toLowerCase(Locale.ROOT);
+        assertTrue(description.contains("star-shaped") || description.contains("star shaped"));
+        assertTrue(description.contains("outline"));
+    }
+
+    @Test
+    void savedStateIgnoresLooseNumberCoercion() {
+        CircleOnPlaneNode node = new CircleOnPlaneNode();
+        Map<String, Object> dirty = new HashMap<>();
+        dirty.put("radius", 9.0f);
+        dirty.put("segments", 12L);
+        node.setNodeState(dirty);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+        assertEquals(5.0d, (Double) node.getOutput("output_radius"), 0.0d);
+        assertEquals(32, node.getOutput("output_segments"));
     }
 
     private static PolygonProfileData unitSquareProfile() {

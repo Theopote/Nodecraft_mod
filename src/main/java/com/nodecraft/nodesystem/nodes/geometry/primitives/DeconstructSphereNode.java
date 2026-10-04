@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -69,9 +70,14 @@ public class DeconstructSphereNode extends AbstractPrimitiveDeconstructNode {
 
         Vector3d center = sphere.center();
         double radius = sphere.radius();
-        double diameter = radius * 2.0d;
-        double surfaceArea = 4.0d * Math.PI * radius * radius;
-        double volume = (4.0d / 3.0d) * Math.PI * radius * radius * radius;
+        double diameter = PrimitiveNumericUtils.safeMul(radius, 2.0d);
+        double r2 = PrimitiveNumericUtils.safeSquare(radius);
+        double surfaceArea = PrimitiveNumericUtils.safeMul(4.0d * Math.PI, r2);
+        double volume = PrimitiveNumericUtils.safeMul((4.0d / 3.0d) * Math.PI, PrimitiveNumericUtils.safeCube(radius));
+        if (!requireFiniteOutputs(radius, diameter, surfaceArea, volume)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(sphere);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -90,7 +96,7 @@ public class DeconstructSphereNode extends AbstractPrimitiveDeconstructNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CENTER_ID, OUTPUT_REGION_ID, OUTPUT_BOUNDING_BOX_ID);
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_RADIUS_ID,
             OUTPUT_DIAMETER_ID,
             OUTPUT_SURFACE_AREA_ID,

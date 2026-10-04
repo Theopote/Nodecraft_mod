@@ -150,6 +150,10 @@ public class GeometrySurfaceElement extends AbstractPreviewElement {
             appendHemisphere(builder, hemisphere, quality);
         } else if (geometry instanceof CylinderGeometryData cylinder) {
             appendCylinder(builder, cylinder, quality);
+        } else if (geometry instanceof CapsuleGeometryData capsule) {
+            appendCylinder(builder, capsule.cylinder(), quality);
+            appendHemisphere(builder, capsule.startHemisphere(), quality);
+            appendHemisphere(builder, capsule.endHemisphere(), quality);
         } else if (geometry instanceof ConeGeometryData cone) {
             appendCone(builder, cone, quality);
         } else if (geometry instanceof FrustumConeGeometryData frustum) {

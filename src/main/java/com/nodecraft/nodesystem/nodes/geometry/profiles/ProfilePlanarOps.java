@@ -23,7 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Shared planar JTS operations for profile/region boolean/offset nodes (Graph V73/V91/V92).
+ * Shared planar JTS operations for profile/region boolean/offset nodes.
+ * Historical Graph V73/V91/V92 residue.
  */
 final class ProfilePlanarOps {
 

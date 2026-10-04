@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
@@ -47,6 +48,9 @@ final class SolidNodeUtils {
      * {@link PointData} or {@link BlockPos} as directions.
      */
     static @Nullable Vector3d resolveDirection(@Nullable Object value) {
+        if (value instanceof VectorData vectorData) {
+            return vectorData.components();
+        }
         if (value instanceof Vector3d vector) {
             return new Vector3d(vector);
         }

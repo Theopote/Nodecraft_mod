@@ -8,8 +8,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
+import com.nodecraft.nodesystem.datatypes.CapsuleGeometryData;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
@@ -30,6 +33,8 @@ import com.nodecraft.nodesystem.nodes.transform.basic_transforms.RotateGeometryA
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BoxBlockGenerator;
 import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
+import com.nodecraft.nodesystem.util.GeometryExpressionLimits;
+import com.nodecraft.nodesystem.util.GeometryStructureUtils;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -280,12 +285,19 @@ class GeometryPrimitivesLanguageV2ContractTest {
         deconstruct.setInput("input_geometry", construct.getOutput("output_geometry"));
         deconstruct.processNode(null);
         assertEquals(Boolean.TRUE, deconstruct.getOutput("output_valid"));
+        CapsuleGeometryData capsule = assertInstanceOf(
+            CapsuleGeometryData.class,
+            construct.getOutput("output_geometry")
+        );
         assertEquals(6.0d, (Double) deconstruct.getOutput("output_axis_length"), EPS);
         assertEquals(1.5d, (Double) deconstruct.getOutput("output_radius"), EPS);
         assertEquals(9.0d, (Double) deconstruct.getOutput("output_total_length"), EPS);
         assertNotNull(deconstruct.getOutput("output_cylinder"));
         assertNotNull(deconstruct.getOutput("output_start_hemisphere"));
         assertNotNull(deconstruct.getOutput("output_end_hemisphere"));
+        assertEquals(1, GeometryExpressionLimits.depth(capsule));
+        assertEquals(1L, GeometryStructureUtils.countLeaves(capsule));
+        assertTrue(GeometryVoxelizer.voxelizeStrict(capsule, true).success());
     }
 
     @Test
@@ -304,6 +316,63 @@ class GeometryPrimitivesLanguageV2ContractTest {
         assertNull(node.getOutput("output_cylinder"));
         assertNull(node.getOutput("output_start_hemisphere"));
         assertNull(node.getOutput("output_end_hemisphere"));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_axis_length")));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_radius")));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_surface_area")));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_volume")));
+    }
+
+    @Test
+    void fakeCompositeCapsuleIsRejectedEvenWhenAxesMatch() {
+        Vector3d start = new Vector3d(0.0d, 0.0d, 0.0d);
+        Vector3d end = new Vector3d(0.0d, 6.0d, 0.0d);
+        CompositeGeometryData fake = new CompositeGeometryData(List.of(
+            new CylinderGeometryData(start, end, 1.5d),
+            new HemisphereGeometryData(start, new Vector3d(0.0d, -1.0d, 0.0d), 1.5d),
+            new HemisphereGeometryData(end, new Vector3d(0.0d, 1.0d, 0.0d), 1.5d)
+        ));
+
+        DeconstructCapsuleNode node = new DeconstructCapsuleNode();
+        node.setInput("input_geometry", fake);
+        node.processNode(null);
+
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_cylinder"));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_axis_length")));
+        assertEquals(3L, GeometryStructureUtils.countLeaves(fake));
+    }
+
+    @Test
+    void overflowRadiusSphereDeconstructFailsWithNanDoubles() {
+        SphereData huge = new SphereData(new Vector3d(0.0d, 0.0d, 0.0d), 1.0e200d);
+        DeconstructSphereNode deconstruct = new DeconstructSphereNode();
+        deconstruct.setInput("input_sphere", huge);
+        deconstruct.processNode(null);
+
+        assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
+        assertTrue(Double.isNaN((Double) deconstruct.getOutput("output_surface_area")));
+        assertTrue(Double.isNaN((Double) deconstruct.getOutput("output_volume")));
+        assertTrue(Double.isNaN((Double) deconstruct.getOutput("output_diameter")));
+        assertNull(deconstruct.getOutput("output_region"));
+        assertNull(deconstruct.getOutput("output_bounding_box"));
+    }
+
+    @Test
+    void incompleteBlockRegionFailsDeconstructWithoutValidTrue() {
+        SphereData pointLike = new SphereData(new Vector3d(1.0d, 1.0d, 1.0d), 1.0e-20d);
+        RegionData region = BoxBlockGenerator.regionFromBoundingBox(
+            GeometryBoundsResolver.resolve(pointLike)
+        );
+        assertFalse(region.isComplete());
+
+        DeconstructSphereNode deconstruct = new DeconstructSphereNode();
+        deconstruct.setInput("input_sphere", pointLike);
+        deconstruct.processNode(null);
+
+        assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
+        assertNull(deconstruct.getOutput("output_region"));
+        assertTrue(Double.isNaN((Double) deconstruct.getOutput("output_radius")));
+        assertTrue(Double.isNaN((Double) deconstruct.getOutput("output_surface_area")));
     }
 
     @Test

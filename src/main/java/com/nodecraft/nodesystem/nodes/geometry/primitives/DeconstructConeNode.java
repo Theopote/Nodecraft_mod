@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.PrimitiveNumericUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -80,14 +81,27 @@ public class DeconstructConeNode extends AbstractPrimitiveDeconstructNode {
 
         Vector3d baseCenter = cone.getBaseCenter();
         Vector3d apex = cone.getApex();
-        Vector3d axisVector = cone.getAxisVector();
-        double height = cone.getHeight();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(baseCenter, apex);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(baseCenter, apex);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Cone height must be > 0");
+            return;
+        }
         double radius = cone.getBaseRadius();
-        double slantHeight = Math.sqrt(radius * radius + height * height);
-        double baseArea = Math.PI * radius * radius;
-        double lateralArea = Math.PI * radius * slantHeight;
-        double surfaceArea = baseArea + lateralArea;
-        double volume = (Math.PI * radius * radius * height) / 3.0d;
+        double slantHeight = PrimitiveNumericUtils.safeHypot(radius, height);
+        double r2 = PrimitiveNumericUtils.safeSquare(radius);
+        double baseArea = PrimitiveNumericUtils.safeMul(Math.PI, r2);
+        double lateralArea = PrimitiveNumericUtils.safeMul(Math.PI * radius, slantHeight);
+        double surfaceArea = PrimitiveNumericUtils.safeAdd(baseArea, lateralArea);
+        double volume = PrimitiveNumericUtils.safeMul(PrimitiveNumericUtils.safeMul(Math.PI, r2), height) / 3.0d;
+        if (!Double.isFinite(volume)) {
+            volume = Double.NaN;
+        }
+        if (!requireFiniteOutputs(height, radius, slantHeight, baseArea, lateralArea, surfaceArea, volume)
+            || !VectorUtils.isFinite(axisVector)) {
+            writeEmptyOutputs("Derived analytical values are non-finite");
+            return;
+        }
         BoundsAndRegion boundsAndRegion = resolveContinuousBoundsAndRegion(cone);
         if (boundsAndRegion == null) {
             writeEmptyOutputs("Unable to resolve continuous bounds");
@@ -118,7 +132,7 @@ public class DeconstructConeNode extends AbstractPrimitiveDeconstructNode {
             OUTPUT_REGION_ID,
             OUTPUT_BOUNDING_BOX_ID
         );
-        putDoubleOutputs(0.0d,
+        putDoubleOutputs(Double.NaN,
             OUTPUT_HEIGHT_ID,
             OUTPUT_RADIUS_ID,
             OUTPUT_BASE_AREA_ID,

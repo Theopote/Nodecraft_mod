@@ -209,8 +209,8 @@ public class AnnulusOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("innerRadius") instanceof Number n) innerRadius = n.doubleValue();
-        if (map.get("outerRadius") instanceof Number n) outerRadius = n.doubleValue();
-        if (map.get("segments") instanceof Number n) segments = n.intValue();
+        restoreFiniteDouble(map, "innerRadius", v -> innerRadius = v);
+        restoreFiniteDouble(map, "outerRadius", v -> outerRadius = v);
+        restoreInteger(map, "segments", v -> segments = v);
     }
 }

@@ -3,7 +3,8 @@ package com.nodecraft.nodesystem.util;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Sector / annular-sector sweep angle language (Graph V91).
+ * Sector / annular-sector sweep angle language.
+ * Historical Graph V91 residue.
  * <p>
  * Valid: {@code 0 < |endDegrees - startDegrees| < 360}.
  * Full disks/rings must use Circle / Annulus, not Sector.

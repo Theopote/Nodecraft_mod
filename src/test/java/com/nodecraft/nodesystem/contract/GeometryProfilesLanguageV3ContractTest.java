@@ -33,8 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Planar Region Modeling Language (Graph V92).
- * Closes Region → Boolean / Offset composability on top of V91 region outputs.
+ * Language fence for Planar Region Modeling Language.
+ * Historical Graph V92 residue. Closes Region → Boolean / Offset composability.
  */
 class GeometryProfilesLanguageV3ContractTest {
 

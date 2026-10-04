@@ -98,12 +98,14 @@ public class CapsuleOnPlaneNode extends AbstractProfileNode {
             return;
         }
         Integer resolvedCapSegments = resolveBoundedInteger(
-            INPUT_CAP_SEGMENTS_ID, capSegments, 1, GenerationLimits.MAX_PROFILE_VERTICES / 2);
+            INPUT_CAP_SEGMENTS_ID, capSegments, 1, (GenerationLimits.MAX_PROFILE_VERTICES - 1) / 2);
         if (resolvedCapSegments == null) {
-            writeInvalid("Cap segments must be an exact integer from 1 to " + (GenerationLimits.MAX_PROFILE_VERTICES / 2));
+            writeInvalid("Cap segments must be an exact integer from 1 to "
+                + ((GenerationLimits.MAX_PROFILE_VERTICES - 1) / 2));
             return;
         }
-        if (resolvedLength < 2.0d * resolvedRadius) {
+        double halfLength = resolvedLength * 0.5d;
+        if (!Double.isFinite(halfLength) || halfLength < resolvedRadius) {
             writeInvalid("Length must be at least diameter (2 * radius)");
             return;
         }
@@ -116,13 +118,13 @@ public class CapsuleOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        int vertexCount = 2 * resolvedCapSegments;
-        if (!isWithinProfileVertices(vertexCount)) {
+        int vertexCount = ProfileConstructionUtils.uniqueCapsuleVertices(resolvedCapSegments);
+        if (!ProfileConstructionUtils.requireUniqueVertices(vertexCount)) {
             writeInvalid("Polygon profile vertex count exceeds limit (" + GenerationLimits.MAX_PROFILE_VERTICES + ")");
             return;
         }
 
-        double halfRectLength = (resolvedLength * 0.5d) - resolvedRadius;
+        double halfRectLength = halfLength - resolvedRadius;
 
         List<Vector3d> points = new ArrayList<>();
         appendArc(points, center, basis, halfRectLength, 0.0d, -Math.PI * 0.5d, Math.PI * 0.5d, resolvedRadius, resolvedCapSegments, true);
@@ -177,8 +179,8 @@ public class CapsuleOnPlaneNode extends AbstractProfileNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("length") instanceof Number n) length = n.doubleValue();
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
-        if (map.get("capSegments") instanceof Number n) capSegments = n.intValue();
+        restoreFiniteDouble(map, "length", v -> length = v);
+        restoreFiniteDouble(map, "radius", v -> radius = v);
+        restoreInteger(map, "capSegments", v -> capSegments = v);
     }
 }

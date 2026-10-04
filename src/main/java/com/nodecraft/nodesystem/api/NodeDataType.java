@@ -53,7 +53,7 @@ public enum NodeDataType {
     POLYGON_PROFILE("polygon_profile", "Polygon Profile", PolygonProfileData.class),
     /** Ordered polygon profiles (loft sections, sweep section lists). */
     POLYGON_PROFILE_LIST("polygon_profile_list", "Polygon Profile List", List.class, ListElementKind.POLYGON_PROFILE),
-    /** Outer boundary + holes on a plane (Graph V91). Distinct from Minecraft {@link #REGION}. */
+    /** Outer boundary + holes on a plane. Distinct from Minecraft {@link #REGION}. Historical Graph V91 residue. */
     PLANAR_REGION("planar_region", "Planar Region", PlanarRegionData.class),
     /** Ordered planar regions (boolean/offset multi-piece results). */
     PLANAR_REGION_LIST("planar_region_list", "Planar Region List", List.class, ListElementKind.PLANAR_REGION),
