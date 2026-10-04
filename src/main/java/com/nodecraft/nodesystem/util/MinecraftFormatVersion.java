@@ -15,7 +15,8 @@ public final class MinecraftFormatVersion {
 
     public static int dataVersion() {
         try {
-            return SharedConstants.getGameVersion().getSaveVersion().id();
+            SharedConstants.createGameVersion();
+            return SharedConstants.getGameVersion().dataVersion().id();
         } catch (Throwable ignored) {
             return FALLBACK_DATA_VERSION;
         }

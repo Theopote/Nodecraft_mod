@@ -88,6 +88,14 @@ public class ExportDataNode extends BaseNode {
             return;
         }
 
+        ExportDataEncoder.Result encoded = fmt == ExportFormat.CSV
+            ? ExportDataEncoder.encodeCsv(data)
+            : ExportDataEncoder.encodeJson(data, prettyJson);
+        if (!encoded.valid()) {
+            publish(false, "", 0, fmt.name().toLowerCase(), encoded.error());
+            return;
+        }
+
         String rawPath = inputValues.get(INPUT_PATH_ID) instanceof String text && !text.isBlank()
             ? text.trim()
             : "nodecraft_export." + fmt.name().toLowerCase();
@@ -98,14 +106,6 @@ public class ExportDataNode extends BaseNode {
             outputPath = ExportPathUtil.resolve(rawPath, defaultFileName, extension);
             if (outputPath.getParent() != null) {
                 Files.createDirectories(outputPath.getParent());
-            }
-
-            ExportDataEncoder.Result encoded = fmt == ExportFormat.CSV
-                ? ExportDataEncoder.encodeCsv(data)
-                : ExportDataEncoder.encodeJson(data, prettyJson);
-            if (!encoded.valid()) {
-                publish(false, outputPath.toString(), 0, fmt.name().toLowerCase(), encoded.error());
-                return;
             }
 
             Files.writeString(outputPath, encoded.text(), StandardCharsets.UTF_8);

@@ -1,8 +1,10 @@
 package com.nodecraft.nodesystem.util;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,5 +64,26 @@ class ExportPathUtilTest {
         Path resolved = ExportPathUtil.resolveUnderRoot(root, inside.toString(), "nodecraft_export.schem", ".schem");
 
         assertEquals(inside.normalize(), resolved);
+    }
+
+    @Test
+    void rejectsSymlinkParentEscapingRoot() throws Exception {
+        Path root = tempDir.resolve("nodecraft_exports");
+        Files.createDirectories(root);
+        Path outside = tempDir.resolve("outside");
+        Files.createDirectories(outside);
+
+        Path link = root.resolve("external");
+        try {
+            Files.createSymbolicLink(link, outside);
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException e) {
+            Assumptions.assumeTrue(false, "symlink creation not permitted: " + e.getMessage());
+        }
+
+        IllegalArgumentException error = assertThrows(
+            IllegalArgumentException.class,
+            () -> ExportPathUtil.resolveUnderRoot(root, "external/escape.json", "nodecraft_export.json", ".json")
+        );
+        assertTrue(error.getMessage().contains("Export path must stay inside"));
     }
 }

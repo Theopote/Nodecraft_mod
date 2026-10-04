@@ -96,11 +96,6 @@ public final class StructureExportPreflight {
             return Result.invalid("placements exceed MAX_EXPORT_PLACEMENTS");
         }
 
-        PlacementPreflight.Result material = PlacementPreflight.preflightSources(placements, null);
-        if (!material.valid()) {
-            return Result.invalid(material.error());
-        }
-
         ExportBounds bounds;
         try {
             bounds = ExportBounds.fromPlacements(placements);
@@ -108,6 +103,7 @@ public final class StructureExportPreflight {
             return Result.invalid(e.getMessage() != null ? e.getMessage() : "invalid_bounds");
         }
 
+        // Bounds/volume first so dense AABB failures never reach int[] allocation.
         if (denseMode == DenseMode.NONE) {
             String sparseError = bounds.validateSparse();
             if (sparseError != null) {
@@ -121,6 +117,11 @@ public final class StructureExportPreflight {
             if (denseError != null) {
                 return Result.invalid(denseError);
             }
+        }
+
+        PlacementPreflight.Result material = PlacementPreflight.preflightSources(placements, null);
+        if (!material.valid()) {
+            return Result.invalid(material.error());
         }
 
         StructurePalette palette = buildPaletteWithAir(placements);
