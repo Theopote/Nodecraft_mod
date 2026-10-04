@@ -53,7 +53,8 @@ public class RandomListItemNode extends RandomSamplingNode {
     @Override
     public String getDescription() {
         return "Deterministically selects items from a list. Same list order and seed produce the same picks. "
-            + "When duplicates are disallowed, sampling is without replacement by index (not value-unique).";
+            + "When duplicates are disallowed, sampling is without replacement by index (not value-unique). "
+            + "Count is capped to source size when sampling without replacement.";
     }
 
     @Override
@@ -112,10 +113,13 @@ public class RandomListItemNode extends RandomSamplingNode {
                 }
             }
         } else {
-            List<Object> shuffledList = new ArrayList<>(inputList);
-            Collections.shuffle(shuffledList, random);
+            List<Object> pool = new ArrayList<>(inputList);
             for (int i = 0; i < effectiveCount; i++) {
-                Object selectedItem = shuffledList.get(i);
+                int j = i + random.nextInt(pool.size() - i);
+                Object swap = pool.get(i);
+                pool.set(i, pool.get(j));
+                pool.set(j, swap);
+                Object selectedItem = pool.get(i);
                 selectedItems.add(selectedItem);
                 if (i == 0) {
                     singleItem = selectedItem;

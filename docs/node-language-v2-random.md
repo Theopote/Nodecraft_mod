@@ -1,10 +1,10 @@
 # Node Language v2 — Random
 
-**Status: PASSED / FROZEN** (Graph **V123**; V29 remains historical v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only; V123 remains historical residue)
 
-Strict domain & transactional sampling remediation for `math.random.*`:
+Strict domain & transactional sampling for `math.random.*`:
 `output_valid` / `output_error` on all six nodes, connection-aware Seed/Count/Domain,
-and whole-vector / whole-list failure semantics.
+canonical `VectorData` on VECTOR ports, and whole-vector / whole-list failure semantics.
 
 Related: [`node-language-v1-random.md`](./node-language-v1-random.md),
 [`node-language-v2-scalar-math.md`](./node-language-v2-scalar-math.md),
@@ -27,25 +27,39 @@ All six random nodes expose:
 
 Invariant: **`Valid=false` ⇒ failure sentinel output** (never a silent default sample).
 
+PURE nodes. Missing Seed ≡ `0` (deterministic, not a fresh seed each evaluate).
+
 ## Connection-aware Seed / Count / Domain
+
+Graph ports use `RandomInputResolver`, **not** `RandomOps.resolveSeed` / `resolveCount` (legacy helpers for other families).
 
 | Port state | Seed | Count |
 |------------|------|-------|
-| undriven | `0` (valid) | property default (valid, clamped) |
-| connected + exact type | value (valid) | clamped value (valid) |
-| connected + null / wrong type | **invalid** | **invalid** |
+| undriven | `0` (valid) | property default (valid, **clamped** to `MAX_LIST_ELEMENTS`) |
+| driven + exact `Integer` in range | value | value (`<=0` → empty success) |
+| driven + exact `Integer` `> MAX_LIST_ELEMENTS` | — | **invalid** (no silent truncate) |
+| driven + null / wrong type | **invalid** | **invalid** |
 
 Domain (Number / Numbers):
 
 - undriven → property defaults (valid)
-- driven + valid `NUMERIC_RANGE` → canonical domain
+- driven + finite-endpoint `NUMERIC_RANGE` → keep span (including overflow-directed)
 - driven + invalid → `Valid=false`
 
-Vector corners (Vector / Vectors):
+Sampling uses overflow-safe FMA lerp when `hi - lo` overflows. Finite endpoints remain sampleable.
 
-- undriven → default unit box corners
-- driven + `VECTOR` / legacy `Vec3d` → use copy
-- driven + invalid → `Valid=false`
+## VECTOR contract
+
+Internal sampling uses JOML `Vector3d`. Graph values are canonical [`VectorData`](../src/main/java/com/nodecraft/nodesystem/datatypes/VectorData.java):
+
+- ingest: `VectorUtils.toVector` (`VectorData` / `Vector3d` / legacy `Vec3d`), finite required
+- emit: `VectorUtils.toVectorPort` / `toVectorPortList`
+
+| Port state | Min / Max Corner |
+|------------|------------------|
+| undriven | default unit-box corner |
+| driven + valid VECTOR | use value |
+| driven + invalid / null | `Valid=false` (never `(0,0,0)` / `(1,1,1)`) |
 
 ## Node failure outputs
 
@@ -60,17 +74,16 @@ Vector corners (Vector / Vectors):
 
 ## Vector transactional sampling
 
-`RandomOps.sampleVectorValidated` preflights all three axes before sampling.
-If any axis span is non-finite or overflows, the entire vector fails — no partial `(x,y,NaN)` vectors.
+`RandomOps.sampleVectorValidated` preflights all three axes. Non-finite axis or non-finite **result** component → entire vector fails. Overflow span alone is not a reject if the FMA sample is finite.
 
-`Random Vectors` uses batch transactional semantics: one invalid sample → entire list fails (`[]`).
+`Random Vectors` is transactional: one invalid sample → entire list fails (`[]`).
 
-## Random List Item semantics (unchanged algorithm)
+## Random List Item
 
 - Same list content, same order, same seed → same picks
-- Reordering the input list changes results (index-based sampling)
-- **Allow Duplicates=false** means sample **without replacement by index**, not value-unique
-  (e.g. `[A,A,B]` can still return two `A` items from different indices)
+- **Allow Duplicates=false** samples **without replacement by index** (partial Fisher–Yates of K), not value-unique (`[A,A,B]` can return two `A`s)
+- Count is capped to source size when sampling without replacement
+- Allow Duplicates=true uses `nextInt` with replacement
 
 ## Noise (algorithm unchanged)
 
@@ -82,22 +95,18 @@ Coherent 3D value noise via `RandomOps.valueNoise3`. Non-finite coordinates or u
 - Missing Seed ≡ `0` when **undriven**
 - Stable port types (no Count-driven output switching)
 - No Number/String coercion on Seed/Count
-- Random List Item shuffle / `nextInt` sampling unchanged
 
 ## Breaking changes from v1
 
-| Scenario | V29 | V123 |
-|----------|-----|------|
+| Scenario | V29 | Current |
+|----------|-----|---------|
 | Invalid Domain | silent `0` or short `[]` | `Valid=false` |
 | Connected Count=`1.9` | default 10 | `Valid=false` |
+| Connected Count over list cap | silent clamp | `Valid=false` |
 | Connected Seed=`"1"` | treated as `0` | `Valid=false` |
+| VECTOR output | raw `Vector3d` | `VectorData` |
 | Partial NaN vector | emitted | `Valid=false` |
-| Random Vectors bad domain | partial list possible | entire list fails |
 
-## Graph migration (V122→V123)
+## Migration
 
-Identity migration — no wire or node remaps. New output ports are additive.
-
-## P2 deferred
-
-Separate vector-list memory budget (`MAX_LAYOUT_INSTANCES` vs `MAX_LIST_ELEMENTS`) — evaluation deferred.
+No `GraphFormatVersion` bump. `CURRENT` is stamp-only.

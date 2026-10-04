@@ -129,8 +129,8 @@ public class RepeatNode extends SequenceGenerationNode {
             return;
         }
         Object count = stateMap.get("defaultCount");
-        if (count instanceof Number number) {
-            setDefaultCount(number.intValue());
+        if (count instanceof Integer integer) {
+            setDefaultCount(integer);
         }
     }
 }

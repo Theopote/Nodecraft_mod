@@ -1,8 +1,8 @@
 # Node Language v2 — Trigonometry
 
-**Status: PASSED / FROZEN** (Graph **V124**; V26 remains historical v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only; V124 remains historical residue)
 
-Strict DOUBLE inputs & numerical boundary remediation for `math.trigonometry.*`:
+Strict DOUBLE inputs & numerical boundary contract for `math.trigonometry.*`:
 exact finite `Double` at runtime, degree period normalization in `TrigMathOps`,
 expanded boundary tests, and node↔Expression parity on shared ops.
 
@@ -43,7 +43,7 @@ Use explicit type conversion nodes for INTEGER→DOUBLE — do not rely on impli
 | Success | All `Double.isFinite` | `true` |
 | Failure | All `Double.NaN` | `false` |
 
-Hyperbolic overflow (`sinh`/`cosh` on large inputs) → `NaN + Valid=false`.
+Nodes expose **Result + Valid only** (no `output_error`). Hyperbolic overflow (`sinh`/`cosh` on large inputs) → `NaN + Valid=false`.
 `tanh` on large finite inputs remains valid (saturates toward ±1).
 
 ## Tan singularity (exact, no epsilon)
@@ -74,7 +74,7 @@ adjacent degrees (e.g. `1e16` vs `1e16 + 1`). No arbitrary angle cap is applied.
 |----------|-------------------|
 | ArcSin / ArcCos | `[-1, 1]` inclusive; no clamping |
 | ArcTan | any finite value |
-| Atan2 | both Y and X finite |
+| Atan2 | both Y and X finite; `atan2(Y, X)` (port order Y then X) |
 
 ## Atan2(0, 0) semantics
 
@@ -93,6 +93,6 @@ Sin, Cos, Tan, ArcSin, ArcCos, ArcTan, Atan2, Sinh, Cosh, Tanh.
 
 Implementation: `TrigScalarNode` base + shared `TrigMathOps`.
 
-## Graph migration (V123→V124)
+## Migration
 
-Identity migration — runtime-only strict input and normalization changes; no wire remaps.
+No `GraphFormatVersion` bump. `CURRENT` is stamp-only.

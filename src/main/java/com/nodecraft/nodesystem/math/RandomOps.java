@@ -22,15 +22,19 @@ public final class RandomOps {
     }
 
     /**
-     * Resolves Seed: {@link Integer} → value; otherwise {@code 0} (including missing).
+     * Legacy Seed fallback for non-graph callers. {@link Integer} → value; otherwise {@code 0}.
+     * Not for {@code math.random} graph ports — use {@code RandomInputResolver}.
      */
+    @Deprecated
     public static int resolveSeed(@Nullable Object seed) {
         return seed instanceof Integer i ? i : 0;
     }
 
     /**
-     * Resolves Count: {@link Integer} → clamped non-negative; otherwise {@code defaultCount} then clamp.
+     * Legacy Count fallback for non-graph callers. Non-{@link Integer} → {@code defaultCount}, then clamp.
+     * Not for {@code math.random} graph ports — use {@code RandomInputResolver}.
      */
+    @Deprecated
     public static int resolveCount(@Nullable Object count, int defaultCount) {
         int raw = count instanceof Integer i ? i : defaultCount;
         return GenerationLimits.clampNonNegativeCount(raw);
@@ -45,7 +49,7 @@ public final class RandomOps {
 
     /**
      * Samples a finite double in {@code [min, max]} (order-insensitive).
-     * Non-finite bounds or overflowed span → {@link Double#NaN}.
+     * Non-finite bounds → {@link Double#NaN}. Overflowed {@code hi-lo} still samples via FMA lerp.
      */
     public static double sampleDouble(double min, double max, Random random) {
         if (random == null || !Double.isFinite(min) || !Double.isFinite(max)) {
@@ -56,11 +60,14 @@ public final class RandomOps {
         }
         double lo = Math.min(min, max);
         double hi = Math.max(min, max);
+        double u = random.nextDouble();
         double span = hi - lo;
-        if (!Double.isFinite(span)) {
-            return Double.NaN;
+        double result;
+        if (Double.isFinite(span)) {
+            result = Math.fma(u, span, lo);
+        } else {
+            result = Math.fma(u, hi, Math.fma(-u, lo, lo));
         }
-        double result = lo + random.nextDouble() * span;
         return Double.isFinite(result) ? result : Double.NaN;
     }
 
@@ -109,13 +116,11 @@ public final class RandomOps {
         if (min == max) {
             return Double.isFinite(min);
         }
-        double lo = Math.min(min, max);
-        double hi = Math.max(min, max);
-        return Double.isFinite(hi - lo);
+        return true;
     }
 
     /**
-     * Preflights all three axes; samples only when every axis span is finite.
+     * Preflights all three axes; samples only when every axis has finite endpoints.
      */
     public static VectorSampleResult sampleVectorValidated(Vector3d min, Vector3d max, Random random) {
         if (random == null || min == null || max == null) {

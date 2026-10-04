@@ -4,7 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import net.minecraft.util.math.Vec3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -33,14 +33,8 @@ abstract class RandomSamplingNode extends BaseNode {
     }
 
     protected @Nullable Vector3d resolveVectorValue(String portId) {
-        Object value = resolveValue(portId);
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        return null;
+        Vector3d vector = VectorUtils.toVector(resolveValue(portId));
+        return VectorUtils.isFinite(vector) ? vector : null;
     }
 
     protected void emitFailure(String resultPortId, @Nullable Object failureResult, String error) {

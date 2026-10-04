@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@SuppressWarnings("deprecation")
 class RandomOpsTest {
 
     @Test
@@ -49,11 +50,22 @@ class RandomOpsTest {
     }
 
     @Test
-    void sampleDoubleNaNOnNonFiniteOrOverflowSpan() {
+    void sampleDoubleNaNOnNonFiniteBounds() {
         Random random = RandomOps.rng(1);
         assertTrue(Double.isNaN(RandomOps.sampleDouble(Double.NaN, 1.0d, random)));
         assertTrue(Double.isNaN(RandomOps.sampleDouble(0.0d, Double.POSITIVE_INFINITY, random)));
-        assertTrue(Double.isNaN(RandomOps.sampleDouble(-Double.MAX_VALUE, Double.MAX_VALUE, random)));
+    }
+
+    @Test
+    void sampleDoubleOverflowSpanIsFinite() {
+        Random mid = new Random(0) {
+            @Override
+            public double nextDouble() {
+                return 0.5d;
+            }
+        };
+        assertEquals(0.0d, RandomOps.sampleDouble(-1.0e308d, 1.0e308d, mid), 1.0e-6);
+        assertTrue(Double.isFinite(RandomOps.sampleDouble(-Double.MAX_VALUE, Double.MAX_VALUE, RandomOps.rng(1))));
     }
 
     @Test
@@ -122,24 +134,24 @@ class RandomOpsTest {
     }
 
     @Test
-    void isAxisSampleableRejectsOverflowSpan() {
+    void isAxisSampleableAllowsOverflowSpan() {
         assertTrue(RandomOps.isAxisSampleable(0.0d, 1.0d));
         assertFalse(RandomOps.isAxisSampleable(Double.NaN, 1.0d));
-        assertFalse(RandomOps.isAxisSampleable(-Double.MAX_VALUE, Double.MAX_VALUE));
+        assertTrue(RandomOps.isAxisSampleable(-Double.MAX_VALUE, Double.MAX_VALUE));
     }
 
     @Test
-    void sampleVectorValidatedRejectsPartialAxisFailure() {
-        Vector3d min = new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE);
-        Vector3d max = new Vector3d(1.0d, 1.0d, Double.MAX_VALUE);
+    void sampleVectorValidatedRejectsNonFiniteAxis() {
+        Vector3d min = new Vector3d(0.0d, 0.0d, Double.NaN);
+        Vector3d max = new Vector3d(1.0d, 1.0d, 1.0d);
         VectorSampleResult result = RandomOps.sampleVectorValidated(min, max, RandomOps.rng(0));
         assertFalse(result.valid());
     }
 
     @Test
     void sampleVectorsValidatedFailsEntireBatchOnBadDomain() {
-        Vector3d min = new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE);
-        Vector3d max = new Vector3d(1.0d, 1.0d, Double.MAX_VALUE);
+        Vector3d min = new Vector3d(0.0d, 0.0d, Double.NaN);
+        Vector3d max = new Vector3d(1.0d, 1.0d, 1.0d);
         VectorSampleResult.ListResult result = RandomOps.sampleVectorsValidated(min, max, 3, RandomOps.rng(0));
         assertFalse(result.valid());
         assertTrue(result.vectors().isEmpty());

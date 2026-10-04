@@ -77,6 +77,9 @@ public class RandomNumberNode extends RandomSamplingNode {
         if (!(raw instanceof NumericRangeData range)) {
             return null;
         }
-        return NumericRangeData.canonical(range.start(), range.end());
+        if (!Double.isFinite(range.start()) || !Double.isFinite(range.end())) {
+            return null;
+        }
+        return range;
     }
 }

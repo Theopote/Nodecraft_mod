@@ -32,7 +32,7 @@ public final class SequenceOps {
     /** Package-private for contract tests with a smaller element budget. */
     static SequenceResult range(double start, double end, double step, int maxElements) {
         if (!Double.isFinite(start) || !Double.isFinite(end) || !Double.isFinite(step)) {
-            return SequenceResult.ok(List.of());
+            return SequenceResult.invalid(ERROR_NON_FINITE_VALUE);
         }
         if (step == 0.0d) {
             return SequenceResult.ok(List.of());
@@ -80,7 +80,7 @@ public final class SequenceOps {
      */
     public static SequenceResult series(double start, double step, int count) {
         if (!Double.isFinite(start) || !Double.isFinite(step)) {
-            return SequenceResult.ok(List.of());
+            return SequenceResult.invalid(ERROR_NON_FINITE_VALUE);
         }
         int n = GenerationLimits.clampNonNegativeCount(count);
         if (n == 0) {

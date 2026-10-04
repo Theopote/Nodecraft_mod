@@ -1,10 +1,10 @@
 # Node Language v2 — Sequence
 
-**Status: PASSED / FROZEN** (Graph **V125**; V28 remains historical v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only; V125 remains historical residue)
 
-Strict inputs & explicit termination remediation for `math.sequence.*`:
+Strict inputs & explicit termination for `math.sequence.*`:
 connection-aware DOUBLE/INTEGER resolution, `output_valid` / `output_error` on all three nodes,
-and transactional fail-closed on Series overflow and Range abnormal termination.
+and fail-closed on non-finite inputs, Series overflow, and Range abnormal termination.
 
 Related: [`node-language-v1-sequence.md`](./node-language-v1-sequence.md),
 [`node-language-v2-scalar-math.md`](./node-language-v2-scalar-math.md),
@@ -31,47 +31,48 @@ Repeat Item also sets `output_length=0` on failure.
 
 ## Connection-aware inputs
 
-Uses `OptionalPortDrive` / `RandomInputResolver` (same frozen rule as V120/V123):
-
 | Port state | Behavior |
 |------------|----------|
-| Undriven | property / literal default |
-| Connected + valid exact type | use value |
-| Connected + wrong type | **fail** (`invalid_input`) |
-| Connected + null | **fail** |
-| Non-finite DOUBLE (Sequence/Series) | **fail** at resolution |
+| Undriven finite property | use property / literal default |
+| Undriven non-finite property | **fail** (`invalid_input`) |
+| Driven + valid exact type | use value |
+| Driven + wrong type / null / non-finite DOUBLE | **fail** (`invalid_input`) |
+| Driven Count `> MAX_LIST_ELEMENTS` | **fail** (no silent truncate) |
+| Undriven Count property | **clamp** to `MAX_LIST_ELEMENTS` (UI safety) |
+
+`DataSeries` Start/Step setters reject NaN/Inf (keep previous). Node state restore requires exact `Double` / `Integer`.
 
 ## Number Sequence (`math.sequence.range`)
 
-Undriven defaults: Start=`0`, End=`10`, Step=`1`.
-
-Core rules unchanged: exact step, no endpoint swap, no step auto-fix.
+Undriven defaults: Start=`0`, End=`10`, Step=`1`. Exact step, no endpoint swap, no forced End, `value = start + i * step`.
 
 | Termination | Valid | Numbers | Error |
 |-------------|-------|---------|-------|
 | Normal (reached/passed End) | `true` | generated list | `""` |
-| Direction mismatch / `step==0` / entry non-finite | `true` | `[]` | `""` |
+| Direction mismatch / `step==0` | `true` | `[]` | `""` |
+| Entry non-finite Start/End/Step | `false` | `[]` | `non_finite_value` |
 | Mid-loop non-finite | `false` | `[]` | `non_finite_value` |
 | Float precision stall before End | `false` | `[]` | `float_precision_stall` |
 | Hit `MAX_LIST_ELEMENTS` before End | `false` | `[]` | `max_elements_exceeded` |
 
 ## Number Series (`math.sequence.series`)
 
-Count: exact `Integer` when driven; property default when undriven (clamped).
-
 | Termination | Valid | Series | Error |
 |-------------|-------|--------|-------|
 | All Count elements finite | `true` | full list | `""` |
-| Count=0 after clamp | `true` | `[]` | `""` |
-| Entry non-finite Start/Step | `true` | `[]` | `""` |
+| Count=0 | `true` | `[]` | `""` |
+| Entry non-finite Start/Step | `false` | `[]` | `non_finite_value` |
 | Mid-loop non-finite before Count complete | `false` | `[]` | `non_finite_value` |
+| Driven Count over hard cap | `false` | `[]` | `invalid_input` |
+
+`SequenceOps.series` still clamps huge Count as a non-graph safety net; graph nodes fail closed first.
 
 ## Repeat Item (`math.sequence.repeat`)
 
-- Count: connection-aware exact `Integer` (same as Series)
+- Count: same graph vs property rule as Series
 - Item: when driven, value must be non-null; when undriven, `null` item is allowed
-- **Reference semantics:** each list slot holds the **same object reference** (no deep copy).
-  Downstream must treat repeated mutable payloads (e.g. `Vector3d`) as read-only or copy explicitly.
+- Lists are one element, never tiled
+- **Reference semantics:** each list slot holds the **same object reference** (no deep copy). Canonical graph values (e.g. `VectorData`) are immutable, so this is safe. Do not emit raw mutable JOML as graph values.
 
 ## Unchanged from v1
 
@@ -80,6 +81,6 @@ Count: exact `Integer` when driven; property default when undriven (clamped).
 3. Hard cap `GenerationLimits.MAX_LIST_ELEMENTS`.
 4. Sum removed from Number Series — use `math.list.sum_numbers`.
 
-## Graph migration (V124→V125)
+## Migration
 
-Identity migration — runtime-only input/termination changes; no wire remaps.
+No `GraphFormatVersion` bump. `CURRENT` is stamp-only.

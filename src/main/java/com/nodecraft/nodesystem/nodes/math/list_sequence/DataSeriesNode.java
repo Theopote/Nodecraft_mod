@@ -88,6 +88,9 @@ public class DataSeriesNode extends SequenceGenerationNode {
     }
 
     public void setDefaultStart(double start) {
+        if (!Double.isFinite(start)) {
+            return;
+        }
         if (Double.compare(this.defaultStart, start) != 0) {
             this.defaultStart = start;
             markDirty();
@@ -99,6 +102,9 @@ public class DataSeriesNode extends SequenceGenerationNode {
     }
 
     public void setDefaultStep(double step) {
+        if (!Double.isFinite(step)) {
+            return;
+        }
         if (Double.compare(this.defaultStep, step) != 0) {
             this.defaultStep = step;
             markDirty();
@@ -121,16 +127,16 @@ public class DataSeriesNode extends SequenceGenerationNode {
         }
 
         Object count = stateMap.get("defaultCount");
-        if (count instanceof Number number) {
-            setDefaultCount(number.intValue());
+        if (count instanceof Integer integer) {
+            setDefaultCount(integer);
         }
         Object start = stateMap.get("defaultStart");
-        if (start instanceof Number number) {
-            setDefaultStart(number.doubleValue());
+        if (start instanceof Double value) {
+            setDefaultStart(value);
         }
         Object step = stateMap.get("defaultStep");
-        if (step instanceof Number number) {
-            setDefaultStep(number.doubleValue());
+        if (step instanceof Double value) {
+            setDefaultStep(value);
         }
     }
 }

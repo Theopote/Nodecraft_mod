@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.math.random.NoiseNode;
 import com.nodecraft.nodesystem.nodes.math.random.RandomNumberNode;
@@ -13,6 +14,7 @@ import com.nodecraft.nodesystem.nodes.math.random.RandomNumbersNode;
 import com.nodecraft.nodesystem.nodes.math.random.RandomVectorNode;
 import com.nodecraft.nodesystem.nodes.math.random.RandomVectorsNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -134,10 +136,10 @@ class RandomLanguageV2ContractTest {
     }
 
     @Test
-    void randomVectorRejectsPartiallyInvalidDomain() {
+    void randomVectorRejectsNonFiniteAxis() {
         RandomVectorNode node = new RandomVectorNode();
-        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE));
-        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, Double.MAX_VALUE));
+        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
+        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, 1.0d));
         node.setInput("input_seed", 0);
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
@@ -147,13 +149,71 @@ class RandomLanguageV2ContractTest {
     @Test
     void randomVectorsTransactionalFailure() {
         RandomVectorsNode node = new RandomVectorsNode();
-        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, -Double.MAX_VALUE));
-        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, Double.MAX_VALUE));
+        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
+        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, 1.0d));
         node.setInput("input_count", 3);
         node.setInput("input_seed", 0);
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
         assertTrue(((List<?>) node.getOutput("output_vectors")).isEmpty());
+    }
+
+    @Test
+    void randomVectorAcceptsVectorDataAndEmitsVectorData() {
+        VectorData min = new VectorData(0.0d, 0.0d, 0.0d);
+        VectorData max = new VectorData(1.0d, 1.0d, 1.0d);
+        RandomVectorNode node = new RandomVectorNode();
+        node.setInput("input_min_corner", min);
+        node.setInput("input_max_corner", max);
+        node.setInput("input_seed", 0);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        assertTrue(node.getOutput("output_vector") instanceof VectorData);
+    }
+
+    @Test
+    void randomVectorConnectedInvalidFailsClosed() {
+        RandomVectorProbe probe = new RandomVectorProbe();
+        probe.connectInput("input_min_corner", NodeDataType.VECTOR);
+        probe.putInput("input_min_corner", "not-a-vector");
+        probe.putInput("input_max_corner", new VectorData(1.0d, 1.0d, 1.0d));
+        probe.putInput("input_seed", 0);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertNull(probe.getOutput("output_vector"));
+    }
+
+    @Test
+    void randomNumberExtremeDomainIsFinite() {
+        RandomNumberNode node = new RandomNumberNode();
+        node.setInput("input_domain", new NumericRangeData(-1.0e308d, 1.0e308d));
+        node.setInput("input_seed", 0);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        assertTrue(Double.isFinite((Double) node.getOutput("output_random")));
+    }
+
+    @Test
+    void randomVectorExtremeAxisIsFinite() {
+        RandomVectorNode node = new RandomVectorNode();
+        node.setInput("input_min_corner", new Vector3d(-1.0e308d, 0.0d, 0.0d));
+        node.setInput("input_max_corner", new Vector3d(1.0e308d, 1.0d, 1.0d));
+        node.setInput("input_seed", 0);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        VectorData vector = (VectorData) node.getOutput("output_vector");
+        assertTrue(Double.isFinite(vector.x()) && Double.isFinite(vector.y()) && Double.isFinite(vector.z()));
+    }
+
+    @Test
+    void drivenCountOverLimitFailsClosed() {
+        RandomNumbersNode node = new RandomNumbersNode();
+        node.setInput("input_domain", new NumericRangeData(0.0d, 1.0d));
+        node.setInput("input_count", GenerationLimits.MAX_LIST_ELEMENTS + 1);
+        node.setInput("input_seed", 0);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_values")).isEmpty());
     }
 
     @Test
@@ -229,6 +289,16 @@ class RandomLanguageV2ContractTest {
     }
 
     private static final class RandomNumbersProbe extends RandomNumbersNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            RandomLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class RandomVectorProbe extends RandomVectorNode {
         void putInput(String portId, Object value) {
             inputValues.put(portId, value);
         }

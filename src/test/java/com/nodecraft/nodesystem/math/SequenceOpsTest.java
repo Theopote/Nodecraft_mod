@@ -54,6 +54,13 @@ class SequenceOpsTest {
     }
 
     @Test
+    void rangeNonFiniteInputsAreInvalid() {
+        SequenceResult result = SequenceOps.range(Double.NaN, 1.0d, 1.0d);
+        assertFalse(result.valid());
+        assertEquals(SequenceOps.ERROR_NON_FINITE_VALUE, result.error());
+    }
+
+    @Test
     void rangeZeroStepIsEmpty() {
         assertTrue(SequenceOps.range(0.0d, 10.0d, 0.0d).values().isEmpty());
         assertTrue(SequenceOps.range(2.0d, 10.0d, -0.0d).values().isEmpty());
@@ -92,8 +99,12 @@ class SequenceOpsTest {
         SequenceResult huge = SequenceOps.series(0.0d, 1.0d, Integer.MAX_VALUE);
         assertTrue(huge.valid());
         assertEquals(GenerationLimits.MAX_LIST_ELEMENTS, huge.values().size());
-        assertTrue(SequenceOps.series(Double.NaN, 1.0d, 4).values().isEmpty());
-        assertTrue(SequenceOps.series(0.0d, Double.POSITIVE_INFINITY, 4).values().isEmpty());
+        SequenceResult nanStart = SequenceOps.series(Double.NaN, 1.0d, 4);
+        assertFalse(nanStart.valid());
+        assertEquals(SequenceOps.ERROR_NON_FINITE_VALUE, nanStart.error());
+        SequenceResult infStep = SequenceOps.series(0.0d, Double.POSITIVE_INFINITY, 4);
+        assertFalse(infStep.valid());
+        assertEquals(SequenceOps.ERROR_NON_FINITE_VALUE, infStep.error());
     }
 
     @Test

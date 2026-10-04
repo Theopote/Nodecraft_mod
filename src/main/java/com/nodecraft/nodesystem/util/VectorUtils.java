@@ -39,6 +39,22 @@ public final class VectorUtils {
         return VectorData.canonical(vector);
     }
 
+    /** Canonical typed output for VECTOR_LIST ports. Any non-finite entry → {@code null}. */
+    public static @Nullable List<VectorData> toVectorPortList(@Nullable Collection<Vector3d> vectors) {
+        if (vectors == null) {
+            return null;
+        }
+        List<VectorData> result = new ArrayList<>(vectors.size());
+        for (Vector3d vector : vectors) {
+            VectorData data = toVectorPort(vector);
+            if (data == null) {
+                return null;
+            }
+            result.add(data);
+        }
+        return List.copyOf(result);
+    }
+
     public static boolean isFinite(@Nullable Vector3d vector) {
         return FrameUtils.isFinite(vector);
     }

@@ -74,7 +74,7 @@ class RandomLanguageContractTest {
                 "input_max_corner", new Vector3d(1, 1, 1),
                 "input_seed", 0
         ));
-        assertInstanceOf(Vector3d.class, outputs.get("output_vector"));
+        assertInstanceOf(com.nodecraft.nodesystem.datatypes.VectorData.class, outputs.get("output_vector"));
     }
 
     @Test
@@ -83,15 +83,16 @@ class RandomLanguageContractTest {
         assertEquals(NodeDataType.VECTOR_LIST, findPort(node, "output_vectors").getDataType());
 
         @SuppressWarnings("unchecked")
-        List<Vector3d> vectors = (List<Vector3d>) node.compute(Map.of(
+        List<com.nodecraft.nodesystem.datatypes.VectorData> vectors =
+                (List<com.nodecraft.nodesystem.datatypes.VectorData>) node.compute(Map.of(
                 "input_min_corner", new Vector3d(0, 0, 0),
                 "input_max_corner", new Vector3d(1, 1, 1),
                 "input_count", 3,
                 "input_seed", 0
         )).get("output_vectors");
         assertEquals(3, vectors.size());
-        for (Vector3d v : vectors) {
-            assertTrue(Double.isFinite(v.x) && Double.isFinite(v.y) && Double.isFinite(v.z));
+        for (com.nodecraft.nodesystem.datatypes.VectorData v : vectors) {
+            assertTrue(Double.isFinite(v.x()) && Double.isFinite(v.y()) && Double.isFinite(v.z()));
         }
     }
 

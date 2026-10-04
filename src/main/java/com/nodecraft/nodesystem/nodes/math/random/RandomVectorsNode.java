@@ -5,9 +5,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.math.VectorSampleResult;
 import com.nodecraft.nodesystem.util.RandomInputResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -84,7 +86,12 @@ public class RandomVectorsNode extends RandomSamplingNode {
             emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), result.error());
             return;
         }
-        emitSuccess(OUTPUT_VECTORS_ID, Collections.unmodifiableList(result.vectors()));
+        java.util.List<VectorData> output = VectorUtils.toVectorPortList(result.vectors());
+        if (output == null) {
+            emitFailure(OUTPUT_VECTORS_ID, Collections.emptyList(), "Vector sample is non-finite");
+            return;
+        }
+        emitSuccess(OUTPUT_VECTORS_ID, output);
     }
 
     private @Nullable Vector3d resolveCorner(String portId, Vector3d defaultCorner) {

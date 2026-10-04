@@ -29,7 +29,7 @@ public final class RandomInputResolver {
         return seed != null ? IntegerResolveResult.ok(seed) : IntegerResolveResult.invalid();
     }
 
-    /** Undriven Count uses property default. Driven ports require exact {@link Integer}. */
+    /** Undriven Count uses property default (clamped). Driven exact Integer; over {@code MAX_LIST_ELEMENTS} fails closed. */
     public static IntegerResolveResult resolveCount(@Nullable Object value, int defaultCount, boolean driven) {
         if (!driven) {
             return IntegerResolveResult.ok(GenerationLimits.clampNonNegativeCount(defaultCount));
@@ -38,7 +38,10 @@ public final class RandomInputResolver {
         if (count == null) {
             return IntegerResolveResult.invalid();
         }
-        return IntegerResolveResult.ok(GenerationLimits.clampNonNegativeCount(count));
+        if (count > GenerationLimits.MAX_LIST_ELEMENTS) {
+            return IntegerResolveResult.invalid();
+        }
+        return IntegerResolveResult.ok(count <= 0 ? 0 : count);
     }
 
     /** Undriven coordinate → default. Driven → exact finite {@link Double}. */

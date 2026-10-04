@@ -1,13 +1,13 @@
 package com.nodecraft.nodesystem.nodes.math.random;
 
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
-import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -39,7 +39,7 @@ class RandomNumberNodeTest {
 class RandomNumbersNodeTest {
 
     @Test
-    void clampsHugeCountToGenerationLimit() {
+    void drivenHugeCountFailsClosed() {
         RandomNumbersNode node = new RandomNumbersNode();
         Map<String, Object> outputs = node.compute(Map.of(
             "input_count", Integer.MAX_VALUE,
@@ -47,8 +47,8 @@ class RandomNumbersNodeTest {
             "input_seed", 0
         ));
 
-        Object value = outputs.get("output_values");
-        assertEquals(GenerationLimits.MAX_LIST_ELEMENTS, ((List<?>) value).size());
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(((List<?>) outputs.get("output_values")).isEmpty());
     }
 
     @Test

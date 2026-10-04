@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.math.SequenceOps;
 import com.nodecraft.nodesystem.math.SequenceResult;
@@ -12,7 +13,7 @@ import com.nodecraft.nodesystem.nodes.math.list_sequence.DataSeriesNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.MathRangeNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.RepeatNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
-import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -149,7 +150,7 @@ class SequenceLanguageV2ContractTest {
 
     @Test
     void repeatPreservesObjectReference() {
-        Vector3d vector = new Vector3d(1.0d, 2.0d, 3.0d);
+        VectorData vector = new VectorData(1.0d, 2.0d, 3.0d);
         RepeatNode node = new RepeatNode();
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_data", vector,
@@ -162,6 +163,32 @@ class SequenceLanguageV2ContractTest {
         assertSame(vector, result.get(0));
         assertSame(vector, result.get(1));
         assertSame(vector, result.get(2));
+    }
+
+    @Test
+    void seriesRejectsNonFinitePropertyDefault() throws Exception {
+        DataSeriesNode node = new DataSeriesNode();
+        node.setDefaultStart(Double.NaN);
+        assertEquals(0.0d, node.getDefaultStart(), 0.0d);
+
+        java.lang.reflect.Field field = DataSeriesNode.class.getDeclaredField("defaultStart");
+        field.setAccessible(true);
+        field.setDouble(node, Double.NaN);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertEquals("invalid_input", node.getOutput("output_error"));
+        assertTrue(((List<?>) node.getOutput("output_series")).isEmpty());
+    }
+
+    @Test
+    void drivenSeriesCountOverLimitFailsClosed() {
+        DataSeriesNode node = new DataSeriesNode();
+        node.setInput("input_start", 0.0d);
+        node.setInput("input_step", 1.0d);
+        node.setInput("input_count", GenerationLimits.MAX_LIST_ELEMENTS + 1);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_series")).isEmpty());
     }
 
     @Test

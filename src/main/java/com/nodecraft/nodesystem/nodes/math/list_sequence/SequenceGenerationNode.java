@@ -54,10 +54,10 @@ abstract class SequenceGenerationNode extends BaseNode {
         }
     }
 
-    /** Undriven → default; driven (connected or injected) → exact finite {@link Double}. */
+    /** Undriven → finite default; driven (connected or injected) → exact finite {@link Double}. */
     protected @Nullable Double resolveStrictDouble(String portId, double defaultValue) {
         if (!isDriven(portId)) {
-            return defaultValue;
+            return Double.isFinite(defaultValue) ? defaultValue : null;
         }
         return StrictDoubleUtils.requireExactFiniteDouble(resolveValue(portId));
     }
