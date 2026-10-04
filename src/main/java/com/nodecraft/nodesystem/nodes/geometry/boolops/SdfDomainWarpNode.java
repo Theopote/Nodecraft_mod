@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DomainWarpedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -78,6 +79,10 @@ public class SdfDomainWarpNode extends AbstractSdfNode {
         }
         if (resolvedSeed == null) {
             writeFailure("Seed must be an exact integer");
+            return;
+        }
+        if (!VectorUtils.isFinite(offset)) {
+            writeFailure("Offset must be finite");
             return;
         }
 

@@ -1,14 +1,16 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 /**
- * Sphere SDF primitive.
+ * Sphere SDF primitive. Canonical: finite center, radius finite {@code > 0}.
  */
 public record SphereSdfData(Vector3d center, double radius) implements SignedDistanceFieldData {
     public SphereSdfData(Vector3d center, double radius) {
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateSphere(center, radius));
         this.center = new Vector3d(center);
-        this.radius = Math.max(0.0d, radius);
+        this.radius = radius;
     }
 
     @Override

@@ -39,6 +39,9 @@ public final class GenerationLimits {
      */
     public static final int MAX_FIELD_SAMPLE_POINTS = MAX_LIST_ELEMENTS;
 
+    /** SDF Sample Points list cap (alias of {@link #MAX_FIELD_SAMPLE_POINTS}). */
+    public static final int MAX_SDF_SAMPLE_POINTS = MAX_FIELD_SAMPLE_POINTS;
+
     /**
      * Maximum branch detail lines in Tree Viewer debug preview.
      */
@@ -107,6 +110,12 @@ public final class GenerationLimits {
      * Leaf geometry has depth 1.
      */
     public static final int MAX_GEOMETRY_EXPRESSION_DEPTH = 64;
+
+    /** SDF tree nesting depth (alias of {@link #MAX_GEOMETRY_EXPRESSION_DEPTH}). */
+    public static final int MAX_SDF_EXPRESSION_DEPTH = MAX_GEOMETRY_EXPRESSION_DEPTH;
+
+    /** SDF tree node count walk cap (alias of {@link #MAX_COMPOSITE_GEOMETRY_LEAVES}). */
+    public static final int MAX_SDF_NODE_COUNT = MAX_COMPOSITE_GEOMETRY_LEAVES;
 
     /**
      * Hard cap for layout producers that emit POINT_LIST / VECTOR_LIST / FRAME_LIST together

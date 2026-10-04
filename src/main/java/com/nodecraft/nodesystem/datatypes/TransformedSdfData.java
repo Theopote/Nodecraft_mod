@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SdfFieldValidator;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
@@ -56,16 +57,15 @@ public class TransformedSdfData implements SignedDistanceFieldData {
                                double rotationXDeg,
                                double rotationYDeg,
                                double rotationZDeg) {
+        Matrix3d resolved = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
+        SdfFieldValidator.requireValid(SdfFieldValidator.validateTransformed(
+            source, translation, resolved, scale, rotationXDeg, rotationYDeg, rotationZDeg));
         this.source = source;
         this.translation = new Vector3d(translation);
-        if (!Double.isFinite(scale) || scale <= EPS) {
-            throw new IllegalArgumentException("Scale must be greater than zero");
-        }
         this.scale = scale;
         this.rotationXDeg = rotationXDeg;
         this.rotationYDeg = rotationYDeg;
         this.rotationZDeg = rotationZDeg;
-        Matrix3d resolved = rotation == null ? new Matrix3d().identity() : new Matrix3d(rotation);
         this.inverseRotation = resolved.transpose(new Matrix3d());
     }
 

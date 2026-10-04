@@ -1,21 +1,19 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 /**
- * Axis-aligned box SDF primitive.
+ * Axis-aligned box SDF primitive. Canonical: finite center, each half extent finite {@code > 0}.
  */
 public class BoxSdfData implements SignedDistanceFieldData {
     private final Vector3d center;
     private final Vector3d halfExtents;
 
     public BoxSdfData(Vector3d center, Vector3d halfExtents) {
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateBox(center, halfExtents));
         this.center = new Vector3d(center);
-        this.halfExtents = new Vector3d(
-            Math.max(0.0d, halfExtents.x),
-            Math.max(0.0d, halfExtents.y),
-            Math.max(0.0d, halfExtents.z)
-        );
+        this.halfExtents = new Vector3d(halfExtents);
     }
 
     public Vector3d getCenter() {

@@ -23,7 +23,7 @@ import java.util.UUID;
 public class SdfBooleanNode extends AbstractSdfNode {
 
     @NodeProperty(displayName = "Operation", category = "SDF", order = 1)
-    private String operation = "UNION";
+    private BooleanSdfData.Operation operation = BooleanSdfData.Operation.UNION;
 
     @NodeProperty(displayName = "Smooth K", category = "SDF", order = 2)
     private double smoothK = 0.0d;
@@ -63,21 +63,20 @@ public class SdfBooleanNode extends AbstractSdfNode {
             return;
         }
 
-        BooleanSdfData.Operation op = parseOperation(operation);
-        SignedDistanceFieldData out = new BooleanSdfData(left, right, op, resolvedSmoothK);
+        SignedDistanceFieldData out = new BooleanSdfData(left, right, operation, resolvedSmoothK);
         outputValues.put(OUTPUT_SDF_ID, out);
         markSuccess();
     }
 
-    private BooleanSdfData.Operation parseOperation(String raw) {
-        if (raw == null) {
-            return BooleanSdfData.Operation.UNION;
+    public BooleanSdfData.Operation getOperation() {
+        return operation;
+    }
+
+    public void setOperation(BooleanSdfData.Operation operation) {
+        if (operation == null) {
+            return;
         }
-        return switch (raw.trim().toUpperCase()) {
-            case "INTERSECTION" -> BooleanSdfData.Operation.INTERSECTION;
-            case "DIFFERENCE" -> BooleanSdfData.Operation.DIFFERENCE;
-            default -> BooleanSdfData.Operation.UNION;
-        };
+        this.operation = operation;
     }
 
     private void writeFailure(String error) {
@@ -87,7 +86,7 @@ public class SdfBooleanNode extends AbstractSdfNode {
 
     @Override
     public Object getNodeState() {
-        return java.util.Map.of("operation", operation, "smoothK", smoothK);
+        return java.util.Map.of("operation", operation.name(), "smoothK", smoothK);
     }
 
     @Override
@@ -96,7 +95,13 @@ public class SdfBooleanNode extends AbstractSdfNode {
             return;
         }
         if (map.get("operation") instanceof String value) {
-            operation = value;
+            try {
+                setOperation(BooleanSdfData.Operation.valueOf(value.trim().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
+                // Unknown names are ignored; process never maps them to UNION.
+            }
+        } else if (map.get("operation") instanceof BooleanSdfData.Operation value) {
+            setOperation(value);
         }
         if (map.get("smoothK") instanceof Number value) {
             smoothK = value.doubleValue();

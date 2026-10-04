@@ -91,11 +91,11 @@ public class SdfBlendMaterialMaskNode extends AbstractSdfNode {
         List<Boolean> inside = new ArrayList<>(distanceList.size());
 
         for (Object entry : distanceList) {
-            if (!(entry instanceof Number number)) {
-                writeFailure("Every Distances entry must be a finite number (no silent drop)");
+            if (!(entry instanceof Double number)) {
+                writeFailure("Every Distances entry must be a finite Double (no silent drop)");
                 return;
             }
-            double distance = number.doubleValue();
+            double distance = number;
             if (!Double.isFinite(distance)) {
                 writeFailure("Every Distances entry must be a finite number (no silent drop)");
                 return;

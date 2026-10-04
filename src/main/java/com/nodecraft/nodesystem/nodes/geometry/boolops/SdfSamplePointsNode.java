@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -67,9 +68,10 @@ public class SdfSamplePointsNode extends AbstractSdfNode {
             return;
         }
 
-        List<Vector3d> points = PointUtils.resolveStrictPointList(pointsObj);
+        List<Vector3d> points = PointUtils.resolveStrictPointListBounded(
+            pointsObj, GenerationLimits.MAX_SDF_SAMPLE_POINTS);
         if (points == null) {
-            writeFailure("Every entry in Points must be a finite PointData (no silent drop)");
+            writeFailure("Every entry in Points must be a finite PointData within MAX_SDF_SAMPLE_POINTS (no silent drop)");
             return;
         }
 

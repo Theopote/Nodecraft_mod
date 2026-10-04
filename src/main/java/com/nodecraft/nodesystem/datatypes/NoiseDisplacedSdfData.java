@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SdfFieldValidator;
 import org.joml.Vector3d;
 
 /**
@@ -13,9 +14,10 @@ public class NoiseDisplacedSdfData implements SignedDistanceFieldData {
     private final Vector3d offset;
 
     public NoiseDisplacedSdfData(SignedDistanceFieldData source, double amplitude, double frequency, int seed, Vector3d offset) {
+        SdfFieldValidator.requireValid(SdfFieldValidator.validateDisplacement(source, amplitude, frequency, offset));
         this.source = source;
-        this.amplitude = Math.max(0.0d, amplitude);
-        this.frequency = Math.max(1.0e-6d, frequency);
+        this.amplitude = amplitude;
+        this.frequency = frequency;
         this.seed = seed;
         this.offset = new Vector3d(offset);
     }

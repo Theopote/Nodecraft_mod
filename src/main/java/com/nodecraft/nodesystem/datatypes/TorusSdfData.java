@@ -1,16 +1,18 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SdfFieldValidator;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 
 /**
- * Torus SDF primitive around Y axis.
+ * Torus SDF primitive around Y axis. Canonical ring torus: {@code 0 < minor < major}.
  */
 public record TorusSdfData(Vector3d center, double majorRadius, double minorRadius) implements SignedDistanceFieldData {
     public TorusSdfData(Vector3d center, double majorRadius, double minorRadius) {
+        SdfFieldValidator.requireValid(SdfFieldValidator.validateTorusSdf(center, majorRadius, minorRadius));
         this.center = new Vector3d(center);
-        this.majorRadius = Math.max(0.0d, majorRadius);
-        this.minorRadius = Math.max(0.0d, minorRadius);
+        this.majorRadius = majorRadius;
+        this.minorRadius = minorRadius;
     }
 
     @Override

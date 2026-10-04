@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NoiseDisplacedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -81,6 +82,10 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
             writeFailure("Seed must be an exact integer");
             return;
         }
+        if (!VectorUtils.isFinite(offset)) {
+            writeFailure("Offset must be finite");
+            return;
+        }
 
         SignedDistanceFieldData displaced = new NoiseDisplacedSdfData(
             sdf,
@@ -118,8 +123,22 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
         if (map.get("amplitude") instanceof Number value) amplitude = value.doubleValue();
         if (map.get("frequency") instanceof Number value) frequency = value.doubleValue();
         if (map.get("seed") instanceof Number value) seed = value.intValue();
-        if (map.get("offsetX") instanceof Number value) offset.x = value.doubleValue();
-        if (map.get("offsetY") instanceof Number value) offset.y = value.doubleValue();
-        if (map.get("offsetZ") instanceof Number value) offset.z = value.doubleValue();
+        applyOffsetComponent(map, "offsetX", 0);
+        applyOffsetComponent(map, "offsetY", 1);
+        applyOffsetComponent(map, "offsetZ", 2);
+    }
+
+    private void applyOffsetComponent(Map<?, ?> map, String key, int axis) {
+        if (!(map.get(key) instanceof Number value)) {
+            return;
+        }
+        double component = value.doubleValue();
+        if (axis == 0) {
+            offset.x = component;
+        } else if (axis == 1) {
+            offset.y = component;
+        } else {
+            offset.z = component;
+        }
     }
 }

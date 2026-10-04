@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SdfFieldValidator;
 import org.joml.Vector3d;
 
 /**
@@ -17,9 +18,11 @@ public class DomainWarpedSdfData implements SignedDistanceFieldData {
                                double warpFrequency,
                                int seed,
                                Vector3d offset) {
+        SdfFieldValidator.requireValid(
+            SdfFieldValidator.validateDisplacement(source, warpAmplitude, warpFrequency, offset));
         this.source = source;
-        this.warpAmplitude = Math.max(0.0d, warpAmplitude);
-        this.warpFrequency = Math.max(1.0e-6d, warpFrequency);
+        this.warpAmplitude = warpAmplitude;
+        this.warpFrequency = warpFrequency;
         this.seed = seed;
         this.offset = new Vector3d(offset);
     }

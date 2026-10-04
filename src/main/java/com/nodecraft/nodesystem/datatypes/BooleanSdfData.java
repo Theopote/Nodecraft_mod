@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.SdfFieldValidator;
 import org.joml.Vector3d;
 
 /**
@@ -18,10 +19,11 @@ public class BooleanSdfData implements SignedDistanceFieldData {
     private final double smoothK;
 
     public BooleanSdfData(SignedDistanceFieldData left, SignedDistanceFieldData right, Operation operation, double smoothK) {
+        SdfFieldValidator.requireValid(SdfFieldValidator.validateBoolean(left, right, operation, smoothK));
         this.left = left;
         this.right = right;
-        this.operation = operation == null ? Operation.UNION : operation;
-        this.smoothK = Math.max(0.0d, smoothK);
+        this.operation = operation;
+        this.smoothK = smoothK;
     }
 
     public SignedDistanceFieldData getLeft() {
@@ -51,13 +53,11 @@ public class BooleanSdfData implements SignedDistanceFieldData {
         };
     }
 
-    // Polynomial smooth minimum.
     private static double smoothMin(double a, double b, double k) {
         double h = clamp01(0.5d + 0.5d * (b - a) / k);
         return lerp(b, a, h) - k * h * (1.0d - h);
     }
 
-    // Smooth maximum via duality.
     private static double smoothMax(double a, double b, double k) {
         return -smoothMin(-a, -b, k);
     }

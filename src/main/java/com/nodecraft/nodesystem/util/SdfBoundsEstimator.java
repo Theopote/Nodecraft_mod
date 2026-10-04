@@ -21,25 +21,32 @@ public final class SdfBoundsEstimator {
 
     public record AxisAlignedBounds(Vector3d min, Vector3d max) {
         public boolean isValid() {
-            return min.x <= max.x && min.y <= max.y && min.z <= max.z;
+            return VectorUtils.isFinite(min)
+                && VectorUtils.isFinite(max)
+                && min.x <= max.x
+                && min.y <= max.y
+                && min.z <= max.z;
         }
 
-        public AxisAlignedBounds expanded(double padding) {
-            double pad = Math.max(0.0d, padding);
-            return new AxisAlignedBounds(
-                new Vector3d(min.x - pad, min.y - pad, min.z - pad),
-                new Vector3d(max.x + pad, max.y + pad, max.z + pad)
+        public @Nullable AxisAlignedBounds expanded(double padding) {
+            if (!isValid() || !Double.isFinite(padding) || padding < 0.0d) {
+                return null;
+            }
+            AxisAlignedBounds result = new AxisAlignedBounds(
+                new Vector3d(min.x - padding, min.y - padding, min.z - padding),
+                new Vector3d(max.x + padding, max.y + padding, max.z + padding)
             );
+            return result.isValid() ? result : null;
         }
 
         public @Nullable AxisAlignedBounds union(@Nullable AxisAlignedBounds other) {
             if (other == null || !other.isValid()) {
-                return this;
+                return isValid() ? this : null;
             }
             if (!isValid()) {
                 return other;
             }
-            return new AxisAlignedBounds(
+            AxisAlignedBounds result = new AxisAlignedBounds(
                 new Vector3d(
                     Math.min(min.x, other.min.x),
                     Math.min(min.y, other.min.y),
@@ -51,10 +58,11 @@ public final class SdfBoundsEstimator {
                     Math.max(max.z, other.max.z)
                 )
             );
+            return result.isValid() ? result : null;
         }
 
         public @Nullable AxisAlignedBounds intersect(@Nullable AxisAlignedBounds other) {
-            if (other == null || !other.isValid()) {
+            if (!isValid() || other == null || !other.isValid()) {
                 return null;
             }
             Vector3d mergedMin = new Vector3d(
@@ -72,14 +80,30 @@ public final class SdfBoundsEstimator {
         }
     }
 
+    private static final class WalkState {
+        int nodes;
+    }
+
     private SdfBoundsEstimator() {
     }
 
     public static @Nullable AxisAlignedBounds estimate(SignedDistanceFieldData sdf) {
+        return estimate(sdf, 1, new WalkState());
+    }
+
+    private static @Nullable AxisAlignedBounds estimate(
+            SignedDistanceFieldData sdf,
+            int depth,
+            WalkState walk
+    ) {
+        if (sdf == null || depth > GenerationLimits.MAX_SDF_EXPRESSION_DEPTH) {
+            return null;
+        }
+        walk.nodes++;
+        if (walk.nodes > GenerationLimits.MAX_SDF_NODE_COUNT) {
+            return null;
+        }
         switch (sdf) {
-            case null -> {
-                return null;
-            }
             case SphereSdfData sphere -> {
                 Vector3d center = sphere.center();
                 double r = sphere.radius();
@@ -99,41 +123,44 @@ public final class SdfBoundsEstimator {
                 return boxAround(center, outer, torus.minorRadius(), outer);
             }
             case BooleanSdfData booleanSdf -> {
-                return boundsForBoolean(booleanSdf);
+                return boundsForBoolean(booleanSdf, depth, walk);
             }
             case TransformedSdfData transformed -> {
-                return boundsForTransform(transformed);
+                return boundsForTransform(transformed, depth, walk);
             }
             case NoiseDisplacedSdfData noise -> {
-                AxisAlignedBounds inner = estimate(noise.getSource());
+                AxisAlignedBounds inner = estimate(noise.getSource(), depth + 1, walk);
                 if (inner == null) {
                     return null;
                 }
                 return inner.expanded(noise.getAmplitude());
             }
             case DomainWarpedSdfData warp -> {
-                AxisAlignedBounds inner = estimate(warp.getSource());
+                AxisAlignedBounds inner = estimate(warp.getSource(), depth + 1, walk);
                 if (inner == null) {
                     return null;
                 }
                 return inner.expanded(warp.getWarpAmplitude());
             }
             case TwistedSdfData twisted -> {
-                return boundsForTwist(twisted);
+                return boundsForTwist(twisted, depth, walk);
             }
             case BentSdfData bent -> {
-                return boundsForBend(bent);
+                return boundsForBend(bent, depth, walk);
             }
             default -> {
+                return null;
             }
         }
-
-        return null;
     }
 
-    private static @Nullable AxisAlignedBounds boundsForBoolean(BooleanSdfData booleanSdf) {
-        AxisAlignedBounds left = estimate(booleanSdf.getLeft());
-        AxisAlignedBounds right = estimate(booleanSdf.getRight());
+    private static @Nullable AxisAlignedBounds boundsForBoolean(
+            BooleanSdfData booleanSdf,
+            int depth,
+            WalkState walk
+    ) {
+        AxisAlignedBounds left = estimate(booleanSdf.getLeft(), depth + 1, walk);
+        AxisAlignedBounds right = estimate(booleanSdf.getRight(), depth + 1, walk);
         double blendPad = booleanSdf.getSmoothK();
 
         return switch (booleanSdf.getOperation()) {
@@ -157,32 +184,46 @@ public final class SdfBoundsEstimator {
         return merged == null ? null : merged.expanded(blendPad);
     }
 
-    private static @Nullable AxisAlignedBounds boundsForTransform(TransformedSdfData transformed) {
-        AxisAlignedBounds inner = estimate(transformed.getSource());
-        if (inner == null) {
+    private static @Nullable AxisAlignedBounds boundsForTransform(
+            TransformedSdfData transformed,
+            int depth,
+            WalkState walk
+    ) {
+        AxisAlignedBounds inner = estimate(transformed.getSource(), depth + 1, walk);
+        if (inner == null || !inner.isValid()) {
             return null;
         }
 
-        Vector3d center = new Vector3d(inner.min).add(inner.max).mul(0.5d);
-        Vector3d half = new Vector3d(inner.max).sub(inner.min).mul(0.5d);
-
-        double scale = transformed.getScale();
-        half.mul(scale);
-
-        Vector3d translation = transformed.getTranslation();
-        center.add(translation);
-
-        double rotationPad = half.length() * transformed.getRotationPaddingFactor();
-        half.add(rotationPad, rotationPad, rotationPad);
-
-        return new AxisAlignedBounds(
-            new Vector3d(center.x - half.x, center.y - half.y, center.z - half.z),
-            new Vector3d(center.x + half.x, center.y + half.y, center.z + half.z)
+        Vector3d center = VectorUtils.safeAdd(
+            VectorUtils.safeScale(inner.min, 0.5d),
+            VectorUtils.safeScale(inner.max, 0.5d)
         );
+        Vector3d extent = VectorUtils.safeSubtract(inner.max, inner.min);
+        Vector3d half = VectorUtils.safeScale(extent, 0.5d);
+        half = VectorUtils.safeScale(half, transformed.getScale());
+        center = VectorUtils.safeAdd(center, transformed.getTranslation());
+        if (center == null || half == null) {
+            return null;
+        }
+
+        double rotationPad = VectorUtils.safeLength(half) * transformed.getRotationPaddingFactor();
+        if (!Double.isFinite(rotationPad)) {
+            return null;
+        }
+        Vector3d padded = VectorUtils.safeAdd(half, new Vector3d(rotationPad, rotationPad, rotationPad));
+        if (padded == null) {
+            return null;
+        }
+
+        AxisAlignedBounds result = new AxisAlignedBounds(
+            new Vector3d(center.x - padded.x, center.y - padded.y, center.z - padded.z),
+            new Vector3d(center.x + padded.x, center.y + padded.y, center.z + padded.z)
+        );
+        return result.isValid() ? result : null;
     }
 
-    private static @Nullable AxisAlignedBounds boundsForTwist(TwistedSdfData twisted) {
-        AxisAlignedBounds inner = estimate(twisted.getSource());
+    private static @Nullable AxisAlignedBounds boundsForTwist(TwistedSdfData twisted, int depth, WalkState walk) {
+        AxisAlignedBounds inner = estimate(twisted.getSource(), depth + 1, walk);
         if (inner == null || !inner.isValid()) {
             return null;
         }
@@ -204,8 +245,8 @@ public final class SdfBoundsEstimator {
         return bounds == null ? null : bounds.expanded(2.0d);
     }
 
-    private static @Nullable AxisAlignedBounds boundsForBend(BentSdfData bent) {
-        AxisAlignedBounds inner = estimate(bent.getSource());
+    private static @Nullable AxisAlignedBounds boundsForBend(BentSdfData bent, int depth, WalkState walk) {
+        AxisAlignedBounds inner = estimate(bent.getSource(), depth + 1, walk);
         if (inner == null || !inner.isValid()) {
             return null;
         }
@@ -231,10 +272,13 @@ public final class SdfBoundsEstimator {
         return a + (b - a) * t;
     }
 
-    private static AxisAlignedBounds boundsForCapsule(CapsuleSdfData capsule) {
+    private static @Nullable AxisAlignedBounds boundsForCapsule(CapsuleSdfData capsule) {
         Vector3d a = capsule.getEndpointA();
         Vector3d b = capsule.getEndpointB();
         double r = capsule.getRadius();
+        if (!Double.isFinite(r)) {
+            return null;
+        }
         Vector3d min = new Vector3d(
             Math.min(a.x, b.x) - r,
             Math.min(a.y, b.y) - r,
@@ -245,13 +289,19 @@ public final class SdfBoundsEstimator {
             Math.max(a.y, b.y) + r,
             Math.max(a.z, b.z) + r
         );
-        return new AxisAlignedBounds(min, max);
+        AxisAlignedBounds result = new AxisAlignedBounds(min, max);
+        return result.isValid() ? result : null;
     }
 
-    private static AxisAlignedBounds boxAround(Vector3d center, double halfX, double halfY, double halfZ) {
-        return new AxisAlignedBounds(
+    private static @Nullable AxisAlignedBounds boxAround(Vector3d center, double halfX, double halfY, double halfZ) {
+        if (!VectorUtils.isFinite(center)
+            || !Double.isFinite(halfX) || !Double.isFinite(halfY) || !Double.isFinite(halfZ)) {
+            return null;
+        }
+        AxisAlignedBounds result = new AxisAlignedBounds(
             new Vector3d(center.x - halfX, center.y - halfY, center.z - halfZ),
             new Vector3d(center.x + halfX, center.y + halfY, center.z + halfZ)
         );
+        return result.isValid() ? result : null;
     }
 }

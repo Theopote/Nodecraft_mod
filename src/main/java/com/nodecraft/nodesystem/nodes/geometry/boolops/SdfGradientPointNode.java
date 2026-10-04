@@ -22,7 +22,6 @@ import com.nodecraft.nodesystem.util.VectorUtils;
     order = 19
 )
 public class SdfGradientPointNode extends AbstractSdfNode {
-    private static final double EPS = 1.0e-9d;
 
     @NodeProperty(displayName = "Step", category = "SDF", order = 1)
     private double step = 0.25d;
@@ -64,34 +63,44 @@ public class SdfGradientPointNode extends AbstractSdfNode {
         }
 
         double h = stepResolved;
+        Vector3d hx = new Vector3d(h, 0.0d, 0.0d);
+        Vector3d hy = new Vector3d(0.0d, h, 0.0d);
+        Vector3d hz = new Vector3d(0.0d, 0.0d, h);
+        Vector3d plusX = VectorUtils.safeAdd(p, hx);
+        Vector3d minusX = VectorUtils.safeSubtract(p, hx);
+        Vector3d plusY = VectorUtils.safeAdd(p, hy);
+        Vector3d minusY = VectorUtils.safeSubtract(p, hy);
+        Vector3d plusZ = VectorUtils.safeAdd(p, hz);
+        Vector3d minusZ = VectorUtils.safeSubtract(p, hz);
+        if (plusX == null || minusX == null || plusY == null || minusY == null || plusZ == null || minusZ == null) {
+            writeFailure("Gradient probe point overflow");
+            return;
+        }
+
         double d = sdf.sampleDistance(p);
-        double gx = sdf.sampleDistance(new Vector3d(p.x + h, p.y, p.z))
-            - sdf.sampleDistance(new Vector3d(p.x - h, p.y, p.z));
-        double gy = sdf.sampleDistance(new Vector3d(p.x, p.y + h, p.z))
-            - sdf.sampleDistance(new Vector3d(p.x, p.y - h, p.z));
-        double gz = sdf.sampleDistance(new Vector3d(p.x, p.y, p.z + h))
-            - sdf.sampleDistance(new Vector3d(p.x, p.y, p.z - h));
+        double gx = sdf.sampleDistance(plusX) - sdf.sampleDistance(minusX);
+        double gy = sdf.sampleDistance(plusY) - sdf.sampleDistance(minusY);
+        double gz = sdf.sampleDistance(plusZ) - sdf.sampleDistance(minusZ);
 
         if (!Double.isFinite(d) || !Double.isFinite(gx) || !Double.isFinite(gy) || !Double.isFinite(gz)) {
             writeFailure("Sampled distance or gradient components are not finite");
             return;
         }
 
-        Vector3d gradient = new Vector3d(gx, gy, gz);
-        if (gradient.lengthSquared() <= EPS) {
+        Vector3d normal = VectorUtils.safeNormalize(new Vector3d(gx, gy, gz));
+        if (normal == null) {
             writeFailure("Gradient is degenerate (near-zero length)");
             return;
         }
 
-        gradient.normalize();
-        outputValues.put(OUTPUT_GRADIENT_ID, VectorUtils.toVectorPort(gradient));
+        outputValues.put(OUTPUT_GRADIENT_ID, VectorUtils.toVectorPort(normal));
         outputValues.put(OUTPUT_DISTANCE_ID, d);
         markSuccess();
     }
 
     private void writeFailure(String error) {
         putNullOutputs(OUTPUT_GRADIENT_ID);
-        putDoubleOutputs(0.0d, OUTPUT_DISTANCE_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_DISTANCE_ID);
         markInvalid(error);
     }
 }

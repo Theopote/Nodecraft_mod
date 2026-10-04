@@ -154,7 +154,10 @@ public class SdfToGeometryNode extends AbstractSdfNode {
     }
 
     public void setBoundsPadding(double boundsPadding) {
-        this.boundsPadding = Math.max(0.0d, boundsPadding);
+        if (!Double.isFinite(boundsPadding) || boundsPadding < 0.0d) {
+            return;
+        }
+        this.boundsPadding = boundsPadding;
     }
 
     @Override
@@ -174,7 +177,7 @@ public class SdfToGeometryNode extends AbstractSdfNode {
             autoBounds = value;
         }
         if (map.get("boundsPadding") instanceof Number value) {
-            boundsPadding = Math.max(0.0d, value.doubleValue());
+            setBoundsPadding(value.doubleValue());
         }
     }
 }
