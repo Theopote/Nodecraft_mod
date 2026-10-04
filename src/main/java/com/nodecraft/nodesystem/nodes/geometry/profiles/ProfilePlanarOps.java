@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PlanarRegionValidator;
+import com.nodecraft.nodesystem.util.PolygonProfileMetrics;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import org.jetbrains.annotations.Nullable;
@@ -101,11 +102,12 @@ final class ProfilePlanarOps {
         }
 
         PlaneData plane = a.plane();
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, a.outer().closedPoints().getFirst());
         GeometryFactory gf = new GeometryFactory();
 
-        Polygon pa = toJtsPolygon(a, axes, gf);
-        Polygon pb = toJtsPolygon(b, axes, gf);
+        Polygon pa = toJtsPolygon(a, ctx, gf);
+        Polygon pb = toJtsPolygon(b, ctx, gf);
         if (pa == null || pb == null) {
             return RegionOpOutcome.fail("Failed to convert regions for boolean operation");
         }
@@ -116,16 +118,21 @@ final class ProfilePlanarOps {
             case UNION -> pa.union(pb);
         };
 
-        return finalizeRegionGeometry(out, axes, plane);
+        return finalizeRegionGeometry(out, ctx, plane);
     }
 
     static RegionOpOutcome offsetRegion(
             PlanarRegionData region,
             double distance,
             int quadrantSegments,
-            int joinStyle,
+            @Nullable Integer joinStyle,
             double miterLimit
     ) {
+        String paramError = validateOffsetParams(quadrantSegments, joinStyle, miterLimit);
+        if (paramError != null) {
+            return RegionOpOutcome.fail(paramError);
+        }
+
         String regionError = PlanarRegionValidator.validate(region);
         if (regionError != null) {
             return RegionOpOutcome.fail(regionError);
@@ -136,29 +143,48 @@ final class ProfilePlanarOps {
         }
 
         PlaneData plane = region.plane();
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, region.outer().closedPoints().getFirst());
         GeometryFactory gf = new GeometryFactory();
-        Polygon polygon = toJtsPolygon(region, axes, gf);
+        Polygon polygon = toJtsPolygon(region, ctx, gf);
         if (polygon == null) {
             return RegionOpOutcome.fail("Failed to convert region for offset operation");
         }
 
         BufferParameters params = new BufferParameters();
-        params.setQuadrantSegments(Math.max(1, quadrantSegments));
+        params.setQuadrantSegments(quadrantSegments);
         params.setJoinStyle(joinStyle);
-        params.setMitreLimit(Math.max(1.0d, miterLimit));
+        params.setMitreLimit(miterLimit);
 
         Geometry out = BufferOp.bufferOp(polygon, distance, params);
-        return finalizeRegionGeometry(out, axes, plane);
+        return finalizeRegionGeometry(out, ctx, plane);
+    }
+
+    static @Nullable String validateOffsetParams(
+            int quadrantSegments,
+            @Nullable Integer joinStyle,
+            double miterLimit
+    ) {
+        if (quadrantSegments < 1 || quadrantSegments > GenerationLimits.MAX_PROFILE_VERTICES) {
+            return "Quadrant segments must be an integer from 1 to "
+                + GenerationLimits.MAX_PROFILE_VERTICES;
+        }
+        if (joinStyle == null) {
+            return "Join style must be ROUND, MITER, or BEVEL";
+        }
+        if (!Double.isFinite(miterLimit) || miterLimit < 1.0d) {
+            return "Miter limit must be a finite number >= 1";
+        }
+        return null;
     }
 
     private static RegionOpOutcome finalizeRegionGeometry(
             Geometry out,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane
     ) {
         List<PlanarRegionData> regions = new ArrayList<>();
-        String conversionError = appendPlanarRegions(out, axes, plane, regions);
+        String conversionError = appendPlanarRegions(out, ctx, plane, regions);
         if (conversionError != null) {
             return RegionOpOutcome.fail(conversionError);
         }
@@ -172,31 +198,33 @@ final class ProfilePlanarOps {
         return RegionOpOutcome.ok(regions, plane);
     }
 
-    static BooleanOp parseBooleanOp(@Nullable String raw) {
+    static @Nullable BooleanOp parseBooleanOp(@Nullable String raw) {
         if (raw == null) {
-            return BooleanOp.UNION;
+            return null;
         }
         return switch (raw.trim().toUpperCase()) {
+            case "UNION" -> BooleanOp.UNION;
             case "INTERSECTION" -> BooleanOp.INTERSECTION;
             case "DIFFERENCE" -> BooleanOp.DIFFERENCE;
-            default -> BooleanOp.UNION;
+            default -> null;
         };
     }
 
-    static int parseJoinStyle(@Nullable String raw) {
+    static @Nullable Integer parseJoinStyle(@Nullable String raw) {
         if (raw == null) {
-            return BufferParameters.JOIN_ROUND;
+            return null;
         }
         return switch (raw.trim().toUpperCase()) {
+            case "ROUND" -> BufferParameters.JOIN_ROUND;
             case "MITER", "MITRE" -> BufferParameters.JOIN_MITRE;
             case "BEVEL" -> BufferParameters.JOIN_BEVEL;
-            default -> BufferParameters.JOIN_ROUND;
+            default -> null;
         };
     }
 
     static @Nullable Polygon toJtsPolygon(
             PolygonProfileData profile,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             GeometryFactory gf
     ) {
         List<Vector3d> closed = profile.closedPoints();
@@ -205,7 +233,10 @@ final class ProfilePlanarOps {
         }
         Coordinate[] coords = new Coordinate[closed.size()];
         for (int i = 0; i < closed.size(); i++) {
-            Vector2d uv = axes.to2d(closed.get(i));
+            Vector2d uv = ctx.toLocal(closed.get(i));
+            if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
+                return null;
+            }
             coords[i] = new Coordinate(uv.x, uv.y);
         }
         return gf.createPolygon(coords);
@@ -213,10 +244,10 @@ final class ProfilePlanarOps {
 
     static @Nullable Polygon toJtsPolygon(
             PlanarRegionData region,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             GeometryFactory gf
     ) {
-        return PlanarRegionValidator.toJtsPolygonWithHoles(region.outer(), region.holes(), axes, gf);
+        return PlanarRegionValidator.toJtsPolygonWithHoles(region.outer(), region.holes(), ctx, gf);
     }
 
     /**
@@ -224,7 +255,7 @@ final class ProfilePlanarOps {
      */
     static @Nullable String fromJtsPolygon(
             Polygon polygon,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane,
             List<PolygonProfileData> out
     ) {
@@ -237,7 +268,7 @@ final class ProfilePlanarOps {
         }
         List<Vector3d> closed = new ArrayList<>(coords.length);
         for (Coordinate c : coords) {
-            closed.add(axes.from2d(new Vector2d(c.x, c.y)));
+            closed.add(ctx.fromLocal(new Vector2d(c.x, c.y)));
         }
         StringBuilder error = new StringBuilder();
         PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(closed, plane, error);
@@ -255,7 +286,7 @@ final class ProfilePlanarOps {
      */
     static @Nullable String fromJtsPolygonToRegion(
             Polygon polygon,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane,
             List<PlanarRegionData> out
     ) {
@@ -263,7 +294,7 @@ final class ProfilePlanarOps {
         if (exterior.length < 4) {
             return "Boolean result polygon is degenerate";
         }
-        List<Vector3d> outerClosed = ringToClosed(exterior, axes);
+        List<Vector3d> outerClosed = ringToClosed(exterior, ctx);
         StringBuilder error = new StringBuilder();
         PolygonProfileData outer = ProfileConstructionUtils.tryCreateProfile(outerClosed, plane, error);
         if (outer == null) {
@@ -278,7 +309,7 @@ final class ProfilePlanarOps {
             }
             error.setLength(0);
             PolygonProfileData hole = ProfileConstructionUtils.tryCreateProfile(
-                ringToClosed(holeCoords, axes), plane, error);
+                ringToClosed(holeCoords, ctx), plane, error);
             if (hole == null) {
                 return error.isEmpty() ? "Failed to convert hole ring" : error.toString();
             }
@@ -296,7 +327,7 @@ final class ProfilePlanarOps {
 
     static @Nullable String appendSimplePolygons(
             Geometry geometry,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane,
             List<PolygonProfileData> out
     ) {
@@ -304,11 +335,11 @@ final class ProfilePlanarOps {
             return null;
         }
         if (geometry instanceof Polygon polygon) {
-            return fromJtsPolygon(polygon, axes, plane, out);
+            return fromJtsPolygon(polygon, ctx, plane, out);
         }
         if (geometry instanceof GeometryCollection collection) {
             for (int i = 0; i < collection.getNumGeometries(); i++) {
-                String error = appendSimplePolygons(collection.getGeometryN(i), axes, plane, out);
+                String error = appendSimplePolygons(collection.getGeometryN(i), ctx, plane, out);
                 if (error != null) {
                     return error;
                 }
@@ -320,7 +351,7 @@ final class ProfilePlanarOps {
 
     static @Nullable String appendPlanarRegions(
             Geometry geometry,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane,
             List<PlanarRegionData> out
     ) {
@@ -328,11 +359,11 @@ final class ProfilePlanarOps {
             return null;
         }
         if (geometry instanceof Polygon polygon) {
-            return fromJtsPolygonToRegion(polygon, axes, plane, out);
+            return fromJtsPolygonToRegion(polygon, ctx, plane, out);
         }
         if (geometry instanceof GeometryCollection collection) {
             for (int i = 0; i < collection.getNumGeometries(); i++) {
-                String error = appendPlanarRegions(collection.getGeometryN(i), axes, plane, out);
+                String error = appendPlanarRegions(collection.getGeometryN(i), ctx, plane, out);
                 if (error != null) {
                     return error;
                 }
@@ -342,45 +373,42 @@ final class ProfilePlanarOps {
         return "Boolean result is not a polygon";
     }
 
-    static double area2d(PolygonProfileData profile, PlaneProjectionUtils.PlaneAxes axes) {
-        List<Vector3d> pts = profile.closedPoints();
-        double area2 = 0.0d;
-        for (int i = 0; i < pts.size() - 1; i++) {
-            Vector2d a = axes.to2d(pts.get(i));
-            Vector2d b = axes.to2d(pts.get(i + 1));
-            area2 += (a.x * b.y - b.x * a.y);
-        }
-        return area2 * 0.5d;
+    static double area2d(PolygonProfileData profile) {
+        return PolygonProfileMetrics.signedArea(profile);
     }
 
-    static double regionArea2d(PlanarRegionData region, PlaneProjectionUtils.PlaneAxes axes) {
-        double area = Math.abs(area2d(region.outer(), axes));
+    static double regionArea2d(PlanarRegionData region) {
+        double area = PolygonProfileMetrics.area(region.outer());
+        if (!Double.isFinite(area)) {
+            return Double.NaN;
+        }
         for (PolygonProfileData hole : region.holes()) {
-            area -= Math.abs(area2d(hole, axes));
+            double holeArea = PolygonProfileMetrics.area(hole);
+            if (!Double.isFinite(holeArea)) {
+                return Double.NaN;
+            }
+            area -= holeArea;
+            if (!Double.isFinite(area)) {
+                return Double.NaN;
+            }
         }
         return Math.max(0.0d, area);
     }
 
-    static PolygonProfileData selectPrimaryProfile(
-            List<PolygonProfileData> profiles,
-            PlaneProjectionUtils.PlaneAxes axes
-    ) {
+    static PolygonProfileData selectPrimaryProfile(List<PolygonProfileData> profiles) {
         PolygonProfileData primary = profiles.getFirst();
         for (PolygonProfileData profile : profiles) {
-            if (Math.abs(area2d(profile, axes)) > Math.abs(area2d(primary, axes))) {
+            if (Math.abs(area2d(profile)) > Math.abs(area2d(primary))) {
                 primary = profile;
             }
         }
         return primary;
     }
 
-    static PlanarRegionData selectPrimaryRegion(
-            List<PlanarRegionData> regions,
-            PlaneProjectionUtils.PlaneAxes axes
-    ) {
+    static PlanarRegionData selectPrimaryRegion(List<PlanarRegionData> regions) {
         PlanarRegionData primary = regions.getFirst();
         for (PlanarRegionData region : regions) {
-            if (regionArea2d(region, axes) > regionArea2d(primary, axes)) {
+            if (regionArea2d(region) > regionArea2d(primary)) {
                 primary = region;
             }
         }
@@ -418,10 +446,13 @@ final class ProfilePlanarOps {
         return null;
     }
 
-    private static List<Vector3d> ringToClosed(Coordinate[] coords, PlaneProjectionUtils.PlaneAxes axes) {
+    private static List<Vector3d> ringToClosed(
+            Coordinate[] coords,
+            PlaneProjectionUtils.PlaneProjectionContext ctx
+    ) {
         List<Vector3d> closed = new ArrayList<>(coords.length);
         for (Coordinate c : coords) {
-            closed.add(axes.from2d(new Vector2d(c.x, c.y)));
+            closed.add(ctx.fromLocal(new Vector2d(c.x, c.y)));
         }
         return PolygonProfileValidator.canonicalizeClosedPoints(closed);
     }

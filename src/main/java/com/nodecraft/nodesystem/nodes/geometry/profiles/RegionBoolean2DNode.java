@@ -75,8 +75,13 @@ public class RegionBoolean2DNode extends AbstractProfileNode {
             return;
         }
 
-        ProfilePlanarOps.RegionOpOutcome outcome = ProfilePlanarOps.booleanRegions(
-            a, b, ProfilePlanarOps.parseBooleanOp(operation));
+        ProfilePlanarOps.BooleanOp op = ProfilePlanarOps.parseBooleanOp(operation);
+        if (op == null) {
+            writeFailure("Unknown boolean operation");
+            return;
+        }
+
+        ProfilePlanarOps.RegionOpOutcome outcome = ProfilePlanarOps.booleanRegions(a, b, op);
         if (outcome.failed()) {
             writeFailure(outcome.error());
             return;

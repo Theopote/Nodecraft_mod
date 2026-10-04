@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.ProfileInputUtils;
 import org.jetbrains.annotations.Nullable;
@@ -169,9 +168,7 @@ abstract class AbstractProfileNode extends BaseNode {
             return;
         }
 
-        PlaneProjectionUtils.PlaneAxes axes =
-            PlaneProjectionUtils.PlaneAxes.from(regions.getFirst().plane());
-        PlanarRegionData primary = ProfilePlanarOps.selectPrimaryRegion(regions, axes);
+        PlanarRegionData primary = ProfilePlanarOps.selectPrimaryRegion(regions);
         List<PolygonProfileData> outers = new ArrayList<>(regions.size());
         for (PlanarRegionData region : regions) {
             outers.add(region.outer());

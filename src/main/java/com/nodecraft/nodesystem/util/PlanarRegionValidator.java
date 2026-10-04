@@ -17,7 +17,10 @@ import org.locationtech.jts.operation.valid.TopologyValidationError;
 import java.util.List;
 
 /**
- * Validation for {@link PlanarRegionData}: outer + holes on one plane (Graph V91).
+ * Validation for {@link PlanarRegionData}: outer + holes on one plane.
+ * Historical Graph V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
+ * Holes must be interior-disjoint from the outer boundary and from each other;
+ * JTS {@code touches} / boundary intersection is invalid. Concentric annuli remain valid.
  */
 public final class PlanarRegionValidator {
 
@@ -72,8 +75,10 @@ public final class PlanarRegionValidator {
         }
 
         GeometryFactory gf = new GeometryFactory();
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(resolvedPlane);
-        Polygon jtsPolygon = toJtsPolygonWithHoles(outer, holeList, axes, gf);
+        Vector3d anchor = outer.closedPoints().getFirst();
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(resolvedPlane, anchor);
+        Polygon jtsPolygon = toJtsPolygonWithHoles(outer, holeList, ctx, gf);
         if (jtsPolygon == null) {
             return "Failed to build planar region topology";
         }
@@ -87,33 +92,31 @@ public final class PlanarRegionValidator {
             return "Planar region topology is invalid";
         }
 
-        Polygon outerOnly = toJtsLoop(outer, axes, gf);
+        Polygon outerOnly = toJtsLoop(outer, ctx, gf);
         if (outerOnly == null) {
             return "Failed to convert outer profile";
         }
         for (int i = 0; i < holeList.size(); i++) {
-            Polygon holePoly = toJtsLoop(holeList.get(i), axes, gf);
+            Polygon holePoly = toJtsLoop(holeList.get(i), ctx, gf);
             if (holePoly == null) {
                 return "Failed to convert hole " + i;
             }
+            if (holePoly.touches(outerOnly) || holePoly.intersects(outerOnly.getBoundary())) {
+                return "Hole " + i + " touches the outer profile";
+            }
             if (!outerOnly.contains(holePoly.getInteriorPoint())
                     && !outerOnly.covers(holePoly)) {
-                // Prefer covers for containment of the hole polygon; fall back to centroid check.
                 if (!outerOnly.contains(holePoly.getCentroid())) {
                     return "Hole " + i + " is not inside the outer profile";
                 }
             }
             for (int j = i + 1; j < holeList.size(); j++) {
-                Polygon other = toJtsLoop(holeList.get(j), axes, gf);
+                Polygon other = toJtsLoop(holeList.get(j), ctx, gf);
                 if (other == null) {
                     return "Failed to convert hole " + j;
                 }
-                if (!holePoly.disjoint(other) && holePoly.intersects(other)
-                        && !holePoly.touches(other)) {
-                    return "Holes " + i + " and " + j + " overlap";
-                }
-                if (holePoly.intersects(other) && holePoly.intersection(other).getArea() > 1.0e-12d) {
-                    return "Holes " + i + " and " + j + " overlap";
+                if (holePoly.intersects(other)) {
+                    return "Holes " + i + " and " + j + " overlap or touch";
                 }
             }
         }
@@ -124,16 +127,16 @@ public final class PlanarRegionValidator {
     public static @Nullable Polygon toJtsPolygonWithHoles(
             PolygonProfileData outer,
             List<PolygonProfileData> holes,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             GeometryFactory gf
     ) {
-        LinearRing shell = toLinearRing(outer, axes, gf);
+        LinearRing shell = toLinearRing(outer, ctx, gf);
         if (shell == null) {
             return null;
         }
         LinearRing[] holeRings = new LinearRing[holes.size()];
         for (int i = 0; i < holes.size(); i++) {
-            holeRings[i] = toLinearRing(holes.get(i), axes, gf);
+            holeRings[i] = toLinearRing(holes.get(i), ctx, gf);
             if (holeRings[i] == null) {
                 return null;
             }
@@ -147,10 +150,10 @@ public final class PlanarRegionValidator {
 
     private static @Nullable Polygon toJtsLoop(
             PolygonProfileData profile,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             GeometryFactory gf
     ) {
-        LinearRing ring = toLinearRing(profile, axes, gf);
+        LinearRing ring = toLinearRing(profile, ctx, gf);
         if (ring == null) {
             return null;
         }
@@ -163,7 +166,7 @@ public final class PlanarRegionValidator {
 
     private static @Nullable LinearRing toLinearRing(
             PolygonProfileData profile,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             GeometryFactory gf
     ) {
         List<Vector3d> closed = profile.closedPoints();
@@ -172,7 +175,10 @@ public final class PlanarRegionValidator {
         }
         Coordinate[] coords = new Coordinate[closed.size()];
         for (int i = 0; i < closed.size(); i++) {
-            Vector2d uv = axes.to2d(closed.get(i));
+            Vector2d uv = ctx.toLocal(closed.get(i));
+            if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
+                return null;
+            }
             coords[i] = new Coordinate(uv.x, uv.y);
         }
         try {

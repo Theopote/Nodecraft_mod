@@ -8,12 +8,12 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PolygonProfileMetrics;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
-import java.util.List;
 import java.util.UUID;
-import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -67,13 +67,21 @@ public class DeconstructPolygonProfileNode extends AbstractProfileNode {
         }
 
         PlaneData plane = profile.plane();
+        Vector3d center = PolygonProfileMetrics.center(profile);
+        double area = PolygonProfileMetrics.area(profile);
+        double perimeter = PolygonProfileMetrics.perimeter(profile);
+        if (center == null || !Double.isFinite(area) || !Double.isFinite(perimeter)) {
+            writeFailure("Profile metrics are non-finite");
+            return;
+        }
+
         outputValues.put(OUTPUT_POINTS_ID, ProfilePlaneUtils.toPointList(profile.closedPoints()));
         outputValues.put(OUTPUT_BOUNDARY_ID, profile.getBoundaryPath());
         outputValues.put(OUTPUT_PLANE_ID, plane);
-        outputValues.put(OUTPUT_CENTER_ID, new PointData(profile.getCenter()));
+        outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(OUTPUT_EDGE_COUNT_ID, profile.getEdgeCount());
-        outputValues.put(OUTPUT_PERIMETER_ID, profile.getBoundary().getLength());
-        outputValues.put(OUTPUT_AREA_ID, computeArea(profile));
+        outputValues.put(OUTPUT_PERIMETER_ID, perimeter);
+        outputValues.put(OUTPUT_AREA_ID, area);
         outputValues.put(OUTPUT_NORMAL_ID, VectorUtils.toVectorPort(plane.getNormal()));
         markSuccess();
     }
@@ -82,24 +90,7 @@ public class DeconstructPolygonProfileNode extends AbstractProfileNode {
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putNullOutputs(OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID, OUTPUT_CENTER_ID, OUTPUT_NORMAL_ID);
         putIntOutputs(0, OUTPUT_EDGE_COUNT_ID);
-        putDoubleOutputs(0.0d, OUTPUT_PERIMETER_ID, OUTPUT_AREA_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_PERIMETER_ID, OUTPUT_AREA_ID);
         markInvalid(error);
-    }
-
-    private double computeArea(PolygonProfileData profile) {
-        List<Vector3d> points = profile.getUniquePoints();
-        if (points.size() < 3) {
-            return 0.0d;
-        }
-
-        Vector3d areaVector = new Vector3d();
-        for (int i = 0; i < points.size(); i++) {
-            Vector3d current = points.get(i);
-            Vector3d next = points.get((i + 1) % points.size());
-            areaVector.add(new Vector3d(current).cross(next));
-        }
-
-        Vector3d normal = profile.plane().getNormal().normalize();
-        return Math.abs(areaVector.dot(normal)) * 0.5d;
     }
 }

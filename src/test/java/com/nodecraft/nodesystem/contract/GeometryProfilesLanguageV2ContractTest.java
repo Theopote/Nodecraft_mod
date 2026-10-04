@@ -24,6 +24,7 @@ import com.nodecraft.nodesystem.nodes.geometry.profiles.RectangleOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.SectorOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ExtrudeRegionNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.PolygonProfileMetrics;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -263,6 +265,59 @@ class GeometryProfilesLanguageV2ContractTest {
         assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"),
             String.valueOf(extrude.getOutput("output_error")));
         assertInstanceOf(DifferenceGeometryData.class, extrude.getOutput("output_geometry"));
+    }
+
+    @Test
+    void planarRegionCtorValidatesAndRejectsExteriorHole() {
+        PolygonProfileData valid = rectangleProfile(10.0d, 10.0d);
+        assertNotNull(PlanarRegionData.of(valid));
+
+        PolygonProfileData exterior = new PolygonProfileData(List.of(
+            new Vector3d(20, 0, 20),
+            new Vector3d(24, 0, 20),
+            new Vector3d(24, 0, 24),
+            new Vector3d(20, 0, 24),
+            new Vector3d(20, 0, 20)
+        ), PlaneData.XZ_PLANE);
+        assertThrows(IllegalArgumentException.class,
+            () -> new PlanarRegionData(valid, List.of(exterior), valid.plane()));
+    }
+
+    @Test
+    void planarRegionRejectsHoleTouchingOuter() {
+        PolygonProfileData outer = rectangleProfile(10.0d, 10.0d);
+        PolygonProfileData touching = new PolygonProfileData(List.of(
+            new Vector3d(-5, 0, -5),
+            new Vector3d(-1, 0, -5),
+            new Vector3d(-1, 0, -1),
+            new Vector3d(-5, 0, -1),
+            new Vector3d(-5, 0, -5)
+        ), PlaneData.XZ_PLANE);
+        assertThrows(IllegalArgumentException.class,
+            () -> new PlanarRegionData(outer, List.of(touching), outer.plane()));
+    }
+
+    @Test
+    void unionSelectsLargestAreaPrimary() {
+        PolygonProfileData small = rectangleProfile(4.0d, 4.0d);
+        PolygonProfileData large = new PolygonProfileData(List.of(
+            new Vector3d(20, 0, 20),
+            new Vector3d(30, 0, 20),
+            new Vector3d(30, 0, 30),
+            new Vector3d(20, 0, 30),
+            new Vector3d(20, 0, 20)
+        ), PlaneData.XZ_PLANE);
+
+        ProfileBoolean2DNode node = new ProfileBoolean2DNode();
+        node.setNodeState(java.util.Map.of("operation", "UNION"));
+        node.setInput("input_profile_a", small);
+        node.setInput("input_profile_b", large);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+        assertEquals(2, node.getOutput("output_count"));
+        PolygonProfileData primary = (PolygonProfileData) node.getOutput("output_profile");
+        assertNotNull(primary);
+        assertEquals(PolygonProfileMetrics.area(large), PolygonProfileMetrics.area(primary), 1e-6d);
     }
 
     private static PolygonProfileData rectangleProfile(double width, double height) {

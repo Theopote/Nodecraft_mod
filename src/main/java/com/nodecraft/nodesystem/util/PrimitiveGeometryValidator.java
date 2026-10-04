@@ -275,7 +275,7 @@ public final class PrimitiveGeometryValidator {
         if (!requireFinitePoint(center)) {
             return "Box requires a finite center";
         }
-        if (halfExtents == null || !VectorUtils.isFinite(halfExtents)
+        if (!VectorUtils.isFinite(halfExtents)
                 || halfExtents.x <= 0.0d || halfExtents.y <= 0.0d || halfExtents.z <= 0.0d) {
             return "Box half-extents must be finite and > 0";
         }
@@ -293,7 +293,7 @@ public final class PrimitiveGeometryValidator {
         if (!requireFinitePoint(center)) {
             return "Ellipsoid requires a finite center";
         }
-        if (radii == null || !VectorUtils.isFinite(radii)
+        if (!VectorUtils.isFinite(radii)
                 || radii.x <= 0.0d || radii.y <= 0.0d || radii.z <= 0.0d) {
             return "Ellipsoid radii must be finite and > 0";
         }

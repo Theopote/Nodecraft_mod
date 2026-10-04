@@ -21,11 +21,14 @@ import com.nodecraft.nodesystem.nodes.geometry.profiles.CircleOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.CrossOnPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.PolygonByPointsNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ProfileBoolean2DNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.DeconstructPolygonProfileNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ProfileOffsetInPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.ResamplePolygonProfileNode;
 import com.nodecraft.nodesystem.nodes.geometry.profiles.StarPolygonOnPlaneNode;
+import com.nodecraft.nodesystem.nodes.geometry.profiles.VoronoiCells2DOnPlaneNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PolygonProfileMetrics;
 import com.nodecraft.nodesystem.util.PolygonProfileValidator;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import org.joml.Vector3d;
@@ -376,6 +379,125 @@ class GeometryProfilesLanguageContractTest {
         String description = node.getDescription().toLowerCase(Locale.ROOT);
         assertTrue(description.contains("star-shaped") || description.contains("star shaped"));
         assertTrue(description.contains("outline"));
+    }
+
+    @Test
+    void unknownBooleanOperationFailsClosed() {
+        ProfileBoolean2DNode node = new ProfileBoolean2DNode();
+        node.setNodeState(java.util.Map.of("operation", "bananas"));
+        PolygonProfileData profile = unitSquareProfile();
+        node.setInput("input_profile_a", profile);
+        node.setInput("input_profile_b", profile);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(0, node.getOutput("output_count"));
+    }
+
+    @Test
+    void unknownOffsetJoinAndZeroQuadrantsFailClosed() {
+        PolygonProfileData profile = unitSquareProfile();
+
+        ProfileOffsetInPlaneNode join = new ProfileOffsetInPlaneNode();
+        join.setNodeState(java.util.Map.of("joinStyle", "bananas", "quadrantSegments", 8, "miterLimit", 4.0d));
+        connectInput(join, "input_offset", NodeDataType.DOUBLE);
+        join.setInput("input_profile", profile);
+        join.setInput("input_offset", 1.0d);
+        join.processNode(null);
+        assertEquals(Boolean.FALSE, join.getOutput("output_valid"));
+
+        ProfileOffsetInPlaneNode segs = new ProfileOffsetInPlaneNode();
+        segs.setNodeState(java.util.Map.of("joinStyle", "ROUND", "quadrantSegments", 0, "miterLimit", 4.0d));
+        connectInput(segs, "input_offset", NodeDataType.DOUBLE);
+        segs.setInput("input_profile", profile);
+        segs.setInput("input_offset", 1.0d);
+        segs.processNode(null);
+        assertEquals(Boolean.FALSE, segs.getOutput("output_valid"));
+    }
+
+    @Test
+    void voronoiRequiresStrictPointListAndRespectsMaxSites() {
+        VoronoiCells2DOnPlaneNode ok = new VoronoiCells2DOnPlaneNode();
+        connectInput(ok, "input_sites", NodeDataType.POINT_LIST);
+        ok.setInput("input_sites", List.of(
+            new PointData(0, 0, 0),
+            new PointData(4, 0, 0),
+            new PointData(2, 0, 3)
+        ));
+        ok.processNode(null);
+        assertEquals(Boolean.TRUE, ok.getOutput("output_valid"), String.valueOf(ok.getOutput("output_error")));
+        assertTrue((Integer) ok.getOutput("output_cell_count") >= 1);
+
+        VoronoiCells2DOnPlaneNode mixed = new VoronoiCells2DOnPlaneNode();
+        connectInput(mixed, "input_sites", NodeDataType.POINT_LIST);
+        mixed.setInput("input_sites", List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(4, 0, 0),
+            new Vector3d(2, 0, 3)
+        ));
+        mixed.processNode(null);
+        assertEquals(Boolean.FALSE, mixed.getOutput("output_valid"));
+        assertEquals(0, mixed.getOutput("output_cell_count"));
+
+        VoronoiCells2DOnPlaneNode oversize = new VoronoiCells2DOnPlaneNode();
+        oversize.setNodeState(java.util.Map.of("maxSites", 2, "clipMargin", 2.0d));
+        connectInput(oversize, "input_sites", NodeDataType.POINT_LIST);
+        oversize.setInput("input_sites", List.of(
+            new PointData(0, 0, 0),
+            new PointData(4, 0, 0),
+            new PointData(2, 0, 3)
+        ));
+        oversize.processNode(null);
+        assertEquals(Boolean.FALSE, oversize.getOutput("output_valid"));
+        assertEquals(0, oversize.getOutput("output_cell_count"));
+    }
+
+    @Test
+    void deconstructValidImpliesFiniteMetrics() {
+        DeconstructPolygonProfileNode node = new DeconstructPolygonProfileNode();
+        node.setInput("input_profile", unitSquareProfile());
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        PointData center = (PointData) node.getOutput("output_center");
+        assertNotNull(center);
+        assertTrue(Double.isFinite(center.getX()) && Double.isFinite(center.getY()) && Double.isFinite(center.getZ()));
+        assertTrue(Double.isFinite((Double) node.getOutput("output_area")));
+        assertTrue(Double.isFinite((Double) node.getOutput("output_perimeter")));
+        assertEquals(16.0d, (Double) node.getOutput("output_area"), 1e-9d);
+        assertEquals(16.0d, (Double) node.getOutput("output_perimeter"), 1e-9d);
+    }
+
+    @Test
+    void resampleInfPerimeterFailsClosed() {
+        List<Vector3d> infLoop = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(Double.POSITIVE_INFINITY, 0, 0),
+            new Vector3d(0, 0, 4),
+            new Vector3d(0, 0, 0)
+        );
+        assertNull(ResamplePolygonProfileNode.resampleClosedPolyline(infLoop, 8));
+    }
+
+    @Test
+    void translatedHugeSquareAreaMatchesOriginSquare() {
+        PolygonProfileData origin = new PolygonProfileData(List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1.0e140d, 0, 0),
+            new Vector3d(1.0e140d, 0, 1.0e140d),
+            new Vector3d(0, 0, 1.0e140d),
+            new Vector3d(0, 0, 0)
+        ), PlaneData.XZ_PLANE);
+        PolygonProfileData translated = new PolygonProfileData(List.of(
+            new Vector3d(1.0e150d, 0, 1.0e150d),
+            new Vector3d(1.0e150d + 1.0e140d, 0, 1.0e150d),
+            new Vector3d(1.0e150d + 1.0e140d, 0, 1.0e150d + 1.0e140d),
+            new Vector3d(1.0e150d, 0, 1.0e150d + 1.0e140d),
+            new Vector3d(1.0e150d, 0, 1.0e150d)
+        ), PlaneData.XZ_PLANE);
+        double originArea = PolygonProfileMetrics.area(origin);
+        double translatedArea = PolygonProfileMetrics.area(translated);
+        assertTrue(Double.isFinite(originArea) && Double.isFinite(translatedArea));
+        assertEquals(originArea, translatedArea, Math.abs(originArea) * 1.0e-5d,
+            originArea + " vs " + translatedArea);
     }
 
     @Test

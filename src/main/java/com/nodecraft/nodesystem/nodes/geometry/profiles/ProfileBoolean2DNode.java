@@ -69,10 +69,16 @@ public class ProfileBoolean2DNode extends AbstractProfileNode {
             return;
         }
 
+        ProfilePlanarOps.BooleanOp op = ProfilePlanarOps.parseBooleanOp(operation);
+        if (op == null) {
+            writeFailure("Unknown boolean operation");
+            return;
+        }
+
         ProfilePlanarOps.RegionOpOutcome outcome = ProfilePlanarOps.booleanRegions(
             PlanarRegionData.of(a),
             PlanarRegionData.of(b),
-            ProfilePlanarOps.parseBooleanOp(operation));
+            op);
         if (outcome.failed()) {
             writeFailure(outcome.error());
             return;

@@ -38,6 +38,8 @@ Profile → Region → Boolean → Offset → Boolean → Extrude → Geometry
 
 `PolygonProfileData` preserves constructor / user vertex order. It does not rewrite CW/CCW. Signed area in the profile plane (relative to the plane normal) is orientation. Offset sign, extrusion direction, and hole semantics follow that orientation.
 
+**Triangulate 2D** emits triangle profiles that are CCW relative to the plane normal. Input winding is not preserved.
+
 ## PLANAR_REGION
 
 [`PlanarRegionData`](../src/main/java/com/nodecraft/nodesystem/datatypes/PlanarRegionData.java):
@@ -46,10 +48,12 @@ Profile → Region → Boolean → Offset → Boolean → Extrude → Geometry
 - `holes` : `List<PolygonProfileData>`
 - `plane` : `PlaneData`
 
-Validated by [`PlanarRegionValidator`](../src/main/java/com/nodecraft/nodesystem/util/PlanarRegionValidator.java): coplanar, JTS topology with holes, hole containment, non-overlapping holes, vertex budgets.
+Compact construction and [`PlanarRegionValidator`](../src/main/java/com/nodecraft/nodesystem/util/PlanarRegionValidator.java) require: coplanar outer/holes, JTS topology, vertex budgets, and **interior-disjoint** holes. A hole that touches the outer boundary, or two holes that touch or overlap, is invalid. Concentric annuli (strictly nested, no shared boundary) remain valid.
 
 **NodeDataType:** `PLANAR_REGION`, `PLANAR_REGION_LIST`  
 **Distinct from** Minecraft block-space `REGION`.
+
+Empty boolean difference (`A − A`) and offset collapse to nothing remain **successful empty**: `Valid=true`, count `0`. Primary output is the largest-area component when the result is non-empty.
 
 ## JTS mapping
 
@@ -90,10 +94,8 @@ Existing `geometry.solids.extrude` unchanged (`POLYGON_PROFILE` only). Extrude /
 
 ## Out of scope (P2)
 
-- `PlanarRegionData` constructor canonical invariant (validate in ctor / private + of/tryCreate)
 - Centroid vs vertex-average Center
 - Triangulate Region
-- Failure numeric `0` vs `NaN` policy
 
 ## Contract tests
 

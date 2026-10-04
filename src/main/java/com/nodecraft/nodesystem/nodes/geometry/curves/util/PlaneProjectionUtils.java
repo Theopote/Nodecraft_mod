@@ -147,6 +147,35 @@ public final class PlaneProjectionUtils {
         }
     }
 
+    /**
+     * Plane UV relative to a local origin (typically the first operand vertex)
+     * so far-from-origin profiles do not inflate JTS / shoelace coordinates.
+     */
+    public static final class PlaneProjectionContext {
+        private final PlaneAxes axes;
+        private final Vector2d localOriginUv;
+
+        private PlaneProjectionContext(PlaneAxes axes, Vector2d localOriginUv) {
+            this.axes = axes;
+            this.localOriginUv = localOriginUv;
+        }
+
+        public static PlaneProjectionContext from(PlaneData plane, @Nullable Vector3d worldAnchor) {
+            PlaneAxes axes = PlaneAxes.from(plane);
+            Vector3d anchor = worldAnchor != null ? worldAnchor : new Vector3d(plane.getPoint());
+            return new PlaneProjectionContext(axes, axes.to2d(anchor));
+        }
+
+        public Vector2d toLocal(Vector3d world) {
+            Vector2d uv = axes.to2d(world);
+            return new Vector2d(uv.x - localOriginUv.x, uv.y - localOriginUv.y);
+        }
+
+        public Vector3d fromLocal(Vector2d local) {
+            return axes.from2d(new Vector2d(local.x + localOriginUv.x, local.y + localOriginUv.y));
+        }
+    }
+
     private static Vector3d fallbackAxis(Vector3d normal) {
         Vector3d reference = Math.abs(normal.z) < 0.99d
             ? new Vector3d(0.0d, 0.0d, 1.0d)

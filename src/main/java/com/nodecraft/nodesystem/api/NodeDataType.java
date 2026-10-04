@@ -4,7 +4,6 @@ import com.nodecraft.nodesystem.datatypes.*;
 import com.nodecraft.nodesystem.util.*;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix3d;
-import org.joml.Vector3d;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -369,7 +368,7 @@ public enum NodeDataType {
             case L_SYSTEM_RULE -> value instanceof LSystemRule;
             case PLANT_BLOCK -> value instanceof PlantStructure.PlantBlock;
             case COLOR -> value instanceof ColorData;
-            case MINECRAFT_ENTITY -> net.minecraft.entity.Entity.class.isInstance(value);
+            case MINECRAFT_ENTITY -> value instanceof net.minecraft.entity.Entity;
         };
     }
 

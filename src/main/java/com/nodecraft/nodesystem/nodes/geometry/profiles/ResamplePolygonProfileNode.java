@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -76,7 +77,7 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
 
         List<Vector3d> sourceClosedPoints = profile.closedPoints();
         List<Vector3d> uniqueResampledPoints = resampleClosedPolyline(sourceClosedPoints, targetEdgeCount);
-        if (uniqueResampledPoints.size() != targetEdgeCount) {
+        if (uniqueResampledPoints == null || uniqueResampledPoints.size() != targetEdgeCount) {
             writeFailure("Failed to resample polygon profile");
             return;
         }
@@ -109,18 +110,27 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
         markInvalid(error);
     }
 
-    private List<Vector3d> resampleClosedPolyline(List<Vector3d> closedPoints, int targetCount) {
-        int segmentCount = closedPoints.size() - 1;
-        if (segmentCount < 1) {
-            return List.of();
+    /**
+     * Perimeter-distance resample. Returns {@code null} when any edge length or
+     * running perimeter is non-finite (do not lerp on Inf).
+     */
+    public static @Nullable List<Vector3d> resampleClosedPolyline(List<Vector3d> closedPoints, int targetCount) {
+        if (closedPoints == null || closedPoints.size() < 2 || targetCount < 1) {
+            return null;
         }
-
+        int segmentCount = closedPoints.size() - 1;
         double[] cumulative = new double[closedPoints.size()];
         cumulative[0] = 0.0d;
         double perimeter = 0.0d;
         for (int i = 0; i < segmentCount; i++) {
-            double segmentLength = closedPoints.get(i).distance(closedPoints.get(i + 1));
+            double segmentLength = VectorUtils.safeDistance(closedPoints.get(i), closedPoints.get(i + 1));
+            if (!Double.isFinite(segmentLength)) {
+                return null;
+            }
             perimeter += segmentLength;
+            if (!Double.isFinite(perimeter)) {
+                return null;
+            }
             cumulative[i + 1] = perimeter;
         }
         if (perimeter <= EPSILON) {
@@ -130,12 +140,23 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
         List<Vector3d> result = new ArrayList<>(targetCount);
         for (int sampleIndex = 0; sampleIndex < targetCount; sampleIndex++) {
             double targetDistance = (perimeter * sampleIndex) / targetCount;
-            result.add(sampleAtDistance(closedPoints, cumulative, targetDistance));
+            if (!Double.isFinite(targetDistance)) {
+                return null;
+            }
+            Vector3d sample = sampleAtDistance(closedPoints, cumulative, targetDistance);
+            if (sample == null) {
+                return null;
+            }
+            result.add(sample);
         }
         return List.copyOf(result);
     }
 
-    private Vector3d sampleAtDistance(List<Vector3d> closedPoints, double[] cumulative, double targetDistance) {
+    private static @Nullable Vector3d sampleAtDistance(
+            List<Vector3d> closedPoints,
+            double[] cumulative,
+            double targetDistance
+    ) {
         for (int i = 0; i < closedPoints.size() - 1; i++) {
             double startDistance = cumulative[i];
             double endDistance = cumulative[i + 1];
@@ -143,11 +164,14 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
                 Vector3d start = closedPoints.get(i);
                 Vector3d end = closedPoints.get(i + 1);
                 double segmentLength = endDistance - startDistance;
+                if (!Double.isFinite(segmentLength)) {
+                    return null;
+                }
                 if (segmentLength <= EPSILON) {
                     return new Vector3d(start);
                 }
                 double t = (targetDistance - startDistance) / segmentLength;
-                return new Vector3d(start).lerp(end, t);
+                return VectorUtils.safeLerp(start, end, t);
             }
         }
         return new Vector3d(closedPoints.getFirst());

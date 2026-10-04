@@ -4,15 +4,16 @@ import com.nodecraft.nodesystem.util.PlanarRegionValidator;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Planar region with an outer boundary and zero or more holes (Graph V91).
+ * Planar region with an outer boundary and zero or more holes.
+ * Historical Graph V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  * <p>
  * Outer and holes are each {@link PolygonProfileData} (simple closed planar loops).
  * PLANAR_REGION is the level above POLYGON_PROFILE for boolean/offset/extrude workflows.
+ * Holes must be strictly interior-disjoint from the outer boundary and from each other.
  */
 public record PlanarRegionData(
     PolygonProfileData outer,
@@ -23,6 +24,10 @@ public record PlanarRegionData(
         Objects.requireNonNull(outer, "outer");
         Objects.requireNonNull(plane, "plane");
         holes = holes == null ? List.of() : List.copyOf(holes);
+        String error = PlanarRegionValidator.validateConstruction(outer, holes, plane);
+        if (error != null) {
+            throw new IllegalArgumentException(error);
+        }
     }
 
     /** Simple region with no holes. */

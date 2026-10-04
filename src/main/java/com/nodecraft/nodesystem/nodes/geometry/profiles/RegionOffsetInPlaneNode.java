@@ -84,11 +84,18 @@ public class RegionOffsetInPlaneNode extends AbstractProfileNode {
             return;
         }
 
+        Integer join = ProfilePlanarOps.parseJoinStyle(joinStyle);
+        String paramError = ProfilePlanarOps.validateOffsetParams(quadrantSegments, join, miterLimit);
+        if (paramError != null) {
+            writeFailure(paramError);
+            return;
+        }
+
         ProfilePlanarOps.RegionOpOutcome outcome = ProfilePlanarOps.offsetRegion(
             region,
             offset,
             quadrantSegments,
-            ProfilePlanarOps.parseJoinStyle(joinStyle),
+            join,
             miterLimit);
         if (outcome.failed()) {
             writeFailure(outcome.error());

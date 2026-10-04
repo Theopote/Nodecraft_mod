@@ -114,12 +114,7 @@ public final class PolygonProfileValidator {
                 : "Polygon profile has zero area";
         }
 
-        String topologyError = validateSimpleLoopTopology(canonical, normalizedPlane);
-        if (topologyError != null) {
-            return topologyError;
-        }
-
-        return null;
+        return validateSimpleLoopTopology(canonical, normalizedPlane);
     }
 
     /**
@@ -173,12 +168,12 @@ public final class PolygonProfileValidator {
     }
 
     private static double signedArea2d(List<Vector3d> closedPoints, PlaneData plane) {
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
-        Vector2d origin = axes.to2d(closedPoints.getFirst());
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, closedPoints.getFirst());
         double area2 = 0.0d;
         for (int i = 0; i < closedPoints.size() - 1; i++) {
-            Vector2d a = localUv(axes.to2d(closedPoints.get(i)), origin);
-            Vector2d b = localUv(axes.to2d(closedPoints.get(i + 1)), origin);
+            Vector2d a = ctx.toLocal(closedPoints.get(i));
+            Vector2d b = ctx.toLocal(closedPoints.get(i + 1));
             if (!Double.isFinite(a.x) || !Double.isFinite(a.y) || !Double.isFinite(b.x) || !Double.isFinite(b.y)) {
                 return Double.NaN;
             }
@@ -195,19 +190,15 @@ public final class PolygonProfileValidator {
         return Double.isFinite(area) ? area : Double.NaN;
     }
 
-    private static Vector2d localUv(Vector2d uv, Vector2d origin) {
-        return new Vector2d(uv.x - origin.x, uv.y - origin.y);
-    }
-
     /**
      * @return null when the loop is a valid simple polygon; otherwise an actionable error
      */
     private static @Nullable String validateSimpleLoopTopology(List<Vector3d> closedPoints, PlaneData plane) {
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
-        Vector2d origin = axes.to2d(closedPoints.getFirst());
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, closedPoints.getFirst());
         Coordinate[] coords = new Coordinate[closedPoints.size()];
         for (int i = 0; i < closedPoints.size(); i++) {
-            Vector2d uv = localUv(axes.to2d(closedPoints.get(i)), origin);
+            Vector2d uv = ctx.toLocal(closedPoints.get(i));
             if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
                 return "Polygon profile contains non-finite coordinates";
             }

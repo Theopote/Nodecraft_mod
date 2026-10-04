@@ -67,10 +67,16 @@ public class ProfileTriangulate2DNode extends AbstractProfileNode {
         }
 
         PlaneData plane = profile.plane();
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, unique3d.getFirst());
         List<Vector2d> pts2d = new ArrayList<>(unique3d.size());
         for (Vector3d p : unique3d) {
-            pts2d.add(axes.to2d(p));
+            Vector2d uv = ctx.toLocal(p);
+            if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
+                writeFailure("Profile contains non-finite projected coordinates");
+                return;
+            }
+            pts2d.add(uv);
         }
 
         if (signedArea(pts2d) < 0.0d) {

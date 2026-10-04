@@ -142,6 +142,12 @@ public final class VectorUtils {
         return isFinite(result) ? result : null;
     }
 
+    /** Overflow-safe Euclidean distance. Non-finite inputs or result → NaN. */
+    public static double safeDistance(@Nullable Vector3d a, @Nullable Vector3d b) {
+        Vector3d delta = safeSubtract(a, b);
+        return delta == null ? Double.NaN : safeLength(delta);
+    }
+
     public static @Nullable Vector3d safeScale(@Nullable Vector3d vector, double scalar) {
         if (!isFinite(vector) || !isFinite(scalar)) {
             return null;

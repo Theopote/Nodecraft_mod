@@ -9,7 +9,8 @@ import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PointUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -97,31 +98,43 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
             writeFailure("Clip margin must be a non-negative finite number");
             return;
         }
-
-        List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_SITES_ID));
-        if (world.isEmpty()) {
-            writeFailure("At least one site is required");
+        if (maxSites < 1) {
+            writeFailure("Max sites must be at least 1");
             return;
         }
 
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        int siteCap = Math.min(maxSites, GenerationLimits.MAX_PROFILE_OUTPUT_PROFILES);
+        List<Vector3d> world = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_SITES_ID), siteCap);
+        if (world == null || world.isEmpty()) {
+            writeFailure("Sites must be a POINT_LIST within max sites");
+            return;
+        }
+
+        PlaneProjectionUtils.PlaneProjectionContext ctx =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, world.getFirst());
         List<Vector2d> uvSites = new ArrayList<>();
         for (Vector3d p : world) {
-            if (p == null || !Double.isFinite(p.x) || !Double.isFinite(p.y) || !Double.isFinite(p.z)) {
-                writeFailure("Sites must be finite points");
+            Vector3d proj = plane.projectPoint(p);
+            Vector2d uv = ctx.toLocal(proj);
+            if (!Double.isFinite(uv.x) || !Double.isFinite(uv.y)) {
+                writeFailure("Sites must project to finite plane coordinates");
                 return;
             }
-            Vector3d proj = plane.projectPoint(p);
-            uvSites.add(axes.to2d(proj));
+            uvSites.add(uv);
         }
 
         List<Vector2d> uniqueUv = dedupeUv(uvSites);
+        if (uniqueUv == null) {
+            writeFailure("Site coordinates overflow quantization");
+            return;
+        }
         if (uniqueUv.isEmpty()) {
             writeFailure("No unique sites remain after de-duplication");
             return;
         }
-        if (uniqueUv.size() > maxSites) {
-            writeFailure("Site count exceeds max sites (" + maxSites + ")");
+        if (uniqueUv.size() > siteCap) {
+            writeFailure("Site count exceeds max sites (" + siteCap + ")");
             return;
         }
 
@@ -146,7 +159,7 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
         GeometryFactory gf = new GeometryFactory();
         Geometry diagram = builder.getDiagram(gf);
         List<PolygonProfileData> cells = new ArrayList<>();
-        String conversionError = appendPolygons(diagram, axes, plane, cells);
+        String conversionError = appendPolygons(diagram, ctx, plane, cells);
         if (conversionError != null) {
             writeFailure(conversionError);
             return;
@@ -162,14 +175,42 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
+        cells.sort(cellOrder());
         outputValues.put(OUTPUT_CELLS_ID, new ArrayList<>(cells));
         outputValues.put(OUTPUT_CELL_COUNT_ID, cells.size());
         markSuccess();
     }
 
+    private static Comparator<PolygonProfileData> cellOrder() {
+        return Comparator
+            .comparingDouble((PolygonProfileData p) -> p.getCenter().x)
+            .thenComparingDouble(p -> p.getCenter().y)
+            .thenComparingDouble(p -> p.getCenter().z)
+            .thenComparingDouble(p -> minVertex(p).x)
+            .thenComparingDouble(p -> minVertex(p).y)
+            .thenComparingDouble(p -> minVertex(p).z);
+    }
+
+    private static Vector3d minVertex(PolygonProfileData profile) {
+        Vector3d min = profile.getUniquePoints().getFirst();
+        for (Vector3d point : profile.getUniquePoints()) {
+            int cmp = Double.compare(point.x, min.x);
+            if (cmp == 0) {
+                cmp = Double.compare(point.y, min.y);
+            }
+            if (cmp == 0) {
+                cmp = Double.compare(point.z, min.z);
+            }
+            if (cmp < 0) {
+                min = point;
+            }
+        }
+        return min;
+    }
+
     private static @Nullable String appendPolygons(
             Geometry geometry,
-            PlaneProjectionUtils.PlaneAxes axes,
+            PlaneProjectionUtils.PlaneProjectionContext ctx,
             PlaneData plane,
             List<PolygonProfileData> out
     ) {
@@ -177,11 +218,11 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
             return null;
         }
         if (geometry instanceof Polygon polygon) {
-            return ProfilePlanarOps.fromJtsPolygon(polygon, axes, plane, out);
+            return ProfilePlanarOps.fromJtsPolygon(polygon, ctx, plane, out);
         }
         if (geometry instanceof GeometryCollection collection) {
             for (int i = 0; i < collection.getNumGeometries(); i++) {
-                String error = appendPolygons(collection.getGeometryN(i), axes, plane, out);
+                String error = appendPolygons(collection.getGeometryN(i), ctx, plane, out);
                 if (error != null) {
                     return error;
                 }
@@ -197,11 +238,16 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
         markInvalid(error);
     }
 
-    private static List<Vector2d> dedupeUv(List<Vector2d> input) {
+    private static @Nullable List<Vector2d> dedupeUv(List<Vector2d> input) {
         Set<String> seen = new LinkedHashSet<>();
         List<Vector2d> out = new ArrayList<>();
         for (Vector2d p : input) {
-            String key = quant(p.x) + ":" + quant(p.y);
+            Long qx = quant(p.x);
+            Long qy = quant(p.y);
+            if (qx == null || qy == null) {
+                return null;
+            }
+            String key = qx + ":" + qy;
             if (seen.add(key)) {
                 out.add(new Vector2d(p));
             }
@@ -210,9 +256,15 @@ public class VoronoiCells2DOnPlaneNode extends AbstractProfileNode {
         return out;
     }
 
-    private static String quant(double v) {
-        long q = Math.round(v / DEDUPE_GRID);
-        return Long.toString(q);
+    private static @Nullable Long quant(double v) {
+        if (!Double.isFinite(v)) {
+            return null;
+        }
+        double scaled = v / DEDUPE_GRID;
+        if (!Double.isFinite(scaled) || Math.abs(scaled) > (double) Long.MAX_VALUE) {
+            return null;
+        }
+        return Math.round(scaled);
     }
 
     public double getClipMargin() {
