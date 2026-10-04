@@ -23,7 +23,7 @@ import java.util.UUID;
  * Generates a solid wall slab and a separate opening-volume set.
  * <p>
  * Host slab grows on the <strong>+face normal (outward)</strong> side of the
- * footprint face. That is this node's host-side rule — not a redefinition of
+ * footprint face. That is this node's host-side rule -- not a redefinition of
  * {@code BoxFace.normal}. Window/Door Array cutters are independent and centered
  * on the face plane.
  * <p>
@@ -195,7 +195,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
     }
 
     private BoxGeometryData createWall(ArchitecturalPrimitiveSupport.FaceFrame frame, double wallThickness) {
-        // Host slab occupies 0…thickness along +outward normal from the face plane.
+        // Host slab occupies 0..thickness along +outward normal from the face plane.
         Vector3d center = new Vector3d(frame.center()).fma(wallThickness / 2.0d, frame.zAxis());
         Vector3d halfExtents = new Vector3d(frame.width() / 2.0d, frame.height() / 2.0d, wallThickness / 2.0d);
         return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());
@@ -242,15 +242,10 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_OPENINGS_ID, null);
-        outputValues.put(OUTPUT_TOP_EDGE_ID, null);
-        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, null);
-        outputValues.put(OUTPUT_CENTER_LINE_ID, null);
-        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, null);
-        outputValues.put(OUTPUT_INTERIOR_FACE_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues,
+            OUTPUT_GEOMETRY_ID, OUTPUT_OPENINGS_ID, OUTPUT_TOP_EDGE_ID, OUTPUT_BOTTOM_EDGE_ID,
+            OUTPUT_CENTER_LINE_ID, OUTPUT_EXTERIOR_FACE_ID, OUTPUT_INTERIOR_FACE_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

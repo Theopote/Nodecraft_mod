@@ -85,6 +85,12 @@ class ArchitecturalTopologyV2ContractTest {
         assertEquals(1, ridges.size());
         assertNotNull(base.getOutput("output_eave_path"));
         assertNotNull(base.getOutput("output_ridge_path"));
+        @SuppressWarnings("unchecked")
+        List<?> faces = (List<?>) base.getOutput("output_faces");
+        @SuppressWarnings("unchecked")
+        List<?> slopes = (List<?>) base.getOutput("output_slope_directions");
+        assertEquals(2, faces.size());
+        assertEquals(2, slopes.size());
     }
 
     @Test

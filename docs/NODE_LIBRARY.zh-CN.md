@@ -102,7 +102,7 @@
 | Column Grid | `geometry.architectural_primitives.column_grid` | Generates a rectangular grid of columns with base/top points and placement frames | `ColumnGridNode` |
 | Railing | `geometry.architectural_primitives.railing` | Generates a railing or balustrade along a joined offset path (line or polyline) | `RailingNode` |
 | Roof Base | `geometry.architectural_primitives.roof_base` | Generates a core roof (flat, shed, or gable) from a box face footprint | `RoofBaseNode` |
-| Staircase | `geometry.architectural_primitives.staircase` | Generates architectural staircases from a path | `StaircaseNode` |
+| Staircase | `geometry.architectural_primitives.staircase` | Generates stairs: straight follows PATH; U = 180 reverse pair; double_run = 90 turn; switchback = multi-flight 180; spiral uses annular-sector treads. Height along world +Y for spiral. | `StaircaseNode` |
 | Roof Generator | `geometry.architectural_primitives.roof_generator` | Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable | `RoofGeneratorNode` |
 | Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
 | Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
@@ -112,7 +112,7 @@
 | Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
 | Beam Grid | `geometry.architectural_primitives.beam_grid` | Generates a support beam grid on a box face footprint | `BeamGridNode` |
 | Molding Profile | `geometry.architectural_primitives.molding_profile` | Generates decorative molding cross-section profiles | `MoldingProfileNode` |
-| Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates a joined wall footprint extruded along a planar path (line or polyline) | `WallAlongPathNode` |
+| Wall Along Path | `geometry.architectural_primitives.wall_along_path` | Generates a vertical wall (height along world +Y) along a planar XZ path; Offset resolves the bottom centerline | `WallAlongPathNode` |
 | Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates one structural beam box per path segment (not a continuous sweep) | `BeamAlongPathNode` |
 | Column | `geometry.architectural_primitives.column` | Generates a single column from a frame or base point | `ColumnNode` |
 | Window Frame | `geometry.architectural_primitives.window_frame` | Generates a hollow window frame solid aligned to local X/Y/Z for placement on frames | `WindowFrameNode` |

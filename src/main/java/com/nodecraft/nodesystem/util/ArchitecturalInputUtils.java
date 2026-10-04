@@ -90,7 +90,7 @@ public final class ArchitecturalInputUtils {
         return value;
     }
 
-    /** Path join policies for wall/railing offset centerlines (Graph V97). */
+    /** Path join policies for wall/railing offset centerlines. Historical Graph V97 residue. */
     public static final Set<String> PATH_JOIN_MODES = Set.of("miter", "bevel", "butt");
 
     /**

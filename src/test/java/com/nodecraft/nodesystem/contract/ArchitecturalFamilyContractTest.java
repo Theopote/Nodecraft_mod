@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.BeamAlon
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnGridNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.ColumnNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.DoorArrayNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FacadePanelArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.FloorSlabNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RailingNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBaseNode;
@@ -113,14 +114,40 @@ class ArchitecturalFamilyContractTest {
     }
 
     @Test
-    void faceArrayFamilyEmitsFramesAndCenters() {
+    void faceArrayFamilyEmitsFramesCentersAndOneBasedGridIndices() {
         assertPortType(new WindowArrayNode(), "output_frames", NodeDataType.FRAME_LIST);
         assertPortType(new WindowArrayNode(), "output_centers", NodeDataType.POINT_LIST);
+        assertPortType(new WindowArrayNode(), "output_row_indices", NodeDataType.INTEGER_LIST);
+        assertPortType(new WindowArrayNode(), "output_column_indices", NodeDataType.INTEGER_LIST);
         assertPortType(new DoorArrayNode(), "output_frames", NodeDataType.FRAME_LIST);
         assertPortType(new DoorArrayNode(), "output_centers", NodeDataType.POINT_LIST);
+        assertPortType(new DoorArrayNode(), "output_row_indices", NodeDataType.INTEGER_LIST);
+        assertPortType(new DoorArrayNode(), "output_column_indices", NodeDataType.INTEGER_LIST);
+        assertPortType(new FacadePanelArrayNode(), "output_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new FacadePanelArrayNode(), "output_centers", NodeDataType.POINT_LIST);
         assertPortType(new ColumnGridNode(), "output_frames", NodeDataType.FRAME_LIST);
         assertPortType(new ColumnGridNode(), "output_base_points", NodeDataType.POINT_LIST);
         assertPortType(new ColumnGridNode(), "output_top_points", NodeDataType.POINT_LIST);
+        assertPortType(new ColumnGridNode(), "output_row_indices", NodeDataType.INTEGER_LIST);
+        assertPortType(new ColumnGridNode(), "output_column_indices", NodeDataType.INTEGER_LIST);
+    }
+
+    @Test
+    void staircaseEmitsWalkPathAndLandingPorts() {
+        assertPortType(new StaircaseNode(), "output_step_frames", NodeDataType.FRAME_LIST);
+        assertPortType(new StaircaseNode(), "output_walk_path", NodeDataType.PATH);
+        assertPortType(new StaircaseNode(), "output_total_rise", NodeDataType.DOUBLE);
+        assertPortType(new StaircaseNode(), "output_total_run", NodeDataType.DOUBLE);
+        assertPortType(new StaircaseNode(), "output_landing_geometry", NodeDataType.GEOMETRY);
+        assertPortType(new StaircaseNode(), "output_landing_frames", NodeDataType.FRAME_LIST);
+    }
+
+    @Test
+    void roofNodesExposeFacesAndSlopeDirections() {
+        assertPortType(new RoofBaseNode(), "output_faces", NodeDataType.PLANAR_REGION_LIST);
+        assertPortType(new RoofBaseNode(), "output_slope_directions", NodeDataType.VECTOR_LIST);
+        assertPortType(new RoofGeneratorNode(), "output_faces", NodeDataType.PLANAR_REGION_LIST);
+        assertPortType(new RoofGeneratorNode(), "output_slope_directions", NodeDataType.VECTOR_LIST);
     }
 
     @Test

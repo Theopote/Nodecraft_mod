@@ -1,14 +1,14 @@
 # Architectural Primitives — Node Language v1
 
-**Status: PASSED / FROZEN** (Graph **V68**)
+**Status: PASSED / FROZEN foundation** (historical Graph **V68**; `GraphFormatVersion.CURRENT` is stamp-only **1**)
 
-Architectural Primitives v1 freezes the 18-node inventory and foundation layer: strict inputs, Valid/Error, instance budgets, and composable continuous geometry outputs.
+Architectural Primitives v1 freezes the 19-node inventory and foundation layer: strict inputs, Valid/Error, instance budgets, and composable continuous geometry outputs.
 
-**Roof topology and path join semantics** are governed separately by [node-language-v2-architectural-topology.md](node-language-v2-architectural-topology.md) (Graph V97).
+**Roof topology, wall centerline alias, and path join** are described in [node-language-v2-architectural-topology.md](node-language-v2-architectural-topology.md) (historical Graph V97 residue).
 
-**Out of scope:** `GEOMETRY_LIST`, new arch nodes, new roof types, stair algorithm rewrite, BIM/materials.
+**Out of scope:** `GEOMETRY_LIST`, new arch nodes, new roof types, BIM/materials, Wall With Openings as a Boolean node.
 
-## Inventory (order 0–17)
+## Inventory (order 0–18)
 
 | Order | Display | Id | Effect |
 |------:|---------|-----|--------|
@@ -30,8 +30,9 @@ Architectural Primitives v1 freezes the 18-node inventory and foundation layer: 
 | 15 | Wall Along Path | `geometry.architectural_primitives.wall_along_path` | `PURE` |
 | 16 | Beam Along Path | `geometry.architectural_primitives.beam_along_path` | `PURE` |
 | 17 | Column | `geometry.architectural_primitives.column` | `PURE` |
+| 18 | Window Frame | `geometry.architectural_primitives.window_frame` | `PURE` |
 
-**Removed (V68):** `floor_slab_with_beams`, `deconstruct_opening`.
+**Removed (V68 residue):** `floor_slab_with_beams`, `deconstruct_opening`.
 
 ## Shared input contract
 
@@ -42,6 +43,8 @@ Architectural Primitives v1 freezes the 18-node inventory and foundation layer: 
 - connected invalid/null → fail closed
 
 No graph-facing `Number.intValue()` repair. No permissive `resolvePositiveInt/Double`.
+
+Invalid **object** ports are `null`; invalid **list** ports are `List.of()`; count is `0`; graph-facing invalid DOUBLE is `NaN`.
 
 ## Budgets ([`GenerationLimits`](../src/main/java/com/nodecraft/nodesystem/util/GenerationLimits.java))
 
@@ -58,15 +61,16 @@ Face arrays / grids: long-first `columns × rows` before allocation. Over budget
 ## High-signal node rules
 
 - **Column:** Frame XOR Base (`PointData` only); Shape ∈ `{cylinder, box, frustum}`
-- **Roof Base:** `{flat, shed, gable}` only; Primary Eave Path
+- **Roof Base:** `{flat, shed, gable}` only; Primary Eave Path; Faces (`PLANAR_REGION_LIST`) + Slope Directions (`VECTOR_LIST`)
 - **Roof Generator:** specialty `{asymmetric_gable, hip, cross_gable, m}` only; Primary Ridge / Primary Eave Path
-- **Staircase:** layouts `{straight, u, double_run, switchback, spiral}`; exact Step Count / First Flight; no clamp; `straight` follows PATH; complex layouts use chord orientation
+- **Staircase:** layouts `{straight, u, double_run, switchback, spiral}` are distinct topologies; exact Step Count / First Flight; no clamp; `straight` follows PATH; `u` = 180 reverse pair; `double_run` = 90 turn; `switchback` = multi-flight 180; spiral treads are annular-sector prisms along world +Y; Walk Path is the resolved walking centerline
 - **Wall With Openings:** Wall + Openings separate (no auto Difference); Opening Depth unconnected → wallThickness
-- **Face arrays:** Count = total emitted instances
+- **Face arrays / Column Grid:** Frames/Centers (or base/top points); 1-based Row Indices / Column Indices (`INTEGER_LIST`); Count = total emitted instances
+- **Wall Along Path:** height along world +Y; Bottom Centerline (`output_bottom_path`) plus additive Center Line alias (`output_center_line`)
 
-## Migration (V67 → V68)
+## Migration (V67 → V68 residue)
 
-Remove nodes of types `floor_slab_with_beams` / `deconstruct_opening` and incident wires (incl. subgraphs).
+Remove nodes of types `floor_slab_with_beams` / `deconstruct_opening` and incident wires (incl. subgraphs). No `TypeConversionRegistry` / format bump: `GraphFormatVersion.CURRENT` stays stamp-only 1.
 
 ## Verification
 

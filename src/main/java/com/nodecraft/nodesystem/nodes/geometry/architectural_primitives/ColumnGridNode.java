@@ -49,6 +49,8 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
     private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_BASE_POINTS_ID = "output_base_points";
     private static final String OUTPUT_TOP_POINTS_ID = "output_top_points";
+    private static final String OUTPUT_ROW_INDICES_ID = "output_row_indices";
+    private static final String OUTPUT_COLUMN_INDICES_ID = "output_column_indices";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -69,6 +71,8 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each column base (face-aligned)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BASE_POINTS_ID, "Base Points", "Column base points on the face", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_TOP_POINTS_ID, "Top Points", "Column top points along the face normal", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ROW_INDICES_ID, "Row Indices", "1-based row index per column", NodeDataType.INTEGER_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COLUMN_INDICES_ID, "Column Indices", "1-based column index per column", NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of columns created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid column grid could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
@@ -154,6 +158,8 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_BASE_POINTS_ID, basePoints);
         outputValues.put(OUTPUT_TOP_POINTS_ID, topPoints);
+        outputValues.put(OUTPUT_ROW_INDICES_ID, buildRowIndices(layout));
+        outputValues.put(OUTPUT_COLUMN_INDICES_ID, buildColumnIndices(layout));
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -182,7 +188,7 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         });
     }
 
-    private GeometryData createColumnGeometry(
+    private @Nullable GeometryData createColumnGeometry(
         Vector3d base,
         Vector3d top,
         double radius,
@@ -190,10 +196,17 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
         String shape,
         ArchitecturalPrimitiveSupport.FaceFrame frame
     ) {
-        Vector3d axis = new Vector3d(top).sub(base);
+        Vector3d axis = com.nodecraft.nodesystem.util.VectorUtils.safeSubtract(top, base);
+        if (axis == null) {
+            return null;
+        }
         if ("box".equals(shape)) {
-            Vector3d center = new Vector3d(base).add(top).mul(0.5d);
-            Vector3d halfExtents = new Vector3d(radius, axis.length() / 2.0d, radius);
+            Vector3d center = com.nodecraft.nodesystem.util.VectorUtils.safeLerp(base, top, 0.5d);
+            double axisLength = com.nodecraft.nodesystem.util.VectorUtils.safeLength(axis);
+            if (center == null || !Double.isFinite(axisLength)) {
+                return null;
+            }
+            Vector3d halfExtents = new Vector3d(radius, axisLength / 2.0d, radius);
             return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.zAxis(), frame.yAxis());
         }
         if ("frustum".equals(shape)) {
@@ -203,12 +216,11 @@ public class ColumnGridNode extends AbstractFaceArrayNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_FRAMES_ID, null);
-        outputValues.put(OUTPUT_BASE_POINTS_ID, null);
-        outputValues.put(OUTPUT_TOP_POINTS_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues,
+            OUTPUT_FRAMES_ID, OUTPUT_BASE_POINTS_ID, OUTPUT_TOP_POINTS_ID,
+            OUTPUT_ROW_INDICES_ID, OUTPUT_COLUMN_INDICES_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

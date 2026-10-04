@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,6 +44,8 @@ public class RoofBaseNode extends BaseNode {
     private static final String OUTPUT_EAVES_ID = "output_eaves";
     private static final String OUTPUT_RIDGES_ID = "output_ridges";
     private static final String OUTPUT_VALLEYS_ID = "output_valleys";
+    private static final String OUTPUT_FACES_ID = "output_faces";
+    private static final String OUTPUT_SLOPES_ID = "output_slope_directions";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
@@ -66,6 +67,8 @@ public class RoofBaseNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_EAVES_ID, "Eaves", "All eave edge paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_RIDGES_ID, "Ridges", "All ridge paths", NodeDataType.PATH_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALLEYS_ID, "Valleys", "Valley paths when applicable", NodeDataType.PATH_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_FACES_ID, "Faces", "Roof planes as planar regions", NodeDataType.PLANAR_REGION_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SLOPES_ID, "Slope Directions", "Downslope unit vectors aligned with Faces", NodeDataType.VECTOR_LIST, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid roof could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
@@ -144,18 +147,16 @@ public class RoofBaseNode extends BaseNode {
         outputValues.put(OUTPUT_EAVES_ID, topology.eaves());
         outputValues.put(OUTPUT_RIDGES_ID, topology.ridges());
         outputValues.put(OUTPUT_VALLEYS_ID, topology.valleys());
+        outputValues.put(OUTPUT_FACES_ID, topology.faces());
+        outputValues.put(OUTPUT_SLOPES_ID, topology.slopes());
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_EAVE_PATH_ID, null);
-        outputValues.put(OUTPUT_RIDGE_PATH_ID, null);
-        outputValues.put(OUTPUT_EAVES_ID, List.of());
-        outputValues.put(OUTPUT_RIDGES_ID, List.of());
-        outputValues.put(OUTPUT_VALLEYS_ID, List.of());
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID, OUTPUT_EAVE_PATH_ID, OUTPUT_RIDGE_PATH_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues,
+            OUTPUT_EAVES_ID, OUTPUT_RIDGES_ID, OUTPUT_VALLEYS_ID, OUTPUT_FACES_ID, OUTPUT_SLOPES_ID);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

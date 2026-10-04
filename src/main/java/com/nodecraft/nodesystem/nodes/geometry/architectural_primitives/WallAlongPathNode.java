@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import net.minecraft.util.math.Vec3d;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -23,13 +24,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Joined wall footprint extruded along a planar PATH centerline (Graph V97).
+ * Joined wall footprint extruded along a planar PATH centerline.
+ * Historical Graph V97 residue. Height is always world +Y (vertical wall).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.wall_along_path",
     displayName = "Wall Along Path",
-    description = "Generates a joined wall footprint extruded along a planar path (line or polyline)",
+    description = "Generates a vertical wall (height along world +Y) along a planar XZ path; Offset resolves the bottom centerline",
     category = "geometry.architectural_primitives",
     order = 15
 )
@@ -47,6 +49,7 @@ public class WallAlongPathNode extends BaseNode {
     private static final String OUTPUT_TOP_PATH_ID = "output_top_path";
     private static final String OUTPUT_EXTERIOR_PATH_ID = "output_exterior_path";
     private static final String OUTPUT_INTERIOR_PATH_ID = "output_interior_path";
+    private static final String OUTPUT_CENTER_LINE_ID = "output_center_line";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -55,15 +58,20 @@ public class WallAlongPathNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.architectural_primitives.wall_along_path");
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Wall centerline path", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Wall height measured upward from the path", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height",
+            "Wall height along world +Y (vertical wall; path orientation does not tilt the wall)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Wall thickness across the path", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed sideways offset from the path (+ = path right)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_JOIN_ID, "Join", "Corner join policy: miter, bevel, or butt", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Joined wall extrusion along the path", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each path segment center", NodeDataType.FRAME_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BOTTOM_PATH_ID, "Bottom Path", "Wall base centerline path", NodeDataType.PATH, this));
-        addOutputPort(new BasePort(OUTPUT_TOP_PATH_ID, "Top Path", "Wall top centerline path", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_BOTTOM_PATH_ID, "Bottom Centerline",
+            "Resolved wall base centerline after Offset", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_CENTER_LINE_ID, "Center Line",
+            "Alias of Bottom Centerline (architect wall centerline)", NodeDataType.PATH, this));
+        addOutputPort(new BasePort(OUTPUT_TOP_PATH_ID, "Top Path",
+            "Bottom centerline elevated along world +Y by Height", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_EXTERIOR_PATH_ID, "Exterior Path", "Exterior face centerline path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_INTERIOR_PATH_ID, "Interior Path", "Interior face centerline path", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of extrusion pieces", NodeDataType.INTEGER, this));
@@ -73,7 +81,7 @@ public class WallAlongPathNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Generates a joined wall footprint extruded along a planar path (line or polyline)";
+        return "Generates a vertical wall (height along world +Y) along a planar XZ path";
     }
 
     @Override
@@ -138,14 +146,21 @@ public class WallAlongPathNode extends BaseNode {
         List<FrameData> placementFrames = new ArrayList<>();
         if (offsetPath != null) {
             for (ArchitecturalPathSupport.Segment segment : ArchitecturalPathSupport.segments(offsetPath)) {
-                Vector3d direction = new Vector3d(segment.end()).sub(segment.start());
-                if (direction.lengthSquared() <= 1.0e-18d) {
+                Vector3d direction = VectorUtils.safeSubtract(segment.end(), segment.start());
+                double length = VectorUtils.safeLength(direction);
+                if (!Double.isFinite(length) || length <= 1.0e-9d) {
                     continue;
                 }
                 ArchitecturalPathSupport.SampleFrame frame =
                     ArchitecturalPathSupport.frameForDirection(segment.start(), direction);
-                Vector3d mid = new Vector3d(segment.start()).lerp(segment.end(), 0.5d)
-                    .fma(height / 2.0d, frame.up());
+                Vector3d mid = VectorUtils.safeLerp(segment.start(), segment.end(), 0.5d);
+                if (mid == null) {
+                    continue;
+                }
+                mid.fma(height / 2.0d, frame.up());
+                if (!VectorUtils.isFinite(mid)) {
+                    continue;
+                }
                 placementFrames.add(new FrameData(mid, frame.tangent(), frame.up(), frame.side()));
             }
         }
@@ -157,9 +172,11 @@ public class WallAlongPathNode extends BaseNode {
         ArchitecturalPathSupport.PathGeometry interiorPath =
             ArchitecturalPathJoinSupport.offsetPath(bottomPath, -halfThickness, join);
 
+        PathData bottom = pathToPathData(bottomPath);
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(placementFrames));
-        outputValues.put(OUTPUT_BOTTOM_PATH_ID, pathToPathData(bottomPath));
+        outputValues.put(OUTPUT_BOTTOM_PATH_ID, bottom);
+        outputValues.put(OUTPUT_CENTER_LINE_ID, bottom);
         outputValues.put(OUTPUT_TOP_PATH_ID, elevatePath(bottomPath, height));
         outputValues.put(OUTPUT_EXTERIOR_PATH_ID, pathToPathData(exteriorPath));
         outputValues.put(OUTPUT_INTERIOR_PATH_ID, pathToPathData(interiorPath));
@@ -208,14 +225,11 @@ public class WallAlongPathNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_FRAMES_ID, null);
-        outputValues.put(OUTPUT_BOTTOM_PATH_ID, null);
-        outputValues.put(OUTPUT_TOP_PATH_ID, null);
-        outputValues.put(OUTPUT_EXTERIOR_PATH_ID, null);
-        outputValues.put(OUTPUT_INTERIOR_PATH_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues,
+            OUTPUT_GEOMETRY_ID, OUTPUT_BOTTOM_PATH_ID, OUTPUT_CENTER_LINE_ID,
+            OUTPUT_TOP_PATH_ID, OUTPUT_EXTERIOR_PATH_ID, OUTPUT_INTERIOR_PATH_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues, OUTPUT_FRAMES_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

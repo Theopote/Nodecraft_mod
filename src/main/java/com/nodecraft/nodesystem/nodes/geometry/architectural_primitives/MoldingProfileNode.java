@@ -352,12 +352,9 @@ public class MoldingProfileNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_PROFILE_ID, null);
-        outputValues.put(OUTPUT_POINTS_ID, List.of());
-        outputValues.put(OUTPUT_BOUNDARY_ID, null);
-        outputValues.put(OUTPUT_PLANE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_PROFILE_ID, OUTPUT_BOUNDARY_ID, OUTPUT_PLANE_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues, OUTPUT_POINTS_ID);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 
     private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) {

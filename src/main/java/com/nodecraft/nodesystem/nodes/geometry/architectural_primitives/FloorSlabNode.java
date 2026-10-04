@@ -90,10 +90,7 @@ public class FloorSlabNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_TOP_FACE_ID, null);
-        outputValues.put(OUTPUT_BOTTOM_FACE_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID, OUTPUT_TOP_FACE_ID, OUTPUT_BOTTOM_FACE_ID);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

@@ -45,6 +45,10 @@ public class FacadePanelArrayNode extends AbstractFaceArrayNode {
     private static final String INPUT_BAY_WIDTH_ID = "input_bay_width";
 
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_FRAMES_ID = "output_frames";
+    private static final String OUTPUT_CENTERS_ID = "output_centers";
+    private static final String OUTPUT_ROW_INDICES_ID = "output_row_indices";
+    private static final String OUTPUT_COLUMN_INDICES_ID = "output_column_indices";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -71,6 +75,10 @@ public class FacadePanelArrayNode extends AbstractFaceArrayNode {
             "Horizontal center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the facade panels", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each panel center (face-aligned)", NodeDataType.FRAME_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Panel center points on the face", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ROW_INDICES_ID, "Row Indices", "1-based row index per panel", NodeDataType.INTEGER_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COLUMN_INDICES_ID, "Column Indices", "1-based column index per panel", NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of panels created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid panel array could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
@@ -178,6 +186,10 @@ public class FacadePanelArrayNode extends AbstractFaceArrayNode {
             return;
         }
         outputValues.put(OUTPUT_GEOMETRY_ID, GeometryOutputUtils.packGeometry(panels));
+        outputValues.put(OUTPUT_FRAMES_ID, buildPlacementFrames(layout));
+        outputValues.put(OUTPUT_CENTERS_ID, buildCenters(layout));
+        outputValues.put(OUTPUT_ROW_INDICES_ID, buildRowIndices(layout));
+        outputValues.put(OUTPUT_COLUMN_INDICES_ID, buildColumnIndices(layout));
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -198,9 +210,10 @@ public class FacadePanelArrayNode extends AbstractFaceArrayNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues,
+            OUTPUT_FRAMES_ID, OUTPUT_CENTERS_ID, OUTPUT_ROW_INDICES_ID, OUTPUT_COLUMN_INDICES_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

@@ -91,7 +91,7 @@ public class WindowFrameNode extends BaseNode {
             return;
         }
 
-        if (barThickness * 2.0d >= frameWidth || barThickness * 2.0d >= frameHeight) {
+        if (barThickness >= frameWidth * 0.5d || barThickness >= frameHeight * 0.5d) {
             writeInvalid("Frame Thickness is too large for the outer frame size");
             return;
         }
@@ -131,8 +131,7 @@ public class WindowFrameNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

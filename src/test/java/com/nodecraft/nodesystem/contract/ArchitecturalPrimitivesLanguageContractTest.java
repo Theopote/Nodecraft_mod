@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -190,6 +191,11 @@ class ArchitecturalPrimitivesLanguageContractTest {
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("limit"));
+        assertEquals(List.of(), probe.getOutput("output_frames"));
+        assertEquals(List.of(), probe.getOutput("output_centers"));
+        assertEquals(List.of(), probe.getOutput("output_row_indices"));
+        assertEquals(List.of(), probe.getOutput("output_column_indices"));
+        assertNull(probe.getOutput("output_openings"));
     }
 
     @Test
@@ -255,6 +261,80 @@ class ArchitecturalPrimitivesLanguageContractTest {
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
         assertFalse(String.valueOf(node.getOutput("output_error")).isBlank());
+        assertEquals(List.of(), node.getOutput("output_step_frames"));
+        assertTrue(Double.isNaN((Double) node.getOutput("output_total_rise")));
+        assertNull(node.getOutput("output_walk_path"));
+    }
+
+    @Test
+    void uAndDoubleRunLayoutsAreDistinct() {
+        StaircaseProbe u = validTwoFlight("u");
+        StaircaseProbe doubleRun = validTwoFlight("double_run");
+        assertEquals(Boolean.TRUE, u.getOutput("output_valid"), String.valueOf(u.getOutput("output_error")));
+        assertEquals(Boolean.TRUE, doubleRun.getOutput("output_valid"), String.valueOf(doubleRun.getOutput("output_error")));
+        PathData uWalk = assertInstanceOf(PathData.class, u.getOutput("output_walk_path"));
+        PathData doubleWalk = assertInstanceOf(PathData.class, doubleRun.getOutput("output_walk_path"));
+        assertNotNull(uWalk.getPolyline());
+        assertNotNull(doubleWalk.getPolyline());
+        assertFalse(uWalk.getPolyline().points().equals(doubleWalk.getPolyline().points()));
+    }
+
+    @Test
+    void spiralStairsEmitPrismTreads() {
+        StaircaseProbe node = new StaircaseProbe();
+        node.connectInput("input_layout", NodeDataType.STRING);
+        node.connectInput("input_step_count", NodeDataType.INTEGER);
+        node.connectInput("input_spiral_radius", NodeDataType.DOUBLE);
+        node.connectInput("input_spiral_core_radius", NodeDataType.DOUBLE);
+        node.connectInput("input_spiral_turns", NodeDataType.DOUBLE);
+        node.connectInput("input_spiral_height", NodeDataType.DOUBLE);
+        node.connectInput("input_spiral_start_angle", NodeDataType.DOUBLE);
+        node.setInput("input_path", pathLine(0, 0, 0, 4, 0, 0));
+        node.setInput("input_layout", "spiral");
+        node.setInput("input_step_count", 8);
+        node.setInput("input_step_run", 0.4d);
+        node.setInput("input_step_rise", 0.2d);
+        node.setInput("input_width", 1.0d);
+        node.setInput("input_spiral_radius", 2.0d);
+        node.setInput("input_spiral_core_radius", 0.4d);
+        node.setInput("input_spiral_turns", 1.0d);
+        node.setInput("input_spiral_height", 1.6d);
+        node.setInput("input_spiral_start_angle", 370.0d);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+        Object geometry = node.getOutput("output_geometry");
+        assertNotNull(geometry);
+        if (geometry instanceof com.nodecraft.nodesystem.datatypes.CompositeGeometryData composite) {
+            assertTrue(composite.geometries().getFirst() instanceof com.nodecraft.nodesystem.datatypes.PrismGeometryData);
+        } else {
+            assertTrue(geometry instanceof com.nodecraft.nodesystem.datatypes.PrismGeometryData);
+        }
+        assertEquals(8, node.getOutput("output_count"));
+    }
+
+    @Test
+    void wallAlongPathExposesCenterLineAlias() {
+        INode wall = registry.createNodeInstance("geometry.architectural_primitives.wall_along_path");
+        assertPortType(wall, "output_bottom_path", NodeDataType.PATH);
+        assertPortType(wall, "output_center_line", NodeDataType.PATH);
+    }
+
+    private static StaircaseProbe validTwoFlight(String layout) {
+        StaircaseProbe node = new StaircaseProbe();
+        node.connectInput("input_layout", NodeDataType.STRING);
+        node.connectInput("input_step_count", NodeDataType.INTEGER);
+        node.connectInput("input_first_flight_steps", NodeDataType.INTEGER);
+        node.setInput("input_path", pathLine(0, 0, 0, 12, 0, 0));
+        node.setInput("input_layout", layout);
+        node.setInput("input_step_count", 8);
+        node.setInput("input_first_flight_steps", 4);
+        node.setInput("input_step_run", 0.5d);
+        node.setInput("input_step_rise", 0.2d);
+        node.setInput("input_width", 1.0d);
+        node.setInput("input_landing_length", 1.0d);
+        node.setInput("input_turn_gap", 0.2d);
+        node.processNode(null);
+        return node;
     }
 
     @Test

@@ -235,9 +235,8 @@ public class RailingNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

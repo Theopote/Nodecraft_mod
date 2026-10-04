@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
@@ -30,60 +31,67 @@ public final class ArchitecturalPrimitiveSupport {
         Vector3d c1 = corners.get(1);
         Vector3d c3 = corners.get(3);
 
-        Vector3d xAxis = new Vector3d(c1).sub(c0);
-        Vector3d yHint = new Vector3d(c3).sub(c0);
-        double faceWidth = xAxis.length();
-        double faceHeight = yHint.length();
-        if (faceWidth <= EPSILON || faceHeight <= EPSILON) {
+        Vector3d xAxis = VectorUtils.safeSubtract(c1, c0);
+        Vector3d yHint = VectorUtils.safeSubtract(c3, c0);
+        double faceWidth = VectorUtils.safeLength(xAxis);
+        double faceHeight = VectorUtils.safeLength(yHint);
+        if (!Double.isFinite(faceWidth) || !Double.isFinite(faceHeight)
+                || faceWidth <= EPSILON || faceHeight <= EPSILON) {
             return null;
         }
 
-        xAxis.normalize();
-        Vector3d zAxis = new Vector3d(xAxis).cross(yHint);
-        if (zAxis.lengthSquared() <= EPSILON * EPSILON) {
+        xAxis = VectorUtils.safeNormalize(xAxis);
+        if (xAxis == null) {
             return null;
         }
-        zAxis.normalize();
+        Vector3d zAxis = VectorUtils.safeCross(xAxis, yHint);
+        zAxis = VectorUtils.safeNormalize(zAxis);
+        if (zAxis == null) {
+            return null;
+        }
         // FaceFrame.zAxis matches BoxFace.normal: always outward (leaving the box).
         if (zAxis.dot(face.getNormal()) < 0.0d) {
             zAxis.negate();
         }
 
-        Vector3d yAxis = new Vector3d(zAxis).cross(xAxis);
-        if (yAxis.lengthSquared() <= EPSILON * EPSILON) {
+        Vector3d yAxis = VectorUtils.safeNormalize(VectorUtils.safeCross(zAxis, xAxis));
+        if (yAxis == null) {
             return null;
         }
-        yAxis.normalize();
 
         return new FaceFrame(face.getCenter(), xAxis, yAxis, zAxis, faceWidth, faceHeight);
     }
 
     public static @Nullable LineFrame resolveLineFrame(Vec3d start, Vec3d end) {
-        Vector3d direction = new Vector3d(end.x - start.x, end.y - start.y, end.z - start.z);
-        double length = direction.length();
-        if (length <= EPSILON) {
+        Vector3d direction = VectorUtils.safeSubtract(
+            new Vector3d(end.x, end.y, end.z),
+            new Vector3d(start.x, start.y, start.z));
+        double length = VectorUtils.safeLength(direction);
+        if (!Double.isFinite(length) || length <= EPSILON) {
             return null;
         }
 
-        Vector3d runAxis = direction.normalize(new Vector3d());
+        Vector3d runAxis = VectorUtils.safeNormalize(direction);
+        if (runAxis == null) {
+            return null;
+        }
         Vector3d upHint = Math.abs(runAxis.y) < 0.99d
             ? new Vector3d(0.0d, 1.0d, 0.0d)
             : new Vector3d(0.0d, 0.0d, 1.0d);
 
-        Vector3d sideAxis = new Vector3d(runAxis).cross(upHint);
-        if (sideAxis.lengthSquared() <= EPSILON * EPSILON) {
-            sideAxis.set(1.0d, 0.0d, 0.0d).cross(runAxis);
+        Vector3d sideAxis = VectorUtils.safeCross(runAxis, upHint);
+        if (VectorUtils.safeLength(sideAxis) <= EPSILON) {
+            sideAxis = VectorUtils.safeCross(new Vector3d(1.0d, 0.0d, 0.0d), runAxis);
         }
-        if (sideAxis.lengthSquared() <= EPSILON * EPSILON) {
+        sideAxis = VectorUtils.safeNormalize(sideAxis);
+        if (sideAxis == null) {
             return null;
         }
-        sideAxis.normalize();
 
-        Vector3d upAxis = new Vector3d(sideAxis).cross(runAxis);
-        if (upAxis.lengthSquared() <= EPSILON * EPSILON) {
+        Vector3d upAxis = VectorUtils.safeNormalize(VectorUtils.safeCross(sideAxis, runAxis));
+        if (upAxis == null) {
             return null;
         }
-        upAxis.normalize();
 
         return new LineFrame(
             new Vector3d(start.x, start.y, start.z),

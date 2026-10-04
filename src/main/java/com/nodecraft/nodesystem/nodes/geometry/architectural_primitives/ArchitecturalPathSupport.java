@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.geometry.architectural_primitives;
 
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -176,7 +177,8 @@ final class ArchitecturalPathSupport {
         for (int i = 0; i < count; i++) {
             Vector3d a = path.unique().get(i);
             Vector3d b = path.unique().get((i + 1) % path.unique().size());
-            if (a.distanceSquared(b) > EPSILON * EPSILON) {
+            Vector3d dir = VectorUtils.safeSubtract(b, a);
+            if (VectorUtils.safeLength(dir) > EPSILON) {
                 result.add(new Segment(new Vector3d(a), new Vector3d(b)));
             }
         }
@@ -215,50 +217,47 @@ final class ArchitecturalPathSupport {
         }
         Vector3d prev = PathUtils.sampleAtDistance(path.unique(), path.closed(), path.cumulative(), back);
         Vector3d next = PathUtils.sampleAtDistance(path.unique(), path.closed(), path.cumulative(), forward);
-        Vector3d tangent = new Vector3d(next).sub(prev);
-        if (tangent.lengthSquared() <= EPSILON * EPSILON) {
-            // Fall back to first non-degenerate segment direction.
+        Vector3d tangent = VectorUtils.safeSubtract(next, prev);
+        if (VectorUtils.safeLength(tangent) <= EPSILON) {
             for (Segment segment : segments(path)) {
-                Vector3d dir = new Vector3d(segment.end()).sub(segment.start());
-                if (dir.lengthSquared() > EPSILON * EPSILON) {
-                    return dir.normalize();
+                Vector3d dir = VectorUtils.safeSubtract(segment.end(), segment.start());
+                Vector3d normalized = VectorUtils.safeNormalize(dir);
+                if (normalized != null) {
+                    return normalized;
                 }
             }
             return new Vector3d(1.0d, 0.0d, 0.0d);
         }
-        return tangent.normalize();
+        Vector3d normalized = VectorUtils.safeNormalize(tangent);
+        return normalized != null ? normalized : new Vector3d(1.0d, 0.0d, 0.0d);
     }
 
     private static SampleFrame buildFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
-        Vector3d run = new Vector3d(tangent);
-        if (run.lengthSquared() <= EPSILON * EPSILON) {
-            run.set(1.0d, 0.0d, 0.0d);
-        } else {
-            run.normalize();
+        Vector3d run = VectorUtils.safeNormalize(tangent);
+        if (run == null) {
+            run = new Vector3d(1.0d, 0.0d, 0.0d);
         }
 
-        Vector3d preferredUp = upHint != null && upHint.lengthSquared() > EPSILON * EPSILON
-            ? new Vector3d(upHint).normalize()
-            : new Vector3d(WORLD_UP);
+        Vector3d preferredUp = VectorUtils.safeNormalize(upHint);
+        if (preferredUp == null) {
+            preferredUp = new Vector3d(WORLD_UP);
+        }
 
-        Vector3d side = new Vector3d(run).cross(preferredUp);
-        if (side.lengthSquared() <= EPSILON * EPSILON) {
+        Vector3d side = VectorUtils.safeCross(run, preferredUp);
+        if (VectorUtils.safeLength(side) <= EPSILON) {
             Vector3d fallbackUp = Math.abs(run.y) < 0.99d
                 ? new Vector3d(WORLD_UP)
                 : new Vector3d(1.0d, 0.0d, 0.0d);
-            side = new Vector3d(run).cross(fallbackUp);
+            side = VectorUtils.safeCross(run, fallbackUp);
         }
-        if (side.lengthSquared() <= EPSILON * EPSILON) {
-            side.set(1.0d, 0.0d, 0.0d);
-        } else {
-            side.normalize();
+        side = VectorUtils.safeNormalize(side);
+        if (side == null) {
+            side = new Vector3d(1.0d, 0.0d, 0.0d);
         }
 
-        Vector3d up = new Vector3d(side).cross(run);
-        if (up.lengthSquared() <= EPSILON * EPSILON) {
-            up.set(preferredUp);
-        } else {
-            up.normalize();
+        Vector3d up = VectorUtils.safeNormalize(VectorUtils.safeCross(side, run));
+        if (up == null) {
+            up = preferredUp;
         }
 
         return new SampleFrame(new Vector3d(origin), run, up, side);

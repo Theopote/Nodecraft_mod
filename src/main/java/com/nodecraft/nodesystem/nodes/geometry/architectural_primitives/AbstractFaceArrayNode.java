@@ -109,7 +109,8 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     ) {
         double availableWidth = frame.width() - 2.0d * margin;
         double availableHeight = frame.height() - 2.0d * margin;
-        if (availableWidth < elementWidth || availableHeight < elementHeight) {
+        if (!ArchitecturalNodeOutputs.allFinite(availableWidth, availableHeight, elementWidth, elementHeight, margin)
+                || availableWidth < elementWidth || availableHeight < elementHeight) {
             return null;
         }
 
@@ -137,6 +138,9 @@ abstract class AbstractFaceArrayNode extends BaseNode {
             case TOP -> frame.height() / 2.0d - margin - elementHeight / 2.0d;
             case BOTTOM -> -frame.height() / 2.0d + margin + elementHeight / 2.0d;
         };
+        if (!ArchitecturalNodeOutputs.allFinite(spacingX, spacingY, startX, startY, elementWidth, elementHeight)) {
+            return null;
+        }
         return new FaceArrayLayout(frame, columns, rows, elementWidth, elementHeight, spacingX, spacingY, startX, startY, verticalAnchor);
     }
 
@@ -161,6 +165,9 @@ abstract class AbstractFaceArrayNode extends BaseNode {
                     yield Double.NEGATIVE_INFINITY;
                 }
                 double required = count * elementSize + (count - 1) * gapOrBay;
+                if (!ArchitecturalNodeOutputs.allFinite(required, count * elementSize, (count - 1) * gapOrBay)) {
+                    yield Double.NEGATIVE_INFINITY;
+                }
                 yield required > availableSize + EPSILON ? Double.NEGATIVE_INFINITY : gapOrBay;
             }
             case BAY -> {
@@ -168,6 +175,9 @@ abstract class AbstractFaceArrayNode extends BaseNode {
                     yield Double.NEGATIVE_INFINITY;
                 }
                 double required = elementSize + (count - 1) * bayWidthForBayMode;
+                if (!ArchitecturalNodeOutputs.allFinite(required, (count - 1) * bayWidthForBayMode)) {
+                    yield Double.NEGATIVE_INFINITY;
+                }
                 yield required > availableSize + EPSILON ? Double.NEGATIVE_INFINITY : bayWidthForBayMode - elementSize;
             }
         };
@@ -185,6 +195,12 @@ abstract class AbstractFaceArrayNode extends BaseNode {
                 : layout.startY() + row * (layout.elementHeight() + layout.spacingY());
             for (int column = 0; column < layout.columns(); column++) {
                 double offsetX = layout.startX() + column * (layout.elementWidth() + layout.spacingX());
+                Vector3d center = new Vector3d(layout.frame().center())
+                    .fma(offsetX, layout.frame().xAxis())
+                    .fma(offsetY, layout.frame().yAxis());
+                if (!com.nodecraft.nodesystem.util.VectorUtils.isFinite(center)) {
+                    return List.of();
+                }
                 placements.add(new FaceArrayPlacement(layout, row, column, offsetX, offsetY));
             }
         }
@@ -245,6 +261,22 @@ abstract class AbstractFaceArrayNode extends BaseNode {
             centers.add(new PointData(placement.centerOnFace()));
         }
         return List.copyOf(centers);
+    }
+
+    protected List<Integer> buildRowIndices(FaceArrayLayout layout) {
+        List<Integer> rows = new ArrayList<>();
+        for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
+            rows.add(placement.row() + 1);
+        }
+        return List.copyOf(rows);
+    }
+
+    protected List<Integer> buildColumnIndices(FaceArrayLayout layout) {
+        List<Integer> columns = new ArrayList<>();
+        for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
+            columns.add(placement.column() + 1);
+        }
+        return List.copyOf(columns);
     }
 
     @FunctionalInterface

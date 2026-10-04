@@ -116,8 +116,8 @@ public class ColumnNode extends BaseNode {
 
         Vector3d base = basis.base();
         Vector3d top = new Vector3d(base).fma(height, basis.up());
-        GeometryData geometry = GeometryOutputUtils.packGeometry(List.of(
-            createColumnGeometry(base, top, radius, topScale, shape, basis)));
+        GeometryData column = createColumnGeometry(base, top, radius, topScale, shape, basis);
+        GeometryData geometry = column == null ? null : GeometryOutputUtils.packGeometry(List.of(column));
         if (geometry == null) {
             writeInvalid("Could not generate column geometry");
             return;
@@ -166,7 +166,7 @@ public class ColumnNode extends BaseNode {
         return new ResolvedBasis(base, x, up, z);
     }
 
-    private GeometryData createColumnGeometry(
+    private @Nullable GeometryData createColumnGeometry(
         Vector3d base,
         Vector3d top,
         double radius,
@@ -175,8 +175,12 @@ public class ColumnNode extends BaseNode {
         ResolvedBasis basis
     ) {
         if ("box".equals(shape)) {
-            Vector3d center = new Vector3d(base).add(top).mul(0.5d);
-            double height = base.distance(top);
+            Vector3d center = com.nodecraft.nodesystem.util.VectorUtils.safeLerp(base, top, 0.5d);
+            double height = com.nodecraft.nodesystem.util.VectorUtils.safeLength(
+                com.nodecraft.nodesystem.util.VectorUtils.safeSubtract(top, base));
+            if (center == null || !Double.isFinite(height)) {
+                return null;
+            }
             Vector3d halfExtents = new Vector3d(radius, height / 2.0d, radius);
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, basis.x(), basis.up(), basis.z());
@@ -188,12 +192,8 @@ public class ColumnNode extends BaseNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_GEOMETRY_ID, null);
-        outputValues.put(OUTPUT_BASE_ID, null);
-        outputValues.put(OUTPUT_TOP_ID, null);
-        outputValues.put(OUTPUT_FRAME_ID, null);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_GEOMETRY_ID, OUTPUT_BASE_ID, OUTPUT_TOP_ID, OUTPUT_FRAME_ID);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 
     private record ResolvedBasis(Vector3d base, Vector3d x, Vector3d up, Vector3d z) {

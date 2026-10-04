@@ -4,8 +4,14 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.datatypes.PrismGeometryData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
+import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -54,16 +60,28 @@ final class RoofGeometrySupport {
     record RoofTopology(
         List<PathData> eaves,
         List<PathData> ridges,
-        List<PathData> valleys
+        List<PathData> valleys,
+        List<PlanarRegionData> faces,
+        List<VectorData> slopes
     ) {
         RoofTopology {
             eaves = eaves == null ? List.of() : List.copyOf(eaves);
             ridges = ridges == null ? List.of() : List.copyOf(ridges);
             valleys = valleys == null ? List.of() : List.copyOf(valleys);
+            faces = faces == null ? List.of() : List.copyOf(faces);
+            slopes = slopes == null ? List.of() : List.copyOf(slopes);
+        }
+
+        RoofTopology(List<PathData> eaves, List<PathData> ridges, List<PathData> valleys) {
+            this(eaves, ridges, valleys, List.of(), List.of());
+        }
+
+        RoofTopology withFaces(List<PlanarRegionData> faces, List<VectorData> slopes) {
+            return new RoofTopology(eaves(), ridges(), valleys(), faces, slopes);
         }
 
         static RoofTopology empty() {
-            return new RoofTopology(List.of(), List.of(), List.of());
+            return new RoofTopology(List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         @Nullable PathData primaryEave() {
@@ -119,6 +137,11 @@ final class RoofGeometrySupport {
         }
         double roofWidth = layout.frame().width() + 2.0d * layout.overhang();
         double roofDepth = layout.frame().height() + 2.0d * layout.overhang();
+        if (!ArchitecturalNodeOutputs.allFinite(
+            roofWidth, roofDepth, layout.height(), layout.thickness(), layout.overhang(), layout.eaveDrop()
+        )) {
+            return RoofResult.invalid();
+        }
         Vector3d eaveCenter = new Vector3d(layout.frame().center()).fma(-layout.eaveDrop(), layout.frame().zAxis());
 
         GeometryData geometry = switch (layout.roofType()) {
@@ -148,7 +171,17 @@ final class RoofGeometrySupport {
                 layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height(), layout.ridgeDirection());
             default -> RoofTopology.empty();
         };
-        return new RoofResult(geometry, topology);
+        RoofFaceBundle faces = switch (layout.roofType()) {
+            case "flat" -> flatFaces(layout.frame(), eaveCenter, roofWidth, roofDepth, layout.thickness());
+            case "shed" -> shedFaces(layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height());
+            case "gable" -> gableFaces(
+                layout.frame(), eaveCenter, roofWidth, roofDepth, layout.height(), layout.ridgeDirection());
+            default -> RoofFaceBundle.empty();
+        };
+        if (faces == null) {
+            return RoofResult.invalid();
+        }
+        return new RoofResult(geometry, topology.withFaces(faces.faces(), faces.slopes()));
     }
 
     static RoofResult buildSpecialtyRoof(
@@ -159,6 +192,9 @@ final class RoofGeometrySupport {
         SpecialtyRoofParams params
     ) {
         if (frame == null || params == null) {
+            return RoofResult.invalid();
+        }
+        if (!ArchitecturalNodeOutputs.allFinite(roofWidth, roofDepth, params.height())) {
             return RoofResult.invalid();
         }
         return switch (params.roofType()) {
@@ -206,11 +242,14 @@ final class RoofGeometrySupport {
         }
 
         Vector3d alongSlope = new Vector3d(highOuterTop).sub(lowOuterTop);
-        Vector3d slopeNormal = new Vector3d(frame.xAxis()).cross(alongSlope, new Vector3d());
-        if (slopeNormal.lengthSquared() <= ROOF_EPSILON * ROOF_EPSILON) {
-            slopeNormal.set(frame.zAxis());
+        Vector3d slopeNormal = VectorUtils.safeCross(frame.xAxis(), alongSlope);
+        if (slopeNormal == null || !VectorUtils.isNonZero(slopeNormal)) {
+            slopeNormal = new Vector3d(frame.zAxis());
         } else {
-            slopeNormal.normalize();
+            slopeNormal = VectorUtils.safeNormalize(slopeNormal);
+            if (slopeNormal == null) {
+                slopeNormal = new Vector3d(frame.zAxis());
+            }
         }
         if (slopeNormal.dot(frame.zAxis()) < 0.0d) {
             slopeNormal.negate();
@@ -560,11 +599,14 @@ final class RoofGeometrySupport {
             return null;
         }
 
-        Vector3d direction = new Vector3d(primaryPlane.normal()).cross(secondaryPlane.normal(), new Vector3d());
-        if (direction.lengthSquared() <= 1.0e-18d) {
+        Vector3d direction = VectorUtils.safeCross(primaryPlane.normal(), secondaryPlane.normal());
+        if (direction == null || !VectorUtils.isNonZero(direction)) {
             return null;
         }
-        direction.normalize();
+        direction = VectorUtils.safeNormalize(direction);
+        if (direction == null) {
+            return null;
+        }
 
         Vector3d pointOnLine = primaryPlane.intersectionPointWith(secondaryPlane, direction);
         if (pointOnLine == null) {
@@ -731,27 +773,161 @@ final class RoofGeometrySupport {
         ));
     }
 
+    private record RoofFaceBundle(List<PlanarRegionData> faces, List<VectorData> slopes) {
+        static RoofFaceBundle empty() {
+            return new RoofFaceBundle(List.of(), List.of());
+        }
+    }
+
+    private static @Nullable RoofFaceBundle flatFaces(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
+        double thickness
+    ) {
+        Vector3d hx = new Vector3d(frame.xAxis()).mul(roofWidth / 2.0d);
+        Vector3d hy = new Vector3d(frame.yAxis()).mul(roofDepth / 2.0d);
+        Vector3d top = new Vector3d(eaveCenter).fma(thickness, frame.zAxis());
+        Vector3d c00 = new Vector3d(top).sub(hx).sub(hy);
+        Vector3d c10 = new Vector3d(top).add(hx).sub(hy);
+        Vector3d c11 = new Vector3d(top).add(hx).add(hy);
+        Vector3d c01 = new Vector3d(top).sub(hx).add(hy);
+        PlanarRegionData face = tryQuadRegion(c00, c10, c11, c01);
+        VectorData slope = VectorData.canonical(new Vector3d());
+        if (face == null || slope == null) {
+            return null;
+        }
+        return new RoofFaceBundle(List.of(face), List.of(slope));
+    }
+
+    private static @Nullable RoofFaceBundle shedFaces(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
+        double height
+    ) {
+        Vector3d low = new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis());
+        Vector3d high = new Vector3d(eaveCenter)
+            .fma(roofDepth / 2.0d, frame.yAxis())
+            .fma(height, frame.zAxis());
+        Vector3d extrusion = new Vector3d(frame.xAxis()).mul(roofWidth);
+        Vector3d lowEnd = new Vector3d(low).add(extrusion);
+        Vector3d highEnd = new Vector3d(high).add(extrusion);
+        PlanarRegionData face = tryQuadRegion(low, high, highEnd, lowEnd);
+        VectorData slope = slopeToward(high, low);
+        if (face == null || slope == null) {
+            return null;
+        }
+        return new RoofFaceBundle(List.of(face), List.of(slope));
+    }
+
+    private static @Nullable RoofFaceBundle gableFaces(
+        ArchitecturalPrimitiveSupport.FaceFrame frame,
+        Vector3d eaveCenter,
+        double roofWidth,
+        double roofDepth,
+        double height,
+        String ridgeDirection
+    ) {
+        Vector3d peak = new Vector3d(eaveCenter).fma(height, frame.zAxis());
+        if ("y".equals(ridgeDirection)) {
+            Vector3d left = new Vector3d(eaveCenter).fma(-roofWidth / 2.0d, frame.xAxis());
+            Vector3d right = new Vector3d(eaveCenter).fma(roofWidth / 2.0d, frame.xAxis());
+            Vector3d extrusion = new Vector3d(frame.yAxis()).mul(roofDepth);
+            return twoSlopeFaces(left, peak, right, extrusion);
+        }
+        Vector3d low = new Vector3d(eaveCenter).fma(-roofDepth / 2.0d, frame.yAxis());
+        Vector3d high = new Vector3d(eaveCenter).fma(roofDepth / 2.0d, frame.yAxis());
+        Vector3d extrusion = new Vector3d(frame.xAxis()).mul(roofWidth);
+        return twoSlopeFaces(low, peak, high, extrusion);
+    }
+
+    private static @Nullable RoofFaceBundle twoSlopeFaces(
+        Vector3d left,
+        Vector3d peak,
+        Vector3d right,
+        Vector3d extrusion
+    ) {
+        Vector3d leftEnd = new Vector3d(left).add(extrusion);
+        Vector3d peakEnd = new Vector3d(peak).add(extrusion);
+        Vector3d rightEnd = new Vector3d(right).add(extrusion);
+        PlanarRegionData leftFace = tryQuadRegion(left, peak, peakEnd, leftEnd);
+        PlanarRegionData rightFace = tryQuadRegion(peak, right, rightEnd, peakEnd);
+        VectorData leftSlope = slopeToward(peak, left);
+        VectorData rightSlope = slopeToward(peak, right);
+        if (leftFace == null || rightFace == null || leftSlope == null || rightSlope == null) {
+            return null;
+        }
+        return new RoofFaceBundle(List.of(leftFace, rightFace), List.of(leftSlope, rightSlope));
+    }
+
+    private static @Nullable VectorData slopeToward(Vector3d from, Vector3d to) {
+        Vector3d direction = VectorUtils.safeSubtract(to, from);
+        Vector3d unit = VectorUtils.safeNormalize(direction);
+        if (unit == null) {
+            return VectorData.canonical(new Vector3d());
+        }
+        return VectorData.canonical(unit);
+    }
+
+    private static @Nullable PlanarRegionData tryQuadRegion(Vector3d a, Vector3d b, Vector3d c, Vector3d d) {
+        PlanarRegionData region = tryClosedLoop(List.of(a, b, c, d, new Vector3d(a)));
+        if (region != null) {
+            return region;
+        }
+        return tryClosedLoop(List.of(a, d, c, b, new Vector3d(a)));
+    }
+
+    private static @Nullable PlanarRegionData tryClosedLoop(List<Vector3d> points) {
+        if (points.size() < 4) {
+            return null;
+        }
+        Vector3d ab = VectorUtils.safeSubtract(points.get(1), points.get(0));
+        Vector3d ac = VectorUtils.safeSubtract(points.get(2), points.get(0));
+        Vector3d normal = VectorUtils.safeNormalize(VectorUtils.safeCross(ab, ac));
+        if (normal == null) {
+            return null;
+        }
+        PlaneData plane = PlaneData.canonical(points.get(0), normal);
+        PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(points, plane, null);
+        if (profile == null) {
+            return null;
+        }
+        return PlanarRegionData.tryCreate(profile, List.of(), plane, null);
+    }
+
     private record Plane(Vector3d normal, double distance) {
         private static @Nullable Plane fromPoints(Vector3d a, Vector3d b, Vector3d c) {
             Vector3d ab = new Vector3d(b).sub(a);
             Vector3d ac = new Vector3d(c).sub(a);
-            Vector3d normal = ab.cross(ac, new Vector3d());
-            if (normal.lengthSquared() <= 1.0e-18d) {
+            Vector3d normal = VectorUtils.safeCross(ab, ac);
+            if (normal == null || !VectorUtils.isNonZero(normal)) {
                 return null;
             }
-            normal.normalize();
+            normal = VectorUtils.safeNormalize(normal);
+            if (normal == null) {
+                return null;
+            }
             double distance = normal.dot(a);
             return new Plane(normal, distance);
         }
 
         private @Nullable Vector3d intersectionPointWith(Plane other, Vector3d directionHint) {
-            Vector3d direction = new Vector3d(normal).cross(other.normal, new Vector3d());
-            if (direction.lengthSquared() <= 1.0e-18d) {
+            Vector3d direction = VectorUtils.safeCross(normal, other.normal);
+            if (direction == null || !VectorUtils.isNonZero(direction)) {
                 return null;
             }
-            direction.normalize();
+            direction = VectorUtils.safeNormalize(direction);
+            if (direction == null) {
+                return null;
+            }
             Vector3d n1xN2 = direction;
-            Vector3d n2xN1 = new Vector3d(other.normal).cross(normal, new Vector3d());
+            Vector3d n2xN1 = VectorUtils.safeCross(other.normal, normal);
+            if (n2xN1 == null) {
+                return null;
+            }
             Vector3d point = new Vector3d(n1xN2).mul(distance);
             point.fma(other.distance, n2xN1);
             double denom = n1xN2.dot(n2xN1);

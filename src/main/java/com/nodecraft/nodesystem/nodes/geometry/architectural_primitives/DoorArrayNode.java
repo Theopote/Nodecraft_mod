@@ -47,6 +47,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     private static final String OUTPUT_OPENINGS_ID = "output_openings";
     private static final String OUTPUT_FRAMES_ID = "output_frames";
     private static final String OUTPUT_CENTERS_ID = "output_centers";
+    private static final String OUTPUT_ROW_INDICES_ID = "output_row_indices";
+    private static final String OUTPUT_COLUMN_INDICES_ID = "output_column_indices";
     private static final String OUTPUT_COUNT_ID = "output_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
@@ -76,6 +78,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
             "Opening boxes for Difference (centered on the face; thickness = Depth)", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_FRAMES_ID, "Frames", "Placement frames at each door center (face-aligned)", NodeDataType.FRAME_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CENTERS_ID, "Centers", "Door center points on the face", NodeDataType.POINT_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_ROW_INDICES_ID, "Row Indices", "1-based row index per opening", NodeDataType.INTEGER_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_COLUMN_INDICES_ID, "Column Indices", "1-based column index per opening", NodeDataType.INTEGER_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of door opening boxes created", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a valid door array could be generated", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
@@ -183,6 +187,8 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
         outputValues.put(OUTPUT_OPENINGS_ID, packedOpenings);
         outputValues.put(OUTPUT_FRAMES_ID, frames);
         outputValues.put(OUTPUT_CENTERS_ID, centers);
+        outputValues.put(OUTPUT_ROW_INDICES_ID, buildRowIndices(layout));
+        outputValues.put(OUTPUT_COLUMN_INDICES_ID, buildColumnIndices(layout));
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
@@ -199,11 +205,10 @@ public class DoorArrayNode extends AbstractFaceArrayNode {
     }
 
     private void writeInvalid(String error) {
-        outputValues.put(OUTPUT_OPENINGS_ID, null);
-        outputValues.put(OUTPUT_FRAMES_ID, null);
-        outputValues.put(OUTPUT_CENTERS_ID, null);
-        outputValues.put(OUTPUT_COUNT_ID, 0);
-        outputValues.put(OUTPUT_VALID_ID, false);
-        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+        ArchitecturalNodeOutputs.putNull(outputValues, OUTPUT_OPENINGS_ID);
+        ArchitecturalNodeOutputs.putEmptyLists(outputValues,
+            OUTPUT_FRAMES_ID, OUTPUT_CENTERS_ID, OUTPUT_ROW_INDICES_ID, OUTPUT_COLUMN_INDICES_ID);
+        ArchitecturalNodeOutputs.putCount(outputValues, OUTPUT_COUNT_ID, 0);
+        ArchitecturalNodeOutputs.markInvalid(outputValues, error);
     }
 }

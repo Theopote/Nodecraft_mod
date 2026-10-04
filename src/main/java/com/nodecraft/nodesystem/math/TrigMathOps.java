@@ -94,7 +94,7 @@ public final class TrigMathOps {
         return r == 90.0d || r == -90.0d;
     }
 
-    static double normalizeDegrees360(double angleDeg) {
+    public static double normalizeDegrees360(double angleDeg) {
         return angleDeg % 360.0d;
     }
 
