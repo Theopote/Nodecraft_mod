@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -139,6 +140,35 @@ class PathLanguageContractTest {
         List<Vector3d> pathB = List.of(new Vector3d(20, 0, 0), new Vector3d(10, 0, 0));
 
         assertEquals(null, PathUtils.joinPathsStrict(pathA, pathB, 1.0e-6d));
+    }
+
+    @Test
+    void joinPathsStrictRejectsNonFiniteEndpointDistance() {
+        List<Vector3d> pathA = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(1.0e308d, 1.0e308d, 1.0e308d)
+        );
+        List<Vector3d> pathB = List.of(
+            new Vector3d(-1.0e308d, -1.0e308d, -1.0e308d),
+            new Vector3d(0, 1, 0)
+        );
+        assertNull(PathUtils.joinPathsStrict(pathA, pathB, 1.0e6d));
+    }
+
+    @Test
+    void explodeInvalidEmitsEmptyPathList() {
+        BaseNode explode = node("geometry.curves.explode_path");
+        explode.processNode(null);
+        assertEquals(Boolean.FALSE, explode.getOutput("output_valid"));
+        Object segments = explode.getOutput("output_segments");
+        assertInstanceOf(List.class, segments);
+        assertTrue(((List<?>) segments).isEmpty());
+        assertEquals(0, explode.getOutput("output_count"));
+    }
+
+    @Test
+    void graphFormatCurrentIsStampOnlyOne() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
     }
 
     @Test

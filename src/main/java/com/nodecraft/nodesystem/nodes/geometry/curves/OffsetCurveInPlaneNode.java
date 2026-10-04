@@ -21,7 +21,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.curves.offset_curve_plane",
     displayName = "Offset Path In Plane",
-    description = "Offsets a path (line, polyline, or curve) in a work plane by signed distance.",
+    description = "Offsets a path (line, polyline, or curve) in a work plane containing the curve by signed distance.",
     category = "geometry.curves",
     order = 19
 )
@@ -71,6 +71,14 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
             invalidate("Path is missing or invalid");
             return;
         }
+        if (!isCoplanarOnWorkPlane(verts, plane)) {
+            invalidate("Path is not coplanar with the work plane");
+            return;
+        }
+        if (!Double.isFinite(miterLimit) || miterLimit < 1.0d) {
+            invalidate("Miter Limit must be finite and >= 1");
+            return;
+        }
 
         if (Math.abs(offset) < EPS) {
             PathData path = PathUtils.toPathData(verts);
@@ -93,6 +101,16 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
         markSuccess();
     }
 
+    private static boolean isCoplanarOnWorkPlane(List<Vector3d> verts, PlaneData plane) {
+        for (Vector3d vertex : verts) {
+            double distance = plane.distanceTo(vertex);
+            if (!Double.isFinite(distance) || distance > PathUtils.CLOSED_DISTANCE_EPSILON) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void invalidate(String error) {
         putNullOutputs(OUTPUT_PATH_ID);
         markInvalid(error);
@@ -103,9 +121,11 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
     }
 
     public void setMiterLimit(double miterLimit) {
-        double resolved = Math.max(0.0d, miterLimit);
-        if (Double.compare(this.miterLimit, resolved) != 0) {
-            this.miterLimit = resolved;
+        if (!Double.isFinite(miterLimit) || miterLimit < 1.0d) {
+            return;
+        }
+        if (Double.compare(this.miterLimit, miterLimit) != 0) {
+            this.miterLimit = miterLimit;
             markDirty();
         }
     }

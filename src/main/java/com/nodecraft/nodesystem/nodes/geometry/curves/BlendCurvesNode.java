@@ -5,12 +5,14 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
+import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -124,25 +126,37 @@ public class BlendCurvesNode extends AbstractCurveNode {
 
         Vector3d start = new Vector3d(pointsA.getLast());
         Vector3d end = new Vector3d(pointsB.getFirst());
-        Vector3d tangentA = endTangent(pointsA);
-        Vector3d tangentB = startTangent(pointsB);
-        if (start.distanceSquared(end) <= EPS * EPS || tangentA == null || tangentB == null) {
+        double endpointGap = VectorUtils.safeDistance(start, end);
+        Vector3d tangentA = PathUtils.findEndTangent(pointsA);
+        Vector3d tangentB = PathUtils.findStartTangent(pointsB);
+        if (!Double.isFinite(endpointGap) || endpointGap <= EPS || tangentA == null || tangentB == null) {
             invalidate("Blend endpoints or tangents are degenerate");
+            return;
+        }
+
+        Vector3d handleA = VectorUtils.safeScale(tangentA, lengthA);
+        Vector3d handleB = VectorUtils.safeScale(tangentB, lengthB);
+        if (handleA == null || handleB == null) {
+            invalidate("Blend handles are not finite");
             return;
         }
 
         List<Vector3d> blendPoints = continuity == Continuity.G0
             ? sampleLinear(start, end, segments)
-            : sampleHermite(start, end, tangentA.mul(lengthA), tangentB.mul(lengthB), segments);
+            : sampleHermite(start, end, handleA, handleB, segments);
 
-        PathData blendPath = PathUtils.toPathData(blendPoints);
-        if (blendPath == null) {
+        List<Vec3d> samples = new ArrayList<>(blendPoints.size());
+        for (Vector3d point : blendPoints) {
+            samples.add(new Vec3d(point.x, point.y, point.z));
+        }
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(samples);
+        if (fenced == null) {
             invalidate("Blend path is degenerate");
             return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, blendPath);
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(blendPoints));
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
         outputValues.put(OUTPUT_START_POINT_ID, new PointData(start));
         outputValues.put(OUTPUT_END_POINT_ID, new PointData(end));
         markSuccess();
@@ -265,26 +279,6 @@ public class BlendCurvesNode extends AbstractCurveNode {
         if (map.get("defaultSegments") instanceof Number value) {
             setDefaultSegments(value.intValue());
         }
-    }
-
-    private @Nullable Vector3d endTangent(List<Vector3d> points) {
-        for (int i = points.size() - 2; i >= 0; i--) {
-            Vector3d tangent = new Vector3d(points.getLast()).sub(points.get(i));
-            if (tangent.lengthSquared() > EPS * EPS) {
-                return tangent.normalize();
-            }
-        }
-        return null;
-    }
-
-    private @Nullable Vector3d startTangent(List<Vector3d> points) {
-        for (int i = 1; i < points.size(); i++) {
-            Vector3d tangent = new Vector3d(points.get(i)).sub(points.getFirst());
-            if (tangent.lengthSquared() > EPS * EPS) {
-                return tangent.normalize();
-            }
-        }
-        return null;
     }
 
     private List<Vector3d> sampleLinear(Vector3d start, Vector3d end, int segments) {

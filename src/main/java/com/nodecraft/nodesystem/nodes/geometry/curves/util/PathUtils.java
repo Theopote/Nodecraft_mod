@@ -234,13 +234,14 @@ public final class PathUtils {
 
         Vector3d endA = first.getLast();
         Vector3d startB = second.getFirst();
-        if (endA.distance(startB) > tolerance) {
+        double gap = VectorUtils.safeDistance(endA, startB);
+        if (!Double.isFinite(gap) || gap > tolerance) {
             return null;
         }
 
         List<Vector3d> joined = new ArrayList<>(first.size() + second.size());
         appendVerticesFar(joined, first);
-        int startIndex = endA.distance(startB) <= tolerance ? 1 : 0;
+        int startIndex = 1;
         for (int i = startIndex; i < second.size(); i++) {
             Vector3d point = second.get(i);
             if (joined.isEmpty() || joined.getLast().distanceSquared(point) > EPS * EPS) {
@@ -405,13 +406,21 @@ public final class PathUtils {
 
         List<Vector3d> extended = new ArrayList<>(verts.size() + 2);
         if (startLength > 0.0d) {
-            Vector3d startPoint = verts.getFirst();
-            extended.add(new Vector3d(startPoint).sub(new Vector3d(startTangent).mul(startLength)));
+            Vector3d offset = VectorUtils.safeScale(startTangent, startLength);
+            Vector3d startPoint = VectorUtils.safeSubtract(verts.getFirst(), offset);
+            if (startPoint == null || !VectorUtils.isFinite(startPoint)) {
+                return null;
+            }
+            extended.add(startPoint);
         }
         appendVerticesFar(extended, verts);
         if (endLength > 0.0d) {
-            Vector3d endPoint = verts.getLast();
-            extended.add(new Vector3d(endPoint).add(new Vector3d(endTangent).mul(endLength)));
+            Vector3d offset = VectorUtils.safeScale(endTangent, endLength);
+            Vector3d endPoint = VectorUtils.safeAdd(verts.getLast(), offset);
+            if (endPoint == null || !VectorUtils.isFinite(endPoint)) {
+                return null;
+            }
+            extended.add(endPoint);
         }
         return extended.size() >= 2 ? extended : null;
     }
@@ -538,21 +547,29 @@ public final class PathUtils {
         return merged.size() >= 2 ? merged : null;
     }
 
-    private static @Nullable Vector3d findStartTangent(List<Vector3d> verts) {
+    public static @Nullable Vector3d findStartTangent(List<Vector3d> verts) {
+        if (verts == null || verts.size() < 2) {
+            return null;
+        }
         for (int i = 0; i < verts.size() - 1; i++) {
-            Vector3d dir = new Vector3d(verts.get(i + 1)).sub(verts.get(i));
-            if (dir.lengthSquared() > EPS * EPS) {
-                return dir.normalize();
+            Vector3d dir = VectorUtils.safeSubtract(verts.get(i + 1), verts.get(i));
+            Vector3d unit = VectorUtils.safeNormalize(dir);
+            if (unit != null) {
+                return unit;
             }
         }
         return null;
     }
 
-    private static @Nullable Vector3d findEndTangent(List<Vector3d> verts) {
+    public static @Nullable Vector3d findEndTangent(List<Vector3d> verts) {
+        if (verts == null || verts.size() < 2) {
+            return null;
+        }
         for (int i = verts.size() - 1; i > 0; i--) {
-            Vector3d dir = new Vector3d(verts.get(i)).sub(verts.get(i - 1));
-            if (dir.lengthSquared() > EPS * EPS) {
-                return dir.normalize();
+            Vector3d dir = VectorUtils.safeSubtract(verts.get(i), verts.get(i - 1));
+            Vector3d unit = VectorUtils.safeNormalize(dir);
+            if (unit != null) {
+                return unit;
             }
         }
         return null;

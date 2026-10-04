@@ -97,25 +97,9 @@ public class CurveEvaluateNode extends AbstractCurveNode {
             return;
         }
 
-        double delta = Math.max(total * 1.0e-4d, 1.0e-4d);
-        double backDistance = Math.max(0.0d, distance - delta);
-        double forwardDistance = closed
-            ? (distance + delta) % total
-            : Math.min(total, distance + delta);
-        if (closed && forwardDistance < backDistance) {
-            forwardDistance = total;
-        }
-
-        Vector3d prev = PathUtils.sampleAtDistance(unique, closed, cumulative, backDistance);
-        Vector3d next = PathUtils.sampleAtDistance(unique, closed, cumulative, forwardDistance);
-        Vector3d tangent = new Vector3d(next).sub(prev);
-        if (tangent.lengthSquared() <= EPS) {
+        Vector3d tangent = PathUtils.sampleTangentAtDistance(unique, closed, cumulative, distance);
+        if (tangent == null || !VectorUtils.isFinite(tangent)) {
             invalidate("Tangent is degenerate at t");
-            return;
-        }
-        tangent.normalize();
-        if (!VectorUtils.isFinite(tangent)) {
-            invalidate("Tangent is not finite at t");
             return;
         }
 

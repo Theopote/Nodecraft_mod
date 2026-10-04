@@ -13,8 +13,10 @@ import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.BlockListUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.FrameUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
@@ -96,6 +98,10 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         double length = computeLength(verts, closed);
 
         List<GeometryData> cylinders = buildSegmentGeometry(verts, closed, radius);
+        if (cylinders == null) {
+            invalidate("Path segment geometry exceeds composite leaf budget");
+            return;
+        }
         if (cylinders.isEmpty()) {
             invalidate("Unable to build segment geometry from path");
             return;
@@ -109,7 +115,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
         }
 
         BlockPosList blocks = result.blocks();
-        RegionData region = GeometryVoxelizer.createBoundingRegion(geometry);
+        RegionData region = BlockListUtils.regionFromOccupiedBlocks(blocks.getPositions());
 
         outputValues.put(OUTPUT_BLOCKS_ID, blocks);
         outputValues.put(OUTPUT_BLOCKS_TREE_ID, buildBlockTree(blocks));
@@ -156,13 +162,29 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
             ? sampledPoints.subList(0, sampledPoints.size() - 1)
             : sampledPoints;
         int segmentCount = closed ? points.size() : points.size() - 1;
-        List<GeometryData> cylinders = new ArrayList<>(segmentCount + (capEnds && !closed ? 2 : 0));
+        int estimatedLeaves = 0;
         for (int i = 0; i < segmentCount; i++) {
             Vector3d start = points.get(i);
             Vector3d end = points.get((i + 1) % points.size());
-            if (start.distanceSquared(end) > EPS * EPS) {
-                cylinders.add(new CylinderGeometryData(start, end, radius));
+            double length = VectorUtils.safeDistance(start, end);
+            if (Double.isFinite(length) && length > EPS) {
+                estimatedLeaves++;
             }
+        }
+        int capLeaves = (capEnds && !closed && points.size() >= 2 && radius > EPS) ? 2 : 0;
+        if (estimatedLeaves + capLeaves > GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES) {
+            return null;
+        }
+
+        List<GeometryData> cylinders = new ArrayList<>(estimatedLeaves + capLeaves);
+        for (int i = 0; i < segmentCount; i++) {
+            Vector3d start = points.get(i);
+            Vector3d end = points.get((i + 1) % points.size());
+            double length = VectorUtils.safeDistance(start, end);
+            if (!Double.isFinite(length) || length <= EPS) {
+                continue;
+            }
+            cylinders.add(new CylinderGeometryData(start, end, radius));
         }
         if (capEnds && !closed && points.size() >= 2 && radius > EPS) {
             Vector3d first = points.getFirst();
@@ -177,6 +199,9 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
             if (FrameUtils.isUsableAxis(endAxis)) {
                 cylinders.add(new HemisphereGeometryData(last, endAxis, radius));
             }
+        }
+        if (cylinders.size() > GenerationLimits.MAX_COMPOSITE_GEOMETRY_LEAVES) {
+            return null;
         }
         return cylinders;
     }

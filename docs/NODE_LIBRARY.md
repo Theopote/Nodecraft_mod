@@ -153,7 +153,7 @@
 | Explode Path | `geometry.curves.explode_path` | Decomposes a path into per-segment paths as PATH_LIST. | `ExplodePathNode` |
 | Extend Path | `geometry.curves.extend_path` | Linearly extends an open path along start/end tangents by the given lengths. | `ExtendPathNode` |
 | Fillet Path Corners | `geometry.curves.fillet_polyline_corners` | Fillets interior corners of an open path with circular arcs in the work plane | `PolylineCornerFilletNode` |
-| Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane by signed distance. | `OffsetCurveInPlaneNode` |
+| Offset Path In Plane | `geometry.curves.offset_curve_plane` | Offsets a path (line, polyline, or curve) in a work plane containing the curve by signed distance. | `OffsetCurveInPlaneNode` |
 | Resample Path | `geometry.curves.resample_path` | Resamples a path along arc length by Count or Spacing. Primary output is PATH. | `ResamplePolylineByLengthNode` |
 | Path Length | `geometry.curves.path_length` | Computes the total length of a line, polyline, or curve path | `PolylineLengthNode` |
 | Evaluate Path | `geometry.curves.evaluate_curve` | Evaluates a path at normalized arc-length parameter t and outputs point and tangent. | `CurveEvaluateNode` |

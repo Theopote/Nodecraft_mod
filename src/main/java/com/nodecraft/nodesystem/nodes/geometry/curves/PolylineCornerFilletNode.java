@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -73,9 +74,11 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
     }
 
     public void setArcSegments(int arcSegments) {
-        int resolved = Math.max(1, arcSegments);
-        if (this.arcSegments != resolved) {
-            this.arcSegments = resolved;
+        if (arcSegments < 1 || arcSegments > GenerationLimits.MAX_CURVE_FILLET_ARC_SEGMENTS) {
+            return;
+        }
+        if (this.arcSegments != arcSegments) {
+            this.arcSegments = arcSegments;
             markDirty();
         }
     }
@@ -114,17 +117,24 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             invalidate("Radius is connected but invalid (must be finite and > 0)");
             return;
         }
-
-        int segs = Math.min(64, Math.max(1, arcSegments));
-
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
-        List<Vector2d> pts = new ArrayList<>(raw.size());
-        for (Vector3d v : raw) {
-            Vector3d p3 = plane.projectPoint(new Vector3d(v));
-            pts.add(axes.to2d(p3));
+        if (arcSegments < 1 || arcSegments > GenerationLimits.MAX_CURVE_FILLET_ARC_SEGMENTS) {
+            invalidate("Arc segments must be between 1 and " + GenerationLimits.MAX_CURVE_FILLET_ARC_SEGMENTS);
+            return;
+        }
+        long estimated = 2L + (long) (raw.size() - 2) * (long) arcSegments;
+        if (estimated > GenerationLimits.MAX_CURVE_SAMPLES) {
+            invalidate("Fillet sample count exceeds MAX_CURVE_SAMPLES");
+            return;
         }
 
-        List<Vector2d> filleted = filletOpenTransactional(pts, radius, segs);
+        PlaneProjectionUtils.PlaneProjectionContext uv =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, raw.getFirst());
+        List<Vector2d> pts = new ArrayList<>(raw.size());
+        for (Vector3d v : raw) {
+            pts.add(uv.toLocal(v));
+        }
+
+        List<Vector2d> filleted = filletOpenTransactional(pts, radius, arcSegments);
         if (filleted == null || filleted.size() < 2) {
             invalidate("One or more interior corners could not be filleted");
             return;
@@ -132,7 +142,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
 
         List<Vec3d> out = new ArrayList<>(filleted.size());
         for (Vector2d p : filleted) {
-            Vector3d w = axes.from2d(p);
+            Vector3d w = uv.fromLocal(p);
             out.add(new Vec3d(w.x, w.y, w.z));
         }
         PolylineData polyline = PathUtils.createPolylineOrNull(out);

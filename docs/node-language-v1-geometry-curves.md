@@ -4,7 +4,9 @@
 
 Geometry Curves v2 freezes all **28** canonical `geometry.curves.*` nodes under PATH Language v2: connection-aware inputs via [`CurveInputUtils`](../src/main/java/com/nodecraft/nodesystem/util/CurveInputUtils.java), Valid+Error on every node, strict normalized arc-length parameter `t`, typed list ports only (no bare `LIST`), and removal of graph-facing `CURVE` / `POLYLINE` / `LINE` mirror outputs.
 
-**Out of scope:** global `NodeDataType.CURVE` retirement; deprecated `CurveFrameAlongPathNode`; `setNodeState` exact-Integer hardening (P2); rewriting curve algorithms.
+**Out of scope:** global `NodeDataType.CURVE` retirement; `setNodeState` exact-Integer hardening (P2); rewriting Offset/Fillet algorithms; Tween closed Auto Seam.
+
+`geometry.curves.frame_along_path` is **retired** (class deleted). Canonical frames: `pattern.linear.path_frames`. Inventory stays **28**.
 
 ## Inventory (order 0–27)
 
@@ -39,7 +41,7 @@ Geometry Curves v2 freezes all **28** canonical `geometry.curves.*` nodes under 
 | 26 | Tween Paths | `geometry.curves.tween_curves` |
 | 27 | Voxelize Path | `geometry.curves.voxelize_curve` |
 
-All nodes are `PURE`. Deprecated `geometry.curves.frame_along_path` is excluded from this inventory.
+All nodes are `PURE`. `geometry.curves.frame_along_path` is absent from the registry.
 
 ## PATH canonical public language
 
@@ -77,12 +79,12 @@ Connection-aware optional ports use [`OptionalPortDrive`](../src/main/java/com/n
 
 | Node | Open path | Closed path |
 |------|-----------|-------------|
-| **Evaluate Path** | `t` finite in `[0,1]`; no wrap | `t mod 1` allowed |
+| **Evaluate Path** | `t` finite in `[0,1]`; no wrap | `t mod 1` allowed; tangent via `PathUtils.sampleTangentAtDistance` (seam wrap) |
 | **Split Path** | `0 < t < 1` strict | same |
 | **Trim Path** | `0 ≤ start < end ≤ 1` | `0 ≤ start,end ≤ 1`, `start ≠ end`; `start > end` = seam-crossing trim |
-| **Closest Point On Path** | outputs actual normalized `t` | same |
+| **Closest Point On Path** | outputs actual normalized `t`; query is finite `PointData` only | same |
 
-No silent clamp at the graph boundary. Evaluate **Clamp t** property removed at V71.
+Parameter = normalized cumulative arc length (`PathUtils.buildCumulative`). No silent clamp at the graph boundary. Evaluate **Clamp t** property removed at V71.
 
 ## Input strictness
 
@@ -112,18 +114,23 @@ No silent clamp at the graph boundary. Evaluate **Clamp t** property removed at 
 | `MAX_CURVE_TOTAL_SAMPLES` | `count × samplesPerPath` long product |
 | `MAX_CURVE_CONTROL_POINTS` | constructor POINT_LIST size (alias of `MAX_PROFILE_VERTICES`) |
 | `MAX_CURVE_EVALUATION_WORK` | `controlCount × sampleCount` (alias of `MAX_CURVE_TOTAL_SAMPLES`) |
+| `MAX_CURVE_FILLET_ARC_SEGMENTS` | named cap **64** for Fillet Path Corners (setter 1..cap; no silent `Math.min` in process) |
 
 Graph nodes **validate and fail**; `clampSegments` / `clampPositiveCount` remain for internal callers only.
 
 ## Selected node semantics
 
-| Node | V71 rule |
+| Node | Frozen rule |
 |------|----------|
-| **Join Paths** | endpoint match within connection-aware tolerance; no auto-reverse, no bridge |
-| **Explode Path** | degenerate zero-length segment → fail closed |
-| **Fillet Path Corners** | transactional: any interior corner that cannot satisfy radius → whole-node invalid |
+| **Join Paths** | A-end vs B-start only; `VectorUtils.safeDistance`; non-finite gap → fail; no auto-reverse, no bridge |
+| **Explode Path** | degenerate zero-length segment → fail closed; invalid `PATH_LIST` is `List.of()` |
+| **Extend Path** | new endpoints via `safeScale` / `safeAdd` / `safeSubtract`; non-finite → null |
+| **Fillet Path Corners** | transactional radius; `PlaneProjectionContext` at first vertex; preflight `2+(vertexCount-2)*arcSegments ≤ MAX_CURVE_SAMPLES` |
+| **Offset Path In Plane** | path must be **coplanar** with the work plane (containing the curve) within `CLOSED_DISTANCE_EPSILON`; no silent project; Miter Limit finite `≥ 1` (default 4) |
+| **Blend Paths** | endpoint/handle `safeDistance` / `findStartTangent` / `findEndTangent`; Hermite samples through `CurveSampleFence` |
+| **Voxelize Path** | skip non-finite / zero segments via `safeDistance`; preflight leaves vs `MAX_COMPOSITE_GEOMETRY_LEAVES`; Region = occupied-block AABB |
 | **Resample Path** | Count or Spacing only; ORIGINAL → invalid |
-| **Tween / Rainbow** | workload budget enforced |
+| **Tween / Rainbow** | workload budget enforced; no Auto Seam |
 | **Arc** | directed sweep (end − start) may exceed ±360°; derived sweep/length/samples must be finite |
 | **Points To Path** | Close Path uses `PathUtils.CLOSED_DISTANCE_EPSILON`; Count is serialized point count (includes closing vertex) |
 

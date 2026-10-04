@@ -32,13 +32,6 @@ abstract class AbstractCurveNode extends BaseNode {
             "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
-    /** @deprecated Used only by legacy {@code CurveFrameAlongPathNode}. */
-    @Deprecated
-    protected final double readDoubleInput(String portId, double fallback) {
-        Double value = resolveFiniteDouble(portId, fallback);
-        return value == null ? fallback : value;
-    }
-
     protected final void markInvalid(String error) {
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);

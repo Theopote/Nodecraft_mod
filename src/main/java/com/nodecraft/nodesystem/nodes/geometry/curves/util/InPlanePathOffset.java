@@ -37,11 +37,15 @@ public final class InPlanePathOffset {
         if (unique.size() < 2) {
             return null;
         }
+        if (!Double.isFinite(miterLimit) || miterLimit < 1.0d) {
+            return null;
+        }
 
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
+        PlaneProjectionUtils.PlaneProjectionContext uv =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, unique.getFirst());
         List<Vector2d> pts2d = new ArrayList<>(unique.size());
         for (Vector3d point : unique) {
-            pts2d.add(axes.to2d(plane.projectPoint(point)));
+            pts2d.add(uv.toLocal(point));
         }
 
         List<Vector2d> offset2d = offsetPolyline2d(pts2d, closed, offset, miterLimit);
@@ -51,7 +55,7 @@ public final class InPlanePathOffset {
 
         List<Vector3d> offsetPoints = new ArrayList<>(offset2d.size());
         for (Vector2d point : offset2d) {
-            offsetPoints.add(axes.from2d(point));
+            offsetPoints.add(uv.fromLocal(point));
         }
 
         List<Vec3d> polyPoints = PathUtils.toVec3dList(offsetPoints, closed);

@@ -7,7 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -54,7 +54,7 @@ public class ClosestPointOnPathNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d query = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_POINT_ID));
+        Vector3d query = CurveInputUtils.requireConnectedPointData(this, INPUT_POINT_ID);
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (query == null) {
             invalidate("Point is missing or invalid");

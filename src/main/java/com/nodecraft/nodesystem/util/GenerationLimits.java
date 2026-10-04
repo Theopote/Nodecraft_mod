@@ -555,6 +555,9 @@ public final class GenerationLimits {
     /** Maximum sample points along a single curve/path resample or producer output. */
     public static final int MAX_CURVE_SAMPLES = MAX_SEGMENTS;
 
+    /** Named cap for Fillet Path Corners arc approximation (not a new magnitude class). */
+    public static final int MAX_CURVE_FILLET_ARC_SEGMENTS = 64;
+
     /** Maximum paths emitted by multi-path curve nodes (Tween, Rainbow, Explode). */
     public static final int MAX_CURVE_OUTPUT_PATHS = MAX_GEOMETRY_INSTANCES;
 

@@ -47,13 +47,13 @@ public class ExplodePathNode extends AbstractCurveNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> verts = resolvePathVertices(INPUT_PATH_ID);
         if (verts == null || verts.size() < 2) {
-            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putEmptyListOutputs(OUTPUT_SEGMENTS_ID);
             putIntOutputs(0, OUTPUT_COUNT_ID);
             markInvalid("Path is missing or invalid");
             return;
         }
         if (PathUtils.hasDegenerateSegment(verts)) {
-            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putEmptyListOutputs(OUTPUT_SEGMENTS_ID);
             putIntOutputs(0, OUTPUT_COUNT_ID);
             markInvalid("Path contains a degenerate zero-length segment");
             return;
@@ -61,7 +61,7 @@ public class ExplodePathNode extends AbstractCurveNode {
 
         List<List<Vector3d>> rawSegments = PathUtils.explodePath(verts);
         if (rawSegments.isEmpty()) {
-            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putEmptyListOutputs(OUTPUT_SEGMENTS_ID);
             putIntOutputs(0, OUTPUT_COUNT_ID);
             markInvalid("Path could not be exploded into segments");
             return;
@@ -75,7 +75,7 @@ public class ExplodePathNode extends AbstractCurveNode {
             }
         }
         if (segments.isEmpty()) {
-            putNullOutputs(OUTPUT_SEGMENTS_ID);
+            putEmptyListOutputs(OUTPUT_SEGMENTS_ID);
             putIntOutputs(0, OUTPUT_COUNT_ID);
             markInvalid("Path could not be exploded into segments");
             return;

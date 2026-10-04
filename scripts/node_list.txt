@@ -46,7 +46,6 @@ geometry.curves.edge_to_curve|geometry.curves|Face Edge To Path
 geometry.curves.evaluate_curve|geometry.curves|Curve Evaluate
 geometry.curves.face_boundary_curve|geometry.curves|Box Face Boundary Path
 geometry.curves.fillet_polyline_corners|geometry.curves|Fillet Polyline Corners
-geometry.curves.frame_along_path|geometry.curves|Curve Frame Along Path
 geometry.curves.helix|geometry.curves|Helix Curve
 geometry.curves.infinity_curve|geometry.curves|Infinity Curve On Plane
 geometry.curves.interpolate_spline|geometry.curves|Interpolate Spline

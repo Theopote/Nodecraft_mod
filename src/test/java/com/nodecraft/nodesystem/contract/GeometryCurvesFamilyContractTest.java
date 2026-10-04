@@ -14,12 +14,16 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.geometry.curves.BlendCurvesNode;
+import com.nodecraft.nodesystem.nodes.geometry.curves.OffsetCurveInPlaneNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.PointsToPathNode;
+import com.nodecraft.nodesystem.nodes.geometry.curves.PolylineCornerFilletNode;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.Curve;
 import net.minecraft.util.math.Vec3d;
+import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -457,6 +461,74 @@ class GeometryCurvesFamilyContractTest {
     }
 
     @Test
+    void closestPointRejectsConnectedNonPointData() {
+        BaseNode closest = node("geometry.curves.closest_point_on_path");
+        closest.setInput("input_path", sampleLine10Blocks());
+        connectInput(closest, "input_point", NodeDataType.POINT);
+        closest.setInput("input_point", new VectorData(0, 64, 0));
+        closest.processNode(null);
+        assertEquals(Boolean.FALSE, closest.getOutput("output_valid"));
+        assertNull(closest.getOutput("output_point"));
+    }
+
+    @Test
+    void filletArcSegmentsDoesNotSilentClampAndOverBudgetFails() {
+        PolylineCornerFilletNode fillet = (PolylineCornerFilletNode) node("geometry.curves.fillet_polyline_corners");
+        int original = fillet.getArcSegments();
+        fillet.setArcSegments(100_000);
+        assertEquals(original, fillet.getArcSegments());
+
+        fillet.setArcSegments(GenerationLimits.MAX_CURVE_FILLET_ARC_SEGMENTS);
+        List<Vec3d> verts = new ArrayList<>();
+        int vertexCount = 2 + (GenerationLimits.MAX_CURVE_SAMPLES / GenerationLimits.MAX_CURVE_FILLET_ARC_SEGMENTS) + 1;
+        for (int i = 0; i < vertexCount; i++) {
+            verts.add(new Vec3d(i, 64, 0));
+        }
+        connectInput(fillet, "input_plane", NodeDataType.PLANE);
+        connectInput(fillet, "input_radius", NodeDataType.DOUBLE);
+        fillet.setInput("input_path", new PolylineData(verts));
+        fillet.setInput("input_plane", new PlaneData(new Vector3d(0, 64, 0), new Vector3d(0, 1, 0)));
+        fillet.setInput("input_radius", 1.0d);
+        fillet.processNode(null);
+        assertEquals(Boolean.FALSE, fillet.getOutput("output_valid"));
+        assertNull(fillet.getOutput("output_path"));
+    }
+
+    @Test
+    void offsetOffPlaneAndIllegalMiterFailClosed() {
+        OffsetCurveInPlaneNode offset = (OffsetCurveInPlaneNode) node("geometry.curves.offset_curve_plane");
+        double originalMiter = offset.getMiterLimit();
+        offset.setMiterLimit(Double.NaN);
+        offset.setMiterLimit(0.5d);
+        assertEquals(originalMiter, offset.getMiterLimit());
+
+        connectInput(offset, "input_plane", NodeDataType.PLANE);
+        connectInput(offset, "input_offset", NodeDataType.DOUBLE);
+        offset.setInput("input_path", sampleLine10Blocks());
+        offset.setInput("input_plane", PlaneData.XZ_PLANE);
+        offset.setInput("input_offset", 1.0d);
+        offset.processNode(null);
+        assertEquals(Boolean.FALSE, offset.getOutput("output_valid"));
+        assertNull(offset.getOutput("output_path"));
+    }
+
+    @Test
+    void blendExtremeHandleLengthFailsClosed() {
+        BlendCurvesNode blend = (BlendCurvesNode) node("geometry.curves.blend_curves");
+        LineData line = new LineData(new Vec3d(1.6e308d, 0, 0), new Vec3d(1.7e308d, 0, 0));
+        LineData lineB = new LineData(new Vec3d(0, 1.6e308d, 0), new Vec3d(0, 1.7e308d, 0));
+        blend.setInput("input_path_a", line);
+        blend.setInput("input_path_b", lineB);
+        connectInput(blend, "input_length_a", NodeDataType.DOUBLE);
+        connectInput(blend, "input_length_b", NodeDataType.DOUBLE);
+        blend.setInput("input_length_a", 1.0e308d);
+        blend.setInput("input_length_b", 1.0e308d);
+        blend.processNode(null);
+        assertEquals(Boolean.FALSE, blend.getOutput("output_valid"));
+        assertNull(blend.getOutput("output_path"));
+    }
+
+    @Test
     void pathDataFromLineNullIsNotAUsablePath() {
         assertNull(PathData.fromLine(null));
         assertNull(PathData.wrap(null));
@@ -486,7 +558,7 @@ class GeometryCurvesFamilyContractTest {
         connectInput(offset, "input_plane", NodeDataType.PLANE);
         connectInput(offset, "input_offset", NodeDataType.DOUBLE);
         offset.setInput("input_path", line);
-        offset.setInput("input_plane", PlaneData.XZ_PLANE);
+        offset.setInput("input_plane", new PlaneData(new Vector3d(0, 64, 0), new Vector3d(0, 1, 0)));
         offset.setInput("input_offset", 1.0d);
         offset.processNode(null);
         assertEquals(Boolean.TRUE, offset.getOutput("output_valid"));

@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.contract;
 
+import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
@@ -8,7 +9,8 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
@@ -16,7 +18,6 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.CurveEvaluateNode;
 import com.nodecraft.nodesystem.nodes.geometry.curves.SplitPathNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import net.minecraft.util.math.Vec3d;
-import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -141,6 +143,32 @@ class GeometryCurvesLanguageContractTest {
         split.setInput("input_parameter", 0.5d);
         split.processNode(null);
         assertEquals(Boolean.TRUE, split.getOutput("output_valid"));
+    }
+
+    @Test
+    void frameAlongPathIsRetiredInFavorOfPathFrames() {
+        assertTrue(registry.getAllNodeIds().stream().noneMatch(id -> id.contains("frame_along_path")));
+        assertThrows(NodeValidationException.class,
+            () -> registry.createNodeInstance("geometry.curves.frame_along_path"));
+    }
+
+    @Test
+    void evaluateClosedPathAtSeamUsesWrappedTangent() {
+        CurveEvaluateNode evaluate = new CurveEvaluateNode();
+        connectInput(evaluate, "input_path", NodeDataType.PATH);
+        connectInput(evaluate, "input_t", NodeDataType.DOUBLE);
+        evaluate.setInput("input_path", new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(10, 0, 0),
+            new Vec3d(10, 0, 10),
+            new Vec3d(0, 0, 0)
+        )));
+        evaluate.setInput("input_t", 0.0d);
+        evaluate.processNode(null);
+        assertEquals(Boolean.TRUE, evaluate.getOutput("output_valid"), String.valueOf(evaluate.getOutput("output_error")));
+        assertInstanceOf(VectorData.class, evaluate.getOutput("output_tangent"));
+        VectorData tangent = (VectorData) evaluate.getOutput("output_tangent");
+        assertTrue(Double.isFinite(tangent.x()) && Double.isFinite(tangent.y()) && Double.isFinite(tangent.z()));
     }
 
     @Test
