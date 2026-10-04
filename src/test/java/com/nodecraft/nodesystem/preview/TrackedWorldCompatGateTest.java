@@ -27,13 +27,10 @@ class TrackedWorldCompatGateTest {
     }
 
     @Test
-    void legacyTrackedNodeStillSeesBothBackendsUntilMigrated() {
-        assertArrayEquals(
-                PreviewBackend.values(),
-                TrackedWorldCompatGate.backendsForEditor(PreviewBackend.TRACKED_WORLD));
-        assertEquals(
-                PreviewBackend.TRACKED_WORLD,
-                TrackedWorldCompatGate.sanitizeRestored(PreviewBackend.TRACKED_WORLD));
+    void restoredTrackedWorldCoercesToGhost() {
+        assertEquals(PreviewBackend.GHOST, TrackedWorldCompatGate.sanitizeRestored(PreviewBackend.TRACKED_WORLD));
+        assertEquals(PreviewBackend.GHOST, TrackedWorldCompatGate.sanitizeRestored(null));
+        assertFalse(TrackedWorldCompatGate.allowTrackedWorldDispatch());
     }
 
     @Test
@@ -42,15 +39,13 @@ class TrackedWorldCompatGateTest {
         assertTrue(TrackedWorldCompatGate.isCompatSelectionEnabled());
         assertEquals(PreviewBackend.TRACKED_WORLD, TrackedWorldCompatGate.sanitizeSelection(PreviewBackend.TRACKED_WORLD));
         assertArrayEquals(PreviewBackend.values(), TrackedWorldCompatGate.backendsForEditor(PreviewBackend.GHOST));
+        assertTrue(TrackedWorldCompatGate.allowTrackedWorldDispatch());
     }
 
     @Test
-    void geometryViewerUiSetCoercesWhenFrozen_restoreKeepsLegacy() {
+    void geometryViewerRestoreAndUiBothCoerceWhenFrozen() {
         GeometryViewerNode node = new GeometryViewerNode();
         node.setPreviewBackend(PreviewBackend.TRACKED_WORLD, true);
-        assertEquals(PreviewBackend.TRACKED_WORLD, node.getPreviewBackend());
-
-        node.setPreviewBackend(PreviewBackend.GHOST);
         assertEquals(PreviewBackend.GHOST, node.getPreviewBackend());
 
         node.setPreviewBackend(PreviewBackend.TRACKED_WORLD);

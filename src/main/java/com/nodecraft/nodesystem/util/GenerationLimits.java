@@ -447,6 +447,21 @@ public final class GenerationLimits {
     /** Aggregate BlockPlacement list/tree cap (aligned with bake / world.write history ceiling). */
     public static final int MAX_BLOCK_PLACEMENTS = MAX_WORLD_WRITE_BLOCKS;
 
+    /**
+     * Hard cap for ghost preview block cells (Preview Blocks / Geometry Viewer product default).
+     * Preview may truncate above this and report Truncated=true.
+     */
+    public static final int MAX_PREVIEW_BLOCKS = 20_000;
+
+    /** Hard cap for point-preview payloads. */
+    public static final int MAX_PREVIEW_POINTS = MAX_PREVIEW_BLOCKS;
+
+    /** Hard cap for curve/path sample points in preview. */
+    public static final int MAX_PREVIEW_CURVE_POINTS = MAX_PREVIEW_BLOCKS;
+
+    /** Hard cap for text-label preview entries. */
+    public static final int MAX_PREVIEW_LABELS = 4_096;
+
     /** Hard cap for Apply Changes / bake blocks-per-tick property. */
     public static final int MAX_BLOCKS_PER_TICK = 16_384;
 

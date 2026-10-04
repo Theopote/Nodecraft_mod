@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
+import com.nodecraft.nodesystem.preview.PreviewFingerprint;
 import com.nodecraft.nodesystem.preview.PreviewGuideBuilder;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.TrackedWorldCompatGate;
@@ -145,7 +146,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private volatile boolean lastPreviewSampled = false;
     private volatile String statusMessage = "Waiting for input...";
 
-    private volatile int cachedGeometrySignature = 0;
+    private volatile long cachedGeometrySignature = 0L;
     private volatile float cachedTransparency = -1f;
     private volatile String cachedColor = null;
     private volatile String cachedOutlineColor = null;
@@ -160,11 +161,9 @@ public class GeometryViewerNode extends BaseCustomUINode {
     private volatile boolean cachedShowTransformGizmo = false;
     private volatile String cachedGizmoMode = null;
     private volatile String cachedPreviewId = null;
-    private volatile long lastNonEmptyInputAt = 0L;
     private volatile long lastPreviewInputChangeAt = 0L;
     private volatile long lastTrackedWorldRefreshAt = 0L;
     private volatile boolean pendingFullPreviewRefresh = false;
-    private static final long EMPTY_INPUT_HOLD_MS = 750;
     private static final long TRACKED_WORLD_REFRESH_THROTTLE_MS = 200;
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
@@ -232,7 +231,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         int blockCount = blocksList == null ? 0 : blocksList.size();
         lastBlockCount = blockCount;
 
-        int geometrySignature = computeGeometrySignature(blocksList);
+        long geometrySignature = computeGeometrySignature(blocksList);
         boolean previewDirty = geometrySignature != cachedGeometrySignature
             || trans != cachedTransparency
             || !Objects.equals(color, cachedColor)
@@ -263,7 +262,6 @@ public class GeometryViewerNode extends BaseCustomUINode {
             && (now - lastTrackedWorldRefreshAt) < TRACKED_WORLD_REFRESH_THROTTLE_MS;
 
         if (previewEnabled && blocksList != null && !blocksList.isEmpty()) {
-            lastNonEmptyInputAt = now;
             if (trackedWorldRefreshSuppressed) {
                 statusMessage = buildSteadyStateStatus(context);
             } else if (previewDirty || settledFullRefreshDue) {
@@ -283,10 +281,15 @@ public class GeometryViewerNode extends BaseCustomUINode {
             clearAllPreviewState(context);
             statusMessage = "Preview disabled";
         } else {
-            boolean keepExisting = cachedPreviewId != null
-                && PreviewManager.hasActivePreview(cachedPreviewId)
-                && (System.currentTimeMillis() - lastNonEmptyInputAt) < EMPTY_INPUT_HOLD_MS;
-            if (keepExisting) {
+            // Empty input: PreviewManager owns empty-input grace / hide timing for ghost blocks.
+            PreviewManager.showPreview(new PreviewRequest(
+                getId().toString(),
+                new PreviewBlocksPayload(List.of()),
+                PreviewStyle.forGhostBlocks(1.0f, 1.0f, 1.0f, trans, showOutline, null, 2.0f, 0.1f, 30 * 20),
+                PreviewBackend.GHOST,
+                context
+            ));
+            if (cachedPreviewId != null && PreviewManager.hasActivePreview(cachedPreviewId)) {
                 statusMessage = buildSteadyStateStatus(context);
             } else {
                 clearAllPreviewState(context);
@@ -298,7 +301,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_COUNT_ID, blockCount);
     }
 
-    private void cachePreviewState(int geometrySignature, float trans, String color, String outlineColor, String effectiveBlockType) {
+    private void cachePreviewState(long geometrySignature, float trans, String color, String outlineColor, String effectiveBlockType) {
         cachedGeometrySignature = geometrySignature;
         cachedTransparency = trans;
         cachedColor = color;
@@ -626,60 +629,8 @@ public class GeometryViewerNode extends BaseCustomUINode {
         );
     }
 
-    private int computeGeometrySignature(BlockPosList blocks) {
-        if (blocks == null || blocks.isEmpty()) {
-            return 0;
-        }
-        // Use an order-insensitive signature so previews don't thrash when upstream list iteration order changes.
-        int size = 0;
-        long sumX = 0L;
-        long sumY = 0L;
-        long sumZ = 0L;
-        int xorHash = 0;
-        int minX = Integer.MAX_VALUE;
-        int minY = Integer.MAX_VALUE;
-        int minZ = Integer.MAX_VALUE;
-        int maxX = Integer.MIN_VALUE;
-        int maxY = Integer.MIN_VALUE;
-        int maxZ = Integer.MIN_VALUE;
-
-        for (BlockPos pos : blocks) {
-            if (pos == null) {
-                continue;
-            }
-            int x = pos.getX();
-            int y = pos.getY();
-            int z = pos.getZ();
-            size++;
-            sumX += x;
-            sumY += y;
-            sumZ += z;
-            xorHash ^= pos.hashCode();
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            minZ = Math.min(minZ, z);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
-            maxZ = Math.max(maxZ, z);
-        }
-
-        if (size == 0) {
-            return 0;
-        }
-
-        int hash = 17;
-        hash = 31 * hash + size;
-        hash = 31 * hash + xorHash;
-        hash = 31 * hash + Long.hashCode(sumX);
-        hash = 31 * hash + Long.hashCode(sumY);
-        hash = 31 * hash + Long.hashCode(sumZ);
-        hash = 31 * hash + minX;
-        hash = 31 * hash + minY;
-        hash = 31 * hash + minZ;
-        hash = 31 * hash + maxX;
-        hash = 31 * hash + maxY;
-        hash = 31 * hash + maxZ;
-        return hash;
+    private long computeGeometrySignature(BlockPosList blocks) {
+        return PreviewFingerprint.ofBlockPosList(blocks);
     }
 
     private BlockState resolveBlockState(String blockId) {

@@ -18,6 +18,7 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.Coordinate;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,8 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Block ghost 预览节点：节点层只应产出 {@link PreviewBlock}/{@link PreviewBlocksPayload}，
- * 不要再把渲染器侧类型（或中间 DTO）当作跨层协议（见 v1.1 类级改造清单）。
+ * Block ghost preview: typed block/placement inputs → {@link PreviewBlocksPayload} via GHOST.
  */
 @NodeInfo(
     effect = NodeEffect.PREVIEW_WRITE,
@@ -44,20 +44,18 @@ public class PreviewBlocksNode extends BaseCustomUINode {
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_BLOCK_PLACEMENTS_ID = "input_block_placements";
     private static final String INPUT_BLOCK_PLACEMENTS_TREE_ID = "input_block_placements_tree";
-    private static final String INPUT_COORDS_ID = "input_coords";
     private static final String INPUT_BLOCK_TYPE_ID = "input_block_type";
 
     private static final String OUTPUT_SUCCESS_ID = "output_success";
     private static final String OUTPUT_PREVIEW_ID_ID = "output_preview_id";
     private static final String OUTPUT_BLOCK_COUNT_ID = "output_block_count";
+    private static final String OUTPUT_SOURCE_COUNT_ID = "output_source_count";
+    private static final String OUTPUT_PREVIEW_COUNT_ID = "output_preview_count";
+    private static final String OUTPUT_TRUNCATED_ID = "output_truncated";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     @NodeProperty(displayName = "Preview Enabled", category = "Preview", order = 1)
     private boolean previewEnabled = true;
-
-    // Execution throttling: prevents rapid re-execution when node is selected (which causes flickering)
-    private volatile long lastExecutionTime = 0;
-    private static final long MIN_EXECUTION_INTERVAL_MS = 50;
-    private static final long EMPTY_INPUT_HOLD_MS = 750;
 
     @NodeProperty(displayName = "Block Type", category = "Preview", order = 2)
     private String blockType = "minecraft:stone";
@@ -72,42 +70,40 @@ public class PreviewBlocksNode extends BaseCustomUINode {
     private int duration = 30;
 
     private volatile String cachedPreviewId;
-    private volatile int cachedInputSignature = 0;
-    private volatile int cachedStyleSignature = 0;
+    private volatile long cachedInputSignature = 0L;
+    private volatile long cachedStyleSignature = 0L;
     private volatile String cachedEffectiveBlockType;
-    private volatile long lastNonEmptyInputAt = 0L;
 
     private UUID previewId = UUID.randomUUID();
+
     public PreviewBlocksNode() {
         super(UUID.randomUUID(), "output.preview.preview_blocks");
 
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block list or block position list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Position and block assignments to preview", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree", "Tree-grouped position and block assignments to preview", NodeDataType.DATA_TREE, this));
-        addInputPort(new BasePort(INPUT_COORDS_ID, "Coordinates", "Fallback coordinate list", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Ghost block type", NodeDataType.STRING, this));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_ID_ID, "Preview ID", "Preview instance identifier", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCK_COUNT_ID, "Block Count", "Number of previewed blocks", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCK_COUNT_ID, "Block Count", "Number of previewed blocks (alias of Preview Count)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_SOURCE_COUNT_ID, "Source Count", "Number of source placement entries visited", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of unique cells sent to preview", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_TRUNCATED_ID, "Truncated", "Whether the preview budget truncated the payload", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why preview failed or was empty", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // Throttle rapid re-execution when node is selected (prevents flickering)
-        long now = System.currentTimeMillis();
-        if (previewEnabled && now - lastExecutionTime < MIN_EXECUTION_INTERVAL_MS) {
-            // Skip execution if called too soon
-            return;
-        }
-        lastExecutionTime = now;
         boolean success = false;
-        int blockCount = 0;
+        int sourceCount = 0;
+        int previewCount = 0;
+        boolean truncated = false;
+        String error = "";
 
         Object blocksObj = inputValues.get(INPUT_BLOCKS_ID);
         Object placementsObj = inputValues.get(INPUT_BLOCK_PLACEMENTS_ID);
         Object placementsTreeObj = inputValues.get(INPUT_BLOCK_PLACEMENTS_TREE_ID);
-        Object coordsObj = inputValues.get(INPUT_COORDS_ID);
         Object blockTypeObj = inputValues.get(INPUT_BLOCK_TYPE_ID);
 
         String effectiveBlockType = blockTypeObj instanceof String value && !value.isBlank() ? value : blockType;
@@ -115,114 +111,192 @@ public class PreviewBlocksNode extends BaseCustomUINode {
         if (!previewEnabled) {
             PreviewManager.hideNodePreviews(getId().toString());
             cachedPreviewId = null;
-            cachedInputSignature = 0;
-            cachedStyleSignature = 0;
+            cachedInputSignature = 0L;
+            cachedStyleSignature = 0L;
             cachedEffectiveBlockType = null;
-        } else {
-            List<PreviewBlock> previewBlocks = new ArrayList<>();
-            collectPreviewBlocks(blocksObj, effectiveBlockType, previewBlocks);
-            collectPreviewBlocks(placementsObj, effectiveBlockType, previewBlocks);
-            collectPreviewBlocks(placementsTreeObj, effectiveBlockType, previewBlocks);
-            collectPreviewBlocks(coordsObj, effectiveBlockType, previewBlocks);
-            previewBlocks = PreviewBlocksSignature.dedupeLastWinsByCell(previewBlocks);
+            error = "Preview disabled";
+            publish(success, sourceCount, previewCount, truncated, error);
+            return;
+        }
 
-            blockCount = previewBlocks.size();
+        CollectResult collected = collectBudgeted(
+            blocksObj, placementsObj, placementsTreeObj, effectiveBlockType);
+        sourceCount = collected.sourceCount();
+        truncated = collected.truncated();
+        List<PreviewBlock> previewBlocks = collected.blocks();
+        previewCount = previewBlocks.size();
 
-            if (!previewBlocks.isEmpty()) {
-                lastNonEmptyInputAt = now;
-                int inputSignature = PreviewBlocksSignature.computeContentFingerprint(previewBlocks);
-                int styleSignature = PreviewBlocksSignature.computeStyleFingerprint(
-                        transparency, showOutline, duration);
-                boolean unchanged = inputSignature == cachedInputSignature
-                    && styleSignature == cachedStyleSignature
-                    && effectiveBlockType.equals(cachedEffectiveBlockType)
-                    && cachedPreviewId != null
-                    && PreviewManager.hasActivePreview(cachedPreviewId);
+        if (!previewBlocks.isEmpty()) {
+            long inputSignature = PreviewBlocksSignature.computeContentFingerprint(previewBlocks);
+            long styleSignature = PreviewBlocksSignature.computeStyleFingerprint(
+                transparency, showOutline, duration);
+            boolean unchanged = inputSignature == cachedInputSignature
+                && styleSignature == cachedStyleSignature
+                && effectiveBlockType.equals(cachedEffectiveBlockType)
+                && cachedPreviewId != null
+                && PreviewManager.hasActivePreview(cachedPreviewId);
 
-                if (unchanged) {
-                    success = true;
-                } else {
-                    PreviewBlocksPayload payload = new PreviewBlocksPayload(previewBlocks);
-                    PreviewStyle style = PreviewStyle.forGhostBlocks(
-                            1.0f,
-                            1.0f,
-                            1.0f,
-                            transparency,
-                            showOutline,
-                            null,
-                            2.0f,
-                            0.1f,
-                            duration * 20
-                    );
-                    String newPreviewId = PreviewManager.showPreview(
-                            new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
-                    );
-                    if (newPreviewId != null) {
-                        previewId = UUID.nameUUIDFromBytes(newPreviewId.getBytes());
-                        cachedPreviewId = newPreviewId;
-                        cachedInputSignature = inputSignature;
-                        cachedStyleSignature = styleSignature;
-                        cachedEffectiveBlockType = effectiveBlockType;
-                        success = true;
-                    }
-                }
+            if (unchanged) {
+                success = true;
             } else {
-                boolean keepExisting = cachedPreviewId != null
-                    && PreviewManager.hasActivePreview(cachedPreviewId)
-                    && (now - lastNonEmptyInputAt) < EMPTY_INPUT_HOLD_MS;
-                if (keepExisting) {
+                PreviewBlocksPayload payload = new PreviewBlocksPayload(previewBlocks);
+                PreviewStyle style = PreviewStyle.forGhostBlocks(
+                    1.0f,
+                    1.0f,
+                    1.0f,
+                    transparency,
+                    showOutline,
+                    null,
+                    2.0f,
+                    0.1f,
+                    duration * 20
+                );
+                String newPreviewId = PreviewManager.showPreview(
+                    new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
+                );
+                if (newPreviewId != null) {
+                    previewId = UUID.nameUUIDFromBytes(newPreviewId.getBytes());
+                    cachedPreviewId = newPreviewId;
+                    cachedInputSignature = inputSignature;
+                    cachedStyleSignature = styleSignature;
+                    cachedEffectiveBlockType = effectiveBlockType;
                     success = true;
                 } else {
-                    PreviewManager.hideNodePreviews(getId().toString());
-                    cachedPreviewId = null;
-                    cachedInputSignature = 0;
-                    cachedStyleSignature = 0;
-                    cachedEffectiveBlockType = null;
+                    error = "Preview renderer rejected the payload";
                 }
+            }
+        } else {
+            // Empty payload: PreviewManager owns empty-input grace / hide timing.
+            PreviewManager.showPreview(new PreviewRequest(
+                getId().toString(),
+                new PreviewBlocksPayload(List.of()),
+                PreviewStyle.forGhostBlocks(
+                    1.0f, 1.0f, 1.0f, transparency, showOutline, null, 2.0f, 0.1f, duration * 20),
+                PreviewBackend.GHOST,
+                context
+            ));
+            if (cachedPreviewId != null && PreviewManager.hasActivePreview(cachedPreviewId)) {
+                success = true;
+            } else {
+                cachedPreviewId = null;
+                cachedInputSignature = 0L;
+                cachedStyleSignature = 0L;
+                cachedEffectiveBlockType = null;
+                error = truncated ? "Preview truncated with no cells" : "No preview blocks";
             }
         }
 
-        outputValues.put(OUTPUT_SUCCESS_ID, success);
-        outputValues.put(OUTPUT_PREVIEW_ID_ID, previewId.toString());
-        outputValues.put(OUTPUT_BLOCK_COUNT_ID, blockCount);
+        publish(success, sourceCount, previewCount, truncated, error);
     }
 
-    private void collectPreviewBlocks(Object source, String effectiveBlockType, List<PreviewBlock> out) {
+    private void publish(boolean success, int sourceCount, int previewCount, boolean truncated, String error) {
+        outputValues.put(OUTPUT_SUCCESS_ID, success);
+        outputValues.put(OUTPUT_PREVIEW_ID_ID, previewId.toString());
+        outputValues.put(OUTPUT_BLOCK_COUNT_ID, previewCount);
+        outputValues.put(OUTPUT_SOURCE_COUNT_ID, sourceCount);
+        outputValues.put(OUTPUT_PREVIEW_COUNT_ID, previewCount);
+        outputValues.put(OUTPUT_TRUNCATED_ID, truncated);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    private CollectResult collectBudgeted(
+        Object blocksObj,
+        Object placementsObj,
+        Object placementsTreeObj,
+        String effectiveBlockType
+    ) {
+        LinkedHashMap<BlockPos, PreviewBlock> byCell = new LinkedHashMap<>();
+        CollectState state = new CollectState();
+        int maxCells = GenerationLimits.MAX_PREVIEW_BLOCKS;
+        int maxSourceVisits = GenerationLimits.MAX_BLOCK_PLACEMENTS;
+
+        collectInto(blocksObj, effectiveBlockType, byCell, state, maxCells, maxSourceVisits);
+        if (!state.visitBudgetExhausted) {
+            collectInto(placementsObj, effectiveBlockType, byCell, state, maxCells, maxSourceVisits);
+        }
+        if (!state.visitBudgetExhausted) {
+            collectInto(placementsTreeObj, effectiveBlockType, byCell, state, maxCells, maxSourceVisits);
+        }
+        boolean truncated = state.truncated || state.visitBudgetExhausted;
+        return new CollectResult(List.copyOf(byCell.values()), state.sourceCount, truncated);
+    }
+
+    private void collectInto(
+        Object source,
+        String effectiveBlockType,
+        LinkedHashMap<BlockPos, PreviewBlock> byCell,
+        CollectState state,
+        int maxCells,
+        int maxSourceVisits
+    ) {
+        if (source == null || state.visitBudgetExhausted) {
+            return;
+        }
         if (source instanceof DataTreeData tree) {
             for (DataTreeData.Branch branch : tree.getBranches()) {
                 for (Object item : branch.items()) {
-                    PreviewBlock block = toPreviewBlock(item, effectiveBlockType);
-                    if (block != null) {
-                        out.add(block);
+                    if (!acceptItem(item, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
+                        return;
                     }
                 }
             }
             return;
         }
-
         if (source instanceof BlockPosList blockPosList) {
             for (BlockPos pos : blockPosList.getPositions()) {
-                if (pos != null) {
-                    out.add(new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), effectiveBlockType));
+                if (!acceptItem(pos, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
+                    return;
                 }
             }
             return;
         }
-
         if (source instanceof List<?> list) {
             for (Object item : list) {
-                PreviewBlock block = toPreviewBlock(item, effectiveBlockType);
-                if (block != null) {
-                    out.add(block);
+                if (!acceptItem(item, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
+                    return;
                 }
             }
             return;
         }
+        acceptItem(source, effectiveBlockType, byCell, state, maxCells, maxSourceVisits);
+    }
 
-        PreviewBlock block = toPreviewBlock(source, effectiveBlockType);
-        if (block != null) {
-            out.add(block);
+    /** @return false when visit budget is exhausted and callers should stop */
+    private boolean acceptItem(
+        Object item,
+        String effectiveBlockType,
+        LinkedHashMap<BlockPos, PreviewBlock> byCell,
+        CollectState state,
+        int maxCells,
+        int maxSourceVisits
+    ) {
+        if (state.sourceCount >= maxSourceVisits) {
+            state.visitBudgetExhausted = true;
+            state.truncated = true;
+            return false;
         }
+        state.sourceCount++;
+        PreviewBlock block = toPreviewBlock(item, effectiveBlockType);
+        if (block == null) {
+            return true;
+        }
+        BlockPos cell = PreviewBlocksSignature.toCell(block);
+        if (byCell.containsKey(cell)) {
+            byCell.put(cell, block);
+            return true;
+        }
+        if (byCell.size() >= maxCells) {
+            state.truncated = true;
+            return true;
+        }
+        byCell.put(cell, block);
+        return true;
+    }
+
+    private static final class CollectState {
+        int sourceCount;
+        boolean truncated;
+        boolean visitBudgetExhausted;
     }
 
     private @Nullable PreviewBlock toPreviewBlock(Object value, String effectiveBlockType) {
@@ -240,6 +314,9 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), effectiveBlockType);
         }
         return null;
+    }
+
+    private record CollectResult(List<PreviewBlock> blocks, int sourceCount, boolean truncated) {
     }
 
     @Override

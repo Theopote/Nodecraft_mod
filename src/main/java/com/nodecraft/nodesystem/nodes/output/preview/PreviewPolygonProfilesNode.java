@@ -44,10 +44,6 @@ public class PreviewPolygonProfilesNode extends BaseNode {
     @NodeProperty(displayName = "Preview Enabled", category = "Preview", order = 1)
     private boolean previewEnabled = true;
 
-    // Execution throttling: prevents rapid re-execution when node is selected (which causes flickering)
-    private volatile long lastExecutionTime = 0;
-    private static final long MIN_EXECUTION_INTERVAL_MS = 50;
-
     @NodeProperty(displayName = "Boundary Color", category = "Preview", order = 2)
     private String boundaryColor = "#FFD933";
 
@@ -79,13 +75,6 @@ public class PreviewPolygonProfilesNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // Throttle rapid re-execution when node is selected (prevents flickering)
-        long now = System.currentTimeMillis();
-        if (previewEnabled && now - lastExecutionTime < MIN_EXECUTION_INTERVAL_MS) {
-            // Skip execution if called too soon
-            return;
-        }
-        lastExecutionTime = now;
         List<PolygonProfileData> profiles = resolveProfiles();
         List<String> previewIds = new ArrayList<>();
 

@@ -100,12 +100,6 @@ public class PreviewGeometryNode extends BaseNode {
     private volatile int cachedOptionsSignature = 0;
     private volatile List<String> cachedPreviewIds = List.of();
 
-    // Execution throttling: prevents rapid re-execution when node is selected (which causes flickering)
-    private volatile long lastExecutionTime = 0;
-    private static final long MIN_EXECUTION_INTERVAL_MS = 50;
-    private static final long EMPTY_INPUT_HOLD_MS = 750;
-    private volatile long lastNonEmptyInputAt = 0L;
-
     public PreviewGeometryNode() {
         super(UUID.randomUUID(), "output.preview.preview_geometry");
 
@@ -134,18 +128,6 @@ public class PreviewGeometryNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // Throttle rapid re-execution when node is selected (prevents flickering)
-        long now = System.currentTimeMillis();
-        long timeSinceLastExecution = now - lastExecutionTime;
-        if (previewEnabled && timeSinceLastExecution < MIN_EXECUTION_INTERVAL_MS && hasActiveCachedPreviews(cachedPreviewIds)) {
-            // Skip execution if called too soon and previews are still active
-            outputValues.put(OUTPUT_SUCCESS_ID, !cachedPreviewIds.isEmpty());
-            outputValues.put(OUTPUT_PREVIEW_ID_ID, cachedPreviewIds.isEmpty() ? null : cachedPreviewIds.getFirst());
-            outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.copyOf(cachedPreviewIds));
-            outputValues.put(OUTPUT_PREVIEW_COUNT_ID, cachedPreviewIds.size());
-            outputValues.put(OUTPUT_GEOMETRY_ID, null);
-            return;
-        }
         List<GeometryData> geometries = resolveGeometryInputs();
         List<GeometryData> surfaceGeometries = new ArrayList<>();
         List<GeometryData> voxelBooleanGeometries = new ArrayList<>();
@@ -161,7 +143,6 @@ public class PreviewGeometryNode extends BaseNode {
             clearPreviewCache();
             previewIds = List.of();
         } else if (!geometries.isEmpty()) {
-            lastNonEmptyInputAt = now;
             int geometrySignature = computeGeometrySignature(geometries);
             int optionsSignature = computeOptionsSignature();
             boolean cachedPreviewsActive = hasActiveCachedPreviews(previewIds);
@@ -195,7 +176,6 @@ public class PreviewGeometryNode extends BaseNode {
                     previewIds = List.of();
                     cachedPreviewIds = previewIds;
                     cachedGeometrySignature = geometrySignature;
-                    lastExecutionTime = now;
                     cachedOptionsSignature = optionsSignature;
                     NodeCraft.LOGGER.warn(
                         "PreviewGeometryNode[{}] voxel boolean evaluation failed: {}",
@@ -215,7 +195,6 @@ public class PreviewGeometryNode extends BaseNode {
                 previewIds = List.copyOf(refreshedIds);
                 cachedPreviewIds = previewIds;
                 cachedGeometrySignature = geometrySignature;
-                lastExecutionTime = now;
                 cachedOptionsSignature = optionsSignature;
                 NodeCraft.LOGGER.info(
                     "PreviewGeometryNode[{}] refreshed: surfaces={}, voxelBooleans={}, previews={}, geometrySig={}, optionsSig={}",
@@ -228,10 +207,9 @@ public class PreviewGeometryNode extends BaseNode {
                 );
             }
         } else {
-            boolean keepExisting = hasActiveCachedPreviews(previewIds)
-                && (now - lastNonEmptyInputAt) < EMPTY_INPUT_HOLD_MS;
-            if (!keepExisting) {
-                PreviewManager.hideNodePreviews(getId().toString());
+            // Empty input: PreviewManager owns empty-input grace for geometry surfaces.
+            PreviewManager.showGeometrySurfaces(getId().toString(), List.of(), new PreviewOptions());
+            if (!hasActiveCachedPreviews(previewIds)) {
                 clearPreviewCache();
                 previewIds = List.of();
             }

@@ -6,9 +6,9 @@ package com.nodecraft.nodesystem.preview;
  * Default: compat closed — new product selections cannot choose TRACKED_WORLD.
  * Opt-in: {@code -Dnodecraft.preview.trackedWorldCompat=true}.
  * <p>
- * Saved graphs may still restore TRACKED_WORLD via
- * {@link #sanitizeRestored(PreviewBackend)}. Full deletion waits until
- * {@link TrackedWorldCapabilityInventory#GHOST_GAPS} are closed.
+ * Graph restore coerces TRACKED_WORLD → GHOST ({@link #sanitizeRestored}).
+ * Explicit new selection still requires {@code -Dnodecraft.preview.trackedWorldCompat=true}.
+ * Full deletion waits until {@link TrackedWorldCapabilityInventory#GHOST_GAPS} are closed.
  * See {@code docs/architecture/preview-world-boundary.md}.
  */
 public final class TrackedWorldCompatGate {
@@ -47,16 +47,19 @@ public final class TrackedWorldCompatGate {
         return value;
     }
 
-    /** Sanitize a value loaded from saved node state (legacy TRACKED_WORLD kept). */
+    /** Sanitize a value loaded from saved node state (TRACKED_WORLD → GHOST). */
     public static PreviewBackend sanitizeRestored(PreviewBackend requested) {
-        return requested != null ? requested : PreviewBackend.GHOST;
+        PreviewBackend value = requested != null ? requested : PreviewBackend.GHOST;
+        if (value == PreviewBackend.TRACKED_WORLD) {
+            return PreviewBackend.GHOST;
+        }
+        return value;
     }
 
     /**
-     * Runtime note: TRACKED_WORLD dispatch stays available for restored node state.
-     * New UI selections are frozen behind {@link TrackedWorldCompatGate}.
+     * Runtime note: TRACKED_WORLD dispatch stays available only when compat selection is enabled.
      */
     public static boolean allowTrackedWorldDispatch() {
-        return true;
+        return isCompatSelectionEnabled();
     }
 }

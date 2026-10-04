@@ -50,15 +50,9 @@ public class PreviewPathsNode extends BaseNode {
     @NodeProperty(displayName = "Preview Enabled", category = "Preview", order = 1)
     private boolean previewEnabled = true;
 
-    // Execution throttling: prevents rapid re-execution when node is selected (which causes flickering)
-    private volatile long lastExecutionTime = 0;
-    private static final long MIN_EXECUTION_INTERVAL_MS = 50;
-    private static final long EMPTY_INPUT_HOLD_MS = 750;
-
     private volatile int cachedInputSignature = 0;
     private volatile int cachedOptionsSignature = 0;
     private volatile List<String> cachedPreviewIds = List.of();
-    private volatile long lastNonEmptyInputAt = 0L;
 
     @NodeProperty(displayName = "Line Width", category = "Preview", order = 2)
     private float lineWidth = 1.5f;
@@ -93,13 +87,6 @@ public class PreviewPathsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        // Throttle rapid re-execution when node is selected (prevents flickering)
-        long now = System.currentTimeMillis();
-        if (previewEnabled && now - lastExecutionTime < MIN_EXECUTION_INTERVAL_MS) {
-            // Skip execution if called too soon
-            return;
-        }
-        lastExecutionTime = now;
         List<Object> previewItems = resolvePreviewItems();
         List<String> previewIds = new ArrayList<>(cachedPreviewIds);
         if (!previewEnabled) {
@@ -109,7 +96,6 @@ public class PreviewPathsNode extends BaseNode {
             cachedPreviewIds = List.of();
             previewIds = List.of();
         } else if (!previewItems.isEmpty()) {
-            lastNonEmptyInputAt = now;
             Color parsedColor = Color.fromHex(pathColor);
             PreviewOptions options = new PreviewOptions()
                 .setColor(parsedColor.red(), parsedColor.green(), parsedColor.blue())
@@ -140,10 +126,9 @@ public class PreviewPathsNode extends BaseNode {
                 cachedOptionsSignature = optionsSignature;
             }
         } else {
-            boolean keepExisting = hasAnyActivePreview(cachedPreviewIds)
-                && (now - lastNonEmptyInputAt) < EMPTY_INPUT_HOLD_MS;
-            if (!keepExisting) {
-                PreviewManager.hideNodePreviews(getId().toString());
+            // Empty input: PreviewManager owns empty-input grace for curves.
+            PreviewManager.showPathCurves(getId().toString(), List.of(), new PreviewOptions());
+            if (!hasAnyActivePreview(cachedPreviewIds)) {
                 cachedInputSignature = 0;
                 cachedOptionsSignature = 0;
                 cachedPreviewIds = List.of();

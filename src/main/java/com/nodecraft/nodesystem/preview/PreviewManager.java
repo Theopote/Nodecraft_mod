@@ -45,9 +45,12 @@ public final class PreviewManager {
 
     private static final PreviewRenderer RENDERER = PreviewRenderer.getInstance();
     private static final long EMPTY_INPUT_GRACE_MS = 750L;
+    /** Coalesce rapid identical upserts so nodes can publish outputs every evaluation. */
+    private static final long UPSERT_COALESCE_MS = 50L;
     private static final Map<String, Long> LAST_NON_EMPTY_BY_NODE_TYPE = new ConcurrentHashMap<>();
     private static final Map<String, PreviewBackend> LAST_BLOCKS_BACKEND_BY_NODE = new ConcurrentHashMap<>();
     private static final Map<String, TrackedWorldRequestState> LAST_TRACKED_WORLD_REQUEST_BY_NODE = new ConcurrentHashMap<>();
+    private static final Map<String, CoalesceState> LAST_COALESCE_BY_NODE_TYPE = new ConcurrentHashMap<>();
 
     private PreviewManager() {
     }
@@ -67,7 +70,39 @@ public final class PreviewManager {
 
     private static void clearTypePreviewState(String nodeId, String previewType) {
         LAST_NON_EMPTY_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));
+        LAST_COALESCE_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));
         RENDERER.hidePreviewsByNodeAndType(nodeId, previewType);
+    }
+
+    /**
+     * Returns a previous preview id when an identical upsert landed within {@link #UPSERT_COALESCE_MS}.
+     */
+    @Nullable
+    private static String coalesceIdenticalUpsert(String nodeId, String previewType, long contentFingerprint) {
+        String key = nodeTypeKey(nodeId, previewType);
+        long now = System.currentTimeMillis();
+        CoalesceState previous = LAST_COALESCE_BY_NODE_TYPE.get(key);
+        if (previous != null
+            && previous.fingerprint() == contentFingerprint
+            && previous.previewId() != null
+            && (now - previous.atMillis()) < UPSERT_COALESCE_MS
+            && RENDERER.hasActivePreview(previous.previewId())) {
+            return previous.previewId();
+        }
+        return null;
+    }
+
+    private static void rememberCoalesce(String nodeId, String previewType, long contentFingerprint, @Nullable String previewId) {
+        if (previewId == null) {
+            return;
+        }
+        LAST_COALESCE_BY_NODE_TYPE.put(
+            nodeTypeKey(nodeId, previewType),
+            new CoalesceState(contentFingerprint, previewId, System.currentTimeMillis())
+        );
+    }
+
+    private record CoalesceState(long fingerprint, String previewId, long atMillis) {
     }
 
     private static void clearTrackedWorldRequestState(String nodeId) {
@@ -171,7 +206,14 @@ public final class PreviewManager {
             // Backend switch safety: entering GHOST should always clear tracked-world remnants immediately.
             TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId, ctx);
             clearTrackedWorldRequestState(nodeId);
-            return RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
+            long fingerprint = PreviewFingerprint.ofPreviewBlocks(blocksPayload.getBlocks());
+            String coalesced = coalesceIdenticalUpsert(nodeId, "ghost_block", fingerprint);
+            if (coalesced != null) {
+                return coalesced;
+            }
+            String previewId = RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
+            rememberCoalesce(nodeId, "ghost_block", fingerprint, previewId);
+            return previewId;
         }
 
         if (request.backend() == PreviewBackend.TRACKED_WORLD) {

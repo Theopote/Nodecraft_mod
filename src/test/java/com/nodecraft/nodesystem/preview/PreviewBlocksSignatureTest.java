@@ -19,15 +19,15 @@ class PreviewBlocksSignatureTest {
         PreviewBlock oakAtA = new PreviewBlock(1, 2, 3, "minecraft:oak_planks");
         PreviewBlock stoneAtB = new PreviewBlock(4, 5, 6, "minecraft:stone");
 
-        int before = PreviewBlocksSignature.computeContentFingerprint(List.of(stoneAtA, oakAtB));
-        int after = PreviewBlocksSignature.computeContentFingerprint(List.of(oakAtA, stoneAtB));
+        long before = PreviewBlocksSignature.computeContentFingerprint(List.of(stoneAtA, oakAtB));
+        long after = PreviewBlocksSignature.computeContentFingerprint(List.of(oakAtA, stoneAtB));
         assertNotEquals(before, after);
     }
 
     @Test
     void styleFingerprintChangesWhenTransparencyChanges() {
-        int opaque = PreviewBlocksSignature.computeStyleFingerprint(0.5f, true, 30);
-        int clearer = PreviewBlocksSignature.computeStyleFingerprint(0.9f, true, 30);
+        long opaque = PreviewBlocksSignature.computeStyleFingerprint(0.5f, true, 30);
+        long clearer = PreviewBlocksSignature.computeStyleFingerprint(0.9f, true, 30);
         assertNotEquals(opaque, clearer);
     }
 
@@ -91,5 +91,14 @@ class PreviewBlocksSignatureTest {
         assertEquals(1, deduped.size());
         assertEquals("minecraft:gold_block", deduped.getFirst().blockId());
         assertEquals(new BlockPos(1, 64, 8), PreviewBlocksSignature.toCell(high));
+    }
+
+    @Test
+    void fingerprintsAreSixtyFourBitLongs() {
+        long content = PreviewBlocksSignature.computeContentFingerprint(
+            List.of(new PreviewBlock(0, 0, 0, "minecraft:stone")));
+        long style = PreviewBlocksSignature.computeStyleFingerprint(0.5f, true, 30);
+        assertNotEquals(0L, content);
+        assertNotEquals(0L, style);
     }
 }
