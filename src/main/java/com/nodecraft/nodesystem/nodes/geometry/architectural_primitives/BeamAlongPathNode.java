@@ -114,9 +114,13 @@ public class BeamAlongPathNode extends BaseNode {
             Vector3d mid = new Vector3d(segment.start()).lerp(segment.end(), 0.5d)
                 .fma(offset, frame.side());
             Vector3d halfExtents = new Vector3d(length / 2.0d, height / 2.0d, width / 2.0d);
+            FrameData placement = FrameData.orthonormal(mid, frame.tangent(), frame.up(), frame.side());
+            if (placement == null) {
+                continue;
+            }
             pieces.add(ArchitecturalPrimitiveSupport.createOrientedBox(
                 mid, halfExtents, frame.tangent(), frame.up(), frame.side()));
-            placementFrames.add(new FrameData(mid, frame.tangent(), frame.up(), frame.side()));
+            placementFrames.add(placement);
         }
         if (pieces.isEmpty()) {
             writeInvalid("Could not generate beam segments from the path");

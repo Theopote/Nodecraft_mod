@@ -123,10 +123,16 @@ public class ColumnNode extends BaseNode {
             return;
         }
 
+        FrameData placement = FrameData.orthonormal(base, basis.x(), basis.up(), basis.z());
+        if (placement == null) {
+            writeInvalid("Column placement frame is degenerate");
+            return;
+        }
+
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_BASE_ID, new PointData(base));
         outputValues.put(OUTPUT_TOP_ID, new PointData(top));
-        outputValues.put(OUTPUT_FRAME_ID, new FrameData(base, basis.x(), basis.up(), basis.z()));
+        outputValues.put(OUTPUT_FRAME_ID, placement);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }

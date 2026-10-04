@@ -161,7 +161,11 @@ public class WallAlongPathNode extends BaseNode {
                 if (!VectorUtils.isFinite(mid)) {
                     continue;
                 }
-                placementFrames.add(new FrameData(mid, frame.tangent(), frame.up(), frame.side()));
+                FrameData placement = FrameData.orthonormal(mid, frame.tangent(), frame.up(), frame.side());
+                if (placement == null) {
+                    continue;
+                }
+                placementFrames.add(placement);
             }
         }
 

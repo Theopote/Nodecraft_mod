@@ -229,9 +229,9 @@ abstract class AbstractFaceArrayNode extends BaseNode {
     /**
      * Face-aligned placement frame: origin on face, X/Y in face plane, Z = face normal.
      */
-    protected FrameData placementFrame(FaceArrayPlacement placement) {
+    protected @Nullable FrameData placementFrame(FaceArrayPlacement placement) {
         ArchitecturalPrimitiveSupport.FaceFrame frame = placement.layout().frame();
-        return new FrameData(
+        return FrameData.orthonormal(
             placement.centerOnFace(),
             frame.xAxis(),
             frame.yAxis(),
@@ -246,7 +246,11 @@ abstract class AbstractFaceArrayNode extends BaseNode {
         }
         List<FrameData> frames = new ArrayList<>(capacity);
         for (FaceArrayPlacement placement : enumeratePlacements(layout)) {
-            frames.add(placementFrame(placement));
+            FrameData frame = placementFrame(placement);
+            if (frame == null) {
+                return List.of();
+            }
+            frames.add(frame);
         }
         return List.copyOf(frames);
     }
