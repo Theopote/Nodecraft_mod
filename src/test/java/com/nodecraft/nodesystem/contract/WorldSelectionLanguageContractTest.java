@@ -41,6 +41,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -323,7 +324,102 @@ class WorldSelectionLanguageContractTest {
         assertEquals(0, sequence.getOutput("output_count"));
     }
 
+    @Test
+    void selectedRegionFirstPointClearsPriorRegionOutputs() {
+        SelectedRegionNode region = new SelectedRegionNode();
+        region.setPos1(0, 64, 0);
+        region.setPos2(4, 70, 4);
+        region.processNode(null);
+        assertEquals(Boolean.TRUE, region.getOutput("output_has_selection"));
+        assertNotNull(region.getOutput("output_region"));
+        assertNotNull(region.getOutput("output_min_block"));
+        assertNotNull(region.getOutput("output_max_block"));
 
+        region.beginPendingSelection(new Coordinate(10, 64, 10));
+        region.processNode(null);
+
+        assertEquals(Boolean.FALSE, region.getOutput("output_has_selection"));
+        assertEquals(Boolean.TRUE, region.getOutput("output_valid"));
+        assertEquals("", region.getOutput("output_error"));
+        assertNull(region.getOutput("output_region"));
+        assertNull(region.getOutput("output_min_block"));
+        assertNull(region.getOutput("output_max_block"));
+    }
+
+    @Test
+    void selectedEntityMissingEntityClearsHasEntity() {
+        SelectedEntityNode node = new SelectedEntityNode();
+        node.onEntityPicked(
+                UUID.randomUUID().toString(),
+                "minecraft:sheep",
+                new net.minecraft.util.math.Vec3d(10.0, 64.0, 10.0),
+                null
+        );
+        node.processNode(ExecutionContext.createEmpty(null));
+
+        assertTrue(node.hasPickedUuid());
+        assertEquals(Boolean.FALSE, node.getOutput("output_has_entity"));
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+        assertEquals("", node.getOutput("output_error"));
+        assertNull(node.getOutput("output_entity"));
+        assertNull(node.getOutput("output_exact_position"));
+        assertNull(node.getOutput("output_entity_position"));
+        assertNull(node.getOutput("output_distance_to_player"));
+    }
+
+    @Test
+    void selectedEntityIdleUsesNullObjectOutputs() {
+        SelectedEntityNode node = new SelectedEntityNode();
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_has_entity"));
+        assertNull(node.getOutput("output_entity"));
+        assertNull(node.getOutput("output_exact_position"));
+        assertNull(node.getOutput("output_entity_position"));
+    }
+
+    @Test
+    void multiRegionFailsWhenExceedingRegionListCap() {
+        MultiRegionSelectionNode node = new MultiRegionSelectionNode();
+        List<com.nodecraft.nodesystem.datatypes.RegionData> regions = new ArrayList<>();
+        int over = com.nodecraft.nodesystem.util.GenerationLimits.MAX_REGION_LIST_SIZE + 1;
+        for (int i = 0; i < over; i++) {
+            regions.add(new com.nodecraft.nodesystem.datatypes.RegionData(
+                    new BlockPos(i, 0, 0),
+                    new BlockPos(i, 0, 0)
+            ));
+        }
+        node.setInput("input_regions", regions);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("MAX_REGION_LIST_SIZE"));
+    }
+
+    @Test
+    void duplicatesDisabledPreservesFirstOccurrenceOrder() {
+        SelectedBlockSequenceNode sequence = new SelectedBlockSequenceNode();
+        sequence.setNodeState(Map.of("allowDuplicates", false, "closePath", false));
+        sequence.onBlockPicked(new Coordinate(0, 0, 0), "minecraft:stone", null);
+        sequence.onBlockPicked(new Coordinate(1, 0, 0), "minecraft:stone", null);
+        sequence.onBlockPicked(new Coordinate(0, 0, 0), "minecraft:stone", null); // duplicate ignored
+        sequence.onBlockPicked(new Coordinate(2, 0, 0), "minecraft:stone", null);
+        sequence.processNode(null);
+
+        assertEquals(3, sequence.getOutput("output_count"));
+        Object blocksObj = sequence.getOutput("output_blocks");
+        assertInstanceOf(BlockPosList.class, blocksObj);
+        assertEquals(
+            List.of(new BlockPos(0, 0, 0), new BlockPos(1, 0, 0), new BlockPos(2, 0, 0)),
+            ((BlockPosList) blocksObj).getPositions()
+        );
+    }
+
+    @Test
+    void selectedBlockIdlePositionIsNull() {
+        SelectedBlockNode block = new SelectedBlockNode();
+        block.processNode(ExecutionContext.createEmpty(null));
+        assertEquals(Boolean.FALSE, block.getOutput("output_has_selection"));
+        assertNull(block.getOutput("output_position"));
+    }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);

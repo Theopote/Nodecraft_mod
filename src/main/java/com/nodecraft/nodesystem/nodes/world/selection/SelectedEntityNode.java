@@ -15,8 +15,11 @@ import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -60,11 +63,9 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
 
-    private volatile String pickedEntityUuid;
-    private volatile String pickedEntityType = "";
-    private volatile Vec3d pickedEntityExactPosition;
-    private volatile @Nullable Entity pickedEntity;
-    private volatile boolean hasPickedEntity = false;
+    /** Selection identity only — position/entity are resolved live each evaluation. */
+    private volatile @Nullable String pickedEntityUuid;
+    private volatile String lastKnownType = "";
 
     public SelectedEntityNode() {
         super(UUID.randomUUID(), "world.selection.selected_entity");
@@ -94,61 +95,156 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        updateOutputsWithPickedEntity();
+        updateOutputsFromLiveEntity(context);
     }
 
-    private void updateOutputsWithPickedEntity() {
-        if (!hasPickedEntity || pickedEntityExactPosition == null) {
+    private void updateOutputsFromLiveEntity(@Nullable ExecutionContext context) {
+        UUID uuid = parseUuid(pickedEntityUuid);
+        if (uuid == null) {
             resetOutputs();
             return;
         }
 
-        Vector3d exact = new Vector3d(
-            pickedEntityExactPosition.x,
-            pickedEntityExactPosition.y,
-            pickedEntityExactPosition.z
-        );
+        Entity entity = resolveLiveEntity(context, uuid);
+        if (entity == null) {
+            // Lost selection is not a graph error.
+            publishAbsent(uuid.toString(), lastKnownType);
+            SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
+            return;
+        }
+
+        Vec3d pos = new Vec3d(entity.getX(), entity.getY(), entity.getZ());
+        Vector3d exact = new Vector3d(pos.x, pos.y, pos.z);
         BlockPos blockPos = BlockSpace.pointToBlockFloor(exact);
+        String typeId = resolveEntityTypeId(entity);
+        lastKnownType = typeId;
 
         outputValues.put(OUTPUT_HAS_ENTITY, true);
-        outputValues.put(OUTPUT_ENTITY_UUID, pickedEntityUuid != null ? pickedEntityUuid : "");
-        outputValues.put(OUTPUT_ENTITY_TYPE, pickedEntityType);
-        outputValues.put(OUTPUT_ENTITY, pickedEntity);
+        outputValues.put(OUTPUT_ENTITY_UUID, uuid.toString());
+        outputValues.put(OUTPUT_ENTITY_TYPE, typeId);
+        outputValues.put(OUTPUT_ENTITY, entity);
         outputValues.put(OUTPUT_ENTITY_POSITION, blockPos);
         outputValues.put(OUTPUT_EXACT_POSITION, new PointData(exact.x, exact.y, exact.z));
-        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, distanceToPlayer());
+        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, distanceToPlayer(context, pos));
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+
+        if (showHighlight) {
+            SelectionVisualFeedback.getInstance().showEntitySelection(
+                getId().toString(),
+                pos,
+                SelectionVisualFeedback.EntitySelectionState.SELECTED
+            );
+        }
+    }
+
+    private void publishAbsent(String uuidText, String typeHint) {
+        outputValues.put(OUTPUT_HAS_ENTITY, false);
+        outputValues.put(OUTPUT_ENTITY_UUID, uuidText != null ? uuidText : "");
+        outputValues.put(OUTPUT_ENTITY_TYPE, typeHint != null ? typeHint : "");
+        outputValues.put(OUTPUT_ENTITY, null);
+        outputValues.put(OUTPUT_ENTITY_POSITION, null);
+        outputValues.put(OUTPUT_EXACT_POSITION, null);
+        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, null);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private void resetOutputs() {
-        outputValues.put(OUTPUT_HAS_ENTITY, false);
-        outputValues.put(OUTPUT_ENTITY_UUID, "");
-        outputValues.put(OUTPUT_ENTITY_TYPE, "");
-        outputValues.put(OUTPUT_ENTITY, null);
-        outputValues.put(OUTPUT_ENTITY_POSITION, BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_EXACT_POSITION, new PointData(0.5, 0.5, 0.5));
-        outputValues.put(OUTPUT_DISTANCE_TO_PLAYER, 0.0D);
-        outputValues.put(OUTPUT_VALID_ID, true);
-        outputValues.put(OUTPUT_ERROR_ID, "");
+        publishAbsent("", "");
+    }
+
+    static @Nullable Entity resolveLiveEntity(@Nullable ExecutionContext context, UUID uuid) {
+        World contextWorld = context != null ? context.getWorld() : null;
+        Entity fromContext = lookupEntity(contextWorld, uuid);
+        if (isAcceptableEntity(fromContext, contextWorld)) {
+            return fromContext;
+        }
+
+        // Editor sessions may evaluate without a server world; last-resort client world.
+        World clientWorld = null;
+        try {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null) {
+                clientWorld = client.world;
+            }
+        } catch (Throwable ignored) {
+            // Headless / dedicated paths.
+        }
+        if (clientWorld != null && clientWorld != contextWorld) {
+            Entity fromClient = lookupEntity(clientWorld, uuid);
+            if (isAcceptableEntity(fromClient, contextWorld != null ? contextWorld : clientWorld)) {
+                return fromClient;
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable Entity lookupEntity(@Nullable World world, UUID uuid) {
+        if (world == null) {
+            return null;
+        }
+        try {
+            return world.getEntity(uuid);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static boolean isAcceptableEntity(@Nullable Entity entity, @Nullable World expectedWorld) {
+        if (entity == null) {
+            return false;
+        }
+        if (!entity.isAlive() || entity.isRemoved()) {
+            return false;
+        }
+        World entityWorld = entity.getEntityWorld();
+        if (expectedWorld != null && entityWorld != null && entityWorld != expectedWorld) {
+            return false;
+        }
+        return true;
+    }
+
+    private static @Nullable UUID parseUuid(@Nullable String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(text.trim());
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private static String resolveEntityTypeId(Entity entity) {
+        try {
+            Identifier id = Registries.ENTITY_TYPE.getId(entity.getType());
+            return id != null ? id.toString() : entity.getType().toString();
+        } catch (Throwable ignored) {
+            return entity.getType().toString();
+        }
+    }
+
+    private static @Nullable Double distanceToPlayer(@Nullable ExecutionContext context, Vec3d entityPos) {
+        if (context != null && context.getPlayer() != null) {
+            var player = context.getPlayer();
+            Vec3d playerPos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            return playerPos.distanceTo(entityPos);
+        }
+        // No ExecutionContext player — do not fall back to MinecraftClient.player.
+        return null;
     }
 
     @Override
     public void onEntityPicked(String entityUuid, String entityType, Vec3d exactPosition, @Nullable Entity entity) {
         this.pickedEntityUuid = entityUuid;
-        this.pickedEntityType = entityType != null ? entityType : "";
-        this.pickedEntityExactPosition = exactPosition != null
-            ? exactPosition
-            : new Vec3d(0, 0, 0);
-        this.pickedEntity = entity;
-        this.hasPickedEntity = true;
-
+        this.lastKnownType = entityType != null ? entityType : "";
         markDirty();
 
-        if (showHighlight) {
+        if (showHighlight && exactPosition != null) {
             SelectionVisualFeedback.getInstance().showEntitySelection(
                 getId().toString(),
-                pickedEntityExactPosition,
+                exactPosition,
                 SelectionVisualFeedback.EntitySelectionState.SELECTED
             );
         }
@@ -165,14 +261,19 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     }
 
     public void clearPickedEntity() {
-        hasPickedEntity = false;
         pickedEntityUuid = null;
-        pickedEntityType = "";
-        pickedEntityExactPosition = null;
-        pickedEntity = null;
-
+        lastKnownType = "";
         SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
         markDirty();
+    }
+
+    /** Package-visible for contracts: whether a UUID identity is currently held. */
+    public boolean hasPickedUuid() {
+        return parseUuid(pickedEntityUuid) != null;
+    }
+
+    public @Nullable String getPickedEntityUuid() {
+        return pickedEntityUuid;
     }
 
     @Override
@@ -182,7 +283,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
         float height = small;
         height += frame;
-        if (hasPickedEntity) {
+        if (hasPickedUuid()) {
             height += small;
             height += frame;
         }
@@ -231,7 +332,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
                 changed = true;
             }
 
-            if (hasPickedEntity) {
+            if (hasPickedUuid()) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 if (ImGui.button("Clear Selection##clearEntity", availableWidth, buttonHeight)) {
@@ -269,14 +370,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
             if (!showHighlight) {
                 SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
-            } else if (hasPickedEntity && pickedEntityExactPosition != null) {
-                SelectionVisualFeedback.getInstance().showEntitySelection(
-                    getId().toString(),
-                    pickedEntityExactPosition,
-                    SelectionVisualFeedback.EntitySelectionState.SELECTED
-                );
             }
-
             markDirty();
         }
     }
@@ -286,7 +380,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         Map<String, Object> state = new HashMap<>();
         state.put("maxDistance", maxDistance);
         state.put("showHighlight", showHighlight);
-        // Transient pick is not persisted.
+        // Transient pick identity is not persisted.
         return state;
     }
 
@@ -303,7 +397,9 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         if (stateMap.get("showHighlight") instanceof Boolean highlight) {
             setShowHighlight(highlight);
         }
-        // Ignore legacy pickedEntity payloads.
+        // Ignore legacy pickedEntity / UUID payloads — selection is session-only.
+        pickedEntityUuid = null;
+        lastKnownType = "";
         markDirty();
     }
 
@@ -317,28 +413,10 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     }
 
     public void onNodeSelected() {
-        if (hasPickedEntity && showHighlight && pickedEntityExactPosition != null) {
-            SelectionVisualFeedback.getInstance().showEntitySelection(
-                getId().toString(),
-                pickedEntityExactPosition,
-                SelectionVisualFeedback.EntitySelectionState.SELECTED
-            );
-        }
+        // Highlight refreshed on next processNode when entity still resolves.
     }
 
     public void onNodeDeselected() {
         // Keep highlight active as part of the node behavior.
-    }
-
-    private double distanceToPlayer() {
-        if (!hasPickedEntity || pickedEntityExactPosition == null) {
-            return 0.0D;
-        }
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.player == null) {
-            return 0.0D;
-        }
-        Vec3d playerPos = new Vec3d(client.player.getX(), client.player.getY(), client.player.getZ());
-        return playerPos.distanceTo(pickedEntityExactPosition);
     }
 }

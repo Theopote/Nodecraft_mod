@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
+import com.nodecraft.nodesystem.util.WorldCoordinateValidator;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -285,33 +286,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
     
     /**
-     * 更新输入端口的可用性
-     * 当已拾取方块时，断开坐标输入端口的连接
-     */
-    private void updateInputPortAvailability() {
-        try {
-            if (hasPickedBlock) {
-                // 如果已拾取方块，断开输入端口的连接
-                IPort xPort = getInputPort(INPUT_X_ID);
-                IPort yPort = getInputPort(INPUT_Y_ID);
-                IPort zPort = getInputPort(INPUT_Z_ID);
-                
-                if (xPort != null && xPort.isConnected()) {
-                    NodeCraft.LOGGER.debug("Keeping X input connection for picked block node {}", getId());
-                }
-                if (yPort != null && yPort.isConnected()) {
-                    NodeCraft.LOGGER.debug("Keeping Y input connection for picked block node {}", getId());
-                }
-                if (zPort != null && zPort.isConnected()) {
-                    NodeCraft.LOGGER.debug("Keeping Z input connection for picked block node {}", getId());
-                }
-            }
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("节点 {} 更新输入端口可用性失败: {}", getId(), e.getMessage());
-        }
-    }
-    
-    /**
      * 尝试从输入端口处理坐标（写入 input* 存储，不影响 pick 存储）。
      * Does not read the Minecraft world — stores exact integer coordinates only.
      */
@@ -334,7 +308,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 return;
             }
 
-            ValidationResult<Coordinate> rangeValidation = validateCoordinateRange(x, y, z);
+            ValidationResult<Coordinate> rangeValidation = validateCoordinateRange(
+                x, y, z, context.getWorld());
             if (!rangeValidation.isValid()) {
                 inputValidationError = rangeValidation.getMessage();
                 clearInputBlockData();
@@ -398,35 +373,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         inputValidationError = null;
     }
     
-    /**
-     * 验证坐标范围是否在 Minecraft 世界范围内
-     * @param x X坐标
-     * @param y Y坐标  
-     * @param z Z坐标
-     * @return 验证结果
-     */
-    private ValidationResult<Coordinate> validateCoordinateRange(int x, int y, int z) {
-        // Minecraft 世界范围限制
-        final int MIN_Y = -64;
-        final int MAX_Y = 319;
-        final int MAX_XZ = 30000000; // ±30M
-        final int MIN_XZ = -30000000;
-        
-        // 检查Y坐标范围
-        if (y < MIN_Y || y > MAX_Y) {
-            return ValidationResult.failure(String.format("Y坐标超出世界范围 (%d 至 %d): %d", MIN_Y, MAX_Y, y));
+    private ValidationResult<Coordinate> validateCoordinateRange(
+        int x,
+        int y,
+        int z,
+        @Nullable net.minecraft.world.World world
+    ) {
+        WorldCoordinateValidator.Result result = WorldCoordinateValidator.validate(x, y, z, world);
+        if (!result.valid()) {
+            return ValidationResult.failure(result.error());
         }
-        
-        // 检查X坐标范围
-        if (x < MIN_XZ || x > MAX_XZ) {
-            return ValidationResult.failure(String.format("X坐标超出世界范围 (±%d): %d", MAX_XZ, x));
-        }
-        
-        // 检查Z坐标范围
-        if (z < MIN_XZ || z > MAX_XZ) {
-            return ValidationResult.failure(String.format("Z坐标超出世界范围 (±%d): %d", MAX_XZ, z));
-        }
-        
         return ValidationResult.success(new Coordinate(x, y, z));
     }
     
@@ -435,7 +391,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         // Only when coordinate drive owns the source (never poison pick/idle with stale errors).
         if (resolveActiveSource() == ActiveSource.COORDINATES
                 && inputValidationError != null && !inputValidationError.isEmpty()) {
-            outputValues.put(OUTPUT_POSITION, BlockPos.ORIGIN);
+            outputValues.put(OUTPUT_POSITION, null);
             outputValues.put(OUTPUT_HAS_SELECTION, false);
             outputValues.put(OUTPUT_VALID, false);
             outputValues.put(OUTPUT_ERROR, inputValidationError);
@@ -459,7 +415,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     }
 
     private void resetOutputs() {
-        outputValues.put(OUTPUT_POSITION, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_POSITION, null);
         outputValues.put(OUTPUT_HAS_SELECTION, false);
         outputValues.put(OUTPUT_VALID, true);
         outputValues.put(OUTPUT_ERROR, "");

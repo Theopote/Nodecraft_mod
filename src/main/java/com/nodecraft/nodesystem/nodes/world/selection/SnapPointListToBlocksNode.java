@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PointUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -69,6 +70,10 @@ public class SnapPointListToBlocksNode extends BaseNode {
         List<Vector3d> points = PointUtils.resolveStrictPointList(inputValues.get(INPUT_POINTS_ID));
         if (points == null) {
             publishInvalid("Points must be a non-empty strict POINT_LIST of finite PointData entries.");
+            return;
+        }
+        if (points.size() > GenerationLimits.MAX_LIST_ELEMENTS) {
+            publishInvalid("Points exceed MAX_LIST_ELEMENTS (" + GenerationLimits.MAX_LIST_ELEMENTS + ")");
             return;
         }
 

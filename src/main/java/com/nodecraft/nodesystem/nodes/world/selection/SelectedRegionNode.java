@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -35,14 +34,6 @@ import java.util.UUID;
     order = 1
 )
 public class SelectedRegionNode extends BaseCustomUINode {
-
-    @NodeProperty(
-        displayName = "Auto Update",
-        category = "Selection",
-        order = 1,
-        description = "Whether the node should refresh the selected region from the player automatically."
-    )
-    private boolean autoUpdate = true;
 
     private static final String OUTPUT_REGION_ID = "output_region";
     private static final String OUTPUT_MIN_BLOCK_ID = "output_min_block";
@@ -85,8 +76,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             selectionHint = "First point selected. Choose the second point.";
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
-            outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
-            outputValues.put(OUTPUT_VALID_ID, true);
+            publishPendingSelection();
             invalidateCache();
             markDirty();
         }
@@ -131,9 +121,11 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
         if (pos1 == null || pos2 == null) {
             clearCompletedRegionPreview();
-            // Keep the temporary first-point state. Full outputs are produced by updateOutputsFromPositions().
             if (pos1 == null) {
                 resetOutputs();
+            } else {
+                // First corner only: clear prior completed Region/Min/Max (no stale outputs).
+                publishPendingSelection();
             }
             return;
         }
@@ -263,8 +255,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (pos2 != null) {
             updateOutputsFromPositions();
         } else {
-            outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
-            outputValues.put(OUTPUT_VALID_ID, true);
+            publishPendingSelection();
         }
         invalidateCache();
         markDirty();
@@ -275,11 +266,18 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (pos1 != null) {
             updateOutputsFromPositions();
         } else {
-            outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
-            outputValues.put(OUTPUT_VALID_ID, true);
+            publishPendingSelection();
         }
         invalidateCache();
         markDirty();
+    }
+
+    /**
+     * Test/editor helper: simulate picking the first corner of a new area selection
+     * (clears any prior completed Region outputs).
+     */
+    public void beginPendingSelection(Coordinate position) {
+        areaSelectionCallback.onFirstPointSelected(position);
     }
 
     public void clearSelection() {
@@ -323,24 +321,21 @@ public class SelectedRegionNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void resetOutputs() {
+    /**
+     * Incomplete first-corner / idle object-absent publish.
+     * Clears Region/Min/Max so a prior completed selection cannot linger.
+     */
+    private void publishPendingSelection() {
         outputValues.put(OUTPUT_REGION_ID, null);
-        outputValues.put(OUTPUT_MIN_BLOCK_ID, BlockPos.ORIGIN);
-        outputValues.put(OUTPUT_MAX_BLOCK_ID, BlockPos.ORIGIN);
+        outputValues.put(OUTPUT_MIN_BLOCK_ID, null);
+        outputValues.put(OUTPUT_MAX_BLOCK_ID, null);
         outputValues.put(OUTPUT_HAS_SELECTION_ID, false);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    public boolean isAutoUpdate() {
-        return autoUpdate;
-    }
-
-    public void setAutoUpdate(boolean autoUpdate) {
-        if (this.autoUpdate != autoUpdate) {
-            this.autoUpdate = autoUpdate;
-            markDirty();
-        }
+    private void resetOutputs() {
+        publishPendingSelection();
     }
 
     public void onNodeRemoved() {
@@ -353,21 +348,14 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
     @Override
     public Object getNodeState() {
-        Map<String, Object> state = new HashMap<>();
-        state.put("autoUpdate", isAutoUpdate());
-        return state;
+        // Selection corners are session/runtime only; no durable graph fields.
+        return new HashMap<String, Object>();
     }
 
     @Override
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map) {
-            if (map.containsKey("autoUpdate")) {
-                Object value = map.get("autoUpdate");
-                if (value instanceof Boolean bool) {
-                    setAutoUpdate(bool);
-                }
-            }
-            // Ignore legacy pos1/pos2 — selection is session/runtime only.
+            // Ignore legacy autoUpdate / pos1 / pos2 — selection is session/runtime only.
             pos1 = null;
             pos2 = null;
             clearCompletedRegionPreview();

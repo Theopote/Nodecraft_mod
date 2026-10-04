@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockListUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -109,6 +110,11 @@ public class MultiRegionSelectionNode extends BaseNode {
 
         if (complete.isEmpty()) {
             publishInvalid("No regions were provided.");
+            return;
+        }
+        if (complete.size() > GenerationLimits.MAX_REGION_LIST_SIZE) {
+            publishInvalid("Region count exceeds MAX_REGION_LIST_SIZE ("
+                + GenerationLimits.MAX_REGION_LIST_SIZE + ")");
             return;
         }
 
