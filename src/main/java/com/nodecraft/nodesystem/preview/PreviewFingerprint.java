@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Shared 64-bit content/style fingerprints for preview cache keys.
@@ -36,7 +37,7 @@ public final class PreviewFingerprint {
             hash = mix(hash, Double.doubleToLongBits(block.z()));
             hash = mix(hash, block.blockId().hashCode());
             if (block.stateData() != null) {
-                hash = mix(hash, block.stateData().hashCode());
+                hash = mix(hash, Objects.requireNonNull(block.stateData()).hashCode());
             }
         }
         return hash;

@@ -22,7 +22,6 @@ import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -232,31 +231,35 @@ public class PreviewBlocksNode extends BaseCustomUINode {
         if (source == null || state.visitBudgetExhausted) {
             return;
         }
-        if (source instanceof DataTreeData tree) {
-            for (DataTreeData.Branch branch : tree.getBranches()) {
-                for (Object item : branch.items()) {
+        switch (source) {
+            case DataTreeData tree -> {
+                for (DataTreeData.Branch branch : tree.getBranches()) {
+                    for (Object item : branch.items()) {
+                        if (!acceptItem(item, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
+                            return;
+                        }
+                    }
+                }
+                return;
+            }
+            case BlockPosList blockPosList -> {
+                for (BlockPos pos : blockPosList.getPositions()) {
+                    if (!acceptItem(pos, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
+                        return;
+                    }
+                }
+                return;
+            }
+            case List<?> list -> {
+                for (Object item : list) {
                     if (!acceptItem(item, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
                         return;
                     }
                 }
+                return;
             }
-            return;
-        }
-        if (source instanceof BlockPosList blockPosList) {
-            for (BlockPos pos : blockPosList.getPositions()) {
-                if (!acceptItem(pos, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
-                    return;
-                }
+            default -> {
             }
-            return;
-        }
-        if (source instanceof List<?> list) {
-            for (Object item : list) {
-                if (!acceptItem(item, effectiveBlockType, byCell, state, maxCells, maxSourceVisits)) {
-                    return;
-                }
-            }
-            return;
         }
         acceptItem(source, effectiveBlockType, byCell, state, maxCells, maxSourceVisits);
     }
@@ -305,10 +308,12 @@ public class PreviewBlocksNode extends BaseCustomUINode {
             && placement.blockId() != null
             && !placement.blockId().isBlank()) {
             BlockPos pos = placement.pos();
-            return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), placement.blockId(), placement.stateData());
+            if (pos != null) {
+                return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), placement.blockId(), placement.stateData());
+            }
         }
-        if (value instanceof Coordinate coordinate) {
-            return new PreviewBlock(coordinate.x(), coordinate.y(), coordinate.z(), effectiveBlockType);
+        if (value instanceof Coordinate(int x, int y, int z)) {
+            return new PreviewBlock(x, y, z, effectiveBlockType);
         }
         if (value instanceof BlockPos pos) {
             return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), effectiveBlockType);

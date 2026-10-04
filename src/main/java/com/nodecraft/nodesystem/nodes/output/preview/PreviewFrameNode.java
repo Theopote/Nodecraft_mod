@@ -67,7 +67,7 @@ public class PreviewFrameNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         boolean success = false;
         String previewId = null;
-        String status = "preview_not_shown";
+        String status;
 
         Vec3d origin = resolveOrigin();
         if (!previewEnabled) {

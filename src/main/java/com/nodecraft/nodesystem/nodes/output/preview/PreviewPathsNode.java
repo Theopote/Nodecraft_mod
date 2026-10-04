@@ -312,8 +312,8 @@ public class PreviewPathsNode extends BaseNode {
         if (value instanceof BlockPos blockPos) {
             return new Vec3d(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
-        if (value instanceof Coordinate coordinate) {
-            return new Vec3d(coordinate.x(), coordinate.y(), coordinate.z());
+        if (value instanceof Coordinate(int x, int y, int z)) {
+            return new Vec3d(x, y, z);
         }
         if (value instanceof Vec3d vec) {
             return vec;
