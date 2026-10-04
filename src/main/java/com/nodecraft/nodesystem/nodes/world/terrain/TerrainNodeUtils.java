@@ -18,8 +18,10 @@ final class TerrainNodeUtils {
     static final int DEFAULT_MAX_X = 31;
     static final int DEFAULT_MIN_Z = -32;
     static final int DEFAULT_MAX_Z = 31;
+    /** Inclusive modeling Y floor (matches {@code WorldCoordinateValidator.FALLBACK_MIN_Y}). */
     static final int DEFAULT_MIN_Y = -64;
-    static final int DEFAULT_MAX_Y = 320;
+    /** Inclusive modeling Y ceiling (matches {@code WorldCoordinateValidator.FALLBACK_MAX_Y}). */
+    static final int DEFAULT_MAX_Y = 319;
     static final int DEFAULT_BASE_Y = 64;
 
     /** Continental soft domain used when Region is unconnected on large-scale field nodes. */

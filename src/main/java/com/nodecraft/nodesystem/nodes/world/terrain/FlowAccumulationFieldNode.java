@@ -17,6 +17,7 @@ import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
+import java.util.Arrays;
 import java.util.UUID;
 
 @NodeInfo(
@@ -24,7 +25,8 @@ import java.util.UUID;
     id = "world.terrain.flow_accumulation_field",
     displayName = "Flow Accumulation Field",
     description = "Routes runoff with selectable fast or high-quality (MFD) flow accumulation. "
-        + "Samples at block cell centers; auto-downsamples when the region exceeds the grid cell cap.",
+        + "Samples at block cell centers; auto-downsamples when the region exceeds the grid cell cap. "
+        + "Downsampled accumulation is piecewise constant on routing cells.",
     category = "world.terrain",
     order = 6
 )
@@ -34,6 +36,11 @@ public class FlowAccumulationFieldNode extends BaseNode {
         FAST_APPROXIMATE,
         HIGH_QUALITY_MFD
     }
+
+    private static final int WORK_WEIGHT_FAST = 1;
+    private static final int WORK_WEIGHT_MFD = 8;
+    private static final int[] MFD_DX = {-1, 0, 1, -1, 1, -1, 0, 1};
+    private static final int[] MFD_DZ = {-1, -1, -1, 0, 0, 1, 1, 1};
 
     private static final String INPUT_REGION_ID = "input_region";
     private static final String INPUT_FLOW_FIELD_ID = "input_flow_field";
@@ -78,7 +85,8 @@ public class FlowAccumulationFieldNode extends BaseNode {
             "Routing iterations (exact INTEGER, hard-capped)", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_ACCUMULATION_FIELD_ID, "Accumulation Field",
-            "Drainage accumulation estimate", NodeDataType.SCALAR_FIELD, this));
+            "Drainage accumulation estimate (piecewise constant on routing cells when downsampled)",
+            NodeDataType.SCALAR_FIELD, this));
         addOutputPort(new BasePort(OUTPUT_STRIDE_ID, "Stride",
             "Actual grid stride used for routing", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_GRID_WIDTH_ID, "Grid Width",
@@ -88,7 +96,8 @@ public class FlowAccumulationFieldNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_CELL_COUNT_ID, "Cell Count",
             "Internal routing cell count", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_WAS_DOWNSAMPLED_ID, "Was Downsampled",
-            "True when the region was routed with stride > 1", NodeDataType.BOOLEAN, this));
+            "True when the region was routed with stride > 1 (piecewise-constant lookup)",
+            NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "Whether accumulation succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
@@ -180,9 +189,15 @@ public class FlowAccumulationFieldNode extends BaseNode {
             return;
         }
 
+        int modeWeight = resolvedMode == AccumulationMode.FAST_APPROXIMATE
+            ? WORK_WEIGHT_FAST
+            : WORK_WEIGHT_MFD;
         long work;
         try {
-            work = Math.multiplyExact(gridCells, (long) resolvedIterations);
+            work = Math.multiplyExact(
+                Math.multiplyExact(gridCells, (long) resolvedIterations),
+                (long) modeWeight
+            );
         } catch (ArithmeticException e) {
             writeInvalid("Simulation work overflows.");
             return;
@@ -194,8 +209,10 @@ public class FlowAccumulationFieldNode extends BaseNode {
         }
 
         double[][] accumulation = new double[gridDepth][gridWidth];
-        double[][] mobile = new double[gridDepth][gridWidth];
+        double[][] mobileA = new double[gridDepth][gridWidth];
+        double[][] mobileB = new double[gridDepth][gridWidth];
         double[][] rainfall = new double[gridDepth][gridWidth];
+        double[] mfdWeights = new double[8];
         Vector3d samplePoint = new Vector3d();
 
         for (int gz = 0; gz < gridDepth; gz++) {
@@ -217,13 +234,15 @@ public class FlowAccumulationFieldNode extends BaseNode {
                     rain = Math.max(0.0d, rain);
                 }
                 rainfall[gz][gx] = rain;
-                mobile[gz][gx] = rain;
+                mobileA[gz][gx] = rain;
             }
         }
 
         Vector3d flow = new Vector3d();
+        double[][] mobile = mobileA;
+        double[][] next = mobileB;
         for (int iterationIndex = 0; iterationIndex < resolvedIterations; iterationIndex++) {
-            double[][] next = new double[gridDepth][gridWidth];
+            clearGrid(next);
 
             for (int gz = 0; gz < gridDepth; gz++) {
                 int worldZ = minZ + gz * stride;
@@ -250,12 +269,14 @@ public class FlowAccumulationFieldNode extends BaseNode {
                     if (resolvedMode == AccumulationMode.FAST_APPROXIMATE) {
                         routeFast(gx, gz, mass, flow, resolvedFastRoutedRatio, gridWidth, gridDepth, next);
                     } else {
-                        routeMfd(gx, gz, mass, flow, resolvedRoutingRate, gridWidth, gridDepth, next);
+                        routeMfd(gx, gz, mass, flow, resolvedRoutingRate, gridWidth, gridDepth, next, mfdWeights);
                     }
                 }
             }
 
+            double[][] swap = mobile;
             mobile = next;
+            next = swap;
         }
 
         if (normalizeOutput) {
@@ -316,7 +337,8 @@ public class FlowAccumulationFieldNode extends BaseNode {
                           double routingRate,
                           int gridWidth,
                           int gridDepth,
-                          double[][] next) {
+                          double[][] next,
+                          double[] weights) {
         double flowX = flow.x;
         double flowZ = flow.z;
         double flowLen = Math.sqrt(flowX * flowX + flowZ * flowZ);
@@ -325,20 +347,20 @@ public class FlowAccumulationFieldNode extends BaseNode {
             return;
         }
 
-        int[] dx = {-1, 0, 1, -1, 1, -1, 0, 1};
-        int[] dz = {-1, -1, -1, 0, 0, 1, 1, 1};
-        double[] weights = new double[8];
+        for (int i = 0; i < 8; i++) {
+            weights[i] = 0.0d;
+        }
         double sum = 0.0d;
 
         for (int i = 0; i < 8; i++) {
-            int nx = x + dx[i];
-            int nz = z + dz[i];
+            int nx = x + MFD_DX[i];
+            int nz = z + MFD_DZ[i];
             if (!isInside(nx, nz, gridWidth, gridDepth)) {
                 continue;
             }
 
-            double dirX = dx[i];
-            double dirZ = dz[i];
+            double dirX = MFD_DX[i];
+            double dirZ = MFD_DZ[i];
             double dot = flowX * dirX + flowZ * dirZ;
             if (dot <= 0.0d) {
                 continue;
@@ -364,10 +386,16 @@ public class FlowAccumulationFieldNode extends BaseNode {
             if (weight <= 0.0d) {
                 continue;
             }
-            int nx = x + dx[i];
-            int nz = z + dz[i];
+            int nx = x + MFD_DX[i];
+            int nz = z + MFD_DZ[i];
             double share = routedTotal * (weight / sum);
             next[nz][nx] += share;
+        }
+    }
+
+    private void clearGrid(double[][] grid) {
+        for (double[] row : grid) {
+            Arrays.fill(row, 0.0d);
         }
     }
 
@@ -389,14 +417,30 @@ public class FlowAccumulationFieldNode extends BaseNode {
     }
 
     private int resolveStride(int width, int depth, int maxCells) {
-        int stride = 1;
-        while ((((width - 1L) / stride) + 1L) * (((depth - 1L) / stride) + 1L) > maxCells) {
+        long cells = (long) width * (long) depth;
+        if (cells <= maxCells) {
+            return 1;
+        }
+        int stride = (int) Math.ceil(Math.sqrt((double) cells / (double) maxCells));
+        if (stride < 1) {
+            stride = 1;
+        }
+        while (gridCellsAtStride(width, depth, stride) > maxCells) {
             stride++;
             if (stride > width && stride > depth) {
                 break;
             }
         }
+        while (stride > 1 && gridCellsAtStride(width, depth, stride - 1) <= maxCells) {
+            stride--;
+        }
         return stride;
+    }
+
+    private static long gridCellsAtStride(int width, int depth, int stride) {
+        long gw = ((width - 1L) / stride) + 1L;
+        long gd = ((depth - 1L) / stride) + 1L;
+        return gw * gd;
     }
 
     private boolean isInside(int x, int z, int width, int depth) {

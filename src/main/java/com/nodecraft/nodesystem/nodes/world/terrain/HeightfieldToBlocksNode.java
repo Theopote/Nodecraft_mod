@@ -12,8 +12,11 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PlacementPreflight;
+import com.nodecraft.nodesystem.util.WorldCoordinateValidator;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -72,7 +75,7 @@ public class HeightfieldToBlocksNode extends BaseNode {
     private int step = 1;
 
     @NodeProperty(displayName = "Fill Tiles", category = "Sampling", order = 5,
-        description = "When true, each sampled column is expanded to its Step-sized tile for smoother previews")
+        description = "Expands each sampled value across its Step-sized tile to avoid sparse preview gaps")
     private boolean fillTiles = false;
 
     @NodeProperty(displayName = "Fill Depth", category = "Safety", order = 6,
@@ -89,7 +92,7 @@ public class HeightfieldToBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.terrain.heightfield_to_blocks");
 
         addInputPort(new BasePort(INPUT_REGION_ID, "Region",
-            "Optional region to rasterize; defaults to a safe 64x64 area (−32..31, Y −64..320) when omitted",
+            "Optional region to rasterize; defaults to modeling domain (−32..31, Y −64..319) when omitted",
             NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_HEIGHT_FIELD_ID, "Height Field",
             "Normalized terrain height field in [-1,1]", NodeDataType.SCALAR_FIELD, this));
@@ -104,9 +107,11 @@ public class HeightfieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_STEP_ID, "Step",
             "Column sampling stride in blocks", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_FILL_TILES_ID, "Fill Tiles",
-            "Expand each sample to a Step-sized tile for smoother previews", NodeDataType.BOOLEAN, this));
+            "Expands each sampled value across its Step-sized tile to avoid sparse preview gaps",
+            NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_FILL_DEPTH_ID, "Fill Depth",
-            "Maximum filled layers below the surface; 0 emits surface only", NodeDataType.INTEGER, this));
+            "Maximum filled layers below the surface (capped by region height); 0 emits surface only",
+            NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_MAX_COLUMNS_ID, "Max Columns",
             "Maximum output terrain columns before stopping (hard-capped; includes Fill Tiles expansion)",
             NodeDataType.INTEGER, this));
@@ -164,6 +169,12 @@ public class HeightfieldToBlocksNode extends BaseNode {
             writeInvalid("Fill Depth must be an exact INTEGER >= 0.");
             return;
         }
+        int maxFillDepth = Math.max(0, bounds.maxY - bounds.minY);
+        if (resolvedFillDepth > maxFillDepth) {
+            writeInvalid("Fill Depth (" + resolvedFillDepth + ") exceeds region height ("
+                + maxFillDepth + ").");
+            return;
+        }
 
         Integer resolvedMaxColumns = TerrainNodeUtils.resolveUserBudgetExactInteger(
             this, INPUT_MAX_COLUMNS_ID, maxColumns, GenerationLimits.MAX_TERRAIN_SAMPLES);
@@ -186,11 +197,19 @@ public class HeightfieldToBlocksNode extends BaseNode {
             writeInvalid("Surface Block is required.");
             return;
         }
+        if (BlockStateResolver.resolveDefault(resolvedSurface) == null) {
+            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedSurface);
+            return;
+        }
 
         String resolvedSubsurface = TerrainNodeUtils.resolveOptionalString(
             this, INPUT_SUBSURFACE_BLOCK_ID, subsurfaceBlock);
         if (resolvedFillDepth > 0 && resolvedSubsurface == null) {
             writeInvalid("Subsurface Block is required when Fill Depth > 0.");
+            return;
+        }
+        if (resolvedSubsurface != null && BlockStateResolver.resolveDefault(resolvedSubsurface) == null) {
+            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedSubsurface);
             return;
         }
 
@@ -202,12 +221,22 @@ public class HeightfieldToBlocksNode extends BaseNode {
                 writeInvalid("Water Level is connected but null or non-finite.");
                 return;
             }
+            waterLevelY = WorldCoordinateValidator.roundToBlockY(waterLevel);
+            if (waterLevelY == null) {
+                writeInvalid("Water Level must round to an integer Y in "
+                    + WorldCoordinateValidator.FALLBACK_MIN_Y + ".."
+                    + WorldCoordinateValidator.FALLBACK_MAX_Y + ".");
+                return;
+            }
             resolvedWaterBlock = TerrainNodeUtils.resolveOptionalString(this, INPUT_WATER_BLOCK_ID, waterBlock);
             if (resolvedWaterBlock == null) {
                 writeInvalid("Water Block is required when Water Level is connected.");
                 return;
             }
-            waterLevelY = (int) Math.round(waterLevel);
+            if (BlockStateResolver.resolveDefault(resolvedWaterBlock) == null) {
+                writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedWaterBlock);
+                return;
+            }
         }
 
         List<BlockPlacementData> placements = new ArrayList<>();
@@ -257,7 +286,8 @@ public class HeightfieldToBlocksNode extends BaseNode {
                             break tileX;
                         }
 
-                        int fillBottom = Math.max(bounds.minY, columnTop - resolvedFillDepth);
+                        long fillBottomLong = (long) columnTop - (long) resolvedFillDepth;
+                        int fillBottom = (int) Math.max((long) bounds.minY, fillBottomLong);
                         for (int y = fillBottom; y <= columnTop; y++) {
                             if (placements.size() >= resolvedMaxPlacements) {
                                 hitLimit = true;

@@ -226,7 +226,7 @@ Recommended world convention:
   - `input_water_level` (`DOUBLE`)
 - Outputs:
   - `output_block_placements` (`BLOCK_PLACEMENT_LIST`)
-  - `output_surface_points` (`BLOCK_LIST`)
+  - `output_surface_blocks` (`BLOCK_LIST`)
 
 ## Three Reusable Graph Recipes
 

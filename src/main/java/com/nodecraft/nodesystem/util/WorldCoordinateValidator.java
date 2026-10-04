@@ -52,4 +52,20 @@ public final class WorldCoordinateValidator {
         }
         return Result.ok();
     }
+
+    /**
+     * Rounds a finite absolute world Y to an inclusive block Y in
+     * {@link #FALLBACK_MIN_Y}..{@link #FALLBACK_MAX_Y}.
+     * Returns {@code null} when non-finite or outside that inclusive range after rounding.
+     */
+    public static @Nullable Integer roundToBlockY(double y) {
+        if (!Double.isFinite(y)) {
+            return null;
+        }
+        long rounded = Math.round(y);
+        if (rounded < FALLBACK_MIN_Y || rounded > FALLBACK_MAX_Y) {
+            return null;
+        }
+        return (int) rounded;
+    }
 }

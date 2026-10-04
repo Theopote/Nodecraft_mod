@@ -199,10 +199,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
             return false;
         }
         World entityWorld = entity.getEntityWorld();
-        if (expectedWorld != null && entityWorld != null && entityWorld != expectedWorld) {
-            return false;
-        }
-        return true;
+        return expectedWorld == null || entityWorld == null || entityWorld == expectedWorld;
     }
 
     private static @Nullable UUID parseUuid(@Nullable String text) {
@@ -219,7 +216,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
     private static String resolveEntityTypeId(Entity entity) {
         try {
             Identifier id = Registries.ENTITY_TYPE.getId(entity.getType());
-            return id != null ? id.toString() : entity.getType().toString();
+            return id.toString();
         } catch (Throwable ignored) {
             return entity.getType().toString();
         }

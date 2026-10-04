@@ -109,7 +109,7 @@ public class SampleFieldOnRegionNode extends BaseNode {
             writeInvalid("Region is connected but incomplete or invalid.", resolvedStep);
             return;
         }
-        TerrainGridDomain domain = TerrainNodeUtils.localDomainFromRegion(region);
+        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(this, INPUT_REGION_ID, field);
 
         List<Vector3d> points = new ArrayList<>();
         List<Double> values = new ArrayList<>();

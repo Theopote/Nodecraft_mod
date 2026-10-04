@@ -12,7 +12,9 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PlacementPreflight;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -79,7 +81,7 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.terrain.scalar_field_slice_to_blocks");
 
         addInputPort(new BasePort(INPUT_REGION_ID, "Region",
-            "Optional region to sample; defaults to a safe 64x64 area (−32..31, Y −64..320) when omitted",
+            "Optional region to sample; defaults to modeling domain (−32..31, Y −64..319) when omitted",
             NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_SCALAR_FIELD_ID, "Scalar Field",
             "Field to visualize", NodeDataType.SCALAR_FIELD, this));
@@ -137,17 +139,22 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
             writeInvalid("Slice Y must be an exact INTEGER.", 1);
             return;
         }
-        int y = TerrainNodeUtils.clamp(resolvedSliceY, bounds.minY, bounds.maxY);
+        if (resolvedSliceY < bounds.minY || resolvedSliceY > bounds.maxY) {
+            writeInvalid("Slice Y (" + resolvedSliceY + ") is outside region Y bounds ("
+                + bounds.minY + ".." + bounds.maxY + ").", 1);
+            return;
+        }
+        int y = resolvedSliceY;
 
         Double cut = TerrainNodeUtils.resolveOptionalFiniteDouble(this, INPUT_THRESHOLD_ID, threshold);
         if (cut == null) {
-            writeInvalid("Threshold must be a finite DOUBLE.", y);
+            writeInvalid("Threshold must be a finite DOUBLE.", 1);
             return;
         }
 
         Integer resolvedStep = TerrainNodeUtils.resolveOptionalExactInteger(this, INPUT_STEP_ID, step);
         if (resolvedStep == null || resolvedStep < 1) {
-            writeInvalid("Step must be an exact INTEGER >= 1.", y);
+            writeInvalid("Step must be an exact INTEGER >= 1.", 1);
             return;
         }
 
@@ -171,10 +178,18 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
             writeInvalid("High Block is required.", resolvedStep);
             return;
         }
+        if (BlockStateResolver.resolveDefault(high) == null) {
+            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + high, resolvedStep);
+            return;
+        }
 
         String low = TerrainNodeUtils.resolveOptionalString(this, INPUT_LOW_BLOCK_ID, lowBlock);
         if (!resolvedOnlyHighBlocks && low == null) {
             writeInvalid("Low Block is required unless Only High Blocks is true.", resolvedStep);
+            return;
+        }
+        if (low != null && BlockStateResolver.resolveDefault(low) == null) {
+            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + low, resolvedStep);
             return;
         }
 

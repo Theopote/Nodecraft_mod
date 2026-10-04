@@ -104,7 +104,7 @@ public class HydraulicErosionStepNode extends BaseNode {
             return;
         }
 
-        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(region, heightField);
+        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(this, INPUT_REGION_ID, heightField);
         GridScalarFieldData heightGrid = ScalarFieldGrids.materialize(heightField, domain);
         GridScalarFieldData accumulationGrid = ScalarFieldGrids.materialize(accumulationField, domain);
         if (heightGrid == null || accumulationGrid == null) {

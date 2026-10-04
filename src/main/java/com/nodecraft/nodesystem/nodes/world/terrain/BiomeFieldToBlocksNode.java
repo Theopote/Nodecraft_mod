@@ -13,7 +13,9 @@ import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PlacementPreflight;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -57,7 +59,7 @@ public class BiomeFieldToBlocksNode extends BaseNode {
     private int step = 1;
 
     @NodeProperty(displayName = "Fill Tiles", category = "Sampling", order = 2,
-        description = "When true, each sampled biome point is expanded to its Step-sized tile")
+        description = "Expands each sampled value across its Step-sized tile to avoid sparse preview gaps")
     private boolean fillTiles = false;
 
     @NodeProperty(displayName = "Max Columns", category = "Safety", order = 3)
@@ -70,7 +72,7 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         super(UUID.randomUUID(), "world.terrain.biome_field_to_blocks");
 
         addInputPort(new BasePort(INPUT_REGION_ID, "Region",
-            "Optional region to materialize; defaults to a safe 64x64 area (−32..31, Y −64..320) when omitted",
+            "Optional region to materialize; defaults to modeling domain (−32..31, Y −64..319) when omitted",
             NodeDataType.REGION, this));
         addInputPort(new BasePort(INPUT_BIOME_ID_FIELD_ID, "Biome Id Field",
             "Biome class id encoded as scalar", NodeDataType.SCALAR_FIELD, this));
@@ -81,7 +83,8 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_STEP_ID, "Step",
             "Surface sampling stride in blocks", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_FILL_TILES_ID, "Fill Tiles",
-            "Expand each sample to a Step-sized tile for smoother previews", NodeDataType.BOOLEAN, this));
+            "Expands each sampled value across its Step-sized tile to avoid sparse preview gaps",
+            NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_COLUMNS_ID, "Max Columns",
             "Maximum output terrain columns before stopping (hard-capped; includes Fill Tiles expansion)",
             NodeDataType.INTEGER, this));
@@ -127,6 +130,16 @@ public class BiomeFieldToBlocksNode extends BaseNode {
         if (palette.isEmpty()) {
             writeInvalid("Biome Palette is required and must contain at least one block.");
             return;
+        }
+        for (String paletteBlockId : palette.blockIds()) {
+            if (paletteBlockId == null || paletteBlockId.isBlank()) {
+                writeInvalid("Biome Palette entry is empty.");
+                return;
+            }
+            if (BlockStateResolver.resolveDefault(paletteBlockId) == null) {
+                writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + paletteBlockId);
+                return;
+            }
         }
 
         Integer resolvedStep = TerrainNodeUtils.resolveOptionalExactInteger(this, INPUT_STEP_ID, step);
@@ -198,7 +211,11 @@ public class BiomeFieldToBlocksNode extends BaseNode {
                     return;
                 }
                 int biomeId = (int) Math.round(Math.max(0.0d, biomeSample));
-                String blockId = palette.blockIdAt(TerrainNodeUtils.clamp(biomeId, 0, paletteLast), "");
+                if (biomeId > paletteLast) {
+                    writeInvalid("Biome id out of palette range.");
+                    return;
+                }
+                String blockId = palette.blockIdAt(biomeId, "");
                 if (blockId == null || blockId.isBlank()) {
                     writeInvalid("Biome Palette entry is empty.");
                     return;

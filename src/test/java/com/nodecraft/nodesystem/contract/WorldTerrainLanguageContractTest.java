@@ -12,25 +12,24 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
-import com.nodecraft.nodesystem.io.SavedConnection;
-import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.world.terrain.BiomeFieldToBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.terrain.FlowAccumulationFieldNode;
 import com.nodecraft.nodesystem.nodes.world.terrain.HeightfieldToBlocksNode;
 import com.nodecraft.nodesystem.nodes.world.terrain.PlatePartitionFieldNode;
 import com.nodecraft.nodesystem.nodes.world.terrain.SampleFieldOnRegionNode;
+import com.nodecraft.nodesystem.nodes.world.terrain.ScalarFieldSliceToBlocksNode;
+import com.nodecraft.nodesystem.nodes.world.terrain.ThermalErosionStepNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.WorldCoordinateValidator;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,7 +38,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -206,18 +207,38 @@ class WorldTerrainLanguageContractTest {
     @Test
     void flowAccumulationRejectsWorkOverHardCap() {
         FlowAccumulationProbe node = new FlowAccumulationProbe();
-        // 128×128 cells × 1025 iterations = 16_793_600 > MAX_TERRAIN_SIMULATION_WORK.
+        // Default MFD weight=8: 64×64 × 512 × 8 = 16_777_216 exactly at cap boundary?
+        // 64×64 × 513 × 8 = 16_809_984 > MAX_TERRAIN_SIMULATION_WORK.
         node.setInput("input_flow_field", (VectorFieldData) (point, dest) -> dest.set(1.0d, 0.0d, 0.0d));
         node.connectInput("input_region", NodeDataType.REGION);
         node.setInput("input_region", new RegionData(
                 new BlockPos(0, 64, 0),
-                new BlockPos(127, 64, 127)));
+                new BlockPos(63, 64, 63)));
         node.connectInput("input_iterations", NodeDataType.INTEGER);
-        node.setInput("input_iterations", 1025);
+        node.setInput("input_iterations", 513);
         node.processNode(null);
         assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
         String error = String.valueOf(node.getOutput("output_error"));
         assertTrue(error.contains("MAX_TERRAIN_SIMULATION_WORK"), error);
+    }
+
+    @Test
+    void flowAccumulationFastModeAcceptsWorkThatMfdWouldReject() {
+        FlowAccumulationProbe node = new FlowAccumulationProbe();
+        node.setNodeState(Map.of("mode", "FAST_APPROXIMATE"));
+        // FAST weight=1: 128×128 × 1025 = 16_793_600 > cap → still reject
+        // Use 64×64 × 513 = 2_101_248 under cap for FAST, but 2_101_248×8 for MFD would exceed.
+        // 64×64 × 513 × 1 = 2_101_248 <= 16_777_216 → FAST accepts.
+        node.setInput("input_flow_field", (VectorFieldData) (point, dest) -> dest.set(1.0d, 0.0d, 0.0d));
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 64, 0),
+                new BlockPos(63, 64, 63)));
+        node.connectInput("input_iterations", NodeDataType.INTEGER);
+        node.setInput("input_iterations", 513);
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"),
+                String.valueOf(node.getOutput("output_error")));
     }
 
     @Test
@@ -267,6 +288,129 @@ class WorldTerrainLanguageContractTest {
         assertEquals("max_columns", node.getOutput("output_stopped_reason"));
     }
 
+    @Test
+    void connectedRegionOverridesGridFieldDomain() {
+        ThermalErosionProbe node = new ThermalErosionProbe();
+        double[] values = new double[64 * 64];
+        GridScalarFieldData grid = GridScalarFieldData.fromValues(0, 63, 0, 63, 64, values);
+        node.setInput("input_height_field", grid);
+        node.connectInput("input_region", NodeDataType.REGION);
+        // Small region that overlaps the grid so materialize stays finite.
+        node.setInput("input_region", new RegionData(
+                new BlockPos(10, 64, 10),
+                new BlockPos(12, 64, 12)));
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"),
+                String.valueOf(node.getOutput("output_error")));
+        GridScalarFieldData out = assertInstanceOf(
+                GridScalarFieldData.class, node.getOutput("output_height_field"));
+        assertEquals(10, out.getMinX());
+        assertEquals(12, out.getMaxX());
+        assertEquals(10, out.getMinZ());
+        assertEquals(12, out.getMaxZ());
+    }
+
+    @Test
+    void waterLevelOutOfRangeFailsClosed() {
+        HeightfieldProbe node = new HeightfieldProbe();
+        node.setInput("input_height_field", (ScalarFieldData) point -> 0.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(3, 64, 3)));
+        node.connectInput("input_surface_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_surface_block", "minecraft:stone");
+        node.connectInput("input_fill_depth", NodeDataType.INTEGER);
+        node.setInput("input_fill_depth", 0);
+        node.connectInput("input_water_level", NodeDataType.DOUBLE);
+        node.setInput("input_water_level", 1e100);
+        node.connectInput("input_water_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_water_block", "minecraft:water");
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Water Level"));
+    }
+
+    @Test
+    void fillDepthExceedingRegionHeightFailsClosed() {
+        HeightfieldProbe node = new HeightfieldProbe();
+        node.setInput("input_height_field", (ScalarFieldData) point -> 1.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(3, 10, 3)));
+        node.connectInput("input_surface_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_surface_block", "minecraft:stone");
+        node.connectInput("input_subsurface_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_subsurface_block", "minecraft:dirt");
+        node.connectInput("input_fill_depth", NodeDataType.INTEGER);
+        node.setInput("input_fill_depth", Integer.MAX_VALUE);
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Fill Depth"));
+    }
+
+    @Test
+    void roundToBlockYRejectsExtremeFiniteValues() {
+        assertNull(WorldCoordinateValidator.roundToBlockY(1e100));
+        assertNull(WorldCoordinateValidator.roundToBlockY(Double.NaN));
+        assertEquals(64, WorldCoordinateValidator.roundToBlockY(64.4d));
+        assertEquals(WorldCoordinateValidator.FALLBACK_MAX_Y,
+                WorldCoordinateValidator.roundToBlockY(WorldCoordinateValidator.FALLBACK_MAX_Y));
+    }
+
+    @Test
+    void biomeIdOutsidePaletteFailsClosed() {
+        BiomeProbe node = new BiomeProbe();
+        node.setInput("input_height_field", (ScalarFieldData) point -> 0.0d);
+        node.setInput("input_biome_id_field", (ScalarFieldData) point -> 100.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(2, 64, 2)));
+        node.connectInput("input_palette", NodeDataType.BLOCK_PALETTE);
+        node.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of(
+                "minecraft:stone", "minecraft:dirt", "minecraft:grass_block")));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("palette"));
+    }
+
+    @Test
+    void scalarSliceInvalidThresholdKeepsStepUsedDefault() {
+        SliceProbe node = new SliceProbe();
+        node.setInput("input_scalar_field", (ScalarFieldData) point -> 0.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(4, 100, 4)));
+        node.connectInput("input_slice_y", NodeDataType.INTEGER);
+        node.setInput("input_slice_y", 64);
+        node.connectInput("input_threshold", NodeDataType.DOUBLE);
+        node.setInput("input_threshold", Double.NaN);
+        node.connectInput("input_high_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_high_block", "minecraft:stone");
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertEquals(1, node.getOutput("output_step_used"));
+    }
+
+    @Test
+    void scalarSliceYOutsideRegionFailsClosed() {
+        SliceProbe node = new SliceProbe();
+        node.setInput("input_scalar_field", (ScalarFieldData) point -> 0.0d);
+        node.connectInput("input_region", NodeDataType.REGION);
+        node.setInput("input_region", new RegionData(
+                new BlockPos(0, 0, 0),
+                new BlockPos(4, 100, 4)));
+        node.connectInput("input_slice_y", NodeDataType.INTEGER);
+        node.setInput("input_slice_y", 1000);
+        node.connectInput("input_high_block", NodeDataType.BLOCK_TYPE);
+        node.setInput("input_high_block", "minecraft:stone");
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertTrue(String.valueOf(node.getOutput("output_error")).contains("Slice Y"));
+    }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
         PortStubNode stub = new PortStubNode(outputType);
@@ -308,6 +452,24 @@ class WorldTerrainLanguageContractTest {
         }
     }
 
+    private static final class ThermalErosionProbe extends ThermalErosionStepNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class BiomeProbe extends BiomeFieldToBlocksNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class SliceProbe extends ScalarFieldSliceToBlocksNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WorldTerrainLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
     private static void assertPortType(INode node, String portId, NodeDataType expected) {
         IPort port = findPort(node, portId);
         assertNotNull(port, portId);
@@ -332,26 +494,4 @@ class WorldTerrainLanguageContractTest {
         return findPort(node, portId) != null;
     }
 
-    private static SavedNode savedNode(String nodeId, String typeId) {
-        SavedNode node = new SavedNode();
-        node.nodeId = nodeId;
-        node.typeId = typeId;
-        return node;
-    }
-
-    private static SavedConnection wire(String src, String srcPort, String dst, String dstPort) {
-        SavedConnection connection = new SavedConnection();
-        connection.sourceNodeId = src;
-        connection.sourcePortId = srcPort;
-        connection.targetNodeId = dst;
-        connection.targetPortId = dstPort;
-        return connection;
-    }
-
-    private static SavedNode nodeOf(SavedGraph graph, String nodeId) {
-        return graph.nodes.stream()
-                .filter(node -> nodeId.equals(node.nodeId))
-                .findFirst()
-                .orElseThrow();
-    }
 }

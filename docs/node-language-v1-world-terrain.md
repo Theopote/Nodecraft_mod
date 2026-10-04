@@ -21,18 +21,24 @@ Algorithms are preserved; sampling, budgets, ports, and Field finite semantics a
 
 ## Domains
 
-| Name | X/Z | Sample Y |
-|------|-----|----------|
-| Local default | −32..31 | 64 |
+| Name | X/Z | Sample Y / Y |
+|------|-----|--------------|
+| Local default | −32..31 | sample Y=64; materializer Y −64..319 inclusive |
 | Continental default | ±4096 | documented per node |
 
-- Region **unconnected** → documented default domain
+Domain ownership for raster ops (erosion / sample / materialize helpers):
+
+1. **Connected Region** → operation domain = Region X/Z (never silently ignored)
+2. else if input is **`GridScalarFieldData`** → inherit grid domain
+3. else → local / property default
+
 - Region **connected invalid/incomplete** → `Valid=false`
+- Default Y span is a **modeling domain** (−64..319 inclusive), not a Minecraft hard boundary; Apply/Export still world-validate
 
 ## GenerationLimits (terrain)
 
 - `MAX_TERRAIN_GRID_CELLS` = 262_144
-- `MAX_TERRAIN_SIMULATION_WORK` = cells × iterations
+- `MAX_TERRAIN_SIMULATION_WORK` = cells × iterations × modeWeight (FAST=1, MFD=8)
 - `MAX_TERRAIN_PLACEMENTS` / `MAX_TERRAIN_SAMPLES`
 - `MAX_TERRAIN_PLATES` = 1024
 - `MAX_TERRAIN_FLOW_ITERATIONS` = 4096
@@ -50,7 +56,7 @@ Hard safety cap exceeded → `Valid=false`, empty outputs.
 | 3 | Rift Subsidence Field | `world.terrain.rift_subsidence_field` | |
 | 4 | Combine Height Fields | `world.terrain.combine_height_fields` | |
 | 5 | Flow Direction Field | `world.terrain.flow_direction_field` | |
-| 6 | Flow Accumulation Field | `world.terrain.flow_accumulation_field` | auto-downsample + work cap; outside domain → NaN |
+| 6 | Flow Accumulation Field | `world.terrain.flow_accumulation_field` | auto-downsample (piecewise-constant) + mode-weighted work cap; outside domain → NaN |
 | 7 | River Mask Field | `world.terrain.river_mask_field` | |
 | 8 | Precipitation Field | `world.terrain.precipitation_field` | |
 | 9 | Thermal Erosion Step | `world.terrain.thermal_erosion_step` | |
@@ -69,10 +75,13 @@ All nodes: `PURE`, `Valid` / `Error`.
 ### Materializers
 
 - No hidden grass/stone/water/concrete defaults
-- Surface Block required; Fill Depth > 0 ⇒ Subsurface required
-- Water only when Water Level connected **and** Water Block provided
+- Surface / Subsurface / Water / High / Low / Palette entries preflight via `BlockStateResolver.resolveDefault`
+- Surface Block required; Fill Depth > 0 ⇒ Subsurface required; Fill Depth capped by region height
+- Water Level = absolute Y with checked round-to-int in −64..319; Water only when Water Level connected **and** Water Block provided
 - Surface Blocks = `BLOCK_LIST` (renamed from Surface Points)
-- **Max Columns** is a strict output-column budget (Fill Tiles expansion counts toward it)
+- **Max Columns** is a strict output-column budget (Fill Tiles expands each sample across its Step tile; not interpolated)
+- Biome id outside palette range → `Valid=false` (no silent clamp)
+- Slice Y outside region → `Valid=false` (no silent clamp)
 - Tile end / Y span use overflow-safe arithmetic
 
 ### Sample Field On Region

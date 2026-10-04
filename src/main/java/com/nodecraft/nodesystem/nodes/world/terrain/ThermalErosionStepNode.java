@@ -81,7 +81,7 @@ public class ThermalErosionStepNode extends BaseNode {
             return;
         }
 
-        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(region, heightField);
+        TerrainGridDomain domain = ScalarFieldGrids.resolveDomain(this, INPUT_REGION_ID, heightField);
         GridScalarFieldData inputGrid = ScalarFieldGrids.materialize(heightField, domain);
         if (inputGrid == null) {
             publishInvalid("Height field materialization failed (non-finite sample or grid over cap).");

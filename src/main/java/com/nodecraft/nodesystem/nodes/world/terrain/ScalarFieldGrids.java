@@ -1,10 +1,12 @@
 package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.GridScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -16,7 +18,26 @@ final class ScalarFieldGrids {
     private ScalarFieldGrids() {
     }
 
-    static TerrainGridDomain resolveDomain(@Nullable RegionData region, @Nullable ScalarFieldData field) {
+    /**
+     * Domain ownership: connected Region &gt; Grid inherit &gt; local/property default.
+     * <p>
+     * When a connected Region differs from an input {@link GridScalarFieldData}, {@link #materialize}
+     * re-rasterizes onto the Region domain (outside-grid samples are NaN → fail closed).
+     */
+    static TerrainGridDomain resolveDomain(
+        BaseNode node,
+        String regionPortId,
+        @Nullable ScalarFieldData field
+    ) {
+        if (OptionalPortDrive.isConnected(node, regionPortId)) {
+            RegionData region = TerrainNodeUtils.resolveOptionalRegion(node, regionPortId);
+            // Callers must reject INVALID_REGION before operate; treat as local default here.
+            if (!TerrainNodeUtils.isInvalidRegionMarker(region)) {
+                return TerrainNodeUtils.localDomainFromRegion(region);
+            }
+            return TerrainGridDomain.localDefault();
+        }
+
         GridScalarFieldData grid = GridScalarFieldData.asGrid(field);
         if (grid != null) {
             return TerrainGridDomain.of(
@@ -27,10 +48,11 @@ final class ScalarFieldGrids {
                 grid.getSampleY()
             );
         }
-        return TerrainNodeUtils.localDomainFromRegion(region);
-    }
 
-    static TerrainGridDomain resolveDomain(@Nullable RegionData region) {
+        RegionData region = TerrainNodeUtils.resolveOptionalRegion(node, regionPortId);
+        if (TerrainNodeUtils.isInvalidRegionMarker(region)) {
+            return TerrainGridDomain.localDefault();
+        }
         return TerrainNodeUtils.localDomainFromRegion(region);
     }
 
