@@ -287,7 +287,7 @@
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Player Position Snapshot | `input.context.player_position` | Captures a stable continuous player world position snapshot. Click Update Position to recapture. | `PlayerPositionNode` |
-| Player Raycast | `input.context.player_raycast` | Raycasts from the player view and reports hit position, block, entity, and distance. | `PlayerRaycastNode` |
+| Player View Raycast | `input.context.player_raycast` | Raycasts from the player eye/view (loaded chunks only) and reports hit position, block, entity, and distance. | `PlayerRaycastNode` |
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 

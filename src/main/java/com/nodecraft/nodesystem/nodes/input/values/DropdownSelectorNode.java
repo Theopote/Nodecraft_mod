@@ -40,11 +40,12 @@ public class DropdownSelectorNode extends BaseNode {
     private static final String OUTPUT_VALUE_ID = "output_value";
     private static final String OUTPUT_OPTIONS_ID = "output_options";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public DropdownSelectorNode() {
         super(UUID.randomUUID(), "input.values.dropdown");
         addInputPort(new BasePort(INPUT_INDEX_ID, "Index",
-            "Optional selected index override; connected invalid fails closed",
+            "Optional selected index override; connected out-of-range fails closed",
             NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_OPTIONS_ID, "Options",
             "Optional string-list options override; connected invalid fails closed (no CSV fallback)",
@@ -56,6 +57,9 @@ public class DropdownSelectorNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when options are available and optional Index/Options drives are valid",
             NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",
+            "Why selection failed when Valid is false",
+            NodeDataType.STRING, this));
     }
 
     @Override
@@ -65,31 +69,48 @@ public class DropdownSelectorNode extends BaseNode {
             INPUT_OPTIONS_ID,
             parseCsvOptions(options)
         );
-        if (optionList == null || optionList.isEmpty()) {
-            publishInvalid();
+        if (optionList == null) {
+            publishInvalid("Options is connected but null or invalid.");
+            return;
+        }
+        if (optionList.isEmpty()) {
+            publishInvalid("Options list is empty.");
             return;
         }
 
         Integer index = OptionalPortDrive.resolveOptionalInteger(this, INPUT_INDEX_ID, selectedIndex);
         if (index == null) {
-            publishInvalid();
+            publishInvalid("Index is connected but null or invalid.");
             return;
         }
 
-        int resolvedIndex = Math.max(0, Math.min(optionList.size() - 1, index));
+        boolean indexConnected = OptionalPortDrive.isConnected(this, INPUT_INDEX_ID);
+        int resolvedIndex;
+        if (indexConnected) {
+            if (index < 0 || index >= optionList.size()) {
+                publishInvalid("Index (" + index + ") is out of range for " + optionList.size() + " options.");
+                return;
+            }
+            resolvedIndex = index;
+        } else {
+            // UI property path: normalize into range.
+            resolvedIndex = Math.max(0, Math.min(optionList.size() - 1, index));
+        }
         String value = optionList.get(resolvedIndex);
 
         outputValues.put(OUTPUT_INDEX_ID, resolvedIndex);
         outputValues.put(OUTPUT_VALUE_ID, value);
         outputValues.put(OUTPUT_OPTIONS_ID, List.copyOf(optionList));
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
-    private void publishInvalid() {
+    private void publishInvalid(String error) {
         outputValues.put(OUTPUT_INDEX_ID, 0);
         outputValues.put(OUTPUT_VALUE_ID, "");
         outputValues.put(OUTPUT_OPTIONS_ID, List.of());
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     @Override
@@ -110,9 +131,6 @@ public class DropdownSelectorNode extends BaseNode {
         }
         if (map.get("selectedIndex") instanceof Integer i) {
             setSelectedIndex(i);
-        } else if (map.get("selectedIndex") instanceof Number n) {
-            // Legacy persisted state may store Number; keep restore compatibility only.
-            setSelectedIndex(n.intValue());
         }
     }
 

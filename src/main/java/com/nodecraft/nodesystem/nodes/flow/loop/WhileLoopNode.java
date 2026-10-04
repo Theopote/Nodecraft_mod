@@ -115,7 +115,7 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
             return;
         }
 
-        boolean hitLimit = condition && bodyCount >= limit;
+        boolean hitLimit = condition;
         boolean terminatedByCondition = !condition;
 
         outputValues.put(OUTPUT_ITERATIONS_ID, bodyCount);

@@ -40,7 +40,7 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
 | Display name | Type id | Class | Effect |
 |--------------|---------|-------|--------|
 | Player Position Snapshot | `input.context.player_position` | `PlayerPositionNode` | WORLD_READ |
-| Player Raycast | `input.context.player_raycast` | `PlayerRaycastNode` | WORLD_READ |
+| Player View Raycast | `input.context.player_raycast` | `PlayerRaycastNode` | WORLD_READ |
 | Dimension Info | `input.context.dimension_info` | `DimensionInfoNode` | WORLD_READ |
 | Current Time | `input.context.current_time` | `CurrentTimeNode` | WORLD_READ |
 
@@ -57,20 +57,24 @@ recaptures). Display copy no longer says “snapped.”
 | `output_position` | `POINT` | `null` |
 | `output_x` / `output_y` / `output_z` | `DOUBLE` | `0.0` (neutral; gated by Valid) |
 
-Persisted snapshot restore rejects non-finite `cachedX/Y/Z` (`setNodeState` sanitize + defensive
-`setCachedPosition` guard). `Valid=true` never pairs with NaN/Infinity coordinates.
+Snapshot coords are **session-local**: `getNodeState` persists only `useEyePosition`; legacy
+`hasCachedPosition` / `cachedX/Y/Z` are ignored on load. Reload → `Valid=false` until Update /
+first live capture. `Valid=true` never pairs with NaN/Infinity coordinates.
 
 Server capture reads `ServerPlayerEntity` doubles directly (bypasses float `PlayerAccessor` path).
 Graph `processNode` first capture is ExecutionContext-only (V112); UI **Update Position** may use
-the client player.
+the client player. `Use Eye Position` changes the property only (no implicit client recapture).
 
-## Player Raycast (`input.context.player_raycast`)
+## Player View Raycast (`input.context.player_raycast`)
 
-Renamed from **Player Look At**. Raycasts from player eye + view vector.
+Display **Player View Raycast** (historical rename from Player Look At). Raycasts from player eye
++ view vector via `WorldQueryAccess` (loaded origin required; unloaded segment → valid miss;
+entity candidates capped by `MAX_ENTITY_QUERY_RESULTS`).
 
 | Output | Type | Notes |
 |--------|------|-------|
-| `output_valid` | `BOOLEAN` | `false` when context unavailable |
+| `output_valid` | `BOOLEAN` | `false` when context unavailable / origin unloaded / entity cap |
+| `output_error` | `STRING` | Why invalid when `Valid=false` |
 | `output_hit_position` | `POINT` | `null` on miss or invalid |
 | `output_hit_distance` | `DOUBLE` | `0.0` on miss or invalid |
 | `output_has_hit` | `BOOLEAN` | `false` on miss **or** invalid |
@@ -79,8 +83,8 @@ Renamed from **Player Look At**. Raycasts from player eye + view vector.
 
 | Semantics | `Valid` | `Has Hit` |
 |-----------|---------|-----------|
-| Invalid context | `false` | `false` |
-| Live miss | `true` | `false` |
+| Invalid context / origin unloaded / entity over-cap | `false` | `false` |
+| Live miss (incl. unloaded segment) | `true` | `false` |
 | Live hit | `true` | `true` |
 
 **Max Distance** property: `double`, finite, clamp `[0, 1000]`. Raycast uses `player.getEyePos()`

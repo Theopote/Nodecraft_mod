@@ -72,9 +72,12 @@ class InputContextLanguageContractTest {
     @Test
     void playerRaycastPortsAreTypedWithValidGate() {
         PlayerRaycastNode node = new PlayerRaycastNode();
+        assertEquals("Player View Raycast",
+                node.getClass().getAnnotation(com.nodecraft.nodesystem.api.NodeInfo.class).displayName());
         assertEquals(NodeDataType.POINT, findPort(node.getOutputPorts(), "output_hit_position").getDataType());
         assertEquals(NodeDataType.DOUBLE, findPort(node.getOutputPorts(), "output_hit_distance").getDataType());
         assertEquals(NodeDataType.BOOLEAN, findPort(node.getOutputPorts(), "output_valid").getDataType());
+        assertEquals(NodeDataType.STRING, findPort(node.getOutputPorts(), "output_error").getDataType());
     }
 
     @Test
@@ -118,38 +121,34 @@ class InputContextLanguageContractTest {
     }
 
     @Test
-    void playerPositionRestoreWithoutSnapshotIsInvalid() {
+    void playerPositionDoesNotPersistSnapshotAcrossRestore() {
         PlayerPositionNode node = new PlayerPositionNode();
         node.setNodeState(Map.of(
-                "hasCachedPosition", false,
+                "useEyePosition", true,
+                "hasCachedPosition", true,
                 "cachedX", 10.0d,
                 "cachedY", 64.0d,
                 "cachedZ", 20.0d
         ));
+        assertTrue(node.isUseEyePosition());
+        assertFalse(node.hasCachedPosition());
         assertFalse((Boolean) node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_position"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> saved = (Map<String, Object>) node.getNodeState();
+        assertTrue((Boolean) saved.get("useEyePosition"));
+        assertFalse(saved.containsKey("hasCachedPosition"));
+        assertFalse(saved.containsKey("cachedX"));
     }
 
     @Test
-    void playerPositionRestoreNonFiniteSnapshotIsInvalid() {
-        PlayerPositionNode nanNode = new PlayerPositionNode();
-        nanNode.setNodeState(Map.of(
-                "hasCachedPosition", true,
-                "cachedX", Double.NaN,
-                "cachedY", 64.0d,
-                "cachedZ", 20.0d
-        ));
-        assertFalse((Boolean) nanNode.getOutput("output_valid"));
-        assertNull(nanNode.getOutput("output_position"));
-
-        PlayerPositionNode infNode = new PlayerPositionNode();
-        infNode.setNodeState(Map.of(
-                "hasCachedPosition", true,
-                "cachedX", 10.0d,
-                "cachedY", 64.0d,
-                "cachedZ", Double.POSITIVE_INFINITY
-        ));
-        assertFalse((Boolean) infNode.getOutput("output_valid"));
-        assertNull(infNode.getOutput("output_position"));
+    void playerPositionSetUseEyePositionDoesNotRequireClientCapture() {
+        PlayerPositionNode node = new PlayerPositionNode();
+        node.setUseEyePosition(true);
+        assertTrue(node.isUseEyePosition());
+        assertFalse(node.hasCachedPosition());
+        assertFalse((Boolean) node.getOutput("output_valid"));
     }
 
 

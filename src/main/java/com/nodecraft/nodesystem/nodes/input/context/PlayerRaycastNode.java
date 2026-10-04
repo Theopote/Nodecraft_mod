@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.datatypes.BlockInfoData;
 import com.nodecraft.nodesystem.datatypes.EntityInfoData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.world.WorldQueryAccess;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -29,14 +31,15 @@ import java.util.UUID;
 @NodeInfo(
     effect = NodeEffect.WORLD_READ,
     id = "input.context.player_raycast",
-    displayName = "Player Raycast",
-    description = "Raycasts from the player view and reports hit position, block, entity, and distance.",
+    displayName = "Player View Raycast",
+    description = "Raycasts from the player eye/view (loaded chunks only) and reports hit position, block, entity, and distance.",
     category = "input.context",
     order = 1
 )
 public class PlayerRaycastNode extends BaseCustomUINode {
 
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_HIT_POSITION_ID = "output_hit_position";
     private static final String OUTPUT_HIT_BLOCK_ID = "output_hit_block";
     private static final String OUTPUT_HIT_ENTITY_ID = "output_hit_entity";
@@ -71,6 +74,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         super(UUID.randomUUID(), "input.context.player_raycast");
 
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether world context was available for raycast", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why raycast failed when Valid is false", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_HIT_POSITION_ID, "Hit Position", "World-space hit location", NodeDataType.POINT, this));
         addOutputPort(new BasePort(OUTPUT_HIT_BLOCK_ID, "Hit Block",
             "Block snapshot at hit time (null when entity hit or miss)",
@@ -81,18 +85,18 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         addOutputPort(new BasePort(OUTPUT_HIT_DISTANCE_ID, "Hit Distance", "Distance from the player to the hit", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_HAS_HIT_ID, "Has Hit", "Whether the raycast hit something", NodeDataType.BOOLEAN, this));
 
-        invalidateContext();
+        invalidateContext("Live world/player context is required.");
     }
 
     @Override
     public String getDescription() {
-        return "Raycasts from the player view and reports hit position plus block/entity snapshots and distance.";
+        return "Raycasts from the player eye/view through loaded chunks only; reports hit position plus block/entity snapshots.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (!ContextReadUtils.isLiveContextAvailable(context)) {
-            invalidateContext();
+            invalidateContext("Live world/player context is required.");
             return;
         }
 
@@ -117,7 +121,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
     private void performRaycast(ExecutionContext context) {
         PlayerEntity sourceEntity = context.getPlayer();
         if (!(sourceEntity instanceof ServerPlayerEntity player)) {
-            invalidateContext();
+            invalidateContext("Server player context is required.");
             return;
         }
 
@@ -130,6 +134,17 @@ public class PlayerRaycastNode extends BaseCustomUINode {
 
         double castDistance = Math.max(0.0d, maxDistance);
         Vec3d end = start.add(look.normalize().multiply(castDistance));
+
+        WorldQueryAccess access = new WorldQueryAccess(context.getWorld());
+        BlockPos originBlock = BlockPos.ofFloored(start.x, start.y, start.z);
+        if (!access.isLoaded(originBlock)) {
+            invalidateContext("Target chunk is not loaded");
+            return;
+        }
+        if (!access.isSegmentLoaded(start, end)) {
+            setMiss();
+            return;
+        }
 
         RaycastContext.FluidHandling fluidHandling = includeFluids
             ? RaycastContext.FluidHandling.ANY
@@ -153,9 +168,15 @@ public class PlayerRaycastNode extends BaseCustomUINode {
             );
         }
 
-        HitCandidate entityCandidate = includeEntities
-            ? raycastEntities(context, sourceEntity, start, end, castDistance)
-            : null;
+        HitCandidate entityCandidate = null;
+        if (includeEntities) {
+            EntityRaycastResult entityResult = raycastEntities(context, sourceEntity, start, end, castDistance);
+            if (entityResult.error != null) {
+                invalidateContext(entityResult.error);
+                return;
+            }
+            entityCandidate = entityResult.candidate;
+        }
 
         HitCandidate best = chooseNearest(blockCandidate, entityCandidate);
         if (best == null) {
@@ -166,14 +187,19 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         setHit(best);
     }
 
-    private @Nullable HitCandidate raycastEntities(ExecutionContext context,
-                                                   PlayerEntity sourceEntity,
-                                                   Vec3d start,
-                                                   Vec3d end,
-                                                   double maxCastDistance) {
+    private EntityRaycastResult raycastEntities(ExecutionContext context,
+                                                PlayerEntity sourceEntity,
+                                                Vec3d start,
+                                                Vec3d end,
+                                                double maxCastDistance) {
         Box sweep = new Box(start, end).expand(1.0d);
         List<Entity> entities = new ArrayList<>(context.getWorld().getOtherEntities(sourceEntity, sweep));
         entities.remove(sourceEntity);
+        if (entities.size() > GenerationLimits.MAX_ENTITY_QUERY_RESULTS) {
+            return EntityRaycastResult.fail(
+                "Entity candidates exceed MAX_ENTITY_QUERY_RESULTS ("
+                    + GenerationLimits.MAX_ENTITY_QUERY_RESULTS + ").");
+        }
 
         HitCandidate best = null;
         for (Entity entity : entities) {
@@ -191,7 +217,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
                 best = HitCandidate.entity(hitPos, distance, entity);
             }
         }
-        return best;
+        return EntityRaycastResult.ok(best);
     }
 
     private @Nullable HitCandidate chooseNearest(@Nullable HitCandidate block, @Nullable HitCandidate entity) {
@@ -204,8 +230,9 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         return block.distance <= entity.distance ? block : entity;
     }
 
-    private void invalidateContext() {
+    private void invalidateContext(String error) {
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_HAS_HIT_ID, false);
         outputValues.put(OUTPUT_HIT_POSITION_ID, null);
         outputValues.put(OUTPUT_HIT_BLOCK_ID, null);
@@ -216,6 +243,7 @@ public class PlayerRaycastNode extends BaseCustomUINode {
 
     private void setMiss() {
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
         outputValues.put(OUTPUT_HAS_HIT_ID, false);
         outputValues.put(OUTPUT_HIT_POSITION_ID, null);
         outputValues.put(OUTPUT_HIT_BLOCK_ID, null);
@@ -235,12 +263,23 @@ public class PlayerRaycastNode extends BaseCustomUINode {
         }
 
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
         outputValues.put(OUTPUT_HAS_HIT_ID, true);
         outputValues.put(OUTPUT_HIT_POSITION_ID, new PointData(best.hitPos.x, best.hitPos.y, best.hitPos.z));
         outputValues.put(OUTPUT_HIT_BLOCK_ID, blockInfo);
         outputValues.put(OUTPUT_HIT_ENTITY_ID, entityInfo);
         outputValues.put(OUTPUT_HIT_DISTANCE_ID, best.distance);
         syncOutputPorts();
+    }
+
+    private record EntityRaycastResult(@Nullable HitCandidate candidate, @Nullable String error) {
+        static EntityRaycastResult ok(@Nullable HitCandidate candidate) {
+            return new EntityRaycastResult(candidate, null);
+        }
+
+        static EntityRaycastResult fail(String error) {
+            return new EntityRaycastResult(null, error);
+        }
     }
 
     private static final class HitCandidate {

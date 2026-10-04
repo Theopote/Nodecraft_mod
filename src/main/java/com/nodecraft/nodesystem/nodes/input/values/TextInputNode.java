@@ -31,6 +31,8 @@ public class TextInputNode extends BaseCustomUINode {
     private static final String OUTPUT_TEXT_ID = "output_text";
     private static final String OUTPUT_LENGTH_ID = "output_length";
     private static final int MULTI_LINE_BUF_SIZE = 32768;
+    /** Hard maximum characters; must stay {@code MULTI_LINE_BUF_SIZE - 1}. */
+    public static final int MAX_TEXT_INPUT_CHARS = MULTI_LINE_BUF_SIZE - 1;
 
     @NodeProperty(displayName = "Text", category = "Content", order = 1,
         description = "Current text content")
@@ -38,7 +40,7 @@ public class TextInputNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "Max Length", category = "Limits", order = 11,
         description = "Maximum allowed input length")
-    private volatile int maxLength = 32767;
+    private volatile int maxLength = MAX_TEXT_INPUT_CHARS;
 
     @NodeProperty(displayName = "Placeholder", category = "UI Settings", order = 12,
         description = "Hint text shown when input is empty")
@@ -196,7 +198,15 @@ public class TextInputNode extends BaseCustomUINode {
     }
 
     public void setMaxLength(int maxLength) {
-        int normalized = maxLength <= 0 ? 32767 : maxLength;
+        int normalized;
+        if (maxLength <= 0) {
+            normalized = MAX_TEXT_INPUT_CHARS;
+        } else if (maxLength > MAX_TEXT_INPUT_CHARS) {
+            // Ignore oversize assignments; keep previous.
+            return;
+        } else {
+            normalized = maxLength;
+        }
         if (this.maxLength != normalized) {
             this.maxLength = normalized;
             if (text.length() > normalized) {

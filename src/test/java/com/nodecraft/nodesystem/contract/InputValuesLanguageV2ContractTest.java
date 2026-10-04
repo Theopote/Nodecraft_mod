@@ -6,11 +6,14 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.input.values.BooleanToggleNode;
 import com.nodecraft.nodesystem.nodes.input.values.DropdownSelectorNode;
 import com.nodecraft.nodesystem.nodes.input.values.GradientRampNode;
+import com.nodecraft.nodesystem.nodes.input.values.TextInputNode;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,6 +65,64 @@ class InputValuesLanguageV2ContractTest {
         assertTrue((Boolean) node.getOutput("output_valid"));
         assertEquals(2, node.getOutput("output_index"));
         assertEquals("C", node.getOutput("output_value"));
+        assertEquals("", node.getOutput("output_error"));
+    }
+
+    @Test
+    void valueListConnectedIndexOutOfRangeFailsClosedWithError() {
+        ValueListProbe probe = new ValueListProbe();
+        probe.setOptions("A, B, C");
+        probe.connectInput("input_index", NodeDataType.INTEGER);
+        probe.putRawInput("input_index", 99);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertEquals("", probe.getOutput("output_value"));
+        assertTrue(((String) probe.getOutput("output_error")).contains("out of range"));
+    }
+
+    @Test
+    void valueListUnconnectedIndexOutOfRangeClamps() {
+        DropdownSelectorNode node = new DropdownSelectorNode();
+        node.setOptions("A, B, C");
+        node.setSelectedIndex(99);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        assertEquals(2, node.getOutput("output_index"));
+        assertEquals("C", node.getOutput("output_value"));
+    }
+
+    @Test
+    void textMaxLengthHardCapIgnoresAbove32767() {
+        TextInputNode node = new TextInputNode();
+        node.setMaxLength(100);
+        assertEquals(100, node.getMaxLength());
+        node.setMaxLength(40000);
+        assertEquals(100, node.getMaxLength());
+        node.setMaxLength(0);
+        assertEquals(32767, node.getMaxLength());
+    }
+
+    @Test
+    void booleanRestoreAcceptsBooleanOnly() {
+        BooleanToggleNode node = new BooleanToggleNode();
+        node.setNodeState(Map.of("value", true));
+        node.processNode(null);
+        assertEquals(true, node.getOutput("output_value"));
+
+        node.setNodeState(Map.of("value", false));
+        node.processNode(null);
+        assertEquals(false, node.getOutput("output_value"));
+
+        // String/Number coercion dropped: keep previous value.
+        node.setNodeState(Map.of("value", "true"));
+        node.processNode(null);
+        assertEquals(false, node.getOutput("output_value"));
+        node.setNodeState(1);
+        node.processNode(null);
+        assertEquals(false, node.getOutput("output_value"));
+        node.setNodeState(Boolean.TRUE);
+        node.processNode(null);
+        assertEquals(true, node.getOutput("output_value"));
     }
 
     @Test

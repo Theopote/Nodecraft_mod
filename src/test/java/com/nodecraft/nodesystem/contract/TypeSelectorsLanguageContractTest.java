@@ -84,11 +84,11 @@ class TypeSelectorsLanguageContractTest {
     }
 
     @Test
-    void unknownSavedItemIdIsPreservedWithValidFalse() {
+    void unknownSavedItemIdIsPreservedWithValidTrueWhenAllowModded() {
         ItemTypeSelectorNode node = new ItemTypeSelectorNode();
-        node.setNodeState(Map.of("selectedItem", "mod_a:missing_item"));
+        node.setNodeState(Map.of("selectedItem", "mod_a:missing_item", "allowModded", true));
         assertEquals("mod_a:missing_item", node.getOutput("output_item_id"));
-        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue((Boolean) node.getOutput("output_valid"));
     }
 
     @Test
@@ -109,9 +109,9 @@ class TypeSelectorsLanguageContractTest {
         assertEquals("minecraft:stone", RegistrySelectorUtils.normalizeCanonicalId("stone"));
         assertEquals("mod_a:marble", RegistrySelectorUtils.normalizeCanonicalId("mod_a:marble"));
         assertEquals(null, RegistrySelectorUtils.normalizeCanonicalId("   "));
-        assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", false, true, true));
-        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", true, false, true));
-        assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", true, false, true));
+        assertTrue(RegistrySelectorUtils.computeValid("mod_a:marble", true));
+        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", false));
+        assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", false));
     }
 
 

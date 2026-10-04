@@ -154,15 +154,15 @@ class InputValuesLanguageContractTest {
         assertEquals("", mixedOptions.getOutput("output_value"));
         assertEquals(List.of(), mixedOptions.getOutput("output_options"));
 
-        ValueListProbe clamp = new ValueListProbe();
-        clamp.connectInput("input_options", NodeDataType.STRING_LIST);
-        clamp.connectInput("input_index", NodeDataType.INTEGER);
-        clamp.putRawInput("input_options", List.of("X", "Y"));
-        clamp.putRawInput("input_index", 99);
-        clamp.processNode(null);
-        assertTrue((Boolean) clamp.getOutput("output_valid"));
-        assertEquals(1, clamp.getOutput("output_index"));
-        assertEquals("Y", clamp.getOutput("output_value"));
+        ValueListProbe outOfRange = new ValueListProbe();
+        outOfRange.connectInput("input_options", NodeDataType.STRING_LIST);
+        outOfRange.connectInput("input_index", NodeDataType.INTEGER);
+        outOfRange.putRawInput("input_options", List.of("X", "Y"));
+        outOfRange.putRawInput("input_index", 99);
+        outOfRange.processNode(null);
+        assertFalse((Boolean) outOfRange.getOutput("output_valid"));
+        assertEquals("", outOfRange.getOutput("output_value"));
+        assertTrue(((String) outOfRange.getOutput("output_error")).contains("out of range"));
     }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {

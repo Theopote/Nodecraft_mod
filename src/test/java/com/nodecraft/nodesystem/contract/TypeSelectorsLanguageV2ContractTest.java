@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Type Selector Authoritative Registry Contract v2 (Graph V113).
+ * Graph Valid = Identifier syntax + Allow Modded policy (not registry membership).
  */
 class TypeSelectorsLanguageV2ContractTest {
 
@@ -29,7 +30,7 @@ class TypeSelectorsLanguageV2ContractTest {
     }
 
     @Test
-    void biomeNonAuthoritativeCatalogPreservesIdWithValidFalse() {
+    void biomeNonAuthoritativeCatalogPreservesIdWithValidTrue() {
         BiomeSelectorNode node = new BiomeSelectorNode();
         node.forceNonAuthoritativeCatalogForTest(List.of("minecraft:plains", "minecraft:forest"));
         node.setNodeState(Map.of(
@@ -39,20 +40,40 @@ class TypeSelectorsLanguageV2ContractTest {
                 "minecraftOnly", false
         ));
         assertEquals("minecraft:plains", node.getOutput("output_biome_id"));
-        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue((Boolean) node.getOutput("output_valid"));
         assertFalse(node.isRegistryAuthoritativeForTest());
     }
 
     @Test
-    void computeValidRequiresAuthoritativeRegistry() {
-        assertFalse(RegistrySelectorUtils.computeValid("minecraft:stone", true, true, false));
-        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", true, true, true));
-        assertFalse(RegistrySelectorUtils.computeValid("minecraft:stone", false, true, true));
+    void computeValidIsSyntaxAndAllowModdedOnly() {
+        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", false));
+        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", true));
+        assertTrue(RegistrySelectorUtils.computeValid("mod_a:custom", true));
+        assertFalse(RegistrySelectorUtils.computeValid("mod_a:custom", false));
+        assertFalse(RegistrySelectorUtils.computeValid(null, true));
+        assertFalse(RegistrySelectorUtils.computeValid("not a valid id!!!", true));
+        // Deprecated overloads ignore registry membership / authoritative flags.
+        assertTrue(RegistrySelectorUtils.computeValid("minecraft:stone", true));
+        assertTrue(RegistrySelectorUtils.computeValid("mod_a:x", true));
+    }
+
+    @Test
+    void unknownWellFormedModIdValidWhenAllowModded() {
+        BiomeSelectorNode node = new BiomeSelectorNode();
+        node.forceNonAuthoritativeCatalogForTest(List.of("minecraft:plains"));
+        node.setNodeState(Map.of(
+                "selectedBiome", "mod_a:custom_biome",
+                "allowModded", true,
+                "selectedCategory", "all",
+                "minecraftOnly", false
+        ));
+        assertEquals("mod_a:custom_biome", node.getOutput("output_biome_id"));
+        assertTrue((Boolean) node.getOutput("output_valid"));
     }
 
     @Test
     void allowModdedFalseRejectsModdedIdWithoutRewriting() {
-        assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", true, false, true));
+        assertFalse(RegistrySelectorUtils.computeValid("mod_a:marble", false));
         assertEquals("mod_a:marble", RegistrySelectorUtils.normalizeCanonicalId("mod_a:marble"));
 
         BiomeSelectorNode node = new BiomeSelectorNode();

@@ -149,6 +149,11 @@ public class ItemTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected RegistryCatalogCache.Kind getCatalogKind() {
+        return RegistryCatalogCache.Kind.ITEM;
+    }
+
+    @Override
     protected RegistryCatalog collectRegistryCatalog() {
         List<String> ids = new ArrayList<>();
         try {

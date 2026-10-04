@@ -149,6 +149,11 @@ public class EntityTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected RegistryCatalogCache.Kind getCatalogKind() {
+        return RegistryCatalogCache.Kind.ENTITY;
+    }
+
+    @Override
     protected RegistryCatalog collectRegistryCatalog() {
         List<String> ids = new ArrayList<>();
         try {

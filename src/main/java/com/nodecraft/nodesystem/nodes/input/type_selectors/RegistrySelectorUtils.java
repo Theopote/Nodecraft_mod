@@ -45,27 +45,39 @@ public final class RegistrySelectorUtils {
     }
 
     /**
-     * Graph Valid requires an authoritative registry, membership, and allow-modded policy.
-     * Non-authoritative UI fallback catalogs must never yield {@code true}.
+     * Graph {@code Valid} = Identifier syntax/canonical parse success and Allow Modded policy.
+     * Runtime registry membership is enforced downstream (PlacementPreflight / Apply / Export /
+     * world reads), not on this port.
      */
-    public static boolean computeValid(
-        @Nullable String canonicalId,
-        boolean registryContains,
-        boolean allowModded,
-        boolean registryAuthoritative
-    ) {
-        if (!registryAuthoritative || canonicalId == null || !registryContains) {
+    public static boolean computeValid(@Nullable String canonicalId, boolean allowModded) {
+        if (canonicalId == null || canonicalId.isBlank()) {
+            return false;
+        }
+        if (Identifier.tryParse(canonicalId) == null) {
             return false;
         }
         return allowModded || canonicalId.startsWith(MINECRAFT_NAMESPACE + ":");
     }
 
     /**
-     * @deprecated Prefer {@link #computeValid(String, boolean, boolean, boolean)} with explicit
-     *             {@code registryAuthoritative}. Assumes authoritative=true for legacy callers.
+     * @deprecated Prefer {@link #computeValid(String, boolean)}. Registry membership no longer
+     *             gates Graph {@code Valid}.
+     */
+    @Deprecated
+    public static boolean computeValid(
+        @Nullable String canonicalId,
+        boolean registryContains,
+        boolean allowModded,
+        boolean registryAuthoritative
+    ) {
+        return computeValid(canonicalId, allowModded);
+    }
+
+    /**
+     * @deprecated Prefer {@link #computeValid(String, boolean)}.
      */
     @Deprecated
     public static boolean computeValid(@Nullable String canonicalId, boolean registryContains, boolean allowModded) {
-        return computeValid(canonicalId, registryContains, allowModded, true);
+        return computeValid(canonicalId, allowModded);
     }
 }

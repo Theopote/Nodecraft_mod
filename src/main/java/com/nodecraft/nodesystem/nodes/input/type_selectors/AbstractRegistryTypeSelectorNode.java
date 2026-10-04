@@ -16,7 +16,6 @@ import imgui.type.ImString;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -96,9 +95,12 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     protected abstract CategorySpec[] getCategorySpecs();
 
     /**
-     * Loads picker catalog ids and whether membership is authoritative for Graph Valid.
+     * Loads picker catalog ids (editor convenience). Authoritative flag does not gate Graph Valid.
      */
     protected abstract RegistryCatalog collectRegistryCatalog();
+
+    /** Catalog kind used for {@link RegistryCatalogCache} sharing. */
+    protected abstract RegistryCatalogCache.Kind getCatalogKind();
 
     protected abstract boolean isKnownId(String id);
 
@@ -112,7 +114,8 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     protected final void addValidOutputPort() {
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
-                "Whether the selected id is syntactically valid and present in the registry under current filter policy",
+                "Whether the selected id parses as a canonical Identifier under Allow Modded policy "
+                    + "(not runtime registry membership)",
                 NodeDataType.BOOLEAN, this));
     }
 
@@ -137,14 +140,8 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
     protected final RegistrySelectionOutputs resolveSelectionOutputs(String selectedId) {
         String[] parts = RegistrySelectorUtils.splitNamespacePath(selectedId);
         ensureCatalogReady();
-        boolean registryOk = isKnownId(selectedId);
         boolean valid = lastCommitSyntaxValid
-                && RegistrySelectorUtils.computeValid(
-                    selectedId,
-                    registryOk,
-                    isAllowModded(),
-                    registryAuthoritative
-                );
+                && RegistrySelectorUtils.computeValid(selectedId, isAllowModded());
         return new RegistrySelectionOutputs(
                 parts[0],
                 parts[1],
@@ -546,20 +543,17 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
         if (!allIds.isEmpty()) {
             return;
         }
-        List<String> collected = new ArrayList<>();
-        boolean authoritative = false;
         try {
-            RegistryCatalog catalog = collectRegistryCatalog();
-            collected.addAll(catalog.ids());
-            authoritative = catalog.authoritative();
-            collected.sort(Comparator.naturalOrder());
-            registryReady = !collected.isEmpty();
-            registryAuthoritative = authoritative && registryReady;
+            RegistryCatalog catalog = RegistryCatalogCache.getOrLoad(getCatalogKind(), this::collectRegistryCatalog);
+            allIds = catalog.ids();
+            registryReady = !allIds.isEmpty();
+            registryAuthoritative = catalog.authoritative() && registryReady;
             if (registryReady) {
                 registryErrorLogged = false;
             }
         } catch (Throwable ignored) {
             // Includes Bootstrap ExceptionInInitializerError when Minecraft is not loaded.
+            allIds = List.of();
             registryReady = false;
             registryAuthoritative = false;
             if (!registryErrorLogged) {
@@ -567,7 +561,6 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                 registryErrorLogged = true;
             }
         }
-        allIds = collected;
     }
 
     /**

@@ -3,11 +3,19 @@
 **Status: PASSED / FROZEN** (Graph **V111**; V31 remains historical v1)
 
 Domain Input finite directed-span contract and `NumericRangeData.canonical`.
-Sliders, Angle, XY, Pi, and E are unchanged from V31.
+Sliders, Angle, XY, Pi, and E are unchanged from V31. **Freeze: docs-only** — no numeric
+runtime changes.
 
 Related: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md),
 [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domain.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
+
+## Graph strict vs UI normalize
+
+```text
+UI properties may normalize (clamp / swap / sanitize).
+Graph-connected DOUBLE / INTEGER inputs stay type-strict and fail-closed.
+```
 
 ## Domain Input (`input.numeric.range`)
 
@@ -52,8 +60,8 @@ Requires finite endpoints and finite directed span. Producers and
 
 ## Migration
 
-Graph **V110→V111** is a no-op (runtime semantics; no wire remaps). New Valid/Error
-ports on Domain Input need no migration.
+Graph **V110→V111** is a no-op (runtime semantics; no wire remaps). Stamp-only migrator.
+New Valid/Error ports on Domain Input need no migration.
 
 ## Contract
 

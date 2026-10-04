@@ -2,8 +2,8 @@
 
 **Status: PASSED / FROZEN** (Graph **V112**; V32 remains historical v1)
 
-Snapshot-data modernization for Player Raycast and Player Position capture boundaries.
-Current Time and Dimension Info unchanged from V32 fail-closed contracts.
+Snapshot-data modernization plus freeze hardening for Player View Raycast and Player Position
+Snapshot. Current Time and Dimension Info unchanged from V32 fail-closed contracts.
 
 Related: [`node-language-v1-input-context.md`](./node-language-v1-input-context.md),
 [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
@@ -21,7 +21,16 @@ Legacy world.write wires may still carry `BlockState` / block-id `String` on `BL
 (accepted by `isCompatible` and `WorldWriteUtils.resolveBlockState`). Raycast always emits
 `BlockInfoData`.
 
-## Player Raycast
+## Player View Raycast (`input.context.player_raycast`)
+
+Display name: **Player View Raycast** (id unchanged). Uses `WorldQueryAccess` (same gates as
+world query `RaycastNode`):
+
+| Gate | Result |
+|------|--------|
+| Origin block not loaded | `Valid=false` (fail closed) |
+| Ray segment not fully loaded | valid miss (`Valid=true`, `Has Hit=false`, cleared hit outs) |
+| Entity candidates `> GenerationLimits.MAX_ENTITY_QUERY_RESULTS` (4096) | `Valid=false` + `Error` |
 
 | Hit kind | `Hit Block` | `Hit Entity` |
 |----------|-------------|--------------|
@@ -29,15 +38,19 @@ Legacy world.write wires may still carry `BlockState` / block-id `String` on `BL
 | Entity | `null` | `EntityInfoData` |
 | Miss / invalid | `null` | `null` |
 
-Miss vs invalid table unchanged from V32.
+Miss vs invalid table unchanged from V32 for context-unavailable cases.
 
-## Player Position Snapshot — capture split
+## Player Position Snapshot — lifecycle
 
 | Path | Source |
 |------|--------|
-| `processNode(context)` first capture | `ExecutionContext` / `ServerPlayerEntity` only |
+| `processNode(context)` first capture when empty | `ExecutionContext` / `ServerPlayerEntity` only |
 | UI **Update Position** | `MinecraftClient.player` |
-| `Use Eye Position` panel change | client recapture |
+| `Use Eye Position` panel change | **property only** — no client recapture |
+
+**Persistence:** `getNodeState` saves only `useEyePosition`. Cached XYZ / `hasCachedPosition` are
+**session-local** and never written. Reload → no snapshot → `Valid=false` until Update / first
+live capture. Legacy `hasCachedPosition` / `cachedX/Y/Z` keys are ignored on load.
 
 Runtime missing player with a non-null context must **not** fall back to the client player
 (Valid stays false until a successful capture).
@@ -50,10 +63,11 @@ Runtime missing player with a non-null context must **not** fall back to the cli
 
 ## Migration
 
-Graph **V111→V112** is a no-op (runtime payload / capture semantics; no wire remaps).
+Graph **V111→V112** is a no-op (runtime payload / capture semantics; no wire remaps). Stamp-only.
 
 ## Contract
 
 - `InputContextLanguageV2ContractTest` — V112 fence, type bindings, snapshot factories,
   Position context-only capture.
-- `InputContextLanguageContractTest` — V32 inventory / fail-closed retained.
+- `InputContextLanguageContractTest` — V32 inventory / fail-closed / non-persistent snapshot /
+  eye-position setter retained.

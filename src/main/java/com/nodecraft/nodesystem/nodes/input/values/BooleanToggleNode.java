@@ -215,22 +215,11 @@ public class BooleanToggleNode extends BaseCustomUINode {
             if (stateMap.get("falseLabel") instanceof String label) {
                 setFalseLabel(label);
             }
-            if (stateMap.containsKey("value")) {
-                Object valueObj = stateMap.get("value");
-                if (valueObj instanceof Boolean bool) {
-                    setValue(bool);
-                } else if (valueObj instanceof String str) {
-                    setValue(Boolean.parseBoolean(str));
-                } else if (valueObj instanceof Number number) {
-                    setValue(number.intValue() != 0);
-                }
+            if (stateMap.get("value") instanceof Boolean bool) {
+                setValue(bool);
             }
         } else if (state instanceof Boolean bool) {
             setValue(bool);
-        } else if (state instanceof String str) {
-            setValue(Boolean.parseBoolean(str));
-        } else if (state instanceof Number number) {
-            setValue(number.intValue() != 0);
         }
     }
 }

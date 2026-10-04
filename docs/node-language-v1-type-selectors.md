@@ -9,7 +9,8 @@ Shared helper: `RegistrySelectorUtils`. Graph schema: **V33** retargets Block Ty
 `BLOCK_TYPE`, adds `output_valid` on all four selectors, removes Block State Selector, and
 migrates legacy graphs to Block Type + Build Block State.
 
-**V113 remediation:** biome UI fallback catalogs are non-authoritative — see
+**V113 freeze:** Graph `Valid` = Identifier syntax + Allow Modded (not registry membership).
+Picker catalogs are shared via `RegistryCatalogCache`. See
 [`node-language-v2-type-selectors.md`](./node-language-v2-type-selectors.md).
 
 Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
@@ -17,17 +18,16 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md),
 
 ## Core rules
 
-1. **`output_valid` gate** — `true` only when the id is syntactically valid, present in an
-   **authoritative** registry, and satisfies the allow-modded policy. Missing mods, empty
-   registries, or biome UI-only fallbacks preserve the saved canonical id with `Valid=false`
-   (no silent fallback to defaults for Valid).
+1. **`output_valid` gate** — `true` when the id parses as a canonical Identifier and satisfies
+   the allow-modded policy. Runtime registry membership is enforced downstream (preflight /
+   apply / export / world reads), not on this port.
 2. **Canonical ids** — graph-facing output is always `namespace:path` (lowercase). Bare names
    normalize to `minecraft:` on input.
 3. **Search / category / `minecraftOnly` are UI-only** — they affect the picker list only and
    must not rewrite a saved selection.
 4. **`Allow Modded` is validation + picker policy** — when `allowModded=false`, modded ids stay
    in saved state but `Valid=false`; the picker also hides modded entries.
-5. **PURE effect** — selectors are graph parameters; registry lookups are editor validation only.
+5. **PURE effect** — selectors are graph parameters; registry catalogs are editor convenience.
 6. **Block state construction** — use **Block Type Selector → Build Block State**, not a combined
    type-selector node.
 
@@ -53,15 +53,15 @@ All four also expose: `output_namespace`, `output_*_path`, `output_is_modded`, `
 | `output_namespace` | `STRING` | Namespace segment |
 | `output_*_path` | `STRING` | Path segment |
 | `output_is_modded` | `BOOLEAN` | `namespace != minecraft` |
-| `output_valid` | `BOOLEAN` | Authoritative registry + policy gate |
+| `output_valid` | `BOOLEAN` | Syntax + Allow Modded policy (not registry membership) |
 
 ## Valid semantics
 
 | Condition | Primary output | `Valid` |
 |-----------|----------------|---------|
-| Known id in authoritative registry, policy ok | canonical id | `true` |
-| Unknown / missing mod id | **preserved** canonical id | `false` |
-| Registry not ready / non-authoritative biome fallback | preserved id | `false` |
+| Well-formed id + policy ok | canonical id | `true` |
+| Unknown / missing mod id + `allowModded=true` | **preserved** canonical id | `true` |
+| Non-authoritative biome UI fallback + well-formed id | preserved id | `true` |
 | Modded id + `allowModded=false` | preserved id | `false` |
 | Invalid syntax on restore | default id (display) | `false` |
 

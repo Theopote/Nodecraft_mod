@@ -26,7 +26,8 @@ Related: [`node-language-v1-numeric-domain.md`](./node-language-v1-numeric-domai
 2. **Precision is UI-only** — `Precision` / `Decimal Places` affect display format only; they must
    not quantize graph doubles via `Math.round`.
 3. **Slider UI ≠ graph value** — bounded sliders use normalized `t ∈ [0,1]` for the ImGui handle,
-   then `lerpFromNormalized` back to double (no `(float)` cast on the stored value).
+   then `lerpFromNormalized` back to double (no `(float)` cast on the stored value). UI properties
+   may normalize; graph-connected `DOUBLE` / `INTEGER` inputs stay type-strict and fail-closed.
 4. **Slider ranges must be usable** — min, max, and `max − min` must all be finite
    (`isFiniteUsableSpan`). Reject full IEEE span such as `[-Double.MAX_VALUE, +Double.MAX_VALUE]`.
 5. **Angles are degrees** — Angle Slider and Circular Angle Picker output degrees as `DOUBLE`.

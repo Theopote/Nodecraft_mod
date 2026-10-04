@@ -136,6 +136,11 @@ public class BiomeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected RegistryCatalogCache.Kind getCatalogKind() {
+        return RegistryCatalogCache.Kind.BIOME;
+    }
+
+    @Override
     protected RegistryCatalog collectRegistryCatalog() {
         return RegistryCatalogHelper.collectBiomeCatalog();
     }

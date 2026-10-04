@@ -155,6 +155,11 @@ public class BlockTypeSelectorNode extends AbstractRegistryTypeSelectorNode {
     }
 
     @Override
+    protected RegistryCatalogCache.Kind getCatalogKind() {
+        return RegistryCatalogCache.Kind.BLOCK;
+    }
+
+    @Override
     protected RegistryCatalog collectRegistryCatalog() {
         List<String> ids = new ArrayList<>();
         try {

@@ -11,8 +11,11 @@ Shared helper: `ValueInputUtils`. Graph schema: **V34** remaps `input.basic.text
 `ColorData`, Value List options to `STRING_LIST`, drops Gradient `output_ramp`, and adds File
 Path `output_valid`.
 
-**V110 remediation:** Value List Index/Options and Gradient T/X/Y no longer treat
-connected-null as unconnected. Use OptionalPortDrive fail-closed (see v2 doc).
+**V110 remediation / freeze:** Value List Index/Options and Gradient T/X/Y no longer treat
+connected-null as unconnected (OptionalPortDrive fail-closed). Connected Index out of range →
+`Valid=false` + `Error` (unconnected property Index may clamp). Text Max Length hard-capped at
+32767; Boolean restore accepts `Boolean` only. UI properties may normalize; graph-connected
+inputs stay fail-closed (see v2 doc).
 
 Related: [`node-language-v1-input-numeric.md`](./node-language-v1-input-numeric.md),
 [`node-language-v1-input-context.md`](./node-language-v1-input-context.md),
@@ -50,7 +53,8 @@ All six are **PURE**.
 | `output_text` | `STRING` | Current text |
 | `output_length` | `INTEGER` | Character length |
 
-Always multiline editor. **No `multiline` property.** Max Length truncates explicitly.
+Always multiline editor. **No `multiline` property.** Max Length truncates explicitly;
+hard cap `MAX_TEXT_INPUT_CHARS = 32767` (`<=0` → 32767; `>32767` ignored).
 
 ## Color Picker
 
@@ -67,21 +71,23 @@ Property display **Edit Alpha** (UI). Internal ImGui/`util.Color` may remain for
 |------|------|-------|
 | `output_value` | `BOOLEAN` | Graph ports strict |
 
-Legacy persisted state may still coerce string/number on restore (acceptable).
+`setNodeState` accepts `Boolean` only (map `value` or bare Boolean). No String/Number coercion.
 
 ## Value List (`input.values.dropdown`)
 
 | Port | Type | Notes |
 |------|------|-------|
-| `input_index` | `INTEGER` | Override; `Integer` only |
+| `input_index` | `INTEGER` | Override; `Integer` only; connected OOR → fail closed |
 | `input_options` | `STRING_LIST` | Homogeneous Strings only; any non-String → empty / `Valid=false` |
-| `output_index` | `INTEGER` | Clamped into `[0, size-1]` when non-empty |
+| `output_index` | `INTEGER` | Selected index when valid |
 | `output_value` | `STRING` | Selected option text |
 | `output_options` | `STRING_LIST` | Resolved options |
-| `output_valid` | `BOOLEAN` | `false` when options empty |
+| `output_valid` | `BOOLEAN` | `false` when options empty / drives invalid |
+| `output_error` | `STRING` | Why invalid when `Valid=false` |
 
 Property CSV `Options = "A, B, C"` is the unconnected fallback. **Connected** Options
-null/invalid must not fall back to CSV (`Valid=false`) — see V110 / v2 doc.
+null/invalid must not fall back to CSV (`Valid=false`). Unconnected property Index may clamp;
+connected Index out of range fails closed — see V110 / v2 doc.
 
 ## Gradient Ramp
 

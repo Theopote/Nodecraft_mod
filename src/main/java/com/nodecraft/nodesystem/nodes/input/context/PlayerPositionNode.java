@@ -211,7 +211,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
             return;
         }
         this.useEyePosition = useEyePosition;
-        captureFromClientPlayer();
+        // Property-only: do not implicitly recapture from MinecraftClient.
         markDirty();
     }
 
@@ -223,10 +223,7 @@ public class PlayerPositionNode extends BaseCustomUINode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("useEyePosition", isUseEyePosition());
-        state.put("hasCachedPosition", hasCachedPosition);
-        state.put("cachedX", cachedX);
-        state.put("cachedY", cachedY);
-        state.put("cachedZ", cachedZ);
+        // Runtime snapshot is session-local and never persisted across graph reload.
         return state;
     }
 
@@ -238,37 +235,11 @@ public class PlayerPositionNode extends BaseCustomUINode {
         if (map.get("useEyePosition") instanceof Boolean bool) {
             this.useEyePosition = bool;
         }
-        Double x = asFiniteDouble(map.get("cachedX"));
-        Double y = asFiniteDouble(map.get("cachedY"));
-        Double z = asFiniteDouble(map.get("cachedZ"));
-        if (map.get("hasCachedPosition") instanceof Boolean hasFlag) {
-            if (hasFlag && x != null && y != null && z != null) {
-                setCachedPosition(x, y, z);
-                return;
-            }
-            hasCachedPosition = false;
-            cachedX = x != null ? x : 0.0;
-            cachedY = y != null ? y : 0.0;
-            cachedZ = z != null ? z : 0.0;
-            updateOutputs();
-            return;
-        }
-        if (x != null && y != null && z != null) {
-            setCachedPosition(x, y, z);
-        } else {
-            hasCachedPosition = false;
-            cachedX = 0.0;
-            cachedY = 0.0;
-            cachedZ = 0.0;
-            updateOutputs();
-        }
-    }
-
-    private static @Nullable Double asFiniteDouble(@Nullable Object value) {
-        if (value instanceof Number number) {
-            double candidate = number.doubleValue();
-            return Double.isFinite(candidate) ? candidate : null;
-        }
-        return null;
+        // Ignore legacy hasCachedPosition / cachedX/Y/Z — snapshot must be recaptured.
+        hasCachedPosition = false;
+        cachedX = 0.0;
+        cachedY = 0.0;
+        cachedZ = 0.0;
+        updateOutputs();
     }
 }
