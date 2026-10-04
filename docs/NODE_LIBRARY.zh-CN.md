@@ -138,7 +138,7 @@
 | Extract Path Points | `geometry.curves.path_to_points` | Extracts existing vertices/sample points from a path. Does not resample — use Resample Path for that. | `PathToPointsNode` |
 | Face Edge To Path | `geometry.curves.edge_to_curve` | Converts a face edge into a path and endpoint outputs for path workflows | `FaceEdgeToPathNode` |
 | Box Face Boundary Path | `geometry.curves.face_boundary_curve` | Builds a closed boundary path from a box face for preview and downstream path workflows | `BoxFaceBoundaryPathNode` |
-| Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles | `ArcNode` |
+| Arc | `geometry.curves.arc` | Builds a sampled circular arc from a center point, plane, radius, and start/end angles. Sweep is directed and may exceed ±360°. | `ArcNode` |
 | Bezier | `geometry.curves.bezier` | Builds a sampled Bezier curve from an ordered list of control points | `BezierNode` |
 | Interpolate Spline | `geometry.curves.interpolate_spline` | Builds a Catmull-Rom interpolation spline that passes through all resolved input points | `InterpolateSplineNode` |
 | B-Spline | `geometry.curves.b_spline` | Builds a sampled clamped uniform B-spline from an ordered control point list | `BSplineNode` |

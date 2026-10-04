@@ -1,6 +1,8 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -172,7 +174,39 @@ public final class CurveInputUtils {
     }
 
     /**
-     * Strict DOUBLE_LIST: exact length, all finite and {@code > 0}.
+     * Strict POINT_LIST: Collection of {@link PointData} only, all finite, no filtering.
+     * Empty / oversize / mixed types → {@code null}.
+     */
+    public static @Nullable List<Vector3d> resolveStrictPointListBounded(@Nullable Object value, int maxElements) {
+        return PointUtils.resolveStrictPointListBounded(value, maxElements);
+    }
+
+    /**
+     * Connected POINT must be finite {@link PointData}. Call only when the port is connected.
+     */
+    public static @Nullable Vector3d requireConnectedPointData(BaseNode node, String portId) {
+        Object value = node.getInput(portId);
+        if (!(value instanceof PointData pointData)) {
+            return null;
+        }
+        Vector3d position = pointData.position();
+        return PointUtils.isFinite(position) ? new Vector3d(position) : null;
+    }
+
+    /**
+     * Connected VECTOR must be finite {@link VectorData}. Call only when the port is connected.
+     */
+    public static @Nullable Vector3d requireConnectedVectorData(BaseNode node, String portId) {
+        Object value = node.getInput(portId);
+        if (!(value instanceof VectorData vectorData)) {
+            return null;
+        }
+        Vector3d components = vectorData.components();
+        return VectorUtils.isFinite(components) ? new Vector3d(components) : null;
+    }
+
+    /**
+     * Strict DOUBLE_LIST: exact length, every entry is an exact finite {@link Double} {@code > 0}.
      */
     public static @Nullable List<Double> resolveStrictPositiveDoubleList(
             @Nullable Object value,
@@ -183,16 +217,33 @@ public final class CurveInputUtils {
         }
         List<Double> weights = new ArrayList<>(requiredLength);
         for (Object entry : collection) {
-            if (!(entry instanceof Number number)) {
+            if (!(entry instanceof Double resolved)) {
                 return null;
             }
-            double resolved = number.doubleValue();
             if (!Double.isFinite(resolved) || !(resolved > 0.0d)) {
                 return null;
             }
             weights.add(resolved);
         }
         return List.copyOf(weights);
+    }
+
+    public static boolean isWithinControlCount(int count) {
+        return count >= 1 && count <= GenerationLimits.MAX_CURVE_CONTROL_POINTS;
+    }
+
+    public static boolean isWithinEvaluationWork(long controlCount, long sampleCount) {
+        if (controlCount <= 0L || sampleCount <= 0L) {
+            return false;
+        }
+        if (controlCount > GenerationLimits.MAX_CURVE_CONTROL_POINTS) {
+            return false;
+        }
+        if (sampleCount > GenerationLimits.MAX_CURVE_SAMPLES) {
+            return false;
+        }
+        long work = controlCount * sampleCount;
+        return work >= 0L && work <= GenerationLimits.MAX_CURVE_EVALUATION_WORK;
     }
 
     /**

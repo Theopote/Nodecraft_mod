@@ -573,6 +573,12 @@ public final class GenerationLimits {
     /** Maximum unique vertices per polygon profile loop. */
     public static final int MAX_PROFILE_VERTICES = MAX_SEGMENTS;
 
+    /** Maximum control / interpolation points on a constructor POINT_LIST (alias of {@link #MAX_PROFILE_VERTICES}). */
+    public static final int MAX_CURVE_CONTROL_POINTS = MAX_PROFILE_VERTICES;
+
+    /** Maximum constructor evaluation work: controlCount × sampleCount (alias of {@link #MAX_CURVE_TOTAL_SAMPLES}). */
+    public static final long MAX_CURVE_EVALUATION_WORK = MAX_CURVE_TOTAL_SAMPLES;
+
     /** Maximum polygon profiles emitted by a single node. */
     public static final int MAX_PROFILE_OUTPUT_PROFILES = MAX_GEOMETRY_INSTANCES;
 

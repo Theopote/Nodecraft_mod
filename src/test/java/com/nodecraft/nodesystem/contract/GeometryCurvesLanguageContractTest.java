@@ -51,6 +51,7 @@ class GeometryCurvesLanguageContractTest {
 
     @Test
     void graphFormatIncludesV71CurvesLanguage() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 

@@ -6,10 +6,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -67,11 +70,15 @@ public class InterpolateSplineNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        List<Vec3d> points = new ArrayList<>(resolved.size());
-        for (Vector3d point : resolved) {
-            points.add(new Vec3d(point.x, point.y, point.z));
+        List<Vector3d> resolved = CurveInputUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_CURVE_CONTROL_POINTS
+        );
+        if (resolved == null) {
+            invalidate("Point list is missing, mixed, non-finite, empty, or exceeds the control-point budget", 0);
+            return;
         }
+        List<Vec3d> points = toVec3d(resolved);
 
         Double alpha = resolveFiniteDouble(INPUT_ALPHA_ID, defaultAlpha);
         if (alpha == null || alpha < 0.0d || alpha > 1.0d) {
@@ -101,24 +108,29 @@ public class InterpolateSplineNode extends AbstractCurveNode {
             invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")", points.size());
             return;
         }
-
-        List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
-        if (sampled.size() < 2) {
-            invalidate("Interpolation produced fewer than 2 sample points", points.size());
+        if (!CurveInputUtils.isWithinEvaluationWork(points.size(), estimatedSamples)) {
+            invalidate("Spline evaluation work exceeds limit (" + GenerationLimits.MAX_CURVE_EVALUATION_WORK + ")",
+                points.size());
             return;
         }
 
-        PolylineData polyline = new PolylineData(sampled);
-        List<Vector3d> sampledVectors = new ArrayList<>(sampled.size());
-        for (Vec3d sample : sampled) {
-            sampledVectors.add(new Vector3d(sample.x, sample.y, sample.z));
+        List<Vec3d> sampled = sampleCatmullRom(points, resolutionPerSegment, alpha, closed);
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(sampled);
+        if (fenced == null) {
+            invalidate("Interpolation samples are non-finite or the parameter sequence overflowed", points.size());
+            return;
+        }
+        PathData controlPath = PathUtils.toPathData(resolved);
+        if (controlPath == null) {
+            invalidate("Control path could not be constructed", points.size());
+            return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_CONTROL_PATH_ID, PathData.fromPolyline(new PolylineData(points)));
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
+        outputValues.put(OUTPUT_CONTROL_PATH_ID, controlPath);
         outputValues.put(OUTPUT_CONTROL_COUNT_ID, points.size());
-        outputValues.put(OUTPUT_LENGTH_ID, polyline.getLength());
+        outputValues.put(OUTPUT_LENGTH_ID, fenced.length());
         markSuccess();
     }
 
@@ -189,11 +201,11 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         putNullOutputs(OUTPUT_PATH_ID, OUTPUT_CONTROL_PATH_ID);
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putIntOutputs(controlCount, OUTPUT_CONTROL_COUNT_ID);
-        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_LENGTH_ID);
         markInvalid(message);
     }
 
-    private List<Vec3d> sampleCatmullRom(List<Vec3d> points, int samplesPerSegment, double alpha, boolean closedPath) {
+    private @Nullable List<Vec3d> sampleCatmullRom(List<Vec3d> points, int samplesPerSegment, double alpha, boolean closedPath) {
         List<Vec3d> sampled = new ArrayList<>();
         int count = points.size();
         int segmentCount = closedPath ? count : count - 1;
@@ -204,10 +216,13 @@ public class InterpolateSplineNode extends AbstractCurveNode {
             Vec3d p2 = points.get((i + 1) % count);
             Vec3d p3 = points.get(closedPath ? floorMod(i + 2, count) : Math.min(count - 1, i + 2));
 
+            Double t1 = nextKnot(0.0d, p0, p1, alpha);
+            Double t2 = t1 == null ? null : nextKnot(t1, p1, p2, alpha);
+            Double t3 = t2 == null ? null : nextKnot(t2, p2, p3, alpha);
+            if (t1 == null || t2 == null || t3 == null) {
+                return null;
+            }
             double t0 = 0.0d;
-            double t1 = t0 + tj(t0, p0, p1, alpha);
-            double t2 = t1 + tj(t1, p1, p2, alpha);
-            double t3 = t2 + tj(t2, p2, p3, alpha);
 
             if (Math.abs(t1 - t0) <= EPSILON || Math.abs(t2 - t1) <= EPSILON || Math.abs(t3 - t2) <= EPSILON) {
                 appendLinearFallback(sampled, p1, p2, samplesPerSegment, i == 0);
@@ -220,6 +235,9 @@ public class InterpolateSplineNode extends AbstractCurveNode {
                 }
                 double u = (double) j / (double) samplesPerSegment;
                 double t = t1 + (t2 - t1) * u;
+                if (!Double.isFinite(t)) {
+                    return null;
+                }
                 sampled.add(interpolateCatmullRomPoint(p0, p1, p2, p3, t0, t1, t2, t3, t));
             }
         }
@@ -262,12 +280,29 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         );
     }
 
-    private double tj(double ti, Vec3d pi, Vec3d pj, double alpha) {
-        double dx = pj.x - pi.x;
-        double dy = pj.y - pi.y;
-        double dz = pj.z - pi.z;
-        double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return ti + Math.pow(distance, alpha);
+    private static @Nullable Double nextKnot(double ti, Vec3d pi, Vec3d pj, double alpha) {
+        double distance = VectorUtils.safeDistance(toVector(pi), toVector(pj));
+        if (!Double.isFinite(distance)) {
+            return null;
+        }
+        double increment = Math.pow(distance, alpha);
+        if (!Double.isFinite(increment)) {
+            return null;
+        }
+        double t = ti + increment;
+        return Double.isFinite(t) ? t : null;
+    }
+
+    private static Vector3d toVector(Vec3d point) {
+        return new Vector3d(point.x, point.y, point.z);
+    }
+
+    private static List<Vec3d> toVec3d(List<Vector3d> points) {
+        List<Vec3d> out = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            out.add(new Vec3d(point.x, point.y, point.z));
+        }
+        return out;
     }
 
     private Vec3d lerp(Vec3d start, Vec3d end, double t) {

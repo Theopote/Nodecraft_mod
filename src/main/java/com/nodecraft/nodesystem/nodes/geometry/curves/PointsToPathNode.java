@@ -9,7 +9,9 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -46,8 +48,8 @@ public class PointsToPathNode extends AbstractCurveNode {
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Primary path output (line for 2 points, polyline for 3+)",
             NodeDataType.PATH, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count",
-            "Number of valid points used to build the path", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Path Point Count",
+            "Serialized path point count (includes repeated closing vertex when Close Path is enabled)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when at least 2 valid points were resolved", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
@@ -55,17 +57,36 @@ public class PointsToPathNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        List<Vec3d> points = new ArrayList<>(resolved.size());
+        List<Vector3d> resolved = CurveInputUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_CURVE_CONTROL_POINTS
+        );
+        if (resolved == null) {
+            putNullOutputs(OUTPUT_PATH_ID);
+            putIntOutputs(0, OUTPUT_COUNT_ID);
+            markInvalid("Point list is missing, mixed, non-finite, empty, or exceeds the control-point budget");
+            return;
+        }
+
+        List<Vec3d> points = new ArrayList<>(resolved.size() + 1);
         for (Vector3d point : resolved) {
             points.add(new Vec3d(point.x, point.y, point.z));
         }
 
         if (closePath && points.size() >= 2) {
-            Vec3d first = points.getFirst();
-            Vec3d last = points.getLast();
-            if (!first.equals(last)) {
-                points.add(first);
+            Vector3d first = resolved.getFirst();
+            Vector3d last = resolved.getLast();
+            double seam = VectorUtils.safeDistance(first, last);
+            if (!Double.isFinite(seam)) {
+                putNullOutputs(OUTPUT_PATH_ID);
+                putIntOutputs(0, OUTPUT_COUNT_ID);
+                markInvalid("Closing seam distance is non-finite");
+                return;
+            }
+            if (seam <= PathUtils.CLOSED_DISTANCE_EPSILON) {
+                points.set(points.size() - 1, points.getFirst());
+            } else {
+                points.add(points.getFirst());
             }
         }
 

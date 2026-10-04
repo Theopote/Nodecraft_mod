@@ -6,9 +6,11 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import net.minecraft.util.math.Vec3d;
@@ -58,11 +60,15 @@ public class BezierNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_CONTROL_POINTS_ID));
-        List<Vec3d> controlPoints = new ArrayList<>(resolved.size());
-        for (Vector3d point : resolved) {
-            controlPoints.add(new Vec3d(point.x, point.y, point.z));
+        List<Vector3d> resolved = CurveInputUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_CONTROL_POINTS_ID),
+            GenerationLimits.MAX_CURVE_CONTROL_POINTS
+        );
+        if (resolved == null) {
+            invalidate("Control points are missing, mixed, non-finite, empty, or exceed the control-point budget", 0);
+            return;
         }
+        List<Vec3d> controlPoints = toVec3d(resolved);
 
         Integer samples = resolveBoundedInteger(INPUT_SAMPLES_ID, defaultSamples, 2, GenerationLimits.MAX_CURVE_SAMPLES);
         if (samples == null) {
@@ -74,24 +80,33 @@ public class BezierNode extends AbstractCurveNode {
             invalidate("At least 3 control points are required", controlPoints.size());
             return;
         }
+        if (!CurveInputUtils.isWithinEvaluationWork(controlPoints.size(), samples)) {
+            invalidate("Bezier evaluation work exceeds limit (" + GenerationLimits.MAX_CURVE_EVALUATION_WORK + ")",
+                controlPoints.size());
+            return;
+        }
 
         Curve curve = new Curve(Curve.CurveType.BEZIER, samples);
         for (Vec3d controlPoint : controlPoints) {
             curve.addControlPoint(controlPoint);
         }
 
-        List<Vec3d> sampled = curve.getSamplePoints();
-        PolylineData sampledPolyline = new PolylineData(sampled);
-        List<Vector3d> sampledVectors = new ArrayList<>(sampled.size());
-        for (Vec3d sample : sampled) {
-            sampledVectors.add(new Vector3d(sample.x, sample.y, sample.z));
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(curve.getSamplePoints());
+        if (fenced == null) {
+            invalidate("Bezier samples are non-finite or over budget", controlPoints.size());
+            return;
+        }
+        PathData controlPath = PathUtils.toPathData(resolved);
+        if (controlPath == null) {
+            invalidate("Control path could not be constructed", controlPoints.size());
+            return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromCurve(curve));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_CONTROL_PATH_ID, PathData.fromPolyline(new PolylineData(controlPoints)));
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
+        outputValues.put(OUTPUT_CONTROL_PATH_ID, controlPath);
         outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
-        outputValues.put(OUTPUT_LENGTH_ID, sampledPolyline.getLength());
+        outputValues.put(OUTPUT_LENGTH_ID, fenced.length());
         markSuccess();
     }
 
@@ -131,7 +146,15 @@ public class BezierNode extends AbstractCurveNode {
         putNullOutputs(OUTPUT_PATH_ID, OUTPUT_CONTROL_PATH_ID);
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putIntOutputs(controlCount, OUTPUT_CONTROL_COUNT_ID);
-        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_LENGTH_ID);
         markInvalid(message);
+    }
+
+    private static List<Vec3d> toVec3d(List<Vector3d> points) {
+        List<Vec3d> out = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            out.add(new Vec3d(point.x, point.y, point.z));
+        }
+        return out;
     }
 }

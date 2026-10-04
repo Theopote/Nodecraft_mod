@@ -12,6 +12,10 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
+import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.geometry.curves.PointsToPathNode;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.Curve;
@@ -28,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -323,6 +328,147 @@ class GeometryCurvesFamilyContractTest {
         assertInstanceOf(PathData.class, helix.getOutput("output_path"));
         assertTrue(((List<?>) helix.getOutput("output_points")).size() >= 2);
         assertTrue(((Number) helix.getOutput("output_length")).doubleValue() > 0.0d);
+    }
+
+    @Test
+    void currentGraphFormatIsStampOnlyOne() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
+        assertEquals(GenerationLimits.MAX_PROFILE_VERTICES, GenerationLimits.MAX_CURVE_CONTROL_POINTS);
+        assertEquals(GenerationLimits.MAX_CURVE_TOTAL_SAMPLES, GenerationLimits.MAX_CURVE_EVALUATION_WORK);
+    }
+
+    @Test
+    void pointsToPathRejectsMixedPointList() {
+        BaseNode node = node("geometry.curves.points_to_path");
+        node.setInput("input_points", List.of(
+            new PointData(0, 0, 0),
+            new org.joml.Vector3d(1, 0, 0)
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_path"));
+    }
+
+    @Test
+    void bezierRejectsMixedControlPoints() {
+        BaseNode node = node("geometry.curves.bezier");
+        node.setInput("input_control_points", List.of(
+            new PointData(0, 0, 0),
+            new PointData(1, 1, 0),
+            new org.joml.Vector3d(2, 0, 0)
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_path"));
+    }
+
+    @Test
+    void arcConnectedInvalidCenterDoesNotFallback() {
+        BaseNode arc = node("geometry.curves.arc");
+        connectInput(arc, "input_center", NodeDataType.POINT);
+        arc.setInput("input_center", null);
+        arc.processNode(null);
+        assertEquals(Boolean.FALSE, arc.getOutput("output_valid"));
+        assertTrue(String.valueOf(arc.getOutput("output_error")).toLowerCase().contains("center"));
+        assertTrue(Double.isNaN(((Number) arc.getOutput("output_length")).doubleValue()));
+    }
+
+    @Test
+    void arcConnectedInvalidPlaneDoesNotFallbackToDefault() {
+        BaseNode arc = node("geometry.curves.arc");
+        connectInput(arc, "input_plane", NodeDataType.PLANE);
+        arc.setInput("input_plane", "not-a-plane");
+        arc.processNode(null);
+        assertEquals(Boolean.FALSE, arc.getOutput("output_valid"));
+        assertTrue(String.valueOf(arc.getOutput("output_error")).toLowerCase().contains("plane"));
+    }
+
+    @Test
+    void arcExtremeSweepFailsClosedWithNanLength() {
+        BaseNode arc = node("geometry.curves.arc");
+        connectInput(arc, "input_start_angle", NodeDataType.DOUBLE);
+        connectInput(arc, "input_end_angle", NodeDataType.DOUBLE);
+        arc.setInput("input_start_angle", -1.0e308d);
+        arc.setInput("input_end_angle", 1.0e308d);
+        arc.processNode(null);
+        assertEquals(Boolean.FALSE, arc.getOutput("output_valid"));
+        assertTrue(Double.isNaN(((Number) arc.getOutput("output_length")).doubleValue()));
+    }
+
+    @Test
+    void helixConnectedInvalidAxisDoesNotFallback() {
+        BaseNode helix = node("geometry.curves.helix");
+        connectInput(helix, "input_axis", NodeDataType.VECTOR);
+        helix.setInput("input_axis", null);
+        helix.processNode(null);
+        assertEquals(Boolean.FALSE, helix.getOutput("output_valid"));
+        assertTrue(String.valueOf(helix.getOutput("output_error")).toLowerCase().contains("axis"));
+    }
+
+    @Test
+    void helixHugeTurnsFailBeforeIntWrap() {
+        BaseNode helix = node("geometry.curves.helix");
+        connectInput(helix, "input_turns", NodeDataType.DOUBLE);
+        helix.setInput("input_turns", 1.0e20d);
+        helix.processNode(null);
+        assertEquals(Boolean.FALSE, helix.getOutput("output_valid"));
+        assertTrue(String.valueOf(helix.getOutput("output_error")).toLowerCase().contains("sample"));
+    }
+
+    @Test
+    void interpolateSplineExtremeChordFailsClosed() {
+        BaseNode spline = node("geometry.curves.interpolate_spline");
+        spline.setInput("input_points", List.of(
+            new PointData(-1.0e308d, 0, 0),
+            new PointData(1.0e308d, 0, 0)
+        ));
+        spline.processNode(null);
+        assertEquals(Boolean.FALSE, spline.getOutput("output_valid"));
+    }
+
+    @Test
+    void nurbsIntegerWeightsFailClosed() {
+        BaseNode nurbs = node("geometry.curves.nurbs");
+        nurbs.setInput("input_control_points", List.of(
+            new PointData(0, 0, 0),
+            new PointData(1, 1, 0),
+            new PointData(2, 0, 0),
+            new PointData(3, 1, 0)
+        ));
+        connectInput(nurbs, "input_weights", NodeDataType.DOUBLE_LIST);
+        nurbs.setInput("input_weights", List.of(1, 1, 1, 1));
+        nurbs.processNode(null);
+        assertEquals(Boolean.FALSE, nurbs.getOutput("output_valid"));
+        assertTrue(String.valueOf(nurbs.getOutput("output_error")).toLowerCase().contains("weight"));
+    }
+
+    @Test
+    void pointsToPathNearClosedUsesEpsilonAndCountsClosureVertex() {
+        PointsToPathNode node = (PointsToPathNode) node("geometry.curves.points_to_path");
+        node.setClosePath(true);
+        node.setInput("input_points", List.of(
+            new PointData(0, 0, 0),
+            new PointData(1, 0, 0),
+            new PointData(1.0e-12d, 0, 0)
+        ));
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
+        assertEquals(3, node.getOutput("output_count"));
+    }
+
+    @Test
+    void pathDataFromLineNullIsNotAUsablePath() {
+        assertNull(PathData.fromLine(null));
+        assertNull(PathData.wrap(null));
+    }
+
+    @Test
+    void vectorDataStillConnectsForHelixWhenValid() {
+        BaseNode helix = node("geometry.curves.helix");
+        connectInput(helix, "input_axis", NodeDataType.VECTOR);
+        helix.setInput("input_axis", new VectorData(0, 1, 0));
+        helix.processNode(null);
+        assertEquals(Boolean.TRUE, helix.getOutput("output_valid"), String.valueOf(helix.getOutput("output_error")));
     }
 
     @Test

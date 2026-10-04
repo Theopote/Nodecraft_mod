@@ -5,12 +5,13 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -103,19 +104,37 @@ public class HelixCurveNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = PlaneProjectionUtils.resolvePointOrDefault(
-            inputValues.get(INPUT_CENTER_ID), centerX, centerY, centerZ);
-        Vector3d axisIn = resolveInputVector(inputValues.get(INPUT_AXIS_ID));
-        if (axisIn == null) {
+        Vector3d center;
+        if (CurveInputUtils.isConnected(this, INPUT_CENTER_ID)) {
+            center = CurveInputUtils.requireConnectedPointData(this, INPUT_CENTER_ID);
+            if (center == null) {
+                invalidate("Center is connected but invalid (must be finite PointData)");
+                return;
+            }
+        } else {
+            center = new Vector3d(centerX, centerY, centerZ);
+            if (!VectorUtils.isFinite(center)) {
+                invalidate("Default center is non-finite");
+                return;
+            }
+        }
+
+        Vector3d axisIn;
+        if (CurveInputUtils.isConnected(this, INPUT_AXIS_ID)) {
+            axisIn = CurveInputUtils.requireConnectedVectorData(this, INPUT_AXIS_ID);
+            if (axisIn == null) {
+                invalidate("Axis is connected but invalid (must be finite VectorData)");
+                return;
+            }
+        } else {
             axisIn = new Vector3d(axisX, axisY, axisZ);
         }
 
-        Vector3d axis = new Vector3d(axisIn);
-        if (axis.lengthSquared() <= 1.0e-12d) {
-            invalidate("Axis must be a non-zero vector");
+        Vector3d axis = VectorUtils.safeNormalize(axisIn);
+        if (axis == null) {
+            invalidate("Axis must be a non-zero finite vector");
             return;
         }
-        axis.normalize();
 
         Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
         Double pitch = resolveFiniteDouble(INPUT_PITCH_ID, defaultPitch);
@@ -149,43 +168,64 @@ public class HelixCurveNode extends AbstractCurveNode {
             return;
         }
 
-        int totalSegments = Math.max(2, (int) Math.ceil(turns * segmentsPerTurn));
-        if (totalSegments + 1 > GenerationLimits.MAX_CURVE_SAMPLES) {
+        double product = turns * (double) segmentsPerTurn;
+        if (!Double.isFinite(product)) {
+            invalidate("Helix sample product is non-finite");
+            return;
+        }
+        double ceilSegments = Math.ceil(product);
+        if (!Double.isFinite(ceilSegments) || ceilSegments < 2.0d
+            || ceilSegments > (double) (GenerationLimits.MAX_CURVE_SAMPLES - 1)) {
+            invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")");
+            return;
+        }
+        int totalSegments = (int) ceilSegments;
+        long sampleCount = (long) totalSegments + 1L;
+        if (sampleCount > GenerationLimits.MAX_CURVE_SAMPLES) {
             invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")");
             return;
         }
 
         double startAngle = Math.toRadians(startAngleDegrees);
-        Vector3d basisU = fallbackAxis(axis);
-        Vector3d basisV = new Vector3d(axis).cross(basisU).normalize();
-        basisU = new Vector3d(basisV).cross(axis).normalize();
+        if (!Double.isFinite(startAngle)) {
+            invalidate("Start Angle in radians is non-finite");
+            return;
+        }
+        var basis = PlaneProjectionUtils.createBasisFromNormal(axis);
+        if (basis == null) {
+            invalidate("Helix frame could not be constructed from axis");
+            return;
+        }
 
-        List<Vec3d> pts = new ArrayList<>(totalSegments + 1);
+        List<Vec3d> pts = new ArrayList<>((int) sampleCount);
         for (int i = 0; i <= totalSegments; i++) {
             double t = i / (double) totalSegments;
             double angle = startAngle + t * turns * Math.PI * 2.0d;
             double along = t * turns * pitch;
-            Vector3d p = new Vector3d(center)
-                .add(new Vector3d(axis).mul(along))
-                .add(new Vector3d(basisU).mul(Math.cos(angle) * radius))
-                .add(new Vector3d(basisV).mul(Math.sin(angle) * radius));
-            pts.add(new Vec3d(p.x, p.y, p.z));
+            if (!Double.isFinite(angle) || !Double.isFinite(along)) {
+                invalidate("Helix sample parameter is non-finite");
+                return;
+            }
+            Vector3d alongAxis = VectorUtils.safeScale(axis, along);
+            Vector3d radialU = VectorUtils.safeScale(basis.xAxis(), Math.cos(angle) * radius);
+            Vector3d radialV = VectorUtils.safeScale(basis.yAxis(), Math.sin(angle) * radius);
+            Vector3d point = VectorUtils.safeAdd(center, VectorUtils.safeAdd(alongAxis, VectorUtils.safeAdd(radialU, radialV)));
+            if (point == null || !VectorUtils.isFinite(point)) {
+                invalidate("Helix sample point is non-finite");
+                return;
+            }
+            pts.add(new Vec3d(point.x, point.y, point.z));
         }
 
-        double length = 0.0d;
-        for (int i = 1; i < pts.size(); i++) {
-            length += pts.get(i - 1).distanceTo(pts.get(i));
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(pts);
+        if (fenced == null) {
+            invalidate("Helix samples are non-finite or over budget");
+            return;
         }
 
-        PolylineData polyline = new PolylineData(pts);
-        List<Vector3d> pointVectors = new ArrayList<>(pts.size());
-        for (Vec3d point : pts) {
-            pointVectors.add(new Vector3d(point.x, point.y, point.z));
-        }
-
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(pointVectors));
-        outputValues.put(OUTPUT_LENGTH_ID, length);
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
+        outputValues.put(OUTPUT_LENGTH_ID, fenced.length());
         markSuccess();
     }
 
@@ -249,17 +289,7 @@ public class HelixCurveNode extends AbstractCurveNode {
     private void invalidate(String message) {
         putNullOutputs(OUTPUT_PATH_ID);
         putEmptyListOutputs(OUTPUT_POINTS_ID);
-        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_LENGTH_ID);
         markInvalid(message);
-    }
-
-    private Vector3d fallbackAxis(Vector3d axis) {
-        Vector3d reference = Math.abs(axis.y) < 0.99d ? new Vector3d(0.0d, 1.0d, 0.0d) : new Vector3d(1.0d, 0.0d, 0.0d);
-        Vector3d u = reference.sub(new Vector3d(axis).mul(reference.dot(axis)));
-        if (u.lengthSquared() <= 1.0e-12d) {
-            reference = new Vector3d(0.0d, 0.0d, 1.0d);
-            u = reference.sub(new Vector3d(axis).mul(reference.dot(axis)));
-        }
-        return u.normalize();
     }
 }

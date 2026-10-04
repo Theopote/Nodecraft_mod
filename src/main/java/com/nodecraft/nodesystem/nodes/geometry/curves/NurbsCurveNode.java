@@ -1,14 +1,14 @@
 package com.nodecraft.nodesystem.nodes.geometry.curves;
 
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveMathUtils;
-
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.CurveInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -74,11 +74,15 @@ public class NurbsCurveNode extends AbstractCurveNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        List<Vector3d> resolved = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_CONTROL_POINTS_ID));
-        List<Vec3d> controlPoints = new ArrayList<>(resolved.size());
-        for (Vector3d point : resolved) {
-            controlPoints.add(new Vec3d(point.x, point.y, point.z));
+        List<Vector3d> resolved = CurveInputUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_CONTROL_POINTS_ID),
+            GenerationLimits.MAX_CURVE_CONTROL_POINTS
+        );
+        if (resolved == null) {
+            invalidate("Control points are missing, mixed, non-finite, empty, or exceed the control-point budget", 0, 0);
+            return;
         }
+        List<Vec3d> controlPoints = toVec3d(resolved);
 
         if (controlPoints.size() < 2) {
             invalidate("At least 2 control points are required", controlPoints.size(), 0);
@@ -88,7 +92,8 @@ public class NurbsCurveNode extends AbstractCurveNode {
         List<Double> weights = CurveInputUtils.resolveOptionalNurbsWeights(
             this, INPUT_WEIGHTS_ID, controlPoints.size(), defaultWeight);
         if (weights == null) {
-            invalidate("Weights must be a DOUBLE_LIST aligned to control points with finite values > 0", controlPoints.size(), 0);
+            invalidate("Weights must be a DOUBLE_LIST of exact Double values aligned to control points with finite values > 0",
+                controlPoints.size(), 0);
             return;
         }
 
@@ -115,11 +120,17 @@ public class NurbsCurveNode extends AbstractCurveNode {
 
         int n = controlPoints.size() - 1;
         int spanCount = Math.max(1, n - degree + 1);
-        int totalSamples = spanCount * resolutionPerSpan + 1;
-        if (totalSamples > GenerationLimits.MAX_CURVE_SAMPLES) {
+        long estimated = (long) spanCount * resolutionPerSpan + 1L;
+        if (estimated > GenerationLimits.MAX_CURVE_SAMPLES) {
             invalidate("Sample count exceeds maximum (" + GenerationLimits.MAX_CURVE_SAMPLES + ")", controlPoints.size(), degree);
             return;
         }
+        if (!CurveInputUtils.isWithinEvaluationWork(controlPoints.size(), estimated)) {
+            invalidate("NURBS evaluation work exceeds limit (" + GenerationLimits.MAX_CURVE_EVALUATION_WORK + ")",
+                controlPoints.size(), degree);
+            return;
+        }
+        int totalSamples = (int) estimated;
 
         int knotCount = n + degree + 2;
         double[] knots = CurveMathUtils.buildClampedUniformKnots(knotCount, degree, n);
@@ -134,18 +145,23 @@ public class NurbsCurveNode extends AbstractCurveNode {
             sampled.add(CurveMathUtils.evaluateNurbs(controlPoints, weights, knots, degree, u, n, EPSILON));
         }
 
-        PolylineData polyline = new PolylineData(sampled);
-        List<Vector3d> sampledVectors = new ArrayList<>(sampled.size());
-        for (Vec3d sample : sampled) {
-            sampledVectors.add(new Vector3d(sample.x, sample.y, sample.z));
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(sampled);
+        if (fenced == null) {
+            invalidate("NURBS samples are non-finite or over budget", controlPoints.size(), degree);
+            return;
+        }
+        PathData controlPath = PathUtils.toPathData(resolved);
+        if (controlPath == null) {
+            invalidate("Control path could not be constructed", controlPoints.size(), degree);
+            return;
         }
 
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_CONTROL_PATH_ID, PathData.fromPolyline(new PolylineData(controlPoints)));
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
+        outputValues.put(OUTPUT_CONTROL_PATH_ID, controlPath);
         outputValues.put(OUTPUT_CONTROL_COUNT_ID, controlPoints.size());
         outputValues.put(OUTPUT_DEGREE_ID, degree);
-        outputValues.put(OUTPUT_LENGTH_ID, polyline.getLength());
+        outputValues.put(OUTPUT_LENGTH_ID, fenced.length());
         markSuccess();
     }
 
@@ -215,7 +231,15 @@ public class NurbsCurveNode extends AbstractCurveNode {
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putIntOutputs(controlCount, OUTPUT_CONTROL_COUNT_ID);
         putIntOutputs(degree, OUTPUT_DEGREE_ID);
-        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_LENGTH_ID);
         markInvalid(message);
+    }
+
+    private static List<Vec3d> toVec3d(List<Vector3d> points) {
+        List<Vec3d> out = new ArrayList<>(points.size());
+        for (Vector3d point : points) {
+            out.add(new Vec3d(point.x, point.y, point.z));
+        }
+        return out;
     }
 }

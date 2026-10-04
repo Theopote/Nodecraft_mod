@@ -5,12 +5,16 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
 import com.nodecraft.nodesystem.datatypes.PathData;
-import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.CurveSampleFence;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.CurveInputUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -23,7 +27,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.curves.arc",
     displayName = "Arc",
-    description = "Builds a sampled circular arc from a center point, plane, radius, and start/end angles",
+    description = "Builds a sampled circular arc from a center point, plane, radius, and start/end angles. Sweep is directed and may exceed ±360°.",
     category = "geometry.curves",
     order = 4
 )
@@ -74,32 +78,60 @@ public class ArcNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Fallback normal vector when no plane is connected", NodeDataType.VECTOR, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Arc radius", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle",
+            "End angle in degrees. Sweep is directed (end − start) and may exceed ±360°", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the arc", NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary arc path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled arc points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_LENGTH_ID, "Length", "Analytical arc length", NodeDataType.DOUBLE, this));
-        addOutputPort(new BasePort(OUTPUT_SWEEP_DEGREES_ID, "Sweep Degrees", "Angular sweep from start to end", NodeDataType.DOUBLE, this));
+        addOutputPort(new BasePort(OUTPUT_SWEEP_DEGREES_ID, "Sweep Degrees",
+            "Directed angular sweep from start to end (may exceed ±360°)", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the arc inputs resolved", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = PlaneProjectionUtils.resolvePointOrDefault(
-            inputValues.get(INPUT_CENTER_ID), centerX, centerY, centerZ);
-        Vector3d normal = PlaneProjectionUtils.resolveNormal(
-            inputValues.get(INPUT_PLANE_ID),
-            inputValues.get(INPUT_NORMAL_ID),
-            defaultPlane
-        );
+        Vector3d center;
+        if (CurveInputUtils.isConnected(this, INPUT_CENTER_ID)) {
+            center = CurveInputUtils.requireConnectedPointData(this, INPUT_CENTER_ID);
+            if (center == null) {
+                invalidate("Center is connected but invalid (must be finite PointData)");
+                return;
+            }
+        } else {
+            center = new Vector3d(centerX, centerY, centerZ);
+            if (!VectorUtils.isFinite(center)) {
+                invalidate("Default center is non-finite");
+                return;
+            }
+        }
+
+        Vector3d normal;
+        if (CurveInputUtils.isConnected(this, INPUT_PLANE_ID)) {
+            PlaneData plane = OptionalPortDrive.resolveOptionalPlane(this, INPUT_PLANE_ID, null);
+            if (plane == null) {
+                invalidate("Plane is connected but invalid");
+                return;
+            }
+            normal = plane.getNormal();
+        } else if (CurveInputUtils.isConnected(this, INPUT_NORMAL_ID)) {
+            normal = CurveInputUtils.requireConnectedVectorData(this, INPUT_NORMAL_ID);
+            if (normal == null) {
+                invalidate("Normal is connected but invalid (must be finite VectorData)");
+                return;
+            }
+        } else {
+            normal = PlaneProjectionUtils.planeFromPreset(defaultPlane).getNormal();
+        }
+
         Double radius = resolvePositiveDouble(INPUT_RADIUS_ID, defaultRadius);
         Double startDegrees = resolveFiniteDouble(INPUT_START_ANGLE_ID, 0.0d);
         Double endDegrees = resolveFiniteDouble(INPUT_END_ANGLE_ID, 90.0d);
         Integer samples = resolveBoundedInteger(INPUT_SAMPLES_ID, defaultSamples, 2, GenerationLimits.MAX_CURVE_SAMPLES);
 
-        if (normal == null || normal.lengthSquared() <= EPSILON) {
+        if (normal == null || !VectorUtils.isFinite(normal)) {
             invalidate("Plane or Normal could not be resolved");
             return;
         }
@@ -124,29 +156,43 @@ public class ArcNode extends AbstractCurveNode {
 
         double sweepDegrees = endDegrees - startDegrees;
         double sweepRadians = Math.toRadians(sweepDegrees);
-        if (Math.abs(sweepRadians) <= EPSILON) {
-            invalidate("Arc sweep must be non-zero");
+        if (!Double.isFinite(sweepDegrees) || !Double.isFinite(sweepRadians) || Math.abs(sweepRadians) <= EPSILON) {
+            invalidate("Arc sweep must be a finite non-zero value");
+            return;
+        }
+        double analyticalLength = Math.abs(sweepRadians) * radius;
+        if (!Double.isFinite(analyticalLength)) {
+            invalidate("Arc length is non-finite");
             return;
         }
 
         List<Vec3d> sampledPoints = new ArrayList<>(samples);
-        List<Vector3d> sampledVectors = new ArrayList<>(samples);
-
         for (int i = 0; i < samples; i++) {
             double t = (double) i / (double) (samples - 1);
             double angleRadians = Math.toRadians(startDegrees) + sweepRadians * t;
-            Vector3d point = new Vector3d(center)
-                .add(new Vector3d(basis.xAxis()).mul(Math.cos(angleRadians) * radius))
-                .add(new Vector3d(basis.yAxis()).mul(Math.sin(angleRadians) * radius));
-
+            if (!Double.isFinite(angleRadians)) {
+                invalidate("Arc sample angle is non-finite");
+                return;
+            }
+            Vector3d radialX = VectorUtils.safeScale(basis.xAxis(), Math.cos(angleRadians) * radius);
+            Vector3d radialY = VectorUtils.safeScale(basis.yAxis(), Math.sin(angleRadians) * radius);
+            Vector3d point = VectorUtils.safeAdd(center, VectorUtils.safeAdd(radialX, radialY));
+            if (point == null || !VectorUtils.isFinite(point)) {
+                invalidate("Arc sample point is non-finite");
+                return;
+            }
             sampledPoints.add(new Vec3d(point.x, point.y, point.z));
-            sampledVectors.add(point);
         }
 
-        PolylineData polyline = new PolylineData(sampledPoints);
-        outputValues.put(OUTPUT_PATH_ID, PathData.fromPolyline(polyline));
-        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(sampledVectors));
-        outputValues.put(OUTPUT_LENGTH_ID, Math.abs(sweepRadians) * radius);
+        CurveSampleFence.Result fenced = CurveSampleFence.validate(sampledPoints);
+        if (fenced == null) {
+            invalidate("Arc samples are non-finite or over budget");
+            return;
+        }
+
+        outputValues.put(OUTPUT_PATH_ID, fenced.path());
+        outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(fenced.vectors()));
+        outputValues.put(OUTPUT_LENGTH_ID, analyticalLength);
         outputValues.put(OUTPUT_SWEEP_DEGREES_ID, sweepDegrees);
         markSuccess();
     }
@@ -264,10 +310,11 @@ public class ArcNode extends AbstractCurveNode {
                 // ignore invalid legacy values
             }
         } else if (map.get("defaultPlaneType") instanceof String legacy) {
+            // Historical Graph V71 residue; CURRENT is stamp-only 1.
             try {
                 setDefaultPlane(PlaneProjectionUtils.DefaultPlane.valueOf(legacy));
             } catch (IllegalArgumentException ignored) {
-                setDefaultPlane(PlaneProjectionUtils.DefaultPlane.XZ);
+                // keep current defaultPlane
             }
         }
         if (map.get("centerX") instanceof Number value) {
@@ -280,6 +327,7 @@ public class ArcNode extends AbstractCurveNode {
             setCenterZ(value.doubleValue());
         }
         if (map.get("defaultCenterCoords") instanceof String legacyCoords) {
+            // Historical Graph V71 residue; CURRENT is stamp-only 1.
             Vector3d parsed = parseLegacyCenterCoords(legacyCoords);
             if (parsed != null) {
                 setCenterX(parsed.x);
@@ -308,7 +356,7 @@ public class ArcNode extends AbstractCurveNode {
     private void invalidate(String message) {
         putNullOutputs(OUTPUT_PATH_ID);
         putEmptyListOutputs(OUTPUT_POINTS_ID);
-        putDoubleOutputs(0.0d, OUTPUT_LENGTH_ID, OUTPUT_SWEEP_DEGREES_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_LENGTH_ID, OUTPUT_SWEEP_DEGREES_ID);
         markInvalid(message);
     }
 }
