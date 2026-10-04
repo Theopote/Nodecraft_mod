@@ -462,6 +462,39 @@ public final class GenerationLimits {
     /** Aggregate BlockPlacement list/tree cap (aligned with bake / world.write history ceiling). */
     public static final int MAX_BLOCK_PLACEMENTS = MAX_WORLD_WRITE_BLOCKS;
 
+    /** Hard cap on placements accepted by structure export nodes. */
+    public static final int MAX_EXPORT_PLACEMENTS = MAX_BLOCK_PLACEMENTS;
+
+    /**
+     * Hard cap on dense schematic enclosing volume (Litematic / WorldEdit).
+     * Dense formats budget by AABB volume, not placement count.
+     */
+    public static final int MAX_DENSE_EXPORT_VOLUME = MAX_WORLD_WRITE_BLOCKS;
+
+    /** Sponge schematic Width/Height/Length are NBT shorts. */
+    public static final int MAX_WORLD_EDIT_AXIS = 32_767;
+
+    /** Max CSV/JSON rows for Export Data. */
+    public static final int MAX_EXPORT_ROWS = 65_536;
+
+    /** Max nesting depth for Export Data JSON traversal. */
+    public static final int MAX_EXPORT_DEPTH = 8;
+
+    /** Max container items visited while encoding Export Data. */
+    public static final int MAX_EXPORT_ITEMS = 65_536;
+
+    /** Max total characters of Export Data CSV/JSON payload. */
+    public static final int MAX_EXPORT_TEXT_CHARS = 65_536;
+
+    /** Max characters for export Name metadata. */
+    public static final int MAX_EXPORT_NAME_CHARS = 256;
+
+    /** Max characters for export Author metadata. */
+    public static final int MAX_EXPORT_AUTHOR_CHARS = 256;
+
+    /** Max characters for export Description metadata. */
+    public static final int MAX_EXPORT_DESCRIPTION_CHARS = 4_096;
+
     /**
      * Hard cap for ghost preview block cells (Preview Blocks / Geometry Viewer product default).
      * Preview may truncate above this and report Truncated=true.

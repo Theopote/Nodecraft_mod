@@ -2,11 +2,16 @@ package com.nodecraft.nodesystem.util;
 
 import net.fabricmc.loader.api.FabricLoader;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 
 /**
  * Resolves and validates export output paths under a fixed sandbox directory.
+ * <p>
+ * Lexical {@code ..} escapes are rejected, and existing ancestor paths are compared via
+ * {@link Path#toRealPath()} so symlink parents cannot escape the export root.
  */
 public final class ExportPathUtil {
 
@@ -39,6 +44,19 @@ public final class ExportPathUtil {
         }
 
         Path root = exportRoot.toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(root);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to create export root: " + root, e);
+        }
+
+        Path rootReal;
+        try {
+            rootReal = root.toRealPath();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to resolve export root: " + root, e);
+        }
+
         Path input = Path.of(candidate);
         Path resolved = input.isAbsolute()
             ? input.toAbsolutePath().normalize()
@@ -47,6 +65,26 @@ public final class ExportPathUtil {
         if (!resolved.startsWith(root)) {
             throw new IllegalArgumentException("Export path must stay inside " + root);
         }
+
+        Path ancestor = resolved;
+        while (ancestor != null && !Files.exists(ancestor)) {
+            ancestor = ancestor.getParent();
+        }
+        if (ancestor == null) {
+            throw new IllegalArgumentException("Export path must stay inside " + root);
+        }
+
+        Path ancestorReal;
+        try {
+            ancestorReal = ancestor.toRealPath();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Unable to resolve export parent path: " + ancestor, e);
+        }
+
+        if (!ancestorReal.startsWith(rootReal)) {
+            throw new IllegalArgumentException("Export path must stay inside " + root);
+        }
+
         return resolved;
     }
 }

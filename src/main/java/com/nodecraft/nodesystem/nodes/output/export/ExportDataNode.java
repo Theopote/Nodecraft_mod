@@ -6,13 +6,13 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.ExportDataEncoder;
 import com.nodecraft.nodesystem.util.ExportPathUtil;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,7 +57,7 @@ public class ExportDataNode extends BaseNode {
 
     public ExportDataNode() {
         super(UUID.randomUUID(), "output.export.export_data");
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Export trigger", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "EXEC pulse to export", NodeDataType.EXEC, this, false, false));
         addInputPort(new BasePort(INPUT_DATA_ID, "Data", "List data to export", NodeDataType.LIST, this));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Optional block list to export", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Output file path", NodeDataType.STRING, this));
@@ -72,18 +72,22 @@ public class ExportDataNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (inputValues.get(INPUT_TRIGGER_ID) == null) {
-            publish(false, "", 0, resolvedFormat().name().toLowerCase(), "trigger not connected");
+        ExportFormat fmt = resolvedFormat();
+        if (!Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
+            publish(false, "", 0, fmt.name().toLowerCase(), "");
             return;
         }
 
         List<?> data = resolveData();
         if (data.isEmpty()) {
-            publish(false, "", 0, resolvedFormat().name().toLowerCase(), "empty data");
+            publish(false, "", 0, fmt.name().toLowerCase(), "empty data");
+            return;
+        }
+        if (data.size() > GenerationLimits.MAX_EXPORT_ROWS) {
+            publish(false, "", 0, fmt.name().toLowerCase(), "rows exceed MAX_EXPORT_ROWS");
             return;
         }
 
-        ExportFormat fmt = resolvedFormat();
         String rawPath = inputValues.get(INPUT_PATH_ID) instanceof String text && !text.isBlank()
             ? text.trim()
             : "nodecraft_export." + fmt.name().toLowerCase();
@@ -96,9 +100,16 @@ public class ExportDataNode extends BaseNode {
                 Files.createDirectories(outputPath.getParent());
             }
 
-            String content = fmt == ExportFormat.CSV ? toCsv(data) : toJson(data, prettyJson, 0);
-            Files.writeString(outputPath, content, StandardCharsets.UTF_8);
-            publish(true, outputPath.toString(), data.size(), fmt.name().toLowerCase(), "");
+            ExportDataEncoder.Result encoded = fmt == ExportFormat.CSV
+                ? ExportDataEncoder.encodeCsv(data)
+                : ExportDataEncoder.encodeJson(data, prettyJson);
+            if (!encoded.valid()) {
+                publish(false, outputPath.toString(), 0, fmt.name().toLowerCase(), encoded.error());
+                return;
+            }
+
+            Files.writeString(outputPath, encoded.text(), StandardCharsets.UTF_8);
+            publish(true, outputPath.toString(), encoded.count(), fmt.name().toLowerCase(), "");
         } catch (Exception e) {
             String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
             publish(false, resolvedPath, 0, fmt.name().toLowerCase(), e.getMessage() != null ? e.getMessage() : "export failed");
@@ -126,146 +137,14 @@ public class ExportDataNode extends BaseNode {
         Object value = inputValues.get(INPUT_FORMAT_ID);
         if (value instanceof String text) {
             String normalized = text.trim().toLowerCase();
-            if ("json".equals(normalized)) return ExportFormat.JSON;
-            if ("csv".equals(normalized)) return ExportFormat.CSV;
+            if ("json".equals(normalized)) {
+                return ExportFormat.JSON;
+            }
+            if ("csv".equals(normalized)) {
+                return ExportFormat.CSV;
+            }
         }
         return format;
-    }
-
-    private String toCsv(List<?> data) {
-        StringBuilder sb = new StringBuilder();
-        boolean mapRows = !data.isEmpty() && data.getFirst() instanceof Map<?, ?>;
-        if (mapRows) {
-            List<String> headers = collectHeaders(data);
-            sb.append(String.join(",", headers)).append('\n');
-            for (Object item : data) {
-                Map<?, ?> map = item instanceof Map<?, ?> m ? m : Map.of("value", item);
-                for (int i = 0; i < headers.size(); i++) {
-                    if (i > 0) sb.append(',');
-                    Object value = map.get(headers.get(i));
-                    sb.append(csvEscape(stringify(value)));
-                }
-                sb.append('\n');
-            }
-            return sb.toString();
-        }
-
-        sb.append("index,value\n");
-        for (int i = 0; i < data.size(); i++) {
-            sb.append(i).append(',').append(csvEscape(stringify(data.get(i)))).append('\n');
-        }
-        return sb.toString();
-    }
-
-    private List<String> collectHeaders(List<?> data) {
-        List<String> headers = new ArrayList<>();
-        for (Object item : data) {
-            if (!(item instanceof Map<?, ?> map)) {
-                continue;
-            }
-            for (Object key : map.keySet()) {
-                String text = String.valueOf(key);
-                if (!headers.contains(text)) {
-                    headers.add(text);
-                }
-            }
-        }
-        if (headers.isEmpty()) {
-            headers.add("value");
-        }
-        return headers;
-    }
-
-    private String csvEscape(String text) {
-        if (text == null) return "";
-        boolean quote = text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r");
-        if (!quote) return text;
-        return "\"" + text.replace("\"", "\"\"") + "\"";
-    }
-
-    private String toJson(Object value, boolean pretty, int depth) {
-        if (value == null) return "null";
-        if (value instanceof Boolean || value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
-            return String.valueOf(value);
-        }
-        switch (value) {
-            case Number n -> {
-                double d = n.doubleValue();
-                if (Double.isFinite(d)) return String.valueOf(d);
-                return "null";
-            }
-            case String text -> {
-                return "\"" + escapeJson(text) + "\"";
-            }
-            case BlockPos b -> {
-                return "{\"x\":" + b.getX() + ",\"y\":" + b.getY() + ",\"z\":" + b.getZ() + "}";
-            }
-            case Vector3d v -> {
-                return "{\"x\":" + v.x + ",\"y\":" + v.y + ",\"z\":" + v.z + "}";
-            }
-            case PointData p -> {
-                return toJson(p.position(), pretty, depth);
-            }
-            case Map<?, ?> map -> {
-                List<String> parts = new ArrayList<>();
-                for (Map.Entry<?, ?> e : map.entrySet()) {
-                    String key = "\"" + escapeJson(String.valueOf(e.getKey())) + "\"";
-                    parts.add(key + ":" + (pretty ? " " : "") + toJson(e.getValue(), pretty, depth + 1));
-                }
-                return wrapObject(parts, pretty, depth);
-            }
-            case Iterable<?> iterable -> {
-                List<String> parts = new ArrayList<>();
-                for (Object item : iterable) {
-                    parts.add(toJson(item, pretty, depth + 1));
-                }
-                return wrapArray(parts, pretty, depth);
-            }
-            default -> {
-            }
-        }
-        return "\"" + escapeJson(String.valueOf(value)) + "\"";
-    }
-
-    private String wrapObject(List<String> parts, boolean pretty, int depth) {
-        if (!pretty) {
-            return "{" + String.join(",", parts) + "}";
-        }
-        if (parts.isEmpty()) return "{}";
-        String indent = "  ".repeat(depth + 1);
-        String closeIndent = "  ".repeat(depth);
-        return "{\n" + indent + String.join(",\n" + indent, parts) + "\n" + closeIndent + "}";
-    }
-
-    private String wrapArray(List<String> parts, boolean pretty, int depth) {
-        if (!pretty) {
-            return "[" + String.join(",", parts) + "]";
-        }
-        if (parts.isEmpty()) return "[]";
-        String indent = "  ".repeat(depth + 1);
-        String closeIndent = "  ".repeat(depth);
-        return "[\n" + indent + String.join(",\n" + indent, parts) + "\n" + closeIndent + "]";
-    }
-
-    private String escapeJson(String text) {
-        return text
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\b", "\\b")
-            .replace("\f", "\\f")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t");
-    }
-
-    private String stringify(Object value) {
-        return switch (value) {
-            case null -> "";
-            case BlockPos b -> b.getX() + "," + b.getY() + "," + b.getZ();
-            case Vector3d v -> v.x + "," + v.y + "," + v.z;
-            case PointData p -> stringify(p.position());
-            default -> String.valueOf(value);
-        };
     }
 
     private void publish(boolean success, String path, int count, String formatText, String error) {
@@ -276,4 +155,3 @@ public class ExportDataNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, error != null ? error : "");
     }
 }
-

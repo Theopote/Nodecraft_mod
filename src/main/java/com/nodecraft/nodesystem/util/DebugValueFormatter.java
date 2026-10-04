@@ -8,7 +8,6 @@ import org.joml.Vector3d;
 
 import java.lang.reflect.Array;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -66,17 +65,21 @@ public final class DebugValueFormatter {
     }
 
     public static String typeLabel(@Nullable Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof BlockPosList list) {
-            return "BlockPosList (size=" + list.size() + ")";
-        }
-        if (value instanceof List<?> list) {
-            return "List (size=" + list.size() + ")";
-        }
-        if (value instanceof Map<?, ?> map) {
-            return "Map (size=" + map.size() + ")";
+        switch (value) {
+            case null -> {
+                return "null";
+            }
+            case BlockPosList list -> {
+                return "BlockPosList (size=" + list.size() + ")";
+            }
+            case List<?> list -> {
+                return "List (size=" + list.size() + ")";
+            }
+            case Map<?, ?> map -> {
+                return "Map (size=" + map.size() + ")";
+            }
+            default -> {
+            }
         }
         if (value.getClass().isArray()) {
             return value.getClass().getComponentType().getSimpleName() + "[] (length=" + Array.getLength(value) + ")";
@@ -233,9 +236,7 @@ public final class DebugValueFormatter {
             return;
         }
         int shown = 0;
-        Iterator<?> iterator = iterable.iterator();
-        while (iterator.hasNext()) {
-            Object item = iterator.next();
+        for (Object item : iterable) {
             if (shown >= context.options.maxItems() || !recordVisit(context)) {
                 context.truncated = true;
                 appendSeparator(context, depth, shown > 0);
@@ -298,7 +299,7 @@ public final class DebugValueFormatter {
     }
 
     private static void endContainer(FormatContext context, int depth, char close) {
-        if (context.options.pretty() && context.output.length() > 0
+        if (context.options.pretty() && !context.output.isEmpty()
                 && context.output.charAt(context.output.length() - 1) != '['
                 && context.output.charAt(context.output.length() - 1) != '{') {
             appendRaw(context, "\n");

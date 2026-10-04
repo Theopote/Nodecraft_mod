@@ -7,24 +7,21 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.ExportBounds;
 import com.nodecraft.nodesystem.util.ExportPathUtil;
+import com.nodecraft.nodesystem.util.StructureExportPreflight;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtLong;
 import net.minecraft.nbt.NbtString;
-import net.minecraft.nbt.NbtIo;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -60,7 +57,7 @@ public class ExportSchematicNode extends BaseCustomUINode {
     public ExportSchematicNode() {
         super(UUID.randomUUID(), "output.export.export_schematic");
 
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Export trigger", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "EXEC pulse to export", NodeDataType.EXEC, this, false, false));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Uniform block type when exporting plain block coordinates", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Per-position block assignments", NodeDataType.BLOCK_PLACEMENT_LIST, this));
@@ -78,101 +75,103 @@ public class ExportSchematicNode extends BaseCustomUINode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (inputValues.get(INPUT_TRIGGER_ID) == null) {
-            publishOutputs(false, "", 0, "trigger not connected");
+        if (!Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
+            publishOutputs(false, "", 0, "");
             return;
         }
 
-        String defaultBlock = getInputString(INPUT_BLOCK_TYPE_ID, "minecraft:stone");
         String rawPath = getInputString(INPUT_PATH_ID, "nodecraft_export.nbt");
-        String name = getInputString(INPUT_NAME_ID, deriveNameFromPath(rawPath));
+        String defaultBlock = getInputString(INPUT_BLOCK_TYPE_ID, "minecraft:stone");
+        String name = getInputString(INPUT_NAME_ID, StructureExportPreflight.deriveNameFromPath(rawPath));
         String author = getInputString(INPUT_AUTHOR_ID, "nodecraft");
 
-        List<BlockPlacementData> placements = resolvePlacements(defaultBlock);
-        if (placements.isEmpty()) {
-            publishOutputs(false, "", 0, "empty placements");
+        StructureExportPreflight.Result prepared = StructureExportPreflight.prepare(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_BLOCKS_ID),
+            defaultBlock,
+            StructureExportPreflight.DenseMode.NONE,
+            name,
+            author,
+            ""
+        );
+        if (!prepared.valid() || prepared.prepared() == null) {
+            publishOutputs(false, "", 0, prepared.error());
             return;
         }
 
         Path outputPath = null;
         try {
             outputPath = ExportPathUtil.resolve(rawPath, "nodecraft_export.nbt", ".nbt");
-            Files.createDirectories(outputPath.getParent());
+            if (outputPath.getParent() != null) {
+                Files.createDirectories(outputPath.getParent());
+            }
 
-            NbtCompound root = buildExportNbt(placements, name, author);
+            NbtCompound root = buildExportNbt(prepared.prepared());
             NbtIo.write(root, outputPath);
-
-            publishOutputs(true, outputPath.toString(), placements.size(), "");
+            publishOutputs(true, outputPath.toString(), prepared.prepared().placements().size(), "");
         } catch (Exception e) {
             String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
             publishOutputs(false, resolvedPath, 0, e.getMessage() != null ? e.getMessage() : "export failed");
         }
     }
 
-    private List<BlockPlacementData> resolvePlacements(String defaultBlock) {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        Object blocksObj = inputValues.get(INPUT_BLOCKS_ID);
-
-        List<BlockPlacementData> resolved = new ArrayList<>();
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement
-                    && placement.pos() != null
-                    && placement.blockId() != null
-                    && !placement.blockId().isBlank()) {
-                    resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), placement.stateData()));
-                }
-            }
-            return resolved;
-        }
-
-        if (blocksObj instanceof BlockPosList blocks && !blocks.isEmpty()) {
-            for (BlockPos pos : blocks) {
-                resolved.add(new BlockPlacementData(pos, defaultBlock));
-            }
-        }
-        return resolved;
-    }
-
-    private NbtCompound buildExportNbt(List<BlockPlacementData> placements, String name, String author) {
-        Bounds bounds = Bounds.fromPlacements(placements);
-        Palette palette = Palette.fromPlacements(placements);
+    private NbtCompound buildExportNbt(StructureExportPreflight.PreparedStructureExport prepared) {
+        ExportBounds bounds = prepared.bounds();
+        StructureExportPreflight.StructurePalette palette = prepared.palette();
 
         NbtCompound root = new NbtCompound();
         root.put("format", NbtString.of("nodecraft:structure"));
         root.put("format_version", NbtInt.of(FORMAT_VERSION));
-        root.put("name", NbtString.of(name));
-        root.put("author", NbtString.of(author));
+        root.put("name", NbtString.of(prepared.metadata().name()));
+        root.put("author", NbtString.of(prepared.metadata().author()));
         root.put("created_at_epoch_ms", NbtLong.of(Instant.now().toEpochMilli()));
-        root.put("block_count", NbtInt.of(placements.size()));
-        root.put("size", createIntList(bounds.sizeX(), bounds.sizeY(), bounds.sizeZ()));
+        root.put("block_count", NbtInt.of(prepared.placements().size()));
+        root.put("size", createIntList(bounds.sizeXInt(), bounds.sizeYInt(), bounds.sizeZInt()));
         root.put("origin", createIntList(bounds.minX(), bounds.minY(), bounds.minZ()));
-        root.put("palette", palette.paletteEntries());
-        root.put("blocks", createBlocksList(placements, bounds, palette.indexByKey()));
+        root.put("palette", createPaletteList(palette));
+        root.put("blocks", createBlocksList(prepared, bounds, palette));
         return root;
     }
 
-    private NbtList createBlocksList(List<BlockPlacementData> placements, Bounds bounds, Map<String, Integer> indexByKey) {
-        NbtList blocks = new NbtList();
-        for (BlockPlacementData placement : placements) {
-            BlockPos pos = placement.pos();
-            String paletteKey = Palette.keyFor(placement);
+    private NbtList createPaletteList(StructureExportPreflight.StructurePalette palette) {
+        NbtList entries = new NbtList();
+        for (StructureExportPreflight.PaletteEntry entry : palette.entries()) {
+            NbtCompound paletteEntry = new NbtCompound();
+            paletteEntry.put("block", NbtString.of(entry.blockId()));
+            BlockStateData stateData = entry.stateData();
+            if (stateData != null && !stateData.isEmpty()) {
+                NbtCompound state = new NbtCompound();
+                stateData.forEach((property, value) -> state.put(property, NbtString.of(value)));
+                paletteEntry.put("state", state);
+            }
+            entries.add(paletteEntry);
+        }
+        return entries;
+    }
 
+    private NbtList createBlocksList(
+        StructureExportPreflight.PreparedStructureExport prepared,
+        ExportBounds bounds,
+        StructureExportPreflight.StructurePalette palette
+    ) {
+        NbtList blocks = new NbtList();
+        for (BlockPlacementData placement : prepared.placements()) {
+            var pos = placement.pos();
             NbtCompound entry = new NbtCompound();
             entry.put("pos", createIntList(
                 pos.getX() - bounds.minX(),
                 pos.getY() - bounds.minY(),
                 pos.getZ() - bounds.minZ()
             ));
-            entry.put("palette_index", NbtInt.of(indexByKey.getOrDefault(paletteKey, 0)));
+            entry.put("palette_index", NbtInt.of(palette.indexFor(placement)));
             entry.put("block", NbtString.of(placement.blockId()));
 
-            if (placement.stateData() != null && !placement.stateData().isEmpty()) {
+            BlockStateData stateData = placement.stateData();
+            if (stateData != null && !stateData.isEmpty()) {
                 NbtCompound state = new NbtCompound();
-                placement.stateData().forEach((key, value) -> state.put(key, NbtString.of(value)));
+                stateData.forEach((key, value) -> state.put(key, NbtString.of(value)));
                 entry.put("state", state);
             }
-
             blocks.add(entry);
         }
         return blocks;
@@ -184,13 +183,6 @@ public class ExportSchematicNode extends BaseCustomUINode {
             list.add(NbtInt.of(value));
         }
         return list;
-    }
-
-    private String deriveNameFromPath(String rawPath) {
-        String candidate = (rawPath == null || rawPath.isBlank()) ? "nodecraft_export" : rawPath.trim();
-        String fileName = Path.of(candidate).getFileName() != null ? Path.of(candidate).getFileName().toString() : "nodecraft_export";
-        int suffixIndex = fileName.lastIndexOf('.');
-        return suffixIndex > 0 ? fileName.substring(0, suffixIndex) : fileName;
     }
 
     private String getInputString(String portId, String fallback) {
@@ -220,78 +212,5 @@ public class ExportSchematicNode extends BaseCustomUINode {
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return false;
-    }
-
-    private record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-        static Bounds fromPlacements(List<BlockPlacementData> placements) {
-            int minX = Integer.MAX_VALUE;
-            int minY = Integer.MAX_VALUE;
-            int minZ = Integer.MAX_VALUE;
-            int maxX = Integer.MIN_VALUE;
-            int maxY = Integer.MIN_VALUE;
-            int maxZ = Integer.MIN_VALUE;
-
-            for (BlockPlacementData placement : placements) {
-                BlockPos pos = placement.pos();
-                minX = Math.min(minX, pos.getX());
-                minY = Math.min(minY, pos.getY());
-                minZ = Math.min(minZ, pos.getZ());
-                maxX = Math.max(maxX, pos.getX());
-                maxY = Math.max(maxY, pos.getY());
-                maxZ = Math.max(maxZ, pos.getZ());
-            }
-            return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
-        }
-
-        int sizeX() {
-            return maxX - minX + 1;
-        }
-
-        int sizeY() {
-            return maxY - minY + 1;
-        }
-
-        int sizeZ() {
-            return maxZ - minZ + 1;
-        }
-    }
-
-    private record Palette(NbtList paletteEntries, Map<String, Integer> indexByKey) {
-        static Palette fromPlacements(List<BlockPlacementData> placements) {
-            LinkedHashMap<String, Integer> indexByKey = new LinkedHashMap<>();
-            NbtList entries = new NbtList();
-
-            for (BlockPlacementData placement : placements) {
-                String key = keyFor(placement);
-                if (indexByKey.containsKey(key)) {
-                    continue;
-                }
-
-                int nextIndex = indexByKey.size();
-                indexByKey.put(key, nextIndex);
-
-                NbtCompound paletteEntry = new NbtCompound();
-                paletteEntry.put("block", NbtString.of(placement.blockId()));
-                if (placement.stateData() != null && !placement.stateData().isEmpty()) {
-                    NbtCompound state = new NbtCompound();
-                    placement.stateData().forEach((property, value) -> state.put(property, NbtString.of(value)));
-                    paletteEntry.put("state", state);
-                }
-                entries.add(paletteEntry);
-            }
-
-            return new Palette(entries, Map.copyOf(indexByKey));
-        }
-
-        static String keyFor(BlockPlacementData placement) {
-            StringBuilder builder = new StringBuilder(placement.blockId());
-            if (placement.stateData() != null && !placement.stateData().isEmpty()) {
-                builder.append('|');
-                placement.stateData().entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey())
-                    .forEach(entry -> builder.append(entry.getKey()).append('=').append(entry.getValue()).append(';'));
-            }
-            return builder.toString();
-        }
     }
 }

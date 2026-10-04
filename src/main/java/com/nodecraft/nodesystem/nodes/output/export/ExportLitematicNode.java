@@ -6,26 +6,23 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.ExportBounds;
 import com.nodecraft.nodesystem.util.ExportPathUtil;
+import com.nodecraft.nodesystem.util.MinecraftFormatVersion;
+import com.nodecraft.nodesystem.util.StructureExportPreflight;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtInt;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtLong;
 import net.minecraft.nbt.NbtLongArray;
-import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtString;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -43,7 +40,6 @@ public class ExportLitematicNode extends BaseCustomUINode {
 
     private static final int LITEMATIC_VERSION = 6;
     private static final int LITEMATIC_SUB_VERSION = 1;
-    private static final int MINECRAFT_DATA_VERSION = 3700;
 
     private static final String INPUT_TRIGGER_ID = "input_trigger";
     private static final String INPUT_BLOCKS_ID = "input_blocks";
@@ -64,7 +60,7 @@ public class ExportLitematicNode extends BaseCustomUINode {
     public ExportLitematicNode() {
         super(UUID.randomUUID(), "output.export.export_litematic");
 
-        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Export trigger", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "EXEC pulse to export", NodeDataType.EXEC, this, false, false));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block coordinate list", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Uniform block type when exporting plain block coordinates", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_PLACEMENTS_ID, "Block Placements", "Per-position block assignments", NodeDataType.BLOCK_PLACEMENT_LIST, this));
@@ -83,111 +79,126 @@ public class ExportLitematicNode extends BaseCustomUINode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (inputValues.get(INPUT_TRIGGER_ID) == null) {
-            publishOutputs(false, "", 0, "trigger not connected");
+        if (!Boolean.TRUE.equals(inputValues.get(INPUT_TRIGGER_ID))) {
+            publishOutputs(false, "", 0, "");
             return;
         }
 
-        String defaultBlock = getInputString(INPUT_BLOCK_TYPE_ID, "minecraft:stone");
         String rawPath = getInputString(INPUT_PATH_ID, "nodecraft_export.litematic");
-        String name = getInputString(INPUT_NAME_ID, deriveNameFromPath(rawPath));
+        String defaultBlock = getInputString(INPUT_BLOCK_TYPE_ID, "minecraft:stone");
+        String name = getInputString(INPUT_NAME_ID, StructureExportPreflight.deriveNameFromPath(rawPath));
         String author = getInputString(INPUT_AUTHOR_ID, "nodecraft");
         String description = getInputString(INPUT_DESCRIPTION_ID, "Exported by NodeCraft");
 
-        List<BlockPlacementData> placements = resolvePlacements(defaultBlock);
-        if (placements.isEmpty()) {
-            publishOutputs(false, "", 0, "empty placements");
+        StructureExportPreflight.Result prepared = StructureExportPreflight.prepare(
+            inputValues.get(INPUT_PLACEMENTS_ID),
+            inputValues.get(INPUT_BLOCKS_ID),
+            defaultBlock,
+            StructureExportPreflight.DenseMode.LITEMATIC,
+            name,
+            author,
+            description
+        );
+        if (!prepared.valid() || prepared.prepared() == null) {
+            publishOutputs(false, "", 0, prepared.error());
             return;
         }
 
         Path outputPath = null;
         try {
             outputPath = ExportPathUtil.resolve(rawPath, "nodecraft_export.litematic", ".litematic");
-            Files.createDirectories(outputPath.getParent());
+            if (outputPath.getParent() != null) {
+                Files.createDirectories(outputPath.getParent());
+            }
 
-            NbtCompound root = buildLitematicNbt(placements, name, author, description);
+            NbtCompound root = buildLitematicNbt(prepared.prepared());
             NbtIo.write(root, outputPath);
-
-            publishOutputs(true, outputPath.toString(), placements.size(), "");
+            publishOutputs(true, outputPath.toString(), prepared.prepared().placements().size(), "");
         } catch (Exception e) {
             String resolvedPath = outputPath != null ? outputPath.toString() : rawPath;
             publishOutputs(false, resolvedPath, 0, e.getMessage() != null ? e.getMessage() : "export failed");
         }
     }
 
-    private List<BlockPlacementData> resolvePlacements(String defaultBlock) {
-        Object placementsObj = inputValues.get(INPUT_PLACEMENTS_ID);
-        Object blocksObj = inputValues.get(INPUT_BLOCKS_ID);
+    private NbtCompound buildLitematicNbt(StructureExportPreflight.PreparedStructureExport prepared) {
+        ExportBounds bounds = prepared.bounds();
+        int sizeX = bounds.sizeXInt();
+        int sizeY = bounds.sizeYInt();
+        int sizeZ = bounds.sizeZInt();
+        int totalVolume = Math.toIntExact(bounds.checkedVolume());
 
-        List<BlockPlacementData> resolved = new ArrayList<>();
-        if (placementsObj instanceof List<?> placementList && !placementList.isEmpty()) {
-            for (Object entry : placementList) {
-                if (entry instanceof BlockPlacementData placement
-                    && placement.pos() != null
-                    && placement.blockId() != null
-                    && !placement.blockId().isBlank()) {
-                    resolved.add(new BlockPlacementData(placement.pos(), placement.blockId(), placement.stateData()));
-                }
-            }
-            return resolved;
-        }
-
-        if (blocksObj instanceof BlockPosList blocks && !blocks.isEmpty()) {
-            for (BlockPos pos : blocks) {
-                resolved.add(new BlockPlacementData(pos, defaultBlock));
-            }
-        }
-        return resolved;
-    }
-
-    private NbtCompound buildLitematicNbt(List<BlockPlacementData> placements, String name, String author, String description) {
-        Bounds bounds = Bounds.fromPlacements(placements);
-        Palette palette = Palette.fromPlacements(placements);
-
-        int sizeX = bounds.sizeX();
-        int sizeY = bounds.sizeY();
-        int sizeZ = bounds.sizeZ();
-        int totalVolume = sizeX * sizeY * sizeZ;
-
-        int[] indices = new int[totalVolume];
-        for (BlockPlacementData placement : placements) {
-            BlockPos pos = placement.pos();
-            int x = pos.getX() - bounds.minX();
-            int y = pos.getY() - bounds.minY();
-            int z = pos.getZ() - bounds.minZ();
-            int linearIndex = x + z * sizeX + y * sizeX * sizeZ;
-            indices[linearIndex] = palette.indexByKey().getOrDefault(Palette.keyFor(placement), 0);
-        }
+        int[] indices = StructureExportPreflight.buildDenseIndices(
+            prepared,
+            StructureExportPreflight.IndexOrder.LITEMATIC
+        );
+        NbtList paletteEntries = createPaletteList(prepared.palette());
 
         NbtCompound root = new NbtCompound();
         root.put("Version", NbtInt.of(LITEMATIC_VERSION));
         root.put("SubVersion", NbtInt.of(LITEMATIC_SUB_VERSION));
-        root.put("MinecraftDataVersion", NbtInt.of(MINECRAFT_DATA_VERSION));
-        root.put("Metadata", createMetadata(name, author, description, placements.size(), totalVolume, sizeX, sizeY, sizeZ));
-        root.put("Regions", createRegions(bounds, palette.paletteEntries(), packBlockStates(indices, Math.max(2, bitsForPalette(palette.size()))), sizeX, sizeY, sizeZ));
+        root.put("MinecraftDataVersion", NbtInt.of(MinecraftFormatVersion.dataVersion()));
+        root.put("Metadata", createMetadata(
+            prepared.metadata(),
+            prepared.placements().size(),
+            totalVolume,
+            sizeX,
+            sizeY,
+            sizeZ
+        ));
+        root.put(
+            "Regions",
+            createRegions(
+                paletteEntries,
+                packBlockStates(indices, Math.max(2, bitsForPalette(prepared.palette().size()))),
+                sizeX,
+                sizeY,
+                sizeZ
+            )
+        );
         return root;
     }
 
-    private NbtCompound createMetadata(String name, String author, String description, int totalBlocks, int totalVolume, int sizeX, int sizeY, int sizeZ) {
-        long now = Instant.now().toEpochMilli();
-
-        NbtCompound metadata = new NbtCompound();
-        metadata.put("Name", NbtString.of(name));
-        metadata.put("Author", NbtString.of(author));
-        metadata.put("Description", NbtString.of(description));
-        metadata.put("TimeCreated", NbtLong.of(now));
-        metadata.put("TimeModified", NbtLong.of(now));
-        metadata.put("RegionCount", NbtInt.of(1));
-        metadata.put("TotalBlocks", NbtInt.of(totalBlocks));
-        metadata.put("TotalVolume", NbtInt.of(totalVolume));
-        metadata.put("EnclosingSize", createVectorCompound(sizeX, sizeY, sizeZ));
-        return metadata;
+    private NbtList createPaletteList(StructureExportPreflight.StructurePalette palette) {
+        NbtList entries = new NbtList();
+        for (StructureExportPreflight.PaletteEntry entry : palette.entries()) {
+            NbtCompound blockState = new NbtCompound();
+            blockState.put("Name", NbtString.of(entry.blockId()));
+            BlockStateData stateData = entry.stateData();
+            if (stateData != null && !stateData.isEmpty()) {
+                NbtCompound properties = new NbtCompound();
+                stateData.forEach((property, value) -> properties.put(property, NbtString.of(value)));
+                blockState.put("Properties", properties);
+            }
+            entries.add(blockState);
+        }
+        return entries;
     }
 
-    private NbtCompound createRegions(Bounds bounds, NbtList paletteEntries, long[] packedStates, int sizeX, int sizeY, int sizeZ) {
+    private NbtCompound createMetadata(
+        StructureExportPreflight.Metadata metadata,
+        int totalBlocks,
+        int totalVolume,
+        int sizeX,
+        int sizeY,
+        int sizeZ
+    ) {
+        long now = Instant.now().toEpochMilli();
+        NbtCompound compound = new NbtCompound();
+        compound.put("Name", NbtString.of(metadata.name()));
+        compound.put("Author", NbtString.of(metadata.author()));
+        compound.put("Description", NbtString.of(metadata.description()));
+        compound.put("TimeCreated", NbtLong.of(now));
+        compound.put("TimeModified", NbtLong.of(now));
+        compound.put("RegionCount", NbtInt.of(1));
+        compound.put("TotalBlocks", NbtInt.of(totalBlocks));
+        compound.put("TotalVolume", NbtInt.of(totalVolume));
+        compound.put("EnclosingSize", createVectorCompound(sizeX, sizeY, sizeZ));
+        return compound;
+    }
+
+    private NbtCompound createRegions(NbtList paletteEntries, long[] packedStates, int sizeX, int sizeY, int sizeZ) {
         NbtCompound regions = new NbtCompound();
         NbtCompound region = new NbtCompound();
-
         region.put("Position", createVectorCompound(0, 0, 0));
         region.put("Size", createVectorCompound(sizeX, sizeY, sizeZ));
         region.put("BlockStatePalette", paletteEntries);
@@ -196,7 +207,6 @@ public class ExportLitematicNode extends BaseCustomUINode {
         region.put("TileEntities", new NbtList());
         region.put("PendingBlockTicks", new NbtList());
         region.put("PendingFluidTicks", new NbtList());
-
         regions.put("main", region);
         return regions;
     }
@@ -233,13 +243,6 @@ public class ExportLitematicNode extends BaseCustomUINode {
         return packed;
     }
 
-    private String deriveNameFromPath(String rawPath) {
-        String candidate = (rawPath == null || rawPath.isBlank()) ? "nodecraft_export" : rawPath.trim();
-        String fileName = Path.of(candidate).getFileName() != null ? Path.of(candidate).getFileName().toString() : "nodecraft_export";
-        int suffixIndex = fileName.lastIndexOf('.');
-        return suffixIndex > 0 ? fileName.substring(0, suffixIndex) : fileName;
-    }
-
     private String getInputString(String portId, String fallback) {
         Object value = inputValues.get(portId);
         return (value instanceof String text && !text.isBlank()) ? text : fallback;
@@ -267,78 +270,5 @@ public class ExportLitematicNode extends BaseCustomUINode {
     @Override
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return false;
-    }
-
-    private record Bounds(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-        static Bounds fromPlacements(List<BlockPlacementData> placements) {
-            int minX = Integer.MAX_VALUE;
-            int minY = Integer.MAX_VALUE;
-            int minZ = Integer.MAX_VALUE;
-            int maxX = Integer.MIN_VALUE;
-            int maxY = Integer.MIN_VALUE;
-            int maxZ = Integer.MIN_VALUE;
-
-            for (BlockPlacementData placement : placements) {
-                BlockPos pos = placement.pos();
-                minX = Math.min(minX, pos.getX());
-                minY = Math.min(minY, pos.getY());
-                minZ = Math.min(minZ, pos.getZ());
-                maxX = Math.max(maxX, pos.getX());
-                maxY = Math.max(maxY, pos.getY());
-                maxZ = Math.max(maxZ, pos.getZ());
-            }
-            return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
-        }
-
-        int sizeX() {
-            return maxX - minX + 1;
-        }
-
-        int sizeY() {
-            return maxY - minY + 1;
-        }
-
-        int sizeZ() {
-            return maxZ - minZ + 1;
-        }
-    }
-
-    private record Palette(NbtList paletteEntries, Map<String, Integer> indexByKey, int size) {
-        static Palette fromPlacements(List<BlockPlacementData> placements) {
-            LinkedHashMap<String, Integer> indexByKey = new LinkedHashMap<>();
-            NbtList entries = new NbtList();
-
-            for (BlockPlacementData placement : placements) {
-                String key = keyFor(placement);
-                if (indexByKey.containsKey(key)) {
-                    continue;
-                }
-
-                int nextIndex = indexByKey.size();
-                indexByKey.put(key, nextIndex);
-
-                NbtCompound blockState = new NbtCompound();
-                blockState.put("Name", NbtString.of(placement.blockId()));
-                if (placement.stateData() != null && !placement.stateData().isEmpty()) {
-                    NbtCompound properties = new NbtCompound();
-                    placement.stateData().forEach((property, value) -> properties.put(property, NbtString.of(value)));
-                    blockState.put("Properties", properties);
-                }
-                entries.add(blockState);
-            }
-
-            return new Palette(entries, Map.copyOf(indexByKey), indexByKey.size());
-        }
-
-        static String keyFor(BlockPlacementData placement) {
-            StringBuilder builder = new StringBuilder(placement.blockId());
-            if (placement.stateData() != null && !placement.stateData().isEmpty()) {
-                builder.append('|');
-                placement.stateData().entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey())
-                    .forEach(entry -> builder.append(entry.getKey()).append('=').append(entry.getValue()).append(';'));
-            }
-            return builder.toString();
-        }
     }
 }
