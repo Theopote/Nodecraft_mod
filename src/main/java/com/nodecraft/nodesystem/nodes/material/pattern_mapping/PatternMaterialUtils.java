@@ -49,25 +49,15 @@ public final class PatternMaterialUtils {
     private PatternMaterialUtils() {
     }
 
-    public static @Nullable String optionalRole(@Nullable Object value) {
-        return MaterialMappingSupport.optionalBlockType(value);
+    public static MaterialMappingSupport.MappedBlockType resolveRole(BaseNode node, String portId) {
+        return MaterialMappingSupport.requireKnownBlockType(
+            node.getInput(portId),
+            MaterialSourceResolver.isDriven(node, portId)
+        );
     }
 
     public static String pickRole(@Nullable String mapped, @Nullable String sourceBlockId) {
         return MaterialMappingSupport.resolveMaterialTarget(mapped, sourceBlockId);
-    }
-
-    /**
-     * Type-only origin resolve (legacy). Prefer {@link #resolveOrigin(BaseNode, String)}.
-     */
-    public static OriginResult resolveOrigin(@Nullable Object value) {
-        if (value == null) {
-            return OriginResult.ok(WORLD_ORIGIN);
-        }
-        if (value instanceof BlockPos pos) {
-            return OriginResult.ok(pos);
-        }
-        return OriginResult.fail("Pattern Origin must be BLOCK_POS");
     }
 
     /**

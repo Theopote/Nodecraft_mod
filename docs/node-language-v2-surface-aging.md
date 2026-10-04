@@ -1,6 +1,6 @@
 # Node Language v2 — Surface Aging
 
-**Status: PASSED / FROZEN** (Graph **V119**; V39 remains historical v1)
+**Status: PASSED / FROZEN** (current graph format; V39 remains historical v1)
 
 Strict sources & spatial sampling remediation for `material.surface_aging.*`: shared
 `MaterialSourceResolver`, long-safe `MaterialSpatialUtils.Relative`, connection-aware
@@ -39,7 +39,7 @@ dx = (long) pos.x - origin.x
 Noise sampling casts to `double` **after** long subtraction:
 
 ```text
-agingSample = (RandomOps.valueNoise3((double)dx, (double)dy, (double)dz, seed) + 1) * 0.5
+agingSample = (RandomOps.valueNoise3((double)dx, (double)dy, (double)dz, seed XOR nodeSalt) + 1) * 0.5
 ```
 
 ## Aging Origin
@@ -77,26 +77,25 @@ contract until a global placement dedup policy exists).
 
 ## Affected Count
 
-Counts voxels where aging mapping **ran**: eligibility passed, random mask selected
-aging, and the aging role block was set. Does **not** require the output `blockId` to
-differ from the source.
+Counts voxels **selected by the aging mask**. Does **not** require the output
+`blockId` to differ from the source.
 
 ## Core rules (unchanged from v1)
 
-1. **PURE** — input-set topology only.
+1. **PURE** — input-set topology only (supplied occupancy, not the live world).
 2. **blockId only** — `pos` and `stateData` preserved.
-3. **Weathering / Crack** — any missing 6-neighbor is surface-eligible.
-4. **Moss Growth** — top-exposed only (`up` missing).
-5. **Amount boundaries** — `0` → none; `1` → all eligible (via `shouldAge`).
-6. **Seed** — `RandomOps.resolveSeed` (Integer-only).
+3. **Weathering / Crack** — any of six axis neighbors missing from occupancy.
+4. **Moss Growth** — top-exposed only (voxel above missing from occupancy).
+5. **Amount** — coherent aging threshold on value-noise in `[0,1]` (`sample < amount`).
+6. **Seed** — `RandomInputResolver.resolveSeed` (undriven → 0; driven exact Integer).
 
 ## Migration
 
-Graph **V118→V119** is a no-op (Valid semantics; no wire remaps).
+Graph format is stamp-only (`CURRENT = 1`); there is no V118→V119 wire remap.
 
 ## Contract
 
-- `SurfaceAgingLanguageV2ContractTest` — V119 fence, mixed placements, no
+- `SurfaceAgingLanguageV2ContractTest` — current-format fence, mixed placements, no
   connected-invalid fallback, duplicate positions, extreme relative coords, driven
   Amount/Origin/BLOCK_TYPE fail-closed, topology smoke.
 - `SurfaceAgingLanguageContractTest` — V39 inventory retained.

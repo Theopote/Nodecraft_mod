@@ -57,7 +57,7 @@ class PatternMappingLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV38() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 

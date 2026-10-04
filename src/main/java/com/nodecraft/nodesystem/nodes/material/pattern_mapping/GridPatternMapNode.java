@@ -104,8 +104,20 @@ public class GridPatternMapNode extends BaseNode {
         }
         BlockPos origin = originResult.origin();
 
-        String frameMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FRAME_ID));
-        String fillMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_FILL_ID));
+        MaterialMappingSupport.MappedBlockType frame =
+            PatternMaterialUtils.resolveRole(this, INPUT_FRAME_ID);
+        if (!frame.valid()) {
+            emitFail(frame.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType fill =
+            PatternMaterialUtils.resolveRole(this, INPUT_FILL_ID);
+        if (!fill.valid()) {
+            emitFail(fill.error());
+            return;
+        }
+        String frameMapped = frame.blockId();
+        String fillMapped = fill.blockId();
         String fallback = MaterialMappingSupport.firstMappedBlockType(frameMapped, fillMapped);
 
         MaterialSourceResolver.SourceResolution source =
@@ -191,11 +203,11 @@ public class GridPatternMapNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("gridSize") instanceof Number value) {
-            this.gridSize = value.intValue();
+        if (map.get("gridSize") instanceof Integer value) {
+            this.gridSize = value;
         }
-        if (map.get("lineWidth") instanceof Number value) {
-            this.lineWidth = value.intValue();
+        if (map.get("lineWidth") instanceof Integer value) {
+            this.lineWidth = value;
         }
     }
 }

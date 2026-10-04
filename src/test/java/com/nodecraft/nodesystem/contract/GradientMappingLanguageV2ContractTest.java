@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -265,9 +266,7 @@ class GradientMappingLanguageV2ContractTest {
         node.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:dirt", "minecraft:stone")));
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
-        @SuppressWarnings("unchecked")
         List<?> distances = assertInstanceOf(List.class, node.getOutput("output_distances"));
-        @SuppressWarnings("unchecked")
         List<?> weights = assertInstanceOf(List.class, node.getOutput("output_weights"));
         assertTrue(distances.isEmpty());
         assertTrue(weights.isEmpty());
@@ -299,7 +298,7 @@ class GradientMappingLanguageV2ContractTest {
 
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {
         return placements.stream()
-            .filter(p -> p.pos() != null && p.pos().getX() == x && p.pos().getY() == y && p.pos().getZ() == z)
+            .filter(p -> p.pos() != null && Objects.requireNonNull(p.pos()).getX() == x && Objects.requireNonNull(p.pos()).getY() == y && Objects.requireNonNull(p.pos()).getZ() == z)
             .findFirst()
             .orElseThrow(() -> new AssertionError("missing placement at " + x + "," + y + "," + z));
     }

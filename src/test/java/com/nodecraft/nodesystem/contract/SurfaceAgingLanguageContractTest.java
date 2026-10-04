@@ -57,7 +57,7 @@ class SurfaceAgingLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV39() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -236,7 +236,7 @@ class SurfaceAgingLanguageContractTest {
     }
 
     @Test
-    void weatheringSeedIsIntegerOnlyViaRandomOps() {
+    void weatheringSeedFailsClosedOnDrivenInvalidAndUndrivenIsDeterministic() {
         List<BlockPlacementData> placements = List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null),
                 new BlockPlacementData(new BlockPos(1, 0, 0), "minecraft:oak_planks", null),
@@ -259,20 +259,38 @@ class SurfaceAgingLanguageContractTest {
         doubleSeed.putInput("input_amount", 0.5d);
         doubleSeed.putInput("input_seed", 42.0d);
         doubleSeed.processNode(null);
-        @SuppressWarnings("unchecked")
-        List<BlockPlacementData> doubleOut = assertInstanceOf(List.class, doubleSeed.getOutput("output_placements"));
+        assertFalse((Boolean) doubleSeed.getOutput("output_valid"));
+        assertTrue(((List<?>) doubleSeed.getOutput("output_placements")).isEmpty());
+        assertEquals(0, (Integer) doubleSeed.getOutput("output_affected_count"));
 
-        WeatheringNode zeroSeed = new WeatheringNode();
-        zeroSeed.setInput("input_placements", placements);
-        zeroSeed.setInput("input_aged_block", "minecraft:cobblestone");
-        zeroSeed.setInput("input_amount", 0.5d);
-        zeroSeed.setInput("input_seed", 0);
-        zeroSeed.processNode(null);
-        @SuppressWarnings("unchecked")
-        List<BlockPlacementData> zeroOut = assertInstanceOf(List.class, zeroSeed.getOutput("output_placements"));
+        WeatheringProbe banana = new WeatheringProbe();
+        banana.putInput("input_placements", placements);
+        banana.putInput("input_aged_block", "minecraft:cobblestone");
+        banana.putInput("input_amount", 0.5d);
+        banana.putInput("input_seed", "banana");
+        banana.processNode(null);
+        assertFalse((Boolean) banana.getOutput("output_valid"));
+        assertEquals(0, (Integer) banana.getOutput("output_affected_count"));
 
+        WeatheringNode undrivenA = new WeatheringNode();
+        undrivenA.setInput("input_placements", placements);
+        undrivenA.setInput("input_aged_block", "minecraft:cobblestone");
+        undrivenA.setInput("input_amount", 0.5d);
+        undrivenA.processNode(null);
+        WeatheringNode undrivenB = new WeatheringNode();
+        undrivenB.setInput("input_placements", placements);
+        undrivenB.setInput("input_aged_block", "minecraft:cobblestone");
+        undrivenB.setInput("input_amount", 0.5d);
+        undrivenB.processNode(null);
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> zeroOut = assertInstanceOf(List.class, undrivenA.getOutput("output_placements"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> zeroOutB = assertInstanceOf(List.class, undrivenB.getOutput("output_placements"));
+
+        assertTrue((Boolean) intSeed.getOutput("output_valid"));
+        assertTrue((Boolean) undrivenA.getOutput("output_valid"));
+        assertEquals(blockIds(zeroOut), blockIds(zeroOutB));
         assertNotEquals(blockIds(intOut), blockIds(zeroOut));
-        assertEquals(blockIds(doubleOut), blockIds(zeroOut));
     }
 
     @Test

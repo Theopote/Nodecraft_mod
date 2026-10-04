@@ -160,7 +160,10 @@ public class SdfDrivenMaterialNode extends BaseNode {
 
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
+            Vector3d sample = null;
+            if (pos != null) {
+                sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
+            }
             double distance = sdf.sampleDistance(sample);
             if (!Double.isFinite(distance)) {
                 emitFail("SDF sample produced a non-finite value");

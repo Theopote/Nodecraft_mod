@@ -1,6 +1,6 @@
 # Node Language v2 — Pattern Mapping
 
-**Status: PASSED / FROZEN** (Graph **V118**; V38 remains historical v1)
+**Status: PASSED / FROZEN** (current graph format; V38 remains historical v1)
 
 Strict coordinates & source remediation for `material.pattern_mapping.*`: long
 `Relative` coords, long-safe Brick Auto/stagger indexing, shared
@@ -58,11 +58,11 @@ temporary `BlockPos`). Stagger add and `floorDiv` run in `long`.
 
 ## Migration
 
-Graph **V117→V118** is a no-op (Valid semantics; no wire remaps).
+Graph format is stamp-only (`CURRENT = 1`); there is no V117→V118 wire remap.
 
 ## Contract
 
-- `PatternMappingLanguageV2ContractTest` — V118 fence, mixed placements, no
+- `PatternMappingLanguageV2ContractTest` — current-format fence, mixed placements, no
   connected-invalid fallback, extreme relative coords, Brick long-safe, driven
   Origin fail, undriven Origin smoke.
 - `PatternMappingLanguageContractTest` — V38 inventory retained.

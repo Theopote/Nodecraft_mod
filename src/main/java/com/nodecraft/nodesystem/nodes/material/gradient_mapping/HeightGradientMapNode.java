@@ -180,8 +180,12 @@ public class HeightGradientMapNode extends BaseNode {
         int maxY = Integer.MIN_VALUE;
         for (BlockPlacementData placement : sources) {
             BlockPos pos = placement.pos();
-            minY = Math.min(minY, pos.getY());
-            maxY = Math.max(maxY, pos.getY());
+            if (pos != null) {
+                minY = Math.min(minY, pos.getY());
+            }
+            if (pos != null) {
+                maxY = Math.max(maxY, pos.getY());
+            }
         }
 
         boolean singleHeight = maxY == minY;
@@ -189,7 +193,10 @@ public class HeightGradientMapNode extends BaseNode {
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            double t = singleHeight ? 0.0d : ((double) pos.getY() - (double) minY) / span;
+            double t = 0;
+            if (pos != null) {
+                t = singleHeight ? 0.0d : ((double) pos.getY() - (double) minY) / span;
+            }
             String roleMapped;
             if (t < lowerEndRatio) {
                 roleMapped = bottomMapped;

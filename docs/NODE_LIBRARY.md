@@ -375,9 +375,9 @@
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
-| Weathering | `material.surface_aging.weathering` | Ages exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `WeatheringNode` |
-| Moss Growth | `material.surface_aging.moss_growth` | Applies moss to upward-exposed (top-only) voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `MossGrowthNode` |
-| Surface Cracks | `material.surface_aging.crack_pattern` | Applies sparse cracks to exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData. | `CrackPatternNode` |
+| Weathering | `material.surface_aging.weathering` | Ages occupancy-exposed voxels when coherent value-noise in [0,1] is below Amount. Remaps blockId only; preserves stateData. | `WeatheringNode` |
+| Moss Growth | `material.surface_aging.moss_growth` | Applies moss to top-exposed occupancy voxels when coherent value-noise in [0,1] is below Amount. Remaps blockId only; preserves stateData. | `MossGrowthNode` |
+| Surface Cracks | `material.surface_aging.crack_pattern` | Applies cracks to occupancy-exposed voxels when coherent value-noise in [0,1] is below Amount. Remaps blockId only; preserves stateData. | `CrackPatternNode` |
 
 ## math.compare (6)
 

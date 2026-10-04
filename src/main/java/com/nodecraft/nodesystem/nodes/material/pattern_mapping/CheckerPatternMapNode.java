@@ -93,8 +93,20 @@ public class CheckerPatternMapNode extends BaseNode {
         }
         BlockPos origin = originResult.origin();
 
-        String primaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_PRIMARY_ID));
-        String secondaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_SECONDARY_ID));
+        MaterialMappingSupport.MappedBlockType primary =
+            PatternMaterialUtils.resolveRole(this, INPUT_PRIMARY_ID);
+        if (!primary.valid()) {
+            emitFail(primary.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType secondary =
+            PatternMaterialUtils.resolveRole(this, INPUT_SECONDARY_ID);
+        if (!secondary.valid()) {
+            emitFail(secondary.error());
+            return;
+        }
+        String primaryMapped = primary.blockId();
+        String secondaryMapped = secondary.blockId();
         String fallback = MaterialMappingSupport.firstMappedBlockType(primaryMapped, secondaryMapped);
 
         MaterialSourceResolver.SourceResolution source =

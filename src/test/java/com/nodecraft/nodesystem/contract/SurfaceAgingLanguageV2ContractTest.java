@@ -7,8 +7,10 @@ import com.nodecraft.nodesystem.nodes.material.surface_aging.CrackPatternNode;
 import com.nodecraft.nodesystem.nodes.material.surface_aging.MossGrowthNode;
 import com.nodecraft.nodesystem.nodes.material.surface_aging.WeatheringNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.registry.Registries;
+import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
@@ -20,15 +22,16 @@ import java.util.Locale;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Surface Aging Strict Sources & Spatial Sampling v2 (Graph V119).
+ * Surface Aging Strict Sources & Spatial Sampling v2 (current graph format).
  */
 class SurfaceAgingLanguageV2ContractTest {
 
     @Test
-    void currentGraphFormatIsAtLeastV119() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -227,6 +230,124 @@ class SurfaceAgingLanguageV2ContractTest {
         assertEquals("minecraft:oak_planks", findAt(out, 1, 1, 1).blockId());
         assertEquals("minecraft:cobblestone", findAt(out, 0, 1, 1).blockId());
         assertEquals(26, (Integer) node.getOutput("output_affected_count"));
+    }
+
+    @Test
+    void remappedIncompatibleStateFailsClosedWhenRegistryPopulated() {
+        Assumptions.assumeTrue(
+            MaterialMappingSupport.isBlockRegistryPopulated(),
+            "Live BLOCK registry required for state compatibility"
+        );
+        BlockStateData state = new BlockStateData().withProperty("axis", "y");
+        WeatheringNode node = new WeatheringNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_log", state)
+        ));
+        node.setInput("input_aged_block", "minecraft:stone");
+        node.setInput("input_amount", 1.0d);
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+        assertEquals(0, (Integer) node.getOutput("output_affected_count"));
+    }
+
+    @Test
+    void compatibleStairsRemapPreservesFacing() {
+        BlockStateData state = new BlockStateData()
+            .withProperty("facing", "east")
+            .withProperty("half", "top");
+        WeatheringNode node = new WeatheringNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
+        ));
+        node.setInput("input_aged_block", "minecraft:cobblestone_stairs");
+        node.setInput("input_amount", 1.0d);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals("minecraft:cobblestone_stairs", out.getFirst().blockId());
+        assertEquals("east", out.getFirst().stateData().get("facing"));
+        assertEquals("top", out.getFirst().stateData().get("half"));
+    }
+
+    @Test
+    void maxIntEastNeighborDoesNotWrapToMinInt() {
+        BlockPos atMax = new BlockPos(Integer.MAX_VALUE, 0, 0);
+        BlockPos wrapEast = new BlockPos(Integer.MIN_VALUE, 0, 0);
+        WeatheringNode node = new WeatheringNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(atMax, "minecraft:oak_planks", null),
+            new BlockPlacementData(atMax.up(), "minecraft:oak_planks", null),
+            new BlockPlacementData(atMax.down(), "minecraft:oak_planks", null),
+            new BlockPlacementData(atMax.north(), "minecraft:oak_planks", null),
+            new BlockPlacementData(atMax.south(), "minecraft:oak_planks", null),
+            new BlockPlacementData(atMax.west(), "minecraft:oak_planks", null),
+            new BlockPlacementData(wrapEast, "minecraft:oak_planks", null)
+        ));
+        node.setInput("input_aged_block", "minecraft:cobblestone");
+        node.setInput("input_amount", 1.0d);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals("minecraft:cobblestone", findAt(out, Integer.MAX_VALUE, 0, 0).blockId());
+    }
+
+    @Test
+    void drivenInvalidSeedFailsClosed() {
+        WeatheringProbe banana = new WeatheringProbe();
+        banana.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        banana.putInput("input_aged_block", "minecraft:cobblestone");
+        banana.putInput("input_seed", "banana");
+        banana.processNode(null);
+        assertFalse((Boolean) banana.getOutput("output_valid"));
+        assertTrue(((List<?>) banana.getOutput("output_placements")).isEmpty());
+        assertEquals(0, (Integer) banana.getOutput("output_affected_count"));
+
+        WeatheringProbe decimal = new WeatheringProbe();
+        decimal.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        decimal.putInput("input_aged_block", "minecraft:cobblestone");
+        decimal.putInput("input_seed", 42.0d);
+        decimal.processNode(null);
+        assertFalse((Boolean) decimal.getOutput("output_valid"));
+        assertEquals(0, (Integer) decimal.getOutput("output_affected_count"));
+    }
+
+    @Test
+    void perNodeSeedSaltDecorrelatesFamiliesAtSeedZero() {
+        List<BlockPlacementData> slab = new ArrayList<>();
+        for (int x = 0; x < 4; x++) {
+            for (int z = 0; z < 4; z++) {
+                slab.add(new BlockPlacementData(new BlockPos(x, 0, z), "minecraft:oak_planks", null));
+            }
+        }
+        WeatheringNode weathering = new WeatheringNode();
+        weathering.setInput("input_placements", slab);
+        weathering.setInput("input_aged_block", "minecraft:cobblestone");
+        weathering.setInput("input_amount", 0.5d);
+        weathering.setInput("input_seed", 0);
+        weathering.processNode(null);
+        CrackPatternNode crack = new CrackPatternNode();
+        crack.setInput("input_placements", slab);
+        crack.setInput("input_crack", "minecraft:cobblestone");
+        crack.setInput("input_amount", 0.5d);
+        crack.setInput("input_seed", 0);
+        crack.processNode(null);
+        assertTrue((Boolean) weathering.getOutput("output_valid"));
+        assertTrue((Boolean) crack.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> weatherOut = assertInstanceOf(List.class, weathering.getOutput("output_placements"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> crackOut = assertInstanceOf(List.class, crack.getOutput("output_placements"));
+        assertNotEquals(
+            weatherOut.stream().map(BlockPlacementData::blockId).toList(),
+            crackOut.stream().map(BlockPlacementData::blockId).toList()
+        );
     }
 
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {

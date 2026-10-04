@@ -173,7 +173,10 @@ public class DistanceBasedMaterialNode extends BaseNode {
 
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            Vector3d sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
+            Vector3d sample = null;
+            if (pos != null) {
+                sample = new Vector3d(pos.getX() + 0.5d, pos.getY() + 0.5d, pos.getZ() + 0.5d);
+            }
             double distance = 0;
             if (reference.distance() != null) {
                 distance = reference.distance().applyAsDouble(sample);
@@ -245,9 +248,8 @@ public class DistanceBasedMaterialNode extends BaseNode {
         }
         if (polylineObj != null) {
             count++;
-            if (polylineObj instanceof PolylineData polyline) {
-                List<Vec3d> points = polyline.points();
-                if (points == null || points.size() < 2) {
+            if (polylineObj instanceof PolylineData(List<Vec3d> points)) {
+                if (points.size() < 2) {
                     error = "Reference Polyline must have at least 2 points";
                 } else {
                     chosen = sample -> distanceToPolyline(sample, points);
@@ -258,9 +260,9 @@ public class DistanceBasedMaterialNode extends BaseNode {
         }
         if (lineObj != null) {
             count++;
-            if (lineObj instanceof LineData line) {
-                Vector3d start = toVector(line.start());
-                Vector3d end = toVector(line.end());
+            if (lineObj instanceof LineData(Vec3d start1, Vec3d end1)) {
+                Vector3d start = toVector(start1);
+                Vector3d end = toVector(end1);
                 chosen = sample -> distanceToSegment(sample, start, end);
             } else {
                 error = "Reference Line must be a LINE value";

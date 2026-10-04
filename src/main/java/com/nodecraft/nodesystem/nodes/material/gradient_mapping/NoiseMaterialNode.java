@@ -182,7 +182,10 @@ public class NoiseMaterialNode extends BaseNode {
 
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            double noise = sampleNoise(pos.getX(), pos.getY(), pos.getZ(), seed);
+            double noise = 0;
+            if (pos != null) {
+                noise = sampleNoise(pos.getX(), pos.getY(), pos.getZ(), seed);
+            }
             double normalized = remapNoise(noise, lowThreshold, highThreshold);
             if (!Double.isFinite(normalized)) {
                 emitFail("Noise sample produced a non-finite value");

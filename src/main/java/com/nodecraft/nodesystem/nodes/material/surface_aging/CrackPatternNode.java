@@ -6,12 +6,12 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.nodes.material.gradient_mapping.GradientMaterialUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import com.nodecraft.nodesystem.util.MaterialSpatialUtils;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -24,7 +24,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "material.surface_aging.crack_pattern",
     displayName = "Surface Cracks",
-    description = "Applies sparse cracks to exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData.",
+    description = "Applies cracks to occupancy-exposed voxels when coherent value-noise in [0,1] is below Amount. Remaps blockId only; preserves stateData.",
     category = "material.surface_aging",
     order = 2
 )
@@ -74,21 +74,23 @@ public class CrackPatternNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BASE_ID, "Base Block",
             "Required geometry/coords voxelization base when placements are empty", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_CRACK_ID, "Crack Block", "Crack material for aged surface cells", NodeDataType.BLOCK_TYPE, this));
-        addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount", "Crack density in [0, 1] among surface voxels", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_AMOUNT_ID, "Amount",
+            "Coherent aging threshold on value-noise in [0, 1] (not a ratio, probability, or density)", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Integer seed for deterministic crack mask", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_AGING_ORIGIN_ID, "Aging Origin",
             "BLOCK_POS origin for aging phase; undriven defaults to (0,0,0)", NodeDataType.BLOCK_POS, this));
 
         addOutputPort(new BasePort(OUTPUT_PLACEMENTS_ID, "Block Placements", "Canonical material payload", NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_AFFECTED_COUNT_ID, "Affected Count",
-            "Voxels where aging mapping ran (mask passed and Crack Block set); not necessarily a blockId change", NodeDataType.INTEGER, this));
+            "Voxels selected by the aging mask (not necessarily a blockId change)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when amount/origin and inputs are usable", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Validation error when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
     public String getDescription() {
-        return "Applies sparse cracks to exposed surface voxels with a deterministic RandomOps mask. Remaps blockId only; preserves stateData.";
+        return "Applies cracks to occupancy-exposed voxels when coherent value-noise in [0,1] is below Amount. "
+            + "Exposure is any of six axis neighbors missing from the supplied placement occupancy (not the live world).";
     }
 
     @Override
@@ -132,6 +134,14 @@ public class CrackPatternNode extends BaseNode {
         }
         String crackMapped = crack.blockId();
 
+        RandomInputResolver.IntegerResolveResult seedResult =
+            SurfaceAgingUtils.resolveSeed(this, INPUT_SEED_ID);
+        if (!seedResult.valid()) {
+            emitFail("Seed must be an exact Integer");
+            return;
+        }
+        int seed = seedResult.value();
+
         MaterialSourceResolver.SourceResolution source =
             MaterialSourceResolver.resolve(this, SOURCE_PORTS, base.blockId());
         if (!source.valid()) {
@@ -156,7 +166,6 @@ public class CrackPatternNode extends BaseNode {
             return;
         }
 
-        int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
         Set<BlockPos> occupancy = SurfaceAgingUtils.buildOccupancy(sources);
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         int affected = 0;
@@ -177,7 +186,8 @@ public class CrackPatternNode extends BaseNode {
                 continue;
             }
             MaterialSpatialUtils.Relative rel = MaterialSpatialUtils.relative(pos, origin);
-            SurfaceAgingUtils.SampleResult sample = SurfaceAgingUtils.agingSample(rel, seed);
+            SurfaceAgingUtils.SampleResult sample =
+                SurfaceAgingUtils.agingSample(rel, seed, SurfaceAgingUtils.CRACK_NOISE_SALT);
             if (!sample.valid()) {
                 emitFail(sample.error());
                 return;

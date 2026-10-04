@@ -7,9 +7,12 @@ import com.nodecraft.nodesystem.nodes.material.pattern_mapping.CheckerPatternMap
 import com.nodecraft.nodesystem.nodes.material.pattern_mapping.GridPatternMapNode;
 import com.nodecraft.nodesystem.nodes.material.pattern_mapping.StripePatternMapNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.BrickPatternMapping;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -23,12 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pattern Mapping Strict Coordinates & Source Contract v2 (Graph V118).
+ * Pattern Mapping Strict Coordinates & Source Contract v2 (current graph format).
  */
 class PatternMappingLanguageV2ContractTest {
 
     @Test
-    void currentGraphFormatIsAtLeastV118() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -206,6 +209,91 @@ class PatternMappingLanguageV2ContractTest {
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> gridOut = assertInstanceOf(List.class, grid.getOutput("output_placements"));
         assertEquals(findAt(gridOut, 0, 0, 0).blockId(), findAt(gridOut, 0, 5, 0).blockId());
+    }
+
+    @Test
+    void connectedInvalidPrimaryFailsClosedUnconnectedPreservesSource() {
+        List<BlockPlacementData> source = List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        );
+
+        CheckerProbe bang = new CheckerProbe();
+        bang.putInput("input_placements", source);
+        bang.putInput("input_primary", "!!!");
+        bang.putInput("input_secondary", "minecraft:cobblestone");
+        bang.processNode(null);
+        assertFalse((Boolean) bang.getOutput("output_valid"));
+        assertTrue(((List<?>) bang.getOutput("output_placements")).isEmpty());
+
+        CheckerProbe wrongType = new CheckerProbe();
+        wrongType.putInput("input_placements", source);
+        wrongType.putInput("input_primary", 42);
+        wrongType.putInput("input_secondary", "minecraft:cobblestone");
+        wrongType.processNode(null);
+        assertFalse((Boolean) wrongType.getOutput("output_valid"));
+        assertTrue(((List<?>) wrongType.getOutput("output_placements")).isEmpty());
+
+        CheckerPatternMapNode unconnected = new CheckerPatternMapNode();
+        unconnected.setInput("input_placements", source);
+        unconnected.setInput("input_secondary", "minecraft:cobblestone");
+        unconnected.processNode(null);
+        assertTrue((Boolean) unconnected.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, unconnected.getOutput("output_placements"));
+        assertEquals("minecraft:oak_planks", out.getFirst().blockId());
+    }
+
+    @Test
+    void remappedIncompatibleStateFailsClosedWhenRegistryPopulated() {
+        Assumptions.assumeTrue(
+            MaterialMappingSupport.isBlockRegistryPopulated(),
+            "Live BLOCK registry required for state compatibility"
+        );
+        BlockStateData state = new BlockStateData().withProperty("axis", "y");
+        CheckerPatternMapNode node = new CheckerPatternMapNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_log", state)
+        ));
+        node.setInput("input_primary", "minecraft:stone");
+        node.setInput("input_secondary", "minecraft:stone");
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((List<?>) node.getOutput("output_placements")).isEmpty());
+    }
+
+    @Test
+    void compatibleStairsRemapPreservesFacing() {
+        BlockStateData state = new BlockStateData()
+            .withProperty("facing", "east")
+            .withProperty("half", "top");
+        CheckerPatternMapNode node = new CheckerPatternMapNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
+        ));
+        node.setInput("input_primary", "minecraft:cobblestone_stairs");
+        node.setInput("input_secondary", "minecraft:cobblestone_stairs");
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals("minecraft:cobblestone_stairs", out.getFirst().blockId());
+        assertEquals("east", out.getFirst().stateData().get("facing"));
+        assertEquals("top", out.getFirst().stateData().get("half"));
+    }
+
+    @Test
+    void doublePropertyRestoreIsIgnoredIntegerZeroFailsAtProcess() {
+        StripePatternMapNode stripe = new StripePatternMapNode();
+        stripe.setNodeState(java.util.Map.of("stripeWidth", 1.9d));
+        assertEquals(2, stripe.getStripeWidth());
+        stripe.setNodeState(java.util.Map.of("stripeWidth", 0));
+        stripe.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        stripe.setInput("input_primary", "minecraft:dirt");
+        stripe.processNode(null);
+        assertFalse((Boolean) stripe.getOutput("output_valid"));
+        assertTrue(((String) stripe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("width"));
     }
 
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {

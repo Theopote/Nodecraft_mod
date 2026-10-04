@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import com.nodecraft.nodesystem.util.MaterialSpatialUtils;
+import com.nodecraft.nodesystem.util.RandomInputResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -53,28 +54,23 @@ public final class SurfaceAgingUtils {
 
     private static final BlockPos WORLD_ORIGIN = new BlockPos(0, 0, 0);
 
-    private SurfaceAgingUtils() {
-    }
+    /** Mix into user Seed so Weathering / Moss / Cracks do not share one noise field. */
+    public static final int WEATHERING_NOISE_SALT = 0x57454154;
+    public static final int MOSS_NOISE_SALT = 0x4D4F5353;
+    public static final int CRACK_NOISE_SALT = 0x4352414B;
 
-    public static @Nullable String optionalRole(@Nullable Object value) {
-        return MaterialMappingSupport.optionalBlockType(value);
+    private SurfaceAgingUtils() {
     }
 
     public static String pickRole(@Nullable String mapped, @Nullable String sourceBlockId) {
         return MaterialMappingSupport.resolveMaterialTarget(mapped, sourceBlockId);
     }
 
-    /**
-     * Type-only origin resolve (legacy). Prefer {@link #resolveAgingOrigin(BaseNode, String)}.
-     */
-    public static OriginResult resolveAgingOrigin(@Nullable Object value) {
-        if (value == null) {
-            return OriginResult.ok(WORLD_ORIGIN);
-        }
-        if (value instanceof BlockPos pos) {
-            return OriginResult.ok(pos);
-        }
-        return OriginResult.fail("Aging Origin must be BLOCK_POS");
+    public static RandomInputResolver.IntegerResolveResult resolveSeed(BaseNode node, String portId) {
+        return RandomInputResolver.resolveSeed(
+            node.getInput(portId),
+            MaterialSourceResolver.isDriven(node, portId)
+        );
     }
 
     /**
@@ -144,25 +140,42 @@ public final class SurfaceAgingUtils {
 
     /** True when any of the six axis neighbors is missing from the occupancy set. */
     public static boolean isSurface(BlockPos pos, Set<BlockPos> occupancy) {
-        return !occupancy.contains(pos.up())
-            || !occupancy.contains(pos.down())
-            || !occupancy.contains(pos.north())
-            || !occupancy.contains(pos.south())
-            || !occupancy.contains(pos.east())
-            || !occupancy.contains(pos.west());
+        long x = pos.getX();
+        long y = pos.getY();
+        long z = pos.getZ();
+        return !occupancyContains(occupancy, x, y + 1L, z)
+            || !occupancyContains(occupancy, x, y - 1L, z)
+            || !occupancyContains(occupancy, x, y, z - 1L)
+            || !occupancyContains(occupancy, x, y, z + 1L)
+            || !occupancyContains(occupancy, x + 1L, y, z)
+            || !occupancyContains(occupancy, x - 1L, y, z);
     }
 
     /** True when the voxel above is missing from the occupancy set. */
     public static boolean isTopExposed(BlockPos pos, Set<BlockPos> occupancy) {
-        return !occupancy.contains(pos.up());
+        return !occupancyContains(occupancy, pos.getX(), (long) pos.getY() + 1L, pos.getZ());
+    }
+
+    /**
+     * Neighbor lookup in long so {@code Integer.MAX_VALUE + 1} is not wrapped through
+     * {@link BlockPos#offset}. Coordinates outside {@code int} are treated as missing (exposed).
+     */
+    static boolean occupancyContains(Set<BlockPos> occupancy, long x, long y, long z) {
+        if (x < Integer.MIN_VALUE || x > Integer.MAX_VALUE
+            || y < Integer.MIN_VALUE || y > Integer.MAX_VALUE
+            || z < Integer.MIN_VALUE || z > Integer.MAX_VALUE) {
+            return false;
+        }
+        return occupancy.contains(new BlockPos((int) x, (int) y, (int) z));
     }
 
     /**
      * Deterministic aging sample in {@code [0,1]} from {@link RandomOps#valueNoise3}.
-     * Non-finite noise → fail.
+     * Non-finite noise → fail. {@code nodeSalt} decorrelates process families; user seed still
+     * fully determines repeatability.
      */
-    public static SampleResult agingSample(double dx, double dy, double dz, int seed) {
-        double noise = RandomOps.valueNoise3(dx, dy, dz, seed);
+    public static SampleResult agingSample(double dx, double dy, double dz, int seed, int nodeSalt) {
+        double noise = RandomOps.valueNoise3(dx, dy, dz, seed ^ nodeSalt);
         if (!Double.isFinite(noise)) {
             return SampleResult.fail("Aging sample produced a non-finite value");
         }
@@ -173,12 +186,13 @@ public final class SurfaceAgingUtils {
         return SampleResult.ok(Math.max(0.0d, Math.min(1.0d, sample)));
     }
 
-    public static SampleResult agingSample(MaterialSpatialUtils.Relative relative, int seed) {
+    public static SampleResult agingSample(MaterialSpatialUtils.Relative relative, int seed, int nodeSalt) {
         return agingSample(
             (double) relative.dx(),
             (double) relative.dy(),
             (double) relative.dz(),
-            seed
+            seed,
+            nodeSalt
         );
     }
 

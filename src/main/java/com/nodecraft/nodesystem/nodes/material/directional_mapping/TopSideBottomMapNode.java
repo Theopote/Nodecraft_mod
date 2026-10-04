@@ -139,17 +139,33 @@ public class TopSideBottomMapNode extends BaseNode {
         Map<Long, Integer> maxYByColumn = new HashMap<>();
         for (BlockPlacementData placement : sources) {
             BlockPos pos = placement.pos();
-            long key = columnKey(pos.getX(), pos.getZ());
-            minYByColumn.merge(key, pos.getY(), Math::min);
-            maxYByColumn.merge(key, pos.getY(), Math::max);
+            long key = 0;
+            if (pos != null) {
+                key = columnKey(pos.getX(), pos.getZ());
+            }
+            if (pos != null) {
+                minYByColumn.merge(key, pos.getY(), Math::min);
+            }
+            if (pos != null) {
+                maxYByColumn.merge(key, pos.getY(), Math::max);
+            }
         }
 
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            long key = columnKey(pos.getX(), pos.getZ());
-            int minY = minYByColumn.getOrDefault(key, pos.getY());
-            int maxY = maxYByColumn.getOrDefault(key, pos.getY());
+            long key = 0;
+            if (pos != null) {
+                key = columnKey(pos.getX(), pos.getZ());
+            }
+            int minY = 0;
+            if (pos != null) {
+                minY = minYByColumn.getOrDefault(key, pos.getY());
+            }
+            int maxY = 0;
+            if (pos != null) {
+                maxY = maxYByColumn.getOrDefault(key, pos.getY());
+            }
 
             String roleMapped;
             if (pos.getY() == maxY) {

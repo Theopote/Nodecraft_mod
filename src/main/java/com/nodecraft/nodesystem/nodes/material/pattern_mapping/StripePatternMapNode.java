@@ -106,8 +106,20 @@ public class StripePatternMapNode extends BaseNode {
         }
         BlockPos origin = originResult.origin();
 
-        String primaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_PRIMARY_ID));
-        String secondaryMapped = PatternMaterialUtils.optionalRole(inputValues.get(INPUT_SECONDARY_ID));
+        MaterialMappingSupport.MappedBlockType primary =
+            PatternMaterialUtils.resolveRole(this, INPUT_PRIMARY_ID);
+        if (!primary.valid()) {
+            emitFail(primary.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType secondary =
+            PatternMaterialUtils.resolveRole(this, INPUT_SECONDARY_ID);
+        if (!secondary.valid()) {
+            emitFail(secondary.error());
+            return;
+        }
+        String primaryMapped = primary.blockId();
+        String secondaryMapped = secondary.blockId();
         String fallback = MaterialMappingSupport.firstMappedBlockType(primaryMapped, secondaryMapped);
 
         MaterialSourceResolver.SourceResolution source =
@@ -195,8 +207,8 @@ public class StripePatternMapNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("stripeWidth") instanceof Number value) {
-            this.stripeWidth = value.intValue();
+        if (map.get("stripeWidth") instanceof Integer value) {
+            this.stripeWidth = value;
         }
         if (map.get("axis") instanceof String name) {
             try {

@@ -132,19 +132,27 @@ public class SlopeMapNode extends BaseNode {
         Map<Long, Integer> topYByColumn = new HashMap<>();
         for (BlockPlacementData placement : sources) {
             BlockPos pos = placement.pos();
-            topYByColumn.merge(columnKey(pos.getX(), pos.getZ()), pos.getY(), Math::max);
+            if (pos != null) {
+                topYByColumn.merge(columnKey(pos.getX(), pos.getZ()), pos.getY(), Math::max);
+            }
         }
 
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
-            int columnTop = topYByColumn.getOrDefault(columnKey(pos.getX(), pos.getZ()), pos.getY());
-            if (pos.getY() != columnTop) {
+            int columnTop = 0;
+            if (pos != null) {
+                columnTop = topYByColumn.getOrDefault(columnKey(pos.getX(), pos.getZ()), pos.getY());
+            }
+            if (pos != null && pos.getY() != columnTop) {
                 placements.add(sourcePlacement);
                 continue;
             }
 
-            int grade = maxNeighborGrade(topYByColumn, pos.getX(), pos.getZ(), columnTop);
+            int grade = 0;
+            if (pos != null) {
+                grade = maxNeighborGrade(topYByColumn, pos.getX(), pos.getZ(), columnTop);
+            }
             String roleMapped = grade <= 0 ? flat.blockId() : (grade == 1 ? slope.blockId() : steep.blockId());
             String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
             MaterialMappingSupport.RemapResult remap =
