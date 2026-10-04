@@ -185,6 +185,46 @@ public final class PathFrameUtils {
     }
 
     /**
+     * Sweep/spine frames: closed polylines use {@link #framesFromSamples} with
+     * {@code closed=true} (existing holonomy correction). Fail-closed on degenerate tangents.
+     */
+    public static @Nullable List<Frame> framesAlongSpine(List<Vector3d> points, @Nullable Vector3d upHint) {
+        if (points == null || points.size() < 2) {
+            return List.of();
+        }
+        com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils.ClosedVertices closedVerts =
+            com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils.closedUniqueVertices(points);
+        List<Vector3d> verts = closedVerts.vertices();
+        if (verts.size() < 2) {
+            return null;
+        }
+        List<Vector3d> tangents = new ArrayList<>(verts.size());
+        for (int i = 0; i < verts.size(); i++) {
+            Vector3d tangent = tryComputeTangent(verts, i, closedVerts.closed());
+            if (tangent == null) {
+                return null;
+            }
+            tangents.add(tangent);
+        }
+        List<Frame> uniqueFrames = framesFromSamples(verts, tangents, upHint, false, closedVerts.closed());
+        if (uniqueFrames == null || uniqueFrames.size() != verts.size()) {
+            return null;
+        }
+        if (points.size() == verts.size()) {
+            return uniqueFrames;
+        }
+        List<Frame> expanded = new ArrayList<>(uniqueFrames);
+        Frame first = uniqueFrames.getFirst();
+        expanded.add(new Frame(
+            new Vector3d(points.getLast()),
+            new Vector3d(first.xAxis()),
+            new Vector3d(first.yAxis()),
+            new Vector3d(first.zAxis())
+        ));
+        return expanded;
+    }
+
+    /**
      * Parallel-transports frames for an ordered list of sample origins + tangents.
      */
     public static List<Frame> framesFromSamples(List<Vector3d> origins,
@@ -432,13 +472,16 @@ public final class PathFrameUtils {
         if (closed && n >= 3) {
             int prev = (index - 1 + n) % n;
             int next = (index + 1) % n;
-            tangent = new Vector3d(points.get(next)).sub(points.get(prev));
+            tangent = VectorUtils.safeSubtract(points.get(next), points.get(prev));
         } else if (index <= 0) {
-            tangent = new Vector3d(points.get(1)).sub(points.get(0));
+            tangent = VectorUtils.safeSubtract(points.get(1), points.get(0));
         } else if (index >= n - 1) {
-            tangent = new Vector3d(points.get(index)).sub(points.get(index - 1));
+            tangent = VectorUtils.safeSubtract(points.get(index), points.get(index - 1));
         } else {
-            tangent = new Vector3d(points.get(index + 1)).sub(points.get(index - 1));
+            tangent = VectorUtils.safeSubtract(points.get(index + 1), points.get(index - 1));
+        }
+        if (tangent == null) {
+            return null;
         }
         return normalizeOr(tangent, null);
     }

@@ -40,6 +40,18 @@ public class LoftProfilesNode extends AbstractSolidNode {
         description = "Target vertex count when Match Sections is RESAMPLE_COUNT (minimum 3)")
     private int resampleCount = 0;
 
+    @NodeProperty(displayName = "Flip Profiles", category = "Correspondence", order = 20,
+        description = "Reverse vertex order on both profiles. Negative scale is not a flip.")
+    private boolean flipProfiles = false;
+
+    @NodeProperty(displayName = "Seam Offset", category = "Correspondence", order = 21,
+        description = "Integer cyclic vertex shift applied after Flip")
+    private int seamOffset = 0;
+
+    @NodeProperty(displayName = "Match Seam", category = "Correspondence", order = 22,
+        description = "INDEX keeps vertex indices; AUTO_SEAM is an explicit cyclic min-distance shift")
+    private MatchSeamMode matchSeamMode = MatchSeamMode.INDEX;
+
     private static final String INPUT_SOURCE_PROFILE_ID = "input_source_profile";
     private static final String INPUT_TARGET_PROFILE_ID = "input_target_profile";
 
@@ -116,6 +128,13 @@ public class LoftProfilesNode extends AbstractSolidNode {
             targetProfile = rebuildProfile(targetProfile, targetUniquePoints);
         }
 
+        sourceUniquePoints = SectionCorrespondence.apply(
+            sourceUniquePoints, flipProfiles, seamOffset, null, MatchSeamMode.INDEX);
+        targetUniquePoints = SectionCorrespondence.apply(
+            targetUniquePoints, flipProfiles, seamOffset, sourceUniquePoints, matchSeamMode);
+        sourceProfile = rebuildProfile(sourceProfile, sourceUniquePoints);
+        targetProfile = rebuildProfile(targetProfile, targetUniquePoints);
+
         List<LineData> railSegments = new ArrayList<>(sourceUniquePoints.size());
         for (int i = 0; i < sourceUniquePoints.size(); i++) {
             Vector3d sourcePoint = sourceUniquePoints.get(i);
@@ -185,6 +204,42 @@ public class LoftProfilesNode extends AbstractSolidNode {
         this.resampleCount = resampleCount;
     }
 
+    public boolean isFlipProfiles() {
+        return flipProfiles;
+    }
+
+    public void setFlipProfiles(boolean flipProfiles) {
+        markDirtyIfChanged(this.flipProfiles, flipProfiles);
+        this.flipProfiles = flipProfiles;
+    }
+
+    public int getSeamOffset() {
+        return seamOffset;
+    }
+
+    public void setSeamOffset(int seamOffset) {
+        markDirtyIfChanged(this.seamOffset, seamOffset);
+        this.seamOffset = seamOffset;
+    }
+
+    public MatchSeamMode getMatchSeamMode() {
+        return matchSeamMode;
+    }
+
+    public void setMatchSeamMode(MatchSeamMode matchSeamMode) {
+        MatchSeamMode resolved = matchSeamMode == null ? MatchSeamMode.INDEX : matchSeamMode;
+        markDirtyIfChanged(this.matchSeamMode, resolved);
+        this.matchSeamMode = resolved;
+    }
+
+    public void setMatchSeamModeString(String key) {
+        if (key == null || key.isBlank() || !MatchSeamMode.KEYS.contains(key.toLowerCase())) {
+            setMatchSeamMode(MatchSeamMode.INDEX);
+            return;
+        }
+        setMatchSeamMode(MatchSeamMode.fromKey(key));
+    }
+
     /** @deprecated use {@link #getMatchSectionsMode()} */
     @Deprecated
     public boolean isAutoResample() {
@@ -214,6 +269,9 @@ public class LoftProfilesNode extends AbstractSolidNode {
         Map<String, Object> state = new HashMap<>();
         state.put("matchSectionsMode", matchSectionsMode.key());
         state.put("resampleCount", resampleCount);
+        state.put("flipProfiles", flipProfiles);
+        state.put("seamOffset", seamOffset);
+        state.put("matchSeamMode", matchSeamMode.key());
         return state;
     }
 
@@ -231,6 +289,15 @@ public class LoftProfilesNode extends AbstractSolidNode {
             setResampleCount(value.intValue());
         } else if (map.get("targetSectionPoints") instanceof Number value) {
             setResampleCount(value.intValue());
+        }
+        if (map.get("flipProfiles") instanceof Boolean value) {
+            setFlipProfiles(value);
+        }
+        if (map.get("seamOffset") instanceof Number value) {
+            setSeamOffset(value.intValue());
+        }
+        if (map.get("matchSeamMode") instanceof String value) {
+            setMatchSeamModeString(value);
         }
     }
 

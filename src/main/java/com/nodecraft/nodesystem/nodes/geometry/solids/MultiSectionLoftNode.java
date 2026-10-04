@@ -56,6 +56,10 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
         description = "Target vertex count when Match Sections is RESAMPLE_COUNT (minimum 3)")
     private int resampleCount = 0;
 
+    @NodeProperty(displayName = "Match Seam", category = "Loft", order = 12,
+        description = "INDEX keeps vertex indices; AUTO_SEAM is an explicit cyclic min-distance shift")
+    private MatchSeamMode matchSeamMode = MatchSeamMode.INDEX;
+
     private static final String INPUT_PROFILES_ID = "input_profiles";
 
     private static final String OUTPUT_PROFILES_ID = "output_profiles";
@@ -129,6 +133,15 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
             invalidate("Loft sections could not be matched to a common point count");
             return;
         }
+
+        List<Vector3d> reference = stripSections.getFirst();
+        List<List<Vector3d>> aligned = new ArrayList<>(stripSections.size());
+        aligned.add(reference);
+        for (int i = 1; i < stripSections.size(); i++) {
+            aligned.add(SectionCorrespondence.apply(
+                stripSections.get(i), false, 0, reference, matchSeamMode));
+        }
+        stripSections = aligned;
 
         int expected = stripSections.getFirst().size();
         List<Boolean> closedFlags = new ArrayList<>(profiles.size());
@@ -213,29 +226,7 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
     }
 
     private List<Vector3d> prepareSection(List<Vector3d> source) {
-        List<Vector3d> points = new ArrayList<>(source.size());
-        for (Vector3d point : source) {
-            points.add(new Vector3d(point));
-        }
-        if (flipSections) {
-            Collections.reverse(points);
-        }
-        return rotateSection(points, seamOffset);
-    }
-
-    private List<Vector3d> rotateSection(List<Vector3d> points, int offset) {
-        if (points.isEmpty()) {
-            return points;
-        }
-        int shift = Math.floorMod(offset, points.size());
-        if (shift == 0) {
-            return points;
-        }
-        List<Vector3d> rotated = new ArrayList<>(points.size());
-        for (int i = 0; i < points.size(); i++) {
-            rotated.add(points.get((i + shift) % points.size()));
-        }
-        return rotated;
+        return SectionCorrespondence.apply(source, flipSections, seamOffset, null, MatchSeamMode.INDEX);
     }
 
     private List<List<Vector3d>> resampleSections(List<List<Vector3d>> sections, int targetCount, boolean closed) {
@@ -338,6 +329,16 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
         this.seamOffset = seamOffset;
     }
 
+    public MatchSeamMode getMatchSeamMode() {
+        return matchSeamMode;
+    }
+
+    public void setMatchSeamMode(MatchSeamMode matchSeamMode) {
+        MatchSeamMode resolved = matchSeamMode == null ? MatchSeamMode.INDEX : matchSeamMode;
+        markDirtyIfChanged(this.matchSeamMode, resolved);
+        this.matchSeamMode = resolved;
+    }
+
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -347,6 +348,7 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
         state.put("seamOffset", seamOffset);
         state.put("matchSectionsMode", matchSectionsMode.key());
         state.put("resampleCount", resampleCount);
+        state.put("matchSeamMode", matchSeamMode.key());
         return state;
     }
 
@@ -378,6 +380,11 @@ public class MultiSectionLoftNode extends AbstractSolidNode {
             resampleCount = value.intValue();
         } else if (map.get("targetSectionPoints") instanceof Number value) {
             resampleCount = value.intValue();
+        }
+        if (map.get("matchSeamMode") instanceof String value) {
+            if (MatchSeamMode.KEYS.contains(value.toLowerCase())) {
+                matchSeamMode = MatchSeamMode.fromKey(value);
+            }
         }
         markDirty();
     }

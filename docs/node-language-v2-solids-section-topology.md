@@ -1,10 +1,10 @@
 # Geometry Solids — Section Topology v2
 
-**Status: PASSED / FROZEN** (Graph **V94**)
+**Status: PASSED / FROZEN** (historical Graph **V94** residue; `GraphFormatVersion.CURRENT` is stamp-only **1**)
 
 Closes the V92 gap where voxel sections emitted independent `POLYGON_PROFILE`s and lost hole topology. Inventory remains **23** `geometry.solids.*` nodes (no redesign of Extrude / Loft / Sweep; Extrude vs Extrude Region split kept).
 
-V72 Solids v1 and V93 SDF remain historical fences.
+V72 Solids v1 and V93 SDF remain historical fences. Extrude shares `ProfileExtrusionUtils` with Extrude Region; Sweep scale must be `> 0`; closed Sweep uses existing path-frame roll correction; AUTO_SEAM is opt-in.
 
 ## What changed
 
@@ -50,7 +50,7 @@ Affected: Shrinkwrap ×2, Extrude Point List, Loft Point Lists, Prism By Points,
 
 ## Out of scope
 
-Auto Seam, Region Loft/Sweep/Revolve, Analytic Section, renaming Surface Strip To Lattice, Extrude accepting Region.
+Region Loft/Sweep/Revolve, Analytic Section, renaming Surface Strip To Lattice, Extrude accepting Region.
 
 ## Contract tests
 

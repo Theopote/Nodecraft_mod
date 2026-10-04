@@ -7,7 +7,8 @@ import org.joml.Vector3d;
 import java.util.List;
 
 /**
- * Shared validation for {@link SurfaceStripData} topology and budgets (Graph V72).
+ * Shared validation for {@link SurfaceStripData} topology and budgets.
+ * Historical Graph V72 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  */
 public final class SurfaceStripValidator {
 

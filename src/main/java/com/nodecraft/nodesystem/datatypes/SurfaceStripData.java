@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.datatypes;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
+import com.nodecraft.nodesystem.util.VectorUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -51,6 +53,23 @@ public record SurfaceStripData(List<List<Vector3d>> sections, List<Boolean> sect
 
         this.sections = List.copyOf(copiedSections);
         this.sectionClosedFlags = List.copyOf(copiedFlags);
+
+        for (int s = 0; s < this.sections.size(); s++) {
+            List<Vector3d> section = this.sections.get(s);
+            boolean closed = Boolean.TRUE.equals(this.sectionClosedFlags.get(s));
+            boolean dropDuplicateSeam = closed && section.size() > 2
+                && VectorUtils.safeDistance(section.getFirst(), section.getLast()) <= 1.0e-9d;
+            int n = dropDuplicateSeam ? section.size() - 1 : section.size();
+            int edgeCount = closed ? n : n - 1;
+            for (int i = 0; i < edgeCount; i++) {
+                Vector3d a = section.get(i);
+                Vector3d b = section.get((i + 1) % n);
+                double dist = VectorUtils.safeDistance(a, b);
+                if (!Double.isFinite(dist) || dist <= 1.0e-9d) {
+                    throw new IllegalArgumentException("Surface strip contains degenerate zero-length edges");
+                }
+            }
+        }
     }
 
     @Override

@@ -4,7 +4,8 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Loft section compatibility mode (Graph V72).
+ * Loft section compatibility mode. Historical Graph V72 residue;
+ * {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  */
 public enum MatchSectionsMode {
     STRICT,

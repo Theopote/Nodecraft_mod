@@ -40,7 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Solids / Section Topology v2 (Graph V94).
+ * Language fence for Geometry Solids / Section Topology v2.
+ * Historical Graph V94 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  */
 class GeometrySolidsSectionTopologyV2ContractTest {
 
@@ -55,7 +56,8 @@ class GeometrySolidsSectionTopologyV2ContractTest {
     }
 
     @Test
-    void currentGraphFormatIsV94() {
+    void currentGraphFormatIsStampOnlyOne() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 

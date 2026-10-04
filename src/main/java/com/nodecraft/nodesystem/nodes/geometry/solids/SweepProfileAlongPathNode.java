@@ -152,9 +152,16 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
         List<List<Vector3d>> stripSections = new ArrayList<>(spinePoints.size());
         List<Boolean> sectionClosedFlags = new ArrayList<>(spinePoints.size());
 
-        List<PathFrameUtils.Frame> frames = orientToPath
-            ? PathFrameUtils.framesAlongPolyline(spinePoints, null)
-            : spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
+        List<PathFrameUtils.Frame> frames;
+        if (orientToPath) {
+            frames = PathFrameUtils.framesAlongSpine(spinePoints, null);
+            if (frames == null || frames.size() != spinePoints.size()) {
+                invalidate("Path frames are missing or degenerate");
+                return;
+            }
+        } else {
+            frames = spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
+        }
 
         for (int i = 0; i < spinePoints.size(); i++) {
             Vector3d spinePoint = spinePoints.get(i);
@@ -229,7 +236,15 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
         }
         int sectionCount = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID)).size();
         if (connected != null && !connected.isEmpty()) {
+            if (!SweepFieldSupport.allPositiveFinite(connected)) {
+                invalidate("Scale values must all be finite and greater than 0");
+                return null;
+            }
             return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startScale);
+        }
+        if (!SweepFieldSupport.isPositiveFinite(startScale) || !SweepFieldSupport.isPositiveFinite(endScale)) {
+            invalidate("Start/end scale must be finite and greater than 0");
+            return null;
         }
         return interpolateField(sectionCount, startScale, endScale);
     }
@@ -243,6 +258,10 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
         int sectionCount = SolidNodeUtils.resolveSpinePoints(inputValues.get(INPUT_PATH_ID)).size();
         if (connected != null && !connected.isEmpty()) {
             return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startRotationDegrees);
+        }
+        if (!SweepFieldSupport.isFinite(startRotationDegrees) || !SweepFieldSupport.isFinite(endRotationDegrees)) {
+            invalidate("Start/end rotation must be finite");
+            return null;
         }
         return interpolateField(sectionCount, startRotationDegrees, endRotationDegrees);
     }
@@ -288,6 +307,9 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
     }
 
     public void setStartScale(double startScale) {
+        if (!SweepFieldSupport.isPositiveFinite(startScale)) {
+            return;
+        }
         markDirtyIfChanged(this.startScale, startScale);
         this.startScale = startScale;
     }
@@ -297,6 +319,9 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
     }
 
     public void setEndScale(double endScale) {
+        if (!SweepFieldSupport.isPositiveFinite(endScale)) {
+            return;
+        }
         markDirtyIfChanged(this.endScale, endScale);
         this.endScale = endScale;
     }
@@ -306,6 +331,9 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
     }
 
     public void setStartRotationDegrees(double startRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(startRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.startRotationDegrees, startRotationDegrees);
         this.startRotationDegrees = startRotationDegrees;
     }
@@ -315,6 +343,9 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
     }
 
     public void setEndRotationDegrees(double endRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(endRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.endRotationDegrees, endRotationDegrees);
         this.endRotationDegrees = endRotationDegrees;
     }
@@ -347,16 +378,16 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
             flipProfile = value;
         }
         if (map.get("startScale") instanceof Number value) {
-            startScale = value.doubleValue();
+            setStartScale(value.doubleValue());
         }
         if (map.get("endScale") instanceof Number value) {
-            endScale = value.doubleValue();
+            setEndScale(value.doubleValue());
         }
         if (map.get("startRotationDegrees") instanceof Number value) {
-            startRotationDegrees = value.doubleValue();
+            setStartRotationDegrees(value.doubleValue());
         }
         if (map.get("endRotationDegrees") instanceof Number value) {
-            endRotationDegrees = value.doubleValue();
+            setEndRotationDegrees(value.doubleValue());
         }
         markDirty();
     }

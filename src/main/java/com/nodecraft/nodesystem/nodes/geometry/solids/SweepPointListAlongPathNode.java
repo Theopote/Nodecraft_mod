@@ -144,14 +144,25 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
         }
 
         Vector3d profileOrigin = SolidNodeUtils.computeCenter(profilePoints);
+        if (profileOrigin == null) {
+            invalidate("Profile center is missing or non-finite");
+            return;
+        }
         List<Vector3d> localOffsets = PathFrameUtils.pointsToLocalOffsets(profilePoints, profileOrigin, null);
         List<List<Vector3d>> sections = new ArrayList<>(spinePoints.size());
         List<PathData> sectionPaths = new ArrayList<>(spinePoints.size());
         List<Vector3d> allPoints = new ArrayList<>(localOffsets.size() * spinePoints.size());
 
-        List<PathFrameUtils.Frame> frames = orientToPath
-            ? PathFrameUtils.framesAlongPolyline(spinePoints, null)
-            : spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
+        List<PathFrameUtils.Frame> frames;
+        if (orientToPath) {
+            frames = PathFrameUtils.framesAlongSpine(spinePoints, null);
+            if (frames == null || frames.size() != spinePoints.size()) {
+                invalidate("Path frames are missing or degenerate");
+                return;
+            }
+        } else {
+            frames = spinePoints.stream().map(PathFrameUtils.Frame::identity).toList();
+        }
 
         for (int i = 0; i < spinePoints.size(); i++) {
             PathFrameUtils.Frame frame = frames.get(i);
@@ -230,7 +241,15 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
             return null;
         }
         if (connected != null && !connected.isEmpty()) {
+            if (!SweepFieldSupport.allPositiveFinite(connected)) {
+                invalidate("Scale values must all be finite and greater than 0");
+                return null;
+            }
             return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startScale);
+        }
+        if (!SweepFieldSupport.isPositiveFinite(startScale) || !SweepFieldSupport.isPositiveFinite(endScale)) {
+            invalidate("Start/end scale must be finite and greater than 0");
+            return null;
         }
         return interpolateField(sectionCount, startScale, endScale);
     }
@@ -243,6 +262,10 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
         }
         if (connected != null && !connected.isEmpty()) {
             return SurfaceInputUtils.sampleFieldAlongU(connected, sectionCount, startRotationDegrees);
+        }
+        if (!SweepFieldSupport.isFinite(startRotationDegrees) || !SweepFieldSupport.isFinite(endRotationDegrees)) {
+            invalidate("Start/end rotation must be finite");
+            return null;
         }
         return interpolateField(sectionCount, startRotationDegrees, endRotationDegrees);
     }
@@ -329,6 +352,9 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
     }
 
     public void setStartScale(double startScale) {
+        if (!SweepFieldSupport.isPositiveFinite(startScale)) {
+            return;
+        }
         markDirtyIfChanged(this.startScale, startScale);
         this.startScale = startScale;
     }
@@ -338,6 +364,9 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
     }
 
     public void setEndScale(double endScale) {
+        if (!SweepFieldSupport.isPositiveFinite(endScale)) {
+            return;
+        }
         markDirtyIfChanged(this.endScale, endScale);
         this.endScale = endScale;
     }
@@ -347,6 +376,9 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
     }
 
     public void setStartRotationDegrees(double startRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(startRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.startRotationDegrees, startRotationDegrees);
         this.startRotationDegrees = startRotationDegrees;
     }
@@ -356,6 +388,9 @@ public class SweepPointListAlongPathNode extends AbstractSolidNode {
     }
 
     public void setEndRotationDegrees(double endRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(endRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.endRotationDegrees, endRotationDegrees);
         this.endRotationDegrees = endRotationDegrees;
     }

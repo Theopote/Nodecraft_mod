@@ -45,6 +45,9 @@ class SolidsFamilyContractTest {
         assertPortType("geometry.solids.extrude", "output_prism", false, NodeDataType.PRISM_GEOMETRY);
         assertPortType("geometry.solids.extrude", "output_side_surface", false, NodeDataType.SURFACE_STRIP);
         assertPortType("geometry.solids.extrude", "output_valid", false, NodeDataType.BOOLEAN);
+        assertPortType("geometry.solids.extrude_region", "output_top_region", false, NodeDataType.PLANAR_REGION);
+        assertPortType("geometry.solids.extrude_region", "output_outer_side_surface", false, NodeDataType.SURFACE_STRIP);
+        assertPortType("geometry.solids.extrude_region", "output_hole_side_surfaces", false, NodeDataType.SURFACE_STRIP_LIST);
 
         INode extrude = NodeRegistry.getInstance().createNodeInstance("geometry.solids.extrude");
         assertInstanceOf(INode.class, extrude);

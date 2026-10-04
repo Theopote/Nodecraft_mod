@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Shared profile extrusion helpers for Extrude / Extrude Region.
- * Historical Graph V91 residue.
+ * Historical Graph V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  */
 public final class ProfileExtrusionUtils {
 
@@ -42,8 +42,12 @@ public final class ProfileExtrusionUtils {
             writeError(errorOut, "Profile and direction are required");
             return null;
         }
-        double height = direction.length();
-        if (!(height > 1.0e-12d) || !Double.isFinite(height)) {
+        if (!VectorUtils.isFinite(direction)) {
+            writeError(errorOut, "Extrusion direction must have non-zero finite length");
+            return null;
+        }
+        double height = VectorUtils.safeLength(direction);
+        if (!(height > VectorUtils.EPS) || !Double.isFinite(height)) {
             writeError(errorOut, "Extrusion direction must have non-zero finite length");
             return null;
         }
@@ -57,14 +61,21 @@ public final class ProfileExtrusionUtils {
         List<Vector3d> baseClosedPoints = baseProfile.closedPoints();
         List<Vector3d> topClosedPoints = new ArrayList<>(baseClosedPoints.size());
         for (Vector3d point : baseClosedPoints) {
-            topClosedPoints.add(new Vector3d(point).add(direction));
+            Vector3d top = VectorUtils.safeAdd(point, direction);
+            if (top == null) {
+                writeError(errorOut, "Extruded vertices are non-finite");
+                return null;
+            }
+            topClosedPoints.add(top);
         }
 
         PlaneData basePlane = baseProfile.plane();
-        PlaneData topPlane = PlaneData.canonical(
-            new Vector3d(basePlane.getPoint()).add(direction),
-            basePlane.getNormal()
-        );
+        Vector3d topOrigin = VectorUtils.safeAdd(basePlane.getPoint(), direction);
+        if (topOrigin == null) {
+            writeError(errorOut, "Failed to create top plane");
+            return null;
+        }
+        PlaneData topPlane = PlaneData.canonical(topOrigin, basePlane.getNormal());
         if (topPlane == null) {
             writeError(errorOut, "Failed to create top plane");
             return null;
@@ -76,7 +87,13 @@ public final class ProfileExtrusionUtils {
             return null;
         }
 
-        PrismGeometryData prism = new PrismGeometryData(baseUniquePoints, direction);
+        PrismGeometryData prism;
+        try {
+            prism = new PrismGeometryData(baseUniquePoints, direction);
+        } catch (IllegalArgumentException ex) {
+            writeError(errorOut, ex.getMessage() == null ? "Failed to create prism" : ex.getMessage());
+            return null;
+        }
         SurfaceStripData sideSurface;
         try {
             sideSurface = new SurfaceStripData(

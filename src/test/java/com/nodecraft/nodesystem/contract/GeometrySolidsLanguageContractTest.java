@@ -8,19 +8,29 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.LineData;
+import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PlanarRegionData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
+import com.nodecraft.nodesystem.datatypes.PolylineData;
+import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ExtrudeProfileNode;
+import com.nodecraft.nodesystem.nodes.geometry.solids.ExtrudeRegionNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.LoftProfilesNode;
+import com.nodecraft.nodesystem.nodes.geometry.solids.MatchSeamMode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.MatchSectionsMode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.MorphBetweenProfilesNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.MultiSectionLoftNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.PushPullBoxFaceNode;
+import com.nodecraft.nodesystem.nodes.geometry.solids.SweepProfileAlongPathNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ThickenSurfaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.PathFrameUtils;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,7 +50,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Solids / Surface Modeling v1 (Graph V72).
+ * Language fence for Geometry Solids / Surface Modeling.
+ * Historical Graph V72/V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  */
 class GeometrySolidsLanguageContractTest {
 
@@ -55,13 +66,14 @@ class GeometrySolidsLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV72() {
+    void currentGraphFormatIsStampOnlyOne() {
+        assertEquals(1, GraphFormatVersion.CURRENT);
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
     void v72CanonicalTwentyTwoSolidNodesRemainAtOrdersZeroToTwentyOne() {
-        // Graph V91 adds extrude_region at order 22; V72 fence covers orders 0–21.
+        // Historical Graph V91 residue adds extrude_region at order 22; CURRENT is stamp-only 1.
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.solids."))
             .sorted()
@@ -146,11 +158,21 @@ class GeometrySolidsLanguageContractTest {
     }
 
     @Test
-    void loftDefaultsToStrictMatchSections() {
+    void solidsCategoryDisplayNameIsSolidsAndSurfaces() {
+        assertEquals("Solids & Surfaces", registry.getCategory("geometry.solids").getDisplayName());
+        assertEquals("geometry.solids", registry.getCategory("geometry.solids").getId());
+    }
+
+    @Test
+    void loftDefaultsToStrictMatchSectionsAndIndexSeam() {
         LoftProfilesNode loft = new LoftProfilesNode();
         assertEquals(MatchSectionsMode.STRICT, loft.getMatchSectionsMode());
+        assertEquals(MatchSeamMode.INDEX, loft.getMatchSeamMode());
         MultiSectionLoftNode multi = new MultiSectionLoftNode();
         assertEquals(MatchSectionsMode.STRICT, multi.getMatchSectionsMode());
+        assertEquals(MatchSeamMode.INDEX, multi.getMatchSeamMode());
+        MorphBetweenProfilesNode morph = new MorphBetweenProfilesNode();
+        assertEquals(MatchSeamMode.INDEX, morph.getMatchSeamMode());
     }
 
     @Test
@@ -164,6 +186,46 @@ class GeometrySolidsLanguageContractTest {
         assertEquals(Boolean.FALSE, extrude.getOutput("output_valid"));
         assertNotNull(extrude.getOutput("output_error"));
         assertFalse(String.valueOf(extrude.getOutput("output_error")).isBlank());
+        assertTrue(Double.isNaN((Double) extrude.getOutput("output_height")));
+    }
+
+    @Test
+    void extrudeHugeDirectionFailsClosed() {
+        ExtrudeProfileNode extrude = new ExtrudeProfileNode();
+        connectInput(extrude, "input_profile", NodeDataType.POLYGON_PROFILE);
+        connectInput(extrude, "input_direction", NodeDataType.VECTOR);
+        extrude.setInput("input_profile", unitSquareProfile());
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 1e308d, 1e308d));
+        extrude.processNode(null);
+        assertEquals(Boolean.FALSE, extrude.getOutput("output_valid"));
+        assertNull(extrude.getOutput("output_geometry"));
+        assertTrue(Double.isNaN((Double) extrude.getOutput("output_height")));
+    }
+
+    @Test
+    void extrudeRawVector3dOnVectorPortFailsClosed() {
+        ExtrudeProfileNode extrude = new ExtrudeProfileNode();
+        connectInput(extrude, "input_profile", NodeDataType.POLYGON_PROFILE);
+        connectInput(extrude, "input_direction", NodeDataType.VECTOR);
+        extrude.setInput("input_profile", unitSquareProfile());
+        extrude.setInput("input_direction", new Vector3d(0, 1, 0));
+        extrude.processNode(null);
+        assertEquals(Boolean.FALSE, extrude.getOutput("output_valid"));
+        assertTrue(Double.isNaN((Double) extrude.getOutput("output_height")));
+    }
+
+    @Test
+    void extrudeValidHeightIsFiniteIffValid() {
+        ExtrudeProfileNode extrude = new ExtrudeProfileNode();
+        connectInput(extrude, "input_profile", NodeDataType.POLYGON_PROFILE);
+        connectInput(extrude, "input_direction", NodeDataType.VECTOR);
+        extrude.setInput("input_profile", unitSquareProfile());
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 2, 0));
+        extrude.processNode(null);
+        assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"), String.valueOf(extrude.getOutput("output_error")));
+        double height = (Double) extrude.getOutput("output_height");
+        assertTrue(Double.isFinite(height));
+        assertEquals(2.0d, height, 1.0e-9d);
     }
 
     @Test
@@ -232,6 +294,108 @@ class GeometrySolidsLanguageContractTest {
             com.nodecraft.nodesystem.api.ListElementKind.SURFACE_STRIP));
     }
 
+    @Test
+    void sweepRejectsNonPositiveScalePropertyAndConnectedList() {
+        SweepProfileAlongPathNode sweep = new SweepProfileAlongPathNode();
+        sweep.setStartScale(-1.0d);
+        assertEquals(1.0d, sweep.getStartScale(), 1.0e-12d);
+        sweep.setStartScale(Double.NaN);
+        assertEquals(1.0d, sweep.getStartScale(), 1.0e-12d);
+        sweep.setStartRotationDegrees(Double.POSITIVE_INFINITY);
+        assertEquals(0.0d, sweep.getStartRotationDegrees(), 1.0e-12d);
+
+        connectInput(sweep, "input_profile", NodeDataType.POLYGON_PROFILE);
+        connectInput(sweep, "input_path", NodeDataType.PATH);
+        connectInput(sweep, "input_scale_values", NodeDataType.DOUBLE_LIST);
+        sweep.setInput("input_profile", unitSquareProfile());
+        sweep.setInput("input_path", openLinePath());
+        sweep.setInput("input_scale_values", List.of(-1.0d, 2.0d));
+        sweep.processNode(null);
+        assertEquals(Boolean.FALSE, sweep.getOutput("output_valid"));
+        assertNull(sweep.getOutput("output_surface_strip"));
+    }
+
+    @Test
+    void closedSweepFramesAreHolonomyCorrected() {
+        List<Vector3d> closedSquare = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(4, 0, 0),
+            new Vector3d(4, 4, 0),
+            new Vector3d(0, 4, 0),
+            new Vector3d(0, 0, 0)
+        );
+        List<PathFrameUtils.Frame> frames = PathFrameUtils.framesAlongSpine(closedSquare, null);
+        assertNotNull(frames);
+        assertEquals(5, frames.size());
+        PathFrameUtils.Frame first = frames.getFirst();
+        PathFrameUtils.Frame lastUnique = frames.get(3);
+        PathFrameUtils.Frame probe = PathFrameUtils.transport(lastUnique, first.origin(), first.zAxis());
+        assertEquals(1.0d, first.xAxis().dot(probe.xAxis()), 1.0e-5d);
+
+        SweepProfileAlongPathNode sweep = new SweepProfileAlongPathNode();
+        connectInput(sweep, "input_profile", NodeDataType.POLYGON_PROFILE);
+        connectInput(sweep, "input_path", NodeDataType.PATH);
+        sweep.setInput("input_profile", unitSquareProfile());
+        sweep.setInput("input_path", closedSquarePath());
+        sweep.processNode(null);
+        assertEquals(Boolean.TRUE, sweep.getOutput("output_valid"), String.valueOf(sweep.getOutput("output_error")));
+        assertInstanceOf(SurfaceStripData.class, sweep.getOutput("output_surface_strip"));
+    }
+
+    @Test
+    void autoSeamIsOptInVersusDefaultIndex() {
+        PolygonProfileData source = unitSquareProfile();
+        PolygonProfileData target = shiftedSquareProfile();
+
+        LoftProfilesNode index = new LoftProfilesNode();
+        index.setInput("input_source_profile", source);
+        index.setInput("input_target_profile", target);
+        index.processNode(null);
+        assertEquals(Boolean.TRUE, index.getOutput("output_valid"), String.valueOf(index.getOutput("output_error")));
+        double indexLength = railLength(index.getOutput("output_rail_segments"));
+
+        LoftProfilesNode auto = new LoftProfilesNode();
+        auto.setMatchSeamMode(MatchSeamMode.AUTO_SEAM);
+        auto.setInput("input_source_profile", source);
+        auto.setInput("input_target_profile", target);
+        auto.processNode(null);
+        assertEquals(Boolean.TRUE, auto.getOutput("output_valid"), String.valueOf(auto.getOutput("output_error")));
+        double autoLength = railLength(auto.getOutput("output_rail_segments"));
+        assertTrue(autoLength + 1.0e-6d < indexLength);
+    }
+
+    @Test
+    void extrudeRegionEmitsTopAndSideSurfaces() {
+        ExtrudeRegionNode extrude = new ExtrudeRegionNode();
+        connectInput(extrude, "input_region", NodeDataType.PLANAR_REGION);
+        connectInput(extrude, "input_direction", NodeDataType.VECTOR);
+        extrude.setInput("input_region", PlanarRegionData.of(unitSquareProfile()));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 2, 0));
+        extrude.processNode(null);
+        assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"), String.valueOf(extrude.getOutput("output_error")));
+        assertInstanceOf(PlanarRegionData.class, extrude.getOutput("output_top_region"));
+        assertInstanceOf(SurfaceStripData.class, extrude.getOutput("output_outer_side_surface"));
+        assertInstanceOf(List.class, extrude.getOutput("output_hole_side_surfaces"));
+        assertTrue(((List<?>) extrude.getOutput("output_hole_side_surfaces")).isEmpty());
+        assertEquals(2.0d, (Double) extrude.getOutput("output_height"), 1.0e-9d);
+    }
+
+    @Test
+    void surfaceStripConstructorRejectsZeroLengthEdges() {
+        List<Vector3d> degenerate = List.of(
+            new Vector3d(0, 0, 0),
+            new Vector3d(0, 0, 0),
+            new Vector3d(1, 0, 0)
+        );
+        List<Vector3d> ok = List.of(
+            new Vector3d(0, 1, 0),
+            new Vector3d(1, 1, 0),
+            new Vector3d(1, 1, 1)
+        );
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+            () -> new SurfaceStripData(List.of(degenerate, ok), List.of(false, false)));
+    }
+
     private static PolygonProfileData unitSquareProfile() {
         List<Vector3d> closed = List.of(
             new Vector3d(0, 0, 0),
@@ -241,6 +405,44 @@ class GeometrySolidsLanguageContractTest {
             new Vector3d(0, 0, 0)
         );
         return new PolygonProfileData(closed, PlaneData.XZ_PLANE);
+    }
+
+    private static PolygonProfileData shiftedSquareProfile() {
+        List<Vector3d> closed = List.of(
+            new Vector3d(4, 2, 0),
+            new Vector3d(4, 2, 4),
+            new Vector3d(0, 2, 4),
+            new Vector3d(0, 2, 0),
+            new Vector3d(4, 2, 0)
+        );
+        return new PolygonProfileData(closed, new PlaneData(new Vector3d(0, 2, 0), new Vector3d(0, 1, 0)));
+    }
+
+    private static PathData openLinePath() {
+        return PathData.fromPolyline(new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(0, 4, 0)
+        )));
+    }
+
+    private static PathData closedSquarePath() {
+        return PathData.fromPolyline(new PolylineData(List.of(
+            new Vec3d(0, 0, 0),
+            new Vec3d(4, 0, 0),
+            new Vec3d(4, 4, 0),
+            new Vec3d(0, 4, 0),
+            new Vec3d(0, 0, 0)
+        )));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static double railLength(Object railsObj) {
+        List<LineData> rails = (List<LineData>) railsObj;
+        double total = 0.0d;
+        for (LineData rail : rails) {
+            total += rail.getLength();
+        }
+        return total;
     }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {

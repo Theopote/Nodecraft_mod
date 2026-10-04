@@ -6,11 +6,10 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
-import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
-import com.nodecraft.nodesystem.util.Vector3;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -43,24 +42,10 @@ final class SolidNodeUtils {
     }
 
     /**
-     * Strict direction resolver: accepts only vector-like values
-     * ({@link Vector3d}, {@link Vec3d}, {@link Vector3}). Does not treat
-     * {@link PointData} or {@link BlockPos} as directions.
+     * Graph VECTOR ports: {@link com.nodecraft.nodesystem.datatypes.VectorData} only.
      */
     static @Nullable Vector3d resolveDirection(@Nullable Object value) {
-        if (value instanceof VectorData vectorData) {
-            return vectorData.components();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof Vector3(float x, float y, float z)) {
-            return new Vector3d(x, y, z);
-        }
-        return null;
+        return VectorUtils.toStrictVectorPortValue(value);
     }
 
     static List<Vector3d> resolvePointList(@Nullable Object value) {
@@ -144,53 +129,28 @@ final class SolidNodeUtils {
         if (targetCount < 2 || section.size() < 2) {
             return List.of();
         }
-
-        int segmentCount = closed ? section.size() : section.size() - 1;
-        if (segmentCount < 1) {
+        double[] cumulative = PathUtils.buildCumulative(section, closed);
+        if (cumulative == null) {
             return List.of();
         }
-
-        double[] cumulative = new double[segmentCount + 1];
-        double total = 0.0d;
-        for (int i = 0; i < segmentCount; i++) {
-            Vector3d a = section.get(i);
-            Vector3d b = section.get((i + 1) % section.size());
-            total += a.distance(b);
-            cumulative[i + 1] = total;
-        }
-        if (total <= EPSILON) {
+        double total = cumulative[cumulative.length - 1];
+        if (!(total > EPSILON) || !Double.isFinite(total)) {
             return List.of();
         }
-
         List<Vector3d> result = new ArrayList<>(targetCount);
         int divisor = closed ? targetCount : Math.max(1, targetCount - 1);
         for (int i = 0; i < targetCount; i++) {
             double distance = (total * i) / divisor;
-            result.add(sampleSectionAtDistance(section, closed, cumulative, distance));
+            if (!Double.isFinite(distance)) {
+                return List.of();
+            }
+            Vector3d sample = PathUtils.sampleAtDistance(section, closed, cumulative, distance);
+            if (sample == null || !com.nodecraft.nodesystem.util.VectorUtils.isFinite(sample)) {
+                return List.of();
+            }
+            result.add(sample);
         }
         return List.copyOf(result);
-    }
-
-    private static Vector3d sampleSectionAtDistance(List<Vector3d> section,
-                                                    boolean closed,
-                                                    double[] cumulative,
-                                                    double distance) {
-        double clamped = Math.max(0.0d, Math.min(distance, cumulative[cumulative.length - 1]));
-        for (int i = 0; i < cumulative.length - 1; i++) {
-            double start = cumulative[i];
-            double end = cumulative[i + 1];
-            if (clamped <= end || i == cumulative.length - 2) {
-                Vector3d a = section.get(i);
-                Vector3d b = section.get((i + 1) % section.size());
-                double segmentLength = end - start;
-                if (segmentLength <= EPSILON) {
-                    return new Vector3d(a);
-                }
-                double t = (clamped - start) / segmentLength;
-                return new Vector3d(a).lerp(b, t);
-            }
-        }
-        return new Vector3d(section.getFirst());
     }
 
     static Vector3d computeTangent(List<Vector3d> points, int index) {
@@ -211,26 +171,31 @@ final class SolidNodeUtils {
         return converted;
     }
 
-    static Vector3d rotateAroundAxis(Vector3d point, Vector3d axisOrigin, Vector3d axisDirection, double angleRadians) {
-        Vector3d k = new Vector3d(axisDirection).normalize();
-        Vector3d relative = new Vector3d(point).sub(axisOrigin);
+    static @Nullable Vector3d rotateAroundAxis(Vector3d point, Vector3d axisOrigin, Vector3d axisDirection, double angleRadians) {
+        Vector3d k = com.nodecraft.nodesystem.util.VectorUtils.safeNormalize(axisDirection);
+        Vector3d relative = com.nodecraft.nodesystem.util.VectorUtils.safeSubtract(point, axisOrigin);
+        if (k == null || relative == null || !Double.isFinite(angleRadians)) {
+            return null;
+        }
 
         double cos = Math.cos(angleRadians);
         double sin = Math.sin(angleRadians);
+        if (!Double.isFinite(cos) || !Double.isFinite(sin)) {
+            return null;
+        }
 
-        Vector3d term1 = new Vector3d(relative).mul(cos);
-        Vector3d term2 = new Vector3d(k).cross(relative, new Vector3d()).mul(sin);
-        Vector3d term3 = new Vector3d(k).mul(k.dot(relative) * (1.0d - cos));
-
-        return term1.add(term2).add(term3).add(axisOrigin);
+        Vector3d term1 = com.nodecraft.nodesystem.util.VectorUtils.safeScale(relative, cos);
+        Vector3d cross = com.nodecraft.nodesystem.util.VectorUtils.safeCross(k, relative);
+        Vector3d term2 = com.nodecraft.nodesystem.util.VectorUtils.safeScale(cross, sin);
+        double kDot = com.nodecraft.nodesystem.util.VectorUtils.safeDot(k, relative);
+        Vector3d term3 = com.nodecraft.nodesystem.util.VectorUtils.safeScale(k, kDot * (1.0d - cos));
+        Vector3d rotated = com.nodecraft.nodesystem.util.VectorUtils.safeAdd(term1, term2);
+        rotated = com.nodecraft.nodesystem.util.VectorUtils.safeAdd(rotated, term3);
+        return com.nodecraft.nodesystem.util.VectorUtils.safeAdd(rotated, axisOrigin);
     }
 
-    static Vector3d computeCenter(List<Vector3d> points) {
-        Vector3d center = new Vector3d();
-        for (Vector3d point : points) {
-            center.add(point);
-        }
-        return points.isEmpty() ? center : center.div(points.size());
+    static @Nullable Vector3d computeCenter(List<Vector3d> points) {
+        return com.nodecraft.nodesystem.util.PointUtils.safeListCenter(points);
     }
 
     static Vec3d toVec3d(Vector3d point) {

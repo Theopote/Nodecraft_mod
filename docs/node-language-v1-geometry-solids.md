@@ -1,6 +1,6 @@
 # Geometry Solids — Surface / Solid Modeling Language v1
 
-**Status: PASSED / FROZEN** (Graph **V72**)
+**Status: PASSED / FROZEN** (historical Graph **V72** residue; `GraphFormatVersion.CURRENT` is stamp-only **1**)
 
 Geometry Solids v1 freezes **22** canonical `geometry.solids.*` nodes under a four-layer stack: `POLYGON_PROFILE` → `PATH` → `SURFACE_STRIP` → `GEOMETRY`, with Valid+Error on every node, typed list ports only (no bare `LIST`), PATH (not POLYLINE) for curve topology, and fail-closed workloads.
 
@@ -33,7 +33,9 @@ Geometry Solids v1 freezes **22** canonical `geometry.solids.*` nodes under a fo
 | 20 | Shrinkwrap Points On Surface Strip | `geometry.solids.shrinkwrap_points_surface_strip` |
 | 21 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` |
 
-**Deleted (V72):** `geometry.solids.extrude_profile` → Extrude; `geometry.solids.shell` → Thicken Surface.
+**Deleted (historical V72):** `geometry.solids.extrude_profile` → Extrude; `geometry.solids.shell` → Thicken Surface.
+
+**Category UX:** palette display **"Solids & Surfaces"**; type ids remain `geometry.solids.*`.
 
 All nodes are `PURE`.
 
@@ -71,9 +73,17 @@ Connection-aware optional ports use [`OptionalPortDrive`](../src/main/java/com/n
 
 `STRICT` (default) / `RESAMPLE_MAX` / `RESAMPLE_COUNT` — no silent auto-repair.
 
+## Section correspondence
+
+Shared `SectionCorrespondence` on Loft / Multi-Loft / Morph: Flip, integer Seam Offset, and **Match Seam** `INDEX` (default) vs explicit `AUTO_SEAM` (cyclic min-distance). AUTO_SEAM never runs when unset.
+
 ## Sweep field semantics
 
-Scale / Rotation as `DOUBLE_LIST` along U: 0 → defaults; 1 → broadcast; N → resample to section count. Scale `> 0`; rotation degrees.
+Scale / Rotation as `DOUBLE_LIST` along U: 0 → defaults; 1 → broadcast; N → resample to section count. Scale **finite and > 0**; Flip Profile is the orientation invert (negative scale is not a flip). Rotation degrees must be finite. Closed Sweep spines use `PathFrameUtils.framesFromSamples(..., closed=true)` holonomy correction.
+
+## Extrude contract
+
+Extrude and Extrude Region share `ProfileExtrusionUtils`. Invalid Height is **NaN**. VECTOR ports accept `VectorData` only. Extrude Region also emits Top Region, Outer Side Surface, and Hole Side Surfaces (empty list when no holes).
 
 ## Voxel approximation
 

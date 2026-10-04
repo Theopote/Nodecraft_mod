@@ -95,7 +95,7 @@ public class DefaultNodeProvider implements INodeProvider {
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.curves", "Curves"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.primitives", "Primitives"));
         registry.registerCategory(new NodeRegistry.NodeCategory("geometry.profiles", "Profiles"));
-        registry.registerCategory(new NodeRegistry.NodeCategory("geometry.solids", "Solids"));
+        registry.registerCategory(new NodeRegistry.NodeCategory("geometry.solids", "Solids & Surfaces"));
         registry.registerCategory(new NodeRegistry.NodeCategory("material.basic_assignment", "Basic Assignment"));
         registry.registerCategory(new NodeRegistry.NodeCategory("material.gradient_mapping", "Gradient Mapping"));
         registry.registerCategory(new NodeRegistry.NodeCategory("material.directional_mapping", "Directional Mapping"));

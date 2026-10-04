@@ -113,7 +113,14 @@ public final class PathUtils {
         for (int i = 0; i < segCount; i++) {
             Vector3d a = unique.get(i);
             Vector3d b = unique.get((i + 1) % unique.size());
-            acc += a.distance(b);
+            double seg = VectorUtils.safeDistance(a, b);
+            if (!Double.isFinite(seg)) {
+                return null;
+            }
+            acc += seg;
+            if (!Double.isFinite(acc)) {
+                return null;
+            }
             cumulative[i + 1] = acc;
         }
         return cumulative;
@@ -135,7 +142,8 @@ public final class PathUtils {
                     return new Vector3d(p0);
                 }
                 double t = (clamped - s0) / segLen;
-                return new Vector3d(p0).lerp(p1, t);
+                Vector3d lerp = VectorUtils.safeLerp(p0, p1, t);
+                return lerp == null ? new Vector3d(p0) : lerp;
             }
         }
         return new Vector3d(unique.getFirst());

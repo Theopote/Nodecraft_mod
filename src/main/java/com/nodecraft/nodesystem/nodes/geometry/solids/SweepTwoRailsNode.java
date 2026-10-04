@@ -155,6 +155,10 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
         List<Vector3d> railB = resamplePath(rawRailB, sectionCount);
         List<Vector3d> centers = computeCenters(railA, railB);
         Vector3d profileOrigin = SolidNodeUtils.computeCenter(profilePoints);
+        if (profileOrigin == null) {
+            invalidate("Profile center is missing or non-finite");
+            return;
+        }
         double profileWidth = computeProfileWidth(profilePoints);
 
         List<List<Vector3d>> sections = new ArrayList<>(sectionCount);
@@ -228,7 +232,15 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
             return null;
         }
         if (connected != null && !connected.isEmpty()) {
+            if (!SweepFieldSupport.allPositiveFinite(connected)) {
+                invalidate("Scale values must all be finite and greater than 0");
+                return null;
+            }
             return SurfaceInputUtils.sampleFieldAlongU(connected, count, startScale);
+        }
+        if (!SweepFieldSupport.isPositiveFinite(startScale) || !SweepFieldSupport.isPositiveFinite(endScale)) {
+            invalidate("Start/end scale must be finite and greater than 0");
+            return null;
         }
         return interpolateField(count, startScale, endScale);
     }
@@ -241,6 +253,10 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
         }
         if (connected != null && !connected.isEmpty()) {
             return SurfaceInputUtils.sampleFieldAlongU(connected, count, startRotationDegrees);
+        }
+        if (!SweepFieldSupport.isFinite(startRotationDegrees) || !SweepFieldSupport.isFinite(endRotationDegrees)) {
+            invalidate("Start/end rotation must be finite");
+            return null;
         }
         return interpolateField(count, startRotationDegrees, endRotationDegrees);
     }
@@ -286,16 +302,16 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
             orientToRails = value;
         }
         if (map.get("startScale") instanceof Number value) {
-            startScale = value.doubleValue();
+            setStartScale(value.doubleValue());
         }
         if (map.get("endScale") instanceof Number value) {
-            endScale = value.doubleValue();
+            setEndScale(value.doubleValue());
         }
         if (map.get("startRotationDegrees") instanceof Number value) {
-            startRotationDegrees = value.doubleValue();
+            setStartRotationDegrees(value.doubleValue());
         }
         if (map.get("endRotationDegrees") instanceof Number value) {
-            endRotationDegrees = value.doubleValue();
+            setEndRotationDegrees(value.doubleValue());
         }
         markDirty();
     }
@@ -341,6 +357,9 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
     }
 
     public void setStartScale(double startScale) {
+        if (!SweepFieldSupport.isPositiveFinite(startScale)) {
+            return;
+        }
         markDirtyIfChanged(this.startScale, startScale);
         this.startScale = startScale;
     }
@@ -350,6 +369,9 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
     }
 
     public void setEndScale(double endScale) {
+        if (!SweepFieldSupport.isPositiveFinite(endScale)) {
+            return;
+        }
         markDirtyIfChanged(this.endScale, endScale);
         this.endScale = endScale;
     }
@@ -359,6 +381,9 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
     }
 
     public void setStartRotationDegrees(double startRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(startRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.startRotationDegrees, startRotationDegrees);
         this.startRotationDegrees = startRotationDegrees;
     }
@@ -368,6 +393,9 @@ public class SweepTwoRailsNode extends AbstractSolidNode {
     }
 
     public void setEndRotationDegrees(double endRotationDegrees) {
+        if (!SweepFieldSupport.isFinite(endRotationDegrees)) {
+            return;
+        }
         markDirtyIfChanged(this.endRotationDegrees, endRotationDegrees);
         this.endRotationDegrees = endRotationDegrees;
     }

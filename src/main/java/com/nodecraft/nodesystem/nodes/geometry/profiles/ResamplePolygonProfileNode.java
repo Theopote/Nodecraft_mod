@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
@@ -118,22 +119,17 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
         if (closedPoints == null || closedPoints.size() < 2 || targetCount < 1) {
             return null;
         }
-        int segmentCount = closedPoints.size() - 1;
-        double[] cumulative = new double[closedPoints.size()];
-        cumulative[0] = 0.0d;
-        double perimeter = 0.0d;
-        for (int i = 0; i < segmentCount; i++) {
-            double segmentLength = VectorUtils.safeDistance(closedPoints.get(i), closedPoints.get(i + 1));
-            if (!Double.isFinite(segmentLength)) {
-                return null;
-            }
-            perimeter += segmentLength;
-            if (!Double.isFinite(perimeter)) {
-                return null;
-            }
-            cumulative[i + 1] = perimeter;
+        PathUtils.ClosedVertices closed = PathUtils.closedUniqueVertices(closedPoints);
+        List<Vector3d> unique = closed.vertices();
+        if (unique.size() < 2) {
+            return null;
         }
-        if (perimeter <= EPSILON) {
+        double[] cumulative = PathUtils.buildCumulative(unique, true);
+        if (cumulative == null) {
+            return null;
+        }
+        double perimeter = cumulative[cumulative.length - 1];
+        if (!(perimeter > EPSILON) || !Double.isFinite(perimeter)) {
             return List.of();
         }
 
@@ -143,37 +139,12 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
             if (!Double.isFinite(targetDistance)) {
                 return null;
             }
-            Vector3d sample = sampleAtDistance(closedPoints, cumulative, targetDistance);
-            if (sample == null) {
+            Vector3d sample = PathUtils.sampleAtDistance(unique, true, cumulative, targetDistance);
+            if (sample == null || !VectorUtils.isFinite(sample)) {
                 return null;
             }
             result.add(sample);
         }
         return List.copyOf(result);
-    }
-
-    private static @Nullable Vector3d sampleAtDistance(
-            List<Vector3d> closedPoints,
-            double[] cumulative,
-            double targetDistance
-    ) {
-        for (int i = 0; i < closedPoints.size() - 1; i++) {
-            double startDistance = cumulative[i];
-            double endDistance = cumulative[i + 1];
-            if (targetDistance <= endDistance || i == closedPoints.size() - 2) {
-                Vector3d start = closedPoints.get(i);
-                Vector3d end = closedPoints.get(i + 1);
-                double segmentLength = endDistance - startDistance;
-                if (!Double.isFinite(segmentLength)) {
-                    return null;
-                }
-                if (segmentLength <= EPSILON) {
-                    return new Vector3d(start);
-                }
-                double t = (targetDistance - startDistance) / segmentLength;
-                return VectorUtils.safeLerp(start, end, t);
-            }
-        }
-        return new Vector3d(closedPoints.getFirst());
     }
 }

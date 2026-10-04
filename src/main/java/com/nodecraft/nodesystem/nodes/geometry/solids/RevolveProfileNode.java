@@ -140,6 +140,10 @@ public class RevolveProfileNode extends AbstractSolidNode {
             List<Vector3d> uniqueSectionPoints = new ArrayList<>(baseUniquePoints.size());
             for (Vector3d point : baseUniquePoints) {
                 Vector3d revolvedPoint = SolidNodeUtils.rotateAroundAxis(point, axis.origin(), axis.direction(), currentAngle);
+                if (revolvedPoint == null) {
+                    invalidate("Revolved section point is non-finite");
+                    return;
+                }
                 uniqueSectionPoints.add(revolvedPoint);
                 allPoints.add(revolvedPoint);
             }
@@ -149,17 +153,27 @@ public class RevolveProfileNode extends AbstractSolidNode {
             closedSectionPoints.add(new Vector3d(uniqueSectionPoints.getFirst()));
 
             Vector3d sectionCenter = SolidNodeUtils.computeCenter(uniqueSectionPoints);
+            if (sectionCenter == null) {
+                invalidate("Revolved section center is missing or non-finite");
+                return;
+            }
             Vector3d sectionNormal = SolidNodeUtils.rotateAroundAxis(
                 profile.plane().getNormal(),
                 new Vector3d(),
                 axis.direction(),
                 currentAngle
             );
-            if (sectionNormal.lengthSquared() <= EPSILON) {
+            if (sectionNormal == null || sectionNormal.lengthSquared() <= EPSILON) {
                 sectionNormal = new Vector3d(axis.direction());
             }
             PlaneData sectionPlane = new PlaneData(sectionCenter, sectionNormal);
-            PolygonProfileData sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
+            PolygonProfileData sectionProfile;
+            try {
+                sectionProfile = new PolygonProfileData(closedSectionPoints, sectionPlane);
+            } catch (IllegalArgumentException ex) {
+                invalidate(ex.getMessage() == null ? "Revolved section profile is invalid" : ex.getMessage());
+                return;
+            }
 
             sectionProfiles.add(sectionProfile);
             PathData boundary = SolidNodeUtils.toPath(sectionProfile.getBoundary());
@@ -207,18 +221,20 @@ public class RevolveProfileNode extends AbstractSolidNode {
         if (axisLineObj instanceof LineData line) {
             Vector3d start = new Vector3d(line.start().x, line.start().y, line.start().z);
             Vector3d end = new Vector3d(line.end().x, line.end().y, line.end().z);
-            Vector3d direction = end.sub(start, new Vector3d());
-            if (direction.lengthSquared() > EPSILON) {
-                return new Axis(start, direction.normalize());
+            Vector3d unit = com.nodecraft.nodesystem.util.VectorUtils.safeNormalize(
+                com.nodecraft.nodesystem.util.VectorUtils.safeSubtract(end, start));
+            if (unit != null) {
+                return new Axis(start, unit);
             }
         }
 
         Vector3d origin = SolidNodeUtils.resolvePoint(inputValues.get(INPUT_AXIS_ORIGIN_ID));
         Vector3d direction = SolidNodeUtils.resolveDirection(inputValues.get(INPUT_AXIS_DIRECTION_ID));
-        if (origin == null || direction == null || direction.lengthSquared() <= EPSILON) {
+        Vector3d unit = com.nodecraft.nodesystem.util.VectorUtils.safeNormalize(direction);
+        if (origin == null || unit == null) {
             return null;
         }
-        return new Axis(origin, direction.normalize());
+        return new Axis(origin, unit);
     }
 
     private void invalidate(String error) {

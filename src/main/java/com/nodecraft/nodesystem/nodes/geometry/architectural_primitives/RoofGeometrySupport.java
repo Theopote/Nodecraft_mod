@@ -890,7 +890,7 @@ final class RoofGeometrySupport {
         if (normal == null) {
             return null;
         }
-        PlaneData plane = PlaneData.canonical(points.get(0), normal);
+        PlaneData plane = PlaneData.canonical(points.getFirst(), normal);
         PolygonProfileData profile = ProfileConstructionUtils.tryCreateProfile(points, plane, null);
         if (profile == null) {
             return null;
