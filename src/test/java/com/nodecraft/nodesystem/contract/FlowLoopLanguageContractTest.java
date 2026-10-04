@@ -161,6 +161,15 @@ class FlowLoopLanguageContractTest {
     }
 
     @Test
+    void whileUnconnectedConditionFailsClosed() {
+        WhileLoopNode node = new WhileLoopNode();
+        Map<String, Object> outputs = node.compute(Map.of());
+        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        assertTrue(String.valueOf(outputs.get("output_error")).contains("Condition"));
+        assertTrue(node.getActiveExecOutputPortIds().isEmpty());
+    }
+
+    @Test
     void whileMaxIterationsRejectsDoubleAndOutOfRange() {
         WhileLoopNode dbl = new WhileLoopNode();
         assertEquals(Boolean.FALSE, dbl.compute(Map.of(
@@ -173,6 +182,17 @@ class FlowLoopLanguageContractTest {
                 "input_condition", true,
                 "input_max_iterations", 0
         )).get("output_valid"));
+    }
+
+    @Test
+    void whileSetMaxIterationsIgnoresOutOfRange() {
+        WhileLoopNode node = new WhileLoopNode();
+        node.setMaxIterations(32);
+        assertEquals(32, node.getMaxIterations());
+        node.setMaxIterations(0);
+        assertEquals(32, node.getMaxIterations());
+        node.setMaxIterations(GenerationLimits.MAX_LOOP_ITERATIONS + 1);
+        assertEquals(32, node.getMaxIterations());
     }
 
     @Test
@@ -197,11 +217,41 @@ class FlowLoopLanguageContractTest {
     }
 
     @Test
+    void whileCanRunSecondIndependentSessionWithinSameExecutionRun() {
+        WhileLoopNode node = new WhileLoopNode();
+        node.setMaxIterations(2);
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new ExecutionRunGuard());
+
+        node.compute(Map.of("input_condition", true), context);
+        node.compute(Map.of("input_condition", true), context);
+        node.compute(Map.of("input_condition", true), context);
+        assertEquals(Set.of("exec_complete"), node.getActiveExecOutputPortIds());
+        assertEquals(true, node.getOutput("output_hit_limit"));
+        assertEquals(2, node.getOutput("output_iterations"));
+
+        // Same guard: session counter was cleared; a new pulse starts a new session.
+        node.compute(Map.of("input_condition", true), context);
+        assertEquals(Set.of("exec_body"), node.getActiveExecOutputPortIds());
+        assertEquals(1, node.getOutput("output_iterations"));
+        assertEquals(false, node.getOutput("output_hit_limit"));
+    }
+
+    @Test
     void whileHasNoValuesPorts() {
         INode node = registry.createNodeInstance("flow.loop.while");
         assertFalse(hasPort(node, "input_values"));
         assertFalse(hasPort(node, "output_values"));
+        assertFalse(hasPort(node, "input_default_condition"));
         assertPortType(node, "input_condition", NodeDataType.BOOLEAN);
+    }
+
+    @Test
+    void forEachIterationCountPortIsPresent() {
+        INode node = registry.createNodeInstance("flow.loop.for_each");
+        IPort count = findPort(node, "output_count");
+        assertNotNull(count);
+        assertEquals("Iteration Count", count.getDisplayName());
     }
 
     @Test

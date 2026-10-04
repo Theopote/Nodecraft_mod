@@ -22,13 +22,15 @@ import java.util.UUID;
 /**
  * Condition-driven exec loop. Body loop-back re-evaluates Condition each pulse.
  * Iteration count is run-local on {@link ExecutionRunGuard}.
+ * Completing a session clears the counter so a later pulse in the same run starts a new session.
  */
 @NodeInfo(
     effect = NodeEffect.CONTEXT_WRITE,
     id = "flow.loop.while",
     displayName = "While Loop",
     description = "Routes exec_body while Condition is true under Max Iterations. "
-        + "Loop exec_body back to exec_in; exec_complete fires on false or hit limit.",
+        + "Loop exec_body back to exec_in; exec_complete fires on false or hit limit. "
+        + "Condition is required BOOLEAN.",
     category = "flow.loop",
     order = 1
 )
@@ -51,22 +53,20 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     @NodeProperty(displayName = "Max Iterations", category = "Loop", order = 1)
     private int maxIterations = DEFAULT_MAX_ITERATIONS;
 
-    @NodeProperty(displayName = "Default Condition", category = "Loop", order = 2)
-    private boolean defaultCondition = true;
-
     private transient Set<String> activeExecOutputs = Set.of();
 
     public WhileLoopNode() {
         super(UUID.randomUUID(), "flow.loop.while");
 
         addInputPort(new BasePort(INPUT_EXEC_ID, "Exec In", "Incoming execution pulse", NodeDataType.EXEC, this, true, false));
-        addInputPort(new BasePort(INPUT_CONDITION_ID, "Condition", "Loop condition (BOOLEAN only)", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_CONDITION_ID, "Condition",
+            "Required BOOLEAN; unconnected is invalid", NodeDataType.BOOLEAN, this));
         addInputPort(new BasePort(INPUT_MAX_ITERATIONS_ID, "Max Iterations", "Exact INTEGER cap 1.."
             + GenerationLimits.MAX_LOOP_ITERATIONS, NodeDataType.INTEGER, this));
 
         addOutputPort(new BasePort(OUTPUT_EXEC_BODY_ID, "Exec Body", "Fires while condition is true", NodeDataType.EXEC, this));
         addOutputPort(new BasePort(OUTPUT_EXEC_COMPLETE_ID, "Exec Complete", "Fires when condition is false or hit limit", NodeDataType.EXEC, this));
-        addOutputPort(new BasePort(OUTPUT_ITERATIONS_ID, "Iterations", "Body pulses fired in this run so far", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_ITERATIONS_ID, "Iterations", "Body pulses fired in this loop session so far", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_TERMINATED_BY_CONDITION_ID, "Terminated By Condition", "Stopped because condition became false", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HIT_LIMIT_ID, "Hit Limit", "Stopped because max iterations was reached", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
@@ -89,7 +89,7 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
 
         Boolean condition = resolveCondition();
         if (condition == null) {
-            publishValid(false, "Condition is null or invalid.");
+            publishValid(false, "Condition is required, null, or invalid.");
             return;
         }
 
@@ -129,15 +129,16 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     }
 
     private @Nullable Boolean resolveCondition() {
-        if (OptionalPortDrive.isConnected(this, INPUT_CONDITION_ID)) {
-            Object value = inputValues.get(INPUT_CONDITION_ID);
-            return value instanceof Boolean bool ? bool : null;
+        if (!OptionalPortDrive.isConnected(this, INPUT_CONDITION_ID)) {
+            Object raw = inputValues.get(INPUT_CONDITION_ID);
+            // Unconnected with no value → required Condition missing.
+            if (raw == null) {
+                return null;
+            }
+            return raw instanceof Boolean bool ? bool : null;
         }
-        Object raw = inputValues.get(INPUT_CONDITION_ID);
-        if (raw == null) {
-            return defaultCondition;
-        }
-        return raw instanceof Boolean bool ? bool : null;
+        Object value = inputValues.get(INPUT_CONDITION_ID);
+        return value instanceof Boolean bool ? bool : null;
     }
 
     private @Nullable Integer resolveMaxIterations() {
@@ -197,7 +198,6 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("maxIterations", maxIterations);
-        state.put("defaultCondition", defaultCondition);
         return state;
     }
 
@@ -211,13 +211,8 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
             && integer >= 1
             && integer <= GenerationLimits.MAX_LOOP_ITERATIONS) {
             maxIterations = integer;
-        } else if (maxIterationsObj != null) {
-            maxIterations = DEFAULT_MAX_ITERATIONS;
         }
-        Object defaultConditionObj = map.get("defaultCondition");
-        if (defaultConditionObj instanceof Boolean value) {
-            defaultCondition = value;
-        }
+        // Ignore legacy defaultCondition and out-of-range maxIterations (keep current/default).
     }
 
     public int getMaxIterations() {
@@ -227,18 +222,7 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     public void setMaxIterations(int maxIterations) {
         if (maxIterations >= 1 && maxIterations <= GenerationLimits.MAX_LOOP_ITERATIONS) {
             this.maxIterations = maxIterations;
-        } else {
-            this.maxIterations = DEFAULT_MAX_ITERATIONS;
+            markDirty();
         }
-        markDirty();
-    }
-
-    public boolean isDefaultCondition() {
-        return defaultCondition;
-    }
-
-    public void setDefaultCondition(boolean defaultCondition) {
-        this.defaultCondition = defaultCondition;
-        markDirty();
     }
 }

@@ -33,6 +33,7 @@ public final class BlockStateResolver {
 
     /**
      * Resolves a block id to its default {@link BlockState}, or {@code null} when unknown.
+     * Catches bootstrap/linkage failures so pure unit tests without a live registry do not crash.
      */
     public static @Nullable BlockState resolveDefault(@Nullable String blockId) {
         if (blockId == null || blockId.isBlank()) {
@@ -42,8 +43,23 @@ public final class BlockStateResolver {
             Identifier id = Identifier.of(blockId);
             Block block = Registries.BLOCK.get(id);
             return block != null ? block.getDefaultState() : null;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
             return null;
+        }
+    }
+
+    /**
+     * {@code true} when the block registry can resolve a known id (in-game / bootstrapped tests).
+     * {@code false} in pure unit tests without Minecraft bootstrap — callers should skip
+     * registry preflight and keep blank-id checks only.
+     */
+    public static boolean isRegistryReady() {
+        try {
+            Identifier id = Identifier.of("minecraft:air");
+            Block block = Registries.BLOCK.get(id);
+            return block != null;
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 

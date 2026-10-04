@@ -13,9 +13,7 @@ import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.PlacementPreflight;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -136,8 +134,9 @@ public class BiomeFieldToBlocksNode extends BaseNode {
                 writeInvalid("Biome Palette entry is empty.");
                 return;
             }
-            if (BlockStateResolver.resolveDefault(paletteBlockId) == null) {
-                writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + paletteBlockId);
+            String paletteError = TerrainNodeUtils.preflightBlockIdError(paletteBlockId);
+            if (paletteError != null) {
+                writeInvalid(paletteError);
                 return;
             }
         }

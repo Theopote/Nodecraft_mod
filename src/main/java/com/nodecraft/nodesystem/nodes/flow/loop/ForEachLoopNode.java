@@ -65,7 +65,9 @@ public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
         addOutputPort(new BasePort(OUTPUT_ITEM_ID, "Item", "Current iterated item (T)", NodeDataType.ANY, this)
             .bindListElementType(LIST_T));
         addOutputPort(new BasePort(OUTPUT_INDEX_ID, "Index", "Current item index (0-based)", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of body iterations", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Iteration Count",
+            "Resolved number of iterations for this loop invocation (planned body pulses, not necessarily completed)",
+            NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether preflight succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why the loop did not run", NodeDataType.STRING, this));
     }

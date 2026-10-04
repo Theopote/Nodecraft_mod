@@ -76,7 +76,7 @@
 |---|---|---|---|
 | Branch | `flow.control.branch` | Routes exec by Condition. Signal is optional passthrough T and never gates exec routing. | `BranchNode` |
 | Sequence | `flow.control.sequence` | Fires Exec Step 1..N in order. Signal is optional passthrough T; Step Count is exact INTEGER 1..8. | `SequenceNode` |
-| Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset. Signal is optional passthrough T and never gates exec. | `DoOnceNode` |
+| Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset by an EXEC pulse. | `DoOnceNode` |
 
 ## flow.loop（2）
 

@@ -75,7 +75,7 @@ All nodes: `PURE`, `Valid` / `Error`.
 ### Materializers
 
 - No hidden grass/stone/water/concrete defaults
-- Surface / Subsurface / Water / High / Low / Palette entries preflight via `BlockStateResolver.resolveDefault`
+- Surface / Subsurface / Water / High / Low / Palette entries preflight via `BlockStateResolver` when the block registry is ready (in-game); blank ids always fail
 - Surface Block required; Fill Depth > 0 ⇒ Subsurface required; Fill Depth capped by region height
 - Water Level = absolute Y with checked round-to-int in −64..319; Water only when Water Level connected **and** Water Block provided
 - Surface Blocks = `BLOCK_LIST` (renamed from Surface Points)

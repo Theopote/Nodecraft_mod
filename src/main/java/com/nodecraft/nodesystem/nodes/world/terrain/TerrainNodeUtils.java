@@ -2,8 +2,10 @@ package com.nodecraft.nodesystem.nodes.world.terrain;
 
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.PlacementPreflight;
 import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -226,5 +228,23 @@ final class TerrainNodeUtils {
         } catch (ArithmeticException e) {
             return -1L;
         }
+    }
+
+    /**
+     * Registry preflight for terrain materializers. Returns an error string when the block id
+     * cannot be resolved; {@code null} when ok. When the Minecraft registry is not bootstrapped
+     * (pure unit tests), only blank ids are rejected by the caller — this returns {@code null}.
+     */
+    static @Nullable String preflightBlockIdError(@Nullable String blockId) {
+        if (blockId == null || blockId.isBlank()) {
+            return PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": (blank)";
+        }
+        if (!BlockStateResolver.isRegistryReady()) {
+            return null;
+        }
+        if (BlockStateResolver.resolveDefault(blockId) == null) {
+            return PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + blockId;
+        }
+        return null;
     }
 }

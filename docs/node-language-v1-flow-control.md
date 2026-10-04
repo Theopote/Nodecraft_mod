@@ -56,9 +56,10 @@ Rules:
 
 Rules:
 
-- Step Count exact INTEGER; no `Number.intValue()` truncation; no silent clamp
+- Step Count exact INTEGER; no `Number.intValue()` truncation; no silent clamp on the live port
 - Out of range / invalid → `Valid=false`, no exec steps
 - Unconnected → property default `2`
+- Property setter `setStepCount`: out-of-range values are **ignored** (keep previous); no silent clamp
 - Null Signal still fires active exec steps and replicates null to step outs
 - `MAX_STEPS = 8` (fixed ports)
 
@@ -68,7 +69,7 @@ Rules:
 |------|------|
 | Exec In | EXEC |
 | Signal | T optional |
-| Reset | BOOLEAN optional |
+| Reset | EXEC optional |
 | Exec Out / Exec Blocked | EXEC |
 | First Pass / Blocked | T |
 | Did Execute / Has Executed | BOOLEAN |
@@ -77,16 +78,18 @@ Rules:
 Rules:
 
 - Gate is **once per execution run** (not once per SavedGraph / session)
-- Gate state lives on `ExecutionRunGuard` run-local flags keyed by node id (bound for the NodeExecutor run, including null-context runs)
+- Gate state lives on `ExecutionRunGuard` run-local flags keyed by node id
+- **Requires** an `ExecutionRunGuard` (shared on context or thread-local); missing → `Valid=false`, no exec
 - Never serialize executed state into `getNodeState()` / SavedGraph
-- First exec pulse → Exec Out; subsequent pulses in the same run → Exec Blocked
-- Reset (true) clears the current run’s flag only
-- Connected null / non-Boolean Reset → `Valid=false`, no exec
+- First Exec In pulse → Exec Out; subsequent pulses in the same run → Exec Blocked
+- Reset EXEC pulse clears the current run’s flag; Reset-only activation clears and fires no Out/Blocked
+- Unconnected / not-fired Reset → no reset (not an error)
 - Null Signal still fires the appropriate exec out
 
 ## Migration (V64 → V65)
 
 - Strip `fallbackExecuted` from `flow.control.do_once` saved state (incl. subgraphs)
+- Docs-only note: Reset BOOLEAN → EXEC (no runtime GraphFormatVersion remap; stamp-only format)
 
 ## Verification
 

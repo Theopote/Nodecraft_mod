@@ -12,10 +12,8 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import com.nodecraft.nodesystem.util.PlacementPreflight;
 import com.nodecraft.nodesystem.util.WorldCoordinateValidator;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -197,8 +195,9 @@ public class HeightfieldToBlocksNode extends BaseNode {
             writeInvalid("Surface Block is required.");
             return;
         }
-        if (BlockStateResolver.resolveDefault(resolvedSurface) == null) {
-            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedSurface);
+        String surfaceError = TerrainNodeUtils.preflightBlockIdError(resolvedSurface);
+        if (surfaceError != null) {
+            writeInvalid(surfaceError);
             return;
         }
 
@@ -208,9 +207,12 @@ public class HeightfieldToBlocksNode extends BaseNode {
             writeInvalid("Subsurface Block is required when Fill Depth > 0.");
             return;
         }
-        if (resolvedSubsurface != null && BlockStateResolver.resolveDefault(resolvedSubsurface) == null) {
-            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedSubsurface);
-            return;
+        if (resolvedSubsurface != null) {
+            String subsurfaceError = TerrainNodeUtils.preflightBlockIdError(resolvedSubsurface);
+            if (subsurfaceError != null) {
+                writeInvalid(subsurfaceError);
+                return;
+            }
         }
 
         Integer waterLevelY = null;
@@ -233,8 +235,9 @@ public class HeightfieldToBlocksNode extends BaseNode {
                 writeInvalid("Water Block is required when Water Level is connected.");
                 return;
             }
-            if (BlockStateResolver.resolveDefault(resolvedWaterBlock) == null) {
-                writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + resolvedWaterBlock);
+            String waterError = TerrainNodeUtils.preflightBlockIdError(resolvedWaterBlock);
+            if (waterError != null) {
+                writeInvalid(waterError);
                 return;
             }
         }

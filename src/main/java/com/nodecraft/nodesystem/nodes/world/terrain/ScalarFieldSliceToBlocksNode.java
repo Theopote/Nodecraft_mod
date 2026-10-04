@@ -12,9 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.BlockSpace;
-import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import com.nodecraft.nodesystem.util.PlacementPreflight;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -178,8 +176,9 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
             writeInvalid("High Block is required.", resolvedStep);
             return;
         }
-        if (BlockStateResolver.resolveDefault(high) == null) {
-            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + high, resolvedStep);
+        String highError = TerrainNodeUtils.preflightBlockIdError(high);
+        if (highError != null) {
+            writeInvalid(highError, resolvedStep);
             return;
         }
 
@@ -188,9 +187,12 @@ public class ScalarFieldSliceToBlocksNode extends BaseNode {
             writeInvalid("Low Block is required unless Only High Blocks is true.", resolvedStep);
             return;
         }
-        if (low != null && BlockStateResolver.resolveDefault(low) == null) {
-            writeInvalid(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK + ": " + low, resolvedStep);
-            return;
+        if (low != null) {
+            String lowError = TerrainNodeUtils.preflightBlockIdError(low);
+            if (lowError != null) {
+                writeInvalid(lowError, resolvedStep);
+                return;
+            }
         }
 
         List<BlockPlacementData> placements = new ArrayList<>();

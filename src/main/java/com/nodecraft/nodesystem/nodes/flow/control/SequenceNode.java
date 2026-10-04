@@ -155,7 +155,9 @@ public class SequenceNode extends BaseNode implements ExecRoutingNode {
     }
 
     public void setStepCount(int stepCount) {
-        this.stepCount = Math.max(1, Math.min(stepCount, MAX_STEPS));
-        markDirty();
+        if (stepCount >= 1 && stepCount <= MAX_STEPS) {
+            this.stepCount = stepCount;
+            markDirty();
+        }
     }
 }

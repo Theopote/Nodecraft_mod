@@ -167,6 +167,17 @@ class FlowControlLanguageContractTest {
     }
 
     @Test
+    void sequenceSetStepCountIgnoresOutOfRange() {
+        SequenceNode sequence = new SequenceNode();
+        sequence.setStepCount(3);
+        assertEquals(3, sequence.getStepCount());
+        sequence.setStepCount(9);
+        assertEquals(3, sequence.getStepCount());
+        sequence.setStepCount(0);
+        assertEquals(3, sequence.getStepCount());
+    }
+
+    @Test
     void doOnceWithoutSignalStillFiresExec() {
         ExecutionContext context = ExecutionContext.createEmpty(null);
         context.setSharedExecutionRunGuard(new ExecutionRunGuard());
@@ -179,13 +190,52 @@ class FlowControlLanguageContractTest {
     }
 
     @Test
-    void doOnceResetConnectedNullInvalid() {
-        DoOnceProbe gate = new DoOnceProbe();
-        gate.connectInput("input_reset", NodeDataType.BOOLEAN);
-        gate.setInput("input_reset", null);
-        gate.processNode(null);
-        assertEquals(Boolean.FALSE, gate.getOutput("output_valid"));
+    void doOnceWithoutRunGuardFailsClosed() {
+        DoOnceNode gate = new DoOnceNode();
+        Map<String, Object> outputs = gate.compute(Map.of());
+        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        assertTrue(String.valueOf(outputs.get("output_error")).contains("execution run context"));
         assertTrue(gate.getActiveExecOutputPortIds().isEmpty());
+    }
+
+    @Test
+    void doOnceResetExecNotFiredIsOk() {
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new ExecutionRunGuard());
+        DoOnceProbe gate = new DoOnceProbe();
+        gate.connectInput("input_reset", NodeDataType.EXEC);
+        gate.setInput("input_reset", null);
+        gate.processNode(context);
+        assertEquals(Boolean.TRUE, gate.getOutput("output_valid"));
+        assertEquals(Set.of("exec_out"), gate.getActiveExecOutputPortIds());
+    }
+
+    @Test
+    void doOnceResetExecClearsGate() {
+        DoOnceNode gate = new DoOnceNode();
+        ExecutionContext context = ExecutionContext.createEmpty(null);
+        context.setSharedExecutionRunGuard(new ExecutionRunGuard());
+
+        gate.compute(Map.of("exec_in", true, "input_signal", "a"), context);
+        assertEquals(Set.of("exec_out"), gate.getActiveExecOutputPortIds());
+
+        gate.compute(Map.of("exec_in", true, "input_signal", "b"), context);
+        assertEquals(Set.of("exec_blocked"), gate.getActiveExecOutputPortIds());
+
+        Map<String, Object> resetOnly = gate.compute(Map.of("input_reset", true), context);
+        assertEquals(Boolean.TRUE, resetOnly.get("output_valid"));
+        assertTrue(gate.getActiveExecOutputPortIds().isEmpty());
+        assertEquals(false, resetOnly.get("output_has_executed"));
+
+        Map<String, Object> again = gate.compute(Map.of("exec_in", true, "input_signal", "c"), context);
+        assertEquals(Set.of("exec_out"), gate.getActiveExecOutputPortIds());
+        assertEquals("c", again.get("output_first_pass"));
+    }
+
+    @Test
+    void doOnceResetPortIsExec() {
+        INode gate = registry.createNodeInstance("flow.control.do_once");
+        assertPortType(gate, "input_reset", NodeDataType.EXEC);
     }
 
     @Test

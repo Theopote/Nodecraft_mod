@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.ExecutionRunGuard;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
@@ -21,7 +20,8 @@ import java.util.UUID;
     effect = NodeEffect.CONTEXT_WRITE,
     id = "flow.control.do_once",
     displayName = "Do Once",
-    description = "Passes exec once per execution run unless reset. Signal is optional passthrough T and never gates exec.",
+    description = "Passes exec once per execution run unless reset by an EXEC pulse. "
+        + "Signal is optional passthrough T and never gates exec. Requires an execution run context.",
     category = "flow.control",
     order = 2
 )
@@ -51,7 +51,8 @@ public class DoOnceNode extends BaseNode implements ExecRoutingNode {
         signalIn.bindPassthroughType("T");
         addInputPort(signalIn);
 
-        addInputPort(new BasePort(INPUT_RESET_ID, "Reset", "Resets the run-local gate when true", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_RESET_ID, "Reset",
+            "Optional reset pulse; clears the run-local gate when fired", NodeDataType.EXEC, this, true, false));
 
         addOutputPort(new BasePort(OUTPUT_EXEC_OUT_ID, "Exec Out", "Fires on first pass", NodeDataType.EXEC, this));
         addOutputPort(new BasePort(OUTPUT_EXEC_BLOCKED_ID, "Exec Blocked", "Fires when gate is already consumed", NodeDataType.EXEC, this));
@@ -66,7 +67,7 @@ public class DoOnceNode extends BaseNode implements ExecRoutingNode {
 
         addOutputPort(new BasePort(OUTPUT_DID_EXECUTE_ID, "Did Execute", "Whether this pulse passed the gate", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_HAS_EXECUTED_ID, "Has Executed", "Whether the gate is already consumed", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether Reset preflight succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether Do Once preflight succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Why Do Once did not run", NodeDataType.STRING, this));
     }
 
@@ -85,19 +86,29 @@ public class DoOnceNode extends BaseNode implements ExecRoutingNode {
         outputValues.put(OUTPUT_DID_EXECUTE_ID, false);
         outputValues.put(OUTPUT_HAS_EXECUTED_ID, false);
 
-        Boolean reset = resolveReset();
-        if (reset == null) {
-            publishValid(false, "Reset is null or invalid.");
+        ExecutionRunGuard guard = resolveGuard(context);
+        if (guard == null) {
+            publishValid(false, "Do Once requires an execution run context.");
+            return;
+        }
+
+        boolean resetPulse = Boolean.TRUE.equals(inputValues.get(INPUT_RESET_ID));
+        boolean drivePulse = Boolean.TRUE.equals(inputValues.get(INPUT_EXEC_ID));
+        // Data-path / compute(Map) without an EXEC payload still drives the gate when not reset-only.
+        boolean dataPathDrive = !resetPulse && inputValues.get(INPUT_EXEC_ID) == null;
+
+        String gateKey = gateKey();
+        if (resetPulse) {
+            clearExecuted(context, gateKey);
+        }
+
+        if (resetPulse && !drivePulse && !dataPathDrive) {
+            outputValues.put(OUTPUT_HAS_EXECUTED_ID, readExecuted(context, gateKey));
+            publishValid(true, "");
             return;
         }
 
         Object signal = inputValues.get(INPUT_SIGNAL_ID);
-        String gateKey = gateKey();
-
-        if (reset) {
-            clearExecuted(context, gateKey);
-        }
-
         boolean alreadyExecuted = readExecuted(context, gateKey);
         if (!alreadyExecuted) {
             writeExecuted(context, gateKey, true);
@@ -120,18 +131,6 @@ public class DoOnceNode extends BaseNode implements ExecRoutingNode {
         publishValid(true, "");
     }
 
-    private @Nullable Boolean resolveReset() {
-        if (OptionalPortDrive.isConnected(this, INPUT_RESET_ID)) {
-            Object value = inputValues.get(INPUT_RESET_ID);
-            return value instanceof Boolean bool ? bool : null;
-        }
-        Object raw = inputValues.get(INPUT_RESET_ID);
-        if (raw == null) {
-            return false;
-        }
-        return raw instanceof Boolean bool ? bool : null;
-    }
-
     private String gateKey() {
         return "flow.do_once.executed." + getId();
     }
@@ -139,7 +138,6 @@ public class DoOnceNode extends BaseNode implements ExecRoutingNode {
     private static boolean readExecuted(@Nullable ExecutionContext context, String key) {
         ExecutionRunGuard guard = resolveGuard(context);
         if (guard == null) {
-            // No run-local store: treat as not-yet-executed for this call only.
             return false;
         }
         return guard.getRunLocalFlag(key);

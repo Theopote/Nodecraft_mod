@@ -11,9 +11,24 @@ The comprehensive review is **directionally correct**: NodeCraft is still primar
 | Branch/While cannot skip branches | **Still true for dataflow nodes**; exec scheduler is the path to fix this |
 | Cycles fail immediately | **Data cycles still fail**; exec cycles are bounded by `ExecutionRunGuard` |
 
-Existing flow nodes (`flow.control.*`, `flow.loop.*`) remain usable as data helpers when used without exec wires. With exec wires they route execution — see Graph **V65** [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) and Graph **V66** [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md).
+With exec wires, `flow.control.*` / `flow.loop.*` route execution — see Graph **V65** [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) and Graph **V66** [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md). Legacy data outputs remain for graphs without exec wires; **Exec In eligibility is owned by `NodeExecutor`**, not re-checked inside each flow node’s `processNode`.
 
 Reference roadmap: `docs/node-system-完善版路线图-2026-04-26.md` (P0-A / P0-B).
+
+---
+
+## Frozen Exec Flow contracts
+
+1. **EXEC eligibility** is owned by `NodeExecutor` (frontier), not node-local `processNode` checks.
+2. **`ExecRoutingNode`** only selects outgoing EXEC ports after compute.
+3. **Payload null never suppresses EXEC** (Signal / Item / etc. are orthogonal to routing).
+4. **Sequence** drains active exec ports **sequentially** (`drainExecPortsSequentially()`); never parallelize Sequence step subtrees.
+5. **Loop iterations share the same graph-call variable scope** (accumulators work across iterations).
+6. **Subgraph calls create a nested variable scope** (orthogonal to loops).
+7. **Run-local gates/counters** (Do Once, While iterations) live on `ExecutionRunGuard`, never SavedGraph.
+8. **All repeated execution consumes the same global run guard** (`maxSteps` / `maxDurationMs`).
+9. **Invalid preflight fires no EXEC outputs** (and ForEach does not fire Complete).
+10. **User-defined limits ending normally are not runtime errors** (e.g. While Hit Limit → `Valid=true`, Complete).
 
 ---
 

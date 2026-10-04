@@ -24,23 +24,24 @@ List aggregation / Take-While / First-Last belong in `math.list`, not here.
 | Exec Body / Exec Complete | EXEC |
 | Item | T (`bindListElementType`) |
 | Index | INTEGER |
-| Count | INTEGER |
+| Iteration Count (`output_count`) | INTEGER — planned body pulses for this invocation |
 | Valid / Error | BOOLEAN / STRING |
 
 Rules:
 
 - Enabled: unconnected → property default `true`; connected null/wrong type → `Valid=false`, no Complete
 - List size `> MAX_LOOP_ITERATIONS` (100_000) → `Valid=false`, Body 0, no Complete
-- Empty list / Enabled=false → `Valid=true`, Body 0, Complete once, Count=0
+- Empty list / Enabled=false → `Valid=true`, Body 0, Complete once, Iteration Count=0
 - Null list elements count as iterations
 - Invalid input: `shouldFireExecComplete()=false` (executor does not fire Complete)
+- Iteration Count is the **resolved/planned** size, not a completed-body counter after cancellation
 
 ## While
 
 | Port | Type |
 |------|------|
 | Exec In | EXEC |
-| Condition | BOOLEAN |
+| Condition | BOOLEAN **required** |
 | Max Iterations | INTEGER exact `1..MAX_LOOP_ITERATIONS` |
 | Exec Body / Exec Complete | EXEC |
 | Iterations | INTEGER |
@@ -50,11 +51,12 @@ Rules:
 
 Rules:
 
-- Condition: unconnected → property default; connected-invalid → `Valid=false`, neither Body nor Complete
-- Max Iterations: exact INTEGER; no `Number.intValue()` / no silent clamp on live path
+- Condition: **must be connected** (or supplied as strict BOOLEAN); unconnected → `Valid=false`, neither Body nor Complete. No Default Condition property.
+- Max Iterations: exact INTEGER on live path; property setter ignores out-of-range (keeps previous)
 - Iteration counter is **run-local** on `ExecutionRunGuard` (not node field / SavedGraph)
+- Completing a session (false condition or Hit Limit) **clears** the counter; a later pulse in the **same** execution run starts a new independent session
 - Dual budget: node Max Iterations + global `ExecutionRunGuard.maxSteps`
-- Hit Limit: Condition still true and Iterations == Max → Complete fires with `HitLimit=true`
+- Hit Limit: Condition still true and Iterations == Max → Complete fires with `HitLimit=true`, `Valid=true`
 
 ## ExecLoopNode completion policy
 
@@ -65,9 +67,12 @@ shouldFireExecComplete() == true   → after N body drains, fire Complete
 
 ## Migration (V65 → V66)
 
+Docs-only / language fence (no runtime GraphFormatVersion remaps; stamp-only format):
+
 - Drop wires to removed For Each ports (Items/Indices/Pairs/First/Last)
 - Drop wires to While Values in/out
 - Remove `flow.loop.accumulator` nodes and incident connections
+- Remove legacy `defaultCondition` While property from saved state (ignored on load)
 
 ## Verification
 
