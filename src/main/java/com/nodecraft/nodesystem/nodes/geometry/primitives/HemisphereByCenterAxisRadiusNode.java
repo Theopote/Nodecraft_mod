@@ -105,7 +105,7 @@ public class HemisphereByCenterAxisRadiusNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_HEMISPHERE_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_NORMALIZED_ID);
-        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_RADIUS_ID);
         markInvalid(reason);
     }
 
@@ -127,12 +127,12 @@ public class HemisphereByCenterAxisRadiusNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
-        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
-        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
-        if (map.get("axisX") instanceof Number n) axisX = n.doubleValue();
-        if (map.get("axisY") instanceof Number n) axisY = n.doubleValue();
-        if (map.get("axisZ") instanceof Number n) axisZ = n.doubleValue();
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "axisX", v -> axisX = v);
+        restoreFiniteDouble(map, "axisY", v -> axisY = v);
+        restoreFiniteDouble(map, "axisZ", v -> axisZ = v);
+        restoreFiniteDouble(map, "radius", v -> radius = v);
     }
 }

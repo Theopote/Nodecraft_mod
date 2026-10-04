@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.UUID;
 
 /**
- * Lightweight deconstruct base: Valid + Error ports and shared invalid helpers (Graph V74).
- * Graph V90: continuous Bounding Box vs block-space Region dual-track bounds.
+ * Lightweight deconstruct base: Valid + Error ports and shared invalid helpers.
+ * Continuous Bounding Box vs block-space Region dual-track bounds.
  */
 abstract class AbstractPrimitiveDeconstructNode extends AbstractPrimitiveNode {
 

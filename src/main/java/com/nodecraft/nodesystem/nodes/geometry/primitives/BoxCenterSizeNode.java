@@ -126,11 +126,11 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
-        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
-        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
-        if (map.get("sizeX") instanceof Number n) sizeX = n.doubleValue();
-        if (map.get("sizeY") instanceof Number n) sizeY = n.doubleValue();
-        if (map.get("sizeZ") instanceof Number n) sizeZ = n.doubleValue();
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "sizeX", v -> sizeX = v);
+        restoreFiniteDouble(map, "sizeY", v -> sizeY = v);
+        restoreFiniteDouble(map, "sizeZ", v -> sizeZ = v);
     }
 }

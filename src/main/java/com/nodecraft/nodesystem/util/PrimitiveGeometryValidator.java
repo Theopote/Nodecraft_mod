@@ -1,21 +1,63 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.ConeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
+import com.nodecraft.nodesystem.datatypes.EllipsoidGeometryData;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.FrustumConeGeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.datatypes.TorusGeometryData;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Shared construction/consumption invariants for continuous primitive geometry (Graph V74).
+ * Shared construction/consumption invariants for continuous primitive geometry.
  */
 public final class PrimitiveGeometryValidator {
 
     public static final double AXIS_EPS = 1.0e-9d;
 
     private PrimitiveGeometryValidator() {
+    }
+
+    public static boolean requireFinitePoint(@Nullable Vector3d point) {
+        return FrameUtils.isFinite(point);
+    }
+
+    /**
+     * Overflow-safe midpoint {@code a*0.5 + b*0.5}. Null when inputs or result are non-finite.
+     */
+    public static @Nullable Vector3d overflowSafeMidpoint(@Nullable Vector3d a, @Nullable Vector3d b) {
+        Vector3d halfA = VectorUtils.safeScale(a, 0.5d);
+        Vector3d halfB = VectorUtils.safeScale(b, 0.5d);
+        return VectorUtils.safeAdd(halfA, halfB);
+    }
+
+    /**
+     * {@code b - a} with overflow-safe length. Null when subtraction overflows, length is
+     * non-finite, or length is at most {@link #AXIS_EPS}.
+     */
+    public static @Nullable Vector3d requirePositiveAxis(@Nullable Vector3d a, @Nullable Vector3d b) {
+        Vector3d axis = VectorUtils.safeSubtract(b, a);
+        double length = VectorUtils.safeLength(axis);
+        if (axis == null || !Double.isFinite(length) || length <= AXIS_EPS) {
+            return null;
+        }
+        return axis;
+    }
+
+    public static double requirePositiveAxisLength(@Nullable Vector3d a, @Nullable Vector3d b) {
+        Vector3d axis = requirePositiveAxis(a, b);
+        return axis == null ? Double.NaN : VectorUtils.safeLength(axis);
+    }
+
+    public static void requireValid(@Nullable String error) {
+        if (error != null) {
+            throw new IllegalArgumentException(error);
+        }
     }
 
     /**
@@ -43,10 +85,10 @@ public final class PrimitiveGeometryValidator {
             @Nullable Vector3d end,
             double radius
     ) {
-        if (!FrameUtils.isFinite(start) || !FrameUtils.isFinite(end)) {
+        if (!requireFinitePoint(start) || !requireFinitePoint(end)) {
             return "Cylinder requires finite axis endpoints";
         }
-        if (new Vector3d(end).sub(start).length() <= AXIS_EPS) {
+        if (requirePositiveAxis(start, end) == null) {
             return "Cylinder axis length must be > 0";
         }
         if (!Double.isFinite(radius) || radius <= 0.0d) {
@@ -67,10 +109,10 @@ public final class PrimitiveGeometryValidator {
             @Nullable Vector3d apex,
             double radius
     ) {
-        if (!FrameUtils.isFinite(baseCenter) || !FrameUtils.isFinite(apex)) {
+        if (!requireFinitePoint(baseCenter) || !requireFinitePoint(apex)) {
             return "Cone requires finite base center and apex";
         }
-        if (new Vector3d(apex).sub(baseCenter).length() <= AXIS_EPS) {
+        if (requirePositiveAxis(baseCenter, apex) == null) {
             return "Cone height must be > 0";
         }
         if (!Double.isFinite(radius) || radius <= 0.0d) {
@@ -92,10 +134,10 @@ public final class PrimitiveGeometryValidator {
             double baseRadius,
             double topRadius
     ) {
-        if (!FrameUtils.isFinite(baseCenter) || !FrameUtils.isFinite(topCenter)) {
+        if (!requireFinitePoint(baseCenter) || !requireFinitePoint(topCenter)) {
             return "Frustum requires finite face centers";
         }
-        if (new Vector3d(topCenter).sub(baseCenter).length() <= AXIS_EPS) {
+        if (requirePositiveAxis(baseCenter, topCenter) == null) {
             return "Frustum height must be > 0";
         }
         if (!Double.isFinite(baseRadius) || !Double.isFinite(topRadius)
@@ -155,14 +197,120 @@ public final class PrimitiveGeometryValidator {
             @Nullable Vector3d end,
             double radius
     ) {
-        if (!FrameUtils.isFinite(start) || !FrameUtils.isFinite(end)) {
+        if (!requireFinitePoint(start) || !requireFinitePoint(end)) {
             return "Capsule requires finite axis endpoints";
         }
-        if (new Vector3d(end).sub(start).length() <= AXIS_EPS) {
+        if (requirePositiveAxis(start, end) == null) {
             return "Capsule axis length must be > 0";
         }
         if (!Double.isFinite(radius) || radius <= 0.0d) {
             return "Capsule radius must be finite and > 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validateHemisphere(
+            @Nullable Vector3d center,
+            @Nullable Vector3d axis,
+            double radius
+    ) {
+        if (!requireFinitePoint(center)) {
+            return "Hemisphere requires a finite center";
+        }
+        if (!FrameUtils.isUsableAxis(axis)) {
+            return "Hemisphere requires a usable axis";
+        }
+        if (!Double.isFinite(radius) || radius <= 0.0d) {
+            return "Hemisphere radius must be finite and > 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validateHemisphere(@Nullable HemisphereGeometryData hemisphere) {
+        if (hemisphere == null) {
+            return "Hemisphere is missing";
+        }
+        return validateHemisphere(hemisphere.center(), hemisphere.axis(), hemisphere.radius());
+    }
+
+    public static @Nullable String validateBox(@Nullable Vector3d center, @Nullable Vector3d halfExtents) {
+        if (!requireFinitePoint(center)) {
+            return "Box requires a finite center";
+        }
+        if (halfExtents == null || !VectorUtils.isFinite(halfExtents)
+                || halfExtents.x <= 0.0d || halfExtents.y <= 0.0d || halfExtents.z <= 0.0d) {
+            return "Box half-extents must be finite and > 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validateBox(@Nullable BoxGeometryData box) {
+        if (box == null) {
+            return "Box is missing";
+        }
+        return validateBox(box.getCenter(), box.getHalfExtents());
+    }
+
+    public static @Nullable String validateEllipsoid(@Nullable Vector3d center, @Nullable Vector3d radii) {
+        if (!requireFinitePoint(center)) {
+            return "Ellipsoid requires a finite center";
+        }
+        if (radii == null || !VectorUtils.isFinite(radii)
+                || radii.x <= 0.0d || radii.y <= 0.0d || radii.z <= 0.0d) {
+            return "Ellipsoid radii must be finite and > 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validateEllipsoid(@Nullable EllipsoidGeometryData ellipsoid) {
+        if (ellipsoid == null) {
+            return "Ellipsoid is missing";
+        }
+        return validateEllipsoid(ellipsoid.getCenter(), ellipsoid.getRadii());
+    }
+
+    public static @Nullable String validateSquarePyramid(
+            @Nullable Vector3d baseCenter,
+            @Nullable Vector3d xAxis,
+            @Nullable Vector3d yAxis,
+            @Nullable Vector3d normal,
+            double baseSize,
+            double height
+    ) {
+        if (!requireFinitePoint(baseCenter)) {
+            return "Square pyramid requires a finite base center";
+        }
+        FrameData frame = FrameData.orthonormal(baseCenter, xAxis, yAxis, normal);
+        if (frame == null || !frame.isCanonical()) {
+            return "Square pyramid requires an orthonormal right-handed basis";
+        }
+        if (!Double.isFinite(baseSize) || baseSize <= 0.0d || !Double.isFinite(height) || height <= 0.0d) {
+            return "Square pyramid base size and height must be finite and > 0";
+        }
+        return null;
+    }
+
+    public static @Nullable String validateSquarePyramid(@Nullable SquarePyramidGeometryData pyramid) {
+        if (pyramid == null) {
+            return "Square pyramid is missing";
+        }
+        return validateSquarePyramid(
+            pyramid.getBaseCenter(),
+            pyramid.getXAxis(),
+            pyramid.getYAxis(),
+            pyramid.getNormal(),
+            pyramid.getBaseSize(),
+            pyramid.getHeight()
+        );
+    }
+
+    public static @Nullable String validatePolyhedron(@Nullable Vector3d center, double size, String sizeName) {
+        if (!requireFinitePoint(center)) {
+            return "Polyhedron requires a finite center";
+        }
+        String label = sizeName == null || sizeName.isBlank() ? "size" : sizeName;
+        if (!Double.isFinite(size) || size <= 0.0d) {
+            return "Polyhedron " + label + " must be finite and > 0";
         }
         return null;
     }

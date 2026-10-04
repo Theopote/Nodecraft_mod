@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -69,14 +70,14 @@ public class SphereByDiameterNode extends AbstractPrimitiveNode {
             return;
         }
 
-        if (start.distance(end) <= PrimitiveGeometryValidator.AXIS_EPS) {
+        Vector3d center = PrimitiveGeometryValidator.overflowSafeMidpoint(start, end);
+        double diameter = PointUtils.safeDistance(start, end);
+        double radius = diameter * 0.5d;
+        if (center == null || !Double.isFinite(diameter) || !Double.isFinite(radius)
+            || diameter <= PrimitiveGeometryValidator.AXIS_EPS) {
             writeEmptyOutputs("Diameter endpoints must be distinct");
             return;
         }
-
-        Vector3d center = new Vector3d(start).add(end).mul(0.5d);
-        double diameter = start.distance(end);
-        double radius = diameter * 0.5d;
 
         String error = PrimitiveGeometryValidator.validateSphere(center, radius);
         if (error != null) {
@@ -96,7 +97,7 @@ public class SphereByDiameterNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_SPHERE_ID, OUTPUT_GEOMETRY_ID, OUTPUT_CENTER_ID, OUTPUT_DIAMETER_PATH_ID);
-        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID, OUTPUT_DIAMETER_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_RADIUS_ID, OUTPUT_DIAMETER_ID);
         markInvalid(reason);
     }
 }

@@ -94,8 +94,12 @@ public class FrustumByTwoCentersRadiiNode extends AbstractPrimitiveNode {
             return;
         }
 
-        Vector3d axisVector = new Vector3d(top).sub(base);
-        double height = axisVector.length();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(base, top);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(base, top);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Frustum height must be > 0");
+            return;
+        }
         FrustumConeGeometryData frustum = new FrustumConeGeometryData(base, top, resolvedBaseRadius, resolvedTopRadius);
 
         outputValues.put(OUTPUT_FRUSTUM_ID, frustum);
@@ -108,7 +112,7 @@ public class FrustumByTwoCentersRadiiNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_FRUSTUM_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_PATH_ID, OUTPUT_AXIS_VECTOR_ID);
-        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_HEIGHT_ID);
         markInvalid(reason);
     }
 
@@ -125,7 +129,7 @@ public class FrustumByTwoCentersRadiiNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("baseRadius") instanceof Number n) baseRadius = n.doubleValue();
-        if (map.get("topRadius") instanceof Number n) topRadius = n.doubleValue();
+        restoreFiniteDouble(map, "baseRadius", v -> baseRadius = v);
+        restoreFiniteDouble(map, "topRadius", v -> topRadius = v);
     }
 }

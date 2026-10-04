@@ -8,7 +8,7 @@ import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 /**
- * Connection-aware primitive input resolution (Graph V74).
+ * Connection-aware primitive input resolution.
  * <p>
  * POINT ports never accept {@link LineData}. Connected-invalid inputs fail closed
  * (return null) instead of washing out to property defaults.
@@ -122,6 +122,9 @@ public final class PrimitiveInputUtils {
             double eulerZDeg
     ) {
         if (!isConnected(node, orientationPortId)) {
+            if (!Double.isFinite(eulerXDeg) || !Double.isFinite(eulerYDeg) || !Double.isFinite(eulerZDeg)) {
+                return null;
+            }
             return PolyhedronOrientationUtil.rotationFromEulerDegrees(eulerXDeg, eulerYDeg, eulerZDeg);
         }
         Matrix3d connected = resolveOptionalMatrix3(node, orientationPortId);

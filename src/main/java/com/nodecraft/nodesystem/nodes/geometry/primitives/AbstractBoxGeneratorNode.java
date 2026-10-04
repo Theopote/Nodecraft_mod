@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -102,16 +104,32 @@ public abstract class AbstractBoxGeneratorNode extends AbstractPrimitiveNode {
         double maxX = Math.max(cornerA.x, cornerB.x);
         double maxY = Math.max(cornerA.y, cornerB.y);
         double maxZ = Math.max(cornerA.z, cornerB.z);
-        double extentX = maxX - minX;
-        double extentY = maxY - minY;
-        double extentZ = maxZ - minZ;
-        if (extentX <= 0.0d || extentY <= 0.0d || extentZ <= 0.0d) {
+        Vector3d minCorner = new Vector3d(minX, minY, minZ);
+        Vector3d maxCorner = new Vector3d(maxX, maxY, maxZ);
+        Vector3d extent = VectorUtils.safeSubtract(maxCorner, minCorner);
+        if (extent == null) {
+            failBox("Box corners must be distinct with positive extent on every axis");
+            return null;
+        }
+        double extentX = extent.x;
+        double extentY = extent.y;
+        double extentZ = extent.z;
+        if (!Double.isFinite(extentX) || !Double.isFinite(extentY) || !Double.isFinite(extentZ)
+            || extentX <= 0.0d || extentY <= 0.0d || extentZ <= 0.0d) {
             failBox("Box corners must be distinct with positive extent on every axis");
             return null;
         }
 
-        Vector3d center = new Vector3d((minX + maxX) * 0.5d, (minY + maxY) * 0.5d, (minZ + maxZ) * 0.5d);
+        Vector3d center = new Vector3d(
+            minX * 0.5d + maxX * 0.5d,
+            minY * 0.5d + maxY * 0.5d,
+            minZ * 0.5d + maxZ * 0.5d
+        );
         Vector3d halfExtents = new Vector3d(extentX * 0.5d, extentY * 0.5d, extentZ * 0.5d);
+        if (!VectorUtils.isFinite(center) || !VectorUtils.isFinite(halfExtents)) {
+            failBox("Box corners produced a non-finite center or size");
+            return null;
+        }
         return new BoxDefinition(center, halfExtents, new Matrix3d().identity(), false);
     }
 
@@ -132,19 +150,24 @@ public abstract class AbstractBoxGeneratorNode extends AbstractPrimitiveNode {
         }
 
         Matrix3d orientationMatrix = createOrientationMatrix(plane, rotationX, rotationY, rotationZ);
-        Vector3d startOffset = new Vector3d(0, 0, 0);
         Vector3d endOffset = new Vector3d(sizeX, sizeY, sizeZ);
-        orientationMatrix.transform(startOffset);
         orientationMatrix.transform(endOffset);
-        Vector3d cornerVector = new Vector3d(corner);
-        Vector3d startCorner = new Vector3d(cornerVector).add(startOffset);
-        Vector3d endCorner = new Vector3d(cornerVector).add(endOffset);
-        Vector3d center = new Vector3d(startCorner).add(endCorner).mul(0.5d);
+        if (!VectorUtils.isFinite(endOffset)) {
+            failBox("Box corner and size produced a non-finite extent");
+            return null;
+        }
+        Vector3d startCorner = new Vector3d(corner);
+        Vector3d endCorner = VectorUtils.safeAdd(startCorner, endOffset);
+        Vector3d center = PrimitiveGeometryValidator.overflowSafeMidpoint(startCorner, endCorner);
         Vector3d halfExtents = new Vector3d(
             Math.abs(sizeX) / 2.0d,
             Math.abs(sizeY) / 2.0d,
             Math.abs(sizeZ) / 2.0d
         );
+        if (endCorner == null || center == null || !VectorUtils.isFinite(halfExtents)) {
+            failBox("Box corner and size produced a non-finite center or size");
+            return null;
+        }
         boolean rotated = hasRotation(rotationX, rotationY, rotationZ) || plane != null;
         return new BoxDefinition(center, halfExtents, orientationMatrix, rotated);
     }
@@ -174,24 +197,24 @@ public abstract class AbstractBoxGeneratorNode extends AbstractPrimitiveNode {
     }
 
     protected Matrix3d createPlaneAlignmentMatrix(PlaneData planeData) {
-        Vector3d up = new Vector3d(planeData.getNormal());
-        if (up.lengthSquared() < 1e-9d) {
+        Vector3d up = VectorUtils.safeNormalize(planeData.getNormal());
+        if (up == null) {
             return new Matrix3d().identity();
         }
 
-        up.normalize();
         Vector3d reference = Math.abs(up.y) < 0.99d
             ? new Vector3d(0.0d, 1.0d, 0.0d)
             : new Vector3d(1.0d, 0.0d, 0.0d);
 
-        Vector3d xAxis = reference.cross(up, new Vector3d());
-        if (xAxis.lengthSquared() < 1e-9d) {
-            xAxis.set(0.0d, 0.0d, 1.0d);
-        } else {
-            xAxis.normalize();
+        Vector3d xAxis = VectorUtils.safeNormalize(VectorUtils.safeCross(reference, up));
+        if (xAxis == null) {
+            xAxis = new Vector3d(0.0d, 0.0d, 1.0d);
         }
 
-        Vector3d zAxis = new Vector3d(xAxis).cross(up).normalize();
+        Vector3d zAxis = VectorUtils.safeNormalize(VectorUtils.safeCross(xAxis, up));
+        if (zAxis == null) {
+            return new Matrix3d().identity();
+        }
 
         return new Matrix3d(
             xAxis.x, up.x, zAxis.x,

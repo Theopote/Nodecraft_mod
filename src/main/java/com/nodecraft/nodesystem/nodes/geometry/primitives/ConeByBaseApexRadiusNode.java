@@ -106,8 +106,12 @@ public class ConeByBaseApexRadiusNode extends AbstractPrimitiveNode {
             return;
         }
 
-        Vector3d axisVector = new Vector3d(apex).sub(baseCenter);
-        double height = axisVector.length();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(baseCenter, apex);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(baseCenter, apex);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Cone height must be > 0");
+            return;
+        }
         ConeGeometryData cone = new ConeGeometryData(baseCenter, apex, resolvedRadius);
 
         outputValues.put(OUTPUT_CONE_ID, cone);
@@ -121,7 +125,7 @@ public class ConeByBaseApexRadiusNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CONE_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_PATH_ID, OUTPUT_AXIS_VECTOR_ID);
-        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID, OUTPUT_RADIUS_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_HEIGHT_ID, OUTPUT_RADIUS_ID);
         markInvalid(reason);
     }
 
@@ -143,12 +147,12 @@ public class ConeByBaseApexRadiusNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("baseX") instanceof Number n) baseX = n.doubleValue();
-        if (map.get("baseY") instanceof Number n) baseY = n.doubleValue();
-        if (map.get("baseZ") instanceof Number n) baseZ = n.doubleValue();
-        if (map.get("apexX") instanceof Number n) apexX = n.doubleValue();
-        if (map.get("apexY") instanceof Number n) apexY = n.doubleValue();
-        if (map.get("apexZ") instanceof Number n) apexZ = n.doubleValue();
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
+        restoreFiniteDouble(map, "baseX", v -> baseX = v);
+        restoreFiniteDouble(map, "baseY", v -> baseY = v);
+        restoreFiniteDouble(map, "baseZ", v -> baseZ = v);
+        restoreFiniteDouble(map, "apexX", v -> apexX = v);
+        restoreFiniteDouble(map, "apexY", v -> apexY = v);
+        restoreFiniteDouble(map, "apexZ", v -> apexZ = v);
+        restoreFiniteDouble(map, "radius", v -> radius = v);
     }
 }

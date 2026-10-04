@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 import java.util.Objects;
@@ -13,6 +14,8 @@ public class CylinderGeometryData implements GeometryData {
     private final double radius;
 
     public CylinderGeometryData(Vector3d start, Vector3d end, double radius) {
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validateCylinder(start, end, radius));
         this.start = new Vector3d(start);
         this.end = new Vector3d(end);
         this.radius = radius;

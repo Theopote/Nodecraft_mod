@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PolyhedronOrientationUtil;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
@@ -20,14 +22,10 @@ public class EllipsoidGeometryData implements GeometryData {
     }
 
     public EllipsoidGeometryData(Vector3d center, Vector3d radii, Matrix3d orientationMatrix, boolean oriented) {
-        if (radii.x < 0.0d || radii.y < 0.0d || radii.z < 0.0d) {
-            throw new IllegalArgumentException("Ellipsoid radii cannot be negative");
-        }
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateEllipsoid(center, radii));
         this.center = new Vector3d(center);
         this.radii = new Vector3d(radii);
-        this.orientationMatrix = orientationMatrix == null
-            ? new Matrix3d().identity()
-            : new Matrix3d(orientationMatrix);
+        this.orientationMatrix = PolyhedronOrientationUtil.copyValidatedRotation(orientationMatrix);
         this.oriented = oriented;
     }
 

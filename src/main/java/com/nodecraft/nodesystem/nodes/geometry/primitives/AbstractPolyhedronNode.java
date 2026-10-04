@@ -3,10 +3,13 @@ package com.nodecraft.nodesystem.nodes.geometry.primitives;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BoundingBoxData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GeometryBoundsResolver;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
@@ -112,11 +115,31 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Abs
         }
 
         T geometry = createGeometry(center, size, orientation);
+        if (geometry == null) {
+            writeEmptyOutputs("Polyhedron could not be constructed");
+            return;
+        }
+        BoundingBoxData bounds = GeometryBoundsResolver.resolve(geometry);
+        if (bounds == null || bounds.finiteCenter() == null || bounds.finiteSize() == null) {
+            writeEmptyOutputs("Polyhedron bounds are not finite");
+            return;
+        }
+        List<Vector3d> vertices = extractVertices(geometry);
+        if (vertices == null) {
+            writeEmptyOutputs("Polyhedron vertices could not be extracted");
+            return;
+        }
+        for (Vector3d vertex : vertices) {
+            if (!VectorUtils.isFinite(vertex)) {
+                writeEmptyOutputs("Polyhedron vertices must be finite");
+                return;
+            }
+        }
         outputValues.put(outputPrimaryId, geometry);
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
         outputValues.put(outputSizeId, size);
-        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(extractVertices(geometry)));
+        outputValues.put(OUTPUT_VERTICES_ID, SpatialValueResolver.toPointDataList(vertices));
         writeAdditionalOutputs(geometry, size);
         markSuccess();
     }
@@ -139,34 +162,20 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Abs
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) {
-            centerX = n.doubleValue();
-        }
-        if (map.get("centerY") instanceof Number n) {
-            centerY = n.doubleValue();
-        }
-        if (map.get("centerZ") instanceof Number n) {
-            centerZ = n.doubleValue();
-        }
-        if (map.get("defaultSize") instanceof Number n) {
-            defaultSize = n.doubleValue();
-        }
-        if (map.get("rotationXDeg") instanceof Number n) {
-            rotationXDeg = n.doubleValue();
-        }
-        if (map.get("rotationYDeg") instanceof Number n) {
-            rotationYDeg = n.doubleValue();
-        }
-        if (map.get("rotationZDeg") instanceof Number n) {
-            rotationZDeg = n.doubleValue();
-        }
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "defaultSize", v -> defaultSize = v);
+        restoreFiniteDouble(map, "rotationXDeg", v -> rotationXDeg = v);
+        restoreFiniteDouble(map, "rotationYDeg", v -> rotationYDeg = v);
+        restoreFiniteDouble(map, "rotationZDeg", v -> rotationZDeg = v);
     }
 
     protected void writeEmptyOutputs(String reason) {
         outputValues.put(outputPrimaryId, null);
         outputValues.put(OUTPUT_GEOMETRY_ID, null);
         outputValues.put(OUTPUT_CENTER_ID, null);
-        outputValues.put(outputSizeId, 0.0d);
+        outputValues.put(outputSizeId, Double.NaN);
         outputValues.put(OUTPUT_VERTICES_ID, List.of());
         clearAdditionalOutputs();
         markInvalid(reason);

@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -111,13 +112,17 @@ public class CapsuleByAxisRadiusNode extends AbstractPrimitiveNode {
             return;
         }
 
-        Vector3d axis = new Vector3d(end).sub(start);
-        double axisLength = axis.length();
-        axis.div(axisLength);
+        Vector3d axis = PrimitiveGeometryValidator.requirePositiveAxis(start, end);
+        double axisLength = PrimitiveGeometryValidator.requirePositiveAxisLength(start, end);
+        Vector3d unitAxis = VectorUtils.normalizeByLength(axis, axisLength);
+        if (unitAxis == null) {
+            writeInvalid("Capsule axis length must be > 0");
+            return;
+        }
 
         CylinderGeometryData cylinder = new CylinderGeometryData(start, end, resolvedRadius);
-        HemisphereGeometryData startCap = new HemisphereGeometryData(start, new Vector3d(axis).negate(), resolvedRadius);
-        HemisphereGeometryData endCap = new HemisphereGeometryData(end, axis, resolvedRadius);
+        HemisphereGeometryData startCap = new HemisphereGeometryData(start, new Vector3d(unitAxis).negate(), resolvedRadius);
+        HemisphereGeometryData endCap = new HemisphereGeometryData(end, unitAxis, resolvedRadius);
         GeometryData geometry = new CompositeGeometryData(List.of(cylinder, startCap, endCap));
 
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
@@ -138,7 +143,7 @@ public class CapsuleByAxisRadiusNode extends AbstractPrimitiveNode {
             OUTPUT_END_HEMISPHERE_ID,
             OUTPUT_AXIS_PATH_ID
         );
-        putDoubleOutputs(0.0d, OUTPUT_RADIUS_ID, OUTPUT_AXIS_LENGTH_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_RADIUS_ID, OUTPUT_AXIS_LENGTH_ID);
         markInvalid(reason);
     }
 
@@ -160,12 +165,12 @@ public class CapsuleByAxisRadiusNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("startX") instanceof Number n) startX = n.doubleValue();
-        if (map.get("startY") instanceof Number n) startY = n.doubleValue();
-        if (map.get("startZ") instanceof Number n) startZ = n.doubleValue();
-        if (map.get("endX") instanceof Number n) endX = n.doubleValue();
-        if (map.get("endY") instanceof Number n) endY = n.doubleValue();
-        if (map.get("endZ") instanceof Number n) endZ = n.doubleValue();
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
+        restoreFiniteDouble(map, "startX", v -> startX = v);
+        restoreFiniteDouble(map, "startY", v -> startY = v);
+        restoreFiniteDouble(map, "startZ", v -> startZ = v);
+        restoreFiniteDouble(map, "endX", v -> endX = v);
+        restoreFiniteDouble(map, "endY", v -> endY = v);
+        restoreFiniteDouble(map, "endZ", v -> endZ = v);
+        restoreFiniteDouble(map, "radius", v -> radius = v);
     }
 }

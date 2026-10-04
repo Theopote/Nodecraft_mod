@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 import java.util.Objects;
@@ -13,9 +14,8 @@ public class ConeGeometryData implements GeometryData {
     private final double baseRadius;
 
     public ConeGeometryData(Vector3d baseCenter, Vector3d apex, double baseRadius) {
-        if (baseRadius < 0.0d) {
-            throw new IllegalArgumentException("Cone base radius cannot be negative");
-        }
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validateCone(baseCenter, apex, baseRadius));
         this.baseCenter = new Vector3d(baseCenter);
         this.apex = new Vector3d(apex);
         this.baseRadius = baseRadius;

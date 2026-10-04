@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PolyhedronOrientationUtil;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
@@ -60,9 +62,10 @@ public class BoxGeometryData implements GeometryData {
     }
 
     public BoxGeometryData(Vector3d center, Vector3d halfExtents, Matrix3d orientationMatrix, boolean oriented) {
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateBox(center, halfExtents));
         this.center = new Vector3d(center);
         this.halfExtents = new Vector3d(halfExtents);
-        this.orientationMatrix = new Matrix3d(orientationMatrix);
+        this.orientationMatrix = PolyhedronOrientationUtil.copyValidatedRotation(orientationMatrix);
         this.oriented = oriented;
     }
 

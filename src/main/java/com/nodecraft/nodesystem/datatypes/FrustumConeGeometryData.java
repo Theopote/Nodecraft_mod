@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 import java.util.Objects;
@@ -8,24 +9,14 @@ import java.util.Objects;
  * Circular frustum (truncated cone) with parallel circular faces at {@code baseCenter} and {@code topCenter}.
  */
 public class FrustumConeGeometryData implements GeometryData {
-    private static final double EPS = 1.0e-9d;
-
     private final Vector3d baseCenter;
     private final Vector3d topCenter;
     private final double baseRadius;
     private final double topRadius;
 
     public FrustumConeGeometryData(Vector3d baseCenter, Vector3d topCenter, double baseRadius, double topRadius) {
-        if (baseRadius < 0.0d || topRadius < 0.0d) {
-            throw new IllegalArgumentException("Frustum radii cannot be negative");
-        }
-        Vector3d axis = new Vector3d(topCenter).sub(baseCenter);
-        if (axis.lengthSquared() <= EPS * EPS) {
-            throw new IllegalArgumentException("Frustum axis length must be positive");
-        }
-        if (baseRadius <= EPS && topRadius <= EPS) {
-            throw new IllegalArgumentException("Frustum must have a positive base or top radius");
-        }
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validateFrustum(baseCenter, topCenter, baseRadius, topRadius));
         this.baseCenter = new Vector3d(baseCenter);
         this.topCenter = new Vector3d(topCenter);
         this.baseRadius = baseRadius;

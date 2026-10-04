@@ -126,11 +126,11 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("cornerX") instanceof Number n) cornerX = n.doubleValue();
-        if (map.get("cornerY") instanceof Number n) cornerY = n.doubleValue();
-        if (map.get("cornerZ") instanceof Number n) cornerZ = n.doubleValue();
-        if (map.get("sizeX") instanceof Number n) sizeX = n.doubleValue();
-        if (map.get("sizeY") instanceof Number n) sizeY = n.doubleValue();
-        if (map.get("sizeZ") instanceof Number n) sizeZ = n.doubleValue();
+        restoreFiniteDouble(map, "cornerX", v -> cornerX = v);
+        restoreFiniteDouble(map, "cornerY", v -> cornerY = v);
+        restoreFiniteDouble(map, "cornerZ", v -> cornerZ = v);
+        restoreFiniteDouble(map, "sizeX", v -> sizeX = v);
+        restoreFiniteDouble(map, "sizeY", v -> sizeY = v);
+        restoreFiniteDouble(map, "sizeZ", v -> sizeZ = v);
     }
 }

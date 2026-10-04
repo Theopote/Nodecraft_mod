@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
@@ -11,8 +13,14 @@ import java.util.Objects;
 public record TorusGeometryData(Vector3d center, Vector3d axis, double majorRadius,
                                 double minorRadius) implements GeometryData {
     public TorusGeometryData(Vector3d center, Vector3d axis, double majorRadius, double minorRadius) {
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validateRingTorus(center, axis, majorRadius, minorRadius));
+        Vector3d unitAxis = VectorUtils.safeNormalize(axis);
+        if (unitAxis == null) {
+            throw new IllegalArgumentException("Torus requires a usable symmetry axis");
+        }
         this.center = new Vector3d(center);
-        this.axis = new Vector3d(axis).normalize();
+        this.axis = unitAxis;
         this.majorRadius = majorRadius;
         this.minorRadius = minorRadius;
     }

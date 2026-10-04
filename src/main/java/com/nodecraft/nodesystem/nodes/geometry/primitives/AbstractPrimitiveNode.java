@@ -13,10 +13,12 @@ import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.DoubleConsumer;
 
 /**
- * Shared Valid/Error and connection-aware helpers for geometry.primitives (Graph V74).
+ * Shared Valid/Error and connection-aware helpers for geometry.primitives.
  */
 abstract class AbstractPrimitiveNode extends BaseNode {
 
@@ -123,5 +125,17 @@ abstract class AbstractPrimitiveNode extends BaseNode {
 
     protected final boolean isPortConnected(String portId) {
         return PrimitiveInputUtils.isConnected(this, portId);
+    }
+
+    protected static void restoreFiniteDouble(Map<?, ?> map, String key, DoubleConsumer setter) {
+        if (map.get(key) instanceof Double value && Double.isFinite(value)) {
+            setter.accept(value);
+        }
+    }
+
+    protected static void restoreInteger(Map<?, ?> map, String key, java.util.function.IntConsumer setter) {
+        if (map.get(key) instanceof Integer value) {
+            setter.accept(value);
+        }
     }
 }

@@ -106,8 +106,12 @@ public class CylinderByAxisRadiusNode extends AbstractPrimitiveNode {
             return;
         }
 
-        Vector3d axisVector = new Vector3d(end).sub(start);
-        double height = axisVector.length();
+        Vector3d axisVector = PrimitiveGeometryValidator.requirePositiveAxis(start, end);
+        double height = PrimitiveGeometryValidator.requirePositiveAxisLength(start, end);
+        if (axisVector == null || !Double.isFinite(height)) {
+            writeEmptyOutputs("Cylinder axis length must be > 0");
+            return;
+        }
         CylinderGeometryData cylinder = new CylinderGeometryData(start, end, resolvedRadius);
 
         outputValues.put(OUTPUT_CYLINDER_ID, cylinder);
@@ -121,7 +125,7 @@ public class CylinderByAxisRadiusNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_CYLINDER_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_PATH_ID, OUTPUT_AXIS_VECTOR_ID);
-        putDoubleOutputs(0.0d, OUTPUT_HEIGHT_ID, OUTPUT_RADIUS_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_HEIGHT_ID, OUTPUT_RADIUS_ID);
         markInvalid(reason);
     }
 
@@ -143,12 +147,12 @@ public class CylinderByAxisRadiusNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("startX") instanceof Number n) startX = n.doubleValue();
-        if (map.get("startY") instanceof Number n) startY = n.doubleValue();
-        if (map.get("startZ") instanceof Number n) startZ = n.doubleValue();
-        if (map.get("endX") instanceof Number n) endX = n.doubleValue();
-        if (map.get("endY") instanceof Number n) endY = n.doubleValue();
-        if (map.get("endZ") instanceof Number n) endZ = n.doubleValue();
-        if (map.get("radius") instanceof Number n) radius = n.doubleValue();
+        restoreFiniteDouble(map, "startX", v -> startX = v);
+        restoreFiniteDouble(map, "startY", v -> startY = v);
+        restoreFiniteDouble(map, "startZ", v -> startZ = v);
+        restoreFiniteDouble(map, "endX", v -> endX = v);
+        restoreFiniteDouble(map, "endY", v -> endY = v);
+        restoreFiniteDouble(map, "endZ", v -> endZ = v);
+        restoreFiniteDouble(map, "radius", v -> radius = v);
     }
 }

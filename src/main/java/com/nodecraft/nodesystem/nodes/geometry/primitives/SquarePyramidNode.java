@@ -5,16 +5,17 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SquarePyramidGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @NodeInfo(
@@ -105,18 +106,27 @@ public class SquarePyramidNode extends AbstractPrimitiveNode {
             return;
         }
 
-        Basis basis = createBasis(plane, preferredXAxis);
-        if (basis == null) {
-            writeEmptyOutputs("Square pyramid basis could not be constructed");
-            return;
+        FrameData frame;
+        if (isPortConnected(INPUT_X_AXIS_ID)) {
+            frame = FrameUtils.fromPlaneRequireHint(plane, preferredXAxis);
+            if (frame == null) {
+                writeEmptyOutputs("X axis must be usable in the base plane");
+                return;
+            }
+        } else {
+            frame = FrameUtils.fromPlane(plane, preferredXAxis);
+            if (frame == null) {
+                writeEmptyOutputs("Square pyramid basis could not be constructed");
+                return;
+            }
         }
 
-        PlaneData resolvedPlane = new PlaneData(center, basis.normal);
+        PlaneData resolvedPlane = new PlaneData(center, frame.getZAxis());
         SquarePyramidGeometryData geometry = new SquarePyramidGeometryData(
             center,
-            basis.xAxis,
-            basis.yAxis,
-            basis.normal,
+            frame.getXAxis(),
+            frame.getYAxis(),
+            frame.getZAxis(),
             resolvedBaseSize,
             resolvedHeight
         );
@@ -133,44 +143,8 @@ public class SquarePyramidNode extends AbstractPrimitiveNode {
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_APEX_ID, OUTPUT_PLANE_ID);
         putEmptyListOutputs(OUTPUT_BASE_POINTS_ID);
-        putDoubleOutputs(0.0d, OUTPUT_BASE_SIZE_ID, OUTPUT_HEIGHT_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_BASE_SIZE_ID, OUTPUT_HEIGHT_ID);
         markInvalid(reason);
-    }
-
-    private Basis createBasis(PlaneData plane, @Nullable Vector3d preferredXAxis) {
-        Vector3d normal = plane.getNormal();
-        if (normal.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        normal.normalize();
-
-        Vector3d xAxis = preferredXAxis != null ? new Vector3d(preferredXAxis) : null;
-        if (xAxis != null) {
-            xAxis.sub(new Vector3d(normal).mul(xAxis.dot(normal)));
-        }
-        if (xAxis == null || xAxis.lengthSquared() <= 1.0e-12d) {
-            xAxis = fallbackAxis(normal);
-        }
-        if (xAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        xAxis.normalize();
-
-        Vector3d yAxis = new Vector3d(normal).cross(xAxis);
-        if (yAxis.lengthSquared() <= 1.0e-12d) {
-            return null;
-        }
-        yAxis.normalize();
-        xAxis = new Vector3d(yAxis).cross(normal).normalize();
-
-        return new Basis(xAxis, yAxis, normal);
-    }
-
-    private Vector3d fallbackAxis(Vector3d normal) {
-        Vector3d reference = Math.abs(normal.z) < 0.99d
-            ? new Vector3d(0.0d, 0.0d, 1.0d)
-            : new Vector3d(0.0d, 1.0d, 0.0d);
-        return reference.sub(new Vector3d(normal).mul(reference.dot(normal)));
     }
 
     @Override
@@ -189,12 +163,10 @@ public class SquarePyramidNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
-        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
-        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
-        if (map.get("baseSize") instanceof Number n) baseSize = n.doubleValue();
-        if (map.get("height") instanceof Number n) height = n.doubleValue();
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "baseSize", v -> baseSize = v);
+        restoreFiniteDouble(map, "height", v -> height = v);
     }
-
-    private record Basis(Vector3d xAxis, Vector3d yAxis, Vector3d normal) { }
 }

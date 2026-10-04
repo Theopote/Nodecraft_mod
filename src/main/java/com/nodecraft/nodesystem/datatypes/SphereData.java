@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
@@ -7,10 +8,8 @@ import java.util.Objects;
 
 public record SphereData(Vector3d center, double radius) implements GeometryData {
     public SphereData(Vector3d center, double radius) {
-        if (radius < 0) {
-            throw new IllegalArgumentException("Radius cannot be negative");
-        }
-        this.center = new Vector3d(center); // Defensive copy
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateSphere(center, radius));
+        this.center = new Vector3d(center);
         this.radius = radius;
     }
 

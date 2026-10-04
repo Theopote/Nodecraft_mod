@@ -118,11 +118,11 @@ public class EllipsoidByCenterRadiiNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
-        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
-        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
-        if (map.get("radiusX") instanceof Number n) radiusX = n.doubleValue();
-        if (map.get("radiusY") instanceof Number n) radiusY = n.doubleValue();
-        if (map.get("radiusZ") instanceof Number n) radiusZ = n.doubleValue();
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "radiusX", v -> radiusX = v);
+        restoreFiniteDouble(map, "radiusY", v -> radiusY = v);
+        restoreFiniteDouble(map, "radiusZ", v -> radiusZ = v);
     }
 }

@@ -119,7 +119,7 @@ public class TorusByCenterAxisRadiiNode extends AbstractPrimitiveNode {
 
     private void writeEmptyOutputs(String reason) {
         putNullOutputs(OUTPUT_TORUS_ID, OUTPUT_GEOMETRY_ID, OUTPUT_AXIS_NORMALIZED_ID);
-        putDoubleOutputs(0.0d, OUTPUT_MAJOR_RADIUS_ID, OUTPUT_MINOR_RADIUS_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_MAJOR_RADIUS_ID, OUTPUT_MINOR_RADIUS_ID);
         markInvalid(reason);
     }
 
@@ -142,13 +142,13 @@ public class TorusByCenterAxisRadiiNode extends AbstractPrimitiveNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("centerX") instanceof Number n) centerX = n.doubleValue();
-        if (map.get("centerY") instanceof Number n) centerY = n.doubleValue();
-        if (map.get("centerZ") instanceof Number n) centerZ = n.doubleValue();
-        if (map.get("axisX") instanceof Number n) axisX = n.doubleValue();
-        if (map.get("axisY") instanceof Number n) axisY = n.doubleValue();
-        if (map.get("axisZ") instanceof Number n) axisZ = n.doubleValue();
-        if (map.get("majorRadius") instanceof Number n) majorRadius = n.doubleValue();
-        if (map.get("minorRadius") instanceof Number n) minorRadius = n.doubleValue();
+        restoreFiniteDouble(map, "centerX", v -> centerX = v);
+        restoreFiniteDouble(map, "centerY", v -> centerY = v);
+        restoreFiniteDouble(map, "centerZ", v -> centerZ = v);
+        restoreFiniteDouble(map, "axisX", v -> axisX = v);
+        restoreFiniteDouble(map, "axisY", v -> axisY = v);
+        restoreFiniteDouble(map, "axisZ", v -> axisZ = v);
+        restoreFiniteDouble(map, "majorRadius", v -> majorRadius = v);
+        restoreFiniteDouble(map, "minorRadius", v -> minorRadius = v);
     }
 }

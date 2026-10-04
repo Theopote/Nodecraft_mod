@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import com.nodecraft.nodesystem.util.PolyhedronOrientationUtil;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
@@ -21,9 +22,8 @@ public class TetrahedronGeometryData implements GeometryData {
     }
 
     public TetrahedronGeometryData(Vector3d center, double edgeLength, Matrix3d orientation) {
-        if (edgeLength < 0.0d) {
-            throw new IllegalArgumentException("Tetrahedron edge length cannot be negative");
-        }
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validatePolyhedron(center, edgeLength, "edge length"));
         this.center = new Vector3d(center);
         this.edgeLength = edgeLength;
         this.orientation = PolyhedronOrientationUtil.copyValidatedRotation(orientation);

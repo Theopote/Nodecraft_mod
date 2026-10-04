@@ -65,6 +65,6 @@ public class TetrahedronByCenterEdgeNode extends AbstractPolyhedronNode<Tetrahed
 
     @Override
     protected void clearAdditionalOutputs() {
-        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, 0.0d);
+        outputValues.put(OUTPUT_CIRCUMRADIUS_ID, Double.NaN);
     }
 }

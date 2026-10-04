@@ -1,8 +1,8 @@
-# Node Language v2 — Primitive Geometry
+# Node Language — Primitive Geometry
 
-**Status: PASSED / FROZEN** (Graph **V90**; V74 remains historical v1)
+**Status: PASSED / FROZEN** (graph format stamp `CURRENT=1`)
 
-Continuous analytic primitives under `geometry.primitives` (31 nodes, orders 0–30). V90 closes the continuous/discrete bounds boundary on deconstruct nodes and adds Deconstruct Torus + Deconstruct Capsule.
+Continuous analytic primitives under `geometry.primitives` (31 nodes, orders 0–30). Deconstruct nodes expose continuous Bounding Box vs block-space Region, including Deconstruct Torus and Deconstruct Capsule.
 
 Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 
@@ -42,7 +42,7 @@ Related: [`nodecraft-v1-node-language.md`](./nodecraft-v1-node-language.md).
 | 29 | Deconstruct Torus | `geometry.primitives.deconstruct_torus` |
 | 30 | Deconstruct Capsule | `geometry.primitives.deconstruct_capsule` |
 
-## Continuous vs discrete bounds (V90)
+## Continuous vs discrete bounds
 
 Deconstruct nodes that expose **Bounding Box** and **Region** use a strict dual-track path:
 
@@ -61,7 +61,7 @@ BoxBlockGenerator.regionFromBoundingBox  →  Region (block-space)
 | Bounding Box | Geometric axis-aligned bounds (continuous) |
 | Region | Block-space bounds derived from continuous AABB |
 
-## Shared input contract (unchanged from V74)
+## Shared input contract
 
 [`PrimitiveInputUtils`](../src/main/java/com/nodecraft/nodesystem/util/PrimitiveInputUtils.java):
 
@@ -82,5 +82,5 @@ Ring torus only: `0 < minorRadius < majorRadius`. Horn/spindle types are out of 
 
 ## Contract tests
 
-- Historical v1 fence: `GeometryPrimitivesLanguageContractTest` (V74 orders 0–28)
-- v2 fence: `GeometryPrimitivesLanguageV2ContractTest` (V90, 31 nodes, continuous bounds, round trips)
+- Constructor/deconstruct fence: `GeometryPrimitivesLanguageContractTest` (orders 0–28)
+- Full family fence: `GeometryPrimitivesLanguageV2ContractTest` (31 nodes, continuous bounds, round trips)

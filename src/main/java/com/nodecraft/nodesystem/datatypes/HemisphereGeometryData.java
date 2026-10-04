@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
@@ -12,14 +14,14 @@ import java.util.Objects;
  */
 public record HemisphereGeometryData(Vector3d center, Vector3d axis, double radius) implements GeometryData {
     public HemisphereGeometryData(Vector3d center, Vector3d axis, double radius) {
-        if (radius < 0.0d) {
-            throw new IllegalArgumentException("Hemisphere radius cannot be negative");
-        }
-        if (axis == null || axis.lengthSquared() <= 1.0e-18d) {
-            throw new IllegalArgumentException("Hemisphere axis must be a non-zero direction");
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validateHemisphere(center, axis, radius));
+        Vector3d unitAxis = VectorUtils.safeNormalize(axis);
+        if (unitAxis == null) {
+            throw new IllegalArgumentException("Hemisphere axis must be a usable direction");
         }
         this.center = new Vector3d(center);
-        this.axis = new Vector3d(axis).normalize();
+        this.axis = unitAxis;
         this.radius = radius;
     }
 

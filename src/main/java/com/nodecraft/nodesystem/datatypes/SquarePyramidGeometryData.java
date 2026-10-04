@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Vector3d;
 
 import java.util.List;
@@ -25,10 +26,16 @@ public final class SquarePyramidGeometryData implements GeometryData {
         double baseSize,
         double height
     ) {
-        this.baseCenter = new Vector3d(Objects.requireNonNull(baseCenter, "baseCenter"));
-        this.xAxis = new Vector3d(Objects.requireNonNull(xAxis, "xAxis")).normalize();
-        this.yAxis = new Vector3d(Objects.requireNonNull(yAxis, "yAxis")).normalize();
-        this.normal = new Vector3d(Objects.requireNonNull(normal, "normal")).normalize();
+        PrimitiveGeometryValidator.requireValid(PrimitiveGeometryValidator.validateSquarePyramid(
+            baseCenter, xAxis, yAxis, normal, baseSize, height));
+        FrameData frame = FrameData.orthonormal(baseCenter, xAxis, yAxis, normal);
+        if (frame == null) {
+            throw new IllegalArgumentException("Square pyramid requires an orthonormal right-handed basis");
+        }
+        this.baseCenter = new Vector3d(baseCenter);
+        this.xAxis = frame.getXAxis();
+        this.yAxis = frame.getYAxis();
+        this.normal = frame.getZAxis();
         this.baseSize = baseSize;
         this.height = height;
     }

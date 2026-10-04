@@ -9,13 +9,16 @@ import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
+import com.nodecraft.nodesystem.datatypes.HemisphereGeometryData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.FrameUtils;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -162,8 +165,18 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
             }
         }
         if (capEnds && !closed && points.size() >= 2 && radius > EPS) {
-            cylinders.add(new CylinderGeometryData(points.getFirst(), points.getFirst(), radius));
-            cylinders.add(new CylinderGeometryData(points.getLast(), points.getLast(), radius));
+            Vector3d first = points.getFirst();
+            Vector3d second = points.get(1);
+            Vector3d last = points.getLast();
+            Vector3d previous = points.get(points.size() - 2);
+            Vector3d startAxis = VectorUtils.safeSubtract(first, second);
+            Vector3d endAxis = VectorUtils.safeSubtract(last, previous);
+            if (FrameUtils.isUsableAxis(startAxis)) {
+                cylinders.add(new HemisphereGeometryData(first, startAxis, radius));
+            }
+            if (FrameUtils.isUsableAxis(endAxis)) {
+                cylinders.add(new HemisphereGeometryData(last, endAxis, radius));
+            }
         }
         return cylinders;
     }

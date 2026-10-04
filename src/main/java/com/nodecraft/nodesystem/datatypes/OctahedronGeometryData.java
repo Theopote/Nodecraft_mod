@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import com.nodecraft.nodesystem.util.PolyhedronOrientationUtil;
+import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
@@ -20,9 +21,8 @@ public class OctahedronGeometryData implements GeometryData {
     }
 
     public OctahedronGeometryData(Vector3d center, double vertexRadius, Matrix3d orientation) {
-        if (vertexRadius < 0.0d) {
-            throw new IllegalArgumentException("Octahedron radius cannot be negative");
-        }
+        PrimitiveGeometryValidator.requireValid(
+            PrimitiveGeometryValidator.validatePolyhedron(center, vertexRadius, "radius"));
         this.center = new Vector3d(center);
         this.vertexRadius = vertexRadius;
         this.orientation = PolyhedronOrientationUtil.copyValidatedRotation(orientation);

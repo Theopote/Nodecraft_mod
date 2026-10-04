@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Primitive Geometry Language v2 (Graph V90).
+ * Language fence for Primitive Geometry Language (31 nodes, continuous vs discrete bounds).
  */
 class GeometryPrimitivesLanguageV2ContractTest {
 
@@ -67,7 +67,7 @@ class GeometryPrimitivesLanguageV2ContractTest {
     }
 
     @Test
-    void primitiveGeometryLanguageV90FenceRemains() {
+    void primitiveGeometryLanguageFenceRemains() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -96,7 +96,7 @@ class GeometryPrimitivesLanguageV2ContractTest {
     }
 
     @Test
-    void v90AddsDeconstructTorusAndCapsuleAtOrdersTwentyNineAndThirty() {
+    void deconstructTorusAndCapsuleSitAtOrdersTwentyNineAndThirty() {
         assertOrder("geometry.primitives.deconstruct_torus", 29);
         assertOrder("geometry.primitives.deconstruct_capsule", 30);
     }

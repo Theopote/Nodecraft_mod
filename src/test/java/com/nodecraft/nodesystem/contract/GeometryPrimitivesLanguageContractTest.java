@@ -7,20 +7,26 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.CylinderGeometryData;
 import com.nodecraft.nodesystem.datatypes.LineData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
+import com.nodecraft.nodesystem.nodes.geometry.primitives.BoxCornerSizeNode;
+import com.nodecraft.nodesystem.nodes.geometry.primitives.BoxCornersNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.CapsuleByAxisRadiusNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.ConeByBaseApexRadiusNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.CylinderByAxisRadiusNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.FrustumByTwoCentersRadiiNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.SphereByCenterRadiusNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.SphereByDiameterNode;
+import com.nodecraft.nodesystem.nodes.geometry.primitives.SquarePyramidNode;
 import com.nodecraft.nodesystem.nodes.geometry.primitives.TorusByCenterAxisRadiiNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
@@ -42,10 +48,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Primitive Geometry Language v1 (Graph V74).
+ * Language fence for Primitive Geometry Language v1 constructors (orders 0–28).
  */
 class GeometryPrimitivesLanguageContractTest {
 
@@ -60,13 +67,13 @@ class GeometryPrimitivesLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV74() {
+    void currentGraphFormatIsStampOnly() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
     @Test
-    void v74CanonicalTwentyNineNodesRemainAtOrdersZeroToTwentyEight() {
-        // Graph V90 adds deconstruct_torus (29) and deconstruct_capsule (30); V74 fence covers orders 0–28.
+    void canonicalTwentyNineConstructorAndDeconstructNodesRemainAtOrdersZeroToTwentyEight() {
+        // Deconstruct torus (29) and deconstruct capsule (30) sit after the original 0–28 fence.
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.primitives."))
             .sorted()
@@ -264,6 +271,92 @@ class GeometryPrimitivesLanguageContractTest {
         capsule.processNode(null);
         assertEquals(Boolean.FALSE, capsule.getOutput("output_valid"));
         assertNull(capsule.getOutput("output_geometry"));
+    }
+
+    @Test
+    void overflowAxisEndpointsFailClosedWithNanDiagnostics() {
+        CylinderByAxisRadiusNode cylinder = new CylinderByAxisRadiusNode();
+        connectInput(cylinder, "input_start", NodeDataType.POINT);
+        connectInput(cylinder, "input_end", NodeDataType.POINT);
+        cylinder.setInput("input_start", new PointData(-1.0e308d, 0.0d, 0.0d));
+        cylinder.setInput("input_end", new PointData(1.0e308d, 0.0d, 0.0d));
+        cylinder.processNode(null);
+        assertEquals(Boolean.FALSE, cylinder.getOutput("output_valid"));
+        assertTrue(Double.isNaN((Double) cylinder.getOutput("output_height")));
+        assertTrue(Double.isNaN((Double) cylinder.getOutput("output_radius")));
+
+        ConeByBaseApexRadiusNode cone = new ConeByBaseApexRadiusNode();
+        connectInput(cone, "input_base_center", NodeDataType.POINT);
+        connectInput(cone, "input_apex", NodeDataType.POINT);
+        cone.setInput("input_base_center", new PointData(-1.0e308d, 0.0d, 0.0d));
+        cone.setInput("input_apex", new PointData(1.0e308d, 0.0d, 0.0d));
+        cone.processNode(null);
+        assertEquals(Boolean.FALSE, cone.getOutput("output_valid"));
+
+        CapsuleByAxisRadiusNode capsule = new CapsuleByAxisRadiusNode();
+        connectInput(capsule, "input_start", NodeDataType.POINT);
+        connectInput(capsule, "input_end", NodeDataType.POINT);
+        capsule.setInput("input_start", new PointData(-1.0e308d, 0.0d, 0.0d));
+        capsule.setInput("input_end", new PointData(1.0e308d, 0.0d, 0.0d));
+        capsule.processNode(null);
+        assertEquals(Boolean.FALSE, capsule.getOutput("output_valid"));
+        assertTrue(Double.isNaN((Double) capsule.getOutput("output_radius")));
+        assertTrue(Double.isNaN((Double) capsule.getOutput("output_axis_length")));
+    }
+
+    @Test
+    void overflowBoxCornersAndSphereDiameterFailClosed() {
+        BoxCornersNode box = new BoxCornersNode();
+        connectInput(box, "input_corner_a", NodeDataType.POINT);
+        connectInput(box, "input_corner_b", NodeDataType.POINT);
+        box.setInput("input_corner_a", new PointData(-1.0e308d, 0.0d, 0.0d));
+        box.setInput("input_corner_b", new PointData(1.0e308d, 1.0d, 1.0d));
+        box.processNode(null);
+        assertEquals(Boolean.FALSE, box.getOutput("output_valid"));
+
+        BoxCornerSizeNode cornerSize = new BoxCornerSizeNode();
+        connectInput(cornerSize, "input_corner", NodeDataType.POINT);
+        connectInput(cornerSize, "input_size_x", NodeDataType.DOUBLE);
+        cornerSize.setInput("input_corner", new PointData(1.0e308d, 0.0d, 0.0d));
+        cornerSize.setInput("input_size_x", 1.0e308d);
+        cornerSize.processNode(null);
+        assertEquals(Boolean.FALSE, cornerSize.getOutput("output_valid"));
+
+        SphereByDiameterNode sphere = new SphereByDiameterNode();
+        connectInput(sphere, "input_start", NodeDataType.POINT);
+        connectInput(sphere, "input_end", NodeDataType.POINT);
+        sphere.setInput("input_start", new PointData(-1.0e308d, 0.0d, 0.0d));
+        sphere.setInput("input_end", new PointData(1.0e308d, 0.0d, 0.0d));
+        sphere.processNode(null);
+        assertEquals(Boolean.FALSE, sphere.getOutput("output_valid"));
+        assertTrue(Double.isNaN((Double) sphere.getOutput("output_radius")));
+        assertTrue(Double.isNaN((Double) sphere.getOutput("output_diameter")));
+    }
+
+    @Test
+    void geometryDataConstructorsRejectIllegalValues() {
+        assertThrows(IllegalArgumentException.class,
+            () -> new SphereData(new Vector3d(0, 0, 0), 0.0d));
+        assertThrows(IllegalArgumentException.class,
+            () -> new SphereData(new Vector3d(Double.NaN, 0, 0), 1.0d));
+        assertThrows(IllegalArgumentException.class,
+            () -> new CylinderGeometryData(new Vector3d(0, 0, 0), new Vector3d(0, 0, 0), 1.0d));
+        assertThrows(IllegalArgumentException.class,
+            () -> new CylinderGeometryData(new Vector3d(0, 0, 0), new Vector3d(0, 1, 0), 0.0d));
+    }
+
+    @Test
+    void squarePyramidConnectedZeroXAxisFailsClosed() {
+        SquarePyramidNode connected = new SquarePyramidNode();
+        connectInput(connected, "input_x_axis", NodeDataType.VECTOR);
+        connected.setInput("input_x_axis", new VectorData(0.0d, 0.0d, 0.0d));
+        connected.processNode(null);
+        assertEquals(Boolean.FALSE, connected.getOutput("output_valid"));
+
+        SquarePyramidNode unconnected = new SquarePyramidNode();
+        unconnected.processNode(null);
+        assertEquals(Boolean.TRUE, unconnected.getOutput("output_valid"));
+        assertNotNull(unconnected.getOutput("output_geometry"));
     }
 
 
