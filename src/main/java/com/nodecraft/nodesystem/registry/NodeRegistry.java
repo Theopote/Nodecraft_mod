@@ -143,7 +143,13 @@ public class NodeRegistry {
 
         NodeCategory existingCategory = categoryMap.get(normalizedId);
         if (existingCategory != null) {
-            NodeCraft.LOGGER.debug("Node category {} already exists. Skipping duplicate registration.", normalizedId);
+            String formatted = formatCategoryName(normalizedId);
+            boolean incomingExplicit = !displayName.equals(formatted);
+            boolean existingFormatted = existingCategory.getDisplayName().equals(formatted);
+            if (incomingExplicit || existingFormatted) {
+                existingCategory.displayName = displayName;
+                invalidateCategoryCache();
+            }
             return;
         }
 
@@ -307,7 +313,10 @@ public class NodeRegistry {
      * @return matching {@link NodeCategory}, or null when not found
      */
     public NodeCategory getCategory(String categoryId) {
-        return categoryMap.get(categoryId);
+        if (categoryId == null) {
+            return null;
+        }
+        return categoryMap.get(categoryId.toLowerCase());
     }
 
     /**
@@ -426,7 +435,7 @@ public class NodeRegistry {
                         .thenComparing(NodeInfo::getDisplayName, String.CASE_INSENSITIVE_ORDER);
 
         private final String id;
-        private final String displayName;
+        private String displayName;
         private final List<NodeInfo> nodes = new ArrayList<>();
         private volatile List<NodeInfo> sealedNodes = List.of();
 
