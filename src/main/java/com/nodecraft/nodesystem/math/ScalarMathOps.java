@@ -253,26 +253,28 @@ public final class ScalarMathOps {
     }
 
     /**
-     * Remap value from source domain to target domain.
-     * Invalid when source is degenerate ({@code delta == 0.0d}) or any domain endpoint / result is non-finite.
+     * Remap value from source domain to target domain using {@link #normalizeInterval}
+     * then FMA lerp on the target (same overflow-safe interval as Smoothstep).
+     * Invalid when source edges coincide or any endpoint / result is non-finite.
      */
     public static ScalarResult remap(double value, NumericRangeData source, NumericRangeData target, boolean clampToTarget) {
         if (source == null || target == null) {
             return ScalarResult.invalid();
         }
-        if (!Double.isFinite(value)
-            || !Double.isFinite(source.start()) || !Double.isFinite(source.end())
-            || !Double.isFinite(target.start()) || !Double.isFinite(target.end())
-            || !Double.isFinite(source.delta()) || source.delta() == 0.0d) {
+        if (!Double.isFinite(target.start()) || !Double.isFinite(target.end())) {
             return ScalarResult.invalid();
         }
-        double t = (value - source.start()) / source.delta();
-        double result = target.lerp(t);
+        ScalarResult normalized = normalizeInterval(value, source.start(), source.end());
+        if (!normalized.valid()) {
+            return normalized;
+        }
+        ScalarResult mapped = lerp(target.start(), target.end(), normalized.value());
+        if (!mapped.valid()) {
+            return mapped;
+        }
+        double result = mapped.value();
         if (clampToTarget) {
             result = Math.max(target.lower(), Math.min(target.upper(), result));
-        }
-        if (!Double.isFinite(result)) {
-            return ScalarResult.invalid();
         }
         return ScalarResult.ok(result);
     }

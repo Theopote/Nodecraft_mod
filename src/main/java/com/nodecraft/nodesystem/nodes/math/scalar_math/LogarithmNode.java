@@ -26,6 +26,7 @@ public class LogarithmNode extends BaseNode {
     private static final String INPUT_BASE_ID = "input_base";
     private static final String OUTPUT_LOGARITHM_ID = "output_logarithm";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public LogarithmNode() {
         super(UUID.randomUUID(), "math.scalar_math.logarithm");
@@ -33,6 +34,7 @@ public class LogarithmNode extends BaseNode {
         addInputPort(new BasePort(INPUT_BASE_ID, "Base", "The base, defaults to e", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_LOGARITHM_ID, "Logarithm", "Result of log base B of A", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs define a valid logarithm", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -47,17 +49,24 @@ public class LogarithmNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valNumber = inputValues.get(INPUT_NUMBER_ID);
-        Object valBase = inputValues.getOrDefault(INPUT_BASE_ID, Math.E);
-        if (!(valNumber instanceof Number numberValue) || !(valBase instanceof Number baseNumber)) {
-            publish(ScalarResult.invalid());
+        Double number = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_NUMBER_ID));
+        Double base;
+        if (ScalarMathPorts.isPortDriven(this, INPUT_BASE_ID)) {
+            base = ScalarMathPorts.requireExactFinite(getInput(INPUT_BASE_ID));
+        } else {
+            base = Math.E;
+        }
+        if (number == null || base == null) {
+            publish(ScalarResult.invalid(), ScalarMathPorts.ERROR_INVALID_INPUT);
             return;
         }
-        publish(ScalarMathOps.log(numberValue.doubleValue(), baseNumber.doubleValue()));
+        ScalarResult result = ScalarMathOps.log(number, base);
+        publish(result, result.valid() ? "" : ScalarMathPorts.ERROR_INVALID_DOMAIN);
     }
 
-    private void publish(ScalarResult result) {
+    private void publish(ScalarResult result, String error) {
         outputValues.put(OUTPUT_LOGARITHM_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

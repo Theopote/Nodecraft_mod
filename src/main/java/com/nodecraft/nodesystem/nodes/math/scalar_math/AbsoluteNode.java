@@ -45,13 +45,13 @@ public class AbsoluteNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object val = inputValues.get(INPUT_VALUE_ID);
-        if (!(val instanceof Number number)) {
+        Double val = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (val == null) {
             outputValues.put(OUTPUT_ABSOLUTE_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.abs(number.doubleValue());
+        ScalarResult result = ScalarMathOps.abs(val);
         outputValues.put(OUTPUT_ABSOLUTE_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

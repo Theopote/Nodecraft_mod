@@ -82,17 +82,27 @@ class LogicUtilsTest {
     void selectSwitchIndexUsesDefaultForOutOfRange() {
         SelectionResult result = LogicUtils.selectSwitchIndex(
                 LogicUtils.SwitchIndexParse.outOfRange(5),
-                "item0", "item1", "item2", "item3", "default"
+                "item0", "item1", "item2", "item3", "default", true
         );
         assertTrue(result.valid());
         assertEquals("default", result.value());
     }
 
     @Test
+    void selectSwitchIndexOutOfRangeUndrivenDefaultFailsClosed() {
+        SelectionResult result = LogicUtils.selectSwitchIndex(
+                LogicUtils.SwitchIndexParse.outOfRange(5),
+                "item0", "item1", "item2", "item3", null, false
+        );
+        assertFalse(result.valid());
+        assertNull(result.value());
+    }
+
+    @Test
     void selectSwitchIndexInvalidIndexFailsClosed() {
         SelectionResult result = LogicUtils.selectSwitchIndex(
                 LogicUtils.SwitchIndexParse.invalid(),
-                "item0", "item1", "item2", "item3", "default"
+                "item0", "item1", "item2", "item3", "default", true
         );
         assertFalse(result.valid());
         assertNull(result.value());

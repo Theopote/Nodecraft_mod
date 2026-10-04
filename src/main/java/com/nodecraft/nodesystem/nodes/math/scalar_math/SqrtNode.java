@@ -45,13 +45,13 @@ public class SqrtNode extends BaseNode {
 
     @Override
     public void processNode(ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        if (!(valueObj instanceof Number number)) {
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (value == null) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.sqrt(number.doubleValue());
+        ScalarResult result = ScalarMathOps.sqrt(value);
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

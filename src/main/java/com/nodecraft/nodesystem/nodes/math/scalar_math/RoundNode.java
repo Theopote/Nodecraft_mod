@@ -16,7 +16,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.round",
     displayName = "Round",
-    description = "Rounds a value to the nearest integer-valued double (ties-to-even).",
+    description = "Rounds a value to the nearest integer-valued double (ties-to-even / bankers rounding, e.g. 2.5→2, 3.5→4).",
     category = "math.scalar_math",
     order = 14
 )
@@ -35,7 +35,7 @@ public class RoundNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Rounds a value to the nearest integer-valued double (ties-to-even).";
+        return "Rounds a value to the nearest integer-valued double using ties-to-even (2.5→2, 3.5→4).";
     }
 
     @Override
@@ -45,13 +45,13 @@ public class RoundNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        if (!(valueObj instanceof Number number)) {
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (value == null) {
             outputValues.put(OUTPUT_ROUNDED_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.round(number.doubleValue());
+        ScalarResult result = ScalarMathOps.round(value);
         outputValues.put(OUTPUT_ROUNDED_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

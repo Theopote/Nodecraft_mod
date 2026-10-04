@@ -1,8 +1,8 @@
 # Node Language v2 — Compare
 
-**Status: PASSED / FROZEN** (Graph **V121**; V27 remains historical v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only; V121 remains historical residue)
 
-Exact numeric equality & invalid-input contract remediation for `math.compare.*`:
+Exact numeric equality & invalid-input contract for `math.compare.*`:
 `output_valid` on all six nodes, exact integer comparison without double rounding,
 connection-aware undriven vs explicit null, and strict `Double` ordering inputs.
 
@@ -18,6 +18,8 @@ All six compare nodes expose:
 |------|------|---------|
 | `output_result` | BOOLEAN | Comparison outcome when valid |
 | `output_valid` | BOOLEAN | Whether comparison succeeded |
+
+No `output_error` on compare nodes.
 
 | State | Valid | Result |
 |-------|-------|--------|
@@ -45,7 +47,8 @@ A port is **driven** when:
 
 ## Numeric equality (`==` / `!=`)
 
-Uses `NumericComparison` — no blanket `Number.doubleValue()`.
+Equals / Not Equals stay unconstrained **ANY** (runtime opaque; no passthrough `T`).
+Uses `NumericComparison` — no blanket `Number.doubleValue()`. No hidden epsilon.
 
 | Left / Right | Rule |
 |--------------|------|
@@ -62,7 +65,6 @@ Preserved from v1:
 - `1 == 1.0` → true
 - `+0.0 == -0.0` → true
 - `"1" == 1` → false (no coercion)
-- no hidden epsilon
 
 Example fix: `9007199254740992L != 9007199254740993L` even though both may round to the same `double`.
 
@@ -71,12 +73,7 @@ Example fix: `9007199254740992L != 9007199254740993L` even though both may round
 Ports remain `DOUBLE` A, `DOUBLE` B.
 
 Runtime requires exact finite `Double` instances — no `Integer`/`Long` coercion at execution.
-
-| Rule | Behavior |
-|------|----------|
-| Comparison | Exact IEEE ordering (no epsilon) |
-| Non-finite or wrong runtime type | `Valid=false`, `Result=false` |
-| Either undriven | `Valid=false`, `Result=false` |
+Exact IEEE ordering (no epsilon). Non-finite or wrong runtime type → `Valid=false`, `Result=false`.
 
 ## Node inventory (unchanged)
 
@@ -97,9 +94,9 @@ Runtime requires exact finite `Double` instances — no `Integer`/`Long` coercio
 | Both inputs undriven | `Result=true` (null-null) | `Valid=false`, `Result=false` |
 | Ordering with `Integer` injected | may compare via `doubleValue()` | `Valid=false` |
 
-## Graph migration (V120→V121)
+## Migration
 
-Identity migration — no wire or node remaps. New `output_valid` port is additive.
+No `GraphFormatVersion` bump. `CURRENT` is stamp-only.
 
 ## Future: Approximately Equal
 

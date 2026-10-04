@@ -136,24 +136,27 @@ final class LogicUtils {
             @Nullable Object item1,
             @Nullable Object item2,
             @Nullable Object item3,
-            @Nullable Object defaultValue
+            @Nullable Object defaultValue,
+            boolean defaultDriven
     ) {
         if (indexParse.kind() == SwitchIndexKind.Invalid) {
             return SelectionResult.invalid("Index must be an exact Integer");
         }
 
-        Object selected = switch (indexParse.kind()) {
-            case ValidIndex -> switch (indexParse.index()) {
-                case 0 -> item0;
-                case 1 -> item1;
-                case 2 -> item2;
-                case 3 -> item3;
-                default -> defaultValue;
-            };
-            case OutOfRange -> defaultValue;
-            case Invalid -> null;
-        };
+        if (indexParse.kind() == SwitchIndexKind.OutOfRange) {
+            if (!defaultDriven) {
+                return SelectionResult.invalid("Default is undriven for out-of-range index");
+            }
+            return SelectionResult.ok(defaultValue);
+        }
 
+        Object selected = switch (indexParse.index()) {
+            case 0 -> item0;
+            case 1 -> item1;
+            case 2 -> item2;
+            case 3 -> item3;
+            default -> defaultValue;
+        };
         return SelectionResult.ok(selected);
     }
 

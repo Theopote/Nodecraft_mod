@@ -16,7 +16,7 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.scalar_math.frac",
     displayName = "Fraction (Frac)",
-    description = "Returns the fractional part of x as x - floor(x).",
+    description = "Returns the fractional part of x as x - floor(x) in [0,1). frac(-1.2) = 0.8.",
     category = "math.scalar_math",
     order = 21
 )
@@ -41,18 +41,18 @@ public class FracNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Returns the fractional part of x as x - floor(x).";
+        return "Returns the fractional part of x as x - floor(x) (frac(-1.2) = 0.8, not signed remainder).";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        if (!(valueObj instanceof Number number)) {
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (value == null) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.frac(number.doubleValue());
+        ScalarResult result = ScalarMathOps.frac(value);
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.math.scalar_math.AdditionNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.ClampNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.ExpressionNode;
 import com.nodecraft.nodesystem.nodes.math.scalar_math.GraphMapperNode;
@@ -193,6 +194,69 @@ class ScalarMathLanguageV2ContractTest {
         ));
         assertTrue((Boolean) atB.get("output_valid"));
         assertEquals(-1.0e308d, (Double) atB.get("output_result"), 0.0d);
+    }
+
+    @Test
+    void additionRejectsIntegerOnDoublePort() {
+        Map<String, Object> outputs = new AdditionNode().compute(Map.of(
+            "input_a", 1,
+            "input_b", 2.0d
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertTrue(Double.isNaN((Double) outputs.get("output_sum")));
+    }
+
+    @Test
+    void remapClampDrivenInvalidFailsClosed() {
+        RemapProbe remap = new RemapProbe();
+        remap.connectInput("input_clamp", NodeDataType.BOOLEAN);
+        remap.putInput("input_value", 0.5d);
+        remap.putInput("input_source", new NumericRangeData(0.0d, 1.0d));
+        remap.putInput("input_target", new NumericRangeData(0.0d, 10.0d));
+        remap.putInput("input_clamp", "true");
+        remap.processNode(null);
+        assertFalse((Boolean) remap.getOutput("output_valid"));
+        assertEquals("invalid_input", remap.getOutput("output_error"));
+    }
+
+    @Test
+    void remapInjectedWrongTypeDomainFailsClosed() {
+        Map<String, Object> outputs = new RemapNode().compute(Map.of(
+            "input_value", 0.5d,
+            "input_source", 1.0d,
+            "input_target", new NumericRangeData(0.0d, 1.0d)
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals("invalid_domain", outputs.get("output_error"));
+    }
+
+    @Test
+    void remapExtremeSourceMatchesSmoothstepT() {
+        NumericRangeData extreme = new NumericRangeData(-1.0e308d, 1.0e308d);
+        Map<String, Object> remap = new RemapNode().compute(Map.of(
+            "input_value", 0.0d,
+            "input_source", extreme,
+            "input_target", new NumericRangeData(0.0d, 1.0d),
+            "input_clamp", false
+        ));
+        assertTrue((Boolean) remap.get("output_valid"));
+        assertEquals(0.5d, (Double) remap.get("output_result"), 1.0e-6);
+
+        SmoothstepNode smooth = new SmoothstepNode();
+        smooth.setInput("input_value", 0.0d);
+        smooth.setInput("input_edge0", -1.0e308d);
+        smooth.setInput("input_edge1", 1.0e308d);
+        smooth.processNode(null);
+        assertTrue((Boolean) smooth.getOutput("output_valid"));
+        assertEquals((Double) smooth.getOutput("output_t"), (Double) remap.get("output_result"), 1.0e-12);
+    }
+
+    @Test
+    void expressionUsedInjectedNanFailsClosed() {
+        ExpressionNode node = new ExpressionNode();
+        node.setExpression("A + 1");
+        Map<String, Object> outputs = node.compute(Map.of("input_a", Double.NaN));
+        assertFalse((Boolean) outputs.get("output_valid"));
     }
 
     private static void seedMinimalValidInputs(BaseNode node, String nodeId) {

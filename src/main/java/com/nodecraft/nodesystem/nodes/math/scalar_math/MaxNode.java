@@ -47,14 +47,14 @@ public class MaxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_A_ID);
-        Object bObj = inputValues.get(INPUT_B_ID);
-        if (!(aObj instanceof Number aNumber) || !(bObj instanceof Number bNumber)) {
+        Double a = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_A_ID));
+        Double b = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_B_ID));
+        if (a == null || b == null) {
             outputValues.put(OUTPUT_MAX_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.max(aNumber.doubleValue(), bNumber.doubleValue());
+        ScalarResult result = ScalarMathOps.max(a, b);
         outputValues.put(OUTPUT_MAX_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

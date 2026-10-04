@@ -40,21 +40,26 @@ public class SelectItemNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_INDEX_ID, "Index",
             "Selection index from 0 to 3", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_ITEM_0_ID, "Item 0",
-            "Value used when index is 0", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_ITEM_1_ID, "Item 1",
-            "Value used when index is 1", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_ITEM_2_ID, "Item 2",
-            "Value used when index is 2", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_ITEM_3_ID, "Item 3",
-            "Value used when index is 3", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_DEFAULT_ID, "Default",
-            "Fallback value used when the index is out of range", NodeDataType.ANY, this));
+        addInputPort(bindT(new BasePort(INPUT_ITEM_0_ID, "Item 0",
+            "Value used when index is 0", NodeDataType.ANY, this)));
+        addInputPort(bindT(new BasePort(INPUT_ITEM_1_ID, "Item 1",
+            "Value used when index is 1", NodeDataType.ANY, this)));
+        addInputPort(bindT(new BasePort(INPUT_ITEM_2_ID, "Item 2",
+            "Value used when index is 2", NodeDataType.ANY, this)));
+        addInputPort(bindT(new BasePort(INPUT_ITEM_3_ID, "Item 3",
+            "Value used when index is 3", NodeDataType.ANY, this)));
+        addInputPort(bindT(new BasePort(INPUT_DEFAULT_ID, "Default",
+            "Fallback value used when the index is out of range", NodeDataType.ANY, this)));
 
-        addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result",
-            "Selected output value", NodeDataType.ANY, this));
+        addOutputPort(bindT(new BasePort(OUTPUT_RESULT_ID, "Result",
+            "Selected output value", NodeDataType.ANY, this)));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "Whether selection succeeded", NodeDataType.BOOLEAN, this));
+    }
+
+    private static BasePort bindT(BasePort port) {
+        port.bindPassthroughType("T");
+        return port;
     }
 
     @Override
@@ -80,7 +85,8 @@ public class SelectItemNode extends BaseNode {
                 resolveValue(INPUT_ITEM_1_ID),
                 resolveValue(INPUT_ITEM_2_ID),
                 resolveValue(INPUT_ITEM_3_ID),
-                resolveValue(INPUT_DEFAULT_ID)
+                resolveValue(INPUT_DEFAULT_ID),
+                isDriven(INPUT_DEFAULT_ID)
         );
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());

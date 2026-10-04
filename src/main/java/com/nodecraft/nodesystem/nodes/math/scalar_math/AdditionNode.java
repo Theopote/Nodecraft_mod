@@ -48,13 +48,13 @@ public class AdditionNode extends BaseNode implements INode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valA = inputValues.get(INPUT_A_ID);
-        Object valB = inputValues.get(INPUT_B_ID);
-        if (!(valA instanceof Number aNumber) || !(valB instanceof Number bNumber)) {
+        Double a = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_A_ID));
+        Double b = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_B_ID));
+        if (a == null || b == null) {
             publish(ScalarResult.invalid());
             return;
         }
-        publish(ScalarMathOps.add(aNumber.doubleValue(), bNumber.doubleValue()));
+        publish(ScalarMathOps.add(a, b));
     }
 
     private void publish(ScalarResult result) {

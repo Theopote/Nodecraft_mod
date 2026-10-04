@@ -45,13 +45,13 @@ public class FloorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        if (!(valueObj instanceof Number number)) {
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (value == null) {
             outputValues.put(OUTPUT_FLOORED_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
-        ScalarResult result = ScalarMathOps.floor(number.doubleValue());
+        ScalarResult result = ScalarMathOps.floor(value);
         outputValues.put(OUTPUT_FLOORED_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

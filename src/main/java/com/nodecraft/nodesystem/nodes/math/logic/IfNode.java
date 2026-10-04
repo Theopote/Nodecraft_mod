@@ -38,13 +38,19 @@ public class IfNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_CONDITION_ID, "Condition",
             "Boolean condition input", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_TRUE_VALUE_ID, "True Value",
-            "Value returned when the condition is true", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_FALSE_VALUE_ID, "False Value",
-            "Value returned when the condition is false", NodeDataType.ANY, this));
+        BasePort trueValue = new BasePort(INPUT_TRUE_VALUE_ID, "True Value",
+            "Value returned when the condition is true", NodeDataType.ANY, this);
+        trueValue.bindPassthroughType("T");
+        addInputPort(trueValue);
+        BasePort falseValue = new BasePort(INPUT_FALSE_VALUE_ID, "False Value",
+            "Value returned when the condition is false", NodeDataType.ANY, this);
+        falseValue.bindPassthroughType("T");
+        addInputPort(falseValue);
 
-        addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result",
-            "Selected output value", NodeDataType.ANY, this));
+        BasePort result = new BasePort(OUTPUT_RESULT_ID, "Result",
+            "Selected output value", NodeDataType.ANY, this);
+        result.bindPassthroughType("T");
+        addOutputPort(result);
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "Whether selection succeeded", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error",

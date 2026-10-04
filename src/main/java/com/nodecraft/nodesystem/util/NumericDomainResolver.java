@@ -6,7 +6,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Resolves {@link NumericRangeData} from port values and node defaults.
- * Unsafe domains (non-finite endpoints or overflow directed span) fail closed as {@code null}.
+ * Non-finite endpoints fail closed as {@code null}. Overflow directed span is kept
+ * (Remap/Smoothstep share overflow-safe normalization).
  */
 public final class NumericDomainResolver {
 
@@ -16,14 +17,15 @@ public final class NumericDomainResolver {
     public static @Nullable NumericRangeData resolveDomain(@Nullable Object domainValue,
                                                            double defaultStart,
                                                            double defaultEnd) {
-        if (domainValue instanceof NumericRangeData(double start, double end)) {
-            return NumericRangeData.canonical(start, end);
+        NumericRangeData resolved = finiteEndpoints(domainValue);
+        if (resolved != null) {
+            return resolved;
         }
         return NumericRangeData.canonical(defaultStart, defaultEnd);
     }
 
     /**
-     * Connection-aware domain resolve: undriven → defaults; driven + valid → canonical;
+     * Connection-aware domain resolve: undriven → defaults; driven + finite endpoints → keep;
      * driven + invalid → {@code null}.
      */
     public static @Nullable NumericRangeData resolveOptionalDomain(
@@ -32,16 +34,8 @@ public final class NumericDomainResolver {
             double defaultStart,
             double defaultEnd
     ) {
-        if (OptionalPortDrive.isConnected(node, portId)) {
-            Object value = node.getInput(portId);
-            if (!(value instanceof NumericRangeData range)) {
-                return null;
-            }
-            return NumericRangeData.canonical(range.start(), range.end());
-        }
-        Object injected = node.getInput(portId);
-        if (injected instanceof NumericRangeData range) {
-            return NumericRangeData.canonical(range.start(), range.end());
+        if (OptionalPortDrive.isConnected(node, portId) || node.isInputPresent(portId)) {
+            return finiteEndpoints(node.getInput(portId));
         }
         return NumericRangeData.canonical(defaultStart, defaultEnd);
     }
@@ -51,11 +45,24 @@ public final class NumericDomainResolver {
                                                                    @Nullable Object endValue,
                                                                    double defaultStart,
                                                                    double defaultEnd) {
-        if (domainValue instanceof NumericRangeData(double start1, double end1)) {
-            return NumericRangeData.canonical(start1, end1);
+        NumericRangeData resolved = finiteEndpoints(domainValue);
+        if (resolved != null) {
+            return resolved;
         }
-        double start = startValue instanceof Number n ? n.doubleValue() : defaultStart;
-        double end = endValue instanceof Number n ? n.doubleValue() : defaultEnd;
-        return NumericRangeData.canonical(start, end);
+        Double start = StrictDoubleUtils.requireExactFiniteDouble(startValue);
+        Double end = StrictDoubleUtils.requireExactFiniteDouble(endValue);
+        double resolvedStart = start != null ? start : defaultStart;
+        double resolvedEnd = end != null ? end : defaultEnd;
+        return NumericRangeData.canonical(resolvedStart, resolvedEnd);
+    }
+
+    private static @Nullable NumericRangeData finiteEndpoints(@Nullable Object domainValue) {
+        if (!(domainValue instanceof NumericRangeData range)) {
+            return null;
+        }
+        if (!Double.isFinite(range.start()) || !Double.isFinite(range.end())) {
+            return null;
+        }
+        return range;
     }
 }

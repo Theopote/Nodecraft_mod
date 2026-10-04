@@ -29,6 +29,7 @@ public class SmoothstepNode extends BaseNode {
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_T_ID = "output_t";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public SmoothstepNode() {
         super(UUID.randomUUID(), "math.scalar_math.smoothstep");
@@ -40,6 +41,7 @@ public class SmoothstepNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_RESULT_ID, "Result", "Smoothstep result in [0,1]", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Normalized and clamped parameter", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether inputs are valid and edges are distinct", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -54,26 +56,36 @@ public class SmoothstepNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-        Object edge0Obj = inputValues.get(INPUT_EDGE0_ID);
-        Object edge1Obj = inputValues.get(INPUT_EDGE1_ID);
-
-        if (!(valueObj instanceof Number valueNum)
-            || !(edge0Obj instanceof Number edge0Num)
-            || !(edge1Obj instanceof Number edge1Num)) {
-            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
-            outputValues.put(OUTPUT_T_ID, Double.NaN);
-            outputValues.put(OUTPUT_VALID_ID, false);
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        Double edge0 = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_EDGE0_ID));
+        Double edge1 = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_EDGE1_ID));
+        if (value == null || edge0 == null || edge1 == null) {
+            writeInvalid(ScalarMathPorts.ERROR_INVALID_INPUT);
             return;
         }
 
-        double value = valueNum.doubleValue();
-        double edge0 = edge0Num.doubleValue();
-        double edge1 = edge1Num.doubleValue();
         ScalarResult result = ScalarMathOps.smoothstep(value, edge0, edge1);
         ScalarResult t = ScalarMathOps.smoothstepT(value, edge0, edge1);
+        if (!result.valid()) {
+            String error = edge0.equals(edge1)
+                ? ScalarMathPorts.ERROR_DEGENERATE_DOMAIN
+                : ScalarMathPorts.ERROR_INVALID_DOMAIN;
+            outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+            outputValues.put(OUTPUT_T_ID, Double.NaN);
+            outputValues.put(OUTPUT_VALID_ID, false);
+            outputValues.put(OUTPUT_ERROR_ID, error);
+            return;
+        }
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_T_ID, t.value());
-        outputValues.put(OUTPUT_VALID_ID, result.valid());
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
+        outputValues.put(OUTPUT_T_ID, Double.NaN);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

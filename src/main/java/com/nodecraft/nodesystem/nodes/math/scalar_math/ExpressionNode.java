@@ -255,21 +255,13 @@ public class ExpressionNode extends BaseCustomUINode {
             return;
         }
         Double value;
-        if (OptionalPortDrive.isConnected(this, portId)) {
-            value = OptionalPortDrive.resolveOptionalStrictDouble(this, portId, 0.0d);
+        if (OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId)) {
+            value = StrictDoubleUtils.requireExactFiniteDouble(getInput(portId));
             if (value == null) {
                 throw new ExpressionEvaluationException(name.toUpperCase(Locale.ROOT) + " must be a finite Double");
             }
         } else {
-            Object raw = inputValues.get(portId);
-            if (raw == null) {
-                value = 0.0d;
-            } else {
-                value = StrictDoubleUtils.requireExactFiniteDouble(raw);
-                if (value == null) {
-                    throw new ExpressionEvaluationException(name.toUpperCase(Locale.ROOT) + " must be a finite Double");
-                }
-            }
+            value = 0.0d;
         }
         variables.put(name, value);
     }

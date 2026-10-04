@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
@@ -85,6 +84,7 @@ public class GraphMapperNode extends BaseNode {
     private static final String OUTPUT_T_ID = "output_t";
     private static final String OUTPUT_MAPPED_ID = "output_mapped";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public GraphMapperNode() {
         super(UUID.randomUUID(), "math.scalar_math.graph_mapper");
@@ -97,6 +97,7 @@ public class GraphMapperNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_T_ID, "T", "Normalized input parameter", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_MAPPED_ID, "Mapped 0..1", "Graph function output before output-range remapping", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when mapping succeeded", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -113,7 +114,7 @@ public class GraphMapperNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Double valueObj = resolveOptionalValue();
         if (valueObj == null) {
-            writeInvalid();
+            writeInvalid(ScalarMathPorts.ERROR_INVALID_INPUT);
             return;
         }
         double value = valueObj;
@@ -126,9 +127,12 @@ public class GraphMapperNode extends BaseNode {
         double width = gaussianWidth;
 
         if (source == null || target == null
-            || !allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)
-            || source.delta() == 0.0d) {
-            writeInvalid();
+            || !allFinite(value, source.start(), source.end(), target.start(), target.end(), exponent, center, width)) {
+            writeInvalid(ScalarMathPorts.ERROR_INVALID_DOMAIN);
+            return;
+        }
+        if (source.delta() == 0.0d) {
+            writeInvalid(ScalarMathPorts.ERROR_DEGENERATE_DOMAIN);
             return;
         }
 
@@ -139,12 +143,12 @@ public class GraphMapperNode extends BaseNode {
 
         double mapped = evaluate(t, exponent, center, width);
         if (!Double.isFinite(mapped)) {
-            writeInvalid();
+            writeInvalid(ScalarMathPorts.ERROR_NON_FINITE_RESULT);
             return;
         }
         double result = target.lerp(mapped);
         if (!Double.isFinite(result) || !Double.isFinite(t)) {
-            writeInvalid();
+            writeInvalid(ScalarMathPorts.ERROR_NON_FINITE_RESULT);
             return;
         }
 
@@ -152,6 +156,7 @@ public class GraphMapperNode extends BaseNode {
         outputValues.put(OUTPUT_T_ID, t);
         outputValues.put(OUTPUT_MAPPED_ID, mapped);
         outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
     private double evaluate(double t, double exponent, double center, double width) {
@@ -245,14 +250,10 @@ public class GraphMapperNode extends BaseNode {
     }
 
     private @Nullable Double resolveOptionalValue() {
-        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_ID)) {
-            return OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_VALUE_ID, 0.0d);
+        if (ScalarMathPorts.isPortDriven(this, INPUT_VALUE_ID)) {
+            return StrictDoubleUtils.requireExactFiniteDouble(getInput(INPUT_VALUE_ID));
         }
-        Object raw = inputValues.get(INPUT_VALUE_ID);
-        if (raw == null) {
-            return 0.0d;
-        }
-        return StrictDoubleUtils.requireExactFiniteDouble(raw);
+        return 0.0d;
     }
 
     private static boolean allFinite(double... values) {
@@ -268,11 +269,12 @@ public class GraphMapperNode extends BaseNode {
         return Math.max(0.0d, Math.min(1.0d, value));
     }
 
-    private void writeInvalid() {
+    private void writeInvalid(String error) {
         outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
         outputValues.put(OUTPUT_T_ID, Double.NaN);
         outputValues.put(OUTPUT_MAPPED_ID, Double.NaN);
         outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
     public CurveType getCurveType() {

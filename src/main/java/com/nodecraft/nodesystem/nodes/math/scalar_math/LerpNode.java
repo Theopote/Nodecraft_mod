@@ -50,17 +50,16 @@ public class LerpNode extends BaseNode {
 
     @Override
     public void processNode(ExecutionContext context) {
-        Object aObj = inputValues.get(INPUT_A_ID);
-        Object bObj = inputValues.get(INPUT_B_ID);
-        Object tObj = inputValues.get(INPUT_T_ID);
-
-        if (!(aObj instanceof Number aNum) || !(bObj instanceof Number bNum) || !(tObj instanceof Number tNum)) {
+        Double a = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_A_ID));
+        Double b = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_B_ID));
+        Double t = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_T_ID));
+        if (a == null || b == null || t == null) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
         }
 
-        ScalarResult result = ScalarMathOps.lerp(aNum.doubleValue(), bNum.doubleValue(), tNum.doubleValue());
+        ScalarResult result = ScalarMathOps.lerp(a, b, t);
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }

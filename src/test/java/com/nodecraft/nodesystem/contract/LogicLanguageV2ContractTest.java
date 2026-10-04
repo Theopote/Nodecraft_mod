@@ -120,6 +120,44 @@ class LogicLanguageV2ContractTest {
     }
 
     @Test
+    void switchOutOfRangeUndrivenDefaultFailsClosed() {
+        SelectItemNode node = new SelectItemNode();
+        node.setInput("input_index", 5);
+        node.setInput("input_item_0", "item0");
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_result"));
+    }
+
+    @Test
+    void switchOutOfRangeExplicitNullDefaultIsValid() {
+        SelectItemNode node = new SelectItemNode();
+        node.setInput("input_index", 5);
+        node.setInput("input_default", null);
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        assertNull(node.getOutput("output_result"));
+    }
+
+    @Test
+    void ifAndSwitchValuePortsBindPassthroughT() {
+        IfNode ifNode = new IfNode();
+        assertTrue(findPort(ifNode, "input_true_value").isPassthroughBinding());
+        assertEquals("T", findPort(ifNode, "input_true_value").getListTypeVariable());
+        assertTrue(findPort(ifNode, "input_false_value").isPassthroughBinding());
+        assertTrue(findPort(ifNode, "output_result").isPassthroughBinding());
+        assertEquals("T", findPort(ifNode, "output_result").getListTypeVariable());
+
+        SelectItemNode sw = new SelectItemNode();
+        for (String id : List.of("input_item_0", "input_item_1", "input_item_2", "input_item_3",
+                "input_default", "output_result")) {
+            assertTrue(findPort(sw, id).isPassthroughBinding(), id);
+            assertEquals("T", findPort(sw, id).getListTypeVariable(), id);
+        }
+        assertFalse(findPort(sw, "input_index").isPassthroughBinding());
+    }
+
+    @Test
     void switchInvalidIndexFailsClosed() {
         SelectItemNode node = new SelectItemNode();
         node.setInput("input_index", "1");

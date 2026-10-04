@@ -26,6 +26,7 @@ public class PowerNode extends BaseNode {
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String OUTPUT_POWER_ID = "output_power";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public PowerNode() {
         super(UUID.randomUUID(), "math.scalar_math.power");
@@ -33,6 +34,7 @@ public class PowerNode extends BaseNode {
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "The exponent value", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_POWER_ID, "Power", "Result of Base ^ Exponent", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the power result is finite", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));
     }
 
     @Override
@@ -47,17 +49,19 @@ public class PowerNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valBase = inputValues.get(INPUT_BASE_ID);
-        Object valExponent = inputValues.get(INPUT_EXPONENT_ID);
-        if (!(valBase instanceof Number baseNumber) || !(valExponent instanceof Number exponentNumber)) {
-            publish(ScalarResult.invalid());
+        Double base = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_BASE_ID));
+        Double exponent = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_EXPONENT_ID));
+        if (base == null || exponent == null) {
+            publish(ScalarResult.invalid(), ScalarMathPorts.ERROR_INVALID_INPUT);
             return;
         }
-        publish(ScalarMathOps.pow(baseNumber.doubleValue(), exponentNumber.doubleValue()));
+        ScalarResult result = ScalarMathOps.pow(base, exponent);
+        publish(result, result.valid() ? "" : ScalarMathPorts.ERROR_NON_FINITE_RESULT);
     }
 
-    private void publish(ScalarResult result) {
+    private void publish(ScalarResult result, String error) {
         outputValues.put(OUTPUT_POWER_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

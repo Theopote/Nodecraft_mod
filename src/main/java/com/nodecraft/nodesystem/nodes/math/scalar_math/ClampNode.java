@@ -54,9 +54,8 @@ public class ClampNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object valueObj = inputValues.get(INPUT_VALUE_ID);
-
-        if (!(valueObj instanceof Number valueNumber)) {
+        Double value = ScalarMathPorts.requireExactFinite(inputValues.get(INPUT_VALUE_ID));
+        if (value == null) {
             outputValues.put(OUTPUT_RESULT_ID, Double.NaN);
             outputValues.put(OUTPUT_VALID_ID, false);
             return;
@@ -64,7 +63,7 @@ public class ClampNode extends BaseNode {
 
         NumericRangeData domain = NumericDomainResolver.resolveOptionalDomain(
             this, INPUT_DOMAIN_ID, defaultStart, defaultEnd);
-        ScalarResult result = ScalarMathOps.clamp(valueNumber.doubleValue(), domain);
+        ScalarResult result = ScalarMathOps.clamp(value, domain);
         outputValues.put(OUTPUT_RESULT_ID, result.value());
         outputValues.put(OUTPUT_VALID_ID, result.valid());
     }
@@ -87,30 +86,6 @@ public class ClampNode extends BaseNode {
         markDirty();
     }
 
-    /** @deprecated Use {@link #getDefaultStart()}. */
-    @Deprecated
-    public double getDefaultMin() {
-        return defaultStart;
-    }
-
-    /** @deprecated Use {@link #setDefaultStart(double)}. */
-    @Deprecated
-    public void setDefaultMin(double min) {
-        setDefaultStart(min);
-    }
-
-    /** @deprecated Use {@link #getDefaultEnd()}. */
-    @Deprecated
-    public double getDefaultMax() {
-        return defaultEnd;
-    }
-
-    /** @deprecated Use {@link #setDefaultEnd(double)}. */
-    @Deprecated
-    public void setDefaultMax(double max) {
-        setDefaultEnd(max);
-    }
-
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -125,14 +100,10 @@ public class ClampNode extends BaseNode {
             Object obj = stateMap.get("defaultStart");
             if (obj instanceof Number number) {
                 setDefaultStart(number.doubleValue());
-            } else if (stateMap.get("defaultMin") instanceof Number n) {
-                setDefaultStart(n.doubleValue());
             }
             obj = stateMap.get("defaultEnd");
             if (obj instanceof Number number) {
                 setDefaultEnd(number.doubleValue());
-            } else if (stateMap.get("defaultMax") instanceof Number n) {
-                setDefaultEnd(n.doubleValue());
             }
         }
     }
