@@ -50,9 +50,18 @@ public final class SurfaceShellBuilder {
             return null;
         }
 
-        OffsetMode resolvedMode = offsetMode == null ? OffsetMode.CENTERED : offsetMode;
-        double outerDistance = resolveOuterDistance(thickness, resolvedMode);
-        double innerDistance = resolveInnerDistance(thickness, resolvedMode);
+        if (offsetMode == null) {
+            return null;
+        }
+        if (hasCollapsedSourceQuad(sourceSections, closedFlags)) {
+            return null;
+        }
+
+        double outerDistance = resolveOuterDistance(thickness, offsetMode);
+        double innerDistance = resolveInnerDistance(thickness, offsetMode);
+        if (!Double.isFinite(outerDistance) || !Double.isFinite(innerDistance)) {
+            return null;
+        }
 
         List<List<Vector3d>> outerSections = new ArrayList<>(sourceSections.size());
         List<List<Vector3d>> innerSections = new ArrayList<>(sourceSections.size());
@@ -65,9 +74,18 @@ public final class SurfaceShellBuilder {
             for (int pointIndex = 0; pointIndex < sourceSection.size(); pointIndex++) {
                 Vector3d point = sourceSection.get(pointIndex);
                 Vector3d normal = computeShellNormal(sourceSections, closedFlags, sectionIndex, pointIndex);
-
-                outerSection.add(new Vector3d(point).fma(outerDistance, normal));
-                innerSection.add(new Vector3d(point).fma(-innerDistance, normal));
+                if (normal == null) {
+                    return null;
+                }
+                Vector3d outerOffset = VectorUtils.safeScale(normal, outerDistance);
+                Vector3d innerOffset = VectorUtils.safeScale(normal, -innerDistance);
+                Vector3d outerPoint = VectorUtils.safeAdd(point, outerOffset);
+                Vector3d innerPoint = VectorUtils.safeAdd(point, innerOffset);
+                if (outerPoint == null || innerPoint == null) {
+                    return null;
+                }
+                outerSection.add(outerPoint);
+                innerSection.add(innerPoint);
             }
 
             outerSections.add(List.copyOf(outerSection));
@@ -183,27 +201,24 @@ public final class SurfaceShellBuilder {
         };
     }
 
-    private static Vector3d computeShellNormal(List<List<Vector3d>> sections,
-                                               List<Boolean> closedFlags,
-                                               int sectionIndex,
-                                               int pointIndex) {
-        List<Vector3d> section = sections.get(sectionIndex);
-        Vector3d point = section.get(pointIndex);
-
-        Vector3d sectionTangent = computeSectionTangent(section, closedFlags.get(sectionIndex), pointIndex);
+    private static @Nullable Vector3d computeShellNormal(List<List<Vector3d>> sections,
+                                                         List<Boolean> closedFlags,
+                                                         int sectionIndex,
+                                                         int pointIndex) {
+        Vector3d sectionTangent = computeSectionTangent(
+            sections.get(sectionIndex),
+            Boolean.TRUE.equals(closedFlags.get(sectionIndex)),
+            pointIndex
+        );
         Vector3d railTangent = computeRailTangent(sections, sectionIndex, pointIndex);
-
-        Vector3d normal = new Vector3d(sectionTangent).cross(railTangent);
-        if (normal.lengthSquared() <= EPSILON) {
-            normal = fallbackNormal(sectionTangent, railTangent, point);
+        Vector3d crossed = VectorUtils.safeNormalize(VectorUtils.safeCross(sectionTangent, railTangent));
+        if (crossed != null) {
+            return crossed;
         }
-        if (normal.lengthSquared() <= EPSILON) {
-            normal = new Vector3d(0.0d, 1.0d, 0.0d);
-        }
-        return normal.normalize();
+        return averageNeighborFaceNormals(sections, closedFlags, sectionIndex, pointIndex);
     }
 
-    private static Vector3d computeSectionTangent(List<Vector3d> section, boolean closed, int pointIndex) {
+    private static @Nullable Vector3d computeSectionTangent(List<Vector3d> section, boolean closed, int pointIndex) {
         int size = section.size();
         Vector3d previous = section.get(clampSectionIndex(pointIndex - 1, size, closed));
         Vector3d next = section.get(clampSectionIndex(pointIndex + 1, size, closed));
@@ -216,15 +231,24 @@ public final class SurfaceShellBuilder {
             }
         }
 
-        Vector3d tangent = new Vector3d(next).sub(previous);
-        if (tangent.lengthSquared() <= EPSILON) {
-            if (pointIndex < size - 1) {
-                tangent = new Vector3d(section.get(pointIndex + 1)).sub(section.get(pointIndex));
-            } else if (pointIndex > 0) {
-                tangent = new Vector3d(section.get(pointIndex)).sub(section.get(pointIndex - 1));
+        Vector3d tangent = VectorUtils.safeNormalize(VectorUtils.safeSubtract(next, previous));
+        if (tangent != null) {
+            return tangent;
+        }
+        if (pointIndex < size - 1) {
+            tangent = VectorUtils.safeNormalize(
+                VectorUtils.safeSubtract(section.get(pointIndex + 1), section.get(pointIndex))
+            );
+            if (tangent != null) {
+                return tangent;
             }
         }
-        return tangent.lengthSquared() <= EPSILON ? new Vector3d(1.0d, 0.0d, 0.0d) : tangent.normalize();
+        if (pointIndex > 0) {
+            return VectorUtils.safeNormalize(
+                VectorUtils.safeSubtract(section.get(pointIndex), section.get(pointIndex - 1))
+            );
+        }
+        return null;
     }
 
     private static int clampSectionIndex(int index, int size, boolean closed) {
@@ -235,30 +259,113 @@ public final class SurfaceShellBuilder {
         return Math.max(0, Math.min(size - 1, index));
     }
 
-    private static Vector3d computeRailTangent(List<List<Vector3d>> sections, int sectionIndex, int pointIndex) {
-        Vector3d tangent;
+    private static @Nullable Vector3d computeRailTangent(List<List<Vector3d>> sections, int sectionIndex, int pointIndex) {
+        Vector3d from;
+        Vector3d to;
         if (sectionIndex == 0) {
-            tangent = new Vector3d(sections.get(1).get(pointIndex)).sub(sections.get(0).get(pointIndex));
+            from = sections.get(0).get(pointIndex);
+            to = sections.get(1).get(pointIndex);
         } else if (sectionIndex == sections.size() - 1) {
-            tangent = new Vector3d(sections.get(sectionIndex).get(pointIndex)).sub(sections.get(sectionIndex - 1).get(pointIndex));
+            from = sections.get(sectionIndex - 1).get(pointIndex);
+            to = sections.get(sectionIndex).get(pointIndex);
         } else {
-            tangent = new Vector3d(sections.get(sectionIndex + 1).get(pointIndex)).sub(sections.get(sectionIndex - 1).get(pointIndex));
+            from = sections.get(sectionIndex - 1).get(pointIndex);
+            to = sections.get(sectionIndex + 1).get(pointIndex);
         }
-        return tangent.lengthSquared() <= EPSILON ? new Vector3d(0.0d, 0.0d, 1.0d) : tangent.normalize();
+        return VectorUtils.safeNormalize(VectorUtils.safeSubtract(to, from));
     }
 
-    private static Vector3d fallbackNormal(Vector3d sectionTangent, Vector3d railTangent, Vector3d point) {
-        Vector3d reference = Math.abs(railTangent.y) < 0.95d
-            ? new Vector3d(0.0d, 1.0d, 0.0d)
-            : new Vector3d(1.0d, 0.0d, 0.0d);
-        Vector3d candidate = new Vector3d(sectionTangent).cross(reference);
-        if (candidate.lengthSquared() <= EPSILON) {
-            candidate = new Vector3d(railTangent).cross(reference);
+    private static boolean hasCollapsedSourceQuad(List<List<Vector3d>> sections, List<Boolean> closedFlags) {
+        int sectionCount = sections.size();
+        int pointCount = sections.getFirst().size();
+        for (int u = 0; u < sectionCount - 1; u++) {
+            boolean wrap = Boolean.TRUE.equals(closedFlags.get(u))
+                && Boolean.TRUE.equals(closedFlags.get(u + 1));
+            int segCount = wrap ? pointCount : pointCount - 1;
+            for (int j = 0; j < segCount; j++) {
+                Vector3d a = sections.get(u).get(j);
+                Vector3d b = sections.get(u).get((j + 1) % pointCount);
+                Vector3d c = sections.get(u + 1).get(j);
+                Vector3d d = sections.get(u + 1).get((j + 1) % pointCount);
+                if (quadArea(a, b, c, d) <= EPSILON) {
+                    return true;
+                }
+            }
         }
-        if (candidate.lengthSquared() <= EPSILON) {
-            candidate = new Vector3d(point).cross(reference);
+        return false;
+    }
+
+    private static @Nullable Vector3d averageNeighborFaceNormals(
+        List<List<Vector3d>> sections,
+        List<Boolean> closedFlags,
+        int sectionIndex,
+        int pointIndex
+    ) {
+        int sectionCount = sections.size();
+        int pointCount = sections.getFirst().size();
+        Vector3d sum = null;
+        for (int du = -1; du <= 0; du++) {
+            int u = sectionIndex + du;
+            if (u < 0 || u >= sectionCount - 1) {
+                continue;
+            }
+            boolean wrap = Boolean.TRUE.equals(closedFlags.get(u))
+                && Boolean.TRUE.equals(closedFlags.get(u + 1));
+            for (int dj = -1; dj <= 0; dj++) {
+                int j = pointIndex + dj;
+                if (wrap) {
+                    j = clampSectionIndex(j, pointCount, true);
+                } else if (j < 0 || j >= pointCount - 1) {
+                    continue;
+                }
+                Vector3d a = sections.get(u).get(j);
+                Vector3d b = sections.get(u).get((j + 1) % pointCount);
+                Vector3d c = sections.get(u + 1).get(j);
+                Vector3d d = sections.get(u + 1).get((j + 1) % pointCount);
+                Vector3d face = quadUnitNormal(a, b, c, d);
+                if (face == null) {
+                    continue;
+                }
+                sum = sum == null ? new Vector3d(face) : VectorUtils.safeAdd(sum, face);
+                if (sum == null) {
+                    return null;
+                }
+            }
         }
-        return candidate;
+        return VectorUtils.safeNormalize(sum);
+    }
+
+    private static @Nullable Vector3d quadUnitNormal(Vector3d a, Vector3d b, Vector3d c, Vector3d d) {
+        Vector3d n1 = VectorUtils.safeNormalize(
+            VectorUtils.safeCross(VectorUtils.safeSubtract(b, a), VectorUtils.safeSubtract(c, a))
+        );
+        Vector3d n2 = VectorUtils.safeNormalize(
+            VectorUtils.safeCross(VectorUtils.safeSubtract(d, b), VectorUtils.safeSubtract(c, b))
+        );
+        Vector3d sum = null;
+        if (n1 != null) {
+            sum = n1;
+        }
+        if (n2 != null) {
+            sum = sum == null ? n2 : VectorUtils.safeAdd(sum, n2);
+        }
+        return VectorUtils.safeNormalize(sum);
+    }
+
+    private static double quadArea(Vector3d a, Vector3d b, Vector3d c, Vector3d d) {
+        double area1 = triangleArea(a, b, c);
+        double area2 = triangleArea(b, d, c);
+        double sum = area1 + area2;
+        return Double.isFinite(sum) ? sum : 0.0d;
+    }
+
+    private static double triangleArea(Vector3d a, Vector3d b, Vector3d c) {
+        Vector3d cross = VectorUtils.safeCross(VectorUtils.safeSubtract(b, a), VectorUtils.safeSubtract(c, a));
+        double length = VectorUtils.safeLength(cross);
+        if (!Double.isFinite(length)) {
+            return 0.0d;
+        }
+        return length * 0.5d;
     }
 
     private static List<SurfaceStripData> createCapSurfaces(List<List<Vector3d>> outerSections,

@@ -155,6 +155,22 @@ class SolidsFamilyContractTest {
         assertPortType("geometry.solids.sweep", "output_section_profiles", false, NodeDataType.POLYGON_PROFILE_LIST);
     }
 
+    @Test
+    void sectionBudgetsAliasExistingCeilings() {
+        assertEquals(
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_PROJECTION_WORK,
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_NEAREST_PROJECTION_WORK
+        );
+        assertEquals(
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_GEOMETRY_INSTANCES,
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_SECTION_PLANES
+        );
+        assertEquals(
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_PROJECTION_WORK,
+            com.nodecraft.nodesystem.util.GenerationLimits.MAX_SECTION_WORK
+        );
+    }
+
     private static boolean hasInputPort(String typeId, String portId) {
         INode node = NodeRegistry.getInstance().createNodeInstance(typeId);
         assertInstanceOf(INode.class, node);

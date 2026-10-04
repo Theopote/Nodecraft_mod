@@ -28,7 +28,9 @@ Legacy Profile / Boundary / Tree / Slice ports are unchanged (all loops, largest
 | `output_regions` | `PLANAR_REGION_LIST` | Flattened across planes |
 | `output_regions_tree` | `DATA_TREE` | Keyed `[planeIndex, regionIndex]` |
 
-Empty regions with non-empty profiles remains Valid (legacy path). Neither regions nor profiles → fail as today.
+Empty regions with non-empty profiles remains Valid (legacy path). Empty intersection (no contours) is **Valid=true** with null primaries, empty lists, and Contour Count `0`.
+
+Count is an exact integer `1..MAX_SECTION_PLANES`. Shared `SectionWorkBudget` caps `planeCount × voxelCount` and aggregated slice/contour outputs.
 
 Voxel Section: when `input_planes` is connected and invalid → Error `"Planes list invalid"` (not “at least one plane”).
 

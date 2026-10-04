@@ -87,8 +87,8 @@ public class ExtractSurfaceStripRangeNode extends AbstractSolidNode {
         }
 
         int lastIndex = sourceSectionCount - 1;
-        int startIndex = (int) Math.round(startU * lastIndex);
-        int endIndex = (int) Math.round(endU * lastIndex);
+        int startIndex = (int) Math.floor(startU * lastIndex);
+        int endIndex = (int) Math.ceil(endU * lastIndex);
         startIndex = Math.max(0, Math.min(lastIndex, startIndex));
         endIndex = Math.max(0, Math.min(lastIndex, endIndex));
         if (startIndex > endIndex) {

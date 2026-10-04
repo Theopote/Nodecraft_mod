@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Historical Graph V72/V94 residue: cylinder-lattice approximation of a strip, not a filled solid.
+ * {@code GraphFormatVersion.CURRENT} is stamp-only 1.
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.surface_strip_to_lattice",

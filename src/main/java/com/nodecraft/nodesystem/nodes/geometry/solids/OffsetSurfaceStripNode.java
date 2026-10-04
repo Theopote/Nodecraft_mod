@@ -113,6 +113,9 @@ public class OffsetSurfaceStripNode extends AbstractSolidNode {
     }
 
     public void setDefaultDistance(double defaultDistance) {
+        if (!Double.isFinite(defaultDistance)) {
+            return;
+        }
         if (Double.compare(this.defaultDistance, defaultDistance) != 0) {
             this.defaultDistance = defaultDistance;
             markDirty();

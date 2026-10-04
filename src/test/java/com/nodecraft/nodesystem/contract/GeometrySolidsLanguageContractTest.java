@@ -18,6 +18,7 @@ import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.geometry.solids.ExtractSurfaceStripRangeNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ExtrudeProfileNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ExtrudeRegionNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.LoftProfilesNode;
@@ -30,6 +31,7 @@ import com.nodecraft.nodesystem.nodes.geometry.solids.SweepProfileAlongPathNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ThickenSurfaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
+import com.nodecraft.nodesystem.util.SurfaceShellBuilder;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -153,8 +155,47 @@ class GeometrySolidsLanguageContractTest {
         ThickenSurfaceNode thicken = new ThickenSurfaceNode();
         assertFalse(hasPort(thicken, "output_geometry"));
         assertPortType("geometry.solids.thicken_surface", "output_side_caps", false, NodeDataType.SURFACE_STRIP_LIST);
+        IPort endCaps = thicken.getOutputPorts().stream()
+            .filter(port -> "output_side_caps".equals(port.getId()))
+            .findFirst()
+            .orElseThrow();
+        assertEquals("End Caps", endCaps.getDisplayName());
         assertPortType("geometry.solids.offset_surface_strip", "output_surface_strip", false, NodeDataType.SURFACE_STRIP);
         assertFalse(hasPort(registry.createNodeInstance("geometry.solids.offset_surface_strip"), "output_geometry"));
+    }
+
+    @Test
+    void thickenThicknessMustBePositiveAndUnknownOffsetModeDoesNotSilentCenter() {
+        ThickenSurfaceNode thicken = new ThickenSurfaceNode();
+        thicken.setOffsetMode(SurfaceShellBuilder.OffsetMode.OUTSIDE);
+        thicken.setOffsetModeString("not-a-mode");
+        assertEquals(SurfaceShellBuilder.OffsetMode.OUTSIDE, thicken.getOffsetMode());
+        thicken.setOffsetMode(null);
+        assertEquals(SurfaceShellBuilder.OffsetMode.OUTSIDE, thicken.getOffsetMode());
+
+        SurfaceStripData strip = threeSectionStrip();
+        thicken.setInput("input_surface_strip", strip);
+        connectInput(thicken, "input_thickness", NodeDataType.DOUBLE);
+        thicken.setInput("input_thickness", 0.0d);
+        thicken.processNode(null);
+        assertEquals(Boolean.FALSE, thicken.getOutput("output_valid"));
+        assertTrue(String.valueOf(thicken.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("thickness"));
+    }
+
+    @Test
+    void extractNormalizedUUsesFloorCeilCover() {
+        ExtractSurfaceStripRangeNode extract = new ExtractSurfaceStripRangeNode();
+        extract.setInput("input_surface_strip", threeSectionStrip());
+        connectInput(extract, "input_start", NodeDataType.DOUBLE);
+        connectInput(extract, "input_end", NodeDataType.DOUBLE);
+        extract.setInput("input_start", 0.4d);
+        extract.setInput("input_end", 0.6d);
+        extract.processNode(null);
+        assertEquals(Boolean.TRUE, extract.getOutput("output_valid"),
+            String.valueOf(extract.getOutput("output_error")));
+        assertEquals(3, extract.getOutput("output_section_count"));
+        assertEquals(0, extract.getOutput("output_start_section"));
+        assertEquals(2, extract.getOutput("output_end_section"));
     }
 
     @Test
@@ -394,6 +435,15 @@ class GeometrySolidsLanguageContractTest {
         );
         org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
             () -> new SurfaceStripData(List.of(degenerate, ok), List.of(false, false)));
+    }
+
+    private static SurfaceStripData threeSectionStrip() {
+        List<List<Vector3d>> sections = List.of(
+            List.of(new Vector3d(0, 0, 0), new Vector3d(2, 0, 0)),
+            List.of(new Vector3d(0, 1, 0), new Vector3d(2, 1, 0)),
+            List.of(new Vector3d(0, 2, 0), new Vector3d(2, 2, 0))
+        );
+        return new SurfaceStripData(sections, List.of(false, false, false));
     }
 
     private static PolygonProfileData unitSquareProfile() {

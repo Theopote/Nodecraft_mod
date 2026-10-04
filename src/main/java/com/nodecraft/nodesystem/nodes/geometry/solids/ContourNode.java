@@ -16,7 +16,9 @@ import com.nodecraft.nodesystem.nodes.geometry.solids.SectionContourUtils.Sectio
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -64,7 +66,9 @@ public class ContourNode extends AbstractSolidNode {
         addInputPort(new BasePort(INPUT_BASE_PLANE_ID, "Base Plane", "First contour plane orientation and origin. Defaults to XY", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_START_DISTANCE_ID, "Start Distance", "Offset from the base plane along its normal for the first contour", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between adjacent contour planes", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of contour planes to generate", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
+            "Number of contour planes (exact integer, 1 to " + GenerationLimits.MAX_SECTION_PLANES + ")",
+            NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary traced contour profile", NodeDataType.POLYGON_PROFILE, this));
@@ -82,7 +86,8 @@ public class ContourNode extends AbstractSolidNode {
         addOutputPort(new BasePort(OUTPUT_SLICE_POINTS_TREE_ID, "Slice Points Tree", "Projected section sample points keyed by plane index", NodeDataType.DATA_TREE, this));
         addOutputPort(new BasePort(OUTPUT_PLANES_ID, "Planes", "Generated contour planes", NodeDataType.PLANE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_CONTOUR_COUNT_ID, "Contour Count", "Number of traced contour boundaries", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when at least one contour was resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+            "True when contour planes were resolved (empty intersection is valid)", NodeDataType.BOOLEAN, this));
         addErrorOutputPort();
     }
 
@@ -109,16 +114,16 @@ public class ContourNode extends AbstractSolidNode {
             invalidate("Base plane is invalid");
             return;
         }
-        Vector3d normal = basePlane.getNormal();
-        if (normal.lengthSquared() <= 1.0e-12d) {
-            invalidate("Base plane normal is zero-length");
+        Vector3d normal = VectorUtils.safeNormalize(basePlane.getNormal());
+        if (normal == null) {
+            invalidate("Base plane normal is zero-length or non-finite");
             return;
         }
-        normal.normalize();
 
-        Integer countObj = resolvePositiveInteger(INPUT_COUNT_ID, 10);
+        Integer countObj = resolveBoundedInteger(INPUT_COUNT_ID, 10, 1, GenerationLimits.MAX_SECTION_PLANES);
         if (countObj == null) {
-            invalidate("Count is connected but invalid (must be a positive integer)");
+            invalidate("Count is connected but invalid (must be an exact integer from 1 to "
+                + GenerationLimits.MAX_SECTION_PLANES + ")");
             return;
         }
         int count = countObj;
@@ -152,16 +157,41 @@ public class ContourNode extends AbstractSolidNode {
             return;
         }
 
+        String budgetError = SectionWorkBudget.preflight(count, voxelResult.blocks().size());
+        if (budgetError != null) {
+            invalidate(budgetError);
+            return;
+        }
+
         List<PlaneData> planes = buildPlanes(basePlane, normal, startDistanceObj, spacing, count);
+        if (planes == null) {
+            invalidate("Contour plane origin is non-finite");
+            return;
+        }
         writeResults(voxelResult.blocks(), planes, thicknessObj);
     }
 
-    private List<PlaneData> buildPlanes(PlaneData basePlane, Vector3d normal, double startDistance, double spacing, int count) {
+    private @Nullable List<PlaneData> buildPlanes(
+        PlaneData basePlane,
+        Vector3d normal,
+        double startDistance,
+        double spacing,
+        int count
+    ) {
         List<PlaneData> planes = new ArrayList<>(count);
         Vector3d origin = basePlane.getPoint();
         for (int i = 0; i < count; i++) {
-            double distance = startDistance + spacing * i;
-            planes.add(new PlaneData(new Vector3d(origin).add(new Vector3d(normal).mul(distance)), normal));
+            double distance = startDistance + spacing * (double) i;
+            if (!Double.isFinite(distance)) {
+                return null;
+            }
+            Vector3d offset = VectorUtils.safeScale(normal, distance);
+            Vector3d point = VectorUtils.safeAdd(origin, offset);
+            PlaneData plane = PlaneData.canonical(point, normal);
+            if (plane == null) {
+                return null;
+            }
+            planes.add(plane);
         }
         return List.copyOf(planes);
     }
@@ -178,9 +208,15 @@ public class ContourNode extends AbstractSolidNode {
         List<DataTreeData.Branch> blockBranches = new ArrayList<>();
         List<DataTreeData.Branch> pointBranches = new ArrayList<>();
         SectionResult firstValid = null;
+        SectionWorkBudget totals = SectionWorkBudget.create();
 
         for (int planeIndex = 0; planeIndex < planes.size(); planeIndex++) {
             SectionResult result = SectionContourUtils.cutSection(filled, planes.get(planeIndex), thickness);
+            String accumError = totals.accumulate(result);
+            if (accumError != null) {
+                invalidate(accumError);
+                return;
+            }
             if (!result.profiles().isEmpty()) {
                 profiles.addAll(result.profiles());
                 for (int contourIndex = 0; contourIndex < result.profiles().size(); contourIndex++) {
@@ -227,7 +263,22 @@ public class ContourNode extends AbstractSolidNode {
         }
 
         if (firstValid == null) {
-            invalidate("No contour profiles were traced");
+            outputValues.put(OUTPUT_PROFILE_ID, null);
+            outputValues.put(OUTPUT_BOUNDARY_ID, null);
+            outputValues.put(OUTPUT_REGION_ID, null);
+            outputValues.put(OUTPUT_PROFILES_ID, List.of());
+            outputValues.put(OUTPUT_BOUNDARIES_ID, List.of());
+            outputValues.put(OUTPUT_REGIONS_ID, List.of());
+            outputValues.put(OUTPUT_PROFILES_TREE_ID, new DataTreeData(profileBranches));
+            outputValues.put(OUTPUT_BOUNDARIES_TREE_ID, new DataTreeData(boundaryBranches));
+            outputValues.put(OUTPUT_REGIONS_TREE_ID, new DataTreeData(regionBranches));
+            outputValues.put(OUTPUT_SLICE_BLOCKS_ID, allSliceBlocks);
+            outputValues.put(OUTPUT_SLICE_POINTS_ID, SpatialValueResolver.toPointDataList(allSlicePoints));
+            outputValues.put(OUTPUT_SLICE_BLOCKS_TREE_ID, new DataTreeData(blockBranches));
+            outputValues.put(OUTPUT_SLICE_POINTS_TREE_ID, new DataTreeData(pointBranches));
+            outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
+            outputValues.put(OUTPUT_CONTOUR_COUNT_ID, 0);
+            markSuccess();
             return;
         }
 

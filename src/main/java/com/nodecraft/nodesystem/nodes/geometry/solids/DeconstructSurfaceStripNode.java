@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Historical Graph V72 residue (surface-strip deconstruct).
+ * {@code GraphFormatVersion.CURRENT} is stamp-only 1.
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.solids.deconstruct_surface_strip",

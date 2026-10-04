@@ -22,6 +22,7 @@ import com.nodecraft.nodesystem.nodes.geometry.solids.LoftPointListsNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.SectionCutNode;
 import com.nodecraft.nodesystem.nodes.geometry.solids.ShrinkwrapPointsOnSurfaceStripNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -212,6 +213,61 @@ class GeometrySolidsSectionTopologyV2ContractTest {
             String.valueOf(node.getOutput("output_error")));
         assertEquals(List.of(), node.getOutput("output_points"));
         assertEquals(List.of(), node.getOutput("output_distances"));
+    }
+
+    @Test
+    void emptySectionIntersection_isValidWithNullPrimaries() {
+        SectionCutNode section = new SectionCutNode();
+        section.setInput("input_geometry",
+            new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2)));
+        connectInput(section, "input_plane", NodeDataType.PLANE);
+        section.setInput("input_plane", new PlaneData(
+            new Vector3d(0.0d, 100.0d, 0.0d),
+            new Vector3d(0.0d, 1.0d, 0.0d)
+        ));
+        section.processNode(null);
+
+        assertEquals(Boolean.TRUE, section.getOutput("output_valid"),
+            String.valueOf(section.getOutput("output_error")));
+        assertNull(section.getOutput("output_profile"));
+        assertNull(section.getOutput("output_boundary"));
+        assertNull(section.getOutput("output_region"));
+        assertEquals(List.of(), section.getOutput("output_profiles"));
+        assertEquals(List.of(), section.getOutput("output_boundaries"));
+        assertEquals(List.of(), section.getOutput("output_regions"));
+    }
+
+    @Test
+    void emptyContourIntersection_isValidWithZeroCount() {
+        ContourNode contour = new ContourNode();
+        contour.setInput("input_geometry",
+            new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2)));
+        connectInput(contour, "input_start_distance", NodeDataType.DOUBLE);
+        contour.setInput("input_start_distance", 100.0d);
+        connectInput(contour, "input_count", NodeDataType.INTEGER);
+        contour.setInput("input_count", 1);
+        contour.processNode(null);
+
+        assertEquals(Boolean.TRUE, contour.getOutput("output_valid"),
+            String.valueOf(contour.getOutput("output_error")));
+        assertNull(contour.getOutput("output_profile"));
+        assertNull(contour.getOutput("output_region"));
+        assertEquals(List.of(), contour.getOutput("output_profiles"));
+        assertEquals(0, contour.getOutput("output_contour_count"));
+    }
+
+    @Test
+    void contourCountOverPlaneCap_failsClosed() {
+        ContourNode contour = new ContourNode();
+        contour.setInput("input_geometry",
+            new BoxGeometryData(new Vector3d(0, 0, 0), new Vector3d(2, 2, 2)));
+        connectInput(contour, "input_count", NodeDataType.INTEGER);
+        contour.setInput("input_count", GenerationLimits.MAX_SECTION_PLANES + 1);
+        contour.processNode(null);
+
+        assertEquals(Boolean.FALSE, contour.getOutput("output_valid"));
+        String error = String.valueOf(contour.getOutput("output_error")).toLowerCase(Locale.ROOT);
+        assertTrue(error.contains("count") || error.contains("integer") || error.contains("limit"), error);
     }
 
     private static void assertPortType(String typeId, String portId, boolean input, NodeDataType expected) {

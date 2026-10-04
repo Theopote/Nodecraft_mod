@@ -9,8 +9,11 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPosList;
 import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.SurfaceInputUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import com.nodecraft.nodesystem.util.VoxelizationStatus;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -106,6 +109,12 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends AbstractSolidNode {
             return;
         }
 
+        if (!SurfaceInputUtils.isWithinProjectionWorkload(queries.size(), voxels.size())) {
+            invalidate("Nearest projection workload exceeds limit ("
+                + GenerationLimits.MAX_NEAREST_PROJECTION_WORK + ")");
+            return;
+        }
+
         List<BlockPos> voxelList = new ArrayList<>(voxels.size());
         for (BlockPos p : voxels) {
             voxelList.add(p);
@@ -115,12 +124,16 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends AbstractSolidNode {
         List<Double> distances = new ArrayList<>(queries.size());
         for (Vector3d q : queries) {
             BlockPos best = null;
-            double bestSq = Double.MAX_VALUE;
+            double bestDist = Double.POSITIVE_INFINITY;
             for (BlockPos bp : voxelList) {
                 Vector3d c = blockCenter(bp);
-                double dSq = q.distanceSquared(c);
-                if (dSq < bestSq) {
-                    bestSq = dSq;
+                double dist = VectorUtils.safeDistance(q, c);
+                if (!Double.isFinite(dist)) {
+                    invalidate("Nearest voxel distance is non-finite");
+                    return;
+                }
+                if (dist < bestDist) {
+                    bestDist = dist;
                     best = bp;
                 }
             }
@@ -129,7 +142,7 @@ public class ShrinkwrapPointsToVoxelGeometryNode extends AbstractSolidNode {
                 return;
             }
             projected.add(blockCenter(best));
-            distances.add(Math.sqrt(bestSq));
+            distances.add(bestDist);
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projected));

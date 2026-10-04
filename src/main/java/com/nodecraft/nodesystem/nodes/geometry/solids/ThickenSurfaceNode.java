@@ -31,7 +31,8 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
     @NodeProperty(displayName = "Offset Mode", category = "Thickness", order = 2)
     private SurfaceShellBuilder.OffsetMode offsetMode = SurfaceShellBuilder.OffsetMode.CENTERED;
 
-    @NodeProperty(displayName = "Include Caps", category = "Thickness", order = 3)
+    @NodeProperty(displayName = "End Caps", category = "Thickness", order = 3,
+        description = "When enabled, emit end-cap strips that close the thickened shell at the first and last sections")
     private boolean includeCaps = true;
 
     private static final String INPUT_SURFACE_STRIP_ID = "input_surface_strip";
@@ -53,7 +54,7 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
 
         addOutputPort(new BasePort(OUTPUT_FRONT_SURFACE_ID, "Front Surface", "Primary offset surface layer", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_BACK_SURFACE_ID, "Back Surface", "Secondary offset surface layer", NodeDataType.SURFACE_STRIP, this));
-        addOutputPort(new BasePort(OUTPUT_SIDE_CAPS_ID, "Side Caps", "Cap surfaces closing the thickened strip ends", NodeDataType.SURFACE_STRIP_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_SIDE_CAPS_ID, "End Caps", "End-cap strips closing the thickened shell at first and last sections", NodeDataType.SURFACE_STRIP_LIST, this));
         addOutputPort(new BasePort(OUTPUT_ALL_SURFACES_ID, "All Surfaces", "All generated thickened strip surfaces", NodeDataType.SURFACE_STRIP_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the thickened strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_LAYER_COUNT_ID, "Layer Count", "Generated surface layer count", NodeDataType.INTEGER, this));
@@ -81,9 +82,9 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
             return;
         }
 
-        Double thicknessObj = resolveNonNegativeDouble(INPUT_THICKNESS_ID, defaultThickness);
+        Double thicknessObj = resolvePositiveDouble(INPUT_THICKNESS_ID, defaultThickness);
         if (thicknessObj == null) {
-            invalidate("Thickness is connected but invalid (must be finite and non-negative)");
+            invalidate("Thickness is connected but invalid (must be finite and > 0)");
             return;
         }
         double thickness = thicknessObj;
@@ -114,6 +115,9 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
     }
 
     public void setDefaultThickness(double defaultThickness) {
+        if (!Double.isFinite(defaultThickness) || defaultThickness <= 0.0d) {
+            return;
+        }
         markDirtyIfChanged(this.defaultThickness, defaultThickness);
         this.defaultThickness = defaultThickness;
     }
@@ -123,20 +127,21 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
     }
 
     public void setOffsetMode(SurfaceShellBuilder.OffsetMode offsetMode) {
-        SurfaceShellBuilder.OffsetMode resolved = offsetMode == null ? SurfaceShellBuilder.OffsetMode.CENTERED : offsetMode;
-        markDirtyIfChanged(this.offsetMode, resolved);
-        this.offsetMode = resolved;
+        if (offsetMode == null) {
+            return;
+        }
+        markDirtyIfChanged(this.offsetMode, offsetMode);
+        this.offsetMode = offsetMode;
     }
 
     public void setOffsetModeString(String offsetMode) {
         if (offsetMode == null || offsetMode.isBlank()) {
-            setOffsetMode(SurfaceShellBuilder.OffsetMode.CENTERED);
             return;
         }
         try {
             setOffsetMode(SurfaceShellBuilder.OffsetMode.valueOf(offsetMode.trim().toUpperCase()));
         } catch (IllegalArgumentException ignored) {
-            setOffsetMode(SurfaceShellBuilder.OffsetMode.CENTERED);
+            // Unknown keys stay at the current OffsetMode; no silent CENTERED default.
         }
     }
 

@@ -594,6 +594,24 @@ public final class GenerationLimits {
     /** Maximum shrinkwrap workload: queries × triangles. */
     public static final long MAX_SURFACE_PROJECTION_WORK = MAX_LIST_ELEMENTS;
 
+    /** Alias of {@link #MAX_SURFACE_PROJECTION_WORK} for nearest-point products (queries × triangles or voxels). */
+    public static final long MAX_NEAREST_PROJECTION_WORK = MAX_SURFACE_PROJECTION_WORK;
+
+    /** Maximum section / contour plane count (Voxel Section PLANES_LIST and Voxel Contours Count). */
+    public static final int MAX_SECTION_PLANES = MAX_GEOMETRY_INSTANCES;
+
+    /** Maximum section/contour work: planeCount × voxelCount. */
+    public static final long MAX_SECTION_WORK = MAX_SURFACE_PROJECTION_WORK;
+
+    /** Maximum aggregated slice-block items across all section planes. */
+    public static final long MAX_SECTION_TOTAL_BLOCK_ITEMS = MAX_VOXEL_TREE_BLOCK_ITEMS;
+
+    /** Maximum aggregated slice-point items across all section planes. */
+    public static final long MAX_SECTION_TOTAL_POINT_ITEMS = MAX_LIST_ELEMENTS;
+
+    /** Maximum traced contours (profiles) aggregated across all section planes. */
+    public static final long MAX_SECTION_TOTAL_CONTOURS = MAX_PROFILE_OUTPUT_PROFILES;
+
     /** Hard safety ceiling for world.write SNBT / NBT String input length. */
     public static final int MAX_WORLD_WRITE_SNBT_CHARS = 65_536;
 

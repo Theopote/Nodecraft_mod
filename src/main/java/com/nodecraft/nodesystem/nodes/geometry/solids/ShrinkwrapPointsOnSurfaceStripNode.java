@@ -6,8 +6,10 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.SurfaceInputUtils;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -102,20 +104,27 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends AbstractSolidNode {
         long queryCount = queries.size();
         long triangleCount = triangles.size();
         if (!SurfaceInputUtils.isWithinProjectionWorkload(queryCount, triangleCount)) {
-            invalidate("Projection workload exceeds limit (" + com.nodecraft.nodesystem.util.GenerationLimits.MAX_SURFACE_PROJECTION_WORK + ")");
+            invalidate("Projection workload exceeds limit (" + GenerationLimits.MAX_NEAREST_PROJECTION_WORK + ")");
             return;
         }
 
         List<Vector3d> projected = new ArrayList<>(queries.size());
         List<Double> distances = new ArrayList<>(queries.size());
         for (Vector3d q : queries) {
-            double bestSq = Double.MAX_VALUE;
+            double bestDist = Double.POSITIVE_INFINITY;
             Vector3d best = null;
             for (Triangle tri : triangles) {
                 Vector3d c = closestOnTriangle(q, tri.a, tri.b, tri.c);
-                double dSq = q.distanceSquared(c);
-                if (dSq < bestSq) {
-                    bestSq = dSq;
+                if (c == null) {
+                    continue;
+                }
+                double dist = VectorUtils.safeDistance(q, c);
+                if (!Double.isFinite(dist)) {
+                    invalidate("Nearest surface distance is non-finite");
+                    return;
+                }
+                if (dist < bestDist) {
+                    bestDist = dist;
                     best = c;
                 }
             }
@@ -124,7 +133,7 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends AbstractSolidNode {
                 return;
             }
             projected.add(best);
-            distances.add(Math.sqrt(bestSq));
+            distances.add(bestDist);
         }
 
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(projected));
@@ -170,57 +179,99 @@ public class ShrinkwrapPointsOnSurfaceStripNode extends AbstractSolidNode {
     private record Triangle(Vector3d a, Vector3d b, Vector3d c) {
     }
 
-    private static Vector3d closestOnTriangle(Vector3d p, Vector3d a, Vector3d b, Vector3d c) {
-        Vector3d ab = new Vector3d(b).sub(a);
-        Vector3d ac = new Vector3d(c).sub(a);
-        Vector3d ap = new Vector3d(p).sub(a);
-        double d1 = ab.dot(ap);
-        double d2 = ac.dot(ap);
+    private static @Nullable Vector3d closestOnTriangle(Vector3d p, Vector3d a, Vector3d b, Vector3d c) {
+        Vector3d ab = VectorUtils.safeSubtract(b, a);
+        Vector3d ac = VectorUtils.safeSubtract(c, a);
+        Vector3d ap = VectorUtils.safeSubtract(p, a);
+        if (ab == null || ac == null || ap == null) {
+            return null;
+        }
+        double d1 = VectorUtils.safeDot(ab, ap);
+        double d2 = VectorUtils.safeDot(ac, ap);
+        if (!Double.isFinite(d1) || !Double.isFinite(d2)) {
+            return null;
+        }
         if (d1 <= 0.0d && d2 <= 0.0d) {
             return new Vector3d(a);
         }
 
-        Vector3d bp = new Vector3d(p).sub(b);
-        double d3 = ab.dot(bp);
-        double d4 = ac.dot(bp);
+        Vector3d bp = VectorUtils.safeSubtract(p, b);
+        if (bp == null) {
+            return null;
+        }
+        double d3 = VectorUtils.safeDot(ab, bp);
+        double d4 = VectorUtils.safeDot(ac, bp);
+        if (!Double.isFinite(d3) || !Double.isFinite(d4)) {
+            return null;
+        }
         if (d3 >= 0.0d && d4 <= d3) {
             return new Vector3d(b);
         }
 
         double vc = d1 * d4 - d3 * d2;
+        if (!Double.isFinite(vc)) {
+            return null;
+        }
         if (vc <= 0.0d && d1 >= 0.0d && d3 <= 0.0d) {
             double denom = d1 - d3;
+            if (!Double.isFinite(denom)) {
+                return null;
+            }
             double v = Math.abs(denom) < EPS ? 0.0d : d1 / denom;
-            return new Vector3d(a).add(ab.mul(v, new Vector3d()));
+            return VectorUtils.safeAdd(a, VectorUtils.safeScale(ab, v));
         }
 
-        Vector3d cp = new Vector3d(p).sub(c);
-        double d5 = ab.dot(cp);
-        double d6 = ac.dot(cp);
+        Vector3d cp = VectorUtils.safeSubtract(p, c);
+        if (cp == null) {
+            return null;
+        }
+        double d5 = VectorUtils.safeDot(ab, cp);
+        double d6 = VectorUtils.safeDot(ac, cp);
+        if (!Double.isFinite(d5) || !Double.isFinite(d6)) {
+            return null;
+        }
         if (d6 >= 0.0d && d5 <= d6) {
             return new Vector3d(c);
         }
 
         double vb = d5 * d2 - d1 * d6;
+        if (!Double.isFinite(vb)) {
+            return null;
+        }
         if (vb <= 0.0d && d2 >= 0.0d && d6 <= 0.0d) {
             double denom = d2 - d6;
+            if (!Double.isFinite(denom)) {
+                return null;
+            }
             double w = Math.abs(denom) < EPS ? 0.0d : d2 / denom;
-            return new Vector3d(a).add(ac.mul(w, new Vector3d()));
+            return VectorUtils.safeAdd(a, VectorUtils.safeScale(ac, w));
         }
 
         double va = d3 * d6 - d5 * d4;
+        if (!Double.isFinite(va)) {
+            return null;
+        }
         if (va <= 0.0d && (d4 - d3) >= 0.0d && (d5 - d6) >= 0.0d) {
             double denom = (d4 - d3) + (d5 - d6);
+            if (!Double.isFinite(denom)) {
+                return null;
+            }
             double w = Math.abs(denom) < EPS ? 0.0d : (d4 - d3) / denom;
-            return new Vector3d(b).add(new Vector3d(c).sub(b).mul(w, new Vector3d()));
+            Vector3d bc = VectorUtils.safeSubtract(c, b);
+            return VectorUtils.safeAdd(b, VectorUtils.safeScale(bc, w));
         }
 
         double denom = va + vb + vc;
-        if (Math.abs(denom) < EPS) {
-            return new Vector3d(a);
+        if (!Double.isFinite(denom) || Math.abs(denom) < EPS) {
+            return null;
         }
         double v = vb / denom;
         double w = vc / denom;
-        return new Vector3d(a).add(ab.mul(v, new Vector3d())).add(ac.mul(w, new Vector3d()));
+        if (!Double.isFinite(v) || !Double.isFinite(w)) {
+            return null;
+        }
+        Vector3d alongAb = VectorUtils.safeScale(ab, v);
+        Vector3d alongAc = VectorUtils.safeScale(ac, w);
+        return VectorUtils.safeAdd(a, VectorUtils.safeAdd(alongAb, alongAc));
     }
 }

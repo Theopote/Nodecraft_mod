@@ -96,7 +96,15 @@ Extrude and Extrude Region share `ProfileExtrusionUtils`. Invalid Height is **Na
 | `MAX_SURFACE_SECTIONS` | section count |
 | `MAX_SURFACE_POINTS_PER_SECTION` | points per section |
 | `MAX_SURFACE_TOTAL_POINTS` | long product |
-| `MAX_SURFACE_PROJECTION_QUERIES` / `MAX_SURFACE_PROJECTION_WORK` | shrinkwrap |
+| `MAX_SURFACE_PROJECTION_QUERIES` / `MAX_SURFACE_PROJECTION_WORK` | shrinkwrap queries × triangles |
+| `MAX_NEAREST_PROJECTION_WORK` | alias of projection work (queries × triangles **or** voxels) |
+| `MAX_SECTION_PLANES` | Voxel Section plane list / Voxel Contours Count (exact integer, no silent clamp) |
+| `MAX_SECTION_WORK` | `planeCount × voxelCount` |
+| `MAX_SECTION_TOTAL_BLOCK_ITEMS` / `MAX_SECTION_TOTAL_POINT_ITEMS` / `MAX_SECTION_TOTAL_CONTOURS` | aggregated section outputs |
+
+Empty Voxel Section / Voxel Contours intersection is **Valid=true** (null primaries, empty lists, Contour Count `0`). Voxel Shrinkwrap with empty voxels stays invalid.
+
+Thicken Thickness is finite **> 0**. Offset Distance ≈ 0 is identity. Extract Start/End use floor/ceil cover of normalized U. SurfaceShellBuilder fail-closes on collapsed quads and degenerate rail/section tangents (neighbor-average of defined face normals; no world-axis fallback).
 
 ## Migration (V71 → V72)
 
