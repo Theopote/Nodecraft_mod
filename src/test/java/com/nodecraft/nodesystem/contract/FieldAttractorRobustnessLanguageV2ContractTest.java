@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.math.fields.AttractorFieldBlendNode;
@@ -111,8 +112,8 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
                 "input_point", new PointData(2.0d, 0.0d, 0.0d)
         ));
         assertTrue((Boolean) sample.get("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, sample.get("output_vector"));
-        assertTrue(vector.x < 0.0d, "Center pull should attract toward origin from +X");
+        VectorData vector = assertInstanceOf(VectorData.class, sample.get("output_vector"));
+        assertTrue(vector.x() < 0.0d, "Center pull should attract toward origin from +X");
     }
 
     @Test
@@ -126,10 +127,10 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
                 "input_point", new PointData(1.0d, 2.0d, 3.0d)
         ));
         assertTrue((Boolean) sample.get("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, sample.get("output_vector"));
-        assertEquals(0.0d, vector.x, 0.0d);
-        assertEquals(0.0d, vector.y, 0.0d);
-        assertEquals(0.0d, vector.z, 0.0d);
+        VectorData vector = assertInstanceOf(VectorData.class, sample.get("output_vector"));
+        assertEquals(0.0d, vector.x(), 0.0d);
+        assertEquals(0.0d, vector.y(), 0.0d);
+        assertEquals(0.0d, vector.z(), 0.0d);
     }
 
     @Test
@@ -266,8 +267,8 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
                 "input_point", new PointData(5.0d, 2.0d, 0.0d)
         ));
         assertTrue((Boolean) sample.get("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, sample.get("output_vector"));
-        assertTrue(Math.abs(vector.y) > 0.0d || Math.abs(vector.x) > 0.0d);
+        VectorData vector = assertInstanceOf(VectorData.class, sample.get("output_vector"));
+        assertTrue(Math.abs(vector.y()) > 0.0d || Math.abs(vector.x()) > 0.0d);
         assertNotNull(vector);
     }
 }

@@ -8,9 +8,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
 
 import java.util.UUID;
 
@@ -30,6 +28,8 @@ public class RepulsorFieldNode extends BaseNode {
     private static final String INPUT_FIELD_ID = "input_field";
     private static final String INPUT_STRENGTH_ID = "input_strength";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public RepulsorFieldNode() {
         super(UUID.randomUUID(), "math.fields.repulsor_field");
@@ -37,6 +37,10 @@ public class RepulsorFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_FIELD_ID, "Field", "Input attractor/vector field", NodeDataType.VECTOR_FIELD, this));
         addInputPort(new BasePort(INPUT_STRENGTH_ID, "Strength", "Repulsion scale override", NodeDataType.DOUBLE, this));
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Repulsor vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -48,17 +52,30 @@ public class RepulsorFieldNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         Object fieldObj = inputValues.get(INPUT_FIELD_ID);
         if (!(fieldObj instanceof VectorFieldData field)) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
-        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
+        Double effectiveStrength = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        if (effectiveStrength == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
+        final double strengthFinal = effectiveStrength;
         VectorFieldData repulsor = (point, dest) -> {
-            Vector3d tmp = new Vector3d();
-            field.sampleVector(point, tmp);
-            dest.set(tmp).mul(-effectiveStrength);
+            field.sampleVector(point, dest);
+            dest.mul(-strengthFinal);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, repulsor);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

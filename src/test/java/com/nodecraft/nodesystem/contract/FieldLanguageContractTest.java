@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.math.FieldMath;
@@ -20,10 +21,12 @@ import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldConstantNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldNoiseNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointNode;
 import com.nodecraft.nodesystem.nodes.math.fields.ScalarFieldSamplePointsNode;
+import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldBinaryOpNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldConstantNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldFromSdfGradientNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VectorFieldSamplePointsNode;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.nodes.math.fields.VolumeAttractorFieldNode;
 import com.nodecraft.nodesystem.nodes.math.fields.VortexFieldNode;
 import com.nodecraft.nodesystem.nodes.math.random.NoiseNode;
@@ -231,10 +234,10 @@ class FieldLanguageContractTest {
                 "input_point", new Vector3d()
         ));
         assertTrue((Boolean) outputs.get("output_valid"));
-        Vector3d out = (Vector3d) outputs.get("output_vector");
-        assertEquals(1.0d, out.x, 0.0d);
-        assertEquals(2.0d, out.y, 0.0d);
-        assertEquals(3.0d, out.z, 0.0d);
+        VectorData out = assertInstanceOf(VectorData.class, outputs.get("output_vector"));
+        assertEquals(1.0d, out.x(), 0.0d);
+        assertEquals(2.0d, out.y(), 0.0d);
+        assertEquals(3.0d, out.z(), 0.0d);
     }
 
     @Test
@@ -365,64 +368,61 @@ class FieldLanguageContractTest {
     }
 
     @Test
-    void pointAttractorInvalidRadiusFallsBackToPropertyDefault() {
+    void pointAttractorInvalidRadiusFailsClosed() {
         Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
-        Vector3d withZeroRadius = samplePointAttractor(Map.of(
+        assertConstructionFailed(new PointAttractorFieldNode(), Map.of(
                 "input_center", center,
                 "input_radius", 0.0d
-        ), sampleAt);
+        ));
         Vector3d withCustomRadius = samplePointAttractor(Map.of(
                 "input_center", center,
                 "input_radius", 4.0d
         ), sampleAt);
 
-        assertEquals(baseline.x, withZeroRadius.x, 1.0e-9d);
         assertNotEquals(baseline.x, withCustomRadius.x, 1.0e-9d);
     }
 
     @Test
-    void pointAttractorInvalidStrengthFallsBackToPropertyDefault() {
+    void pointAttractorInvalidStrengthFailsClosed() {
         Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
-        Vector3d withNaNStrength = samplePointAttractor(Map.of(
+        assertConstructionFailed(new PointAttractorFieldNode(), Map.of(
                 "input_center", center,
                 "input_strength", Double.NaN
-        ), sampleAt);
+        ));
         Vector3d withDoubleStrength = samplePointAttractor(Map.of(
                 "input_center", center,
                 "input_strength", 2.0d
         ), sampleAt);
 
-        assertEquals(baseline.x, withNaNStrength.x, 1.0e-9d);
         assertEquals(baseline.x * 2.0d, withDoubleStrength.x, 1.0e-9d);
     }
 
     @Test
-    void pointAttractorInvalidExponentFallsBackToPropertyDefault() {
+    void pointAttractorInvalidExponentFailsClosed() {
         Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
-        Vector3d withInvalidExponent = samplePointAttractor(Map.of(
+        assertConstructionFailed(new PointAttractorFieldNode(), Map.of(
                 "input_center", center,
                 "input_exponent", -1.0d
-        ), sampleAt);
+        ));
         Vector3d withCustomExponent = samplePointAttractor(Map.of(
                 "input_center", center,
                 "input_exponent", 1.0d
         ), sampleAt);
 
-        assertEquals(baseline.x, withInvalidExponent.x, 1.0e-9d);
         assertNotEquals(baseline.x, withCustomExponent.x, 1.0e-9d);
     }
 
     @Test
-    void vortexInvalidRadiusFallsBackToPropertyDefault() {
+    void vortexInvalidRadiusFailsClosed() {
         Vector3d origin = new Vector3d(0.0d, 0.0d, 0.0d);
         Vector3d axis = new Vector3d(0.0d, 1.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(2.0d, 0.0d, 0.0d);
@@ -431,42 +431,40 @@ class FieldLanguageContractTest {
                 "input_origin", origin,
                 "input_axis", axis
         ), sampleAt);
-        Vector3d withZeroRadius = sampleVortexField(Map.of(
+        assertConstructionFailed(new VortexFieldNode(), Map.of(
                 "input_origin", origin,
                 "input_axis", axis,
                 "input_radius", 0.0d
-        ), sampleAt);
+        ));
         Vector3d withCustomRadius = sampleVortexField(Map.of(
                 "input_origin", origin,
                 "input_axis", axis,
                 "input_radius", 2.0d
         ), sampleAt);
 
-        assertEquals(baseline.z, withZeroRadius.z, 1.0e-9d);
         assertNotEquals(baseline.z, withCustomRadius.z, 1.0e-9d);
     }
 
     @Test
-    void repulsorInvalidStrengthFallsBackToPropertyDefault() {
+    void repulsorInvalidStrengthFailsClosed() {
         VectorFieldData source = (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d();
 
         Vector3d baseline = sampleRepulsorField(Map.of("input_field", source), sampleAt);
-        Vector3d withNaNStrength = sampleRepulsorField(Map.of(
+        assertConstructionFailed(new RepulsorFieldNode(), Map.of(
                 "input_field", source,
                 "input_strength", Double.NaN
-        ), sampleAt);
+        ));
         Vector3d withDoubleStrength = sampleRepulsorField(Map.of(
                 "input_field", source,
                 "input_strength", 2.0d
         ), sampleAt);
 
-        assertEquals(baseline.x, withNaNStrength.x, 1.0e-9d);
         assertEquals(baseline.x * 2.0d, withDoubleStrength.x, 1.0e-9d);
     }
 
     @Test
-    void curveAttractorInvalidRadiusFallsBackToPropertyDefault() {
+    void curveAttractorInvalidRadiusFailsClosed() {
         PathData path = PathData.fromPolyline(new PolylineData(List.of(
                 new Vec3d(0.0d, 0.0d, 0.0d),
                 new Vec3d(10.0d, 0.0d, 0.0d)
@@ -474,21 +472,65 @@ class FieldLanguageContractTest {
         Vector3d sampleAt = new Vector3d(5.0d, 2.0d, 0.0d);
 
         Vector3d baseline = sampleCurveAttractor(Map.of("input_path", path), sampleAt);
-        Vector3d withZeroRadius = sampleCurveAttractor(Map.of(
+        assertConstructionFailed(new CurveAttractorFieldNode(), Map.of(
                 "input_path", path,
                 "input_radius", 0.0d
-        ), sampleAt);
+        ));
         Vector3d withCustomRadius = sampleCurveAttractor(Map.of(
                 "input_path", path,
                 "input_radius", 2.0d
         ), sampleAt);
 
-        assertEquals(baseline.y, withZeroRadius.y, 1.0e-9d);
         assertNotEquals(baseline.y, withCustomRadius.y, 1.0e-9d);
     }
 
     @Test
-    void volumeAttractorInvalidStrengthAndRadiusFallBackToPropertyDefaults() {
+    void curveAttractorOversizePathFailsConstruction() {
+        int vertexCount = GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS + 2;
+        List<Vec3d> vertices = new java.util.ArrayList<>(vertexCount);
+        for (int i = 0; i < vertexCount; i++) {
+            vertices.add(new Vec3d(i, 0.0d, 0.0d));
+        }
+        PathData path = PathData.fromPolyline(new PolylineData(vertices));
+        Map<String, Object> outputs = new CurveAttractorFieldNode().compute(Map.of("input_path", path));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, outputs.get("output_error"));
+        assertNull(outputs.get("output_field"));
+    }
+
+    @Test
+    void blendDrivenInvalidFieldFailsClosed() {
+        VectorFieldData unitX = (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
+        Map<String, Object> outputs = new AttractorFieldBlendNode().compute(Map.of(
+                "input_field_a", unitX,
+                "input_field_b", "not-a-field"
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(FieldSampleUtils.ERROR_INVALID_FIELD, outputs.get("output_error"));
+        assertNull(outputs.get("output_field"));
+    }
+
+    @Test
+    void combineVectorFieldsNaNSampleIsInvalid() {
+        VectorFieldData nanA = (point, dest) -> dest.set(Double.NaN, 0.0d, 0.0d);
+        VectorFieldData unitX = (point, dest) -> dest.set(1.0d, 0.0d, 0.0d);
+        Map<String, Object> built = new VectorFieldBinaryOpNode().compute(Map.of(
+                "input_a", nanA,
+                "input_b", unitX
+        ));
+        assertTrue((Boolean) built.get("output_valid"));
+        VectorFieldData field = assertInstanceOf(VectorFieldData.class, built.get("output_field"));
+
+        Map<String, Object> sample = new VectorFieldSamplePointNode().compute(Map.of(
+                "input_field", field,
+                "input_point", new Vector3d()
+        ));
+        assertFalse((Boolean) sample.get("output_valid"));
+        assertNull(sample.get("output_vector"));
+    }
+
+    @Test
+    void volumeAttractorInvalidStrengthAndRadiusFailClosed() {
         VolumeAttractorFieldNode node = new VolumeAttractorFieldNode();
         node.setNodeState(Map.of("pullMode", VolumeAttractorFieldNode.PullMode.CENTER_PULL.name()));
 
@@ -496,23 +538,22 @@ class FieldLanguageContractTest {
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = sampleVolumeAttractor(node, Map.of("input_center", center), sampleAt);
-        Vector3d withInvalid = sampleVolumeAttractor(node, Map.of(
+        assertConstructionFailed(node, Map.of(
                 "input_center", center,
                 "input_strength", Double.NaN,
                 "input_radius", 0.0d
-        ), sampleAt);
+        ));
         Vector3d withOverrides = sampleVolumeAttractor(node, Map.of(
                 "input_center", center,
                 "input_strength", 2.0d,
                 "input_radius", 4.0d
         ), sampleAt);
 
-        assertEquals(baseline.x, withInvalid.x, 1.0e-9d);
         assertNotEquals(baseline.x, withOverrides.x, 1.0e-9d);
     }
 
     @Test
-    void volumeAttractorInvalidSdfStepFallsBackToPropertyDefault() {
+    void volumeAttractorInvalidSdfStepFailsClosed() {
         SignedDistanceFieldData wavy = point -> Math.sin(20.0d * point.x);
         Vector3d sampleAt = new Vector3d(0.15d, 0.0d, 0.05d);
 
@@ -526,17 +567,15 @@ class FieldLanguageContractTest {
                 "input_sdf", wavy,
                 "input_sdf_step", 0.5d
         ), sampleAt);
-        Vector3d fallback = sampleVolumeAttractor(node, Map.of(
+        assertConstructionFailed(node, Map.of(
                 "input_sdf", wavy,
                 "input_sdf_step", 0.0d
-        ), sampleAt);
+        ));
         Vector3d tiny = sampleVolumeAttractor(node, Map.of(
                 "input_sdf", wavy,
                 "input_sdf_step", 1.0e-6d
         ), sampleAt);
 
-        assertEquals(explicit.x, fallback.x, 1.0e-9d);
-        assertEquals(explicit.y, fallback.y, 1.0e-9d);
         assertFalse(vectorsEqual(explicit, tiny));
     }
 
@@ -574,6 +613,12 @@ class FieldLanguageContractTest {
     private static Vector3d sampleVolumeAttractor(VolumeAttractorFieldNode node, Map<String, Object> inputs,
                                                    Vector3d point) {
         return sampleNodeField(node, inputs, point);
+    }
+
+    private static void assertConstructionFailed(BaseNode node, Map<String, Object> inputs) {
+        Map<String, Object> outputs = node.compute(inputs);
+        assertFalse((Boolean) outputs.get("output_valid"), node.getTypeId() + " should fail closed");
+        assertNull(outputs.get("output_field"));
     }
 
     private static Vector3d sampleNodeField(BaseNode node, Map<String, Object> inputs, Vector3d point) {

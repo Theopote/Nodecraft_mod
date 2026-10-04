@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -69,19 +68,33 @@ public class AttractorFieldBlendNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        VectorFieldData fieldA = asField(inputValues.get(INPUT_FIELD_A_ID));
-        VectorFieldData fieldB = asField(inputValues.get(INPUT_FIELD_B_ID));
-        VectorFieldData fieldC = asField(inputValues.get(INPUT_FIELD_C_ID));
-        VectorFieldData fieldD = asField(inputValues.get(INPUT_FIELD_D_ID));
+        FieldSampleUtils.OptionalVectorField driveA = FieldSampleUtils.resolveOptionalVectorField(this, INPUT_FIELD_A_ID);
+        FieldSampleUtils.OptionalVectorField driveB = FieldSampleUtils.resolveOptionalVectorField(this, INPUT_FIELD_B_ID);
+        FieldSampleUtils.OptionalVectorField driveC = FieldSampleUtils.resolveOptionalVectorField(this, INPUT_FIELD_C_ID);
+        FieldSampleUtils.OptionalVectorField driveD = FieldSampleUtils.resolveOptionalVectorField(this, INPUT_FIELD_D_ID);
+        if (driveA.failed() || driveB.failed() || driveC.failed() || driveD.failed()) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
+            return;
+        }
+
+        VectorFieldData fieldA = driveA.field();
+        VectorFieldData fieldB = driveB.field();
+        VectorFieldData fieldC = driveC.field();
+        VectorFieldData fieldD = driveD.field();
         if (fieldA == null && fieldB == null && fieldC == null && fieldD == null) {
             writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
             return;
         }
 
-        double weightA = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_A_ID), 1.0d);
-        double weightB = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_B_ID), 1.0d);
-        double weightC = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_C_ID), 1.0d);
-        double weightD = FieldMath.resolveFinite(inputValues.get(INPUT_WEIGHT_D_ID), 1.0d);
+        Double weightA = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_WEIGHT_A_ID, 1.0d);
+        Double weightB = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_WEIGHT_B_ID, 1.0d);
+        Double weightC = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_WEIGHT_C_ID, 1.0d);
+        Double weightD = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_WEIGHT_D_ID, 1.0d);
+        if (weightA == null || weightB == null || weightC == null || weightD == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         boolean normalizeOutput = normalize;
         double limit = Double.isFinite(maxMagnitude) && maxMagnitude >= 0.0d ? maxMagnitude : 0.0d;
 
@@ -92,27 +105,36 @@ public class AttractorFieldBlendNode extends BaseNode {
         final double limitFinal = limit;
 
         VectorFieldData field = (point, dest) -> {
-            dest.zero();
-            Vector3d tmp = new Vector3d();
+            double sx = 0.0d;
+            double sy = 0.0d;
+            double sz = 0.0d;
             if (fieldA != null && weightAFinal != 0.0d) {
-                fieldA.sampleVector(point, tmp);
-                dest.fma(weightAFinal, tmp);
+                fieldA.sampleVector(point, dest);
+                sx += weightAFinal * dest.x;
+                sy += weightAFinal * dest.y;
+                sz += weightAFinal * dest.z;
             }
             if (fieldB != null && weightBFinal != 0.0d) {
-                fieldB.sampleVector(point, tmp);
-                dest.fma(weightBFinal, tmp);
+                fieldB.sampleVector(point, dest);
+                sx += weightBFinal * dest.x;
+                sy += weightBFinal * dest.y;
+                sz += weightBFinal * dest.z;
             }
             if (fieldC != null && weightCFinal != 0.0d) {
-                fieldC.sampleVector(point, tmp);
-                dest.fma(weightCFinal, tmp);
+                fieldC.sampleVector(point, dest);
+                sx += weightCFinal * dest.x;
+                sy += weightCFinal * dest.y;
+                sz += weightCFinal * dest.z;
             }
             if (fieldD != null && weightDFinal != 0.0d) {
-                fieldD.sampleVector(point, tmp);
-                dest.fma(weightDFinal, tmp);
+                fieldD.sampleVector(point, dest);
+                sx += weightDFinal * dest.x;
+                sy += weightDFinal * dest.y;
+                sz += weightDFinal * dest.z;
             }
+            dest.set(sx, sy, sz);
 
             if (normalizeOutput) {
-                // Distinguish tiny finite → zero vs non-finite → NaN (sample Valid=false).
                 if (!VectorUtils.isFinite(dest)) {
                     dest.set(Double.NaN, Double.NaN, Double.NaN);
                     return;
@@ -142,9 +164,5 @@ public class AttractorFieldBlendNode extends BaseNode {
         outputValues.put(OUTPUT_FIELD_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
-    }
-
-    private static VectorFieldData asField(Object value) {
-        return value instanceof VectorFieldData field ? field : null;
     }
 }

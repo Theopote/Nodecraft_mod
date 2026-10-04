@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -87,33 +86,49 @@ public class VortexFieldNode extends BaseNode {
             return;
         }
 
-        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double effectiveRadius = FieldMath.resolveAttractorRadius(inputValues.get(INPUT_RADIUS_ID), radius);
-        double effectiveExponent = FieldMath.resolveAttractorExponent(inputValues.get(INPUT_EXPONENT_ID), exponent);
+        Double effectiveStrength = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        Double effectiveRadius = FieldSampleUtils.resolveOptionalAttractorRadius(this, INPUT_RADIUS_ID, radius);
+        Double effectiveExponent = FieldSampleUtils.resolveOptionalAttractorExponent(this, INPUT_EXPONENT_ID, exponent);
+        if (effectiveStrength == null || effectiveRadius == null || effectiveExponent == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         boolean effectiveClockwise = inputValues.get(INPUT_CLOCKWISE_ID) instanceof Boolean b ? b : clockwise;
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
         final Vector3d originFinal = new Vector3d(origin);
         final Vector3d axisNormFinal = new Vector3d(axisNorm);
+        final double strengthFinal = effectiveStrength;
+        final double radiusFinal = effectiveRadius;
+        final double exponentFinal = effectiveExponent;
+        final boolean clockwiseFinal = effectiveClockwise;
 
         VectorFieldData field = (point, dest) -> {
-            Vector3d rel = new Vector3d(point).sub(originFinal);
-            double axisDistance = rel.dot(axisNormFinal);
-            Vector3d radial = rel.sub(new Vector3d(axisNormFinal).mul(axisDistance));
-            double radialLenSq = radial.lengthSquared();
+            dest.set(point).sub(originFinal);
+            double axisDistance = dest.dot(axisNormFinal);
+            dest.fma(-axisDistance, axisNormFinal);
+            double radialLenSq = dest.lengthSquared();
             if (radialLenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
 
             double radialLen = Math.sqrt(radialLenSq);
-            Vector3d radialNorm = radial.mul(1.0d / radialLen);
-            Vector3d tangent = new Vector3d(axisNormFinal).cross(radialNorm);
-            if (effectiveClockwise) {
-                tangent.negate();
+            double invLen = 1.0d / radialLen;
+            double rx = dest.x * invLen;
+            double ry = dest.y * invLen;
+            double rz = dest.z * invLen;
+            double tx = axisNormFinal.y * rz - axisNormFinal.z * ry;
+            double ty = axisNormFinal.z * rx - axisNormFinal.x * rz;
+            double tz = axisNormFinal.x * ry - axisNormFinal.y * rx;
+            if (clockwiseFinal) {
+                tx = -tx;
+                ty = -ty;
+                tz = -tz;
             }
-            double weight = AttractorFieldUtils.falloff(radialLen, effectiveRadius, effectiveExponent, mode);
-            dest.set(tangent).mul(effectiveStrength * weight);
+            double weight = AttractorFieldUtils.falloff(radialLen, radiusFinal, exponentFinal, mode);
+            dest.set(tx, ty, tz).mul(strengthFinal * weight);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);

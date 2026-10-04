@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -86,23 +85,39 @@ public class VolumeAttractorFieldNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
-        Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        Vector3d center = FieldSampleUtils.resolveFinitePoint(inputValues.get(INPUT_CENTER_ID));
+        GeometryData geometry = null;
+        if (FieldSampleUtils.isPortDriven(this, INPUT_GEOMETRY_ID)) {
+            Object geometryObj = getInput(INPUT_GEOMETRY_ID);
+            if (!(geometryObj instanceof GeometryData data)) {
+                writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
+                return;
+            }
+            geometry = data;
+        }
 
-        GeometryData geometry = geometryObj instanceof GeometryData data ? data : null;
-        SignedDistanceFieldData sdf = AttractorFieldUtils.tryExtractSdf(sdfObj);
-        if (sdf == null) {
-            sdf = AttractorFieldUtils.tryExtractSdf(geometryObj);
+        SignedDistanceFieldData sdf = null;
+        if (FieldSampleUtils.isPortDriven(this, INPUT_SDF_ID)) {
+            sdf = AttractorFieldUtils.tryExtractSdf(getInput(INPUT_SDF_ID));
+            if (sdf == null) {
+                writeInvalid(FieldSampleUtils.ERROR_INVALID_FIELD);
+                return;
+            }
+        } else {
+            sdf = AttractorFieldUtils.tryExtractSdf(geometry);
         }
 
         Vector3d resolvedCenter = new Vector3d();
         boolean hasCenter = false;
-        if (center != null) {
+        if (FieldSampleUtils.isPortDriven(this, INPUT_CENTER_ID)) {
+            Vector3d center = FieldSampleUtils.resolveFinitePoint(getInput(INPUT_CENTER_ID));
+            if (center == null) {
+                writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+                return;
+            }
             resolvedCenter.set(center);
             hasCenter = true;
-        } else if (AttractorFieldUtils.tryExtractCenter(geometryObj, resolvedCenter)
-                || AttractorFieldUtils.tryExtractCenter(sdfObj, resolvedCenter)) {
+        } else if (AttractorFieldUtils.tryExtractCenter(geometry, resolvedCenter)
+                || AttractorFieldUtils.tryExtractCenter(sdf, resolvedCenter)) {
             hasCenter = VectorUtils.isFinite(resolvedCenter);
             if (!hasCenter) {
                 resolvedCenter.zero();
@@ -115,26 +130,35 @@ public class VolumeAttractorFieldNode extends BaseNode {
             return;
         }
 
-        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double effectiveRadius = FieldMath.resolveAttractorRadius(inputValues.get(INPUT_RADIUS_ID), radius);
-        double effectiveExponent = FieldMath.resolveAttractorExponent(inputValues.get(INPUT_EXPONENT_ID), exponent);
-        double effectiveSdfStep = FieldMath.resolvePositive(inputValues.get(INPUT_SDF_STEP_ID), sdfStep);
+        Double effectiveStrength = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        Double effectiveRadius = FieldSampleUtils.resolveOptionalAttractorRadius(this, INPUT_RADIUS_ID, radius);
+        Double effectiveExponent = FieldSampleUtils.resolveOptionalAttractorExponent(this, INPUT_EXPONENT_ID, exponent);
+        Double effectiveSdfStep = FieldSampleUtils.resolveOptionalPositiveDouble(this, INPUT_SDF_STEP_ID, sdfStep);
+        if (effectiveStrength == null || effectiveRadius == null || effectiveExponent == null
+                || effectiveSdfStep == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         AttractorFieldUtils.FalloffMode falloffMode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
 
         final SignedDistanceFieldData fieldSdf = sdf;
         final GeometryData fieldGeometry = geometry;
         final boolean hasCenterFinal = hasCenter;
         final Vector3d centerFinal = hasCenter ? new Vector3d(resolvedCenter) : null;
+        final double strengthFinal = effectiveStrength;
+        final double radiusFinal = effectiveRadius;
+        final double exponentFinal = effectiveExponent;
+        final double sdfStepFinal = effectiveSdfStep;
 
         VectorFieldData field = (point, dest) -> {
-            Vector3d toTarget = new Vector3d();
             boolean resolved = false;
             if (mode == PullMode.SURFACE_PULL) {
                 if (fieldSdf != null) {
-                    resolved = AttractorFieldUtils.vectorToSdfSurface(fieldSdf, point, effectiveSdfStep, toTarget);
+                    resolved = AttractorFieldUtils.vectorToSdfSurface(fieldSdf, point, sdfStepFinal, dest);
                 }
                 if (!resolved && fieldGeometry != null) {
-                    resolved = AttractorFieldUtils.vectorToGeometrySurface(fieldGeometry, point, toTarget);
+                    resolved = AttractorFieldUtils.vectorToGeometrySurface(fieldGeometry, point, dest);
                 }
             }
             if (!resolved) {
@@ -142,18 +166,18 @@ public class VolumeAttractorFieldNode extends BaseNode {
                     dest.set(Double.NaN, Double.NaN, Double.NaN);
                     return;
                 }
-                toTarget.set(centerFinal).sub(point);
+                dest.set(centerFinal).sub(point);
                 resolved = true;
             }
 
-            double lenSq = toTarget.lengthSquared();
+            double lenSq = dest.lengthSquared();
             if (!resolved || lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
             double distance = Math.sqrt(lenSq);
-            double weight = AttractorFieldUtils.falloff(distance, effectiveRadius, effectiveExponent, falloffMode);
-            dest.set(toTarget).mul((effectiveStrength * weight) / distance);
+            double weight = AttractorFieldUtils.falloff(distance, radiusFinal, exponentFinal, falloffMode);
+            dest.mul((strengthFinal * weight) / distance);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);

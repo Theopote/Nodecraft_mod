@@ -49,6 +49,7 @@ Non-finite field sample mid-batch still fail-closed (V30 rule retained).
 | Sample Valid (Sample Point / Points) | Evaluated numeric result(s) are finite |
 
 A valid constructed field may still sample NaN at some locations (e.g. DIV by zero, noise overflow).
+Construction Valid is not a promise that every spatial point is finite.
 
 ## Noise — connection-aware params
 
@@ -58,12 +59,19 @@ A valid constructed field may still sample NaN at some locations (e.g. DIV by ze
 | Scale / Offset / Amplitude | property defaults | fail (no silent NaN→default) |
 
 Scale may be `0` or negative (unchanged). Kernel still `valueNoise3((p+offset)*scale, seed) * amplitude`.
+Non-finite transformed coordinates (`nx,ny,nz`) return NaN **before** the noise kernel.
+
+Numeric ports use exact finite `Double` (`OptionalPortDrive` + `isInputPresent` for `compute(Map)`).
 
 ## Constant / Combine
 
 - Constant: driven non-finite Value → Field=null, Valid=false, `invalid_input`
 - Combine: missing A/B → Field=null, Valid=false, `invalid_field`; math still `ScalarMathOps`
 
+## Graph-facing VECTOR_LIST
+
+Vector Field Sample Points emits `VECTOR_LIST` of `VectorData` (not raw JOML `Vector3d`).
+
 ## Graph migration (V132→V133)
 
-Identity migration — no wire remaps.
+Identity migration — no wire remaps. Historical V133 stamp remains; freeze hardening is stamp-only (no GraphFormatVersion bump).

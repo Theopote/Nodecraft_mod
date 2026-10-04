@@ -44,7 +44,7 @@ Related: [`node-language-v1-scalar-math.md`](./node-language-v1-scalar-math.md),
 | Node | Valid=true | Valid=false |
 |------|------------|-------------|
 | Scalar Sample Point | finite `Value` | `Value=NaN` |
-| Vector Sample Point | all components finite `Vector` | `Vector=null` |
+| Vector Sample Point | all components finite `VectorData` | `Vector=null` |
 | Scalar Sample Points | all samples finite | `Values=[]`, `Count=0` |
 | Vector Sample Points | all samples finite | `Vectors=[]`, `Count=0` |
 
@@ -98,11 +98,12 @@ Division by zero → `NaN` at that point (not `Infinity`), consistent with Scala
 
 ## Generators (parameters)
 
-Port overrides use `FieldMath` resolvers with property/default fallback when invalid:
+Port overrides use OptionalPortDrive (exact finite `Double`, `isConnected || isInputPresent`)
+then attractor range — **not** `FieldMath.resolve*` fallbacks:
 
-- **Attractors / Vortex:** Strength finite; Radius/Exponent positive finite.
-- **Repulsor:** Strength finite positive.
-- **Blend Vector Fields:** `weight != 0.0` exact; weights via `resolveFinite`.
+- **Attractors / Vortex:** Strength finite; Radius/Exponent `>= MIN_ATTRACTOR_*` (driven `0` fails).
+- **Repulsor:** Strength finite (construction Valid/Error).
+- **Blend Vector Fields:** `weight != 0.0` exact; driven non-finite weight fails closed.
 
 Internal EPS in `AttractorFieldUtils` is for normalize / zero-length vector only — not user weight filtering.
 
@@ -121,4 +122,4 @@ No node deletion. No type-id changes.
 
 - `FieldsFamilyContractTest` — spatial roles, typed ports, no `ANY`.
 - `FieldLanguageContractTest` — v1 semantics, noise kernel, Valid/finite sampling, V30 migration,
-  SDF Step / Attractor parameter resolver fallbacks (invalid port → property default; tiny Step honored).
+  SDF Step / Attractor OptionalPortDrive fail-closed (invalid port → `Valid=false`; tiny Step honored).

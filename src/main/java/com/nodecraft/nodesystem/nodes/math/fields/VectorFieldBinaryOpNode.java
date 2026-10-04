@@ -9,8 +9,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3d;
-
 import java.util.UUID;
 
 @NodeInfo(
@@ -72,15 +70,19 @@ public class VectorFieldBinaryOpNode extends BaseNode {
 
         VectorBinaryOp op = operation == null ? VectorBinaryOp.ADD : operation;
         VectorFieldData field = (point, dest) -> {
-            Vector3d tmpA = new Vector3d();
-            Vector3d tmpB = new Vector3d();
-            a.sampleVector(point, tmpA);
-            b.sampleVector(point, tmpB);
+            a.sampleVector(point, dest);
+            double ax = dest.x;
+            double ay = dest.y;
+            double az = dest.z;
+            b.sampleVector(point, dest);
             switch (op) {
-                case ADD -> dest.set(tmpA).add(tmpB);
-                case SUB -> dest.set(tmpA).sub(tmpB);
-                case MUL_COMPONENT -> dest.set(tmpA.x * tmpB.x, tmpA.y * tmpB.y, tmpA.z * tmpB.z);
-                case CROSS -> dest.set(tmpA).cross(tmpB);
+                case ADD -> dest.add(ax, ay, az);
+                case SUB -> dest.set(ax - dest.x, ay - dest.y, az - dest.z);
+                case MUL_COMPONENT -> dest.set(ax * dest.x, ay * dest.y, az * dest.z);
+                case CROSS -> dest.set(
+                        ay * dest.z - az * dest.y,
+                        az * dest.x - ax * dest.z,
+                        ax * dest.y - ay * dest.x);
             }
         };
 

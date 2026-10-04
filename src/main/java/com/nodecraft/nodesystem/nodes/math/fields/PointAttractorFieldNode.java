@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -41,6 +40,8 @@ public class PointAttractorFieldNode extends BaseNode {
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public PointAttractorFieldNode() {
         super(UUID.randomUUID(), "math.fields.point_attractor_field");
@@ -51,6 +52,10 @@ public class PointAttractorFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Falloff exponent override", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Attractor vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -60,29 +65,46 @@ public class PointAttractorFieldNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d center = FieldSampleUtils.resolvePoint(inputValues.get(INPUT_CENTER_ID));
+        Vector3d center = FieldSampleUtils.resolveFinitePoint(inputValues.get(INPUT_CENTER_ID));
         if (center == null) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
         }
 
-        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double effectiveRadius = FieldMath.resolveAttractorRadius(inputValues.get(INPUT_RADIUS_ID), radius);
-        double effectiveExponent = FieldMath.resolveAttractorExponent(inputValues.get(INPUT_EXPONENT_ID), exponent);
+        Double effectiveStrength = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        Double effectiveRadius = FieldSampleUtils.resolveOptionalAttractorRadius(this, INPUT_RADIUS_ID, radius);
+        Double effectiveExponent = FieldSampleUtils.resolveOptionalAttractorExponent(this, INPUT_EXPONENT_ID, exponent);
+        if (effectiveStrength == null || effectiveRadius == null || effectiveExponent == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
+        final Vector3d centerFinal = new Vector3d(center);
+        final double strengthFinal = effectiveStrength;
+        final double radiusFinal = effectiveRadius;
+        final double exponentFinal = effectiveExponent;
 
         VectorFieldData field = (point, dest) -> {
-            dest.set(center).sub(point);
+            dest.set(centerFinal).sub(point);
             double lenSq = dest.lengthSquared();
             if (lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
             double distance = Math.sqrt(lenSq);
-            double weight = AttractorFieldUtils.falloff(distance, effectiveRadius, effectiveExponent, mode);
-            dest.mul((effectiveStrength * weight) / distance);
+            double weight = AttractorFieldUtils.falloff(distance, radiusFinal, exponentFinal, mode);
+            dest.mul((strengthFinal * weight) / distance);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

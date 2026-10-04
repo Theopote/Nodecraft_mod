@@ -27,7 +27,10 @@ public final class FieldMath {
     private FieldMath() {
     }
 
-    /** Port/property DOUBLE: finite value or {@code fallback}. */
+    /**
+     * Finite value or {@code fallback}. Not for graph ports — field nodes use
+     * {@code FieldSampleUtils.resolveOptional*} (OptionalPortDrive + range).
+     */
     public static double resolveFinite(@Nullable Object value, double fallback) {
         if (value instanceof Number number) {
             double d = number.doubleValue();

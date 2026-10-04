@@ -38,7 +38,8 @@ final class AttractorFieldUtils {
     /**
      * Distance falloff using validated parameters only.
      * Callers must supply validated radius/exponent
-     * (see {@link FieldMath#resolveAttractorRadius} / {@link FieldMath#resolveAttractorExponent}).
+     * ({@code >=} {@link FieldMath#MIN_ATTRACTOR_FALLOFF_RADIUS} /
+     * {@link FieldMath#MIN_ATTRACTOR_FALLOFF_EXPONENT}).
      */
     static double falloff(double distance, double radius, double exponent, FalloffMode mode) {
         double d = Math.max(0.0d, distance);

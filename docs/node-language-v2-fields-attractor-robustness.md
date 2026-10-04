@@ -5,8 +5,10 @@
 Hardens attractor / vortex / blend vector-field numerics: Volume SURFACE_PULL no longer
 falls back to unverified world origin; SDF surface pull shares V134 gradient safety;
 Vortex rejects non-finite / zero axis at construction; Blend uses `safeNormalize` and
-`maxMagnitude > 0`. Does **not** change INVERSE/LINEAR/GAUSSIAN formulas, Path closest-point
-algorithm, or V30 `FieldMath.resolve*` parameter fallbacks for Strength/Radius/Exponent.
+`maxMagnitude > 0`. Does **not** change INVERSE/LINEAR/GAUSSIAN formulas or Path
+closest-point algorithm. Numeric Strength/Radius/Exponent/Step no longer use
+`FieldMath.resolve*` property fallbacks — they use OptionalPortDrive + range
+(connected `radius=0` / `exponent=0` fail closed, not clamp to `MIN_ATTRACTOR_*`).
 
 Related: [`node-language-v1-fields.md`](./node-language-v1-fields.md),
 [`node-language-v2-fields-vector-numerical.md`](./node-language-v2-fields-vector-numerical.md),
@@ -36,6 +38,9 @@ Never invents `(0,0,0)` as a center. Center input uses `resolveFinitePoint`.
 
 Construction Valid/Error: fail when `CENTER_PULL` without center, or no geometry/SDF.
 
+Optional Geometry / SDF / Center: unconnected → skip; driven invalid/null/wrong type →
+fail closed (same as Entwine optional trees). Point / Path / Repulsor emit Valid+Error.
+
 ## Shared SDF surface pull
 
 `AttractorFieldUtils.vectorToSdfSurface` calls `FieldSampleUtils.sampleSdfGradientDirection`
@@ -55,7 +60,20 @@ Origin must be finite (`resolveFinitePoint`). Axis must be finite and non-zero
 (`VectorUtils.isFinite` + `isNonZero` / `safeNormalize`). Else Field=null, Valid=false,
 `invalid_input`.
 
+## Optional numeric ports
+
+Unconnected → property. Driven exact finite `Double` → override. Driven null / wrong type /
+NaN / Inf → construction `Valid=false`. Then range: Radius `>= MIN_ATTRACTOR_FALLOFF_RADIUS`
+(`1e-9`), Exponent `>= MIN_ATTRACTOR_FALLOFF_EXPONENT` (`0.001`), SDF Step `> 0`.
+`FieldMath` keeps `combineScalars` and the MIN constants; it is not the port language.
+
+Path Attractor polyline segment count (`vertices - 1`) is capped at
+`GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS` (4096). Oversize →
+`output_budget_exceeded`. No BVH.
+
 ## Blend — weights vs normalize vs max magnitude
+
+Optional Field A–D: unconnected → skip; driven invalid → fail closed.
 
 | Rule | Behavior |
 |------|----------|
@@ -70,4 +88,4 @@ still ignores Exponent).
 
 ## Graph migration (V134→V135)
 
-Identity migration — no wire remaps.
+Identity migration — no wire remaps. Historical V135 stamp remains; freeze hardening is stamp-only.

@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -64,7 +63,7 @@ public class VectorFieldFromSdfGradientNode extends BaseNode {
             return;
         }
 
-        Double h = resolveStep();
+        Double h = FieldSampleUtils.resolveOptionalPositiveDouble(this, INPUT_STEP_ID, step);
         if (h == null) {
             writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
@@ -77,22 +76,6 @@ public class VectorFieldFromSdfGradientNode extends BaseNode {
         outputValues.put(OUTPUT_FIELD_ID, field);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    /**
-     * Undriven → property {@code step}. Driven + finite {@code >0} → use.
-     * Driven invalid → fail closed (no silent property fallback).
-     */
-    private @Nullable Double resolveStep() {
-        if (OptionalPortDrive.isConnected(this, INPUT_STEP_ID) || isInputPresent(INPUT_STEP_ID)) {
-            Object value = getInput(INPUT_STEP_ID);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) && resolved > 0.0d ? resolved : null;
-        }
-        return Double.isFinite(step) && step > 0.0d ? step : null;
     }
 
     private void writeInvalid(String error) {

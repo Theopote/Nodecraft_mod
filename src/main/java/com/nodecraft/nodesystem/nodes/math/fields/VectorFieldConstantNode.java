@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -55,9 +54,9 @@ public class VectorFieldConstantNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Double x = resolveComponent(INPUT_X_ID);
-        Double y = resolveComponent(INPUT_Y_ID);
-        Double z = resolveComponent(INPUT_Z_ID);
+        Double x = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_X_ID, 0.0d);
+        Double y = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_Y_ID, 0.0d);
+        Double z = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_Z_ID, 0.0d);
         if (x == null || y == null || z == null) {
             writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
@@ -70,19 +69,6 @@ public class VectorFieldConstantNode extends BaseNode {
         outputValues.put(OUTPUT_FIELD_ID, field);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    /** Undriven → {@code 0}. Driven + finite Number → use. Driven invalid → null. */
-    private @Nullable Double resolveComponent(String portId) {
-        if (OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId)) {
-            Object raw = getInput(portId);
-            if (!(raw instanceof Number number)) {
-                return null;
-            }
-            double v = number.doubleValue();
-            return Double.isFinite(v) ? v : null;
-        }
-        return 0.0d;
     }
 
     private void writeInvalid(String error) {

@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -51,7 +50,7 @@ public class ScalarFieldConstantNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Double value = resolveValue();
+        Double value = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_VALUE_ID, defaultValue);
         if (value == null) {
             writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
@@ -61,18 +60,6 @@ public class ScalarFieldConstantNode extends BaseNode {
         outputValues.put(OUTPUT_FIELD_ID, field);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    private @Nullable Double resolveValue() {
-        if (OptionalPortDrive.isConnected(this, INPUT_VALUE_ID) || isInputPresent(INPUT_VALUE_ID)) {
-            Object raw = getInput(INPUT_VALUE_ID);
-            if (!(raw instanceof Number number)) {
-                return null;
-            }
-            double v = number.doubleValue();
-            return Double.isFinite(v) ? v : null;
-        }
-        return Double.isFinite(defaultValue) ? defaultValue : null;
     }
 
     private void writeInvalid(String error) {

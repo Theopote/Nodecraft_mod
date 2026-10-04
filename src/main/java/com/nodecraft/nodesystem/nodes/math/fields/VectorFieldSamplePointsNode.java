@@ -5,9 +5,11 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -92,25 +94,26 @@ public class VectorFieldSamplePointsNode extends BaseNode {
             return;
         }
 
-        List<Vector3d> vectors = null;
+        List<VectorData> vectors = null;
         if (points != null) {
             vectors = new ArrayList<>(points.size());
-        }
-        if (points != null) {
             for (Vector3d p : points) {
                 FieldSampleUtils.VectorSample sample = FieldSampleUtils.sampleVector(field, p);
                 if (!sample.valid() || sample.vector() == null) {
                     writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
                     return;
                 }
-                vectors.add(new Vector3d(sample.vector()));
+                VectorData canonical = VectorUtils.toVectorPort(sample.vector());
+                if (canonical == null) {
+                    writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+                    return;
+                }
+                vectors.add(canonical);
             }
         }
 
         if (vectors != null) {
             outputValues.put(OUTPUT_VECTORS_ID, Collections.unmodifiableList(vectors));
-        }
-        if (vectors != null) {
             outputValues.put(OUTPUT_COUNT_ID, vectors.size());
         }
         outputValues.put(OUTPUT_VALID_ID, true);

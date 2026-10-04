@@ -75,11 +75,11 @@ public class ScalarFieldNoiseNode extends BaseNode {
             return;
         }
 
-        Double scale = resolveFiniteDouble(INPUT_SCALE_ID, defaultScale);
-        Double ox = resolveFiniteDouble(INPUT_OFFSET_X_ID, 0.0d);
-        Double oy = resolveFiniteDouble(INPUT_OFFSET_Y_ID, 0.0d);
-        Double oz = resolveFiniteDouble(INPUT_OFFSET_Z_ID, 0.0d);
-        Double amplitude = resolveFiniteDouble(INPUT_AMPLITUDE_ID, defaultAmplitude);
+        Double scale = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_SCALE_ID, defaultScale);
+        Double ox = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_X_ID, 0.0d);
+        Double oy = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_Y_ID, 0.0d);
+        Double oz = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_OFFSET_Z_ID, 0.0d);
+        Double amplitude = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_AMPLITUDE_ID, defaultAmplitude);
         if (scale == null || ox == null || oy == null || oz == null || amplitude == null) {
             writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
@@ -96,6 +96,9 @@ public class ScalarFieldNoiseNode extends BaseNode {
             double nx = (point.x + resolvedOx) * resolvedScale;
             double ny = (point.y + resolvedOy) * resolvedScale;
             double nz = (point.z + resolvedOz) * resolvedScale;
+            if (!Double.isFinite(nx) || !Double.isFinite(ny) || !Double.isFinite(nz)) {
+                return Double.NaN;
+            }
             double noise = RandomOps.valueNoise3(nx, ny, nz, resolvedSeed);
             if (!Double.isFinite(noise) || !Double.isFinite(resolvedAmplitude)) {
                 return Double.NaN;
@@ -113,18 +116,6 @@ public class ScalarFieldNoiseNode extends BaseNode {
             return StrictIntegerUtils.requireExactInteger(getInput(INPUT_SEED_ID));
         }
         return 0;
-    }
-
-    private @Nullable Double resolveFiniteDouble(String portId, double fallback) {
-        if (OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId)) {
-            Object value = getInput(portId);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
-        }
-        return Double.isFinite(fallback) ? fallback : null;
     }
 
     private void writeInvalid(String error) {

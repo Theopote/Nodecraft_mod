@@ -72,15 +72,22 @@ Tiny positive Step (e.g. `1e-6`) is honored when driven — no hidden floor.
 
 ## Vector Constant / Combine
 
-- Constant X/Y/Z: undriven → `0`; driven + finite Number → use; driven invalid →
+- Constant X/Y/Z: undriven → `0`; driven + exact finite `Double` → use; driven invalid →
   Field=null, Valid=false, `invalid_input`
 - Combine: missing A/B → Field=null, Valid=false, `invalid_field`; math unchanged;
-  non-finite combine results remain a **sample** boundary issue
+  non-finite combine results remain a **sample** boundary issue (Sample Point
+  `Valid=false`, `Vector=null` — not a zero vector)
 
 ## Sample Point — finite query coordinates
 
 NaN/Inf query coordinates → Valid=false even when the field is a finite Constant.
 
+Graph `VECTOR` output is `VectorData` (`VectorUtils.toVectorPort`). Internal
+`VectorFieldData.sampleVector(..., dest)` still writes JOML `Vector3d`.
+Vector Sample Point exposes `Error` when Valid is false.
+
+Undefined field domain → NaN components internally; Sample Valid=false.
+
 ## Graph migration (V133→V134)
 
-Identity migration — no wire remaps.
+Identity migration — no wire remaps. Historical V134 stamp remains; freeze hardening is stamp-only.

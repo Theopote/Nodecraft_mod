@@ -8,8 +8,8 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.math.FieldMath;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PolylineClosestPoint3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -44,6 +44,8 @@ public class CurveAttractorFieldNode extends BaseNode {
     private static final String INPUT_RADIUS_ID = "input_radius";
     private static final String INPUT_EXPONENT_ID = "input_exponent";
     private static final String OUTPUT_FIELD_ID = "output_field";
+    private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
 
     public CurveAttractorFieldNode() {
         super(UUID.randomUUID(), "math.fields.curve_attractor_field");
@@ -54,6 +56,10 @@ public class CurveAttractorFieldNode extends BaseNode {
         addInputPort(new BasePort(INPUT_EXPONENT_ID, "Exponent", "Falloff exponent override", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_FIELD_ID, "Field", "Path attractor vector field output", NodeDataType.VECTOR_FIELD, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the field was constructed",
+                NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -65,32 +71,53 @@ public class CurveAttractorFieldNode extends BaseNode {
     public void processNode(@Nullable ExecutionContext context) {
         List<Vector3d> polyline = PathUtils.resolvePath(inputValues.get(INPUT_PATH_ID));
         if (polyline == null || polyline.size() < 2) {
-            outputValues.put(OUTPUT_FIELD_ID, null);
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
             return;
         }
 
-        double effectiveStrength = FieldMath.resolveFinite(inputValues.get(INPUT_STRENGTH_ID), strength);
-        double effectiveRadius = FieldMath.resolveAttractorRadius(inputValues.get(INPUT_RADIUS_ID), radius);
-        double effectiveExponent = FieldMath.resolveAttractorExponent(inputValues.get(INPUT_EXPONENT_ID), exponent);
+        int segments = polyline.size() - 1;
+        if (segments > GenerationLimits.MAX_ARCHITECTURAL_PATH_SEGMENTS) {
+            writeInvalid(FieldSampleUtils.ERROR_OUTPUT_BUDGET_EXCEEDED);
+            return;
+        }
+
+        Double effectiveStrength = FieldSampleUtils.resolveOptionalFiniteDouble(this, INPUT_STRENGTH_ID, strength);
+        Double effectiveRadius = FieldSampleUtils.resolveOptionalAttractorRadius(this, INPUT_RADIUS_ID, radius);
+        Double effectiveExponent = FieldSampleUtils.resolveOptionalAttractorExponent(this, INPUT_EXPONENT_ID, exponent);
+        if (effectiveStrength == null || effectiveRadius == null || effectiveExponent == null) {
+            writeInvalid(FieldSampleUtils.ERROR_INVALID_INPUT);
+            return;
+        }
+
         AttractorFieldUtils.FalloffMode mode = falloff == null ? AttractorFieldUtils.FalloffMode.INVERSE : falloff;
+        final double strengthFinal = effectiveStrength;
+        final double radiusFinal = effectiveRadius;
+        final double exponentFinal = effectiveExponent;
 
         VectorFieldData field = (point, dest) -> {
-            Vector3d closest = new Vector3d();
-            if (!PolylineClosestPoint3d.closestPoint(polyline, point, closest)) {
+            if (!PolylineClosestPoint3d.closestPoint(polyline, point, dest)) {
                 dest.zero();
                 return;
             }
-            dest.set(closest).sub(point);
+            dest.sub(point);
             double lenSq = dest.lengthSquared();
             if (lenSq <= AttractorFieldUtils.DISTANCE_SQUARED_EPS) {
                 dest.zero();
                 return;
             }
             double distance = Math.sqrt(lenSq);
-            double weight = AttractorFieldUtils.falloff(distance, effectiveRadius, effectiveExponent, mode);
-            dest.mul((effectiveStrength * weight) / distance);
+            double weight = AttractorFieldUtils.falloff(distance, radiusFinal, exponentFinal, mode);
+            dest.mul((strengthFinal * weight) / distance);
         };
 
         outputValues.put(OUTPUT_FIELD_ID, field);
+        outputValues.put(OUTPUT_VALID_ID, true);
+        outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private void writeInvalid(String error) {
+        outputValues.put(OUTPUT_FIELD_ID, null);
+        outputValues.put(OUTPUT_VALID_ID, false);
+        outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 }

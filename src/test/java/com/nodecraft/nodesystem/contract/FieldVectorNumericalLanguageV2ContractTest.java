@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.contract;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.math.fields.FieldSampleUtils;
@@ -132,10 +133,10 @@ class FieldVectorNumericalLanguageV2ContractTest {
                 "input_point", new PointData(0.5d, -1.0d, 2.0d)
         ));
         assertTrue((Boolean) sample.get("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, sample.get("output_vector"));
-        assertEquals(0.0d, vector.x, 0.0d);
-        assertEquals(0.0d, vector.y, 0.0d);
-        assertEquals(0.0d, vector.z, 0.0d);
+        VectorData vector = assertInstanceOf(VectorData.class, sample.get("output_vector"));
+        assertEquals(0.0d, vector.x(), 0.0d);
+        assertEquals(0.0d, vector.y(), 0.0d);
+        assertEquals(0.0d, vector.z(), 0.0d);
     }
 
     @Test
@@ -193,10 +194,10 @@ class FieldVectorNumericalLanguageV2ContractTest {
                 "input_point", new PointData(0, 0, 0)
         ));
         assertTrue((Boolean) sample.get("output_valid"));
-        Vector3d vector = assertInstanceOf(Vector3d.class, sample.get("output_vector"));
-        assertEquals(0.0d, vector.x, 1.0e-12d);
-        assertEquals(0.0d, vector.y, 1.0e-12d);
-        assertEquals(1.0d, vector.z, 1.0e-12d);
+        VectorData vector = assertInstanceOf(VectorData.class, sample.get("output_vector"));
+        assertEquals(0.0d, vector.x(), 1.0e-12d);
+        assertEquals(0.0d, vector.y(), 1.0e-12d);
+        assertEquals(1.0d, vector.z(), 1.0e-12d);
     }
 
     @Test

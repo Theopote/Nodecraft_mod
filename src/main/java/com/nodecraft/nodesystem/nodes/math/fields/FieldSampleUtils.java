@@ -1,9 +1,13 @@
 package com.nodecraft.nodesystem.nodes.math.fields;
 
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.VectorFieldData;
+import com.nodecraft.nodesystem.math.FieldMath;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SpatialValueResolver;
+import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -17,6 +21,9 @@ import java.util.List;
  * directions use {@link SpatialValueResolver#resolveVector}.
  * <p>
  * Sampling helpers enforce Field v1 finite boundary: Valid=true only for finite outputs.
+ * Optional numeric ports use {@link OptionalPortDrive} via {@link #resolveOptionalFiniteDouble}
+ * ({@code isConnected || isInputPresent}) then attractor range checks — not
+ * {@code FieldMath.resolve*} property fallbacks.
  * Batch sample points use {@link #resolvePointListStrict} (1:1, fail closed)—not the
  * filtering {@link SpatialValueResolver#resolvePointList}.
  * Single-point sample nodes use {@link #resolveFinitePoint} (finite x/y/z gate).
@@ -44,7 +51,71 @@ public final class FieldSampleUtils {
         }
     }
 
+    record OptionalVectorField(@Nullable VectorFieldData field, boolean failed) {
+        static OptionalVectorField skip() {
+            return new OptionalVectorField(null, false);
+        }
+
+        static OptionalVectorField of(VectorFieldData field) {
+            return new OptionalVectorField(field, false);
+        }
+
+        static OptionalVectorField invalid() {
+            return new OptionalVectorField(null, true);
+        }
+    }
+
     private FieldSampleUtils() {
+    }
+
+    static boolean isPortDriven(BaseNode node, String portId) {
+        return OptionalPortDrive.isConnected(node, portId) || node.isInputPresent(portId);
+    }
+
+    /**
+     * Optional DOUBLE drive: unconnected → finite property; driven → exact finite {@link Double};
+     * driven invalid → {@code null} (fail closed, including {@code compute(Map)}).
+     */
+    static @Nullable Double resolveOptionalFiniteDouble(BaseNode node, String portId, double propertyFallback) {
+        if (isPortDriven(node, portId)) {
+            return StrictDoubleUtils.requireExactFiniteDouble(node.getInput(portId));
+        }
+        return Double.isFinite(propertyFallback) ? propertyFallback : null;
+    }
+
+    static @Nullable Double resolveOptionalAttractorRadius(BaseNode node, String portId, double propertyFallback) {
+        Double resolved = resolveOptionalFiniteDouble(node, portId, propertyFallback);
+        if (resolved == null) {
+            return null;
+        }
+        return resolved >= FieldMath.MIN_ATTRACTOR_FALLOFF_RADIUS ? resolved : null;
+    }
+
+    static @Nullable Double resolveOptionalAttractorExponent(BaseNode node, String portId, double propertyFallback) {
+        Double resolved = resolveOptionalFiniteDouble(node, portId, propertyFallback);
+        if (resolved == null) {
+            return null;
+        }
+        return resolved >= FieldMath.MIN_ATTRACTOR_FALLOFF_EXPONENT ? resolved : null;
+    }
+
+    static @Nullable Double resolveOptionalPositiveDouble(BaseNode node, String portId, double propertyFallback) {
+        Double resolved = resolveOptionalFiniteDouble(node, portId, propertyFallback);
+        if (resolved == null) {
+            return null;
+        }
+        return resolved > 0.0d ? resolved : null;
+    }
+
+    static OptionalVectorField resolveOptionalVectorField(BaseNode node, String portId) {
+        if (!isPortDriven(node, portId)) {
+            return OptionalVectorField.skip();
+        }
+        Object value = node.getInput(portId);
+        if (value instanceof VectorFieldData field) {
+            return OptionalVectorField.of(field);
+        }
+        return OptionalVectorField.invalid();
     }
 
     static @Nullable Vector3d resolvePoint(Object value) {
