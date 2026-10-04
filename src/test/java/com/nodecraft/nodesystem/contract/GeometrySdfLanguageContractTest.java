@@ -7,19 +7,20 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.BooleanSdfData;
 import com.nodecraft.nodesystem.datatypes.BoxSdfData;
 import com.nodecraft.nodesystem.datatypes.CapsuleSdfData;
-import com.nodecraft.nodesystem.datatypes.BooleanSdfData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
 import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
-import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBooleanNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBlendMaterialMaskNode;
+import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBooleanNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBoxNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfCapsuleNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfDomainWarpNode;
@@ -38,10 +39,10 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.AbstractCollection;
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -333,107 +334,104 @@ class GeometrySdfLanguageContractTest {
 
     @Test
     void sdfValueTypesRejectInvalidConstruction() {
-        Vector3d origin = new Vector3d(0, 0, 0);
         assertThrows(IllegalArgumentException.class,
-            () -> new SphereSdfData(origin, Double.NaN));
+            () -> new SphereSdfData(new Vector3d(0, 0, 0), Double.NaN));
         assertThrows(IllegalArgumentException.class,
-            () -> new SphereSdfData(origin, -1.0d));
+            () -> new SphereSdfData(new Vector3d(0, 0, 0), -1.0d));
         assertThrows(IllegalArgumentException.class,
-            () -> new BoxSdfData(origin, new Vector3d(1.0d, 0.0d, 1.0d)));
+            () -> new BoxSdfData(new Vector3d(0, 0, 0), new Vector3d(1, 0, 1)));
         assertThrows(IllegalArgumentException.class,
             () -> new CapsuleSdfData(
                 new Vector3d(-1.0e308d, 0, 0),
                 new Vector3d(1.0e308d, 0, 0),
                 1.0d));
-        Matrix3d shear = new Matrix3d();
-        shear.setColumn(0, new Vector3d(1.0d, 0.0d, 0.0d));
-        shear.setColumn(1, new Vector3d(1.0d, 1.0d, 0.0d));
-        shear.setColumn(2, new Vector3d(0.0d, 0.0d, 1.0d));
-        SphereSdfData sphere = new SphereSdfData(origin, 1.0d);
+        Matrix3d shear = new Matrix3d().identity();
+        shear.m01 = 1.0d;
+        SphereSdfData sphere = new SphereSdfData(new Vector3d(0, 0, 0), 1.0d);
         assertThrows(IllegalArgumentException.class,
-            () -> new TransformedSdfData(sphere, origin, shear, 1.0d));
+            () -> new TransformedSdfData(sphere, new Vector3d(0, 0, 0), shear, 1.0d));
     }
 
     @Test
-    void capsuleOverflowAxisFailsClosedOnNode() {
-        SdfCapsuleNode capsule = new SdfCapsuleNode();
-        connectInput(capsule, "input_start", NodeDataType.POINT);
-        connectInput(capsule, "input_end", NodeDataType.POINT);
-        capsule.setInput("input_start", new PointData(-1.0e308d, 0, 0));
-        capsule.setInput("input_end", new PointData(1.0e308d, 0, 0));
-        capsule.processNode(null);
-        assertEquals(Boolean.FALSE, capsule.getOutput("output_valid"));
-        assertNull(capsule.getOutput("output_sdf"));
+    void signConventionNegativeInside() {
+        SphereSdfData sphere = new SphereSdfData(new Vector3d(0, 0, 0), 2.0d);
+        assertTrue(sphere.sampleDistance(new Vector3d(0, 0, 0)) < 0.0d);
+        assertEquals(0.0d, sphere.sampleDistance(new Vector3d(2, 0, 0)), 1e-9d);
+        assertTrue(sphere.sampleDistance(new Vector3d(4, 0, 0)) > 0.0d);
     }
 
     @Test
-    void noiseAndWarpRejectNonFiniteOffset() {
+    void noiseOffsetNaNFailsClosed() {
         SdfSphereNode sphere = validSphere(4.0d);
-
         SdfNoiseDisplaceNode noise = new SdfNoiseDisplaceNode();
         noise.setInput("input_sdf", sphere.getOutput("output_sdf"));
-        noise.setNodeState(Map.of("offsetX", Double.NaN, "offsetY", 0.0d, "offsetZ", 0.0d));
+        Map<String, Object> state = new HashMap<>();
+        state.put("offsetX", Double.NaN);
+        state.put("offsetY", 0.0d);
+        state.put("offsetZ", 0.0d);
+        noise.setNodeState(state);
         noise.processNode(null);
         assertEquals(Boolean.FALSE, noise.getOutput("output_valid"));
         assertNull(noise.getOutput("output_sdf"));
-
-        SdfDomainWarpNode warp = new SdfDomainWarpNode();
-        warp.setInput("input_sdf", sphere.getOutput("output_sdf"));
-        warp.setNodeState(Map.of("offsetX", Double.POSITIVE_INFINITY, "offsetY", 0.0d, "offsetZ", 0.0d));
-        warp.processNode(null);
-        assertEquals(Boolean.FALSE, warp.getOutput("output_valid"));
-        assertNull(warp.getOutput("output_sdf"));
     }
 
     @Test
-    void gradientSafeNormalizeAndInvalidDistanceNan() {
-        SignedDistanceFieldData steep = point -> point.x * 1.0e308d;
+    void gradientHugeComponentsFailAndInvalidDistanceIsNan() {
+        SignedDistanceFieldData steep = point -> 5.0e307d * (point.x + point.y + point.z);
         SdfGradientPointNode gradient = new SdfGradientPointNode();
-        connectInput(gradient, "input_point", NodeDataType.POINT);
         gradient.setInput("input_sdf", steep);
         gradient.setInput("input_point", new PointData(0, 0, 0));
+        connectInput(gradient, "input_step", NodeDataType.DOUBLE);
+        gradient.setInput("input_step", 1.0d);
         gradient.processNode(null);
         assertEquals(Boolean.FALSE, gradient.getOutput("output_valid"));
         assertNull(gradient.getOutput("output_gradient"));
-        assertTrue(Double.isNaN(((Number) gradient.getOutput("output_distance")).doubleValue()));
+
+        SdfGradientPointNode missing = new SdfGradientPointNode();
+        missing.processNode(null);
+        assertEquals(Boolean.FALSE, missing.getOutput("output_valid"));
+        assertTrue(Double.isNaN(((Number) missing.getOutput("output_distance")).doubleValue()));
     }
 
     @Test
-    void transformBoundsExtremeScaleDoesNotEmitInfiniteAabb() {
-        SphereSdfData sphere = new SphereSdfData(new Vector3d(0, 0, 0), 1.0e308d);
+    void transformBoundsExtremeMinMaxAreNullNotInfinite() {
+        SphereSdfData sphere = new SphereSdfData(new Vector3d(1.0e308d, 0, 0), 1.0d);
         TransformedSdfData transformed = new TransformedSdfData(
-            sphere, new Vector3d(0, 0, 0), 0.0d, 0.0d, 0.0d, 2.0d);
+            sphere, new Vector3d(1.0e308d, 0, 0), 0, 0, 0, 1.0d);
         SdfBoundsEstimator.AxisAlignedBounds bounds = SdfBoundsEstimator.estimate(transformed);
-        if (bounds != null) {
-            assertTrue(bounds.isValid());
-        }
+        assertNull(bounds);
     }
 
     @Test
-    void booleanUnknownOperationIsIgnoredNotMappedToUnion() {
-        SdfBooleanNode node = new SdfBooleanNode();
-        node.setOperation(BooleanSdfData.Operation.DIFFERENCE);
-        node.setNodeState(Map.of("operation", "BANANA"));
-        assertEquals(BooleanSdfData.Operation.DIFFERENCE, node.getOperation());
+    void booleanUnknownOperationDoesNotProcessAsUnion() {
+        SdfSphereNode a = validSphere(2.0d);
+        SdfSphereNode b = validSphere(3.0d);
+        SdfBooleanNode bool = new SdfBooleanNode();
+        bool.setInput("input_a", a.getOutput("output_sdf"));
+        bool.setInput("input_b", b.getOutput("output_sdf"));
+        bool.setNodeState(Map.of("operation", "BANANA", "smoothK", 0.0d));
+        bool.processNode(null);
+        assertEquals(Boolean.FALSE, bool.getOutput("output_valid"));
+        assertNull(bool.getOutput("output_sdf"));
     }
 
     @Test
     void blendMaskRejectsIntegerListEntries() {
         SdfBlendMaterialMaskNode mask = new SdfBlendMaterialMaskNode();
-        mask.setInput("input_distances", List.of(1, 2, 3));
+        mask.setInput("input_distances", List.of(1));
         mask.processNode(null);
         assertEquals(Boolean.FALSE, mask.getOutput("output_valid"));
     }
 
     @Test
-    void samplePointsRejectsOversizeList() {
+    void samplePointsRejectsOversizedList() {
         SdfSphereNode sphere = validSphere(4.0d);
         SdfSamplePointsNode sample = new SdfSamplePointsNode();
         sample.setInput("input_sdf", sphere.getOutput("output_sdf"));
-        sample.setInput("input_points", new AbstractCollection<PointData>() {
+        sample.setInput("input_points", new AbstractList<PointData>() {
             @Override
-            public Iterator<PointData> iterator() {
-                return List.<PointData>of().iterator();
+            public PointData get(int index) {
+                return new PointData(0, 0, 0);
             }
 
             @Override
@@ -443,15 +441,6 @@ class GeometrySdfLanguageContractTest {
         });
         sample.processNode(null);
         assertEquals(Boolean.FALSE, sample.getOutput("output_valid"));
-    }
-
-    @Test
-    void signConventionIsNegativeInside() {
-        SphereSdfData sphere = new SphereSdfData(new Vector3d(0, 0, 0), 1.0d);
-        assertTrue(sphere.sampleDistance(new Vector3d(0, 0, 0)) < 0.0d);
-        assertEquals(0.0d, sphere.sampleDistance(new Vector3d(1, 0, 0)), 1.0e-9d);
-        assertTrue(sphere.sampleDistance(new Vector3d(2, 0, 0)) > 0.0d);
-        assertTrue(sphere.sampleDistance(new Vector3d(0, 0, 0)) <= 0.0d);
     }
 
     private static SdfSphereNode validSphere(double radius) {

@@ -8,7 +8,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NoiseDisplacedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -82,7 +81,7 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
             writeFailure("Seed must be an exact integer");
             return;
         }
-        if (!VectorUtils.isFinite(offset)) {
+        if (!com.nodecraft.nodesystem.util.VectorUtils.isFinite(offset)) {
             writeFailure("Offset must be finite");
             return;
         }

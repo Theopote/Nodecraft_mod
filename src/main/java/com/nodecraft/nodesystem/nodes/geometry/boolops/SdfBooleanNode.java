@@ -28,6 +28,8 @@ public class SdfBooleanNode extends AbstractSdfNode {
     @NodeProperty(displayName = "Smooth K", category = "SDF", order = 2)
     private double smoothK = 0.0d;
 
+    private boolean operationCorrupt;
+
     private static final String INPUT_A_ID = "input_a";
     private static final String INPUT_B_ID = "input_b";
     private static final String INPUT_SMOOTH_K_ID = "input_smooth_k";
@@ -62,6 +64,10 @@ public class SdfBooleanNode extends AbstractSdfNode {
             writeFailure("Smooth K must be finite and >= 0");
             return;
         }
+        if (operationCorrupt || operation == null) {
+            writeFailure("Operation must be UNION, INTERSECTION, or DIFFERENCE");
+            return;
+        }
 
         SignedDistanceFieldData out = new BooleanSdfData(left, right, operation, resolvedSmoothK);
         outputValues.put(OUTPUT_SDF_ID, out);
@@ -77,6 +83,8 @@ public class SdfBooleanNode extends AbstractSdfNode {
             return;
         }
         this.operation = operation;
+        this.operationCorrupt = false;
+        markDirty();
     }
 
     private void writeFailure(String error) {
@@ -86,7 +94,7 @@ public class SdfBooleanNode extends AbstractSdfNode {
 
     @Override
     public Object getNodeState() {
-        return java.util.Map.of("operation", operation.name(), "smoothK", smoothK);
+        return java.util.Map.of("operation", operation == null ? "" : operation.name(), "smoothK", smoothK);
     }
 
     @Override
@@ -95,16 +103,30 @@ public class SdfBooleanNode extends AbstractSdfNode {
             return;
         }
         if (map.get("operation") instanceof String value) {
-            try {
-                setOperation(BooleanSdfData.Operation.valueOf(value.trim().toUpperCase()));
-            } catch (IllegalArgumentException ignored) {
-                // Unknown names are ignored; process never maps them to UNION.
+            BooleanSdfData.Operation parsed = parseOperation(value);
+            if (parsed != null) {
+                this.operation = parsed;
+                this.operationCorrupt = false;
+            } else {
+                this.operationCorrupt = true;
             }
         } else if (map.get("operation") instanceof BooleanSdfData.Operation value) {
-            setOperation(value);
+            this.operation = value;
+            this.operationCorrupt = false;
         }
         if (map.get("smoothK") instanceof Number value) {
             smoothK = value.doubleValue();
+        }
+    }
+
+    private static @Nullable BooleanSdfData.Operation parseOperation(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return BooleanSdfData.Operation.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 }

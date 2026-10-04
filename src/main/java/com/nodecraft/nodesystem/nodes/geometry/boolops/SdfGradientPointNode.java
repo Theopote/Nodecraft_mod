@@ -63,24 +63,22 @@ public class SdfGradientPointNode extends AbstractSdfNode {
         }
 
         double h = stepResolved;
-        Vector3d hx = new Vector3d(h, 0.0d, 0.0d);
-        Vector3d hy = new Vector3d(0.0d, h, 0.0d);
-        Vector3d hz = new Vector3d(0.0d, 0.0d, h);
-        Vector3d plusX = VectorUtils.safeAdd(p, hx);
-        Vector3d minusX = VectorUtils.safeSubtract(p, hx);
-        Vector3d plusY = VectorUtils.safeAdd(p, hy);
-        Vector3d minusY = VectorUtils.safeSubtract(p, hy);
-        Vector3d plusZ = VectorUtils.safeAdd(p, hz);
-        Vector3d minusZ = VectorUtils.safeSubtract(p, hz);
-        if (plusX == null || minusX == null || plusY == null || minusY == null || plusZ == null || minusZ == null) {
+        Vector3d pxPos = VectorUtils.safeAdd(p, new Vector3d(h, 0.0d, 0.0d));
+        Vector3d pxNeg = VectorUtils.safeAdd(p, new Vector3d(-h, 0.0d, 0.0d));
+        Vector3d pyPos = VectorUtils.safeAdd(p, new Vector3d(0.0d, h, 0.0d));
+        Vector3d pyNeg = VectorUtils.safeAdd(p, new Vector3d(0.0d, -h, 0.0d));
+        Vector3d pzPos = VectorUtils.safeAdd(p, new Vector3d(0.0d, 0.0d, h));
+        Vector3d pzNeg = VectorUtils.safeAdd(p, new Vector3d(0.0d, 0.0d, -h));
+        if (pxPos == null || pxNeg == null || pyPos == null || pyNeg == null
+            || pzPos == null || pzNeg == null) {
             writeFailure("Gradient probe point overflow");
             return;
         }
 
         double d = sdf.sampleDistance(p);
-        double gx = sdf.sampleDistance(plusX) - sdf.sampleDistance(minusX);
-        double gy = sdf.sampleDistance(plusY) - sdf.sampleDistance(minusY);
-        double gz = sdf.sampleDistance(plusZ) - sdf.sampleDistance(minusZ);
+        double gx = sdf.sampleDistance(pxPos) - sdf.sampleDistance(pxNeg);
+        double gy = sdf.sampleDistance(pyPos) - sdf.sampleDistance(pyNeg);
+        double gz = sdf.sampleDistance(pzPos) - sdf.sampleDistance(pzNeg);
 
         if (!Double.isFinite(d) || !Double.isFinite(gx) || !Double.isFinite(gy) || !Double.isFinite(gz)) {
             writeFailure("Sampled distance or gradient components are not finite");
@@ -89,7 +87,7 @@ public class SdfGradientPointNode extends AbstractSdfNode {
 
         Vector3d normal = VectorUtils.safeNormalize(new Vector3d(gx, gy, gz));
         if (normal == null) {
-            writeFailure("Gradient is degenerate (near-zero length)");
+            writeFailure("Gradient is degenerate or not finite after normalize");
             return;
         }
 

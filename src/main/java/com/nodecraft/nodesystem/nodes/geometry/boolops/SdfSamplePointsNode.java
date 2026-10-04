@@ -71,7 +71,7 @@ public class SdfSamplePointsNode extends AbstractSdfNode {
         List<Vector3d> points = PointUtils.resolveStrictPointListBounded(
             pointsObj, GenerationLimits.MAX_SDF_SAMPLE_POINTS);
         if (points == null) {
-            writeFailure("Every entry in Points must be a finite PointData within MAX_SDF_SAMPLE_POINTS (no silent drop)");
+            writeFailure("Points must be a finite PointData list within MAX_SDF_SAMPLE_POINTS (no silent drop)");
             return;
         }
 
