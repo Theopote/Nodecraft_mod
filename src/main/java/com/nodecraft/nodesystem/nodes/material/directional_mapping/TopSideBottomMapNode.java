@@ -161,7 +161,13 @@ public class TopSideBottomMapNode extends BaseNode {
             }
 
             String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, blockId);
+            if (!remap.valid()) {
+                emitInvalid(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
 
         emitSuccess(placements);

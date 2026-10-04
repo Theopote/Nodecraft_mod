@@ -350,7 +350,7 @@
 |---|---|---|---|
 | Column Layer Map | `material.directional_mapping.top_side_bottom_map` | Column stratification map: highest / lowest / middle blocks per X/Z column. Remaps blockId only; preserves stateData. | `TopSideBottomMapNode` |
 | Surface Slope Map | `material.directional_mapping.slope_map` | Surface material map: assigns flat/slope/steep by 4-neighbor column height grade on column-top voxels only. Remaps blockId only; preserves stateData. | `SlopeMapNode` |
-| Slab / Stair Adapt | `material.directional_mapping.slab_stair_autofill` | Adapts block types to surface normals (blockId only). Use Orient Block State and Stair Shape for state properties. | `SlabStairAutofillNode` |
+| Slab / Stair Adapt | `material.directional_mapping.slab_stair_autofill` | Adapts block types to surface normals (blockId only). Angle from vertical uses abs(Y): [0, Full Block Max] default, (Full Block Max, Stair Min] slab, (Stair Min, 90] stair. | `SlabStairAutofillNode` |
 
 ## material.gradient_mapping（5）
 

@@ -116,10 +116,23 @@ public class SdfDrivenMaterialNode extends BaseNode {
             return;
         }
 
-        BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
-        String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        GradientMaterialUtils.OptionalPaletteResult paletteResult =
+            GradientMaterialUtils.resolveOptionalPalette(this, INPUT_PALETTE_ID);
+        if (!paletteResult.valid()) {
+            emitFail(paletteResult.error());
+            return;
+        }
+        BlockPaletteData palette = paletteResult.palette();
+        MaterialMappingSupport.MappedBlockType fallbackType =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_FALLBACK_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_FALLBACK_BLOCK_ID));
+        if (!fallbackType.valid()) {
+            emitFail(fallbackType.error());
+            return;
+        }
         String fallback = MaterialMappingSupport.firstMappedBlockType(
-            fallbackMapped,
+            fallbackType.blockId(),
             palette.isEmpty() ? null : palette.entries().getFirst().blockId()
         );
 
@@ -153,14 +166,34 @@ public class SdfDrivenMaterialNode extends BaseNode {
                 emitFail("SDF sample produced a non-finite value");
                 return;
             }
-            double x = (distance - center) / halfWidth;
+            double diff = distance - center;
+            if (!Double.isFinite(diff)) {
+                emitFail("SDF weight produced a non-finite value");
+                return;
+            }
+            double x = diff / halfWidth;
+            if (!Double.isFinite(x)) {
+                emitFail("SDF weight produced a non-finite value");
+                return;
+            }
             double weight = smoothstep01(0.5d + 0.5d * x);
             if (!Double.isFinite(weight)) {
                 emitFail("SDF weight produced a non-finite value");
                 return;
             }
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, weight, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            GradientMaterialUtils.PickResult pick =
+                GradientMaterialUtils.pickByNormalized(palette, weight, sourcePlacement.blockId());
+            if (!pick.valid()) {
+                emitFail(pick.error());
+                return;
+            }
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, pick.blockId());
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
             distances.add(distance);
             weights.add(weight);
         }

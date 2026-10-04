@@ -118,10 +118,38 @@ public class HeightGradientMapNode extends BaseNode {
             return;
         }
 
-        String bottomMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_BOTTOM_ID));
-        String middleMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_MIDDLE_ID));
-        String topMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_TOP_ID));
-        String peakMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_PEAK_ID));
+        MaterialMappingSupport.MappedBlockType bottom =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_BOTTOM_ID), MaterialSourceResolver.isDriven(this, INPUT_BOTTOM_ID));
+        if (!bottom.valid()) {
+            emitFail(bottom.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType middle =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_MIDDLE_ID), MaterialSourceResolver.isDriven(this, INPUT_MIDDLE_ID));
+        if (!middle.valid()) {
+            emitFail(middle.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType top =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_TOP_ID), MaterialSourceResolver.isDriven(this, INPUT_TOP_ID));
+        if (!top.valid()) {
+            emitFail(top.error());
+            return;
+        }
+        MaterialMappingSupport.MappedBlockType peak =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_PEAK_ID), MaterialSourceResolver.isDriven(this, INPUT_PEAK_ID));
+        if (!peak.valid()) {
+            emitFail(peak.error());
+            return;
+        }
+        String bottomMapped = bottom.blockId();
+        String middleMapped = middle.blockId();
+        String topMapped = top.blockId();
+        String peakMapped = peak.blockId();
         String fallback = MaterialMappingSupport.firstMappedBlockType(
             bottomMapped, middleMapped, topMapped, peakMapped);
 
@@ -173,7 +201,13 @@ public class HeightGradientMapNode extends BaseNode {
                 roleMapped = peakMapped;
             }
             String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, blockId);
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
 
         emitOk(placements);

@@ -119,10 +119,13 @@ class BasicAssignmentLanguageContractTest {
         assign.setInput("input_placements", List.of(
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
         ));
-        assign.setInput("input_block_type", "minecraft:stone_bricks");
+        assign.setInput("input_block_type", "minecraft:cobblestone_stairs");
         assign.processNode(null);
-        assertFalse((Boolean) assign.getOutput("output_valid"));
-        assertTrue(((List<?>) assign.getOutput("output_placements")).isEmpty());
+        assertTrue((Boolean) assign.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, assign.getOutput("output_placements"));
+        assertEquals("minecraft:cobblestone_stairs", out.getFirst().blockId());
+        assertEquals("east", out.getFirst().stateData().get("facing"));
     }
 
     @Test
@@ -268,8 +271,10 @@ class BasicAssignmentLanguageContractTest {
         doubleSeed.putInput("input_palette", palette);
         doubleSeed.putInput("input_seed", 42.0d);
         doubleSeed.processNode(null);
+        assertEquals(Boolean.FALSE, doubleSeed.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> doubleOut = assertInstanceOf(List.class, doubleSeed.getOutput("output_placements"));
+        assertTrue(doubleOut.isEmpty());
 
         WeightedBlockPaletteNode intSeed = new WeightedBlockPaletteNode();
         intSeed.setInput("input_placements", List.of(
@@ -278,10 +283,12 @@ class BasicAssignmentLanguageContractTest {
         intSeed.setInput("input_palette", palette);
         intSeed.setInput("input_seed", 0);
         intSeed.processNode(null);
+        assertEquals(Boolean.TRUE, intSeed.getOutput("output_valid"),
+                String.valueOf(intSeed.getOutput("output_error")));
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> zeroOut = assertInstanceOf(List.class, intSeed.getOutput("output_placements"));
+        assertFalse(zeroOut.isEmpty());
         assertNotEquals(firstId, zeroOut.getFirst().blockId());
-        assertEquals(doubleOut.getFirst().blockId(), zeroOut.getFirst().blockId());
     }
 
     @Test

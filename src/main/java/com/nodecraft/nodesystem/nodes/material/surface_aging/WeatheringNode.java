@@ -171,7 +171,13 @@ public class WeatheringNode extends BaseNode {
                 continue;
             }
             if (!SurfaceAgingUtils.isSurface(pos, occupancy)) {
-                placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, sourcePlacement.blockId()));
+                MaterialMappingSupport.RemapResult passthrough =
+                    MaterialMappingSupport.remapValidated(sourcePlacement, sourcePlacement.blockId());
+                if (!passthrough.valid()) {
+                    emitFail(passthrough.error());
+                    return;
+                }
+                placements.add(passthrough.placement());
                 continue;
             }
             MaterialSpatialUtils.Relative rel = MaterialSpatialUtils.relative(pos, origin);
@@ -186,7 +192,13 @@ public class WeatheringNode extends BaseNode {
             if (age && agedMapped != null && !agedMapped.isBlank()) {
                 affected++;
             }
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, blockId);
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
         emitOk(placements, affected);
     }

@@ -18,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Freeze fence for Batch 8 Material / Block Assignment contracts.
@@ -58,20 +59,48 @@ class MaterialFamilyContractTest {
         );
 
         height.setInput("input_placements", List.of(incoming));
-        height.setInput("input_bottom", "minecraft:stone_bricks");
-        height.setInput("input_middle", "minecraft:stone_bricks");
-        height.setInput("input_top", "minecraft:stone_bricks");
-        height.setInput("input_peak", "minecraft:stone_bricks");
+        height.setInput("input_bottom", "minecraft:cobblestone_stairs");
+        height.setInput("input_middle", "minecraft:cobblestone_stairs");
+        height.setInput("input_top", "minecraft:cobblestone_stairs");
+        height.setInput("input_peak", "minecraft:cobblestone_stairs");
         height.processNode(null);
 
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> out = assertInstanceOf(List.class, height.getOutput("output_placements"));
         assertEquals(1, out.size());
         BlockPlacementData remapped = out.getFirst();
-        assertEquals("minecraft:stone_bricks", remapped.blockId());
+        assertEquals("minecraft:cobblestone_stairs", remapped.blockId());
         assertNotNull(remapped.stateData());
         assertEquals("east", remapped.stateData().get("facing"));
         assertEquals("top", remapped.stateData().get("half"));
+    }
+
+    @Test
+    void materialRemapIncompatibleStateFailsClosedWhenRegistryPopulated() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            com.nodecraft.nodesystem.util.MaterialMappingSupport.isBlockRegistryPopulated(),
+            "Live BLOCK registry required for state compatibility"
+        );
+        BaseNode height = assertInstanceOf(BaseNode.class,
+            NodeRegistry.getInstance().createNodeInstance("material.gradient_mapping.height_gradient_map"));
+        BlockStateData state = new BlockStateData()
+            .withProperty("facing", "east")
+            .withProperty("half", "top");
+        BlockPlacementData incoming = new BlockPlacementData(
+            new BlockPos(1, 10, 2),
+            "minecraft:oak_stairs",
+            state
+        );
+        height.setInput("input_placements", List.of(incoming));
+        height.setInput("input_bottom", "minecraft:stone");
+        height.setInput("input_middle", "minecraft:stone");
+        height.setInput("input_top", "minecraft:stone");
+        height.setInput("input_peak", "minecraft:stone");
+        height.processNode(null);
+        assertEquals(Boolean.FALSE, height.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, height.getOutput("output_placements"));
+        assertTrue(out.isEmpty());
     }
 
     @Test

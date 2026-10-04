@@ -7,9 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -157,13 +157,13 @@ public class BlockPaletteNode extends BaseNode {
         for (BlockPlacementData placement : sources) {
             String blockId = BasicAssignmentUtils.cyclicPaletteBlockId(
                 palette, startIndex + index, placement.blockId());
-            BlockPlacementData next = new BlockPlacementData(placement.pos(), blockId, placement.stateData());
-            String error = BlockStateValidationUtils.remapIncompatibility(next);
-            if (error != null) {
-                emitFail(error);
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(placement, blockId);
+            if (!remap.valid()) {
+                emitFail(remap.error());
                 return null;
             }
-            remapped.add(next);
+            remapped.add(remap.placement());
             index++;
         }
         return remapped;
@@ -184,30 +184,42 @@ public class BlockPaletteNode extends BaseNode {
             List<Object> branchPlacements = new ArrayList<>();
             if (palette.isEmpty() && preserveWhenEmptyPalette) {
                 for (Object item : branch.items()) {
-                    BlockPlacementData placement = toPlacementPreserving(item);
-                    if (placement != null) {
-                        String error = BlockStateValidationUtils.remapIncompatibility(placement);
-                        if (error != null) {
-                            emitFail(error);
+                    if (item instanceof BlockPlacementData sourcePlacement) {
+                        MaterialMappingSupport.RemapResult remap =
+                            MaterialMappingSupport.remapValidated(sourcePlacement, sourcePlacement.blockId());
+                        if (!remap.valid()) {
+                            emitFail(remap.error());
                             return;
                         }
-                        placements.add(placement);
-                        branchPlacements.add(placement);
+                        placements.add(remap.placement());
+                        branchPlacements.add(remap.placement());
+                    } else {
+                        BlockPlacementData placement = toPlacementPreserving(item);
+                        if (placement != null) {
+                            placements.add(placement);
+                            branchPlacements.add(placement);
+                        }
                     }
                 }
             } else {
                 String branchBlockId = BasicAssignmentUtils.cyclicPaletteBlockId(
                     palette, startIndex + branchIndex, null);
                 for (Object item : branch.items()) {
-                    BlockPlacementData placement = toPlacementWithBlockId(item, branchBlockId);
-                    if (placement != null) {
-                        String error = BlockStateValidationUtils.remapIncompatibility(placement);
-                        if (error != null) {
-                            emitFail(error);
+                    if (item instanceof BlockPlacementData sourcePlacement) {
+                        MaterialMappingSupport.RemapResult remap =
+                            MaterialMappingSupport.remapValidated(sourcePlacement, branchBlockId);
+                        if (!remap.valid()) {
+                            emitFail(remap.error());
                             return;
                         }
-                        placements.add(placement);
-                        branchPlacements.add(placement);
+                        placements.add(remap.placement());
+                        branchPlacements.add(remap.placement());
+                    } else {
+                        BlockPlacementData placement = toPlacementWithBlockId(item, branchBlockId);
+                        if (placement != null) {
+                            placements.add(placement);
+                            branchPlacements.add(placement);
+                        }
                     }
                 }
             }

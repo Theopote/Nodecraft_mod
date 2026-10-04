@@ -462,6 +462,15 @@ public final class GenerationLimits {
     /** Aggregate BlockPlacement list/tree cap (aligned with bake / world.write history ceiling). */
     public static final int MAX_BLOCK_PLACEMENTS = MAX_WORLD_WRITE_BLOCKS;
 
+    /** Hard cap on Noise Material octaves (processNode fail-closed if restore exceeds). */
+    public static final int MAX_MATERIAL_NOISE_OCTAVES = 16;
+
+    /**
+     * Hard cap on material procedural sample work: placementCount × octaves
+     * (Noise Material and similar).
+     */
+    public static final long MAX_MATERIAL_SAMPLE_WORK = 262_144L;
+
     /** Hard cap on typed BLOCK_PALETTE entries from Create Block Palette. */
     public static final int MAX_BLOCK_PALETTE_ENTRIES = 1024;
 

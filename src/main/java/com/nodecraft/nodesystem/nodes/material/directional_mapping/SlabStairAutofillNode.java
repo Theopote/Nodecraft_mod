@@ -7,10 +7,11 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -22,27 +23,25 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "material.directional_mapping.slab_stair_autofill",
     displayName = "Slab / Stair Adapt",
-    description = "Adapts block types to surface normals (blockId only). Use Orient Block State and Stair Shape for state properties.",
+    description = "Adapts block types to surface normals (blockId only). Angle from vertical uses abs(Y): [0, Full Block Max] default, (Full Block Max, Stair Min] slab, (Stair Min, 90] stair.",
     category = "material.directional_mapping",
     order = 10
 )
 public class SlabStairAutofillNode extends BaseNode {
 
-    private static final double NORMAL_EPS_SQ = 1.0e-9d;
-
     @NodeProperty(
-        displayName = "Slab Angle",
+        displayName = "Full Block Max Angle",
         category = "Classification",
         order = 1,
-        description = "Maximum angle from vertical (degrees) for full-block classification"
+        description = "Inclusive max angle from vertical (degrees) classified as full/default block: [0, this]. Equal to this value stays full; greater than this (up to Stair Min Angle) is slab."
     )
     private double slabAngleDegrees = 20.0d;
 
     @NodeProperty(
-        displayName = "Stair Angle",
+        displayName = "Stair Min Angle",
         category = "Classification",
         order = 2,
-        description = "Minimum angle from vertical (degrees) for stair classification"
+        description = "Exclusive min angle from vertical (degrees) classified as stair: (this, 90]. Equal to this value is still slab. Must be >= Full Block Max Angle."
     )
     private double stairAngleDegrees = 35.0d;
 
@@ -86,7 +85,8 @@ public class SlabStairAutofillNode extends BaseNode {
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data to materialize", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data to materialize", NodeDataType.SPHERE, this));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry data to materialize", NodeDataType.TORUS_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Normal vectors index-aligned with placements", NodeDataType.VECTOR_LIST, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals",
+            "Normal vectors (VectorData) index-aligned with placements", NodeDataType.VECTOR_LIST, this));
         addInputPort(new BasePort(INPUT_DEFAULT_BLOCK_ID, "Default Block", "Full block id for near-vertical normals", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_SLAB_BLOCK_ID, "Slab Block", "Slab block id for moderate slopes", NodeDataType.BLOCK_TYPE, this));
         addInputPort(new BasePort(INPUT_STAIR_BLOCK_ID, "Stair Block", "Stair block id for steep slopes", NodeDataType.BLOCK_TYPE, this));
@@ -102,21 +102,21 @@ public class SlabStairAutofillNode extends BaseNode {
 
     @Override
     public String getDescription() {
-        return "Adapts block types to surface normals (blockId only). Chain with Orient Block State and Stair Shape for state.";
+        return "Adapts block types to surface normals (blockId only). [0, Full Block Max] default; (Full Block Max, Stair Min] slab; (Stair Min, 90] stair.";
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         if (!Double.isFinite(slabAngleDegrees) || slabAngleDegrees < 0.0d || slabAngleDegrees > 90.0d) {
-            emitInvalid("Slab Angle must be finite and in [0, 90]");
+            emitInvalid("Full Block Max Angle must be finite and in [0, 90]");
             return;
         }
         if (!Double.isFinite(stairAngleDegrees) || stairAngleDegrees < 0.0d || stairAngleDegrees > 90.0d) {
-            emitInvalid("Stair Angle must be finite and in [0, 90]");
+            emitInvalid("Stair Min Angle must be finite and in [0, 90]");
             return;
         }
         if (stairAngleDegrees < slabAngleDegrees) {
-            emitInvalid("Stair Angle must be >= Slab Angle");
+            emitInvalid("Stair Min Angle must be >= Full Block Max Angle");
             return;
         }
         double slabAngle = slabAngleDegrees;
@@ -207,7 +207,13 @@ public class SlabStairAutofillNode extends BaseNode {
                 stairCount++;
             }
 
-            resolved.add(MaterialMappingSupport.remapBlockId(placement, choice.blockId()));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(placement, choice.blockId());
+            if (!remap.valid()) {
+                emitInvalid(remap.error());
+                return;
+            }
+            resolved.add(remap.placement());
         }
 
         emitSuccess(resolved, slabCount, stairCount);
@@ -222,7 +228,7 @@ public class SlabStairAutofillNode extends BaseNode {
             double stairAngle,
             @Nullable String sourceBlockId
     ) {
-        Vector3d n = new Vector3d(normal).normalize();
+        Vector3d n = normal;
         double angleFromVertical = Math.toDegrees(Math.acos(Math.min(1.0d, Math.abs(n.y))));
 
         if (angleFromVertical > stairAngle) {
@@ -252,11 +258,14 @@ public class SlabStairAutofillNode extends BaseNode {
         }
         List<Vector3d> out = new ArrayList<>(list.size());
         for (Object entry : list) {
-            Vector3d normal = BlockStateValidationUtils.resolveStrictVectorListElement(entry);
-            if (normal == null || normal.lengthSquared() <= NORMAL_EPS_SQ) {
+            if (!(entry instanceof VectorData vectorData)) {
+                return NormalsResult.fail("Normals must contain VectorData");
+            }
+            Vector3d unit = VectorUtils.safeNormalize(vectorData.components());
+            if (unit == null) {
                 return NormalsResult.fail("Normals must be finite non-zero vectors");
             }
-            out.add(normal);
+            out.add(unit);
         }
         return NormalsResult.ok(out);
     }

@@ -80,7 +80,13 @@ public class GradientRampMapNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
+        GradientMaterialUtils.OptionalPaletteResult paletteResult =
+            GradientMaterialUtils.resolveOptionalPalette(this, INPUT_PALETTE_ID);
+        if (!paletteResult.valid()) {
+            emitFail(paletteResult.error());
+            return;
+        }
+        BlockPaletteData palette = paletteResult.palette();
         String geometryBase = palette.isEmpty() ? null : palette.entries().getFirst().blockId();
         String fallback = MaterialMappingSupport.optionalBlockType(geometryBase);
 
@@ -121,8 +127,19 @@ public class GradientRampMapNode extends BaseNode {
         for (BlockPlacementData sourcePlacement : sources) {
             BlockPos pos = sourcePlacement.pos();
             double t = singleHeight ? 0.0d : ((double) pos.getY() - (double) minY) / span;
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, t, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            GradientMaterialUtils.PickResult pick =
+                GradientMaterialUtils.pickByNormalized(palette, t, sourcePlacement.blockId());
+            if (!pick.valid()) {
+                emitFail(pick.error());
+                return;
+            }
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, pick.blockId());
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
         emitOk(placements);
     }

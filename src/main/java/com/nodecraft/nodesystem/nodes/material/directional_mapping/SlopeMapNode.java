@@ -147,7 +147,13 @@ public class SlopeMapNode extends BaseNode {
             int grade = maxNeighborGrade(topYByColumn, pos.getX(), pos.getZ(), columnTop);
             String roleMapped = grade <= 0 ? flat.blockId() : (grade == 1 ? slope.blockId() : steep.blockId());
             String blockId = MaterialMappingSupport.resolveMaterialTarget(roleMapped, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, blockId);
+            if (!remap.valid()) {
+                emitInvalid(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
 
         emitSuccess(placements);
@@ -167,7 +173,8 @@ public class SlopeMapNode extends BaseNode {
         if (neighborTop == null) {
             return 0;
         }
-        return Math.abs(columnTop - neighborTop);
+        long delta = Math.abs((long) columnTop - (long) neighborTop);
+        return delta == 0 ? 0 : delta == 1 ? 1 : 2;
     }
 
     private static long columnKey(int x, int z) {

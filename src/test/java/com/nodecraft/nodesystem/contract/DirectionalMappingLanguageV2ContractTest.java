@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.nodes.material.directional_mapping.SlabStairAuto
 import com.nodecraft.nodesystem.nodes.material.directional_mapping.SlopeMapNode;
 import com.nodecraft.nodesystem.nodes.material.directional_mapping.TopSideBottomMapNode;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
@@ -24,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Directional Mapping Strict Sources & Normals v2 (Graph V116).
+ * Directional Mapping Strict Sources & Normals v2.
  */
 class DirectionalMappingLanguageV2ContractTest {
 
     @Test
-    void currentGraphFormatIsAtLeastV116() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -74,7 +73,7 @@ class DirectionalMappingLanguageV2ContractTest {
         probe.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
         ));
-        probe.putInput("input_normals", List.of(new Vector3d(0.0d, 0.0d, 0.0d)));
+        probe.putInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 0.0d, 0.0d)));
         probe.processNode(null);
 
         assertFalse((Boolean) probe.getOutput("output_valid"));
@@ -138,7 +137,7 @@ class DirectionalMappingLanguageV2ContractTest {
         nan.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
         ));
-        nan.putInput("input_normals", List.of(new Vector3d(0.0d, 1.0d, 0.0d)));
+        nan.putInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 1.0d, 0.0d)));
         nan.processNode(null);
         assertFalse((Boolean) nan.getOutput("output_valid"));
         assertTrue(((String) nan.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("angle"));
@@ -148,11 +147,11 @@ class DirectionalMappingLanguageV2ContractTest {
         unordered.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
         ));
-        unordered.putInput("input_normals", List.of(new Vector3d(0.0d, 1.0d, 0.0d)));
+        unordered.putInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 1.0d, 0.0d)));
         unordered.processNode(null);
         assertFalse((Boolean) unordered.getOutput("output_valid"));
         String err = ((String) unordered.getOutput("output_error")).toLowerCase(Locale.ROOT);
-        assertTrue(err.contains("stair") && err.contains("slab"), err);
+        assertTrue(err.contains("stair") && (err.contains("full") || err.contains("slab")), err);
     }
 
     @Test
@@ -174,10 +173,8 @@ class DirectionalMappingLanguageV2ContractTest {
     @Test
     void slopeSurfaceOnlySmoke() {
         SlopeMapNode node = new SlopeMapNode();
-        BlockStateData state = new BlockStateData().withProperty("axis", "y");
-
-        BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", state);
-        BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", state);
+        BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", null);
+        BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", null);
         BlockPlacementData neighbor = new BlockPlacementData(new BlockPos(-1, 7, 0), "minecraft:oak_log", null);
 
         node.setInput("input_placements", List.of(surface, interior, neighbor));
@@ -192,7 +189,6 @@ class DirectionalMappingLanguageV2ContractTest {
 
         BlockPlacementData remappedSurface = findAt(out, 0, 5, 0);
         assertEquals("minecraft:stone", remappedSurface.blockId());
-        assertEquals("y", remappedSurface.stateData().get("axis"));
 
         BlockPlacementData remappedInterior = findAt(out, 0, 4, 0);
         assertEquals("minecraft:oak_log", remappedInterior.blockId());

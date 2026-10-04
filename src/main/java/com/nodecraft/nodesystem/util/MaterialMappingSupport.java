@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.util;
 
+import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
@@ -7,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Function;
 
 /**
  * Shared Material-layer helpers: {@code BLOCK_PLACEMENT_LIST} is the canonical payload.
@@ -123,13 +125,24 @@ public final class MaterialMappingSupport {
         try {
             // Pre-bootstrap / unit tests: empty registry cannot refute membership —
             // accept well-formed ids. Once populated, require containsId.
-            if (Registries.BLOCK.getIds().isEmpty()) {
+            if (!isBlockRegistryPopulated()) {
                 return true;
             }
             return Registries.BLOCK.containsId(id);
         } catch (Throwable ignored) {
             // Registry unavailable: fail open on syntax only (id already parsed).
             return true;
+        }
+    }
+
+    /**
+     * True when {@link Registries#BLOCK} has at least one id (in-game / bootstrapped tests).
+     */
+    public static boolean isBlockRegistryPopulated() {
+        try {
+            return !Registries.BLOCK.getIds().isEmpty();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
@@ -160,13 +173,89 @@ public final class MaterialMappingSupport {
     }
 
     /**
-     * Material remap contract: change block id, keep stateData for Apply/Preview filtering.
+     * Structural copy: new block id, same position and stateData. Does not validate compatibility.
      */
     public static BlockPlacementData remapBlockId(BlockPlacementData source, String newBlockId) {
         if (source == null) {
             return null;
         }
         return source.withBlockId(newBlockId);
+    }
+
+    public record RemapResult(boolean valid, @Nullable BlockPlacementData placement, String error) {
+        public static RemapResult ok(BlockPlacementData placement) {
+            return new RemapResult(true, placement, "");
+        }
+
+        public static RemapResult fail(String error) {
+            return new RemapResult(false, null, error == null ? "" : error);
+        }
+    }
+
+    /**
+     * Remap blockId, preserve stateData, then fail closed if preserved state is incompatible
+     * with the new block. Empty state is always compatible. Empty registry cannot refute
+     * property membership (same fail-open as {@link #isKnownBlockId}).
+     */
+    public static RemapResult remapValidated(@Nullable BlockPlacementData source, @Nullable String newBlockId) {
+        if (source == null || source.pos() == null) {
+            return RemapResult.fail("Placement required for remap");
+        }
+        String target = newBlockId;
+        if (target == null || target.isBlank()) {
+            target = source.blockId();
+        }
+        if (target == null || target.isBlank()) {
+            return RemapResult.fail("Block Type must be a non-blank string");
+        }
+        String normalized = target.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.contains(":")) {
+            normalized = "minecraft:" + normalized;
+        }
+        if (!isKnownBlockId(normalized)) {
+            return RemapResult.fail("Unknown block: " + normalized);
+        }
+        BlockPlacementData remapped = source.withBlockId(normalized);
+        if (!isBlockRegistryPopulated()) {
+            return RemapResult.ok(remapped);
+        }
+        String error = BlockStateValidationUtils.remapIncompatibility(remapped);
+        if (error != null) {
+            return RemapResult.fail(error);
+        }
+        return RemapResult.ok(remapped);
+    }
+
+    public record RemapListResult(boolean valid, List<BlockPlacementData> placements, String error) {
+        public static RemapListResult ok(List<BlockPlacementData> placements) {
+            return new RemapListResult(true, placements != null ? placements : List.of(), "");
+        }
+
+        public static RemapListResult fail(String error) {
+            return new RemapListResult(false, List.of(), error == null ? "" : error);
+        }
+    }
+
+    public static RemapListResult remapAllValidated(
+            List<BlockPlacementData> sources,
+            Function<BlockPlacementData, String> blockIdFor
+    ) {
+        if (sources == null || sources.isEmpty()) {
+            return RemapListResult.ok(List.of());
+        }
+        List<BlockPlacementData> out = new ArrayList<>(sources.size());
+        for (BlockPlacementData source : sources) {
+            if (source == null || source.pos() == null) {
+                continue;
+            }
+            String blockId = blockIdFor.apply(source);
+            RemapResult remap = remapValidated(source, blockId);
+            if (!remap.valid()) {
+                return RemapListResult.fail(remap.error());
+            }
+            out.add(remap.placement());
+        }
+        return RemapListResult.ok(out);
     }
 
     public static List<BlockPlacementData> extractPlacements(@Nullable Object placementsObj) {

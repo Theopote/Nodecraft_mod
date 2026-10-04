@@ -9,7 +9,6 @@ import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import com.nodecraft.nodesystem.util.StrictDoubleUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,31 +31,69 @@ public final class GradientMaterialUtils {
     private GradientMaterialUtils() {
     }
 
-    public static BlockPaletteData resolvePalette(@Nullable Object value) {
-        return BlockPaletteData.requireTyped(value);
+    public record OptionalPaletteResult(boolean valid, BlockPaletteData palette, String error) {
+        public static OptionalPaletteResult ok(BlockPaletteData palette) {
+            return new OptionalPaletteResult(true, palette != null ? palette : BlockPaletteData.empty(), "");
+        }
+
+        public static OptionalPaletteResult fail(String error) {
+            return new OptionalPaletteResult(false, BlockPaletteData.empty(), error == null ? "" : error);
+        }
     }
 
     /**
-     * Maps normalized {@code t} in {@code [0,1]} to a palette block id; blank/empty → preserve source.
+     * Driven-aware palette: undriven → empty; connected {@link BlockPaletteData} → use;
+     * connected null/wrong type → fail closed.
      */
-    public static String pickByNormalized(
+    public static OptionalPaletteResult resolveOptionalPalette(BaseNode node, String portId) {
+        if (!MaterialSourceResolver.isDriven(node, portId)) {
+            return OptionalPaletteResult.ok(BlockPaletteData.empty());
+        }
+        Object value = node.getInput(portId);
+        if (value instanceof BlockPaletteData palette) {
+            return OptionalPaletteResult.ok(palette);
+        }
+        return OptionalPaletteResult.fail("Palette must be a BLOCK_PALETTE");
+    }
+
+    public record PickResult(boolean valid, @Nullable String blockId, String error) {
+        public static PickResult ok(@Nullable String blockId) {
+            return new PickResult(true, blockId, "");
+        }
+
+        public static PickResult fail(String error) {
+            return new PickResult(false, null, error == null ? "" : error);
+        }
+    }
+
+    /**
+     * Maps finite normalized {@code t} in {@code [0,1]} to a palette block id; blank/empty → preserve source.
+     * Non-finite {@code t} fails closed (never maps NaN to index 0).
+     */
+    public static PickResult pickByNormalized(
             BlockPaletteData palette,
             double t,
             @Nullable String sourceBlockId
     ) {
+        if (!Double.isFinite(t)) {
+            return PickResult.fail("Palette parameter must be finite");
+        }
         String preserved = MaterialMappingSupport.resolveMaterialTarget(null, sourceBlockId);
         if (palette == null || palette.isEmpty()) {
-            return preserved;
+            return PickResult.ok(preserved);
         }
         double clamped = clamp01(t);
+        if (!Double.isFinite(clamped)) {
+            return PickResult.fail("Palette parameter must be finite");
+        }
         int size = palette.size();
         int index = Math.min(size - 1, Math.max(0, (int) Math.floor(clamped * size)));
         BlockPaletteEntry entry = palette.entries().get(index);
         String blockId = entry != null ? entry.blockId() : null;
         if (blockId == null || blockId.isBlank()) {
-            return preserved;
+            return PickResult.ok(preserved);
         }
-        return blockId;
+        return PickResult.ok(blockId);
     }
 
     public static Validation requireFinite(double value, String name) {
@@ -78,6 +115,31 @@ public final class GradientMaterialUtils {
         double span = max - min;
         if (!Double.isFinite(span) || span <= 0.0d) {
             return Validation.fail("Domain must have a finite positive width");
+        }
+        return Validation.ok();
+    }
+
+    /**
+     * Euclidean distance domain: {@code 0 <= min < max} with a finite span.
+     */
+    public static Validation requireNonNegativeDistanceDomain(double min, double max) {
+        Validation minOk = requireFinite(min, "Min Distance");
+        if (!minOk.valid()) {
+            return minOk;
+        }
+        if (min < 0.0d) {
+            return Validation.fail("Min Distance must be >= 0");
+        }
+        Validation maxOk = requireFinite(max, "Max Distance");
+        if (!maxOk.valid()) {
+            return maxOk;
+        }
+        if (!(min < max)) {
+            return Validation.fail("Min Distance must be less than Max Distance");
+        }
+        double span = max - min;
+        if (!Double.isFinite(span)) {
+            return Validation.fail("Distance domain must have a finite positive width");
         }
         return Validation.ok();
     }
@@ -166,18 +228,10 @@ public final class GradientMaterialUtils {
         return out;
     }
 
-    public static List<BlockPlacementData> remapAll(
+    public static MaterialMappingSupport.RemapListResult remapAll(
             List<BlockPlacementData> sources,
             java.util.function.Function<BlockPlacementData, String> blockIdFor
     ) {
-        List<BlockPlacementData> out = new ArrayList<>(sources.size());
-        for (BlockPlacementData source : sources) {
-            if (source == null || source.pos() == null) {
-                continue;
-            }
-            String blockId = blockIdFor.apply(source);
-            out.add(MaterialMappingSupport.remapBlockId(source, blockId));
-        }
-        return out;
+        return MaterialMappingSupport.remapAllValidated(sources, blockIdFor);
     }
 }

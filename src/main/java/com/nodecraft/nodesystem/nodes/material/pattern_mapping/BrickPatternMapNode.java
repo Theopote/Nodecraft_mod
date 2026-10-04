@@ -152,7 +152,13 @@ public class BrickPatternMapNode extends BaseNode {
             );
             String mapped = BrickPatternMapping.isPrimaryBrick(brick) ? primaryMapped : secondaryMapped;
             String blockId = PatternMaterialUtils.pickRole(mapped, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, blockId);
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
         }
         emitOk(placements);
     }

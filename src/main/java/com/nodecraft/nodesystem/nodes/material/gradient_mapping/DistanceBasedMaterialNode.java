@@ -116,7 +116,8 @@ public class DistanceBasedMaterialNode extends BaseNode {
         }
         double minDistance = minResult.value();
         double maxDistance = maxResult.value();
-        GradientMaterialUtils.Validation domain = GradientMaterialUtils.requirePositiveWidth(minDistance, maxDistance);
+        GradientMaterialUtils.Validation domain =
+            GradientMaterialUtils.requireNonNegativeDistanceDomain(minDistance, maxDistance);
         if (!domain.valid()) {
             emitFail(domain.message());
             return;
@@ -129,10 +130,23 @@ public class DistanceBasedMaterialNode extends BaseNode {
             return;
         }
 
-        BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
-        String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        GradientMaterialUtils.OptionalPaletteResult paletteResult =
+            GradientMaterialUtils.resolveOptionalPalette(this, INPUT_PALETTE_ID);
+        if (!paletteResult.valid()) {
+            emitFail(paletteResult.error());
+            return;
+        }
+        BlockPaletteData palette = paletteResult.palette();
+        MaterialMappingSupport.MappedBlockType fallbackType =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_FALLBACK_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_FALLBACK_BLOCK_ID));
+        if (!fallbackType.valid()) {
+            emitFail(fallbackType.error());
+            return;
+        }
         String fallback = MaterialMappingSupport.firstMappedBlockType(
-            fallbackMapped,
+            fallbackType.blockId(),
             palette.isEmpty() ? null : palette.entries().getFirst().blockId()
         );
 
@@ -169,8 +183,19 @@ public class DistanceBasedMaterialNode extends BaseNode {
                 return;
             }
             double normalized = GradientMaterialUtils.clamp01((distance - minDistance) / span);
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            GradientMaterialUtils.PickResult pick =
+                GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
+            if (!pick.valid()) {
+                emitFail(pick.error());
+                return;
+            }
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, pick.blockId());
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
             distances.add(distance);
         }
 

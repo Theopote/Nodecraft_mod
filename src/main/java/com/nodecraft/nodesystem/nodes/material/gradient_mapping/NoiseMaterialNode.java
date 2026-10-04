@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.math.RandomOps;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import net.minecraft.util.math.BlockPos;
@@ -132,10 +133,23 @@ public class NoiseMaterialNode extends BaseNode {
             return;
         }
 
-        BlockPaletteData palette = GradientMaterialUtils.resolvePalette(inputValues.get(INPUT_PALETTE_ID));
-        String fallbackMapped = MaterialMappingSupport.optionalBlockType(inputValues.get(INPUT_FALLBACK_BLOCK_ID));
+        GradientMaterialUtils.OptionalPaletteResult paletteResult =
+            GradientMaterialUtils.resolveOptionalPalette(this, INPUT_PALETTE_ID);
+        if (!paletteResult.valid()) {
+            emitFail(paletteResult.error());
+            return;
+        }
+        BlockPaletteData palette = paletteResult.palette();
+        MaterialMappingSupport.MappedBlockType fallbackType =
+            MaterialMappingSupport.requireKnownBlockType(
+                inputValues.get(INPUT_FALLBACK_BLOCK_ID),
+                MaterialSourceResolver.isDriven(this, INPUT_FALLBACK_BLOCK_ID));
+        if (!fallbackType.valid()) {
+            emitFail(fallbackType.error());
+            return;
+        }
         String fallback = MaterialMappingSupport.firstMappedBlockType(
-            fallbackMapped,
+            fallbackType.blockId(),
             palette.isEmpty() ? null : palette.entries().getFirst().blockId()
         );
 
@@ -158,6 +172,11 @@ public class NoiseMaterialNode extends BaseNode {
 
         int seed = RandomOps.resolveSeed(inputValues.get(INPUT_SEED_ID));
         List<BlockPlacementData> sources = source.placements();
+        GradientMaterialUtils.Validation workOk = requireSampleWorkBudget(sources.size());
+        if (!workOk.valid()) {
+            emitFail(workOk.message());
+            return;
+        }
         List<BlockPlacementData> placements = new ArrayList<>(sources.size());
         List<Double> noiseValues = new ArrayList<>(sources.size());
 
@@ -169,8 +188,19 @@ public class NoiseMaterialNode extends BaseNode {
                 emitFail("Noise sample produced a non-finite value");
                 return;
             }
-            String blockId = GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
-            placements.add(MaterialMappingSupport.remapBlockId(sourcePlacement, blockId));
+            GradientMaterialUtils.PickResult pick =
+                GradientMaterialUtils.pickByNormalized(palette, normalized, sourcePlacement.blockId());
+            if (!pick.valid()) {
+                emitFail(pick.error());
+                return;
+            }
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(sourcePlacement, pick.blockId());
+            if (!remap.valid()) {
+                emitFail(remap.error());
+                return;
+            }
+            placements.add(remap.placement());
             noiseValues.add(normalized);
         }
 
@@ -182,14 +212,31 @@ public class NoiseMaterialNode extends BaseNode {
         if (!scaleOk.valid()) {
             return scaleOk;
         }
-        if (octaves < 1) {
-            return GradientMaterialUtils.Validation.fail("Octaves must be at least 1");
+        if (octaves < 1 || octaves > GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES) {
+            return GradientMaterialUtils.Validation.fail(
+                "Octaves must be in [1, " + GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES + "]"
+            );
         }
         GradientMaterialUtils.Validation persistenceOk = GradientMaterialUtils.requireFinite(persistence, "Persistence");
         if (!persistenceOk.valid()) {
             return persistenceOk;
         }
         return GradientMaterialUtils.requireFinite(lacunarity, "Lacunarity");
+    }
+
+    private GradientMaterialUtils.Validation requireSampleWorkBudget(int placementCount) {
+        long placements = Math.max(0, placementCount);
+        long octaveCount = octaves;
+        if (placements > 0 && octaveCount > Long.MAX_VALUE / placements) {
+            return GradientMaterialUtils.Validation.fail("Noise sample work exceeds budget");
+        }
+        long work = placements * octaveCount;
+        if (work > GenerationLimits.MAX_MATERIAL_SAMPLE_WORK) {
+            return GradientMaterialUtils.Validation.fail(
+                "Noise sample work exceeds MAX_MATERIAL_SAMPLE_WORK (" + work + ")"
+            );
+        }
+        return GradientMaterialUtils.Validation.ok();
     }
 
     private double sampleNoise(int x, int y, int z, int seed) {
@@ -255,8 +302,9 @@ public class NoiseMaterialNode extends BaseNode {
     }
 
     public void setOctaves(int octaves) {
-        if (this.octaves != octaves) {
-            this.octaves = octaves;
+        int clamped = Math.max(1, Math.min(GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES, octaves));
+        if (this.octaves != clamped) {
+            this.octaves = clamped;
             markDirty();
         }
     }

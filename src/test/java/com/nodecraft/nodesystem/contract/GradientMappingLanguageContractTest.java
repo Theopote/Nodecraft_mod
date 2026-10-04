@@ -22,7 +22,6 @@ import com.nodecraft.nodesystem.nodes.material.gradient_mapping.SdfDrivenMateria
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
-import com.nodecraft.nodesystem.util.BlockStateData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Gradient Mapping v1 language fence: five PURE blockId-only nodes, Valid gates, V37 migration.
+ * Gradient Mapping v1 language fence: five PURE blockId-only nodes, Valid gates.
  */
 class GradientMappingLanguageContractTest {
 
@@ -64,7 +63,7 @@ class GradientMappingLanguageContractTest {
     }
 
     @Test
-    void currentGraphFormatIsAtLeastV37() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -123,10 +122,8 @@ class GradientMappingLanguageContractTest {
     void heightGradientPreservesPartialBandsAndSingleYUsesBottom() {
         HeightGradientMapNode node = new HeightGradientMapNode();
 
-        BlockStateData state = new BlockStateData().withProperty("facing", "north");
-
-        BlockPlacementData low = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", state);
-        BlockPlacementData high = new BlockPlacementData(new BlockPos(0, 10, 0), "minecraft:oak_planks", state);
+        BlockPlacementData low = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null);
+        BlockPlacementData high = new BlockPlacementData(new BlockPos(0, 10, 0), "minecraft:oak_planks", null);
 
         node.setInput("input_placements", List.of(low, high));
         node.setInput("input_bottom", "minecraft:dirt");
@@ -137,7 +134,6 @@ class GradientMappingLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
         assertEquals("minecraft:dirt", findAt(out, 0, 0, 0).blockId());
-        assertEquals("north", findAt(out, 0, 0, 0).stateData().get("facing"));
         assertEquals("minecraft:oak_planks", findAt(out, 0, 10, 0).blockId());
 
         HeightGradientMapNode single = new HeightGradientMapNode();

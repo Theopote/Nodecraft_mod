@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
@@ -106,13 +105,13 @@ public class AssignBlockTypeNode extends BaseNode {
             case PLACEMENTS, COORDINATES, GEOMETRY -> {
                 List<BlockPlacementData> placements = new ArrayList<>(source.placements().size());
                 for (BlockPlacementData sourcePlacement : source.placements()) {
-                    BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(sourcePlacement, blockType);
-                    String error = BlockStateValidationUtils.remapIncompatibility(remapped);
-                    if (error != null) {
-                        emitFail(error);
+                    MaterialMappingSupport.RemapResult remap =
+                        MaterialMappingSupport.remapValidated(sourcePlacement, blockType);
+                    if (!remap.valid()) {
+                        emitFail(remap.error());
                         return;
                     }
-                    placements.add(remapped);
+                    placements.add(remap.placement());
                 }
                 DataTreeData tree = new DataTreeData(List.of(
                     new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
@@ -131,14 +130,14 @@ public class AssignBlockTypeNode extends BaseNode {
             List<Object> branchPlacements = new ArrayList<>();
             for (Object item : branch.items()) {
                 if (item instanceof BlockPlacementData existing) {
-                    BlockPlacementData remapped = MaterialMappingSupport.remapBlockId(existing, blockType);
-                    String error = BlockStateValidationUtils.remapIncompatibility(remapped);
-                    if (error != null) {
-                        emitFail(error);
+                    MaterialMappingSupport.RemapResult remap =
+                        MaterialMappingSupport.remapValidated(existing, blockType);
+                    if (!remap.valid()) {
+                        emitFail(remap.error());
                         return;
                     }
-                    placements.add(remapped);
-                    branchPlacements.add(remapped);
+                    placements.add(remap.placement());
+                    branchPlacements.add(remap.placement());
                 } else if (item instanceof BlockPos pos) {
                     BlockPlacementData placement = new BlockPlacementData(pos, blockType);
                     placements.add(placement);

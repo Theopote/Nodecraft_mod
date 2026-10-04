@@ -17,7 +17,6 @@ import com.nodecraft.nodesystem.nodes.material.surface_aging.WeatheringNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.BlockStateData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
@@ -104,10 +103,8 @@ class SurfaceAgingLanguageContractTest {
 
     @Test
     void mossAndCrackPreserveStateDataThroughRemap() {
-        BlockStateData state = new BlockStateData().withProperty("facing", "east");
-
         List<BlockPlacementData> placements = List.of(
-                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", state)
+                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
         );
 
         MossGrowthNode moss = new MossGrowthNode();
@@ -120,7 +117,6 @@ class SurfaceAgingLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> mossOut = assertInstanceOf(List.class, moss.getOutput("output_placements"));
         assertEquals("minecraft:moss_block", mossOut.getFirst().blockId());
-        assertEquals("east", mossOut.getFirst().stateData().get("facing"));
 
         CrackPatternNode crack = new CrackPatternNode();
         crack.setInput("input_placements", placements);
@@ -132,7 +128,6 @@ class SurfaceAgingLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<BlockPlacementData> crackOut = assertInstanceOf(List.class, crack.getOutput("output_placements"));
         assertEquals("minecraft:cracked_stone_bricks", crackOut.getFirst().blockId());
-        assertEquals("east", crackOut.getFirst().stateData().get("facing"));
     }
 
     @Test

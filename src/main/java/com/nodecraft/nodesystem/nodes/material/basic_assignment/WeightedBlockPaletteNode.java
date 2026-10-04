@@ -7,9 +7,9 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.material.block_state.BlockStateValidationUtils;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import net.minecraft.util.math.BlockPos;
@@ -200,13 +200,13 @@ public class WeightedBlockPaletteNode extends BaseNode {
         for (BlockPlacementData placement : sources) {
             String blockId = BasicAssignmentUtils.pickWeightedBlockId(
                 placement.pos(), seed, palette, weights, placement.blockId());
-            BlockPlacementData next = new BlockPlacementData(placement.pos(), blockId, placement.stateData());
-            String error = BlockStateValidationUtils.remapIncompatibility(next);
-            if (error != null) {
-                emitFail(error);
+            MaterialMappingSupport.RemapResult remap =
+                MaterialMappingSupport.remapValidated(placement, blockId);
+            if (!remap.valid()) {
+                emitFail(remap.error());
                 return null;
             }
-            remapped.add(next);
+            remapped.add(remap.placement());
         }
         return remapped;
     }
@@ -241,13 +241,17 @@ public class WeightedBlockPaletteNode extends BaseNode {
                 }
                 String blockId = BasicAssignmentUtils.pickWeightedBlockId(
                     pos, seed, palette, weights, preserve);
-                BlockPlacementData remapped = stateSource != null
-                    ? new BlockPlacementData(pos, blockId, stateSource.stateData())
-                    : new BlockPlacementData(pos, blockId);
-                String error = BlockStateValidationUtils.remapIncompatibility(remapped);
-                if (error != null) {
-                    emitFail(error);
-                    return;
+                BlockPlacementData remapped;
+                if (stateSource != null) {
+                    MaterialMappingSupport.RemapResult remap =
+                        MaterialMappingSupport.remapValidated(stateSource, blockId);
+                    if (!remap.valid()) {
+                        emitFail(remap.error());
+                        return;
+                    }
+                    remapped = remap.placement();
+                } else {
+                    remapped = new BlockPlacementData(pos, blockId);
                 }
                 placements.add(remapped);
                 branchPlacements.add(remapped);

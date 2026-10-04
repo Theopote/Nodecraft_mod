@@ -4,11 +4,14 @@ import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.nodes.material.gradient_mapping.DistanceBasedMaterialNode;
+import com.nodecraft.nodesystem.nodes.material.gradient_mapping.GradientMaterialUtils;
 import com.nodecraft.nodesystem.nodes.material.gradient_mapping.GradientRampMapNode;
 import com.nodecraft.nodesystem.nodes.material.gradient_mapping.HeightGradientMapNode;
 import com.nodecraft.nodesystem.nodes.material.gradient_mapping.NoiseMaterialNode;
+import com.nodecraft.nodesystem.nodes.material.gradient_mapping.SdfDrivenMaterialNode;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
@@ -23,12 +26,12 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Gradient Mapping Strict Source & Finite Domain v2 (Graph V117).
+ * Gradient Mapping Strict Source & Finite Domain v2.
  */
 class GradientMappingLanguageV2ContractTest {
 
     @Test
-    void currentGraphFormatIsAtLeastV117() {
+    void currentGraphFormatIsCurrent() {
         assertTrue(GraphFormatVersion.isCurrent(GraphFormatVersion.CURRENT));
     }
 
@@ -117,7 +120,8 @@ class GradientMappingLanguageV2ContractTest {
 
         assertFalse((Boolean) probe.getOutput("output_valid"));
         String error = ((String) probe.getOutput("output_error")).toLowerCase(Locale.ROOT);
-        assertTrue(error.contains("finite") || error.contains("width") || error.contains("domain"), error);
+        assertTrue(error.contains("finite") || error.contains("width") || error.contains("domain")
+            || error.contains("min"), error);
     }
 
     @Test
@@ -169,11 +173,141 @@ class GradientMappingLanguageV2ContractTest {
         assertEquals("minecraft:oak_planks", out.getFirst().blockId());
     }
 
+    @Test
+    void connectedInvalidPaletteFailsClosedUnconnectedPreserves() {
+        RampProbe connectedInvalid = new RampProbe();
+        connectedInvalid.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        connectedInvalid.putInput("input_palette", "not-a-palette");
+        connectedInvalid.processNode(null);
+        assertFalse((Boolean) connectedInvalid.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> invalidOut = assertInstanceOf(List.class, connectedInvalid.getOutput("output_placements"));
+        assertTrue(invalidOut.isEmpty());
+
+        GradientRampMapNode unconnected = new GradientRampMapNode();
+        unconnected.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        unconnected.processNode(null);
+        assertTrue((Boolean) unconnected.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> preserved = assertInstanceOf(List.class, unconnected.getOutput("output_placements"));
+        assertEquals("minecraft:oak_planks", preserved.getFirst().blockId());
+    }
+
+    @Test
+    void heightBandAndFallbackConnectedInvalidFailClosed() {
+        HeightProbe height = new HeightProbe();
+        height.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        height.putInput("input_bottom", 0);
+        height.processNode(null);
+        assertFalse((Boolean) height.getOutput("output_valid"));
+
+        NoiseProbe noise = new NoiseProbe();
+        noise.putInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        noise.putInput("input_fallback_block", 0);
+        noise.processNode(null);
+        assertFalse((Boolean) noise.getOutput("output_valid"));
+    }
+
+    @Test
+    void pickByNormalizedRejectsNaN() {
+        GradientMaterialUtils.PickResult nan = GradientMaterialUtils.pickByNormalized(
+            BlockPaletteData.ofBlockIds(List.of("minecraft:stone", "minecraft:dirt")),
+            Double.NaN,
+            "minecraft:oak_planks"
+        );
+        assertFalse(nan.valid());
+        GradientMaterialUtils.PickResult inf = GradientMaterialUtils.pickByNormalized(
+            BlockPaletteData.empty(),
+            Double.POSITIVE_INFINITY,
+            "minecraft:oak_planks"
+        );
+        assertFalse(inf.valid());
+        GradientMaterialUtils.PickResult emptyFinite = GradientMaterialUtils.pickByNormalized(
+            BlockPaletteData.empty(),
+            0.5d,
+            "minecraft:oak_planks"
+        );
+        assertTrue(emptyFinite.valid());
+        assertEquals("minecraft:oak_planks", emptyFinite.blockId());
+    }
+
+    @Test
+    void distanceNegativeMinFailsClosed() {
+        DistanceBasedMaterialNode node = new DistanceBasedMaterialNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        node.setInput("input_min_distance", -1.0d);
+        node.setInput("input_max_distance", 10.0d);
+        node.setInput("input_reference_point", new PointData(0, 0, 0));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertTrue(((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("min"));
+    }
+
+    @Test
+    void sdfArithmeticOverflowFailsClosed() {
+        SdfDrivenMaterialNode node = new SdfDrivenMaterialNode();
+        node.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        node.setInput("input_sdf", (com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData) point -> 1.0e308d);
+        node.setInput("input_center", -1.0e308d);
+        node.setInput("input_half_width", 1.0d);
+        node.setInput("input_palette", BlockPaletteData.ofBlockIds(List.of("minecraft:dirt", "minecraft:stone")));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<?> distances = assertInstanceOf(List.class, node.getOutput("output_distances"));
+        @SuppressWarnings("unchecked")
+        List<?> weights = assertInstanceOf(List.class, node.getOutput("output_weights"));
+        assertTrue(distances.isEmpty());
+        assertTrue(weights.isEmpty());
+    }
+
+    @Test
+    void noiseOctaveRestoreAndWorkBudgetFailClosed() {
+        NoiseMaterialNode restored = new NoiseMaterialNode();
+        restored.setInput("input_placements", List.of(
+            new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        restored.setNodeState(java.util.Map.of("octaves", GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES + 1));
+        restored.processNode(null);
+        assertFalse((Boolean) restored.getOutput("output_valid"));
+        assertTrue(((String) restored.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("octave"));
+
+        NoiseMaterialNode work = new NoiseMaterialNode();
+        work.setOctaves(GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES);
+        int count = (int) (GenerationLimits.MAX_MATERIAL_SAMPLE_WORK / GenerationLimits.MAX_MATERIAL_NOISE_OCTAVES) + 1;
+        List<BlockPlacementData> many = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            many.add(new BlockPlacementData(new BlockPos(i, 0, 0), "minecraft:stone", null));
+        }
+        work.setInput("input_placements", many);
+        work.processNode(null);
+        assertFalse((Boolean) work.getOutput("output_valid"));
+        assertTrue(((String) work.getOutput("output_error")).contains("MAX_MATERIAL_SAMPLE_WORK"));
+    }
+
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {
         return placements.stream()
             .filter(p -> p.pos() != null && p.pos().getX() == x && p.pos().getY() == y && p.pos().getZ() == z)
             .findFirst()
             .orElseThrow(() -> new AssertionError("missing placement at " + x + "," + y + "," + z));
+    }
+
+    private static final class RampProbe extends GradientRampMapNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
     }
 
     private static final class HeightProbe extends HeightGradientMapNode {

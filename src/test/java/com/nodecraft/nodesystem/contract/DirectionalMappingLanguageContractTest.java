@@ -99,7 +99,7 @@ class DirectionalMappingLanguageContractTest {
 
         BlockStateData state = new BlockStateData().withProperty("facing", "north");
 
-        BlockPlacementData top = new BlockPlacementData(new BlockPos(0, 2, 0), "minecraft:oak_planks", state);
+        BlockPlacementData top = new BlockPlacementData(new BlockPos(0, 2, 0), "minecraft:oak_planks", null);
         BlockPlacementData mid = new BlockPlacementData(new BlockPos(0, 1, 0), "minecraft:oak_planks", state);
         BlockPlacementData bottom = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", state);
 
@@ -114,7 +114,6 @@ class DirectionalMappingLanguageContractTest {
 
         BlockPlacementData remappedTop = findAt(out, 0, 2, 0);
         assertEquals("minecraft:grass_block", remappedTop.blockId());
-        assertEquals("north", remappedTop.stateData().get("facing"));
 
         BlockPlacementData remappedMid = findAt(out, 0, 1, 0);
         assertEquals("minecraft:oak_planks", remappedMid.blockId());
@@ -143,10 +142,8 @@ class DirectionalMappingLanguageContractTest {
     void surfaceSlopeMapRemapsOnlyColumnTop() {
         SlopeMapNode node = new SlopeMapNode();
 
-        BlockStateData state = new BlockStateData().withProperty("axis", "y");
-
-        BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", state);
-        BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", state);
+        BlockPlacementData surface = new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", null);
+        BlockPlacementData interior = new BlockPlacementData(new BlockPos(0, 4, 0), "minecraft:oak_log", null);
         BlockPlacementData neighbor = new BlockPlacementData(new BlockPos(-1, 7, 0), "minecraft:oak_log", null);
 
         node.setInput("input_placements", List.of(surface, interior, neighbor));
@@ -161,11 +158,51 @@ class DirectionalMappingLanguageContractTest {
 
         BlockPlacementData remappedSurface = findAt(out, 0, 5, 0);
         assertEquals("minecraft:stone", remappedSurface.blockId());
-        assertEquals("y", remappedSurface.stateData().get("axis"));
 
         BlockPlacementData remappedInterior = findAt(out, 0, 4, 0);
         assertEquals("minecraft:oak_log", remappedInterior.blockId());
-        assertEquals("y", remappedInterior.stateData().get("axis"));
+    }
+
+    @Test
+    void surfaceSlopeMapExtremeHeightDeltaIsSteepNotOverflowFlat() {
+        SlopeMapNode node = new SlopeMapNode();
+        node.setInput("input_placements", List.of(
+                new BlockPlacementData(new BlockPos(0, 2_000_000_000, 0), "minecraft:oak_log", null),
+                new BlockPlacementData(new BlockPos(-1, -2_000_000_000, 0), "minecraft:oak_log", null)
+        ));
+        node.setInput("input_flat", "minecraft:grass_block");
+        node.setInput("input_slope", "minecraft:dirt");
+        node.setInput("input_steep", "minecraft:stone");
+        node.processNode(null);
+
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals("minecraft:stone", findAt(out, 0, 2_000_000_000, 0).blockId());
+        assertEquals("minecraft:stone", findAt(out, -1, -2_000_000_000, 0).blockId());
+    }
+
+    @Test
+    void remappedIncompatibleStateFailsClosedWhenRegistryPopulated() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                com.nodecraft.nodesystem.util.MaterialMappingSupport.isBlockRegistryPopulated(),
+                "Live BLOCK registry required for state compatibility"
+        );
+        SlopeMapNode node = new SlopeMapNode();
+        BlockStateData state = new BlockStateData().withProperty("axis", "y");
+        node.setInput("input_placements", List.of(
+                new BlockPlacementData(new BlockPos(0, 5, 0), "minecraft:oak_log", state),
+                new BlockPlacementData(new BlockPos(-1, 7, 0), "minecraft:oak_log", null)
+        ));
+        node.setInput("input_flat", "minecraft:grass_block");
+        node.setInput("input_slope", "minecraft:dirt");
+        node.setInput("input_steep", "minecraft:stone");
+        node.processNode(null);
+
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertTrue(out.isEmpty());
     }
 
     @Test
@@ -192,7 +229,7 @@ class DirectionalMappingLanguageContractTest {
                 state
         );
         node.setInput("input_placements", List.of(stairPlacement));
-        node.setInput("input_normals", List.of(new Vector3d(1.0d, 0.0d, 0.0d)));
+        node.setInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(1.0d, 0.0d, 0.0d)));
         node.setInput("input_stair_block", "minecraft:oak_stairs");
         node.processNode(null);
 
@@ -235,12 +272,51 @@ class DirectionalMappingLanguageContractTest {
                 new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null),
                 new BlockPlacementData(new BlockPos(1, 0, 0), "minecraft:stone", null)
         ));
-        node.setInput("input_normals", List.of(new Vector3d(0.0d, 1.0d, 0.0d)));
+        node.setInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 1.0d, 0.0d)));
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));
         assertTrue(((String) node.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("match"));
     }
 
+    @Test
+    void slabStairRejectsRawJomlAndOverflowNormals() {
+        SlabProbe raw = new SlabProbe();
+        raw.putInput("input_placements", List.of(
+                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        raw.putInput("input_normals", List.of(new Vector3d(0.0d, 1.0d, 0.0d)));
+        raw.processNode(null);
+        assertFalse((Boolean) raw.getOutput("output_valid"));
+        assertTrue(((String) raw.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("vectordata"));
+
+        SlabStairAutofillNode huge = new SlabStairAutofillNode();
+        huge.setInput("input_placements", List.of(
+                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone", null)
+        ));
+        huge.setInput("input_normals", List.of(
+                new com.nodecraft.nodesystem.datatypes.VectorData(1.5e308d, 1.5e308d, 1.5e308d)
+        ));
+        huge.processNode(null);
+        assertFalse((Boolean) huge.getOutput("output_valid"));
+        assertTrue(((String) huge.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("normal"));
+    }
+
+    @Test
+    void slabStairUnitUpUsesDefaultFullBlock() {
+        SlabStairAutofillNode node = new SlabStairAutofillNode();
+        node.setInput("input_placements", List.of(
+                new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks", null)
+        ));
+        node.setInput("input_normals", List.of(new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 1.0d, 0.0d)));
+        node.setInput("input_default_block", "minecraft:stone");
+        node.setInput("input_slab_block", "minecraft:oak_slab");
+        node.setInput("input_stair_block", "minecraft:oak_stairs");
+        node.processNode(null);
+        assertTrue((Boolean) node.getOutput("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<BlockPlacementData> out = assertInstanceOf(List.class, node.getOutput("output_placements"));
+        assertEquals("minecraft:stone", out.getFirst().blockId());
+    }
 
     private static BlockPlacementData findAt(List<BlockPlacementData> placements, int x, int y, int z) {
         return placements.stream()
@@ -281,5 +357,11 @@ class DirectionalMappingLanguageContractTest {
             }
         }
         return false;
+    }
+
+    private static final class SlabProbe extends SlabStairAutofillNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
     }
 }
