@@ -184,7 +184,7 @@ class PatternLinearLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("distance", 1.0d, "count", 2));
         probe.connectInput("input_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_direction", new Vector3d(1e308d, 1e308d, 1e308d));
+        probe.putRawInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 1e308d, 1e308d));
         probe.processNode(null);
         if (Boolean.TRUE.equals(probe.getOutput("output_valid"))) {
             assertEquals(2, probe.getOutput("output_count"));
@@ -201,7 +201,7 @@ class PatternLinearLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("distance", 1.0d, "count", 2));
         probe.connectInput("input_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_direction", new Vector3d(0, 0, 0));
+        probe.putRawInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("direction"));
@@ -266,6 +266,10 @@ class PatternLinearLanguageV2ContractTest {
         pathFrames.processNode(null);
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
         assertTrue((Integer) pathFrames.getOutput("output_count") >= 2);
+        List<?> tangents = (List<?>) pathFrames.getOutput("output_tangents");
+        assertNotNull(tangents);
+        assertFalse(tangents.isEmpty());
+        assertTrue(tangents.getFirst() instanceof com.nodecraft.nodesystem.datatypes.VectorData);
     }
 
     @Test
@@ -328,7 +332,7 @@ class PatternLinearLanguageV2ContractTest {
         probe.connectInput("input_count", NodeDataType.INTEGER);
         probe.putRawInput("input_count", 5);
         probe.processNode(null);
-        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
+        assertEquals(Boolean.TRUE, probe.getOutput("output_valid"), String.valueOf(probe.getOutput("output_error")));
         assertEquals(5, probe.getOutput("output_count"));
         @SuppressWarnings("unchecked")
         List<FrameData> frames = assertInstanceOf(List.class, probe.getOutput("output_frames"));

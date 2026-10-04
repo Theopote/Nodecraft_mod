@@ -342,7 +342,7 @@ class PlacementLanguageV2ContractTest {
         mirror.connectInput("input_point", NodeDataType.POINT);
         mirror.connectInput("input_normal", NodeDataType.VECTOR);
         mirror.setInput("input_point", new PointData(0, 0, 0));
-        mirror.setInput("input_normal", new Vector3d(0, 0, 0));
+        mirror.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         assertDoesNotThrow(() -> mirror.processNode(null));
         assertEquals(Boolean.FALSE, mirror.getOutput("output_valid"));
         assertFalse(String.valueOf(mirror.getOutput("output_error")).isBlank());
@@ -356,7 +356,7 @@ class PlacementLanguageV2ContractTest {
         mirror.connectInput("input_point", NodeDataType.POINT);
         mirror.connectInput("input_normal", NodeDataType.VECTOR);
         mirror.setInput("input_point", new PointData(0, 0, 0));
-        mirror.setInput("input_normal", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        mirror.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(Double.MAX_VALUE, Double.MAX_VALUE, 0));
         assertDoesNotThrow(() -> mirror.processNode(null));
         assertEquals(Boolean.FALSE, mirror.getOutput("output_valid"));
         assertFalse(String.valueOf(mirror.getOutput("output_error")).isBlank());
@@ -368,7 +368,7 @@ class PlacementLanguageV2ContractTest {
         RotateProbe rotate = new RotateProbe();
         rotate.setInput("input_block_positions", singleBlockList());
         rotate.connectInput("input_axis", NodeDataType.VECTOR);
-        rotate.setInput("input_axis", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        rotate.setInput("input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(Double.MAX_VALUE, Double.MAX_VALUE, 0));
         rotate.processNode(null);
         assertEquals(Boolean.FALSE, rotate.getOutput("output_valid"));
         assertEquals(0, ((BlockPosList) rotate.getOutput("output_block_positions")).size());

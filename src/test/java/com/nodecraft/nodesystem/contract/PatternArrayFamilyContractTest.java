@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
@@ -68,7 +69,7 @@ class PatternArrayFamilyContractTest {
         curve.setInput("input_pivot", new PointData(0, 0, 0));
         curve.setInput("input_path", path);
         curve.connectCount(5);
-        curve.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        curve.setInput("input_up_vector", new VectorData(0, 1, 0));
         curve.processNode(null);
 
         assertEquals(Boolean.TRUE, curve.getOutput("output_valid"));
@@ -91,7 +92,7 @@ class PatternArrayFamilyContractTest {
             new Vec3d(4.2, 2.4, 5.1)
         ));
         pathFrames.setInput("input_path", path);
-        pathFrames.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        pathFrames.setInput("input_up_vector", new VectorData(0, 1, 0));
         pathFrames.processNode(null);
 
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));

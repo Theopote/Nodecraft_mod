@@ -91,7 +91,7 @@ public class RaycastNode extends BaseNode {
         }
 
         Vector3d origin = PointUtils.toPointPosition(inputValues.get(INPUT_ORIGIN_ID));
-        Vector3d direction = VectorUtils.toVector(inputValues.get(INPUT_DIRECTION_ID));
+        Vector3d direction = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_DIRECTION_ID));
         if (!PointUtils.isFinite(origin) || !VectorUtils.isNonZero(direction)) {
             writeNoHit(false, "Origin and non-zero Direction inputs are required.");
             return;

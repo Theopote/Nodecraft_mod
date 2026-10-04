@@ -12,6 +12,7 @@ import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -97,7 +98,7 @@ public class HemisphereByCenterAxisRadiusNode extends AbstractPrimitiveNode {
         HemisphereGeometryData hemisphere = new HemisphereGeometryData(center, axis, resolvedRadius);
         outputValues.put(OUTPUT_HEMISPHERE_ID, hemisphere);
         outputValues.put(OUTPUT_GEOMETRY_ID, hemisphere);
-        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, hemisphere.axis());
+        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, VectorUtils.toVectorPort(hemisphere.axis()));
         outputValues.put(OUTPUT_RADIUS_ID, resolvedRadius);
         markSuccess();
     }

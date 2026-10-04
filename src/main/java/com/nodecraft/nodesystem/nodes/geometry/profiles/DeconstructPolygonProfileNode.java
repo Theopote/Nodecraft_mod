@@ -13,6 +13,7 @@ import org.joml.Vector3d;
 
 import java.util.List;
 import java.util.UUID;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -73,7 +74,7 @@ public class DeconstructPolygonProfileNode extends AbstractProfileNode {
         outputValues.put(OUTPUT_EDGE_COUNT_ID, profile.getEdgeCount());
         outputValues.put(OUTPUT_PERIMETER_ID, profile.getBoundary().getLength());
         outputValues.put(OUTPUT_AREA_ID, computeArea(profile));
-        outputValues.put(OUTPUT_NORMAL_ID, plane.getNormal());
+        outputValues.put(OUTPUT_NORMAL_ID, VectorUtils.toVectorPort(plane.getNormal()));
         markSuccess();
     }
 

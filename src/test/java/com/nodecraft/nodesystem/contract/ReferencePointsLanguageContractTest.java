@@ -294,7 +294,7 @@ class ReferencePointsLanguageContractTest {
         move.processNode(null);
         assertEquals(Boolean.FALSE, move.getOutput("output_valid"));
 
-        move.setInput("input_vector", new Vector3d(0, 0, 1));
+        move.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 1));
         move.processNode(null);
         assertEquals(Boolean.TRUE, move.getOutput("output_valid"));
         assertInstanceOf(PointData.class, move.getOutput("output_point"));

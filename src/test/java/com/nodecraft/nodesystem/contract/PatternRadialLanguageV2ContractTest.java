@@ -213,7 +213,7 @@ class PatternRadialLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("count", 2));
         probe.connectInput("input_axis", NodeDataType.VECTOR);
-        probe.putRawInput("input_axis", new Vector3d(0, 0, 0));
+        probe.putRawInput("input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("axis"));

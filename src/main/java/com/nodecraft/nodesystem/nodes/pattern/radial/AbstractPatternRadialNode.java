@@ -134,7 +134,7 @@ abstract class AbstractPatternRadialNode extends BaseNode {
         }
 
         outputValues.put(pointsId, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(tangentsId, List.copyOf(tangents));
+        outputValues.put(tangentsId, VectorUtils.toVectorPortList(tangents));
         outputValues.put(framesId, List.copyOf(frames));
         putIntOutputs(points.size(), countId);
         markSuccess();

@@ -213,7 +213,7 @@ class BlockStateLanguageContractTest {
     @Test
     void orientBlockStateRejectsUnknownMode() {
         OrientBlockStateNode node = new OrientBlockStateNode();
-        node.setInput("input_vector", new Vector3d(0.0d, 0.0d, -1.0d));
+        node.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 0.0d, -1.0d));
         node.setInput("input_mode", "banana");
         node.processNode(null);
         assertFalse((Boolean) node.getOutput("output_valid"));

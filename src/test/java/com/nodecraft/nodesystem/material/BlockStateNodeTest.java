@@ -41,7 +41,7 @@ class BlockStateNodeTest {
         OrientBlockStateNode node = new OrientBlockStateNode();
 
         Map<String, Object> outputs = node.compute(Map.of(
-                "input_vector", new Vector3d(0.0d, 5.0d, 0.0d),
+                "input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 5.0d, 0.0d),
                 "input_mode", "axis"
         ));
 
@@ -108,7 +108,7 @@ class BlockStateNodeTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_block_type", "minecraft:oak_stairs",
-                "input_vector", new Vector3d(3.0d, -1.0d, 1.0d),
+                "input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(3.0d, -1.0d, 1.0d),
                 "input_mode", "stair",
                 "input_include_waterlogged", true,
                 "input_waterlogged", false

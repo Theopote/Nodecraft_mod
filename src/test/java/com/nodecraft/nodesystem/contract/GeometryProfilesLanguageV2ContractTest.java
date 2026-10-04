@@ -230,7 +230,7 @@ class GeometryProfilesLanguageV2ContractTest {
         ExtrudeRegionNode extrude = new ExtrudeRegionNode();
         connectInput(extrude, "input_direction", NodeDataType.VECTOR);
         extrude.setInput("input_region", region);
-        extrude.setInput("input_direction", new Vector3d(0.0d, 2.0d, 0.0d));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 2.0d, 0.0d));
         extrude.processNode(null);
 
         assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"),
@@ -256,7 +256,7 @@ class GeometryProfilesLanguageV2ContractTest {
         ExtrudeRegionNode extrude = new ExtrudeRegionNode();
         connectInput(extrude, "input_direction", NodeDataType.VECTOR);
         extrude.setInput("input_region", region);
-        extrude.setInput("input_direction", new Vector3d(0.0d, 0.5d, 0.0d));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 0.5d, 0.0d));
         extrude.processNode(null);
 
         assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"),

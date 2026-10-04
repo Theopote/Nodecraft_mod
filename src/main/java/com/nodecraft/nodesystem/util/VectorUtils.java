@@ -20,8 +20,19 @@ public final class VectorUtils {
     private VectorUtils() {
     }
 
-    /** Strict VECTOR port: accepts {@link VectorData}, {@link Vector3d}, and legacy {@link Vec3d}. */
-    public static @Nullable Vector3d toVector(@Nullable Object value) {
+    /** Graph VECTOR ingest: {@link VectorData} only. Returns a JOML copy, or {@code null}. */
+    public static @Nullable Vector3d toStrictVectorPortValue(@Nullable Object value) {
+        if (!(value instanceof VectorData vectorData)) {
+            return null;
+        }
+        return vectorData.components();
+    }
+
+    /**
+     * Legacy/internal conversion: {@link VectorData}, JOML {@link Vector3d}, or Minecraft {@link Vec3d}.
+     * Not for graph-facing VECTOR ports — use {@link #toStrictVectorPortValue}.
+     */
+    public static @Nullable Vector3d toVectorLegacy(@Nullable Object value) {
         if (value instanceof VectorData vectorData) {
             return vectorData.components();
         }
@@ -32,6 +43,12 @@ public final class VectorUtils {
             return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
         }
         return null;
+    }
+
+    /** @deprecated Use {@link #toStrictVectorPortValue} for graph ports or {@link #toVectorLegacy} internally. */
+    @Deprecated
+    public static @Nullable Vector3d toVector(@Nullable Object value) {
+        return toVectorLegacy(value);
     }
 
     /** Canonical typed output for VECTOR ports. */
@@ -186,11 +203,10 @@ public final class VectorUtils {
         }
         List<Vector3d> vectors = new ArrayList<>(collection.size());
         for (Object entry : collection) {
-            Vector3d vector = toVector(entry);
-            if (!isFinite(vector)) {
+            if (!(entry instanceof VectorData data)) {
                 return null;
             }
-            vectors.add(vector);
+            vectors.add(data.components());
         }
         return List.copyOf(vectors);
     }

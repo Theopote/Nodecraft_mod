@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -98,7 +99,7 @@ public class DeconstructCylinderNode extends AbstractPrimitiveDeconstructNode {
         outputValues.put(OUTPUT_START_ID, new PointData(start));
         outputValues.put(OUTPUT_END_ID, new PointData(end));
         outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(start, end));
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
+        outputValues.put(OUTPUT_AXIS_VECTOR_ID, VectorUtils.toVectorPort(axisVector));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_DIAMETER_ID, diameter);

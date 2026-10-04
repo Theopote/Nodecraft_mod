@@ -120,7 +120,7 @@ public class CurveEvaluateNode extends AbstractCurveNode {
         }
 
         outputValues.put(OUTPUT_POINT_ID, new PointData(point.x, point.y, point.z));
-        outputValues.put(OUTPUT_TANGENT_ID, tangent);
+        outputValues.put(OUTPUT_TANGENT_ID, VectorUtils.toVectorPort(tangent));
         outputValues.put(OUTPUT_LENGTH_ID, total);
         markSuccess();
     }

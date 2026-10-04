@@ -159,7 +159,7 @@ class GeometrySolidsLanguageContractTest {
         connectInput(extrude, "input_profile", NodeDataType.POLYGON_PROFILE);
         connectInput(extrude, "input_direction", NodeDataType.VECTOR);
         extrude.setInput("input_profile", unitSquareProfile());
-        extrude.setInput("input_direction", new Vector3d(0, 0, 0));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         extrude.processNode(null);
         assertEquals(Boolean.FALSE, extrude.getOutput("output_valid"));
         assertNotNull(extrude.getOutput("output_error"));

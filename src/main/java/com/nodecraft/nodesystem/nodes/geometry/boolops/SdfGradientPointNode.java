@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.UUID;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -83,7 +84,7 @@ public class SdfGradientPointNode extends AbstractSdfNode {
         }
 
         gradient.normalize();
-        outputValues.put(OUTPUT_GRADIENT_ID, gradient);
+        outputValues.put(OUTPUT_GRADIENT_ID, VectorUtils.toVectorPort(gradient));
         outputValues.put(OUTPUT_DISTANCE_ID, d);
         markSuccess();
     }

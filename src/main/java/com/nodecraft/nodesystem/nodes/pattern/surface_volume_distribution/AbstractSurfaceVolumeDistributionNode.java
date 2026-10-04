@@ -199,7 +199,7 @@ abstract class AbstractSurfaceVolumeDistributionNode extends BaseNode {
             }
         }
         outputValues.put(pointsId, SpatialValueResolver.toPointDataList(points));
-        outputValues.put(normalsId, List.copyOf(normals));
+        outputValues.put(normalsId, VectorUtils.toVectorPortList(normals));
         putIntOutputs(points.size(), countId);
         markSuccess(complete);
         return true;

@@ -52,8 +52,8 @@ public class VectorComponentMinMaxNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        Vector3d a = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_B_ID));
         if (!VectorUtils.isFinite(a) || !VectorUtils.isFinite(b)) {
             outputValues.put(OUTPUT_MIN_ID, null);
             outputValues.put(OUTPUT_MAX_ID, null);

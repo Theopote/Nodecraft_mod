@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -77,7 +78,7 @@ public class DeconstructPrismNode extends AbstractPrimitiveDeconstructNode {
 
         outputValues.put(OUTPUT_BASE_POINTS_ID, SpatialValueResolver.toPointDataList(basePoints));
         outputValues.put(OUTPUT_TOP_POINTS_ID, SpatialValueResolver.toPointDataList(topPoints));
-        outputValues.put(OUTPUT_EXTRUSION_VECTOR_ID, extrusionVector);
+        outputValues.put(OUTPUT_EXTRUSION_VECTOR_ID, VectorUtils.toVectorPort(extrusionVector));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_SIDE_COUNT_ID, sideCount);
         outputValues.put(OUTPUT_SURFACE_STRIP_ID, prism.getSideSurfaceStrip());

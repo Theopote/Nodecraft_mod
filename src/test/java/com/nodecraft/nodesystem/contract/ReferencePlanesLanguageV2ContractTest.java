@@ -129,7 +129,7 @@ class ReferencePlanesLanguageV2ContractTest {
     void constructDeconstructRoundTripPreservesConstructionOrigin() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(1, 2, 3));
-        construct.setInput("input_normal", new Vector3d(0, 1, 0));
+        construct.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         construct.processNode(null);
         assertValid(construct);
 
@@ -223,7 +223,7 @@ class ReferencePlanesLanguageV2ContractTest {
     void constructPlaneZeroNormalFailsClosed() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(0, 0, 0));
-        construct.setInput("input_normal", new Vector3d(0, 0, 0));
+        construct.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         construct.processNode(null);
         assertInvalid(construct);
         assertTrue(String.valueOf(construct.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("normal"));
@@ -419,7 +419,7 @@ class ReferencePlanesLanguageV2ContractTest {
     void frameFromPlaneUsesPlaneConstructionOrigin() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(7, 8, 9));
-        construct.setInput("input_normal", new Vector3d(0, 0, 1));
+        construct.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 1));
         construct.processNode(null);
         assertValid(construct);
         PlaneData plane = assertInstanceOf(PlaneData.class, construct.getOutput("output_plane"));

@@ -140,8 +140,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void crossProductParallelVectorsAreValidZero() {
         BaseNode cross = node("reference.vectors.cross_product");
-        cross.setInput("input_vector_a", new Vector3d(1, 0, 0));
-        cross.setInput("input_vector_b", new Vector3d(2, 0, 0));
+        cross.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        cross.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(2, 0, 0));
         cross.processNode(null);
         assertEquals(Boolean.TRUE, cross.getOutput("output_valid"));
         Vector3d result = requireVector(cross.getOutput("output_cross_product"));
@@ -152,8 +152,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void crossProductZeroVectorIsValid() {
         BaseNode cross = node("reference.vectors.cross_product");
-        cross.setInput("input_vector_a", new Vector3d(0, 0, 0));
-        cross.setInput("input_vector_b", new Vector3d(1, 0, 0));
+        cross.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        cross.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         cross.processNode(null);
         assertEquals(Boolean.TRUE, cross.getOutput("output_valid"));
         assertEquals(0.0d, cross.getOutput("output_magnitude"));
@@ -162,7 +162,7 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void normalizeZeroVectorInvalidOutputsNull() {
         BaseNode normalize = node("reference.vectors.normalize_vector");
-        normalize.setInput("input_vector", new Vector3d(0, 0, 0));
+        normalize.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         normalize.processNode(null);
         assertEquals(Boolean.FALSE, normalize.getOutput("output_valid"));
         assertNull(normalize.getOutput("output_normalized_vector"));
@@ -171,8 +171,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void dotProductZeroVectorIsValid() {
         BaseNode dot = node("reference.vectors.dot_product");
-        dot.setInput("input_vector_a", new Vector3d(0, 0, 0));
-        dot.setInput("input_vector_b", new Vector3d(3, 4, 0));
+        dot.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        dot.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(3, 4, 0));
         dot.processNode(null);
         assertEquals(Boolean.TRUE, dot.getOutput("output_valid"));
         assertEquals(0.0d, dot.getOutput("output_dot_product"));
@@ -181,7 +181,7 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void vectorLengthZeroIsValid() {
         BaseNode length = node("reference.vectors.vector_length");
-        length.setInput("input_vector", new Vector3d(0, 0, 0));
+        length.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         length.processNode(null);
         assertEquals(Boolean.TRUE, length.getOutput("output_valid"));
         assertEquals(0.0d, length.getOutput("output_length"));
@@ -190,7 +190,7 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void vectorScalarMultiplyZeroIsValid() {
         BaseNode multiply = node("reference.vectors.vector_scalar_multiply");
-        multiply.setInput("input_vector", new Vector3d(1, 2, 3));
+        multiply.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 2, 3));
         multiply.setInput("input_scalar", 0.0d);
         multiply.processNode(null);
         assertEquals(Boolean.TRUE, multiply.getOutput("output_valid"));
@@ -201,7 +201,7 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void vectorScalarDivideTinyScalarRemainsValid() {
         BaseNode divide = node("reference.vectors.vector_scalar_divide");
-        divide.setInput("input_vector", new Vector3d(1, 0, 0));
+        divide.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         divide.setInput("input_scalar", 1.0e-15d);
         divide.processNode(null);
         assertEquals(Boolean.TRUE, divide.getOutput("output_valid"));
@@ -214,7 +214,7 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void vectorScalarDivideZeroFailsClosed() {
         BaseNode divide = node("reference.vectors.vector_scalar_divide");
-        divide.setInput("input_vector", new Vector3d(1, 0, 0));
+        divide.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         divide.setInput("input_scalar", 0.0d);
         divide.processNode(null);
         assertEquals(Boolean.FALSE, divide.getOutput("output_valid"));
@@ -224,8 +224,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void lerpVectorsExtrapolatesWithoutClamping() {
         BaseNode lerp = node("reference.vectors.lerp_vectors");
-        lerp.setInput("input_a", new Vector3d(0, 0, 0));
-        lerp.setInput("input_b", new Vector3d(1, 0, 0));
+        lerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        lerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         lerp.setInput("input_t", 2.0d);
         lerp.processNode(null);
         assertEquals(Boolean.TRUE, lerp.getOutput("output_valid"));
@@ -239,8 +239,8 @@ class ReferenceVectorsLanguageContractTest {
         Vector3d bDir = new Vector3d(b).normalize();
 
         BaseNode slerp = node("reference.vectors.slerp");
-        slerp.setInput("input_a", a);
-        slerp.setInput("input_b", b);
+        slerp.setInput("input_a", new VectorData(a));
+        slerp.setInput("input_b", new VectorData(b));
         slerp.setInput("input_t", 0.0d);
         slerp.processNode(null);
         assertEquals(Boolean.TRUE, slerp.getOutput("output_valid"));
@@ -258,8 +258,8 @@ class ReferenceVectorsLanguageContractTest {
         Vector3d b = new Vector3d(-1, 0, 0);
 
         BaseNode slerp = node("reference.vectors.slerp");
-        slerp.setInput("input_a", a);
-        slerp.setInput("input_b", b);
+        slerp.setInput("input_a", new VectorData(a));
+        slerp.setInput("input_b", new VectorData(b));
 
         slerp.setInput("input_t", 0.0d);
         slerp.processNode(null);
@@ -277,8 +277,8 @@ class ReferenceVectorsLanguageContractTest {
 
         BaseNode slerp = node("reference.vectors.slerp");
         slerp.setNodeState(Map.of("preserveMagnitude", false));
-        slerp.setInput("input_a", a);
-        slerp.setInput("input_b", b);
+        slerp.setInput("input_a", new VectorData(a));
+        slerp.setInput("input_b", new VectorData(b));
 
         slerp.setInput("input_t", 0.25d);
         slerp.processNode(null);
@@ -307,8 +307,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void angleReferenceUnconnectedYieldsUnsignedOnly() {
         BaseNode angle = node("reference.vectors.angle_between");
-        angle.setInput("input_a", new Vector3d(1, 0, 0));
-        angle.setInput("input_b", new Vector3d(0, 1, 0));
+        angle.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        angle.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         angle.processNode(null);
         assertEquals(Boolean.TRUE, angle.getOutput("output_valid"));
         assertEquals(90.0d, angle.getOutput("output_angle"));
@@ -318,8 +318,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void angleReferenceConnectedNullFailsClosed() {
         AngleBetweenVectorsProbe angle = new AngleBetweenVectorsProbe();
-        angle.setInput("input_a", new Vector3d(1, 0, 0));
-        angle.setInput("input_b", new Vector3d(0, 1, 0));
+        angle.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        angle.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         angle.connectInput("input_reference", NodeDataType.VECTOR);
         angle.putRawInput("input_reference", null);
         angle.processNode(null);
@@ -336,8 +336,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void reflectZeroNormalInvalidOutputsNull() {
         BaseNode reflect = node("reference.vectors.reflect");
-        reflect.setInput("input_vector", new Vector3d(1, 0, 0));
-        reflect.setInput("input_normal", new Vector3d(0, 0, 0));
+        reflect.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        reflect.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         reflect.processNode(null);
         assertEquals(Boolean.FALSE, reflect.getOutput("output_valid"));
         assertNull(reflect.getOutput("output_reflected"));
@@ -346,8 +346,8 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void projectZeroAxisFailsClosedWithNullOutputs() {
         BaseNode project = node("reference.vectors.project");
-        project.setInput("input_a", new Vector3d(1, 2, 3));
-        project.setInput("input_b", new Vector3d(0, 0, 0));
+        project.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 2, 3));
+        project.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         project.processNode(null);
         assertEquals(Boolean.FALSE, project.getOutput("output_valid"));
         assertNull(project.getOutput("output_projection"));
@@ -369,12 +369,25 @@ class ReferenceVectorsLanguageContractTest {
     @Test
     void componentMinMaxLivesInMathVectorFamily() {
         BaseNode minMax = node("math.vector.component_minmax");
-        minMax.setInput("input_a", new Vector3d(1, 5, 0));
-        minMax.setInput("input_b", new Vector3d(3, 2, 4));
+        minMax.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 5, 0));
+        minMax.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(3, 2, 4));
         minMax.processNode(null);
         assertEquals(Boolean.TRUE, minMax.getOutput("output_valid"));
         assertVectorEquals(new Vector3d(1, 2, 0), requireVector(minMax.getOutput("output_min")), 1.0e-9d);
         assertVectorEquals(new Vector3d(3, 5, 4), requireVector(minMax.getOutput("output_max")), 1.0e-9d);
+        assertTrue(minMax.getOutput("output_min") instanceof com.nodecraft.nodesystem.datatypes.VectorData);
+        assertTrue(minMax.getOutput("output_max") instanceof com.nodecraft.nodesystem.datatypes.VectorData);
+    }
+
+    @Test
+    void componentMinMaxRejectsRawJomlIngest() {
+        BaseNode minMax = node("math.vector.component_minmax");
+        minMax.setInput("input_a", new Vector3d(1, 5, 0));
+        minMax.setInput("input_b", new Vector3d(3, 2, 4));
+        minMax.processNode(null);
+        assertEquals(Boolean.FALSE, minMax.getOutput("output_valid"));
+        assertNull(minMax.getOutput("output_min"));
+        assertNull(minMax.getOutput("output_max"));
     }
 
     private static BaseNode node(String typeId) {

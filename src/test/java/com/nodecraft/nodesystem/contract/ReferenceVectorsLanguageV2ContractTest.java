@@ -197,7 +197,7 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void vectorLengthHugeFiniteVectorNeverInfinitySuccess() {
         BaseNode length = node("reference.vectors.vector_length");
-        length.setInput("input_vector", new Vector3d(1e308d, 1e308d, 0));
+        length.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 1e308d, 0));
         length.processNode(null);
         assertValid(length);
         assertTrue(Double.isFinite((Double) length.getOutput("output_length")));
@@ -206,7 +206,7 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void normalizeHugeFiniteVectorYieldsFiniteUnit() {
         BaseNode normalize = node("reference.vectors.normalize_vector");
-        normalize.setInput("input_vector", new Vector3d(1e308d, 1e308d, 0));
+        normalize.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 1e308d, 0));
         normalize.processNode(null);
         assertValid(normalize);
         Vector3d unit = requireVector(normalize.getOutput("output_normalized_vector"));
@@ -216,7 +216,7 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void normalizeZeroVectorFails() {
         BaseNode normalize = node("reference.vectors.normalize_vector");
-        normalize.setInput("input_vector", new Vector3d(0, 0, 0));
+        normalize.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         normalize.processNode(null);
         assertInvalid(normalize);
     }
@@ -224,8 +224,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void vectorAdditionOverflowFailsClosed() {
         BaseNode add = node("reference.vectors.vector_addition");
-        add.setInput("input_vector_a", new Vector3d(1e308d, 0, 0));
-        add.setInput("input_vector_b", new Vector3d(1e308d, 0, 0));
+        add.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        add.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         add.processNode(null);
         assertInvalid(add);
     }
@@ -233,7 +233,7 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void vectorScalarMultiplyOverflowFailsClosed() {
         BaseNode multiply = node("reference.vectors.vector_scalar_multiply");
-        multiply.setInput("input_vector", new Vector3d(1e308d, 0, 0));
+        multiply.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         multiply.setInput("input_scalar", 2.0d);
         multiply.processNode(null);
         assertInvalid(multiply);
@@ -242,8 +242,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void dotProductOverflowFailsClosed() {
         BaseNode dot = node("reference.vectors.dot_product");
-        dot.setInput("input_vector_a", new Vector3d(1e308d, 0, 0));
-        dot.setInput("input_vector_b", new Vector3d(1e308d, 0, 0));
+        dot.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        dot.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         dot.processNode(null);
         assertInvalid(dot);
         assertEquals(0.0d, dot.getOutput("output_dot_product"));
@@ -252,8 +252,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void crossProductParallelVectorsValidZero() {
         BaseNode cross = node("reference.vectors.cross_product");
-        cross.setInput("input_vector_a", new Vector3d(1, 0, 0));
-        cross.setInput("input_vector_b", new Vector3d(2, 0, 0));
+        cross.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        cross.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(2, 0, 0));
         cross.processNode(null);
         assertValid(cross);
         assertEquals(0.0d, cross.getOutput("output_magnitude"));
@@ -262,8 +262,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void lerpOppositeHugeValuesAvoidsIntermediateOverflow() {
         BaseNode lerp = node("reference.vectors.lerp_vectors");
-        lerp.setInput("input_a", new Vector3d(1e308d, 0, 0));
-        lerp.setInput("input_b", new Vector3d(-1e308d, 0, 0));
+        lerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        lerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(-1e308d, 0, 0));
         lerp.setInput("input_t", 0.5d);
         lerp.processNode(null);
         assertValid(lerp);
@@ -274,8 +274,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void lerpExtrapolatesWithoutClamping() {
         BaseNode lerp = node("reference.vectors.lerp_vectors");
-        lerp.setInput("input_a", new Vector3d(0, 0, 0));
-        lerp.setInput("input_b", new Vector3d(1, 0, 0));
+        lerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        lerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         lerp.setInput("input_t", 2.0d);
         lerp.processNode(null);
         assertValid(lerp);
@@ -285,8 +285,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void lerpHugeEqualVectorsExtrapolationStaysFinite() {
         BaseNode lerp = node("reference.vectors.lerp_vectors");
-        lerp.setInput("input_a", new Vector3d(1e308d, 0, 0));
-        lerp.setInput("input_b", new Vector3d(1e308d, 0, 0));
+        lerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        lerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         lerp.setInput("input_t", 2.0d);
         lerp.processNode(null);
         assertValid(lerp);
@@ -297,8 +297,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     void slerpPreserveMagnitudeHugeEqualMagnitudesExtrapolationStaysFinite() {
         SlerpVectorsNode slerp = new SlerpVectorsNode();
         slerp.setNodeState(java.util.Map.of("preserveMagnitude", true));
-        slerp.setInput("input_a", new Vector3d(1e308d, 0, 0));
-        slerp.setInput("input_b", new Vector3d(1e308d, 0, 0));
+        slerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        slerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         slerp.setInput("input_t", 2.0d);
         slerp.processNode(null);
         assertValid(slerp);
@@ -315,8 +315,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void lerpStrictDoubleRejectsIntegerT() {
         BaseNode lerp = node("reference.vectors.lerp_vectors");
-        lerp.setInput("input_a", new Vector3d(0, 0, 0));
-        lerp.setInput("input_b", new Vector3d(1, 0, 0));
+        lerp.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        lerp.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         lerp.setInput("input_t", 1);
         lerp.processNode(null);
         assertInvalid(lerp);
@@ -325,8 +325,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void angleReferenceUnconnectedSemanticsPreserved() {
         BaseNode angle = node("reference.vectors.angle_between");
-        angle.setInput("input_a", new Vector3d(1, 0, 0));
-        angle.setInput("input_b", new Vector3d(0, 1, 0));
+        angle.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        angle.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         angle.processNode(null);
         assertValid(angle);
         assertEquals(90.0d, angle.getOutput("output_angle"));
@@ -336,8 +336,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void angleReferenceConnectedInvalidFailsClosed() {
         AngleBetweenVectorsProbe angle = new AngleBetweenVectorsProbe();
-        angle.setInput("input_a", new Vector3d(1, 0, 0));
-        angle.setInput("input_b", new Vector3d(0, 1, 0));
+        angle.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        angle.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         angle.connectInput("input_reference", NodeDataType.VECTOR);
         angle.putRawInput("input_reference", null);
         angle.processNode(null);
@@ -349,8 +349,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void reflectZeroIncomingVectorRemainsValid() {
         BaseNode reflect = node("reference.vectors.reflect");
-        reflect.setInput("input_vector", new Vector3d(0, 0, 0));
-        reflect.setInput("input_normal", new Vector3d(0, 0, 1));
+        reflect.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        reflect.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 1));
         reflect.processNode(null);
         assertValid(reflect);
         Vector3d result = requireVector(reflect.getOutput("output_reflected"));
@@ -360,8 +360,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void reflectDotOverflowFailsClosed() {
         BaseNode reflect = node("reference.vectors.reflect");
-        reflect.setInput("input_vector", new Vector3d(1e308d, 0, 0));
-        reflect.setInput("input_normal", new Vector3d(1e308d, 0, 0));
+        reflect.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
+        reflect.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 0, 0));
         reflect.processNode(null);
         assertInvalid(reflect);
     }
@@ -369,8 +369,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void projectHugeAxisDoesNotSilentlyCollapseToZero() {
         BaseNode project = node("reference.vectors.project");
-        project.setInput("input_a", new Vector3d(1, 2, 3));
-        project.setInput("input_b", new Vector3d(1e200d, 0, 0));
+        project.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 2, 3));
+        project.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(1e200d, 0, 0));
         project.processNode(null);
         assertValid(project);
         Vector3d projection = requireVector(project.getOutput("output_projection"));
@@ -380,8 +380,8 @@ class ReferenceVectorsLanguageV2ContractTest {
     @Test
     void zeroVectorDotProductRemainsValid() {
         BaseNode dot = node("reference.vectors.dot_product");
-        dot.setInput("input_vector_a", new Vector3d(0, 0, 0));
-        dot.setInput("input_vector_b", new Vector3d(3, 4, 0));
+        dot.setInput("input_vector_a", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
+        dot.setInput("input_vector_b", new com.nodecraft.nodesystem.datatypes.VectorData(3, 4, 0));
         dot.processNode(null);
         assertValid(dot);
         assertEquals(0.0d, dot.getOutput("output_dot_product"));

@@ -137,7 +137,7 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
     void vortexZeroAxisFailsConstruction() {
         Map<String, Object> outputs = new VortexFieldNode().compute(Map.of(
                 "input_origin", new Vector3d(0, 0, 0),
-                "input_axis", new Vector3d(0, 0, 0)
+                "input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0)
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertNull(outputs.get("output_field"));

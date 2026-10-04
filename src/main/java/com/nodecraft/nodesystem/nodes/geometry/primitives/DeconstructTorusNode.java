@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -81,7 +82,7 @@ public class DeconstructTorusNode extends AbstractPrimitiveDeconstructNode {
         }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_AXIS_ID, axis);
+        outputValues.put(OUTPUT_AXIS_ID, VectorUtils.toVectorPort(axis));
         outputValues.put(OUTPUT_MAJOR_RADIUS_ID, majorRadius);
         outputValues.put(OUTPUT_MINOR_RADIUS_ID, minorRadius);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);

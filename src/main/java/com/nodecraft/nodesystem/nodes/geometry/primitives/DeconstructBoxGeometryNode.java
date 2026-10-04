@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 import java.util.List;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -83,7 +84,7 @@ public class DeconstructBoxGeometryNode extends AbstractPrimitiveDeconstructNode
         List<BoxFaceData> faces = geometry.getFaces();
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(geometry.getCenter()));
-        outputValues.put(OUTPUT_HALF_EXTENTS_ID, geometry.getHalfExtents());
+        outputValues.put(OUTPUT_HALF_EXTENTS_ID, VectorUtils.toVectorPort(geometry.getHalfExtents()));
         outputValues.put(OUTPUT_IS_ORIENTED_ID, geometry.isOriented());
         outputValues.put(OUTPUT_CORNERS_ID, SpatialValueResolver.toPointDataList(corners));
         outputValues.put(OUTPUT_CORNER_NAMES_ID, geometry.getCornerNames());
@@ -91,9 +92,9 @@ public class DeconstructBoxGeometryNode extends AbstractPrimitiveDeconstructNode
         outputValues.put(OUTPUT_FACE_NAMES_ID, geometry.getFaceNames());
         outputValues.put(OUTPUT_CORNER_COUNT_ID, geometry.getCornerCount());
         outputValues.put(OUTPUT_FACE_COUNT_ID, geometry.getFaceCount());
-        outputValues.put(OUTPUT_X_AXIS_ID, xAxis);
-        outputValues.put(OUTPUT_Y_AXIS_ID, yAxis);
-        outputValues.put(OUTPUT_Z_AXIS_ID, zAxis);
+        outputValues.put(OUTPUT_X_AXIS_ID, VectorUtils.toVectorPort(xAxis));
+        outputValues.put(OUTPUT_Y_AXIS_ID, VectorUtils.toVectorPort(yAxis));
+        outputValues.put(OUTPUT_Z_AXIS_ID, VectorUtils.toVectorPort(zAxis));
         markSuccess();
     }
 

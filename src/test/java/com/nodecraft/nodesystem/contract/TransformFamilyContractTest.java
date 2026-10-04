@@ -72,8 +72,8 @@ class TransformFamilyContractTest {
         assertTrue(desc.contains("degrees"));
         assertFalse(desc.contains("radian"));
 
-        node.setInput("input_vector", new Vector3d(1, 0, 0));
-        node.setInput("input_axis", new Vector3d(0, 1, 0));
+        node.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        node.setInput("input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         node.setInput("input_angle", 90.0d);
         node.processNode(null);
 

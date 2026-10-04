@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.util;
 
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,13 @@ class SpatialValueResolverStrictVectorTest {
     }
 
     @Test
-    void resolveVectorAcceptsVector3d() {
-        Vector3d resolved = SpatialValueResolver.resolveVector(new Vector3d(0, 1, 0));
+    void resolveVectorRejectsRawJoml() {
+        assertNull(SpatialValueResolver.resolveVector(new Vector3d(0, 1, 0)));
+    }
+
+    @Test
+    void resolveVectorAcceptsVectorData() {
+        Vector3d resolved = SpatialValueResolver.resolveVector(new VectorData(0, 1, 0));
         assertNotNull(resolved);
         assertEquals(0.0d, resolved.x);
         assertEquals(1.0d, resolved.y);

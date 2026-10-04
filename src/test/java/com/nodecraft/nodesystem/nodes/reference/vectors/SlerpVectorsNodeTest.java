@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
@@ -20,18 +21,20 @@ class SlerpVectorsNodeTest {
         Vector3d a = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d b = new Vector3d(-0.8d, 0.6d, 0.0d);
         Vector3d expectedB = new Vector3d(b).normalize();
+        VectorData aIn = new VectorData(a);
+        VectorData bIn = new VectorData(b);
 
         Map<String, Object> atZero = node.compute(Map.of(
-            "input_a", a,
-            "input_b", b,
+            "input_a", aIn,
+            "input_b", bIn,
             "input_t", 0.0d
         ));
         assertEquals(Boolean.TRUE, atZero.get("output_valid"));
         assertVectorClose(a, requireVector(atZero.get("output_result")), 1.0e-6d);
 
         Map<String, Object> atOne = node.compute(Map.of(
-            "input_a", a,
-            "input_b", b,
+            "input_a", aIn,
+            "input_b", bIn,
             "input_t", 1.0d
         ));
         assertEquals(Boolean.TRUE, atOne.get("output_valid"));
@@ -45,18 +48,20 @@ class SlerpVectorsNodeTest {
 
         Vector3d a = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d b = new Vector3d(-1.0d, 0.0d, 0.0d);
+        VectorData aIn = new VectorData(a);
+        VectorData bIn = new VectorData(b);
 
         Map<String, Object> atZero = node.compute(Map.of(
-            "input_a", a,
-            "input_b", b,
+            "input_a", aIn,
+            "input_b", bIn,
             "input_t", 0.0d
         ));
         assertEquals(Boolean.TRUE, atZero.get("output_valid"));
         assertVectorClose(a, requireVector(atZero.get("output_result")), 1.0e-6d);
 
         Map<String, Object> atOne = node.compute(Map.of(
-            "input_a", a,
-            "input_b", b,
+            "input_a", aIn,
+            "input_b", bIn,
             "input_t", 1.0d
         ));
         assertEquals(Boolean.TRUE, atOne.get("output_valid"));
@@ -70,15 +75,17 @@ class SlerpVectorsNodeTest {
 
         Vector3d a = new Vector3d(1.0d, 0.0d, 0.0d);
         Vector3d b = new Vector3d(-1.0d, 0.0d, 0.0d);
+        VectorData aIn = new VectorData(a);
+        VectorData bIn = new VectorData(b);
 
         Vector3d at025 = requireVector(node.compute(Map.of(
-            "input_a", a, "input_b", b, "input_t", 0.25d
+            "input_a", aIn, "input_b", bIn, "input_t", 0.25d
         )).get("output_result"));
         Vector3d at05 = requireVector(node.compute(Map.of(
-            "input_a", a, "input_b", b, "input_t", 0.5d
+            "input_a", aIn, "input_b", bIn, "input_t", 0.5d
         )).get("output_result"));
         Vector3d at075 = requireVector(node.compute(Map.of(
-            "input_a", a, "input_b", b, "input_t", 0.75d
+            "input_a", aIn, "input_b", bIn, "input_t", 0.75d
         )).get("output_result"));
 
         assertEquals(1.0d, at025.length(), 1.0e-6d);
@@ -101,8 +108,8 @@ class SlerpVectorsNodeTest {
         node.setNodeState(Map.of("preserveMagnitude", false));
 
         Map<String, Object> outputs = node.compute(Map.of(
-            "input_a", new Vector3d(1.0d, 0.0d, 0.0d),
-            "input_b", new Vector3d(-0.999999999d, 0.0d, 0.0d),
+            "input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1.0d, 0.0d, 0.0d),
+            "input_b", new com.nodecraft.nodesystem.datatypes.VectorData(-0.999999999d, 0.0d, 0.0d),
             "input_t", 0.25d
         ));
 

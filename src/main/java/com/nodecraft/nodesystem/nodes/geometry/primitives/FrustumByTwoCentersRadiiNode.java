@@ -13,6 +13,7 @@ import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -100,7 +101,7 @@ public class FrustumByTwoCentersRadiiNode extends AbstractPrimitiveNode {
         outputValues.put(OUTPUT_FRUSTUM_ID, frustum);
         outputValues.put(OUTPUT_GEOMETRY_ID, frustum);
         outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(base, top));
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
+        outputValues.put(OUTPUT_AXIS_VECTOR_ID, VectorUtils.toVectorPort(axisVector));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         markSuccess();
     }

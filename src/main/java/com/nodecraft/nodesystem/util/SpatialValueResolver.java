@@ -57,23 +57,11 @@ public final class SpatialValueResolver {
     }
 
     /**
-     * Resolves a graph {@code VECTOR} or direction/displacement value.
-     * Strict: accepts only vector-like values, not {@link PointData} or {@link BlockPos}.
+     * Resolves a graph {@code VECTOR} port. Accepts {@link VectorData} only
+     * (not JOML, {@link Vec3d}, points, or block positions).
      */
     public static @Nullable Vector3d resolveVector(@Nullable Object value) {
-        if (value instanceof VectorData vectorData) {
-            return vectorData.components();
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vec3d) {
-            return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
-        }
-        if (value instanceof Vector3 vector) {
-            return new Vector3d(vector.x(), vector.y(), vector.z());
-        }
-        return null;
+        return VectorUtils.toStrictVectorPortValue(value);
     }
 
     /**

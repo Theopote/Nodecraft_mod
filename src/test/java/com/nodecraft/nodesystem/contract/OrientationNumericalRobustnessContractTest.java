@@ -126,7 +126,7 @@ class OrientationNumericalRobustnessContractTest {
 
         AlignProbe nanNormal = new AlignProbe();
         nanNormal.setInput("input_points", List.of(new PointData(0, 0, 0)));
-        nanNormal.setInput("input_normals", List.of(new VectorData(0, Double.NaN, 0)));
+        nanNormal.setInput("input_normals", List.of(new Vector3d(0, Double.NaN, 0)));
         nanNormal.processNode(null);
         assertEquals(Boolean.FALSE, nanNormal.getOutput("output_valid"));
 

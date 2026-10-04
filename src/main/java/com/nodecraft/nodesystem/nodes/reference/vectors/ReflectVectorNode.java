@@ -54,8 +54,8 @@ public class ReflectVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d v = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
-        Vector3d n = VectorUtils.toVector(inputValues.get(INPUT_NORMAL_ID));
+        Vector3d v = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d n = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_NORMAL_ID));
 
         if (!VectorUtils.isFinite(v)) {
             writeInvalid("Vector must be a finite VECTOR");

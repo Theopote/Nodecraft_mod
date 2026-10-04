@@ -55,8 +55,8 @@ public class VectorAdditionNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d a = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
-        Vector3d b = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        Vector3d a = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_A_ID));
+        Vector3d b = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_B_ID));
         if (!VectorUtils.isFinite(a)) {
             writeInvalid("Vector A must be a finite VECTOR");
             return;

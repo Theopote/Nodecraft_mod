@@ -13,6 +13,7 @@ import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -110,7 +111,7 @@ public class TorusByCenterAxisRadiiNode extends AbstractPrimitiveNode {
         TorusGeometryData torus = new TorusGeometryData(center, axis, major, minor);
         outputValues.put(OUTPUT_TORUS_ID, torus);
         outputValues.put(OUTPUT_GEOMETRY_ID, torus);
-        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, torus.axis());
+        outputValues.put(OUTPUT_AXIS_NORMALIZED_ID, VectorUtils.toVectorPort(torus.axis()));
         outputValues.put(OUTPUT_MAJOR_RADIUS_ID, major);
         outputValues.put(OUTPUT_MINOR_RADIUS_ID, minor);
         markSuccess();

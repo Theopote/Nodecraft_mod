@@ -64,7 +64,7 @@ public class RotateVectorNode extends AbstractOrientationNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d vector = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_VECTOR_ID));
         if (!VectorUtils.isFinite(vector)) {
             writeInvalid("Vector is missing or invalid");
             return;

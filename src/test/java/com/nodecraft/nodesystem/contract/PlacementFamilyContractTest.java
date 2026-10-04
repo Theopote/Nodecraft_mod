@@ -103,7 +103,7 @@ class PlacementFamilyContractTest {
         place.setInput("input_pivot", new PointData(0, 0, 0));
         place.setInput("input_plane", plane);
         place.connectInput("input_x_hint", NodeDataType.VECTOR);
-        place.setInput("input_x_hint", new Vector3d(1, 0, 0));
+        place.setInput("input_x_hint", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         place.processNode(null);
 
         assertEquals(Boolean.TRUE, place.getOutput("output_valid"));

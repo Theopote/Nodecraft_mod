@@ -177,7 +177,7 @@ class GeometrySolidsSectionTopologyV2ContractTest {
         mixed.add(new Vector3d(1, 0, 0)); // raw vector, not PointData
         mixed.add(new PointData(2, 0, 0));
         extrude.setInput("input_points", mixed);
-        extrude.setInput("input_direction", new Vector3d(0, 1, 0));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         extrude.processNode(null);
 
         assertEquals(Boolean.FALSE, extrude.getOutput("output_valid"));
@@ -197,7 +197,7 @@ class GeometrySolidsSectionTopologyV2ContractTest {
             new PointData(2, 0, 2),
             new PointData(0, 0, 2)
         ));
-        extrude.setInput("input_direction", new Vector3d(0, 1, 0));
+        extrude.setInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         extrude.processNode(null);
         assertEquals(Boolean.TRUE, extrude.getOutput("output_valid"),
             String.valueOf(extrude.getOutput("output_error")));

@@ -13,6 +13,7 @@ import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -112,7 +113,7 @@ public class CylinderByAxisRadiusNode extends AbstractPrimitiveNode {
         outputValues.put(OUTPUT_CYLINDER_ID, cylinder);
         outputValues.put(OUTPUT_GEOMETRY_ID, cylinder);
         outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(start, end));
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
+        outputValues.put(OUTPUT_AXIS_VECTOR_ID, VectorUtils.toVectorPort(axisVector));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_RADIUS_ID, resolvedRadius);
         markSuccess();

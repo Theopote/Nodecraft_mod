@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -77,8 +78,8 @@ public class DeconstructEllipsoidNode extends AbstractPrimitiveDeconstructNode {
         }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_RADII_ID, radii);
-        outputValues.put(OUTPUT_DIAMETERS_ID, diameters);
+        outputValues.put(OUTPUT_RADII_ID, VectorUtils.toVectorPort(radii));
+        outputValues.put(OUTPUT_DIAMETERS_ID, VectorUtils.toVectorPort(diameters));
         outputValues.put(OUTPUT_VOLUME_ID, volume);
         outputValues.put(OUTPUT_SURFACE_AREA_ID, surfaceArea);
         outputValues.put(OUTPUT_REGION_ID, boundsAndRegion.region());

@@ -43,6 +43,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -241,6 +242,8 @@ class GeometryPrimitivesLanguageV2ContractTest {
         assertEquals(Boolean.TRUE, deconstruct.getOutput("output_valid"));
         assertEquals(8.0d, (Double) deconstruct.getOutput("output_height"), EPS);
         assertEquals(2.5d, (Double) deconstruct.getOutput("output_radius"), EPS);
+        assertInstanceOf(com.nodecraft.nodesystem.datatypes.VectorData.class, deconstruct.getOutput("output_axis_vector"));
+        assertInstanceOf(com.nodecraft.nodesystem.datatypes.VectorData.class, construct.getOutput("output_axis_vector"));
     }
 
     @Test
@@ -322,7 +325,7 @@ class GeometryPrimitivesLanguageV2ContractTest {
         connectInput(rotate, "input_angle", NodeDataType.DOUBLE);
         rotate.setInput("input_geometry", construct.getOutput("output_geometry"));
         rotate.setInput("input_center", new PointData(0.0d, 0.0d, 0.0d));
-        rotate.setInput("input_axis", new Vector3d(0.0d, 0.0d, 1.0d));
+        rotate.setInput("input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0.0d, 0.0d, 1.0d));
         rotate.setInput("input_angle", 90.0d);
         rotate.processNode(null);
         assertEquals(Boolean.TRUE, rotate.getOutput("output_valid"));

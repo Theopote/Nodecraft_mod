@@ -189,7 +189,7 @@ class ReferencePointsLanguageV2ContractTest {
     void moveAlongDirectionRequiresStrictDoubleDistance() {
         MoveAlongProbe move = new MoveAlongProbe();
         move.setInput("input_point", new PointData(0, 0, 0));
-        move.setInput("input_vector", new Vector3d(1, 0, 0));
+        move.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         move.connectInput("input_distance", NodeDataType.DOUBLE);
         move.putRawInput("input_distance", 1);
         move.processNode(null);
@@ -200,7 +200,7 @@ class ReferencePointsLanguageV2ContractTest {
     void moveAlongDirectionHugeComponentsFailClosed() {
         BaseNode move = node("reference.points.point_along_vector");
         move.setInput("input_point", new PointData(0, 0, 0));
-        move.setInput("input_vector", new Vector3d(Double.MAX_VALUE, Double.MAX_VALUE, 0));
+        move.setInput("input_vector", new com.nodecraft.nodesystem.datatypes.VectorData(Double.MAX_VALUE, Double.MAX_VALUE, 0));
         move.setInput("input_distance", 1.0d);
         move.processNode(null);
         assertInvalid(move);

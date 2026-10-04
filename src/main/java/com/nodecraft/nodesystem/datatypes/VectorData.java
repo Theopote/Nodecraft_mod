@@ -12,7 +12,10 @@ import java.util.Objects;
 public record VectorData(Vector3d components) {
 
     public VectorData(Vector3d components) {
-        this.components = new Vector3d(components);
+        this.components = components == null ? null : new Vector3d(components);
+        if (!FrameUtils.isFinite(this.components)) {
+            throw new IllegalArgumentException("VECTOR components must be finite");
+        }
     }
 
     public VectorData(double x, double y, double z) {

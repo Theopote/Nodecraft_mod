@@ -55,7 +55,7 @@ public class NormalizeVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d vector = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_VECTOR_ID));
         if (!VectorUtils.isFinite(vector)) {
             writeInvalid("Vector must be a finite VECTOR");
             return;

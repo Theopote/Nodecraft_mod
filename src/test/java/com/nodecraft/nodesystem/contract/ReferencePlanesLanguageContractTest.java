@@ -134,7 +134,7 @@ class ReferencePlanesLanguageContractTest {
     void constructPlaneRequiresValidOriginAndNormal() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(1, 2, 3));
-        construct.setInput("input_normal", new Vector3d(0, 1, 0));
+        construct.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         construct.processNode(null);
         assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));
         assertInstanceOf(PlaneData.class, construct.getOutput("output_plane"));
@@ -148,7 +148,7 @@ class ReferencePlanesLanguageContractTest {
     void constructPlaneZeroNormalFailsClosed() {
         BaseNode construct = node("reference.planes.construct_plane");
         construct.setInput("input_origin", new PointData(0, 0, 0));
-        construct.setInput("input_normal", new Vector3d(0, 0, 0));
+        construct.setInput("input_normal", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         construct.processNode(null);
         assertEquals(Boolean.FALSE, construct.getOutput("output_valid"));
     }

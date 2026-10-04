@@ -17,6 +17,7 @@ import org.joml.Vector3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 /**
  * Generates parallel-transport frames at path vertices.
@@ -130,7 +131,7 @@ public class PathFramesNode extends AbstractPatternLinearNode {
 
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_POINTS_ID, SpatialValueResolver.toPointDataList(vertices));
-        outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(tangentCopy));
+        outputValues.put(OUTPUT_TANGENTS_ID, VectorUtils.toVectorPortList(tangentCopy));
         putIntOutputs(frames.size(), OUTPUT_COUNT_ID);
         outputValues.put(OUTPUT_LENGTH_ID, total);
         markSuccess();

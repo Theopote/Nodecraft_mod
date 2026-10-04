@@ -70,8 +70,8 @@ class RandomLanguageContractTest {
         assertEquals(NodeDataType.VECTOR, findPort(node, "output_vector").getDataType());
 
         Map<String, Object> outputs = node.compute(Map.of(
-                "input_min_corner", new Vector3d(0, 0, 0),
-                "input_max_corner", new Vector3d(1, 1, 1),
+                "input_min_corner", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0),
+                "input_max_corner", new com.nodecraft.nodesystem.datatypes.VectorData(1, 1, 1),
                 "input_seed", 0
         ));
         assertInstanceOf(com.nodecraft.nodesystem.datatypes.VectorData.class, outputs.get("output_vector"));
@@ -85,8 +85,8 @@ class RandomLanguageContractTest {
         @SuppressWarnings("unchecked")
         List<com.nodecraft.nodesystem.datatypes.VectorData> vectors =
                 (List<com.nodecraft.nodesystem.datatypes.VectorData>) node.compute(Map.of(
-                "input_min_corner", new Vector3d(0, 0, 0),
-                "input_max_corner", new Vector3d(1, 1, 1),
+                "input_min_corner", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0),
+                "input_max_corner", new com.nodecraft.nodesystem.datatypes.VectorData(1, 1, 1),
                 "input_count", 3,
                 "input_seed", 0
         )).get("output_vectors");

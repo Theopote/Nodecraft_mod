@@ -203,7 +203,7 @@ class ReferenceFramesLanguageV2ContractTest {
         FrameFromPlaneProbe probe = new FrameFromPlaneProbe();
         probe.setInput("input_plane", plane);
         probe.connectInput("input_x_hint", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_hint", new Vector3d(0, 1, 0));
+        probe.putRawInput("input_x_hint", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         probe.processNode(null);
         assertInvalid(probe);
     }
@@ -214,7 +214,7 @@ class ReferenceFramesLanguageV2ContractTest {
         FrameFromPlaneProbe probe = new FrameFromPlaneProbe();
         probe.setInput("input_plane", plane);
         probe.connectInput("input_x_hint", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_hint", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_x_hint", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.processNode(null);
 
         assertValid(probe);
@@ -244,7 +244,7 @@ class ReferenceFramesLanguageV2ContractTest {
         probe.setInput("input_sphere", sphere);
         probe.setInput("input_point", new PointData(2, 0, 0));
         probe.connectInput("input_x_hint", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_hint", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_x_hint", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.processNode(null);
         assertInvalid(probe);
     }

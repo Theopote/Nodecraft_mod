@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.PrimitiveGeometryValidator;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -96,7 +97,7 @@ public class DeconstructConeNode extends AbstractPrimitiveDeconstructNode {
         outputValues.put(OUTPUT_BASE_CENTER_ID, new PointData(baseCenter));
         outputValues.put(OUTPUT_APEX_ID, new PointData(apex));
         outputValues.put(OUTPUT_AXIS_PATH_ID, pathFromLine(baseCenter, apex));
-        outputValues.put(OUTPUT_AXIS_VECTOR_ID, axisVector);
+        outputValues.put(OUTPUT_AXIS_VECTOR_ID, VectorUtils.toVectorPort(axisVector));
         outputValues.put(OUTPUT_HEIGHT_ID, height);
         outputValues.put(OUTPUT_RADIUS_ID, radius);
         outputValues.put(OUTPUT_BASE_AREA_ID, baseArea);

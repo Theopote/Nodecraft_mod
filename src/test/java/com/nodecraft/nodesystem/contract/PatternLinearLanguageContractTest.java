@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.FrameData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -118,7 +119,7 @@ class PatternLinearLanguageContractTest {
                 new Vec3d(0, 0, 0)
         ));
         pathFrames.setInput("input_path", path);
-        pathFrames.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        pathFrames.setInput("input_up_vector", new VectorData(0, 1, 0));
         pathFrames.processNode(null);
 
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
@@ -136,7 +137,7 @@ class PatternLinearLanguageContractTest {
                 new Vec3d(0.0000005d, 0, 0)
         ));
         pathFrames.setInput("input_path", path);
-        pathFrames.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        pathFrames.setInput("input_up_vector", new VectorData(0, 1, 0));
         pathFrames.processNode(null);
 
         assertEquals(Boolean.TRUE, pathFrames.getOutput("output_valid"));
@@ -160,7 +161,7 @@ class PatternLinearLanguageContractTest {
         curve.setInput("input_pivot", new PointData(0, 0, 0));
         curve.setInput("input_path", path);
         curve.connectCount(4);
-        curve.setInput("input_up_vector", new Vector3d(0, 1, 0));
+        curve.setInput("input_up_vector", new VectorData(0, 1, 0));
         curve.processNode(null);
 
         assertEquals(Boolean.TRUE, curve.getOutput("output_valid"));

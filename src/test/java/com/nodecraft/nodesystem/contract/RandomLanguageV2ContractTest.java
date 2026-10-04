@@ -137,25 +137,27 @@ class RandomLanguageV2ContractTest {
 
     @Test
     void randomVectorRejectsNonFiniteAxis() {
-        RandomVectorNode node = new RandomVectorNode();
-        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
-        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, 1.0d));
-        node.setInput("input_seed", 0);
-        node.processNode(null);
-        assertFalse((Boolean) node.getOutput("output_valid"));
-        assertNull(node.getOutput("output_vector"));
+        RandomVectorProbe probe = new RandomVectorProbe();
+        probe.connectInput("input_min_corner", NodeDataType.VECTOR);
+        probe.putInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
+        probe.putInput("input_max_corner", new VectorData(1.0d, 1.0d, 1.0d));
+        probe.putInput("input_seed", 0);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertNull(probe.getOutput("output_vector"));
     }
 
     @Test
     void randomVectorsTransactionalFailure() {
-        RandomVectorsNode node = new RandomVectorsNode();
-        node.setInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
-        node.setInput("input_max_corner", new Vector3d(1.0d, 1.0d, 1.0d));
-        node.setInput("input_count", 3);
-        node.setInput("input_seed", 0);
-        node.processNode(null);
-        assertFalse((Boolean) node.getOutput("output_valid"));
-        assertTrue(((List<?>) node.getOutput("output_vectors")).isEmpty());
+        RandomVectorsProbe probe = new RandomVectorsProbe();
+        probe.connectInput("input_min_corner", NodeDataType.VECTOR);
+        probe.putInput("input_min_corner", new Vector3d(0.0d, 0.0d, Double.NaN));
+        probe.putInput("input_max_corner", new VectorData(1.0d, 1.0d, 1.0d));
+        probe.putInput("input_count", 3);
+        probe.putInput("input_seed", 0);
+        probe.processNode(null);
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertTrue(((List<?>) probe.getOutput("output_vectors")).isEmpty());
     }
 
     @Test
@@ -196,8 +198,8 @@ class RandomLanguageV2ContractTest {
     @Test
     void randomVectorExtremeAxisIsFinite() {
         RandomVectorNode node = new RandomVectorNode();
-        node.setInput("input_min_corner", new Vector3d(-1.0e308d, 0.0d, 0.0d));
-        node.setInput("input_max_corner", new Vector3d(1.0e308d, 1.0d, 1.0d));
+        node.setInput("input_min_corner", new com.nodecraft.nodesystem.datatypes.VectorData(-1.0e308d, 0.0d, 0.0d));
+        node.setInput("input_max_corner", new com.nodecraft.nodesystem.datatypes.VectorData(1.0e308d, 1.0d, 1.0d));
         node.setInput("input_seed", 0);
         node.processNode(null);
         assertTrue((Boolean) node.getOutput("output_valid"));
@@ -299,6 +301,16 @@ class RandomLanguageV2ContractTest {
     }
 
     private static final class RandomVectorProbe extends RandomVectorNode {
+        void putInput(String portId, Object value) {
+            inputValues.put(portId, value);
+        }
+
+        void connectInput(String portId, NodeDataType outputType) {
+            RandomLanguageV2ContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class RandomVectorsProbe extends RandomVectorsNode {
         void putInput(String portId, Object value) {
             inputValues.put(portId, value);
         }

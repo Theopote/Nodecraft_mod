@@ -70,7 +70,7 @@ class BlockStateLanguageV2ContractTest {
         probe.putInput("input_placements", List.of(
             new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_stairs", state)
         ));
-        probe.putInput("input_direction", new Vector3d(0, 0, 0));
+        probe.putInput("input_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         probe.processNode(null);
         assertFalse((Boolean) probe.getOutput("output_valid"));
         assertTrue(((List<?>) probe.getOutput("output_placements")).isEmpty());

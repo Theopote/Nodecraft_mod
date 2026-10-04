@@ -17,6 +17,7 @@ import org.joml.Vector3d;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 /**
  * Samples a path and generates local frames (origin + axes) along it.
@@ -189,12 +190,12 @@ public class CurveFrameAlongPathNode extends AbstractCurveNode {
 
         List<PointData> originPoints = SpatialValueResolver.toPointDataList(origins);
         outputValues.put(OUTPUT_ORIGINS_ID, originPoints);
-        outputValues.put(OUTPUT_X_AXES_ID, List.copyOf(xAxes));
-        outputValues.put(OUTPUT_Y_AXES_ID, List.copyOf(yAxes));
-        outputValues.put(OUTPUT_Z_AXES_ID, List.copyOf(zAxes));
+        outputValues.put(OUTPUT_X_AXES_ID, VectorUtils.toVectorPortList(xAxes));
+        outputValues.put(OUTPUT_Y_AXES_ID, VectorUtils.toVectorPortList(yAxes));
+        outputValues.put(OUTPUT_Z_AXES_ID, VectorUtils.toVectorPortList(zAxes));
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));
         outputValues.put(OUTPUT_PLANES_ID, List.copyOf(planes));
-        outputValues.put(OUTPUT_TANGENTS_ID, List.copyOf(xAxes));
+        outputValues.put(OUTPUT_TANGENTS_ID, VectorUtils.toVectorPortList(xAxes));
         outputValues.put(OUTPUT_POINTS_ID, originPoints);
         outputValues.put(OUTPUT_COUNT_ID, origins.size());
         outputValues.put(OUTPUT_LENGTH_ID, total);

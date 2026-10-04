@@ -267,7 +267,7 @@ public class GridArrayNode extends AbstractPatternGridNode {
         } else {
             outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
         }
-        outputValues.put(OUTPUT_OFFSETS_ID, List.copyOf(offsets));
+        outputValues.put(OUTPUT_OFFSETS_ID, VectorUtils.toVectorPortList(offsets));
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies, paths));
         outputValues.put(OUTPUT_OFFSET_TREE_ID, buildTree(offsets, paths));
         putIntOutputs(copies.size(), OUTPUT_COUNT_ID);

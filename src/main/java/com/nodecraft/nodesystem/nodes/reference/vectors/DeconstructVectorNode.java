@@ -58,7 +58,7 @@ public class DeconstructVectorNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d vector = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_VECTOR_ID));
         if (!VectorUtils.isFinite(vector)) {
             outputValues.put(OUTPUT_X_ID, 0.0d);
             outputValues.put(OUTPUT_Y_ID, 0.0d);

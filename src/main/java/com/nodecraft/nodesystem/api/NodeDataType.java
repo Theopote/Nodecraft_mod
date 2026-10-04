@@ -29,7 +29,7 @@ public enum NodeDataType {
     NUMERIC_RANGE("numeric_range", "Numeric Range", NumericRangeData.class),
 
     POINT("point", "Point", PointData.class),
-    VECTOR("vector", "Vector", Vector3d.class),
+    VECTOR("vector", "Vector", VectorData.class),
     PLANE("plane", "Plane", PlaneData.class),
     /** Origin + X/Y/Z axes. Distinct from {@link #PLANE} (origin + normal only). */
     FRAME("frame", "Frame", FrameData.class),
@@ -288,8 +288,8 @@ public enum NodeDataType {
             return value instanceof Boolean;
         }
 
-        // VECTOR accepts typed VectorData, legacy Vector3 wrappers, and Vector3d.
-        if (this == VECTOR && (value instanceof VectorData || value instanceof Vector3)) {
+        // VECTOR is canonical VectorData only.
+        if (this == VECTOR && value instanceof VectorData) {
             return true;
         }
 
@@ -351,7 +351,7 @@ public enum NodeDataType {
             case STRING -> value instanceof String;
             case BLOCK_POS -> value instanceof BlockPos;
             case POINT -> value instanceof PointData;
-            case VECTOR -> value instanceof VectorData || value instanceof Vector3d || value instanceof Vector3;
+            case VECTOR -> value instanceof VectorData;
             case PLANE -> value instanceof PlaneData;
             case FRAME -> value instanceof FrameData;
             case PATH -> value instanceof PathData

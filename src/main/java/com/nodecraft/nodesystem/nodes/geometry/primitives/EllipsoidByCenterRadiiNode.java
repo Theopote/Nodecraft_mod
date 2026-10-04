@@ -13,6 +13,7 @@ import org.joml.Vector3d;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -91,7 +92,7 @@ public class EllipsoidByCenterRadiiNode extends AbstractPrimitiveNode {
         outputValues.put(OUTPUT_ELLIPSOID_ID, ellipsoid);
         outputValues.put(OUTPUT_GEOMETRY_ID, ellipsoid);
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_RADII_ID, radii);
+        outputValues.put(OUTPUT_RADII_ID, VectorUtils.toVectorPort(radii));
         markSuccess();
     }
 

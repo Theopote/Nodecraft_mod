@@ -1,11 +1,12 @@
 # Node Language v2 — Reference Vectors
 
-**Status: PASSED / FROZEN** (Graph **V88**; V50/V51 remain historical v1)
+**Status: PASSED / FROZEN** (`GraphFormatVersion.CURRENT` is stamp-only; V88 remains historical residue)
 
 Language modernization for the seventeen canonical `reference.vectors.*` nodes:
 Valid+Error on all nodes, finite-result fences on vector arithmetic,
 `safeLength` / `safeNormalize` / `safeLerp`, strict exact-Double inputs,
-unit-axis Project formulation, and preserved zero-VECTOR semantics.
+unit-axis Project formulation, preserved zero-VECTOR semantics, and
+graph VECTOR ingest/emit as `VectorData` only.
 
 Related: [`node-language-v1-reference-vectors.md`](./node-language-v1-reference-vectors.md),
 [`node-language-v2-reference-points.md`](./node-language-v2-reference-points.md),
@@ -65,7 +66,7 @@ Component Min/Max remains in `math.vector.component_minmax`.
 - Degrees-only Angle output
 - Antiparallel Slerp deterministic semicircle (no shortest-path negate)
 - Divide near-zero EPS threshold unchanged
-- Vector3d/Vec3d input compatibility retained (P2)
+- Graph VECTOR is `VectorData` only (JOML / `Vec3d` ingest fail closed)
 
 ## Invalid output policy
 
@@ -77,7 +78,7 @@ Valid=false, Error non-blank on failure
 
 Never use `(0,0,0)` as failure sentinel — zero is valid data.
 
-## Migration (V87 → V88)
+## Format policy
 
-Format bump only. Error ports additive; node IDs and port IDs unchanged;
-no wire remap. Stricter runtime semantics for overflow and strict DOUBLE.
+`GraphFormatVersion.CURRENT` is stamp-only. Historical V87 → V88 notes remain residue:
+Error ports additive; node IDs and port IDs unchanged; no wire remap.

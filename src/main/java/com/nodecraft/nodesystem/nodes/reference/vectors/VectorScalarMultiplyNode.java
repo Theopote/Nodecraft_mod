@@ -56,7 +56,7 @@ public class VectorScalarMultiplyNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d vector = VectorUtils.toVector(inputValues.get(INPUT_VECTOR_ID));
+        Vector3d vector = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_VECTOR_ID));
         Double scalar = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_SCALAR_ID));
 
         if (!VectorUtils.isFinite(vector)) {

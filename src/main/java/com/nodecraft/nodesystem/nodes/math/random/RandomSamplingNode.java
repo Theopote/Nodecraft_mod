@@ -33,7 +33,7 @@ abstract class RandomSamplingNode extends BaseNode {
     }
 
     protected @Nullable Vector3d resolveVectorValue(String portId) {
-        Vector3d vector = VectorUtils.toVector(resolveValue(portId));
+        Vector3d vector = VectorUtils.toStrictVectorPortValue(resolveValue(portId));
         return VectorUtils.isFinite(vector) ? vector : null;
     }
 

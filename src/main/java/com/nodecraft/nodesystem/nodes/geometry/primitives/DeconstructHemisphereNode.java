@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.VectorUtils;
 
 @NodeInfo(
     effect = NodeEffect.PURE,
@@ -84,7 +85,7 @@ public class DeconstructHemisphereNode extends AbstractPrimitiveDeconstructNode 
         }
 
         outputValues.put(OUTPUT_CENTER_ID, new PointData(center));
-        outputValues.put(OUTPUT_AXIS_ID, axis);
+        outputValues.put(OUTPUT_AXIS_ID, VectorUtils.toVectorPort(axis));
         outputValues.put(OUTPUT_RADIUS_ID, r);
         outputValues.put(OUTPUT_CURVED_AREA_ID, curved);
         outputValues.put(OUTPUT_FLAT_AREA_ID, flat);

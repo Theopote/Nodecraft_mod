@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.graph.GraphMigrationRegistry;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedConnection;
@@ -105,8 +106,8 @@ class PointVectorLanguageContractTest {
         assertFalse(anglePort.getDisplayName().toLowerCase(java.util.Locale.ROOT).contains("rad"));
         assertFalse(hasPort(node, "output_angle_radians"));
 
-        node.setInput("input_a", new Vector3d(1, 0, 0));
-        node.setInput("input_b", new Vector3d(0, 1, 0));
+        node.setInput("input_a", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
+        node.setInput("input_b", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         node.setInput("input_t", 0.5d);
         node.processNode(null);
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
@@ -146,7 +147,7 @@ class PointVectorLanguageContractTest {
 
         BaseNode translate = (BaseNode) new TranslatePointNode();
         translate.setInput("input_point", new PointData(0, 0, 0));
-        translate.setInput("input_offset", new Vector3d(1, 2, 3));
+        translate.setInput("input_offset", new VectorData(1, 2, 3));
         translate.processNode(null);
         assertInstanceOf(PointData.class, translate.getOutput("output_point"));
 

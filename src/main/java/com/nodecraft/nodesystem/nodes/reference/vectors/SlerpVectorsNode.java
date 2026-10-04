@@ -66,8 +66,8 @@ public class SlerpVectorsNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Vector3d aRaw = VectorUtils.toVector(inputValues.get(INPUT_A_ID));
-        Vector3d bRaw = VectorUtils.toVector(inputValues.get(INPUT_B_ID));
+        Vector3d aRaw = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_A_ID));
+        Vector3d bRaw = VectorUtils.toStrictVectorPortValue(inputValues.get(INPUT_B_ID));
         Double t = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_T_ID));
 
         if (!VectorUtils.isFinite(aRaw)) {
