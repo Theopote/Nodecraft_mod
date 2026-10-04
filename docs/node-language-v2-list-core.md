@@ -34,6 +34,25 @@ All list index ports resolve via `ListIndexResolver`:
 | Driven + null | append **null** (preserves slot order) |
 
 Generic `LIST` allows null elements. Undriven skip compacts; connected null does not shift later elements.
+**Create List** is a Generic/Advanced packer (picker `order=80`); it does not produce typed `LIST<T>`.
+
+## Collection language
+
+| Type | Elements |
+|------|----------|
+| `ANY` | arbitrary nullable single value |
+| `LIST` | heterogeneous; null allowed |
+| `LIST<T>` (`T` constrained) | homogeneous; non-null; runtime-compatible with `T` |
+| `DATA_TREE<T>` | homogeneous; non-null; unique canonical paths; bounded |
+| `TREE_PATH` | immutable non-negative integer path; depth-capped |
+
+Set / Insert on constrained `T`: connected null or kind mismatch → `Valid=false`, empty list, `Error`.
+
+## Set Item fail-closed
+
+Invalid index / type / value → `output_list=[]`, `output_valid=false`, `output_error` set.
+Port id is `output_valid` (stamp-only graphs drop former `output_success` wires).
+Insert / Remove expose `output_valid` + `output_error`. Get Item keeps **Found**.
 
 ## Negative index rules
 

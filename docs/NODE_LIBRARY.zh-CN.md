@@ -394,7 +394,7 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Construct Tree Path | `math.data_tree.tree_path` | Builds a TREE_PATH from an ordered list of integer indices. | `ConstructTreePathNode` |
+| Construct Tree Path | `math.data_tree.tree_path` | Builds a TREE_PATH from an ordered list of non-negative integer indices. | `ConstructTreePathNode` |
 | Graft List | `math.data_tree.graft_list` | Converts each list item into its own data tree branch (preserves element type T). | `GraftListNode` |
 | Flatten Tree | `math.data_tree.flatten` | Flattens all data tree branches into a single list (preserves element type T). | `FlattenTreeNode` |
 | Partition List To Tree | `math.data_tree.partition_list` | Splits a list into fixed-size data tree branches (keeps incomplete last branch; preserves T). | `PartitionListToTreeNode` |
@@ -435,7 +435,6 @@
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
-| Create List | `math.list.create_list` | Packs multiple ANY items into a generic LIST. | `CreateListNode` |
 | Deduplicate List | `math.list.deduplicate` | Removes duplicate values, keeping first occurrence order (preserves element type T). | `DeduplicateListNode` |
 | List Statistics | `math.list.statistics` | Computes min, max, sum, average, and median for a DOUBLE_LIST. | `ListStatisticsNode` |
 | Map Numbers | `math.list.map_numbers` | Applies a scalar operation to each value in a DOUBLE_LIST. | `MapListNode` |
@@ -447,6 +446,7 @@
 | Max Number | `math.list.max_number` | Maximum of a DOUBLE_LIST. | `MaxNumberNode` |
 | Average | `math.list.average` | Average of a DOUBLE_LIST. | `AverageNumbersNode` |
 | Join Strings | `math.list.join_strings` | Joins STRING_LIST items with a separator into one STRING. | `JoinStringsNode` |
+| Create List | `math.list.create_list` | Generic: packs multiple ANY items into a heterogeneous LIST (not a typed LIST<T> constructor). | `CreateListNode` |
 | Dispatch List | `math.list.dispatch_list` | Splits a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `DispatchListNode` |
 | Filter List | `math.list.filter_list` | Filters a list with a BOOLEAN_LIST mask of equal length (preserves element type T). | `FilterListNode` |
 | Flatten List | `math.list.flatten_list` | Recursively flattens nested List elements only; bounded by depth and element limits. | `FlattenListNode` |
@@ -456,7 +456,7 @@
 | List Length | `math.list.list_length` | Returns the number of items in a list. | `ListLengthNode` |
 | Remove Item | `math.list.remove_item` | Removes an item by index or value (preserves element type T). | `RemoveItemNode` |
 | Reverse List | `math.list.reverse_list` | Reverses the order of elements in a list (preserves element type T). | `ReverseListNode` |
-| Set Item | `math.list.set_item` | Sets an item at index (negatives from end). Invalid index → Success=false. | `SetItemNode` |
+| Set Item | `math.list.set_item` | Sets an item at index (negatives from end). Invalid index → Valid=false, empty list. | `SetItemNode` |
 | Shuffle List | `math.list.shuffle_list` | Deterministically reorders a list using Seed (preserves element type T). | `ShuffleListNode` |
 | Sub List | `math.list.sub_list` | Inclusive start / exclusive end slice. Negatives from end. Out-of-range → Valid=false. | `SubListNode` |
 

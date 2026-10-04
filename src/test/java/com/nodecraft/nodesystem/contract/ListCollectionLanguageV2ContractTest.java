@@ -4,11 +4,16 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.math.data_tree.DataTreeNodeUtils;
+import com.nodecraft.nodesystem.nodes.math.list_sequence.DeduplicateListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.FilterListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.GroupListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.ReverseListNode;
 import com.nodecraft.nodesystem.nodes.math.list_sequence.ShuffleListNode;
+import com.nodecraft.nodesystem.util.BlockPlacementData;
+import net.minecraft.util.math.BlockPos;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -102,6 +107,39 @@ class ListCollectionLanguageV2ContractTest {
         assertEquals(3, outputs.get("output_group_count"));
         DataTreeData tree = assertInstanceOf(DataTreeData.class, outputs.get("output_tree"));
         assertEquals(3, tree.getBranches().size());
+    }
+
+    @Test
+    void groupListConstructionBudgetHelperRejectsOversize() {
+        DataTreeNodeUtils.ParseResult<Void> over =
+                DataTreeNodeUtils.preflightTreeConstruction(10, 10, 1, 5, 5, 8);
+        assertFalse(over.valid());
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, over.error());
+    }
+
+    @Test
+    void deduplicateCollapsesEqualPointData() {
+        PointData a = new PointData(1, 2, 3);
+        PointData b = new PointData(1, 2, 3);
+        DeduplicateListNode node = new DeduplicateListNode();
+        Map<String, Object> outputs = node.compute(Map.of("input_list", List.of(a, b)));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        @SuppressWarnings("unchecked")
+        List<Object> unique = (List<Object>) outputs.get("output_unique");
+        assertEquals(1, unique.size());
+        assertEquals(a, unique.getFirst());
+        assertEquals(1, outputs.get("output_removed_count"));
+    }
+
+    @Test
+    void deduplicateCollapsesEqualBlockPlacementData() {
+        BlockPlacementData first = new BlockPlacementData(new BlockPos(1, 2, 3), "minecraft:stone");
+        BlockPlacementData second = new BlockPlacementData(new BlockPos(1, 2, 3), "minecraft:stone");
+        DeduplicateListNode node = new DeduplicateListNode();
+        Map<String, Object> outputs = node.compute(Map.of("input_list", List.of(first, second)));
+        assertTrue((Boolean) outputs.get("output_valid"));
+        assertEquals(1, outputs.get("output_unique_count"));
+        assertEquals(1, outputs.get("output_removed_count"));
     }
 
     @Test

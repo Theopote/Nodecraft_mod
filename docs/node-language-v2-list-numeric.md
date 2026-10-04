@@ -18,6 +18,7 @@ Average, Min Number, Max Number.
 ## Finite-result contract
 
 When `output_valid=true`, every DOUBLE output must be **finite** (not NaN, not Infinity).
+Finite-input overflow (`1e308+1e308`, `1e200*1e200`) is `Valid=false` and `NaN` (no graph Infinity).
 
 | State | Valid | Primary output |
 |-------|-------|----------------|

@@ -29,9 +29,9 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "math.list.create_list",
     displayName = "Create List",
-    description = "Packs multiple ANY items into a generic LIST.",
+    description = "Generic: packs multiple ANY items into a heterogeneous LIST (not a typed LIST<T> constructor).",
     category = "math.list",
-    order = 0
+    order = 80
 )
 public class CreateListNode extends BaseCustomUINode {
 

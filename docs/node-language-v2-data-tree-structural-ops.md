@@ -40,9 +40,10 @@ Runtime kind merge mirrors connect-time same-`T` rejection:
 |-----------|--------|
 | Same constrained kind | ok |
 | UNCONSTRAINED + constrained | adopt constrained; validate items |
-| POINT + VECTOR (conflict) | `Valid=false`, `element_kind_conflict` |
+| POINT + VECTOR (conflict) | `Valid=false`, `element_kind_conflict` (never degrade to ANY) |
 
-On failure: empty tree, counts=0, `Valid=false`.
+On failure: empty tree, counts=0, `Valid=false`. Item-kind checks walk branches in place (no
+`flatten()` materialization).
 
 Entwine preflights `1 + branch.path().size()` against `MAX_TREE_PATH_DEPTH` before appending.
 

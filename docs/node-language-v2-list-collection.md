@@ -28,6 +28,9 @@ Preflight validation runs **before** grouping / `DataTreeData` construction:
 | `inputList.size() != keysList.size()` | `length_mismatch` |
 | Any `inputList.get(i) == null` | `null_item` |
 | Any key `== null` and `skipInvalidKeys=false` | `null_key` |
+| `N` items would exceed `MAX_TREE_BRANCHES` / `MAX_TREE_ITEMS` | `output_budget_exceeded` |
+
+Preflight uses `DataTreeNodeUtils.preflightTreeConstruction` **before** grouping maps / branches.
 
 When `skipInvalidKeys=true` and key is null: **skip that item** (length check runs first).
 

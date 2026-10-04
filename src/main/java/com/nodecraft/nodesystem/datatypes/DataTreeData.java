@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import com.nodecraft.nodesystem.api.ListElementKind;
+import com.nodecraft.nodesystem.util.GenerationLimits;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,6 +37,7 @@ public class DataTreeData {
 
     private final ListElementKind elementKind;
     private final List<Branch> branches;
+    private final int itemCount;
 
     public record TreePreview(String summary, boolean truncated) {
     }
@@ -51,17 +53,43 @@ public class DataTreeData {
         Map<List<Integer>, List<Object>> merged = new LinkedHashMap<>();
         for (Branch branch : branches) {
             Objects.requireNonNull(branch, "Branch cannot be null");
-            List<Integer> path = List.copyOf(branch.path());
-            List<Object> items = merged.computeIfAbsent(path, ignored -> new ArrayList<>());
-            items.addAll(branch.items());
+            List<Integer> path = branch.path();
+            Objects.requireNonNull(path, "Branch path cannot be null");
+            if (path.size() > GenerationLimits.MAX_TREE_PATH_DEPTH) {
+                throw new IllegalArgumentException("Data tree path depth exceeds MAX_TREE_PATH_DEPTH");
+            }
+            for (Integer index : path) {
+                Objects.requireNonNull(index, "Tree path index cannot be null");
+                if (index < 0) {
+                    throw new IllegalArgumentException("Tree path components must be non-negative");
+                }
+            }
+            List<Object> items = merged.computeIfAbsent(List.copyOf(path), ignored -> new ArrayList<>());
+            for (Object item : branch.items()) {
+                if (item == null) {
+                    throw new IllegalArgumentException("Data tree items cannot be null");
+                }
+                items.add(item);
+            }
+        }
+
+        if (merged.size() > GenerationLimits.MAX_TREE_BRANCHES) {
+            throw new IllegalArgumentException("Data tree branch count exceeds MAX_TREE_BRANCHES");
         }
 
         List<Branch> canonical = new ArrayList<>(merged.size());
+        long totalItems = 0L;
         for (Map.Entry<List<Integer>, List<Object>> entry : merged.entrySet()) {
-            canonical.add(new Branch(entry.getKey(), entry.getValue()));
+            List<Object> items = entry.getValue();
+            totalItems += items.size();
+            if (totalItems > GenerationLimits.MAX_TREE_ITEMS) {
+                throw new IllegalArgumentException("Data tree item count exceeds MAX_TREE_ITEMS");
+            }
+            canonical.add(new Branch(entry.getKey(), items));
         }
         canonical.sort(Comparator.comparing(Branch::path, PATH_ORDER));
         this.branches = List.copyOf(canonical);
+        this.itemCount = (int) totalItems;
     }
 
     public static DataTreeData empty() {
@@ -129,11 +157,7 @@ public class DataTreeData {
     }
 
     public int getItemCount() {
-        int count = 0;
-        for (Branch branch : branches) {
-            count += branch.items().size();
-        }
-        return count;
+        return itemCount;
     }
 
     public int getMaxDepth() {
@@ -264,6 +288,20 @@ public class DataTreeData {
         public Branch {
             Objects.requireNonNull(path, "Branch path cannot be null");
             Objects.requireNonNull(items, "Branch items cannot be null");
+            if (path.size() > GenerationLimits.MAX_TREE_PATH_DEPTH) {
+                throw new IllegalArgumentException("Data tree path depth exceeds MAX_TREE_PATH_DEPTH");
+            }
+            for (Integer index : path) {
+                Objects.requireNonNull(index, "Tree path index cannot be null");
+                if (index < 0) {
+                    throw new IllegalArgumentException("Tree path components must be non-negative");
+                }
+            }
+            for (Object item : items) {
+                if (item == null) {
+                    throw new IllegalArgumentException("Data tree items cannot be null");
+                }
+            }
             path = List.copyOf(path);
             items = List.copyOf(items);
         }

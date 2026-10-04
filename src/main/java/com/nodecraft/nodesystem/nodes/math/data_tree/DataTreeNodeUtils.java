@@ -43,7 +43,7 @@ public final class DataTreeNodeUtils {
     private DataTreeNodeUtils() {
     }
 
-    record ParseResult<T>(@Nullable T value, boolean valid, @Nullable String error) {
+    public record ParseResult<T>(@Nullable T value, boolean valid, @Nullable String error) {
         static <T> ParseResult<T> ok(T value) {
             return new ParseResult<>(value, true, null);
         }
@@ -99,7 +99,23 @@ public final class DataTreeNodeUtils {
     }
 
     static ParseResult<Void> validateTreeItemsMatchKind(DataTreeData tree, ListElementKind kind) {
-        return validateItemsMatchKind(tree.flatten(), kind);
+        if (tree == null) {
+            return ParseResult.ok(null);
+        }
+        if (kind == null
+                || kind == ListElementKind.UNCONSTRAINED
+                || kind == ListElementKind.NONE
+                || kind == ListElementKind.BLOCK_PLACEMENT) {
+            return ParseResult.ok(null);
+        }
+        for (DataTreeData.Branch branch : tree.getBranches()) {
+            for (Object item : branch.items()) {
+                if (!ListElementKindValidator.matches(item, kind)) {
+                    return ParseResult.invalid(ERROR_ELEMENT_KIND_MISMATCH);
+                }
+            }
+        }
+        return ParseResult.ok(null);
     }
 
     static ParseResult<Void> preflightFlattenItemCount(DataTreeData tree) {
@@ -108,6 +124,34 @@ public final class DataTreeNodeUtils {
 
     static ParseResult<Void> preflightFlattenItemCount(DataTreeData tree, int elementLimit) {
         if (tree.getItemCount() > elementLimit) {
+            return ParseResult.invalid(ERROR_OUTPUT_BUDGET_EXCEEDED);
+        }
+        return ParseResult.ok(null);
+    }
+
+    /**
+     * List→Tree construction budget before allocating {@link DataTreeData.Branch} objects.
+     */
+    public static ParseResult<Void> preflightTreeConstruction(long branchCount, long itemCount, int maxPathDepth) {
+        return preflightTreeConstruction(
+                branchCount,
+                itemCount,
+                maxPathDepth,
+                GenerationLimits.MAX_TREE_BRANCHES,
+                GenerationLimits.MAX_TREE_ITEMS,
+                GenerationLimits.MAX_TREE_PATH_DEPTH
+        );
+    }
+
+    public static ParseResult<Void> preflightTreeConstruction(
+            long branchCount,
+            long itemCount,
+            int maxPathDepth,
+            long maxBranches,
+            long maxItems,
+            int maxDepth
+    ) {
+        if (branchCount > maxBranches || itemCount > maxItems || maxPathDepth > maxDepth) {
             return ParseResult.invalid(ERROR_OUTPUT_BUDGET_EXCEEDED);
         }
         return ParseResult.ok(null);
@@ -285,7 +329,7 @@ public final class DataTreeNodeUtils {
         return resolved >= 0 && resolved < size ? resolved : -1;
     }
 
-    static ListElementKind resolveElementKindFromListPort(BaseNode node, String listPortId) {
+    public static ListElementKind resolveElementKindFromListPort(BaseNode node, String listPortId) {
         for (IPort port : node.getInputPorts()) {
             if (port != null && listPortId.equals(port.getId())) {
                 NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);

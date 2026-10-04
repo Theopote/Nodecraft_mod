@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.TreePathData;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.nodes.math.data_tree.ConstructTreePathNode;
 import com.nodecraft.nodesystem.nodes.math.data_tree.DataTreeNodeUtils;
 import com.nodecraft.nodesystem.nodes.math.data_tree.GraftListNode;
 import com.nodecraft.nodesystem.nodes.math.data_tree.PartitionListToTreeNode;
@@ -98,6 +99,30 @@ class DataTreeConstructionLanguageV2ContractTest {
         assertEquals(List.of("A", "B"), tree.getBranch(List.of(0)).items());
         assertEquals(List.of("C", "D"), tree.getBranch(List.of(1)).items());
         assertEquals(List.of("E"), tree.getBranch(List.of(2)).items());
+    }
+
+    @Test
+    void constructionBudgetHelperRejectsOversizeBeforeAllocation() {
+        DataTreeNodeUtils.ParseResult<Void> ok =
+                DataTreeNodeUtils.preflightTreeConstruction(3, 3, 1, 5, 5, 8);
+        assertTrue(ok.valid());
+        DataTreeNodeUtils.ParseResult<Void> overBranches =
+                DataTreeNodeUtils.preflightTreeConstruction(10, 3, 1, 5, 100, 8);
+        assertFalse(overBranches.valid());
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, overBranches.error());
+        DataTreeNodeUtils.ParseResult<Void> overDepth =
+                DataTreeNodeUtils.preflightTreeConstruction(1, 1, 9, 5, 5, 8);
+        assertFalse(overDepth.valid());
+    }
+
+    @Test
+    void constructTreePathRejectsNegativeComponent() {
+        ConstructTreePathNode node = new ConstructTreePathNode();
+        node.setInput("input_indices", List.of(0, -1));
+        node.processNode(null);
+        assertFalse((Boolean) node.getOutput("output_valid"));
+        assertEquals(DataTreeNodeUtils.ERROR_INVALID_PATH, node.getOutput("output_error"));
+        assertEquals(TreePathData.empty(), node.getOutput("output_path"));
     }
 
     @Test

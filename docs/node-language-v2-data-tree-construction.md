@@ -21,7 +21,7 @@ Related: [`node-language-v1-data-tree.md`](./node-language-v1-data-tree.md),
 - `DataTree<T>` binding via shared type variable `T` + `DataTreeData.elementKind`
 - Construct Tree Path — reference only in this milestone
 
-## List → Tree construction (Graft / Partition)
+## List → Tree construction (Graft / Partition / Group)
 
 Preflight validation runs **before** `DataTreeData.Branch` construction:
 
@@ -30,9 +30,14 @@ Preflight validation runs **before** `DataTreeData.Branch` construction:
 | `input_list` not `List<?>` or null | `invalid_input` |
 | Any list element `== null` | `null_item` |
 | Constrained `T` and runtime kind mismatch | `element_kind_mismatch` |
+| `branchCount` / `itemCount` / path depth over `MAX_TREE_*` | `output_budget_exceeded` |
 
-Element-kind validation applies at **construction boundaries only** (Graft / Partition), not on
-all 14 data-tree nodes. Skipped when resolved kind is `UNCONSTRAINED`.
+Graft: `N` items → `N` branches, depth 1. Partition: `branchCount = ceil(items / size)` (long). Group: worst-case `N` unique keys.
+
+Shared helper: `DataTreeNodeUtils.preflightTreeConstruction`.
+
+Element-kind validation applies at **construction boundaries** (Graft / Partition / Group).
+Skipped when resolved kind is `UNCONSTRAINED`.
 
 On failure (transactional):
 
@@ -45,8 +50,16 @@ On failure (transactional):
 
 On success: `output_valid=true`, `output_error=""`. Empty input list is valid (zero branches).
 
-Null items are **forbidden** at the List→Tree boundary (aligned with Group List V127) to avoid
-`List.of(null)` / `List.copyOf` NPE inside branch construction.
+Null items are **forbidden** at the List→Tree boundary (aligned with Group List) to avoid
+`List.copyOf` NPE inside branch construction.
+
+`DataTreeData` / `TreePathData` constructors also reject oversize, null items, and **negative path
+components**. Graph Construct Tree Path fail-closes instead of throwing.
+
+## TREE_PATH
+
+Components are non-negative integers. Depth `<= MAX_TREE_PATH_DEPTH` (256). Negative indexes are
+list-from-end language only, not branch addresses.
 
 ## Partition List To Tree — strict Size
 

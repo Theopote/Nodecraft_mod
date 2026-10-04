@@ -111,4 +111,12 @@ class DataTreeNodeTest {
         assertEquals(DataTreeNodeUtils.ERROR_NULL_ITEM, outputs.get("output_error"));
         assertEquals(0, outputs.get("output_branch_count"));
     }
+
+    @Test
+    void constructionBudgetHelperRejectsOversize() {
+        DataTreeNodeUtils.ParseResult<Void> over =
+                DataTreeNodeUtils.preflightTreeConstruction(10, 10, 1, 4, 4, 8);
+        assertFalse(over.valid());
+        assertEquals(DataTreeNodeUtils.ERROR_OUTPUT_BUDGET_EXCEEDED, over.error());
+    }
 }

@@ -196,12 +196,8 @@ class ListLanguageContractTest {
         insert.setInput("input_list", List.of(new PointData(1, 2, 3)));
         insert.setInput("input_index", 0);
         insert.processNode(null);
-        // Rejected STRING must not have been stored; insert with null value still Valid at index 0
-        assertEquals(Boolean.TRUE, insert.getOutput("output_valid"));
-        @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) insert.getOutput("output_list");
-        assertEquals(2, result.size());
-        assertNull(result.get(0), "rejected STRING must not appear as inserted value");
+        assertEquals(Boolean.FALSE, insert.getOutput("output_valid"));
+        assertEquals(List.of(), insert.getOutput("output_list"));
         PointData point = new PointData(9, 9, 9);
         insert.setInput("input_value", point);
         insert.setInput("input_list", List.of(new PointData(1, 2, 3)));

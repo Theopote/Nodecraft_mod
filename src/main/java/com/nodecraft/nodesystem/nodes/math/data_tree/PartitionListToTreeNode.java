@@ -84,15 +84,22 @@ public class PartitionListToTreeNode extends BaseNode {
             return;
         }
 
-        List<DataTreeData.Branch> branches = new ArrayList<>();
+        long itemCount = list.size();
+        long branchCount = itemCount == 0L ? 0L : (itemCount + size - 1L) / size;
+        DataTreeNodeUtils.ParseResult<Void> budget =
+                DataTreeNodeUtils.preflightTreeConstruction(branchCount, itemCount, 1);
+        if (!budget.valid()) {
+            writeInvalid(kind, budget.error());
+            return;
+        }
+
+        List<DataTreeData.Branch> branches = new ArrayList<>((int) branchCount);
         int branchIndex = 0;
-        if (list != null) {
-            for (int i = 0; i < list.size(); i += size) {
-                int end = Math.min(i + size, list.size());
-                List<Object> branchItems = new ArrayList<>(list.subList(i, end));
-                branches.add(new DataTreeData.Branch(List.of(branchIndex), branchItems));
-                branchIndex++;
-            }
+        for (int i = 0; i < list.size(); i += size) {
+            int end = Math.min(i + size, list.size());
+            List<Object> branchItems = new ArrayList<>(list.subList(i, end));
+            branches.add(new DataTreeData.Branch(List.of(branchIndex), branchItems));
+            branchIndex++;
         }
 
         DataTreeData tree = new DataTreeData(branches, kind);

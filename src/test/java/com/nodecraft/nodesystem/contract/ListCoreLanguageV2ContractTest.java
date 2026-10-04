@@ -61,7 +61,21 @@ class ListCoreLanguageV2ContractTest {
         probe.putInput("input_value", "X");
         probe.connectInput("input_index", NodeDataType.INTEGER);
         probe.processNode(null);
-        assertFalse((Boolean) probe.getOutput("output_success"));
+        assertFalse((Boolean) probe.getOutput("output_valid"));
+        assertEquals(List.of(), probe.getOutput("output_list"));
+    }
+
+    @Test
+    void setItemOutOfRangeFailsClosedEmpty() {
+        SetItemNode node = new SetItemNode();
+        Map<String, Object> outputs = node.compute(Map.of(
+                "input_list", List.of("A", "B"),
+                "input_index", 99,
+                "input_value", "X"
+        ));
+        assertFalse((Boolean) outputs.get("output_valid"));
+        assertEquals(SetItemNode.ERROR_INVALID_INDEX, outputs.get("output_error"));
+        assertEquals(List.of(), outputs.get("output_list"));
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.nodes.math.data_tree.DataTreeNodeUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -102,6 +103,13 @@ public class GroupListNode extends BaseNode {
                     return;
                 }
             }
+        }
+
+        long n = inputList.size();
+        DataTreeNodeUtils.ParseResult<Void> budget = DataTreeNodeUtils.preflightTreeConstruction(n, n, 1);
+        if (!budget.valid()) {
+            writeFailure(elementKind, budget.error());
+            return;
         }
 
         Map<Object, List<Object>> groups = new HashMap<>();

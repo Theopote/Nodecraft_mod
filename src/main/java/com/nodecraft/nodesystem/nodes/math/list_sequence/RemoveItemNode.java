@@ -37,6 +37,10 @@ public class RemoveItemNode extends BaseNode {
     private static final String OUTPUT_REMOVED_ID = "output_removed";
     private static final String OUTPUT_COUNT_ID = "output_remove_count";
     private static final String OUTPUT_VALID_ID = "output_valid";
+    private static final String OUTPUT_ERROR_ID = "output_error";
+
+    public static final String ERROR_INVALID_INDEX = "invalid_index";
+    public static final String ERROR_INVALID_INPUT = "invalid_input";
 
     public RemoveItemNode() {
         super(UUID.randomUUID(), "math.list.remove_item");
@@ -55,6 +59,8 @@ public class RemoveItemNode extends BaseNode {
                 NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "Whether the remove operation was in-range / matched",
                 NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false",
+                NodeDataType.STRING, this));
     }
 
     @Override
@@ -64,7 +70,7 @@ public class RemoveItemNode extends BaseNode {
         boolean hasValueInput = inputValues.containsKey(INPUT_VALUE_ID);
 
         if (!(inputObj instanceof List<?> inputList)) {
-            writeEmpty(false);
+            writeEmpty(false, ERROR_INVALID_INPUT);
             return;
         }
 
@@ -79,13 +85,13 @@ public class RemoveItemNode extends BaseNode {
                     isDriven(INPUT_INDEX_ID)
             );
             if (!indexResult.valid()) {
-                writeResult(result, null, 0, false);
+                writeEmpty(false, ERROR_INVALID_INDEX);
                 return;
             }
             int size = result.size();
             int index = ListIndexResolver.normalizeNegativeFromEnd(indexResult.index(), size);
             if (index < 0 || index >= size) {
-                writeResult(result, null, 0, false);
+                writeEmpty(false, ERROR_INVALID_INDEX);
                 return;
             }
             removedItem = result.remove(index);
@@ -116,7 +122,7 @@ public class RemoveItemNode extends BaseNode {
             }
         }
 
-        writeResult(result, removedItem, removeCount, valid);
+        writeResult(result, removedItem, removeCount, valid, valid ? "" : ERROR_INVALID_INPUT);
     }
 
     private boolean isDriven(String portId) {
@@ -130,15 +136,16 @@ public class RemoveItemNode extends BaseNode {
         return inputValues.get(portId);
     }
 
-    private void writeEmpty(boolean valid) {
-        writeResult(List.of(), null, 0, valid);
+    private void writeEmpty(boolean valid, String error) {
+        writeResult(List.of(), null, 0, valid, error);
     }
 
-    private void writeResult(List<Object> list, Object removed, int count, boolean valid) {
+    private void writeResult(List<Object> list, Object removed, int count, boolean valid, String error) {
         outputValues.put(OUTPUT_LIST_ID, list);
         outputValues.put(OUTPUT_REMOVED_ID, removed);
         outputValues.put(OUTPUT_COUNT_ID, count);
         outputValues.put(OUTPUT_VALID_ID, valid);
+        outputValues.put(OUTPUT_ERROR_ID, valid || error == null ? "" : error);
     }
 
     public boolean isUseIndex() {

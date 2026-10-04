@@ -54,10 +54,10 @@ class DataTreeInspectionLanguageV2ContractTest {
     }
 
     @Test
-    void treePathsNegativeAndLargeIndicesFollowPathOrder() {
+    void treePathsLexicographicOrderUsesNonNegativeIndices() {
         DataTreeData tree = new DataTreeData(List.of(
                 new DataTreeData.Branch(List.of(10), List.of("c")),
-                new DataTreeData.Branch(List.of(-1), List.of("a")),
+                new DataTreeData.Branch(List.of(1), List.of("a")),
                 new DataTreeData.Branch(List.of(0), List.of("b")),
                 new DataTreeData.Branch(List.of(0, 1), List.of("d"))
         ), ListElementKind.STRING);
@@ -67,10 +67,18 @@ class DataTreeInspectionLanguageV2ContractTest {
         assertTrue((Boolean) outputs.get("output_valid"));
         @SuppressWarnings("unchecked")
         List<TreePathData> paths = (List<TreePathData>) outputs.get("output_paths");
-        assertEquals(List.of(-1), paths.get(0).indices());
-        assertEquals(List.of(0), paths.get(1).indices());
-        assertEquals(List.of(0, 1), paths.get(2).indices());
+        assertEquals(List.of(0), paths.get(0).indices());
+        assertEquals(List.of(0, 1), paths.get(1).indices());
+        assertEquals(List.of(1), paths.get(2).indices());
         assertEquals(List.of(10), paths.get(3).indices());
+    }
+
+    @Test
+    void dataTreeRejectsNegativePathComponent() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                new DataTreeData.Branch(List.of(-1), List.of("a")));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                new DataTreeData(List.of(new DataTreeData.Branch(List.of(-1), List.of("a")))));
     }
 
     @Test

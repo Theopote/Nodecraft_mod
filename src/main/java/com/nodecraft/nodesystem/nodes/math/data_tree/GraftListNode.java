@@ -71,14 +71,16 @@ public class GraftListNode extends BaseNode {
             return;
         }
 
-        List<DataTreeData.Branch> branches = null;
-        if (list != null) {
-            branches = new ArrayList<>(list.size());
+        long n = list.size();
+        DataTreeNodeUtils.ParseResult<Void> budget = DataTreeNodeUtils.preflightTreeConstruction(n, n, 1);
+        if (!budget.valid()) {
+            writeInvalid(kind, budget.error());
+            return;
         }
-        if (list != null) {
-            for (int i = 0; i < list.size(); i++) {
-                branches.add(new DataTreeData.Branch(List.of(i), new ArrayList<>(List.of(list.get(i)))));
-            }
+
+        List<DataTreeData.Branch> branches = new ArrayList<>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+            branches.add(new DataTreeData.Branch(List.of(i), List.of(list.get(i))));
         }
         DataTreeData tree = new DataTreeData(branches, kind);
         outputValues.put(OUTPUT_TREE_ID, tree);
