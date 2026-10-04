@@ -75,6 +75,21 @@ public final class GenerationLimits {
     public static final int MAX_FORMAT_VISITED_ITEMS = 65_536;
 
     /**
+     * Hard upper cap for debug-family display strings (Panel / Value Monitor / Print To Chat).
+     */
+    public static final int MAX_DEBUG_TEXT_CHARS = 16_384;
+
+    /**
+     * Default max container items shown by {@code DebugValueFormatter}.
+     */
+    public static final int MAX_DEBUG_ITEMS = 64;
+
+    /**
+     * Default max nesting depth for {@code DebugValueFormatter}.
+     */
+    public static final int MAX_DEBUG_DEPTH = 8;
+
+    /**
      * Hard cap for GeometryData / CompositeGeometry instance arrays.
      * Much lower than {@link #MAX_LIST_ELEMENTS} because each instance is far heavier than a point or scalar.
      */

@@ -2,33 +2,36 @@ package com.nodecraft.nodesystem.nodes.output.debug;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.gui.layout.ImGuiChildScope;
+import com.nodecraft.nodesystem.util.DebugValueFormatter;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImGui;
-import imgui.flag.ImGuiWindowFlags;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiStyleVar;
+import imgui.flag.ImGuiWindowFlags;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.List;
-import java.util.Locale;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
- * Panel 节点: 显示连接到其输入端口的原始数据（文本形式）。
- * 提供格式化、自动刷新、换行控制选项和数据预览区域。
+ * Panel: live text inspector for the connected input value.
  */
 @NodeInfo(
-    effect = NodeEffect.UI_EFFECT,
+    effect = NodeEffect.PURE,
     id = "output.debug.data_inspector",
     displayName = "Panel",
-    description = "显示连接到其输入端口的原始数据（文本形式）",
+    description = "Displays the connected input value as bounded text for inspection.",
     category = "output.debug",
     order = 3
 )
@@ -36,16 +39,13 @@ public class PanelNode extends BaseCustomUINode {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PanelNode.class);
 
-    @NodeProperty(displayName = "格式化", category = "显示", order = 1)
+    @NodeProperty(displayName = "Use Formatting", category = "Display", order = 1)
     private boolean useFormatting = true;
 
-    @NodeProperty(displayName = "自动刷新", category = "显示", order = 2)
-    private boolean autoRefresh = true;
-
-    @NodeProperty(displayName = "自动换行", category = "显示", order = 3)
+    @NodeProperty(displayName = "Wrap Text", category = "Display", order = 2)
     private boolean wrapText = true;
 
-    @NodeProperty(displayName = "最大长度", category = "显示", order = 4)
+    @NodeProperty(displayName = "Max Length", category = "Display", order = 3)
     private int maxDisplayLength = 2000;
 
     private volatile String panelContent = "";
@@ -54,45 +54,49 @@ public class PanelNode extends BaseCustomUINode {
     private static final String INPUT_DATA_ID = "input_data";
     private static final String INPUT_FORMAT_ID = "input_format";
     private static final String INPUT_MAX_LENGTH_ID = "input_max_length";
-    private static final String INPUT_REFRESH_ID = "input_refresh";
     private static final String OUTPUT_TEXT_ID = "output_text";
     private static final String OUTPUT_TEXT_LENGTH_ID = "output_text_length";
     private static final String OUTPUT_DATA_TYPE_ID = "output_data_type";
 
     public PanelNode() {
         super(UUID.randomUUID(), "output.debug.data_inspector");
-        addInputPort(new BasePort(INPUT_DATA_ID, "Data", "要显示的数据（任意类型）", NodeDataType.ANY, this));
-        addInputPort(new BasePort(INPUT_FORMAT_ID, "Use Formatting", "是否使用格式化显示", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_MAX_LENGTH_ID, "Max Length", "最大显示字符数", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_REFRESH_ID, "Refresh", "刷新触发信号", NodeDataType.ANY, this));
-        addOutputPort(new BasePort(OUTPUT_TEXT_ID, "Text", "显示的文本内容", NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_TEXT_LENGTH_ID, "Text Length", "显示文本的长度", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_DATA_TYPE_ID, "Data Type", "输入数据的类型", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_DATA_ID, "Data", "Value to display (any type)", NodeDataType.ANY, this));
+        addInputPort(new BasePort(INPUT_FORMAT_ID, "Use Formatting", "Pretty structured formatting when true", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_MAX_LENGTH_ID, "Max Length", "Maximum display characters", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_TEXT_ID, "Text", "Formatted display text", NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_TEXT_LENGTH_ID, "Text Length", "Length of display text", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_DATA_TYPE_ID, "Data Type", "Type label of the input value", NodeDataType.STRING, this));
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
+        Boolean fmtResolved = OptionalPortDrive.resolveOptionalBoolean(this, INPUT_FORMAT_ID, this.useFormatting);
+        Integer maxLenResolved = OptionalPortDrive.resolveOptionalInteger(this, INPUT_MAX_LENGTH_ID, this.maxDisplayLength);
+
+        if (fmtResolved == null || maxLenResolved == null) {
+            panelContent = "";
+            panelDataType = "invalid";
+            outputValues.put(OUTPUT_TEXT_ID, panelContent);
+            outputValues.put(OUTPUT_TEXT_LENGTH_ID, 0);
+            outputValues.put(OUTPUT_DATA_TYPE_ID, panelDataType);
+            return;
+        }
+
+        boolean pretty = fmtResolved;
+        int maxLen = Math.clamp(maxLenResolved, 10, GenerationLimits.MAX_DEBUG_TEXT_CHARS);
         Object dataObj = inputValues.get(INPUT_DATA_ID);
-        Object formatObj = inputValues.get(INPUT_FORMAT_ID);
-        Object maxLengthObj = inputValues.get(INPUT_MAX_LENGTH_ID);
-        Object refreshObj = inputValues.get(INPUT_REFRESH_ID);
 
-        boolean fmt = this.useFormatting;
-        if (formatObj != null) fmt = coerceBoolean(formatObj);
-        int maxLen = this.maxDisplayLength;
-        if (maxLengthObj instanceof Number) maxLen = Math.max(10, ((Number) maxLengthObj).intValue());
-
-        String displayText = "";
-        String dataType = "null";
-        if (dataObj != null) {
-            dataType = getDataTypeName(dataObj);
-            displayText = formatDataToString(dataObj, fmt, maxLen);
-        }
-
-        if (autoRefresh || refreshObj != null) {
-            panelContent = displayText;
-            panelDataType = dataType;
-        }
+        DebugValueFormatter.FormatResult result = DebugValueFormatter.format(
+            dataObj,
+            new DebugValueFormatter.FormatOptions(
+                maxLen,
+                GenerationLimits.MAX_DEBUG_ITEMS,
+                GenerationLimits.MAX_DEBUG_DEPTH,
+                pretty
+            )
+        );
+        panelContent = result.text();
+        panelDataType = result.typeLabel();
 
         outputValues.put(OUTPUT_TEXT_ID, panelContent);
         outputValues.put(OUTPUT_TEXT_LENGTH_ID, panelContent.length());
@@ -102,7 +106,7 @@ public class PanelNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         float h = getMediumPadding();
-        h += ImGui.getTextLineHeight() * 4; // 数据预览区（4行）
+        h += ImGui.getTextLineHeight() * 4;
         h += getMediumPadding();
         return h;
     }
@@ -139,7 +143,7 @@ public class PanelNode extends BaseCustomUINode {
                         "##panel_preview_screen", aw, screenH, true, childFlags)) {
                     if (scope.isOpen()) {
                         ImGui.pushStyleColor(ImGuiCol.Text, 0xFFCCCCCC);
-                        String preview = panelContent.isEmpty() ? "(无数据)" : panelContent;
+                        String preview = panelContent.isEmpty() ? "(no data)" : panelContent;
                         if (wrapText) {
                             ImGui.textWrapped(preview);
                         } else {
@@ -147,7 +151,9 @@ public class PanelNode extends BaseCustomUINode {
                             for (int i = 0; i < 4; i++) {
                                 if (i < lines.length) {
                                     String line = lines[i];
-                                    if (line.length() > 50) line = line.substring(0, 47) + "...";
+                                    if (line.length() > 50) {
+                                        line = line.substring(0, 47) + "...";
+                                    }
                                     ImGui.text(line);
                                 } else {
                                     ImGui.text("");
@@ -160,80 +166,72 @@ public class PanelNode extends BaseCustomUINode {
                 ImGui.popStyleVar(3);
                 ImGui.popStyleColor();
             } catch (Exception e) {
-                LOGGER.error("PanelNode UI渲染失败", e);
+                LOGGER.error("PanelNode UI render failed", e);
             }
             return changed;
         });
     }
 
-    private String getDataTypeName(Object obj) {
-        if (obj == null) return "null";
-        if (obj instanceof List) {
-            List<?> list = (List<?>) obj;
-            return "List (size=" + list.size() + ")";
-        }
-        if (obj instanceof String) return "String";
-        if (obj instanceof Integer) return "Integer";
-        if (obj instanceof Float) return "Float";
-        if (obj instanceof Double) return "Double";
-        if (obj instanceof Boolean) return "Boolean";
-        if (obj instanceof Number) return "Number";
-        return obj.getClass().getSimpleName();
+    public String getPanelContent() {
+        return panelContent;
     }
 
-    private String formatDataToString(Object data, boolean fmt, int maxLen) {
-        if (data == null) return "null";
-        String result = data.toString();
-        if (result.length() > maxLen) result = result.substring(0, maxLen) + "...";
-        return result;
+    public boolean isUseFormatting() {
+        return useFormatting;
     }
 
-    private boolean coerceBoolean(Object value) {
-        if (value instanceof Boolean booleanValue) {
-            return booleanValue;
+    public void setUseFormatting(boolean v) {
+        if (this.useFormatting != v) {
+            this.useFormatting = v;
+            markDirty();
         }
-        if (value instanceof Number number) {
-            return number.doubleValue() != 0.0d;
-        }
-        if (value instanceof String text) {
-            String normalized = text.trim();
-            if (normalized.isEmpty()) {
-                return false;
-            }
-            return switch (normalized.toLowerCase(Locale.ROOT)) {
-                case "true", "yes", "1", "on" -> true;
-                default -> false;
-            };
-        }
-        return true;
     }
 
-    public String getPanelContent() { return panelContent; }
-    public boolean isUseFormatting() { return useFormatting; }
-    public void setUseFormatting(boolean v) { if (this.useFormatting != v) { this.useFormatting = v; markDirty(); } }
-    public boolean isAutoRefresh() { return autoRefresh; }
-    public void setAutoRefresh(boolean v) { if (this.autoRefresh != v) { this.autoRefresh = v; markDirty(); } }
-    public boolean isWrapText() { return wrapText; }
-    public void setWrapText(boolean v) { if (this.wrapText != v) { this.wrapText = v; markDirty(); } }
-    public int getMaxDisplayLength() { return maxDisplayLength; }
-    public void setMaxDisplayLength(int v) { v = Math.max(10, v); if (this.maxDisplayLength != v) { this.maxDisplayLength = v; markDirty(); } }
+    public boolean isWrapText() {
+        return wrapText;
+    }
+
+    public void setWrapText(boolean v) {
+        if (this.wrapText != v) {
+            this.wrapText = v;
+            markDirty();
+        }
+    }
+
+    public int getMaxDisplayLength() {
+        return maxDisplayLength;
+    }
+
+    public void setMaxDisplayLength(int v) {
+        v = Math.clamp(v, 10, GenerationLimits.MAX_DEBUG_TEXT_CHARS);
+        if (this.maxDisplayLength != v) {
+            this.maxDisplayLength = v;
+            markDirty();
+        }
+    }
 
     @Override
     public @Nullable Object getNodeState() {
-        java.util.Map<String, Object> s = new java.util.HashMap<>();
-        s.put("useFormatting", useFormatting); s.put("autoRefresh", autoRefresh);
-        s.put("maxDisplayLength", maxDisplayLength); s.put("wrapText", wrapText);
+        Map<String, Object> s = new HashMap<>();
+        s.put("useFormatting", useFormatting);
+        s.put("maxDisplayLength", maxDisplayLength);
+        s.put("wrapText", wrapText);
         return s;
     }
 
     @Override
     public void setNodeState(@Nullable Object state) {
-        if (state instanceof java.util.Map) {
-            java.util.Map<?, ?> m = (java.util.Map<?, ?>) state;
-            if (m.get("useFormatting") instanceof Boolean) setUseFormatting((Boolean) m.get("useFormatting"));
-            if (m.get("autoRefresh") instanceof Boolean) setAutoRefresh((Boolean) m.get("autoRefresh"));
-            if (m.get("maxDisplayLength") instanceof Number) setMaxDisplayLength(((Number) m.get("maxDisplayLength")).intValue());
-            if (m.get("wrapText") instanceof Boolean) setWrapText((Boolean) m.get("wrapText"));
+        if (state instanceof Map<?, ?> m) {
+            if (m.get("useFormatting") instanceof Boolean b) {
+                setUseFormatting(b);
+            }
+            if (m.get("maxDisplayLength") instanceof Number n) {
+                setMaxDisplayLength(n.intValue());
+            }
+            if (m.get("wrapText") instanceof Boolean b) {
+                setWrapText(b);
+            }
+            // Legacy autoRefresh key ignored intentionally.
         }
     }
 }

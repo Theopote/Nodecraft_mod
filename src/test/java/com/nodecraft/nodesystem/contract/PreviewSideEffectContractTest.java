@@ -164,6 +164,10 @@ class PreviewSideEffectContractTest {
         assertEquals(NodeEffect.CONTEXT_READ, NodeEffectResolver.inferFromTypeId("output.execute.bake_status"));
         assertEquals(NodeEffect.CONTEXT_READ, NodeEffectResolver.inferFromTypeId("world.write.peek_last_undo"));
         assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.inferFromTypeId("world.write.clear_undo_history"));
+        assertEquals(NodeEffect.UI_EFFECT, NodeEffectResolver.inferFromTypeId("output.debug.print_to_chat"));
+        assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.inferFromTypeId("output.debug.execution_timer"));
+        assertEquals(NodeEffect.PURE, NodeEffectResolver.inferFromTypeId("output.debug.value_monitor"));
+        assertEquals(NodeEffect.PURE, NodeEffectResolver.inferFromTypeId("output.debug.data_inspector"));
     }
 
     @Test
