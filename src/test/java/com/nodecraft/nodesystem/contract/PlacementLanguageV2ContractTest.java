@@ -183,7 +183,7 @@ class PlacementLanguageV2ContractTest {
         place.setInput("input_geometry", composite);
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
         List<FrameData> frames = IntStream.range(0, frameCount)
-            .mapToObj(i -> new FrameData(
+            .mapToObj(i -> FrameData.fromAxes(
                 new Vector3d(i, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),

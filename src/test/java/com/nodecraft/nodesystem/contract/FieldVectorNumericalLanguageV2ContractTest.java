@@ -74,7 +74,7 @@ class FieldVectorNumericalLanguageV2ContractTest {
 
     @Test
     void finiteHugeGradientComponentsDoNotYieldBogusUnitVector() {
-        // Central difference → finite (MAX,MAX,MAX); chained hypot overflows → NaN dest.
+        // Central difference ? finite (MAX,MAX,MAX); chained hypot overflows ? NaN dest.
         SignedDistanceFieldData hugeGrad = point ->
                 (Double.MAX_VALUE * 0.5d) * (point.x + point.y + point.z);
         Map<String, Object> built = new VectorFieldFromSdfGradientNode().compute(Map.of(
@@ -145,7 +145,7 @@ class FieldVectorNumericalLanguageV2ContractTest {
                 new ScalarFieldConstantNode().compute(Map.of("input_value", 3.0d)).get("output_field"));
         Map<String, Object> scalarSample = new ScalarFieldSamplePointNode().compute(Map.of(
                 "input_field", scalar,
-                "input_point", new PointData(Double.NaN, 0.0d, 0.0d)
+                "input_point", new Vector3d(Double.NaN, 0.0d, 0.0d)
         ));
         assertFalse((Boolean) scalarSample.get("output_valid"));
         assertTrue(Double.isNaN((Double) scalarSample.get("output_value")));
@@ -158,7 +158,7 @@ class FieldVectorNumericalLanguageV2ContractTest {
                 )).get("output_field"));
         Map<String, Object> vectorSample = new VectorFieldSamplePointNode().compute(Map.of(
                 "input_field", vector,
-                "input_point", new PointData(0.0d, Double.NaN, 0.0d)
+                "input_point", new Vector3d(0.0d, Double.NaN, 0.0d)
         ));
         assertFalse((Boolean) vectorSample.get("output_valid"));
         assertNull(vectorSample.get("output_vector"));

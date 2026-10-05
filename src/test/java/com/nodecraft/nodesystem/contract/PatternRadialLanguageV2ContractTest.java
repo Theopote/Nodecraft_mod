@@ -201,7 +201,7 @@ class PatternRadialLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("count", 2));
         probe.connectInput("input_center", NodeDataType.POINT);
-        probe.putRawInput("input_center", new PointData(Double.NaN, 0, 0));
+        probe.putRawInput("input_center", new Vector3d(Double.NaN, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("center"));

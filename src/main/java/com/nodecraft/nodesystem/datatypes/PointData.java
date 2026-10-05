@@ -1,22 +1,40 @@
 package com.nodecraft.nodesystem.datatypes;
 
+import com.nodecraft.nodesystem.util.FrameUtils;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 
 import java.util.Objects;
 
+/**
+ * Typed POINT value: finite 3D location in continuous space.
+ */
 public record PointData(Vector3d position) {
     public PointData(Vector3d position) {
-        this.position = new Vector3d(position); // Defensive copy
+        this.position = position == null ? null : new Vector3d(position);
+        if (!FrameUtils.isFinite(this.position)) {
+            throw new IllegalArgumentException("POINT position must be finite");
+        }
     }
 
     public PointData(double x, double y, double z) {
         this(new Vector3d(x, y, z));
     }
 
+    /**
+     * Builds a canonical point, or {@code null} when components are not finite.
+     */
+    public static @Nullable PointData canonical(@Nullable Vector3d position) {
+        if (!FrameUtils.isFinite(position)) {
+            return null;
+        }
+        return new PointData(position);
+    }
+
     @Override
     public Vector3d position() {
-        return new Vector3d(position); // Return defensive copy
+        return new Vector3d(position);
     }
 
     public double getX() {
@@ -43,5 +61,4 @@ public record PointData(Vector3d position) {
         PointData pointData = (PointData) o;
         return Objects.equals(position, pointData.position);
     }
-
 }

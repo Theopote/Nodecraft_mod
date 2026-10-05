@@ -119,7 +119,7 @@ class OrientationNumericalRobustnessContractTest {
     @Test
     void alignNonFinitePointOrNormalFailsClosed() {
         AlignProbe nanPoint = new AlignProbe();
-        nanPoint.setInput("input_points", List.of(new PointData(Double.NaN, 0, 0)));
+        nanPoint.setInput("input_points", List.of(new Vector3d(Double.NaN, 0, 0)));
         nanPoint.setInput("input_normals", List.of(new VectorData(0, 1, 0)));
         nanPoint.processNode(null);
         assertEquals(Boolean.FALSE, nanPoint.getOutput("output_valid"));
@@ -149,9 +149,9 @@ class OrientationNumericalRobustnessContractTest {
 
     @Test
     void resolveStrictFrameListRejectsZeroAxisEntry() {
-        FrameData good = new FrameData(
+        FrameData good = FrameData.fromAxes(
             new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1));
-        FrameData bad = new FrameData(
+        FrameData bad = FrameData.fromAxes(
             new Vector3d(1, 0, 0), new Vector3d(), new Vector3d(), new Vector3d());
         assertTrue(good.isCanonical());
         assertFalse(bad.isCanonical());

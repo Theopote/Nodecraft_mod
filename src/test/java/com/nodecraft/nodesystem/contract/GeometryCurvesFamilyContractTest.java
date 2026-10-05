@@ -453,11 +453,12 @@ class GeometryCurvesFamilyContractTest {
         node.setInput("input_points", List.of(
             new PointData(0, 0, 0),
             new PointData(1, 0, 0),
+            new PointData(0, 1, 0),
             new PointData(1.0e-12d, 0, 0)
         ));
         node.processNode(null);
         assertEquals(Boolean.TRUE, node.getOutput("output_valid"), String.valueOf(node.getOutput("output_error")));
-        assertEquals(3, node.getOutput("output_count"));
+        assertEquals(4, node.getOutput("output_count"));
     }
 
     @Test

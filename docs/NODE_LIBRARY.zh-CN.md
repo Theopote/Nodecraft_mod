@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**530**
+- **节点总数**：**536**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -22,7 +22,7 @@
 | `geometry.solids` | 23 |
 | `geometry.voxel` | 1 |
 | `input.context` | 4 |
-| `input.numeric` | 10 |
+| `input.numeric` | 16 |
 | `input.type_selectors` | 4 |
 | `input.values` | 6 |
 | `material.basic_assignment` | 4 |
@@ -291,7 +291,7 @@
 | Dimension Info | `input.context.dimension_info` | Gets the current dimension and basic dimension traits from the active Minecraft world. | `DimensionInfoNode` |
 | Current Time | `input.context.current_time` | Gets the current time and weather state from the active Minecraft world. | `CurrentTimeNode` |
 
-## input.numeric（10）
+## input.numeric（16）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
@@ -303,8 +303,14 @@
 | Circular Angle Picker | `input.numeric.angle_picker` | 通过圆形表盘选择角度（度）。需要弧度时使用 Degrees To Radians。 | `CircularAngleNode` |
 | XY Slider | `input.numeric.xy_slider` | Provides a two-dimensional slider pad that outputs X and Y values from one draggable handle | `XYSliderNode` |
 | Domain Input | `input.numeric.range` | Defines a directed numeric domain (Start→End) with finite directed span; outputs Domain, Start, End, Span, Valid, and Error. | `RangeInputNode` |
+| Integer To Double | `input.numeric.integer_to_double` | Explicitly converts an INTEGER wire value into an exact DOUBLE | `IntegerToDoubleNode` |
 | Pi | `input.numeric.pi` | Outputs the mathematical constant Pi. | `PiNode` |
+| Double To Integer | `input.numeric.double_to_integer` | Explicitly converts an exact finite DOUBLE into INTEGER when the value is integral | `DoubleToIntegerNode` |
 | E | `input.numeric.e` | Outputs the mathematical constant e (approximately 2.718281828...). | `ENode` |
+| Float To Double | `input.numeric.float_to_double` | Explicitly converts an exact finite FLOAT into DOUBLE | `FloatToDoubleNode` |
+| Double To Float | `input.numeric.double_to_float` | Explicitly converts an exact finite DOUBLE into FLOAT when representable | `DoubleToFloatNode` |
+| Integer To Float | `input.numeric.integer_to_float` | Explicitly converts an INTEGER wire value into an exact FLOAT | `IntegerToFloatNode` |
+| Float To Integer | `input.numeric.float_to_integer` | Explicitly converts an exact finite FLOAT into INTEGER when the value is integral | `FloatToIntegerNode` |
 
 ## input.type_selectors（4）
 

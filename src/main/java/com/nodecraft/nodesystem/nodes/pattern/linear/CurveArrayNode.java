@@ -193,7 +193,7 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
     private static List<FrameData> identityFrames(List<Vector3d> origins) {
         List<FrameData> frames = new ArrayList<>(origins.size());
         for (Vector3d origin : origins) {
-            frames.add(new FrameData(
+            frames.add(FrameData.fromCanonicalAxes(
                 origin,
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),

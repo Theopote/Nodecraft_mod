@@ -203,7 +203,7 @@ class ArchitecturalPrimitivesLanguageContractTest {
         ColumnProbe both = new ColumnProbe();
         both.connectInput("input_frame", NodeDataType.FRAME);
         both.connectInput("input_base", NodeDataType.POINT);
-        both.setInput("input_frame", new FrameData(new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)));
+        both.setInput("input_frame", FrameData.fromAxes(new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)));
         both.setInput("input_base", new PointData(0, 0, 0));
         both.setInput("input_height", 3.0d);
         both.setInput("input_radius", 0.5d);

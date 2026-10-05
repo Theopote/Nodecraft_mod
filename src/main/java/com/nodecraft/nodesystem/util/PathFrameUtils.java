@@ -57,7 +57,7 @@ public final class PathFrameUtils {
         Vector3d x = new Vector3d(frame.zAxis());
         Vector3d y = new Vector3d(frame.yAxis());
         Vector3d z = new Vector3d(frame.xAxis());
-        return new FrameData(origin, x, y, z);
+        return FrameData.fromCanonicalAxes(origin, x, y, z);
     }
 
     /**

@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.PathInputUtils;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.CurveInputUtils;
 import net.minecraft.util.math.Vec3d;
@@ -107,7 +108,7 @@ abstract class AbstractCurveNode extends BaseNode {
     }
 
     protected final @Nullable List<Vector3d> resolvePathVertices(String pathPortId) {
-        return PathUtils.resolvePath(inputValues.get(pathPortId));
+        return PathUtils.resolvePath(PathInputUtils.resolvePath(inputValues.get(pathPortId)));
     }
 
     protected final @Nullable List<Vector3d> resolvePathVertices(String pathPortId, boolean reverse) {

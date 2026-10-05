@@ -124,7 +124,7 @@ class ReferencePlanesLanguageContractTest {
     void worldPlaneConnectedInvalidOriginFailsClosed() {
         BaseNode world = node("reference.planes.world_plane");
         connectInput(world, "input_origin", NodeDataType.POINT);
-        world.setInput("input_origin", new PointData(Double.NaN, 0, 0));
+        world.setInput("input_origin", new Vector3d(Double.NaN, 0, 0));
         world.processNode(null);
         assertEquals(Boolean.FALSE, world.getOutput("output_valid"));
         assertNull(world.getOutput("output_plane"));

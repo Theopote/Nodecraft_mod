@@ -161,7 +161,7 @@ class PatternVoronoi3DLanguageContractTest {
     void nanCornerFailsClosed() {
         BaseNode node = createLloydRelax();
         node.setInput("input_sites", defaultSites());
-        node.setInput("input_corner_a", new PointData(Double.NaN, 0, 0));
+        node.setInput("input_corner_a", new Vector3d(Double.NaN, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
         node.processNode(null);
         assertInvalid(node);
@@ -170,7 +170,7 @@ class PatternVoronoi3DLanguageContractTest {
     @Test
     void nanSiteFailsClosed() {
         BaseNode node = createLloydRelax();
-        node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(Double.NaN, 5, 5)));
+        node.setInput("input_sites", List.of(new PointData(2, 2, 2), new Vector3d(5, 5, 5)));
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
         node.processNode(null);

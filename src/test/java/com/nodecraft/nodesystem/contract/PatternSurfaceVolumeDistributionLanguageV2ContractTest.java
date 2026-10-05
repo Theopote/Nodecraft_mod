@@ -329,7 +329,7 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
         probe.connectInput("input_plane", NodeDataType.PLANE);
         probe.putRawInput("input_plane", new PlaneData(new Vector3d(), new Vector3d(0, 1, 0)));
         probe.connectInput("input_origin", NodeDataType.POINT);
-        probe.putRawInput("input_origin", new PointData(Double.NaN, 0, 0));
+        probe.putRawInput("input_origin", new Vector3d(Double.NaN, 0, 0));
         probe.setNodeState(Map.of("targetCount", 4, "halfU", 1.0d, "halfV", 1.0d, "minDistance", 0.1d));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));

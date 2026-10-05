@@ -189,8 +189,7 @@ public final class CurveInputUtils {
         if (!(value instanceof PointData pointData)) {
             return null;
         }
-        Vector3d position = pointData.position();
-        return PointUtils.isFinite(position) ? new Vector3d(position) : null;
+        return pointData.position();
     }
 
     /**
@@ -215,17 +214,16 @@ public final class CurveInputUtils {
         if (!(value instanceof Collection<?> collection) || collection.size() != requiredLength) {
             return null;
         }
-        List<Double> weights = new ArrayList<>(requiredLength);
-        for (Object entry : collection) {
-            if (!(entry instanceof Double resolved)) {
-                return null;
-            }
-            if (!Double.isFinite(resolved) || !(resolved > 0.0d)) {
-                return null;
-            }
-            weights.add(resolved);
+        List<Double> weights = StrictDoubleUtils.resolveStrictDoubleList(value);
+        if (weights == null || weights.size() != requiredLength) {
+            return null;
         }
-        return List.copyOf(weights);
+        for (Double resolved : weights) {
+            if (!(resolved > 0.0d)) {
+                return null;
+            }
+        }
+        return weights;
     }
 
     public static boolean isWithinControlCount(int count) {

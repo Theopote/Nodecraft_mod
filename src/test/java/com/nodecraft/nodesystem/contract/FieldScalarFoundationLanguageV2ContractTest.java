@@ -79,7 +79,7 @@ class FieldScalarFoundationLanguageV2ContractTest {
         ScalarFieldData field = point -> 1.0d;
         Map<String, Object> outputs = new ScalarFieldSamplePointsNode().compute(Map.of(
                 "input_field", field,
-                "input_points", List.of(new PointData(0, 0, 0), new PointData(Double.NaN, 0, 0))
+                "input_points", List.of(new PointData(0, 0, 0), new Vector3d(1, 1, 1))
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertEquals(FieldSampleUtils.ERROR_INVALID_POINTS, outputs.get("output_error"));

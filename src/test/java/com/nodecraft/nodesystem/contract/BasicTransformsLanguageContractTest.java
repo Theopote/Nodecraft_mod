@@ -239,13 +239,13 @@ class BasicTransformsLanguageContractTest {
 
     @Test
     void transformByFramesIsCartesianFrameMajor() {
-        FrameData frame0 = new FrameData(
+        FrameData frame0 = FrameData.fromAxes(
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),
                 new Vector3d(0, 0, 1)
         );
-        FrameData frame1 = new FrameData(
+        FrameData frame1 = FrameData.fromAxes(
                 new Vector3d(10, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),

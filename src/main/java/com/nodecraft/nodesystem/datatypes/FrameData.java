@@ -15,8 +15,7 @@ import java.util.Objects;
  * FRAME is orientation only — not scale/shear. Prefer {@link #orthonormal} /
  * {@link #orthonormalized()} at construction boundaries; placement uses
  * {@link #toRotationMatrix()} so local {@code (1,0,0)/(0,1,0)/(0,0,1)} map to
- * frame X/Y/Z. The public copy constructor does not canonicalize; list ingest
- * uses {@link #isCanonical()}.
+ * frame X/Y/Z. List ingest uses {@link #isCanonical()}.
  */
 public class FrameData {
     private static final double EPS = SpatialTolerance.EPS;
@@ -26,18 +25,34 @@ public class FrameData {
     private final Vector3d yAxis;
     private final Vector3d zAxis;
 
-    /** Raw copy constructor — does not orthonormalize. Prefer {@link #orthonormal}. */
-    @Deprecated
-    public FrameData(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+    private FrameData(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         this.origin = new Vector3d(origin);
         this.xAxis = new Vector3d(xAxis);
         this.yAxis = new Vector3d(yAxis);
         this.zAxis = new Vector3d(zAxis);
     }
 
-    @Deprecated
-    public FrameData(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        this(origin.position(), xAxis, yAxis, zAxis);
+    /**
+     * Stores already-canonical axes without re-orthonormalizing.
+     */
+    public static FrameData fromCanonicalAxes(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+        return new FrameData(origin, xAxis, yAxis, zAxis);
+    }
+
+    public static FrameData fromCanonicalAxes(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+        return fromCanonicalAxes(origin.position(), xAxis, yAxis, zAxis);
+    }
+
+    /**
+     * Unchecked axis copy for runtime values and contract tests.
+     * Prefer {@link #orthonormal} or {@link #fromCanonicalAxes} at production boundaries.
+     */
+    public static FrameData fromAxes(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+        return new FrameData(origin, xAxis, yAxis, zAxis);
+    }
+
+    public static FrameData fromAxes(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+        return fromAxes(origin.position(), xAxis, yAxis, zAxis);
     }
 
     /**

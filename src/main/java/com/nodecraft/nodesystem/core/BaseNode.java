@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.PathInputUtils;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -158,7 +159,17 @@ public abstract class BaseNode implements INode {
             inputValues.remove(port.getId());
         }
         if (inputs != null) {
-            inputValues.putAll(inputs);
+            for (IPort port : inputPorts) {
+                if (!inputs.containsKey(port.getId())) {
+                    continue;
+                }
+                Object value = inputs.get(port.getId());
+                NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
+                inputValues.put(port.getId(), PathInputUtils.canonicalizeForType(effective, value));
+            }
+            for (Map.Entry<String, Object> entry : inputs.entrySet()) {
+                inputValues.putIfAbsent(entry.getKey(), entry.getValue());
+            }
         }
     }
 
@@ -202,8 +213,9 @@ public abstract class BaseNode implements INode {
                 continue;
             }
             NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
-            if (effective.isCompatible(value)) {
-                inputValues.put(portId, value);
+            Object stored = PathInputUtils.canonicalizeForType(effective, value);
+            if (effective.isCompatible(stored)) {
+                inputValues.put(portId, stored);
             }
             return;
         }

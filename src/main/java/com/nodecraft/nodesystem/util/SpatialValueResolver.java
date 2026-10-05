@@ -38,8 +38,7 @@ public final class SpatialValueResolver {
         if (!(value instanceof PointData pointData)) {
             return null;
         }
-        Vector3d position = pointData.position();
-        return PointUtils.isFinite(position) ? position : null;
+        return pointData.position();
     }
 
     /**
@@ -90,6 +89,7 @@ public final class SpatialValueResolver {
      * Do not use for new graph-facing {@code POINT_LIST} ingest — use
      * {@link PointUtils#resolveStrictPointListBounded} so one invalid item fails the whole list.
      */
+    @Deprecated
     public static List<Vector3d> resolvePointList(@Nullable Object value) {
         if (!(value instanceof Collection<?> collection)) {
             return List.of();
@@ -114,8 +114,9 @@ public final class SpatialValueResolver {
         }
         List<PointData> out = new ArrayList<>(points.size());
         for (Vector3d point : points) {
-            if (point != null) {
-                out.add(new PointData(point));
+            PointData canonical = PointData.canonical(point);
+            if (canonical != null) {
+                out.add(canonical);
             }
         }
         return List.copyOf(out);

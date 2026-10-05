@@ -1,5 +1,7 @@
 package com.nodecraft.nodesystem.api;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * Central classification of type relationships in the node system.
  * This registry does not perform runtime conversion. It only answers:
@@ -41,10 +43,6 @@ public final class TypeConversionRegistry {
         }
         if (output == NodeDataType.ANY) {
             return ConversionPolicy.UNSUPPORTED;
-        }
-
-        if (isNumericType(output) && isNumericType(input)) {
-            return ConversionPolicy.IMPLICIT_SAFE;
         }
 
         if (isPathSourceCompatible(output, input)) {
@@ -116,6 +114,10 @@ public final class TypeConversionRegistry {
         if (isSdfToVectorFieldConversion(output, input)) {
             return new ConversionSuggestion("math.fields.vector_from_sdf_gradient", "Vector Field From SDF Gradient");
         }
+        ConversionSuggestion numeric = getNumericConversionSuggestion(output, input);
+        if (numeric != null) {
+            return numeric;
+        }
         return null;
     }
 
@@ -131,7 +133,41 @@ public final class TypeConversionRegistry {
                 || isListToDataTreeConversion(outputType, inputType)
                 || isDataTreeToListConversion(outputType, inputType)
                 || isSdfToScalarFieldConversion(outputType, inputType)
-                || isSdfToVectorFieldConversion(outputType, inputType);
+                || isSdfToVectorFieldConversion(outputType, inputType)
+                || isNumericConversion(outputType, inputType);
+    }
+
+    private static boolean isNumericConversion(NodeDataType outputType, NodeDataType inputType) {
+        return isNumericType(outputType)
+                && isNumericType(inputType)
+                && outputType != inputType;
+    }
+
+    private static @Nullable ConversionSuggestion getNumericConversionSuggestion(
+            NodeDataType outputType,
+            NodeDataType inputType
+    ) {
+        if (!isNumericConversion(outputType, inputType)) {
+            return null;
+        }
+        return switch (outputType) {
+            case INTEGER -> switch (inputType) {
+                case DOUBLE -> new ConversionSuggestion("input.numeric.integer_to_double", "Integer To Double");
+                case FLOAT -> new ConversionSuggestion("input.numeric.integer_to_float", "Integer To Float");
+                default -> null;
+            };
+            case DOUBLE -> switch (inputType) {
+                case INTEGER -> new ConversionSuggestion("input.numeric.double_to_integer", "Double To Integer");
+                case FLOAT -> new ConversionSuggestion("input.numeric.double_to_float", "Double To Float");
+                default -> null;
+            };
+            case FLOAT -> switch (inputType) {
+                case INTEGER -> new ConversionSuggestion("input.numeric.float_to_integer", "Float To Integer");
+                case DOUBLE -> new ConversionSuggestion("input.numeric.float_to_double", "Float To Double");
+                default -> null;
+            };
+            default -> null;
+        };
     }
 
     private static boolean isBlockCoordinateToPointConversion(NodeDataType outputType, NodeDataType inputType) {

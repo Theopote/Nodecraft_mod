@@ -297,7 +297,7 @@ class PatternLSystemLanguageV2ContractTest {
         TurtleProbe origin = new TurtleProbe();
         origin.setInput("input_commands", "F");
         origin.connectInput("input_origin", NodeDataType.POINT);
-        origin.putRawInput("input_origin", new PointData(Double.NaN, 0, 0));
+        origin.putRawInput("input_origin", new Vector3d(Double.NaN, 0, 0));
         origin.processNode(null);
         assertInvalidTurtle(origin);
     }

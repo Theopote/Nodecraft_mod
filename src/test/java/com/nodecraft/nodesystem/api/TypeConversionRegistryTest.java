@@ -32,9 +32,30 @@ class TypeConversionRegistryTest {
     }
 
     @Test
-    void numericTypesAreImplicitlyConnectable() {
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.INTEGER, NodeDataType.FLOAT));
-        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.DOUBLE, NodeDataType.INTEGER));
+    void crossNumericTypesRequireExplicitConversion() {
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.INTEGER, NodeDataType.FLOAT));
+        assertEquals(TypeConversionRegistry.ConversionPolicy.EXPLICIT_REQUIRED,
+            TypeConversionRegistry.classify(NodeDataType.DOUBLE, NodeDataType.INTEGER));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.INTEGER, NodeDataType.FLOAT));
+        assertFalse(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.DOUBLE, NodeDataType.INTEGER));
+
+        TypeConversionRegistry.ConversionSuggestion toDouble =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.INTEGER, NodeDataType.DOUBLE);
+        assertNotNull(toDouble);
+        assertEquals("input.numeric.integer_to_double", toDouble.nodeId());
+
+        TypeConversionRegistry.ConversionSuggestion toInteger =
+            TypeConversionRegistry.getSuggestedConversion(NodeDataType.DOUBLE, NodeDataType.INTEGER);
+        assertNotNull(toInteger);
+        assertEquals("input.numeric.double_to_integer", toInteger.nodeId());
+    }
+
+    @Test
+    void sameNumericTypeIsImplicitlyConnectable() {
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.INTEGER, NodeDataType.INTEGER));
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.DOUBLE, NodeDataType.DOUBLE));
+        assertTrue(TypeConversionRegistry.isImplicitlyConnectable(NodeDataType.FLOAT, NodeDataType.FLOAT));
     }
 
     @Test
@@ -155,7 +176,7 @@ class TypeConversionRegistryTest {
 
     @Test
     void describeRelationMatchesPolicy() {
-        assertEquals("implicitly connectable",
+        assertEquals("explicit conversion node required",
             TypeConversionRegistry.describeRelation(NodeDataType.FLOAT, NodeDataType.DOUBLE));
         assertEquals("explicit conversion node required",
             TypeConversionRegistry.describeRelation(NodeDataType.POINT, NodeDataType.BLOCK_POS));

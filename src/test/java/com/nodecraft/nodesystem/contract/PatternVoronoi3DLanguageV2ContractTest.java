@@ -228,7 +228,7 @@ class PatternVoronoi3DLanguageV2ContractTest {
     void nanCornerFailsClosed() {
         BaseNode node = createLloyd();
         node.setInput("input_sites", defaultSites());
-        node.setInput("input_corner_a", new PointData(Double.NaN, 0, 0));
+        node.setInput("input_corner_a", new Vector3d(Double.NaN, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
         node.setNodeState(Map.of("iterations", 0));
         node.processNode(null);
@@ -238,7 +238,7 @@ class PatternVoronoi3DLanguageV2ContractTest {
     @Test
     void nanSiteFailsClosed() {
         BaseNode node = createLloyd();
-        node.setInput("input_sites", List.of(new PointData(2, 2, 2), new PointData(Double.NaN, 5, 5)));
+        node.setInput("input_sites", List.of(new PointData(2, 2, 2), new Vector3d(5, 5, 5)));
         node.setInput("input_corner_a", new PointData(0, 0, 0));
         node.setInput("input_corner_b", new PointData(10, 10, 10));
         node.setNodeState(Map.of("iterations", 0));

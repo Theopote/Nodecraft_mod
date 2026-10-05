@@ -271,16 +271,16 @@ public enum NodeDataType {
     }
 
     private boolean isCompatibleScalar(Object value) {
-        if (this == DOUBLE && value instanceof Number) {
-            return true;
+        if (this == DOUBLE && value instanceof Double d) {
+            return Double.isFinite(d);
         }
 
         if (this == INTEGER && value instanceof Integer) {
             return true;
         }
 
-        if (this == FLOAT && value instanceof Float) {
-            return true;
+        if (this == FLOAT && value instanceof Float f) {
+            return Float.isFinite(f);
         }
 
         if (this == EXEC) {
@@ -298,10 +298,7 @@ public enum NodeDataType {
         }
 
         if (this == PATH) {
-            return value instanceof PathData
-                    || value instanceof LineData
-                    || value instanceof PolylineData
-                    || value instanceof Curve;
+            return value instanceof PathData;
         }
 
         if (this == BLOCK_PALETTE) {
@@ -345,7 +342,7 @@ public enum NodeDataType {
                 || value instanceof net.minecraft.block.BlockState
                 || (value instanceof String blockId && !blockId.isBlank());
             case INTEGER -> value instanceof Integer;
-            case DOUBLE -> value instanceof Number;
+            case DOUBLE -> value instanceof Double d && Double.isFinite(d);
             case BOOLEAN -> value instanceof Boolean;
             case STRING -> value instanceof String;
             case BLOCK_POS -> value instanceof BlockPos;
@@ -353,10 +350,7 @@ public enum NodeDataType {
             case VECTOR -> value instanceof VectorData;
             case PLANE -> value instanceof PlaneData;
             case FRAME -> value instanceof FrameData;
-            case PATH -> value instanceof PathData
-                    || value instanceof LineData
-                    || value instanceof PolylineData
-                    || value instanceof Curve;
+            case PATH -> value instanceof PathData;
             case LINE -> value instanceof LineData;
             case TREE_PATH -> value instanceof TreePathData;
             case POLYGON_PROFILE -> value instanceof PolygonProfileData;

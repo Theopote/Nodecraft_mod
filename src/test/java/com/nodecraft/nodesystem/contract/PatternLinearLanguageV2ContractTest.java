@@ -347,7 +347,7 @@ class PatternLinearLanguageV2ContractTest {
         probe.connectInput("input_count", NodeDataType.INTEGER);
         probe.putRawInput("input_count", 2);
         probe.connectInput("input_pivot", NodeDataType.POINT);
-        probe.putRawInput("input_pivot", new PointData(Double.NaN, 0, 0));
+        probe.putRawInput("input_pivot", new Vector3d(Double.NaN, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("pivot"));

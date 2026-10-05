@@ -75,7 +75,7 @@ class PlacementFamilyContractTest {
     void placeGeometryOnFrameMovesSphereCenter() {
         PlaceFramesProbe place = new PlaceFramesProbe();
         SphereData sphere = new SphereData(new Vector3d(0, 0, 0), 2.0d);
-        FrameData frame = new FrameData(
+        FrameData frame = FrameData.fromAxes(
             new Vector3d(10, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -116,8 +116,8 @@ class PlacementFamilyContractTest {
         PlaceFramesProbe place = new PlaceFramesProbe();
         SphereData sphere = new SphereData(new Vector3d(), 1.0d);
         List<FrameData> frames = List.of(
-            new FrameData(new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)),
-            new FrameData(new Vector3d(3, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1))
+            FrameData.fromAxes(new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)),
+            FrameData.fromAxes(new Vector3d(3, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1))
         );
         place.setInput("input_geometry", sphere);
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);

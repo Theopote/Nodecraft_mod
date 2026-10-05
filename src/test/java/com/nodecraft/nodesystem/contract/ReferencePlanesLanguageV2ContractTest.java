@@ -162,7 +162,7 @@ class ReferencePlanesLanguageV2ContractTest {
     void worldPlaneConnectedInvalidOriginFailsClosed() {
         WorldPlaneProbe probe = new WorldPlaneProbe();
         probe.connectInput("input_origin", NodeDataType.POINT);
-        probe.putRawInput("input_origin", new PointData(Double.NaN, 0, 0));
+        probe.putRawInput("input_origin", new Vector3d(Double.NaN, 0, 0));
         probe.processNode(null);
         assertInvalid(probe);
     }

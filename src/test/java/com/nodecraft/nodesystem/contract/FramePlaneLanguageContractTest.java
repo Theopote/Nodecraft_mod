@@ -94,8 +94,8 @@ class FramePlaneLanguageContractTest {
         connectInput(construct, "input_x_axis", NodeDataType.VECTOR);
         connectInput(construct, "input_y_axis", NodeDataType.VECTOR);
         construct.setInput("input_origin", new PointData(0, 0, 0));
-        construct.setInput("input_x_axis", new Vector3d(2, 0, 0));
-        construct.setInput("input_y_axis", new Vector3d(0, 3, 0));
+        construct.setInput("input_x_axis", new VectorData(2, 0, 0));
+        construct.setInput("input_y_axis", new VectorData(0, 3, 0));
         construct.processNode(null);
 
         assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));
@@ -114,7 +114,7 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasInputPort("reference.frames.transform_frame", "input_origin"));
         assertFalse(hasOutputPort("reference.frames.transform_frame", "output_plane"));
 
-        FrameData input = new FrameData(
+        FrameData input = FrameData.fromAxes(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -172,7 +172,7 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasInputPort("transform.basic_transforms.transform_by_frames", "input_x_axes"));
         assertFalse(hasOutputPort("transform.basic_transforms.transform_by_frames", "output_frame_count"));
 
-        FrameData frame = new FrameData(
+        FrameData frame = FrameData.fromAxes(
             new Vector3d(10, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -195,7 +195,7 @@ class FramePlaneLanguageContractTest {
 
     @Test
     void transformPointsByFramesRejectsNonCanonicalAxes() {
-        FrameData scaledAxes = new FrameData(
+        FrameData scaledAxes = FrameData.fromAxes(
             new Vector3d(0, 0, 0),
             new Vector3d(2, 0, 0),
             new Vector3d(0, 3, 0),

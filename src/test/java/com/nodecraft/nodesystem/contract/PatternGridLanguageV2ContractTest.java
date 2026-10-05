@@ -344,7 +344,7 @@ class PatternGridLanguageV2ContractTest {
         StaggeredProbe probe = new StaggeredProbe();
         probe.setNodeState(Map.of("stepCount", 2, "rowCount", 2));
         probe.connectInput("input_origin", NodeDataType.POINT);
-        probe.putRawInput("input_origin", new PointData(Double.NaN, 0, 0));
+        probe.putRawInput("input_origin", new Vector3d(Double.NaN, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("origin"));
