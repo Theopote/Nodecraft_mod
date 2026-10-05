@@ -7,10 +7,9 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.SurfaceStripData;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PathUtils;
-import com.nodecraft.nodesystem.util.BlockSpace;
 import com.nodecraft.nodesystem.util.PathFrameUtils;
+import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import com.nodecraft.nodesystem.util.VectorUtils;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -26,19 +25,8 @@ final class SolidNodeUtils {
     }
 
     static @Nullable Vector3d resolvePoint(@Nullable Object value) {
-        if (value instanceof PointData pointData) {
-            return new Vector3d(pointData.position());
-        }
-        if (value instanceof Vector3d vector) {
-            return new Vector3d(vector);
-        }
-        if (value instanceof Vec3d vector) {
-            return new Vector3d(vector.x, vector.y, vector.z);
-        }
-        if (value instanceof BlockPos blockPos) {
-            return BlockSpace.cellCenter(blockPos);
-        }
-        return null;
+        Vector3d resolved = SpatialValueResolver.resolvePoint(value);
+        return resolved == null ? null : new Vector3d(resolved);
     }
 
     /**

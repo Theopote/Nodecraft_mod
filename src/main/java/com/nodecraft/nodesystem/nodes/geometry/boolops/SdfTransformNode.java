@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.datatypes.TransformedSdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
@@ -94,6 +95,11 @@ public class SdfTransformNode extends AbstractSdfNode {
         Double s = resolveFiniteDouble(INPUT_SCALE_ID, scale);
         if (s == null || !(s > SCALE_EPS)) {
             writeFailure("Scale must be finite and greater than zero");
+            return;
+        }
+
+        if (!SdfExpressionLimits.canWrapUnary(sdf)) {
+            writeFailure(sdfBudgetError());
             return;
         }
 

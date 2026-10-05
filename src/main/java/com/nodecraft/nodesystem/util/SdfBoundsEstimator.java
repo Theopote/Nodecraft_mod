@@ -88,6 +88,9 @@ public final class SdfBoundsEstimator {
     }
 
     public static @Nullable AxisAlignedBounds estimate(SignedDistanceFieldData sdf) {
+        if (!SdfExpressionLimits.validate(sdf)) {
+            return null;
+        }
         return estimate(sdf, 1, new WalkState());
     }
 
@@ -96,13 +99,10 @@ public final class SdfBoundsEstimator {
             int depth,
             WalkState walk
     ) {
-        if (sdf == null || depth > GenerationLimits.MAX_SDF_EXPRESSION_DEPTH) {
+        if (sdf == null) {
             return null;
         }
         walk.nodes++;
-        if (walk.nodes > GenerationLimits.MAX_SDF_NODE_COUNT) {
-            return null;
-        }
         switch (sdf) {
             case SphereSdfData sphere -> {
                 Vector3d center = sphere.center();

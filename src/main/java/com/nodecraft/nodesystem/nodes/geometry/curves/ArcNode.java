@@ -310,7 +310,6 @@ public class ArcNode extends AbstractCurveNode {
                 // ignore invalid legacy values
             }
         } else if (map.get("defaultPlaneType") instanceof String legacy) {
-            // Historical Graph V71 residue; CURRENT is stamp-only 1.
             try {
                 setDefaultPlane(PlaneProjectionUtils.DefaultPlane.valueOf(legacy));
             } catch (IllegalArgumentException ignored) {
@@ -327,7 +326,6 @@ public class ArcNode extends AbstractCurveNode {
             setCenterZ(value.doubleValue());
         }
         if (map.get("defaultCenterCoords") instanceof String legacyCoords) {
-            // Historical Graph V71 residue; CURRENT is stamp-only 1.
             Vector3d parsed = parseLegacyCenterCoords(legacyCoords);
             if (parsed != null) {
                 setCenterX(parsed.x);

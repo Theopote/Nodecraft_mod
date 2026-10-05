@@ -74,6 +74,10 @@ public class SdfSamplePointsNode extends AbstractSdfNode {
             writeFailure("Points must be a finite PointData list within MAX_SDF_SAMPLE_POINTS (no silent drop)");
             return;
         }
+        if (!isSdfWithinBudget(sdf)) {
+            writeFailure(sdfBudgetError());
+            return;
+        }
 
         List<Double> distances = new ArrayList<>(points.size());
         List<Boolean> inside = new ArrayList<>(points.size());

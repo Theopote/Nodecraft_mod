@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.NoiseDisplacedSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -83,6 +84,11 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
         }
         if (!com.nodecraft.nodesystem.util.VectorUtils.isFinite(offset)) {
             writeFailure("Offset must be finite");
+            return;
+        }
+
+        if (!SdfExpressionLimits.canWrapUnary(sdf)) {
+            writeFailure(sdfBudgetError());
             return;
         }
 

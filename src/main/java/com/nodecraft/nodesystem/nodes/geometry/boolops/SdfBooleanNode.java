@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BooleanSdfData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -66,6 +67,10 @@ public class SdfBooleanNode extends AbstractSdfNode {
         }
         if (operationCorrupt || operation == null) {
             writeFailure("Operation must be UNION, INTERSECTION, or DIFFERENCE");
+            return;
+        }
+        if (!SdfExpressionLimits.canWrapBinary(left, right)) {
+            writeFailure(sdfBudgetError());
             return;
         }
 

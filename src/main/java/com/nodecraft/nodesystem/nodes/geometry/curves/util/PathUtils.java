@@ -63,8 +63,9 @@ public final class PathUtils {
     }
 
     /**
-     * Resolves a path from {@code PATH} (or line/polyline/curve) with {@code POINT_LIST} fallback.
-     * Precedence: path value &gt; point list.
+     * Resolves a path from {@code PATH} (or line/polyline/curve) with legacy {@code POINT_LIST}
+     * fallback. Graph-facing {@code POINT_LIST} ingest must use
+     * {@link com.nodecraft.nodesystem.util.PointUtils#resolveStrictPointListBounded}.
      */
     public static List<Vector3d> resolvePathOrPointList(@Nullable Object pathValue,
                                                         @Nullable Object pointListValue) {

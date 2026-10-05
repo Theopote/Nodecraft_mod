@@ -13,7 +13,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Connection-aware curve input resolution (Graph V71).
+ * Connection-aware curve input resolution.
  * <p>
  * unconnected → property/default; connected valid → override; connected invalid → fail closed.
  */

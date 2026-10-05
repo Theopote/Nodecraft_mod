@@ -141,7 +141,8 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
     private void invalidate(String error) {
         outputValues.put(OUTPUT_BLOCKS_ID, new BlockPosList());
         outputValues.put(OUTPUT_BLOCKS_TREE_ID, DataTreeData.empty());
-        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_REGION_ID, OUTPUT_LENGTH_ID);
+        putNullOutputs(OUTPUT_GEOMETRY_ID, OUTPUT_REGION_ID);
+        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
         outputValues.put(OUTPUT_SEGMENT_GEOMETRY_TREE_ID, DataTreeData.empty());
         putEmptyListOutputs(OUTPUT_POINTS_ID);
         putIntOutputs(0, OUTPUT_COUNT_ID);

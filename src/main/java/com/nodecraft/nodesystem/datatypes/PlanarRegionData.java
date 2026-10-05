@@ -9,7 +9,6 @@ import java.util.Objects;
 
 /**
  * Planar region with an outer boundary and zero or more holes.
- * Historical Graph V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  * <p>
  * Outer and holes are each {@link PolygonProfileData} (simple closed planar loops).
  * PLANAR_REGION is the level above POLYGON_PROFILE for boolean/offset/extrude workflows.

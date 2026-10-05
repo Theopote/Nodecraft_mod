@@ -79,6 +79,10 @@ public class SdfToGeometryNode extends AbstractSdfNode {
             writeFailure("SDF input is required");
             return;
         }
+        if (!isSdfWithinBudget(sdf)) {
+            writeFailure(sdfBudgetError());
+            return;
+        }
 
         Double iso = resolveFiniteDouble(INPUT_ISO_ID, 0.0d);
         if (iso == null) {

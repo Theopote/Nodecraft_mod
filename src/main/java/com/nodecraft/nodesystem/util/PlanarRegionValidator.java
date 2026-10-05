@@ -18,7 +18,6 @@ import java.util.List;
 
 /**
  * Validation for {@link PlanarRegionData}: outer + holes on one plane.
- * Historical Graph V91 residue; {@code GraphFormatVersion.CURRENT} is stamp-only 1.
  * Holes must be interior-disjoint from the outer boundary and from each other;
  * JTS {@code touches} / boundary intersection is invalid. Concentric annuli remain valid.
  */

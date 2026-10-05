@@ -21,7 +21,7 @@ final class ProfilePlaneUtils {
     static final PlaneData DEFAULT_PLANE = PlaneData.XZ_PLANE;
 
     static @Nullable Vector3d resolvePoint(@Nullable Object value) {
-        return SpatialValueResolver.resolveVector3d(value);
+        return SpatialValueResolver.resolvePoint(value);
     }
 
     static List<PointData> toPointList(List<Vector3d> points) {

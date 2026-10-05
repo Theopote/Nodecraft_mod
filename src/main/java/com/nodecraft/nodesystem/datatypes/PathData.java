@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.datatypes;
 
 import com.nodecraft.nodesystem.util.Curve;
+import com.nodecraft.nodesystem.util.PathCanonicalizer;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
@@ -40,10 +41,11 @@ public final class PathData {
     }
 
     public static @Nullable PathData fromPolyline(@Nullable PolylineData polyline) {
-        if (!isValidPolyline(polyline)) {
+        PolylineData canonical = PathCanonicalizer.canonicalize(polyline);
+        if (!isValidPolyline(canonical)) {
             return null;
         }
-        return new PathData(Kind.POLYLINE, null, polyline, null);
+        return new PathData(Kind.POLYLINE, null, canonical, null);
     }
 
     public static @Nullable PathData fromCurve(@Nullable Curve curve) {

@@ -196,6 +196,9 @@ public final class GeometryMirror {
                 if (sdf == null) {
                     return null;
                 }
+                if (!SdfExpressionLimits.canWrapUnary(sdf)) {
+                    return null;
+                }
                 SignedDistanceFieldData mirroredSdf = new MirroredSdfData(sdf, plane);
                 Vector3d[] corners = getVector3ds(sdfGeom);
                 Vector3d newMin = new Vector3d(Double.POSITIVE_INFINITY);

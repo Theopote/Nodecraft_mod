@@ -3,6 +3,8 @@ package com.nodecraft.nodesystem.nodes.geometry.boolops;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.util.SdfInputUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Shared Valid/Error and connection-aware helpers for geometry.sdf (Graph V93).
+ * Shared Valid/Error and connection-aware helpers for geometry.sdf nodes.
  */
 abstract class AbstractSdfNode extends BaseNode {
 
@@ -92,5 +94,13 @@ abstract class AbstractSdfNode extends BaseNode {
 
     protected final @Nullable Integer resolveOptionalInteger(String portId, int fallback) {
         return SdfInputUtils.resolveOptionalInteger(this, portId, fallback);
+    }
+
+    protected final boolean isSdfWithinBudget(@Nullable SignedDistanceFieldData sdf) {
+        return SdfExpressionLimits.validate(sdf);
+    }
+
+    protected static String sdfBudgetError() {
+        return SdfExpressionLimits.BUDGET_EXCEEDED;
     }
 }

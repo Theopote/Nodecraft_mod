@@ -58,7 +58,21 @@ public final class OptionalPortDrive {
      * Optional strict DOUBLE drive. Connected ports require exact finite {@link Double}.
      * Returns {@code null} when connected but invalid (fail closed).
      */
+    /** @deprecated use {@link #resolveOptionalDouble} — graph DOUBLE ports are always strict. */
+    @Deprecated
     public static @Nullable Double resolveOptionalStrictDouble(
+            BaseNode node,
+            String portId,
+            double propertyFallback
+    ) {
+        return resolveOptionalDouble(node, portId, propertyFallback);
+    }
+
+    /**
+     * Optional DOUBLE drive. Connected ports require exact finite {@link Double}.
+     * Returns {@code null} when connected but invalid (fail closed).
+     */
+    public static @Nullable Double resolveOptionalDouble(
             BaseNode node,
             String portId,
             double propertyFallback
@@ -70,22 +84,14 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional DOUBLE drive. Returns {@code null} when connected but invalid (fail closed).
+     * Internal legacy numeric coercion for non-graph algorithms. Do not use for graph DOUBLE ports.
      */
-    public static @Nullable Double resolveOptionalDouble(
-            BaseNode node,
-            String portId,
-            double propertyFallback
-    ) {
-        if (isConnected(node, portId)) {
-            Object value = node.getInput(portId);
-            if (!(value instanceof Number number)) {
-                return null;
-            }
-            double resolved = number.doubleValue();
-            return Double.isFinite(resolved) ? resolved : null;
+    public static @Nullable Double resolveLegacyNumberAsDouble(@Nullable Object value) {
+        if (!(value instanceof Number number)) {
+            return null;
         }
-        return Double.isFinite(propertyFallback) ? propertyFallback : null;
+        double resolved = number.doubleValue();
+        return Double.isFinite(resolved) ? resolved : null;
     }
 
     /**

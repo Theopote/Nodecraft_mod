@@ -5,7 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Connection-aware SDF input resolution (Graph V93 / SDF Language v1).
+ * Connection-aware SDF input resolution.
  * <p>
  * Unconnected → property/default; connected valid → value; connected invalid → {@code null}
  * (caller fail-closed). Matches {@link PrimitiveInputUtils} / {@link CurveInputUtils}.

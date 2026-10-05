@@ -95,6 +95,10 @@ public class SdfDrivenMaterialNode extends BaseNode {
             emitFail("SDF input is required");
             return;
         }
+        if (!com.nodecraft.nodesystem.util.SdfExpressionLimits.validate(sdf)) {
+            emitFail(com.nodecraft.nodesystem.util.SdfExpressionLimits.BUDGET_EXCEEDED);
+            return;
+        }
 
         GradientMaterialUtils.OptionalDoubleResult centerResult =
             GradientMaterialUtils.resolveOptionalStrictDouble(this, INPUT_CENTER_ID, 0.0d, "Center");

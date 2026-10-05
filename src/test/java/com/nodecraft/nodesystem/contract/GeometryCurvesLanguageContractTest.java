@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for Geometry Curves / PATH v2 (Graph V71).
+ * Language fence for Geometry Curves / PATH v2.
  */
 class GeometryCurvesLanguageContractTest {
 

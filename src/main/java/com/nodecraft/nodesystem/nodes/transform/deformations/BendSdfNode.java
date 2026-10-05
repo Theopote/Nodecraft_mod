@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -121,6 +122,11 @@ public class BendSdfNode extends AbstractSdfDeformationNode {
         DeformationUtils.BendFrame frame = DeformationUtils.resolveBendFrame(axisDirection, bendNormal);
         if (frame == null) {
             failSdfOutputs("Bend normal must not be parallel to axis direction");
+            return;
+        }
+
+        if (!SdfExpressionLimits.canWrapUnary(source.sdf())) {
+            failSdfOutputs(SdfExpressionLimits.BUDGET_EXCEEDED);
             return;
         }
 

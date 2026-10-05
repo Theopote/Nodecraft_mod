@@ -149,9 +149,9 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        Double resolvedX = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_X_ID, x);
-        Double resolvedY = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Y_ID, y);
-        Double resolvedZ = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Z_ID, z);
+        Double resolvedX = OptionalPortDrive.resolveOptionalDouble(this, INPUT_X_ID, x);
+        Double resolvedY = OptionalPortDrive.resolveOptionalDouble(this, INPUT_Y_ID, y);
+        Double resolvedZ = OptionalPortDrive.resolveOptionalDouble(this, INPUT_Z_ID, z);
 
         if (resolvedX == null) {
             writeInvalid(resolveAxisError("X", INPUT_X_ID));
@@ -189,17 +189,17 @@ public class VectorInputNode extends BaseCustomUINode {
     }
 
     private double getResolvedX() {
-        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_X_ID, x);
+        Double resolved = OptionalPortDrive.resolveOptionalDouble(this, INPUT_X_ID, x);
         return resolved != null ? resolved : x;
     }
 
     private double getResolvedY() {
-        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Y_ID, y);
+        Double resolved = OptionalPortDrive.resolveOptionalDouble(this, INPUT_Y_ID, y);
         return resolved != null ? resolved : y;
     }
 
     private double getResolvedZ() {
-        Double resolved = OptionalPortDrive.resolveOptionalStrictDouble(this, INPUT_Z_ID, z);
+        Double resolved = OptionalPortDrive.resolveOptionalDouble(this, INPUT_Z_ID, z);
         return resolved != null ? resolved : z;
     }
 

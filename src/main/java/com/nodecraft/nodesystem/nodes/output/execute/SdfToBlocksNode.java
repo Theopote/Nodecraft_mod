@@ -91,8 +91,8 @@ public class SdfToBlocksNode extends BaseNode {
             return;
         }
 
-        Vector3d min = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MIN_ID));
-        Vector3d max = SpatialValueResolver.resolveVector3d(inputValues.get(INPUT_MAX_ID));
+        Vector3d min = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MIN_ID));
+        Vector3d max = SpatialValueResolver.resolvePoint(inputValues.get(INPUT_MAX_ID));
         if (!isValidBounds(min, max)) {
             if (!autoBounds) {
                 writeInvalid();

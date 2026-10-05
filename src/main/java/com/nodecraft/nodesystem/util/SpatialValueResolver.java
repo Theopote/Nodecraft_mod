@@ -31,13 +31,26 @@ public final class SpatialValueResolver {
     private SpatialValueResolver() {
     }
 
-    /** Resolves a graph {@code POINT} or location-like value to a continuous position. */
+    /**
+     * Resolves a graph {@code POINT} port value. Accepts exact finite {@link PointData} only.
+     */
     public static @Nullable Vector3d resolvePoint(@Nullable Object value) {
+        if (!(value instanceof PointData pointData)) {
+            return null;
+        }
+        Vector3d position = pointData.position();
+        return PointUtils.isFinite(position) ? position : null;
+    }
+
+    /**
+     * Internal legacy resolver for point-like values (BlockPos, raw vectors, import paths).
+     * Do not use for graph {@code POINT} port ingress.
+     */
+    public static @Nullable Vector3d resolvePointLikeLegacy(@Nullable Object value) {
         if (value instanceof PointData pointData) {
             return pointData.position();
         }
         if (value instanceof Coordinate coordinate) {
-            // Coordinate is a block-grid alias → canonical Point is cell center.
             return BlockSpace.cellCenter(coordinate.x(), coordinate.y(), coordinate.z());
         }
         if (value instanceof Vector3 vector) {
@@ -50,7 +63,6 @@ public final class SpatialValueResolver {
             return new Vector3d(vec3d.x, vec3d.y, vec3d.z);
         }
         if (value instanceof BlockPos blockPos) {
-            // Canonical BlockPos → Point = cell center (never the min corner).
             return BlockSpace.cellCenter(blockPos);
         }
         return null;
@@ -69,7 +81,7 @@ public final class SpatialValueResolver {
      * {@link #resolveVector} by role on new call sites.
      */
     public static @Nullable Vector3d resolveVector3d(@Nullable Object value) {
-        return resolvePoint(value);
+        return resolvePointLikeLegacy(value);
     }
 
     /**
@@ -84,7 +96,7 @@ public final class SpatialValueResolver {
         }
         List<Vector3d> points = new ArrayList<>(collection.size());
         for (Object entry : collection) {
-            Vector3d resolved = resolvePoint(entry);
+            Vector3d resolved = resolvePointLikeLegacy(entry);
             if (resolved != null
                     && Double.isFinite(resolved.x)
                     && Double.isFinite(resolved.y)
@@ -137,11 +149,10 @@ public final class SpatialValueResolver {
         if (value instanceof Coordinate coordinate) {
             return new BlockPos(coordinate.x(), coordinate.y(), coordinate.z());
         }
-        Vector3d resolved = resolvePoint(value);
+        Vector3d resolved = resolvePointLikeLegacy(value);
         if (resolved == null) {
             return null;
         }
-        // Point → BlockPos is floor snap (cell containing the point).
         return BlockSpace.pointToBlockFloor(resolved);
     }
 }

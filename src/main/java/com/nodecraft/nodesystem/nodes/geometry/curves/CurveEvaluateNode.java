@@ -110,7 +110,8 @@ public class CurveEvaluateNode extends AbstractCurveNode {
     }
 
     private void invalidate(String error) {
-        putNullOutputs(OUTPUT_POINT_ID, OUTPUT_TANGENT_ID, OUTPUT_LENGTH_ID);
+        putNullOutputs(OUTPUT_POINT_ID, OUTPUT_TANGENT_ID);
+        outputValues.put(OUTPUT_LENGTH_ID, Double.NaN);
         markInvalid(error);
     }
 

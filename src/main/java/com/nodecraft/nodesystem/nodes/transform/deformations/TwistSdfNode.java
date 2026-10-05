@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.TwistedSdfData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.util.VectorUtils;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -111,6 +112,11 @@ public class TwistSdfNode extends AbstractSdfDeformationNode {
         }
         if (resolvedLength == null || resolvedLength <= 0.0d) {
             failSdfOutputs("Twist length must be positive");
+            return;
+        }
+
+        if (!SdfExpressionLimits.canWrapUnary(source.sdf())) {
+            failSdfOutputs(SdfExpressionLimits.BUDGET_EXCEEDED);
             return;
         }
 

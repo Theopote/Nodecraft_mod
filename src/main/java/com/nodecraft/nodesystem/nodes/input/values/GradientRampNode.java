@@ -596,7 +596,7 @@ public class GradientRampNode extends BaseCustomUINode {
      * {@link Double} → wire value; connected null/invalid → {@code null} (fail closed).
      */
     private @Nullable Double getInputDoubleOrNull(String portId, double fallback) {
-        return OptionalPortDrive.resolveOptionalStrictDouble(this, portId, fallback);
+        return OptionalPortDrive.resolveOptionalDouble(this, portId, fallback);
     }
 
     private double clamp01(double value) {

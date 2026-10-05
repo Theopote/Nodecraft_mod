@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Language fence for SDF Language v1 (Graph V93).
+ * Language fence for SDF Language v1.
  */
 class GeometrySdfLanguageContractTest {
 

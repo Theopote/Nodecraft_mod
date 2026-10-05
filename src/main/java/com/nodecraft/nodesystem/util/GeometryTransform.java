@@ -347,6 +347,9 @@ public final class GeometryTransform {
             if (sdf == null) {
                 return null;
             }
+            if (!SdfExpressionLimits.canWrapUnary(sdf)) {
+                return null;
+            }
             SignedDistanceFieldData wrapped = spec.isEulerBacked()
                 ? new TransformedSdfData(
                     sdf,

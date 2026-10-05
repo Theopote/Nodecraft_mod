@@ -61,6 +61,10 @@ public class SdfGradientPointNode extends AbstractSdfNode {
             writeFailure("Step must be finite and > 0");
             return;
         }
+        if (!isSdfWithinBudget(sdf)) {
+            writeFailure(sdfBudgetError());
+            return;
+        }
 
         double h = stepResolved;
         Vector3d pxPos = VectorUtils.safeAdd(p, new Vector3d(h, 0.0d, 0.0d));

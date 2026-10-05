@@ -48,6 +48,10 @@ public class SdfSamplePointNode extends AbstractSdfNode {
             writeFailure("Valid SDF and finite query point are required");
             return;
         }
+        if (!isSdfWithinBudget(sdf)) {
+            writeFailure(sdfBudgetError());
+            return;
+        }
 
         double d = sdf.sampleDistance(point);
         if (!Double.isFinite(d)) {
@@ -61,7 +65,7 @@ public class SdfSamplePointNode extends AbstractSdfNode {
     }
 
     private void writeFailure(String error) {
-        putDoubleOutputs(0.0d, OUTPUT_DISTANCE_ID);
+        putDoubleOutputs(Double.NaN, OUTPUT_DISTANCE_ID);
         outputValues.put(OUTPUT_INSIDE_ID, false);
         markInvalid(error);
     }

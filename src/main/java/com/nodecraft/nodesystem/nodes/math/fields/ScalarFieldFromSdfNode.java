@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -44,7 +45,7 @@ public class ScalarFieldFromSdfNode extends BaseNode {
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        if (!(sdfObj instanceof SignedDistanceFieldData sdf)) {
+        if (!(sdfObj instanceof SignedDistanceFieldData sdf) || !SdfExpressionLimits.validate(sdf)) {
             outputValues.put(OUTPUT_FIELD_ID, null);
             return;
         }

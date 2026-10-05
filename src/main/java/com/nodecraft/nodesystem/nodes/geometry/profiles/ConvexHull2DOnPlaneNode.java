@@ -9,8 +9,9 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolygonProfileData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.geometry.curves.util.PlaneProjectionUtils;
+import com.nodecraft.nodesystem.util.GenerationLimits;
+import com.nodecraft.nodesystem.util.PointUtils;
 import com.nodecraft.nodesystem.util.ProfileConstructionUtils;
-import com.nodecraft.nodesystem.util.SpatialValueResolver;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -90,17 +91,22 @@ public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
             return;
         }
 
-        List<Vector3d> world = SpatialValueResolver.resolvePointList(inputValues.get(INPUT_POINTS_ID));
-        if (world.size() < 3) {
-            writeFailure("At least 3 points are required");
+        List<Vector3d> world = PointUtils.resolveStrictPointListBounded(
+            inputValues.get(INPUT_POINTS_ID),
+            GenerationLimits.MAX_LIST_ELEMENTS
+        );
+        if (world == null || world.size() < 3) {
+            writeFailure("At least 3 finite PointData entries are required");
             return;
         }
 
-        PlaneProjectionUtils.PlaneAxes axes = PlaneProjectionUtils.PlaneAxes.from(plane);
-        List<Vector2d> uvPoints = new ArrayList<>();
+        Vector3d anchor = world.getFirst();
+        PlaneProjectionUtils.PlaneProjectionContext projection =
+            PlaneProjectionUtils.PlaneProjectionContext.from(plane, anchor);
+        List<Vector2d> uvPoints = new ArrayList<>(world.size());
         for (Vector3d p : world) {
             Vector3d proj = plane.projectPoint(p);
-            uvPoints.add(axes.to2d(proj));
+            uvPoints.add(projection.toLocal(proj));
         }
 
         List<Vector2d> hull2d = convexHullMonotoneChain(uvPoints);
@@ -116,7 +122,7 @@ public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
 
         List<Vector3d> unique3d = new ArrayList<>(hull2d.size());
         for (Vector2d uv : hull2d) {
-            unique3d.add(axes.from2d(uv));
+            unique3d.add(projection.fromLocal(uv));
         }
 
         List<Vector3d> closed = new ArrayList<>(unique3d.size() + 1);
@@ -187,7 +193,13 @@ public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
     private static final double DEDUPE_GRID = 1.0e-6d;
 
     private static String quant(double v) {
-        long q = Math.round(v / DEDUPE_GRID);
-        return Long.toString(q);
+        if (!Double.isFinite(v)) {
+            return "nan";
+        }
+        double scaled = v / DEDUPE_GRID;
+        if (scaled > Long.MAX_VALUE || scaled < Long.MIN_VALUE) {
+            return Double.toString(v);
+        }
+        return Long.toString(Math.round(scaled));
     }
 }

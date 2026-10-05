@@ -9,7 +9,6 @@ import java.util.List;
 
 /**
  * Fail-closed construction helpers for {@link PolygonProfileData}.
- * Historical Graph V91 residue.
  */
 public final class ProfileConstructionUtils {
 
