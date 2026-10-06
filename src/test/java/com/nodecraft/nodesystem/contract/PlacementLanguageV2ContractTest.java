@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -183,7 +184,7 @@ class PlacementLanguageV2ContractTest {
         place.setInput("input_geometry", composite);
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
         List<FrameData> frames = IntStream.range(0, frameCount)
-            .mapToObj(i -> FrameData.fromAxes(
+            .mapToObj(i -> FrameDataTestAccess.unchecked(
                 new Vector3d(i, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),

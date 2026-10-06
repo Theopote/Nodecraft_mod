@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
@@ -114,7 +115,7 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasInputPort("reference.frames.transform_frame", "input_origin"));
         assertFalse(hasOutputPort("reference.frames.transform_frame", "output_plane"));
 
-        FrameData input = FrameData.fromAxes(
+        FrameData input = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -172,7 +173,7 @@ class FramePlaneLanguageContractTest {
         assertFalse(hasInputPort("transform.basic_transforms.transform_by_frames", "input_x_axes"));
         assertFalse(hasOutputPort("transform.basic_transforms.transform_by_frames", "output_frame_count"));
 
-        FrameData frame = FrameData.fromAxes(
+        FrameData frame = FrameDataTestAccess.unchecked(
             new Vector3d(10, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -195,7 +196,7 @@ class FramePlaneLanguageContractTest {
 
     @Test
     void transformPointsByFramesRejectsNonCanonicalAxes() {
-        FrameData scaledAxes = FrameData.fromAxes(
+        FrameData scaledAxes = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(2, 0, 0),
             new Vector3d(0, 3, 0),

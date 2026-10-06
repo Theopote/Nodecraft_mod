@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -203,7 +204,7 @@ class ArchitecturalPrimitivesLanguageContractTest {
         ColumnProbe both = new ColumnProbe();
         both.connectInput("input_frame", NodeDataType.FRAME);
         both.connectInput("input_base", NodeDataType.POINT);
-        both.setInput("input_frame", FrameData.fromAxes(new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)));
+        both.setInput("input_frame", FrameDataTestAccess.unchecked(new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)));
         both.setInput("input_base", new PointData(0, 0, 0));
         both.setInput("input_height", 3.0d);
         both.setInput("input_radius", 0.5d);

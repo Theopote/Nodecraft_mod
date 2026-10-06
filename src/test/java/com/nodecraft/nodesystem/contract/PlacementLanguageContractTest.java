@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
@@ -183,7 +184,7 @@ class PlacementLanguageContractTest {
         PlaceFramesProbe place = new PlaceFramesProbe();
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
-        place.setInput("input_frames", List.of(FrameData.fromAxes(
+        place.setInput("input_frames", List.of(FrameDataTestAccess.unchecked(
                 new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         ), "bad"));
         place.processNode(null);
@@ -195,7 +196,7 @@ class PlacementLanguageContractTest {
     void placeOnFramesBothFrameAndFramesConnectedFails() {
         PlaceFramesProbe place = new PlaceFramesProbe();
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
-        FrameData frame = FrameData.fromAxes(
+        FrameData frame = FrameDataTestAccess.unchecked(
                 new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         );
         place.connectInput("input_frame", NodeDataType.FRAME);
@@ -212,10 +213,10 @@ class PlacementLanguageContractTest {
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
         // Second frame has zero-length axes → not canonical → fail closed
-        FrameData good = FrameData.fromAxes(
+        FrameData good = FrameDataTestAccess.unchecked(
                 new Vector3d(1, 0, 0), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         );
-        FrameData bad = FrameData.fromAxes(
+        FrameData bad = FrameDataTestAccess.unchecked(
                 new Vector3d(2, 0, 0), new Vector3d(), new Vector3d(), new Vector3d()
         );
         place.setInput("input_frames", List.of(good, bad));
@@ -231,7 +232,7 @@ class PlacementLanguageContractTest {
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frames", NodeDataType.FRAME_LIST);
         List<FrameData> frames = IntStream.range(0, GenerationLimits.MAX_GEOMETRY_INSTANCES + 1)
-                .mapToObj(i -> FrameData.fromAxes(
+                .mapToObj(i -> FrameDataTestAccess.unchecked(
                         new Vector3d(i, 0, 0),
                         new Vector3d(1, 0, 0),
                         new Vector3d(0, 1, 0),
@@ -249,7 +250,7 @@ class PlacementLanguageContractTest {
         place.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         place.connectInput("input_frame", NodeDataType.FRAME);
         place.connectInput("input_pivot", NodeDataType.POINT);
-        place.setInput("input_frame", FrameData.fromAxes(
+        place.setInput("input_frame", FrameDataTestAccess.unchecked(
                 new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1)
         ));
         place.setInput("input_pivot", null);

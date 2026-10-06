@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
@@ -239,13 +240,13 @@ class BasicTransformsLanguageContractTest {
 
     @Test
     void transformByFramesIsCartesianFrameMajor() {
-        FrameData frame0 = FrameData.fromAxes(
+        FrameData frame0 = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),
                 new Vector3d(0, 0, 1)
         );
-        FrameData frame1 = FrameData.fromAxes(
+        FrameData frame1 = FrameDataTestAccess.unchecked(
                 new Vector3d(10, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),

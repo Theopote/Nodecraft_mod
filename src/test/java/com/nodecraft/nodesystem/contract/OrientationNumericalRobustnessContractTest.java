@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
@@ -149,9 +150,9 @@ class OrientationNumericalRobustnessContractTest {
 
     @Test
     void resolveStrictFrameListRejectsZeroAxisEntry() {
-        FrameData good = FrameData.fromAxes(
+        FrameData good = FrameDataTestAccess.unchecked(
             new Vector3d(), new Vector3d(1, 0, 0), new Vector3d(0, 1, 0), new Vector3d(0, 0, 1));
-        FrameData bad = FrameData.fromAxes(
+        FrameData bad = FrameDataTestAccess.unchecked(
             new Vector3d(1, 0, 0), new Vector3d(), new Vector3d(), new Vector3d());
         assertTrue(good.isCanonical());
         assertFalse(bad.isCanonical());

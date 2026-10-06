@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
@@ -252,7 +253,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void transformRejectsNonCanonicalInput() {
-        FrameData scaled = FrameData.fromAxes(
+        FrameData scaled = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(2, 0, 0),
             new Vector3d(0, 3, 0),
@@ -267,7 +268,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void transformRejectsNonFiniteRadians() {
-        FrameData input = FrameData.fromAxes(
+        FrameData input = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -283,7 +284,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void transformUsesPropertyRotationWhenUnconnected() {
-        FrameData input = FrameData.fromAxes(
+        FrameData input = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -304,7 +305,7 @@ class ReferenceFramesLanguageV2ContractTest {
     @Test
     void transformRotationUsesWorldAxisSemantics() {
         // Pre-rotated frame: local X = world +Z (not identity).
-        FrameData preRotated = FrameData.fromAxes(
+        FrameData preRotated = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(0, 0, 1),
             new Vector3d(0, 1, 0),
@@ -323,7 +324,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void transformSavedStateNonFiniteRotationFailsAtProcess() {
-        FrameData identity = FrameData.fromAxes(
+        FrameData identity = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -352,7 +353,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void transformConnectedInvalidRotationFailsClosed() {
-        FrameData input = FrameData.fromAxes(
+        FrameData input = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),
@@ -388,7 +389,7 @@ class ReferenceFramesLanguageV2ContractTest {
 
     @Test
     void deconstructFramesOverCapFailsClosed() {
-        FrameData valid = FrameData.fromAxes(
+        FrameData valid = FrameDataTestAccess.unchecked(
             new Vector3d(0, 0, 0),
             new Vector3d(1, 0, 0),
             new Vector3d(0, 1, 0),

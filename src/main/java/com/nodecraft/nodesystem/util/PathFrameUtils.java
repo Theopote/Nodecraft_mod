@@ -52,12 +52,13 @@ public final class PathFrameUtils {
      * Converts a Sweep-convention path frame to placement {@link FrameData}:
      * {@code X = tangent (z)}, {@code Y = normal (y)}, {@code Z = binormal (x)}.
      */
-    public static FrameData toPlacementFrame(Frame frame) {
+    public static @Nullable FrameData toPlacementFrame(Frame frame) {
         Vector3d origin = new Vector3d(frame.origin());
         Vector3d x = new Vector3d(frame.zAxis());
         Vector3d y = new Vector3d(frame.yAxis());
         Vector3d z = new Vector3d(frame.xAxis());
-        return FrameData.fromCanonicalAxes(origin, x, y, z);
+        FrameData canonical = FrameData.canonical(origin, x, y, z);
+        return canonical != null ? canonical : FrameData.orthonormal(origin, x, y, z);
     }
 
     /**
@@ -87,7 +88,10 @@ public final class PathFrameUtils {
         }
         List<FrameData> frames = new ArrayList<>(pathFrames.size());
         for (Frame frame : pathFrames) {
-            frames.add(toPlacementFrame(frame));
+            FrameData placed = toPlacementFrame(frame);
+            if (placed != null) {
+                frames.add(placed);
+            }
         }
         return frames;
     }
@@ -99,7 +103,10 @@ public final class PathFrameUtils {
         List<Frame> pathFrames = framesAlongPolyline(points, upHint);
         List<FrameData> frames = new ArrayList<>(pathFrames.size());
         for (Frame frame : pathFrames) {
-            frames.add(toPlacementFrame(frame));
+            FrameData placed = toPlacementFrame(frame);
+            if (placed != null) {
+                frames.add(placed);
+            }
         }
         return frames;
     }

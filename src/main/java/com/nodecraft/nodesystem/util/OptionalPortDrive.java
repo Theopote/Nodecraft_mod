@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -103,8 +104,11 @@ public final class OptionalPortDrive {
             @Nullable Vector3d propertyFallback
     ) {
         if (isConnected(node, portId)) {
-            Vector3d resolved = SpatialValueResolver.resolvePoint(node.getInput(portId));
-            return PointUtils.isFinite(resolved) ? resolved : null;
+            Object value = node.getInput(portId);
+            if (!(value instanceof PointData point)) {
+                return null;
+            }
+            return point.position();
         }
         return propertyFallback == null ? null : new Vector3d(propertyFallback);
     }

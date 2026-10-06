@@ -12,10 +12,10 @@ import java.util.Objects;
  * Oriented frame: origin point plus orthonormal right-handed X/Y/Z axes.
  * Distinct from {@link PlaneData} (origin + normal only — no stable tangent).
  * <p>
- * FRAME is orientation only — not scale/shear. Prefer {@link #orthonormal} /
- * {@link #orthonormalized()} at construction boundaries; placement uses
+ * FRAME is orientation only — not scale/shear. Public construction is
+ * {@link #orthonormal} / {@link #canonical} only. Placement uses
  * {@link #toRotationMatrix()} so local {@code (1,0,0)/(0,1,0)/(0,0,1)} map to
- * frame X/Y/Z. List ingest uses {@link #isCanonical()}.
+ * frame X/Y/Z.
  */
 public class FrameData {
     private static final double EPS = SpatialTolerance.EPS;
@@ -25,7 +25,7 @@ public class FrameData {
     private final Vector3d yAxis;
     private final Vector3d zAxis;
 
-    private FrameData(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
+    FrameData(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         this.origin = new Vector3d(origin);
         this.xAxis = new Vector3d(xAxis);
         this.yAxis = new Vector3d(yAxis);
@@ -33,26 +33,19 @@ public class FrameData {
     }
 
     /**
-     * Stores already-canonical axes without re-orthonormalizing.
+     * Returns a frame only when origin/axes already pass {@link #isCanonical()}.
      */
-    public static FrameData fromCanonicalAxes(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        return new FrameData(origin, xAxis, yAxis, zAxis);
-    }
-
-    public static FrameData fromCanonicalAxes(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        return fromCanonicalAxes(origin.position(), xAxis, yAxis, zAxis);
-    }
-
-    /**
-     * Unchecked axis copy for runtime values and contract tests.
-     * Prefer {@link #orthonormal} or {@link #fromCanonicalAxes} at production boundaries.
-     */
-    public static FrameData fromAxes(Vector3d origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        return new FrameData(origin, xAxis, yAxis, zAxis);
-    }
-
-    public static FrameData fromAxes(PointData origin, Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
-        return fromAxes(origin.position(), xAxis, yAxis, zAxis);
+    public static @Nullable FrameData canonical(
+            @Nullable Vector3d origin,
+            @Nullable Vector3d xAxis,
+            @Nullable Vector3d yAxis,
+            @Nullable Vector3d zAxis
+    ) {
+        if (origin == null || xAxis == null || yAxis == null || zAxis == null) {
+            return null;
+        }
+        FrameData frame = new FrameData(origin, xAxis, yAxis, zAxis);
+        return frame.isCanonical() ? frame : null;
     }
 
     /**

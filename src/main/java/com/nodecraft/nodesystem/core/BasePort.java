@@ -4,7 +4,7 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.PortTypeResolver;
-import com.nodecraft.nodesystem.util.PathInputUtils;
+import com.nodecraft.nodesystem.util.InputValueNormalizer;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -173,10 +173,9 @@ public class BasePort implements IPort {
 
     @Override
     public void setValue(Object newValue) {
-        NodeDataType effective = PortTypeResolver.resolveEffectiveType(this);
-        Object stored = PathInputUtils.canonicalizeForType(effective, newValue);
-        if (effective.isCompatible(stored)) {
-            this.value = stored;
+        InputValueNormalizer.Result result = InputValueNormalizer.normalize(this, newValue);
+        if (result.accepted()) {
+            this.value = result.value();
         }
     }
 

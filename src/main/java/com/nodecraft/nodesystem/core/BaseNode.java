@@ -1,12 +1,10 @@
 package com.nodecraft.nodesystem.core;
 
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.IPort;
-import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.PathInputUtils;
+import com.nodecraft.nodesystem.util.InputValueNormalizer;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -163,12 +161,10 @@ public abstract class BaseNode implements INode {
                 if (!inputs.containsKey(port.getId())) {
                     continue;
                 }
-                Object value = inputs.get(port.getId());
-                NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
-                inputValues.put(port.getId(), PathInputUtils.canonicalizeForType(effective, value));
-            }
-            for (Map.Entry<String, Object> entry : inputs.entrySet()) {
-                inputValues.putIfAbsent(entry.getKey(), entry.getValue());
+                InputValueNormalizer.Result result = InputValueNormalizer.normalize(port, inputs.get(port.getId()));
+                if (result.accepted()) {
+                    inputValues.put(port.getId(), result.value());
+                }
             }
         }
     }
@@ -212,10 +208,9 @@ public abstract class BaseNode implements INode {
             if (!port.getId().equals(portId)) {
                 continue;
             }
-            NodeDataType effective = PortTypeResolver.resolveEffectiveType(port);
-            Object stored = PathInputUtils.canonicalizeForType(effective, value);
-            if (effective.isCompatible(stored)) {
-                inputValues.put(portId, stored);
+            InputValueNormalizer.Result result = InputValueNormalizer.normalize(port, value);
+            if (result.accepted()) {
+                inputValues.put(portId, result.value());
             }
             return;
         }

@@ -77,7 +77,13 @@ final class FloorStructureSupport {
             Vector3d halfExtents = new Vector3d(beamWidth / 2.0d, frame.height() / 2.0d - margin, beamDepth / 2.0d);
             beams.add(ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis()));
-            frames.add(FrameData.fromCanonicalAxes(center, frame.xAxis(), frame.yAxis(), frame.zAxis()));
+            FrameData placed = FrameData.canonical(center, frame.xAxis(), frame.yAxis(), frame.zAxis());
+            if (placed == null) {
+                placed = FrameData.orthonormal(center, frame.xAxis(), frame.yAxis(), frame.zAxis());
+            }
+            if (placed != null) {
+                frames.add(placed);
+            }
             centers.add(new PointData(center));
             Vector3d a = new Vector3d(center).fma(-(frame.height() / 2.0d - margin), frame.yAxis());
             Vector3d b = new Vector3d(center).fma(frame.height() / 2.0d - margin, frame.yAxis());
@@ -92,7 +98,13 @@ final class FloorStructureSupport {
             Vector3d halfExtents = new Vector3d(frame.width() / 2.0d - margin, beamWidth / 2.0d, beamDepth / 2.0d);
             beams.add(ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis()));
-            frames.add(FrameData.fromCanonicalAxes(center, frame.xAxis(), frame.yAxis(), frame.zAxis()));
+            FrameData placed = FrameData.canonical(center, frame.xAxis(), frame.yAxis(), frame.zAxis());
+            if (placed == null) {
+                placed = FrameData.orthonormal(center, frame.xAxis(), frame.yAxis(), frame.zAxis());
+            }
+            if (placed != null) {
+                frames.add(placed);
+            }
             centers.add(new PointData(center));
             Vector3d a = new Vector3d(center).fma(-(frame.width() / 2.0d - margin), frame.xAxis());
             Vector3d b = new Vector3d(center).fma(frame.width() / 2.0d - margin, frame.xAxis());

@@ -20,11 +20,11 @@ public final class RadialFrameUtils {
     private RadialFrameUtils() {
     }
 
-    public static FrameData placementFrame(Vector3d origin, Vector3d tangent) {
+    public static @Nullable FrameData placementFrame(Vector3d origin, Vector3d tangent) {
         return placementFrame(origin, tangent, DEFAULT_UP);
     }
 
-    public static FrameData placementFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
+    public static @Nullable FrameData placementFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
         PathFrameUtils.Frame frame = PathFrameUtils.initialFrame(origin, tangent, upHint);
         return PathFrameUtils.toPlacementFrame(frame);
     }

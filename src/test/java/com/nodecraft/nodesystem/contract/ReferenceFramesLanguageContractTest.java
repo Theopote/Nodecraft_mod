@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.FrameData;
+import com.nodecraft.nodesystem.datatypes.FrameDataTestAccess;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.datatypes.VectorData;
@@ -170,7 +171,7 @@ class ReferenceFramesLanguageContractTest {
 
     @Test
     void deconstructFrameDegenerateFrameFailsClosed() {
-        FrameData degenerate = FrameData.fromAxes(
+        FrameData degenerate = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(Double.NaN, 0, 0),
                 new Vector3d(0, 1, 0),
@@ -184,7 +185,7 @@ class ReferenceFramesLanguageContractTest {
 
     @Test
     void deconstructFrameRejectsNonCanonicalAxes() {
-        FrameData scaled = FrameData.fromAxes(
+        FrameData scaled = FrameDataTestAccess.unchecked(
                 new Vector3d(1, 2, 3),
                 new Vector3d(2, 0, 0),
                 new Vector3d(0, 3, 0),
@@ -205,7 +206,7 @@ class ReferenceFramesLanguageContractTest {
         assertEquals(Boolean.FALSE, deconstruct.getOutput("output_valid"));
         assertEquals(0, deconstruct.getOutput("output_count"));
 
-        FrameData valid = FrameData.fromAxes(
+        FrameData valid = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),
@@ -219,13 +220,13 @@ class ReferenceFramesLanguageContractTest {
 
     @Test
     void deconstructFramesRejectsDegenerateEntry() {
-        FrameData valid = FrameData.fromAxes(
+        FrameData valid = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),
                 new Vector3d(0, 0, 1)
         );
-        FrameData degenerate = FrameData.fromAxes(
+        FrameData degenerate = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(0, 0, 0),
                 new Vector3d(0, 1, 0),
@@ -242,7 +243,7 @@ class ReferenceFramesLanguageContractTest {
     void transformFrameHasNoScaleInputAndProducesUnitAxes() {
         assertFalse(hasInputPort("reference.frames.transform_frame", "input_scale"));
 
-        FrameData input = FrameData.fromAxes(
+        FrameData input = FrameDataTestAccess.unchecked(
                 new Vector3d(0, 0, 0),
                 new Vector3d(1, 0, 0),
                 new Vector3d(0, 1, 0),
