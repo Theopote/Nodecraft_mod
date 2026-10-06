@@ -458,9 +458,24 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": battlements must use polar_array on the roof rim"
                             + " (linear_array at ground origin misplaces merlons)");
                 }
+                if (typeByRef.containsValue("geometry.architectural_primitives.roof_base")) {
+                    errors.add(preset.id + ": shed/gable roof_base conflicts with flat battlement parapet");
+                }
+                if (typeByRef.containsValue("geometry.architectural_primitives.railing")) {
+                    errors.add(preset.id + ": eave railing duplicates battlement parapet role");
+                }
+                if (!typeByRef.containsKey("tower_cut")) {
+                    errors.add(preset.id + ": ground door requires tower_cut difference (hollow − arch opening)");
+                }
+                if (!typeByRef.containsKey("top_deck")) {
+                    errors.add(preset.id + ": flat parapet watchtower requires top_deck slab");
+                }
                 Double cornerY = box == null ? null : numericStateValue(box.state, "cornerY");
-                if (cornerY == null || cornerY < 10.0d) {
-                    errors.add(preset.id + ": battlement_box.cornerY must sit near roof height (~14)");
+                if (cornerY == null || cornerY < 14.0d) {
+                    errors.add(preset.id + ": battlement_box.cornerY must sit on top deck (~14)");
+                }
+                if (!"battlement_count".equals(incomingFromRef(preset, "battlement_array", "input_count"))) {
+                    errors.add(preset.id + ": battlement_count must drive polar_array input_count");
                 }
             }
             case "decorative.gazebo" -> {

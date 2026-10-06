@@ -121,6 +121,10 @@ def patch_stone_bridge(preset: dict) -> None:
 
 
 def patch_watchtower(preset: dict) -> None:
+    """No-op when parapet topology is present; legacy roof presets are rewritten via rewrite_p3_presets.py."""
+    refs = {n.get("ref") for n in preset.get("nodes") or []}
+    if "top_deck" in refs and "tower_cut" in refs:
+        return
     box = node_by_ref(preset, "battlement_box")
     box["state"] = {
         "cornerX": 4.4,
@@ -132,7 +136,7 @@ def patch_watchtower(preset: dict) -> None:
     }
     array_node = node_by_ref(preset, "battlement_array")
     array_node["typeId"] = "pattern.radial.polar_array"
-    array_node["state"] = {"count": 8, "includeEnd": False}
+    array_node["state"] = {"count": 12, "includeEnd": False}
     preset["nodes"] = [n for n in preset["nodes"] if n.get("ref") != "array_dir"]
     preset["connections"] = [
         c
@@ -142,31 +146,33 @@ def patch_watchtower(preset: dict) -> None:
             or (c.get("toRef") == "battlement_array" and c.get("toPort") == "input_direction")
         )
     ]
-    insert_after(
-        preset,
-        "battlement_array",
-        {
-            "ref": "battlement_count",
-            "typeId": "input.numeric.integer",
-            "x": 0,
-            "y": 900,
-            "state": {"value": 8},
-        },
-    )
-    add_conns(
-        preset,
-        [
+    if "battlement_count" not in refs:
+        insert_after(
+            preset,
+            "battlement_array",
             {
-                "fromRef": "battlement_count",
-                "fromPort": "output_value",
-                "toRef": "battlement_array",
-                "toPort": "input_count",
-            }
-        ],
-    )
+                "ref": "battlement_count",
+                "typeId": "input.numeric.integer",
+                "x": 0,
+                "y": 900,
+                "state": {"value": 12},
+            },
+        )
+        add_conns(
+            preset,
+            [
+                {
+                    "fromRef": "battlement_count",
+                    "fromPort": "output_value",
+                    "toRef": "battlement_array",
+                    "toPort": "input_count",
+                }
+            ],
+        )
     preset["description"] = (
-        "Hollow cylinder tower + Roof Base + Eave Railing + Polar Array battlements on the roof rim "
-        "→ Preview Geometry and block preview chain."
+        "Hollow 1-block-thick cylindrical tower with a ground-level round arch door, a top deck slab, "
+        "and 12 polar-array battlements. Difference booleans are deferred voxel cuts on the block grid. "
+        "Preview Geometry and Preview Blocks share the same moved composite."
     )
 
 

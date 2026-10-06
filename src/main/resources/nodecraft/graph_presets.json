@@ -800,7 +800,7 @@
         {
           "id": "architectural.infrastructure.watchtower",
           "displayName": "Medieval Watchtower",
-          "description": "Hollow cylinder tower + Roof Base + Eave Railing + Polar Array battlements on the roof rim → Preview Geometry and block preview chain.",
+          "description": "Hollow 1-block-thick cylindrical tower with a ground-level round arch door, a top deck slab, and 12 polar-array battlements. Difference booleans are deferred voxel cuts on the block grid. Preview Geometry and Preview Blocks share the same moved composite.",
           "kind": "composite",
           "nodes": [
             {
@@ -834,7 +834,7 @@
                 "startY": 0.0,
                 "startZ": 0.0,
                 "endX": 0.0,
-                "endY": 14.0,
+                "endY": 13.5,
                 "endZ": 0.0,
                 "radius": 4.0
               }
@@ -846,49 +846,97 @@
               "y": 280
             },
             {
-              "ref": "roof_volume",
+              "ref": "door_host",
               "typeId": "geometry.primitives.box_from_corner_size",
               "x": 0,
               "y": 560,
               "state": {
-                "cornerX": -5.0,
-                "cornerY": 14.0,
-                "cornerZ": -5.0,
-                "sizeX": 10.0,
-                "sizeY": 0.5,
-                "sizeZ": 10.0
+                "cornerX": -1.0,
+                "cornerY": 0.0,
+                "cornerZ": -5.2,
+                "sizeX": 2.0,
+                "sizeY": 3.0,
+                "sizeZ": 1.2
               }
             },
             {
-              "ref": "roof_face",
+              "ref": "door_face",
               "typeId": "reference.points.get_box_face",
               "x": 280,
               "y": 560,
               "state": {
-                "defaultFaceName": "top"
+                "defaultFaceName": "back"
               }
             },
             {
-              "ref": "roof",
-              "typeId": "geometry.architectural_primitives.roof_base",
+              "ref": "door_opening",
+              "typeId": "geometry.architectural_primitives.arch_opening",
               "x": 560,
               "y": 560
             },
             {
-              "ref": "roof_type",
+              "ref": "door_type",
               "typeId": "input.values.text_input",
               "x": 280,
               "y": 700,
               "state": {
-                "text": "shed",
+                "text": "round",
                 "multiline": false
+              }
+            },
+            {
+              "ref": "door_width",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 840,
+              "state": {
+                "value": 2.0
+              }
+            },
+            {
+              "ref": "door_stem_height",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 980,
+              "state": {
+                "value": 2.5
+              }
+            },
+            {
+              "ref": "door_depth",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 1120,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
+              "ref": "tower_cut",
+              "typeId": "geometry.boolean.difference",
+              "x": 820,
+              "y": 420
+            },
+            {
+              "ref": "top_deck",
+              "typeId": "geometry.primitives.cylinder",
+              "x": 0,
+              "y": 740,
+              "state": {
+                "startX": 0.0,
+                "startY": 13.5,
+                "startZ": 0.0,
+                "endX": 0.0,
+                "endY": 14.0,
+                "endZ": 0.0,
+                "radius": 5.0
               }
             },
             {
               "ref": "battlement_box",
               "typeId": "geometry.primitives.box_from_corner_size",
               "x": 0,
-              "y": 740,
+              "y": 920,
               "state": {
                 "cornerX": 4.4,
                 "cornerY": 14.0,
@@ -902,9 +950,9 @@
               "ref": "battlement_array",
               "typeId": "pattern.radial.polar_array",
               "x": 280,
-              "y": 740,
+              "y": 920,
               "state": {
-                "count": 8,
+                "count": 12,
                 "includeEnd": false
               }
             },
@@ -912,24 +960,18 @@
               "ref": "battlement_count",
               "typeId": "input.numeric.integer",
               "x": 0,
-              "y": 900,
+              "y": 1080,
               "state": {
-                "value": 8
+                "value": 12
               }
-            },
-            {
-              "ref": "eave_railing",
-              "typeId": "geometry.architectural_primitives.railing",
-              "x": 560,
-              "y": 720
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 820,
+              "x": 1080,
               "y": 480,
               "state": {
-                "inputCount": 4
+                "inputCount": 3
               }
             },
             {
@@ -998,22 +1040,52 @@
               "toPort": "input_cutter"
             },
             {
-              "fromRef": "roof_volume",
+              "fromRef": "door_host",
               "fromPort": "output_box_geometry",
-              "toRef": "roof_face",
+              "toRef": "door_face",
               "toPort": "input_box_geometry"
             },
             {
-              "fromRef": "roof_face",
+              "fromRef": "door_face",
               "fromPort": "output_face",
-              "toRef": "roof",
+              "toRef": "door_opening",
               "toPort": "input_face"
             },
             {
-              "fromRef": "roof_type",
+              "fromRef": "door_type",
               "fromPort": "output_text",
-              "toRef": "roof",
-              "toPort": "input_roof_type"
+              "toRef": "door_opening",
+              "toPort": "input_arch_type"
+            },
+            {
+              "fromRef": "door_width",
+              "fromPort": "output_value",
+              "toRef": "door_opening",
+              "toPort": "input_width"
+            },
+            {
+              "fromRef": "door_stem_height",
+              "fromPort": "output_value",
+              "toRef": "door_opening",
+              "toPort": "input_height"
+            },
+            {
+              "fromRef": "door_depth",
+              "fromPort": "output_value",
+              "toRef": "door_opening",
+              "toPort": "input_depth"
+            },
+            {
+              "fromRef": "hollow",
+              "fromPort": "output_geometry",
+              "toRef": "tower_cut",
+              "toPort": "input_base"
+            },
+            {
+              "fromRef": "door_opening",
+              "fromPort": "output_geometry",
+              "toRef": "tower_cut",
+              "toPort": "input_cutter"
             },
             {
               "fromRef": "battlement_box",
@@ -1022,34 +1094,28 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "roof",
-              "fromPort": "output_eave_path",
-              "toRef": "eave_railing",
-              "toPort": "input_path"
+              "fromRef": "battlement_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_array",
+              "toPort": "input_count"
             },
             {
-              "fromRef": "hollow",
+              "fromRef": "tower_cut",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
             },
             {
-              "fromRef": "roof",
+              "fromRef": "top_deck",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_1"
             },
             {
-              "fromRef": "eave_railing",
-              "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_2"
-            },
-            {
               "fromRef": "battlement_array",
               "fromPort": "output_geometry",
               "toRef": "combine",
-              "toPort": "input_geometry_3"
+              "toPort": "input_geometry_2"
             },
             {
               "fromRef": "combine",
@@ -1116,12 +1182,6 @@
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
-            },
-            {
-              "fromRef": "battlement_count",
-              "fromPort": "output_value",
-              "toRef": "battlement_array",
-              "toPort": "input_count"
             }
           ]
         },

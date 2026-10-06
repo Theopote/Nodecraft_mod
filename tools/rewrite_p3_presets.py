@@ -2,6 +2,7 @@
 """Rewrite P3 Showcase presets to Preset Library v2 (Array/Frames + architectural components)."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -253,8 +254,9 @@ P3_PRESETS: dict[str, dict] = {
         "id": "architectural.infrastructure.watchtower",
         "displayName": "Medieval Watchtower",
         "description": (
-            "Hollow cylinder tower + Roof Base + Eave Railing + Polar Array battlements on the roof rim → "
-            "Preview Geometry and block preview chain."
+            "Hollow 1-block-thick cylindrical tower with a ground-level round arch door, a top deck slab, "
+            "and 12 polar-array battlements. Difference booleans are deferred voxel cuts on the block grid. "
+            "Preview Geometry and Preview Blocks share the same moved composite."
         ),
         "kind": "composite",
         "nodes": [
@@ -265,44 +267,68 @@ P3_PRESETS: dict[str, dict] = {
             }),
             node("inner", "geometry.primitives.cylinder", 0, 380, {
                 "startX": 0.0, "startY": 0.0, "startZ": 0.0,
-                "endX": 0.0, "endY": 14.0, "endZ": 0.0, "radius": 4.0,
+                "endX": 0.0, "endY": 13.5, "endZ": 0.0, "radius": 4.0,
             }),
             node("hollow", "geometry.boolean.difference", 280, 280),
-            node("roof_volume", "geometry.primitives.box_from_corner_size", 0, 560, {
-                "cornerX": -5.0, "cornerY": 14.0, "cornerZ": -5.0,
-                "sizeX": 10.0, "sizeY": 0.5, "sizeZ": 10.0,
+            node("door_host", "geometry.primitives.box_from_corner_size", 0, 560, {
+                "cornerX": -1.0, "cornerY": 0.0, "cornerZ": -5.2,
+                "sizeX": 2.0, "sizeY": 3.0, "sizeZ": 1.2,
             }),
-            node("roof_face", "reference.points.get_box_face", 280, 560, {"defaultFaceName": "top"}),
-            node("roof", "geometry.architectural_primitives.roof_base", 560, 560),
-            node("roof_type", "input.values.text_input", 280, 700, {"text": "shed", "multiline": False}),
-            node("battlement_box", "geometry.primitives.box_from_corner_size", 0, 740, {
+            node("door_face", "reference.points.get_box_face", 280, 560, {"defaultFaceName": "back"}),
+            node("door_opening", "geometry.architectural_primitives.arch_opening", 560, 560),
+            node("door_type", "input.values.text_input", 280, 700, {"text": "round", "multiline": False}),
+            node("door_width", "input.numeric.float", 280, 840, {"value": 2.0}),
+            node("door_stem_height", "input.numeric.float", 280, 980, {"value": 2.5}),
+            node("door_depth", "input.numeric.float", 280, 1120, {"value": 1.2}),
+            node("tower_cut", "geometry.boolean.difference", 820, 420),
+            node("top_deck", "geometry.primitives.cylinder", 0, 740, {
+                "startX": 0.0, "startY": 13.5, "startZ": 0.0,
+                "endX": 0.0, "endY": 14.0, "endZ": 0.0, "radius": 5.0,
+            }),
+            node("battlement_box", "geometry.primitives.box_from_corner_size", 0, 920, {
                 "cornerX": 4.4, "cornerY": 14.0, "cornerZ": -0.4,
                 "sizeX": 1.2, "sizeY": 0.8, "sizeZ": 0.8,
             }),
-            node("battlement_array", "pattern.radial.polar_array", 280, 740, {
-                "count": 8, "includeEnd": False,
+            node("battlement_array", "pattern.radial.polar_array", 280, 920, {
+                "count": 12, "includeEnd": False,
             }),
-            node("battlement_count", "input.numeric.integer", 0, 900, {"value": 8}),
-            node("eave_railing", "geometry.architectural_primitives.railing", 560, 720),
-            node("combine", "geometry.combine.geometry", 820, 480, {"inputCount": 4}),
-            node("move_to_pos", "transform.basic_transforms.move_geometry", 1060, 480),
+            node("battlement_count", "input.numeric.integer", 0, 1080, {"value": 12}),
+            node("combine", "geometry.combine.geometry", 1080, 480, {"inputCount": 3}),
+            node("move_to_pos", "transform.basic_transforms.move_geometry", 1320, 480),
+            node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", 900.0, 480.0),
+            node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", 1120.0, 480.0),
             *block_tail_nodes(),
+            node(
+                "material_block_type",
+                "input.type_selectors.block_type_selector",
+                1360.0,
+                1100.0,
+                {"selectedBlock": "minecraft:stone_bricks"},
+            ),
         ],
         "connections": [
             conn("outer", "output_geometry", "hollow", "input_base"),
             conn("inner", "output_geometry", "hollow", "input_cutter"),
-            conn("roof_volume", "output_box_geometry", "roof_face", "input_box_geometry"),
-            conn("roof_face", "output_face", "roof", "input_face"),
-            conn("roof_type", "output_text", "roof", "input_roof_type"),
+            conn("door_host", "output_box_geometry", "door_face", "input_box_geometry"),
+            conn("door_face", "output_face", "door_opening", "input_face"),
+            conn("door_type", "output_text", "door_opening", "input_arch_type"),
+            conn("door_width", "output_value", "door_opening", "input_width"),
+            conn("door_stem_height", "output_value", "door_opening", "input_height"),
+            conn("door_depth", "output_value", "door_opening", "input_depth"),
+            conn("hollow", "output_geometry", "tower_cut", "input_base"),
+            conn("door_opening", "output_geometry", "tower_cut", "input_cutter"),
             conn("battlement_box", "output_geometry", "battlement_array", "input_geometry"),
             conn("battlement_count", "output_value", "battlement_array", "input_count"),
-            conn("roof", "output_eave_path", "eave_railing", "input_path"),
-            conn("hollow", "output_geometry", "combine", "input_geometry_0"),
-            conn("roof", "output_geometry", "combine", "input_geometry_1"),
-            conn("eave_railing", "output_geometry", "combine", "input_geometry_2"),
-            conn("battlement_array", "output_geometry", "combine", "input_geometry_3"),
+            conn("tower_cut", "output_geometry", "combine", "input_geometry_0"),
+            conn("top_deck", "output_geometry", "combine", "input_geometry_1"),
+            conn("battlement_array", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
+            conn("player_pos", "output_position", "move_to_pos_point_deconstruct", "input_point"),
+            conn("move_to_pos_point_deconstruct", "output_x", "move_to_pos_point_as_vector", "input_x"),
+            conn("move_to_pos_point_deconstruct", "output_y", "move_to_pos_point_as_vector", "input_y"),
+            conn("move_to_pos_point_deconstruct", "output_z", "move_to_pos_point_as_vector", "input_z"),
+            conn("move_to_pos_point_as_vector", "output_vector", "move_to_pos", "input_translation"),
+            conn("material_block_type", "output_block_id", "material", "input_block_type"),
             *block_tail_conns("move_to_pos"),
         ],
     },
@@ -561,25 +587,39 @@ P3_PRESETS: dict[str, dict] = {
 }
 
 
-def rewrite_file(path: Path) -> None:
+def rewrite_file(path: Path, only: set[str] | None = None) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     replaced = 0
+    targets = P3_PRESETS if only is None else {k: v for k, v in P3_PRESETS.items() if k in only}
     for category in data.get("categories") or []:
         presets = category.get("presets") or []
         for i, preset in enumerate(presets):
             if not preset:
                 continue
             pid = preset.get("id")
-            if pid in P3_PRESETS:
-                presets[i] = P3_PRESETS[pid]
+            if pid in targets:
+                presets[i] = targets[pid]
                 replaced += 1
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{path.name}: replaced {replaced} presets")
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Rewrite P3 showcase presets in graph_presets.json")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PRESET_ID",
+        help="Replace only the given preset id (repeatable). Default: all P3 presets.",
+    )
+    args = parser.parse_args()
+    only = set(args.only) if args.only else None
+    if only:
+        unknown = only - set(P3_PRESETS)
+        if unknown:
+            raise SystemExit(f"Unknown preset id(s): {', '.join(sorted(unknown))}")
     for path in PRESET_FILES:
-        rewrite_file(path)
+        rewrite_file(path, only=only)
 
 
 if __name__ == "__main__":
