@@ -2120,9 +2120,15 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor → Wall Along Path → Difference (Window openings) → Window Frame on frames → Roof → Move to Player → Voxelize → Material → Preview/Apply.",
+          "description": "Floor → Wall Along Path → Window Difference → Frames → Roof → Combine → Move to Player. Preview Geometry is the design preview after Move. Voxelize → Assign Block Type placements feed both Preview Blocks and Apply Changes. Manual Trigger EXEC fires Apply (OVERWRITE, async bake, undo).",
           "kind": "composite",
           "nodes": [
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0,
+              "y": 40
+            },
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
@@ -2219,42 +2225,6 @@
               "y": 240
             },
             {
-              "ref": "voxelize",
-              "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1240,
-              "y": 240
-            },
-            {
-              "ref": "material",
-              "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1480,
-              "y": 240
-            },
-            {
-              "ref": "preview_blocks",
-              "typeId": "output.preview.preview_blocks",
-              "x": 1720,
-              "y": 180
-            },
-            {
-              "ref": "preview_geometry",
-              "typeId": "output.preview.preview_geometry",
-              "x": 1720,
-              "y": 340
-            },
-            {
-              "ref": "apply_changes",
-              "typeId": "output.execute.apply_changes",
-              "x": 1720,
-              "y": 500
-            },
-            {
-              "ref": "player_pos",
-              "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 40
-            },
-            {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
               "x": 1120,
@@ -2273,13 +2243,54 @@
               "y": 280
             },
             {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1280,
+              "y": 80
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1360,
+              "y": 240
+            },
+            {
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1600,
+              "y": 240
+            },
+            {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1760.0,
-              "y": 580.0,
+              "x": 1600,
+              "y": 400,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1880,
+              "y": 80
+            },
+            {
+              "ref": "apply_changes",
+              "typeId": "output.execute.apply_changes",
+              "x": 1880,
+              "y": 240,
+              "state": {
+                "placementMode": "OVERWRITE",
+                "useAsyncBake": true,
+                "recordUndo": true
+              }
+            },
+            {
+              "ref": "apply_trigger",
+              "typeId": "flow.control.manual_trigger",
+              "x": 1880,
+              "y": 440
             }
           ],
           "connections": [
@@ -2380,36 +2391,6 @@
               "toPort": "input_geometry_3"
             },
             {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "apply_changes",
-              "toPort": "input_block_placements"
-            },
-            {
               "fromRef": "combine",
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
@@ -2446,10 +2427,46 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "apply_changes",
+              "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "apply_trigger",
+              "fromPort": "output_exec",
+              "toRef": "apply_changes",
+              "toPort": "input_trigger"
             }
           ]
         },

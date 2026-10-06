@@ -42,7 +42,8 @@ class FlowControlLanguageContractTest {
     private static final Set<String> CANONICAL_IDS = Set.of(
             "flow.control.branch",
             "flow.control.sequence",
-            "flow.control.do_once"
+            "flow.control.do_once",
+            "flow.control.manual_trigger"
     );
 
     private static NodeRegistry registry;
@@ -61,20 +62,21 @@ class FlowControlLanguageContractTest {
     }
 
     @Test
-    void exactlyThreeFlowControlNodesRegistered() {
+    void exactlyFourFlowControlNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("flow.control."))
                 .sorted()
                 .toList();
-        assertEquals(3, ids.size(), ids.toString());
+        assertEquals(4, ids.size(), ids.toString());
         assertEquals(CANONICAL_IDS, Set.copyOf(ids));
     }
 
     @Test
-    void ordersAreZeroThroughTwo() {
+    void ordersAreZeroThroughThree() {
         assertEquals(0, orderOf("flow.control.branch"));
         assertEquals(1, orderOf("flow.control.sequence"));
         assertEquals(2, orderOf("flow.control.do_once"));
+        assertEquals(3, orderOf("flow.control.manual_trigger"));
     }
 
     @Test
@@ -85,13 +87,29 @@ class FlowControlLanguageContractTest {
                 registry.createNodeInstance("flow.control.sequence").getClass(), "flow.control.sequence"));
         assertEquals(NodeEffect.CONTEXT_WRITE, NodeEffectResolver.resolve(
                 registry.createNodeInstance("flow.control.do_once").getClass(), "flow.control.do_once"));
+        assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(
+                registry.createNodeInstance("flow.control.manual_trigger").getClass(),
+                "flow.control.manual_trigger"));
+    }
+
+    @Test
+    void manualTriggerIsExecSourceWithNoExecInput() {
+        INode trigger = registry.createNodeInstance("flow.control.manual_trigger");
+        assertNotNull(trigger);
+        assertTrue(trigger.getInputPorts().isEmpty());
+        assertPortType(trigger, "output_exec", NodeDataType.EXEC);
+        boolean hasExecInput = trigger.getInputPorts().stream()
+                .anyMatch(port -> port.getDataType() == NodeDataType.EXEC);
+        assertFalse(hasExecInput);
     }
 
     @Test
     void branchConditionStrictBooleanRejectsNumber() {
-        BranchNode branch = new BranchNode();
-        Map<String, Object> outputs = branch.compute(Map.of("input_condition", 1));
-        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        BranchProbe branch = new BranchProbe();
+        branch.connectInput("input_condition", NodeDataType.BOOLEAN);
+        branch.setInput("input_condition", 1);
+        branch.processNode(null);
+        assertEquals(Boolean.FALSE, branch.getOutput("output_valid"));
         assertTrue(branch.getActiveExecOutputPortIds().isEmpty());
     }
 
@@ -129,12 +147,12 @@ class FlowControlLanguageContractTest {
 
     @Test
     void sequenceStepCountRejectsDouble() {
-        SequenceNode sequence = new SequenceNode();
-        Map<String, Object> outputs = sequence.compute(Map.of(
-                "input_signal", "go",
-                "input_step_count", 3.5
-        ));
-        assertEquals(Boolean.FALSE, outputs.get("output_valid"));
+        SequenceProbe sequence = new SequenceProbe();
+        sequence.connectInput("input_step_count", NodeDataType.INTEGER);
+        sequence.setInput("input_signal", "go");
+        sequence.setInput("input_step_count", 3.5);
+        sequence.processNode(null);
+        assertEquals(Boolean.FALSE, sequence.getOutput("output_valid"));
         assertTrue(sequence.getActiveExecOutputPortIds().isEmpty());
     }
 
@@ -330,6 +348,12 @@ class FlowControlLanguageContractTest {
     }
 
     private static final class BranchProbe extends BranchNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            FlowControlLanguageContractTest.connectInput(this, portId, outputType);
+        }
+    }
+
+    private static final class SequenceProbe extends SequenceNode {
         void connectInput(String portId, NodeDataType outputType) {
             FlowControlLanguageContractTest.connectInput(this, portId, outputType);
         }

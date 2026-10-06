@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**536**
+- **节点总数**：**537**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -9,7 +9,7 @@
 
 | 分类 ID | 节点数 |
 |---|---:|
-| `flow.control` | 3 |
+| `flow.control` | 4 |
 | `flow.loop` | 2 |
 | `geometry.analysis` | 3 |
 | `geometry.architectural_primitives` | 19 |
@@ -70,13 +70,14 @@
 | `world.terrain` | 19 |
 | `world.write` | 18 |
 
-## flow.control（3）
+## flow.control（4）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Branch | `flow.control.branch` | Routes exec by Condition. Signal is optional passthrough T and never gates exec routing. | `BranchNode` |
 | Sequence | `flow.control.sequence` | Fires Exec Step 1..N in order. Signal is optional passthrough T; Step Count is exact INTEGER 1..8. | `SequenceNode` |
 | Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset by an EXEC pulse. | `DoOnceNode` |
+| Manual Trigger | `flow.control.manual_trigger` | Fires a one-shot EXEC pulse when Trigger is pressed. Does not write the world. | `ManualTriggerNode` |
 
 ## flow.loop（2）
 

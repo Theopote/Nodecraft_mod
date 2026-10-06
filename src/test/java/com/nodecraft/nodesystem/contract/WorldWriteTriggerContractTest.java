@@ -51,6 +51,19 @@ class WorldWriteTriggerContractTest {
     }
 
     @Test
+    void manualTriggerIsPureExecSource() {
+        INode trigger = registry.createNodeInstance("flow.control.manual_trigger");
+        assertNotNull(trigger);
+        assertEquals(
+                NodeEffect.PURE,
+                NodeEffectResolver.resolve(trigger.getClass(), "flow.control.manual_trigger"));
+        IPort execOut = findOutput(trigger, "output_exec");
+        assertNotNull(execOut);
+        assertEquals(NodeDataType.EXEC, execOut.getDataType());
+        assertTrue(trigger.getInputPorts().isEmpty());
+    }
+
+    @Test
     void voxelizeGeometryIsPureNotWorldWrite() {
         VoxelizeGeometryNode node = new VoxelizeGeometryNode();
         assertEquals("geometry.voxel.voxelize_geometry", node.getTypeId());

@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.node;
 
 import com.nodecraft.gui.components.node.actions.ApplyChangesActionProvider;
+import com.nodecraft.gui.components.node.actions.ManualTriggerActionProvider;
 import com.nodecraft.gui.components.node.actions.CoalesceActionProvider;
 import com.nodecraft.gui.components.node.actions.SignalForkActionProvider;
 import com.nodecraft.gui.components.node.actions.TagRelayActionProvider;
@@ -23,8 +24,9 @@ class NodeActionProviderRegistryTest {
         assertTrue(NodeActionProviderRegistry.assistProviders().contains(CoalesceActionProvider.INSTANCE));
         assertTrue(NodeActionProviderRegistry.assistProviders().contains(TagRelayActionProvider.INSTANCE));
 
-        assertEquals(1, NodeActionProviderRegistry.actionProviders().size());
+        assertEquals(2, NodeActionProviderRegistry.actionProviders().size());
         assertTrue(NodeActionProviderRegistry.actionProviders().contains(ApplyChangesActionProvider.INSTANCE));
+        assertTrue(NodeActionProviderRegistry.actionProviders().contains(ManualTriggerActionProvider.INSTANCE));
     }
 
     @Test
@@ -37,6 +39,7 @@ class NodeActionProviderRegistryTest {
         assertFalse(CoalesceActionProvider.INSTANCE.render(fork, () -> null));
         assertFalse(TagRelayActionProvider.INSTANCE.render(fork, () -> null));
         assertFalse(ApplyChangesActionProvider.INSTANCE.render(relay, () -> null));
+        assertFalse(ManualTriggerActionProvider.INSTANCE.render(relay, () -> null));
     }
 
     @Test

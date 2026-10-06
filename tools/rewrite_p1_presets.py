@@ -2,6 +2,7 @@
 """Rewrite P1 architectural + building-element presets to Preset Library v2."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -27,8 +28,10 @@ P1_PRESETS: dict[str, dict] = {
         "id": "architectural.residential.mini_building_v1",
         "displayName": "Mini Building (Component Chain)",
         "description": (
-            "Floor → Wall Along Path → Difference (Window openings) → Window Frame on frames → Roof "
-            "→ Move to Player → Voxelize → Material → Preview/Apply."
+            "Floor → Wall Along Path → Window Difference → Frames → Roof → Combine → Move to Player. "
+            "Preview Geometry is the design preview after Move. Voxelize → Assign Block Type "
+            "placements feed both Preview Blocks and Apply Changes. Manual Trigger EXEC fires Apply "
+            "(OVERWRITE, async bake, undo)."
         ),
         "kind": "composite",
         "nodes": [
@@ -51,14 +54,19 @@ P1_PRESETS: dict[str, dict] = {
             node("move_to_pos", "transform.basic_transforms.move_geometry", 1120, 240),
             node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", 820, 280),
             node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", 1040, 280),
-            node("voxelize", "geometry.voxel.voxelize_geometry", 1240, 240),
-            node("material", "material.basic_assignment.assign_block_type", 1480, 240),
-            node("material_block_type", "input.type_selectors.block_type_selector", 1480, 360, {
+            node("preview_geometry", "output.preview.preview_geometry", 1280, 80),
+            node("voxelize", "geometry.voxel.voxelize_geometry", 1360, 240),
+            node("material", "material.basic_assignment.assign_block_type", 1600, 240),
+            node("material_block_type", "input.type_selectors.block_type_selector", 1600, 400, {
                 "selectedBlock": "minecraft:stone_bricks",
             }),
-            node("preview_blocks", "output.preview.preview_blocks", 1720, 180),
-            node("preview_geometry", "output.preview.preview_geometry", 1720, 340),
-            node("apply_changes", "output.execute.apply_changes", 1720, 500),
+            node("preview_blocks", "output.preview.preview_blocks", 1880, 80),
+            node("apply_changes", "output.execute.apply_changes", 1880, 240, {
+                "placementMode": "OVERWRITE",
+                "useAsyncBake": True,
+                "recordUndo": True,
+            }),
+            node("apply_trigger", "flow.control.manual_trigger", 1880, 440),
         ],
         "connections": [
             conn("volume", "output_box_geometry", "floor_face", "input_box_geometry"),
@@ -89,6 +97,7 @@ P1_PRESETS: dict[str, dict] = {
             conn("material_block_type", "output_block_id", "material", "input_block_type"),
             conn("material", "output_placements", "preview_blocks", "input_block_placements"),
             conn("material", "output_placements", "apply_changes", "input_block_placements"),
+            conn("apply_trigger", "output_exec", "apply_changes", "input_trigger"),
         ],
     },
     "building_elements.roofs.gable_roof": {
@@ -173,25 +182,39 @@ P1_PRESETS: dict[str, dict] = {
 }
 
 
-def rewrite_file(path: Path) -> None:
+def rewrite_file(path: Path, only: set[str] | None = None) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     replaced = 0
+    targets = P1_PRESETS if only is None else {k: v for k, v in P1_PRESETS.items() if k in only}
     for category in data.get("categories") or []:
         presets = category.get("presets") or []
         for i, preset in enumerate(presets):
             if not preset:
                 continue
             pid = preset.get("id")
-            if pid in P1_PRESETS:
-                presets[i] = P1_PRESETS[pid]
+            if pid in targets:
+                presets[i] = targets[pid]
                 replaced += 1
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{path.name}: replaced {replaced} presets")
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Rewrite P1 architectural presets in graph_presets.json")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PRESET_ID",
+        help="Replace only the given preset id (repeatable). Default: all P1 presets.",
+    )
+    args = parser.parse_args()
+    only = set(args.only) if args.only else None
+    if only:
+        unknown = only - set(P1_PRESETS)
+        if unknown:
+            raise SystemExit(f"Unknown preset id(s): {', '.join(sorted(unknown))}")
     for path in PRESET_FILES:
-        rewrite_file(path)
+        rewrite_file(path, only=only)
 
 
 if __name__ == "__main__":

@@ -36,12 +36,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Executes a node graph using either pure dataflow scheduling or exec-edge scheduling.
  *
- * <p>When the graph has no  connections, nodes run once in dataflow
- * topological order (legacy behaviour). When exec edges exist, only the exec frontier runs
- * nodes; data inputs are pulled lazily from upstream data ports.</p>
+ * <p>Preview runs always use dataflow so Preview Geometry / Preview Blocks off the exec
+ * frontier still update. Manual (and other non-preview) runs with EXEC edges use exec-flow:
+ * only the exec frontier runs, and data inputs are pulled lazily from upstream data ports.
+ * Graphs with no EXEC edges always use dataflow.</p>
  *
  * <p>Flow-control nodes with exec ports ({@code flow.control.branch}, {@code flow.control.sequence},
- * {@code flow.control.do_once}) route execution via {@link ExecRoutingNode}.</p>
+ * {@code flow.control.do_once}, {@code flow.control.manual_trigger}) route execution via
+ * {@link ExecRoutingNode} where applicable.</p>
  */
 public class NodeExecutor {
 
@@ -344,7 +346,10 @@ public class NodeExecutor {
             }
 
             ExecutionFlowGraph flowGraph = ExecutionFlowGraph.analyze(graph);
-            if (flowGraph.hasExecEdges()) {
+            // Preview must stay dataflow even when EXEC wires exist; otherwise Preview
+            // Geometry / Preview Blocks off the exec frontier never run, and WORLD_WRITE
+            // sinks are skipped anyway. Manual/headless runs with EXEC edges use exec-flow.
+            if (flowGraph.hasExecEdges() && !skipOutputExecuteSideEffects) {
                 return executeExecFlowGraph(flowGraph);
             }
             return executeDataflowGraph(plan);

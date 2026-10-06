@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.node;
 
 import com.nodecraft.gui.components.node.actions.ApplyChangesActionProvider;
+import com.nodecraft.gui.components.node.actions.ManualTriggerActionProvider;
 import com.nodecraft.gui.components.node.actions.CoalesceActionProvider;
 import com.nodecraft.gui.components.node.actions.SignalForkActionProvider;
 import com.nodecraft.gui.components.node.actions.TagRelayActionProvider;
@@ -24,7 +25,8 @@ public final class NodeActionProviderRegistry {
     );
 
     private static final List<NodeActionProvider> ACTION_PROVIDERS = List.of(
-            ApplyChangesActionProvider.INSTANCE
+            ApplyChangesActionProvider.INSTANCE,
+            ManualTriggerActionProvider.INSTANCE
     );
 
     private NodeActionProviderRegistry() {

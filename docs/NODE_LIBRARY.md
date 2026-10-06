@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **536**
+- Total nodes: **537**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -9,7 +9,7 @@
 
 | Category ID | Node Count |
 |---|---:|
-| `flow.control` | 3 |
+| `flow.control` | 4 |
 | `flow.loop` | 2 |
 | `geometry.analysis` | 3 |
 | `geometry.architectural_primitives` | 19 |
@@ -70,13 +70,14 @@
 | `world.terrain` | 19 |
 | `world.write` | 18 |
 
-## flow.control (3)
+## flow.control (4)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Branch | `flow.control.branch` | Routes exec by Condition. Signal is optional passthrough T and never gates exec routing. | `BranchNode` |
 | Sequence | `flow.control.sequence` | Fires Exec Step 1..N in order. Signal is optional passthrough T; Step Count is exact INTEGER 1..8. | `SequenceNode` |
 | Do Once | `flow.control.do_once` | Passes exec once per execution run unless reset by an EXEC pulse. | `DoOnceNode` |
+| Manual Trigger | `flow.control.manual_trigger` | Fires a one-shot EXEC pulse when Trigger is pressed. Does not write the world. | `ManualTriggerNode` |
 
 ## flow.loop (2)
 

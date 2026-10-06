@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
+import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -223,6 +225,8 @@ class PresetSemanticAuditTest {
         errors.addAll(requireCanonicalGeometricScaleContracts(preset, typeByRef));
         errors.addAll(findUnconsumedNonSinkNodes(preset, typeByRef));
         errors.addAll(requireExplicitStateOnRepeatedPrimitives(preset, typeByRef));
+        errors.addAll(requirePreviewBlocksAndApplyShareSource(preset, typeByRef));
+        errors.addAll(requireMiniBuildingFlagshipPath(preset, typeByRef));
 
         // Structural connectability still owned by GraphPresetResourceTest; re-check ports
         // here so semantic failures surface with the same resource load.
@@ -305,6 +309,22 @@ class PresetSemanticAuditTest {
             GraphPresetRules.GraphPresetDefinition preset,
             String targetRef,
             String targetPort) {
+        GraphPresetRules.PresetConnection connection = incomingConnection(preset, targetRef, targetPort);
+        return connection == null ? null : connection.fromRef;
+    }
+
+    private static String incomingFromPort(
+            GraphPresetRules.GraphPresetDefinition preset,
+            String targetRef,
+            String targetPort) {
+        GraphPresetRules.PresetConnection connection = incomingConnection(preset, targetRef, targetPort);
+        return connection == null ? null : connection.fromPort;
+    }
+
+    private static GraphPresetRules.PresetConnection incomingConnection(
+            GraphPresetRules.GraphPresetDefinition preset,
+            String targetRef,
+            String targetPort) {
         if (preset.connections == null) {
             return null;
         }
@@ -313,7 +333,7 @@ class PresetSemanticAuditTest {
                 continue;
             }
             if (targetRef.equals(connection.toRef) && targetPort.equals(connection.toPort)) {
-                return connection.fromRef;
+                return connection;
             }
         }
         return null;
@@ -338,6 +358,142 @@ class PresetSemanticAuditTest {
             return number.doubleValue();
         }
         return null;
+    }
+
+    private static Boolean booleanStateValue(Map<String, Object> state, String key) {
+        if (state == null) {
+            return null;
+        }
+        Object value = state.get(key);
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof String text) {
+            if ("true".equalsIgnoreCase(text)) {
+                return Boolean.TRUE;
+            }
+            if ("false".equalsIgnoreCase(text)) {
+                return Boolean.FALSE;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Every canonical preset that both previews and applies must share
+     * {@code material.output_placements}, keep a single WORLD_WRITE Apply, and
+     * preview design geometry after the Move that feeds Voxelize.
+     */
+    private static List<String> requirePreviewBlocksAndApplyShareSource(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        List<String> previewRefs = refsOfType(typeByRef, PREVIEW_BLOCKS);
+        List<String> applyRefs = refsOfType(typeByRef, APPLY_CHANGES);
+        if (previewRefs.isEmpty() || applyRefs.isEmpty()) {
+            return errors;
+        }
+        if (applyRefs.size() != 1) {
+            errors.add(preset.id + ": expected exactly one Apply Changes node, found " + applyRefs.size());
+        }
+        List<String> worldWrites = new ArrayList<>();
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if (NodeEffectResolver.inferFromTypeId(entry.getValue()) == NodeEffect.WORLD_WRITE) {
+                worldWrites.add(entry.getKey() + " (" + entry.getValue() + ")");
+            }
+        }
+        if (worldWrites.size() != 1) {
+            errors.add(preset.id + ": expected exactly one WORLD_WRITE sink, found " + worldWrites);
+        }
+
+        String previewRef = previewRefs.getFirst();
+        String applyRef = applyRefs.getFirst();
+        String previewFrom = incomingFromRef(preset, previewRef, "input_block_placements");
+        String previewPort = incomingFromPort(preset, previewRef, "input_block_placements");
+        String applyFrom = incomingFromRef(preset, applyRef, "input_block_placements");
+        String applyPort = incomingFromPort(preset, applyRef, "input_block_placements");
+        if (previewFrom == null
+                || applyFrom == null
+                || !previewFrom.equals(applyFrom)
+                || !MATERIAL_PLACEMENTS_PORT.equals(previewPort)
+                || !MATERIAL_PLACEMENTS_PORT.equals(applyPort)) {
+            errors.add(preset.id + ": Preview Blocks and Apply Changes must share "
+                    + MATERIAL_PLACEMENTS_PORT + " from the same node");
+        } else if (!MATERIAL_TYPE_IDS.contains(typeByRef.get(previewFrom))) {
+            errors.add(preset.id + ": shared placements must come from Assign Block Type "
+                    + MATERIAL_PLACEMENTS_PORT);
+        }
+        if (preset.connections != null) {
+            for (GraphPresetRules.PresetConnection connection : preset.connections) {
+                if (connection == null || !applyRef.equals(connection.toRef)) {
+                    continue;
+                }
+                if ("input_trigger".equals(connection.toPort)
+                        || "input_block_placements".equals(connection.toPort)) {
+                    continue;
+                }
+                errors.add(preset.id + ": Apply Changes must only consume input_block_placements "
+                        + "(plus optional EXEC input_trigger); extra wire to " + connection.toPort);
+            }
+        }
+        GraphPresetRules.PresetNode applyNode = nodeByRefMap(preset).get(applyRef);
+        if (!Boolean.TRUE.equals(booleanStateValue(applyNode == null ? null : applyNode.state, "recordUndo"))) {
+            errors.add(preset.id + ": Apply Changes must freeze recordUndo=true");
+        }
+
+        String voxelizeRef = firstRefOfType(typeByRef, VOXELIZE_TYPE);
+        String previewGeometryRef = firstRefOfType(typeByRef, PREVIEW_GEOMETRY);
+        if (voxelizeRef != null && previewGeometryRef != null) {
+            String moveRef = incomingFromRef(preset, voxelizeRef, "input_geometry");
+            if (moveRef == null
+                    || !"transform.basic_transforms.move_geometry".equals(typeByRef.get(moveRef))) {
+                errors.add(preset.id + ": Voxelize geometry must come from the final Move");
+            } else if (!moveRef.equals(incomingFromRef(preset, previewGeometryRef, "input_geometry"))) {
+                errors.add(preset.id + ": Preview Geometry must use geometry after the final Move");
+            }
+        }
+        return errors;
+    }
+
+    private static List<String> requireMiniBuildingFlagshipPath(
+            GraphPresetRules.GraphPresetDefinition preset,
+            Map<String, String> typeByRef) {
+        List<String> errors = new ArrayList<>();
+        if (!"architectural.residential.mini_building_v1".equals(preset.id)) {
+            return errors;
+        }
+        if (!"flow.control.manual_trigger".equals(typeByRef.get("apply_trigger"))) {
+            errors.add(preset.id + ": missing apply_trigger Manual Trigger node");
+        }
+        if (!"apply_trigger".equals(incomingFromRef(preset, "apply_changes", "input_trigger"))
+                || !"output_exec".equals(incomingFromPort(preset, "apply_changes", "input_trigger"))) {
+            errors.add(preset.id + ": apply_trigger.output_exec must drive apply_changes.input_trigger");
+        }
+        if (refsOfType(typeByRef, "geometry.combine.geometry").size() != 1
+                || refsOfType(typeByRef, "transform.basic_transforms.move_geometry").size() != 1
+                || refsOfType(typeByRef, VOXELIZE_TYPE).size() != 1) {
+            errors.add(preset.id + ": Combine → Move → Voxelize must be the unique construction path");
+        }
+        if (!"combine".equals(incomingFromRef(preset, "move_to_pos", "input_geometry"))
+                || !"move_to_pos".equals(incomingFromRef(preset, "voxelize", "input_geometry"))) {
+            errors.add(preset.id + ": construction path must be combine → move_to_pos → voxelize");
+        }
+        return errors;
+    }
+
+    private static List<String> refsOfType(Map<String, String> typeByRef, String typeId) {
+        List<String> refs = new ArrayList<>();
+        for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+            if (typeId.equals(entry.getValue())) {
+                refs.add(entry.getKey());
+            }
+        }
+        return refs;
+    }
+
+    private static String firstRefOfType(Map<String, String> typeByRef, String typeId) {
+        List<String> refs = refsOfType(typeByRef, typeId);
+        return refs.isEmpty() ? null : refs.getFirst();
     }
 
     private static Map<String, GraphPresetRules.PresetNode> nodeByRefMap(
