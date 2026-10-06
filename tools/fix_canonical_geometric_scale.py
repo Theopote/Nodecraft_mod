@@ -210,6 +210,13 @@ def patch_castle_keep(preset: dict) -> None:
     }
 
 
+def patch_medieval_cottage(preset: dict) -> None:
+    """No-op when opening-depth topology is present; legacy patches are rewritten via rewrite_p3_presets.py."""
+    refs = {n.get("ref") for n in preset.get("nodes") or []}
+    if "opening_depth" in refs:
+        return
+
+
 def patch_walls(preset: dict, height: float) -> None:
     insert_after(
         preset,
@@ -239,10 +246,10 @@ def main() -> None:
     data = json.loads(GRAPH_FILE.read_text(encoding="utf-8"))
     patch_stone_bridge(find_preset(data, "architectural.infrastructure.stone_bridge"))
     patch_watchtower(find_preset(data, "architectural.infrastructure.watchtower"))
+    patch_medieval_cottage(find_preset(data, "architectural.residential.medieval_cottage"))
     patch_gazebo(find_preset(data, "decorative.gazebo"))
     patch_castle_keep(find_preset(data, "styles.medieval.castle_keep"))
     patch_walls(find_preset(data, "architectural.residential.simple_house"), 4.0)
-    patch_walls(find_preset(data, "architectural.residential.medieval_cottage"), 4.0)
     GRAPH_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print("patched geometric scale presets")
 

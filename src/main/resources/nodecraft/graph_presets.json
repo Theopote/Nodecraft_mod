@@ -1188,7 +1188,7 @@
         {
           "id": "architectural.residential.medieval_cottage",
           "displayName": "Medieval Cottage",
-          "description": "Building volume →Floor / Wall / Window / Door / Roof architectural chain →Preview + block preview.",
+          "description": "12×4×10 building volume → floor / wall / window+door openings → difference cut walls → window frames on frames → gable roof with overhang → Preview + block preview. Shared opening_depth (0.6) exceeds wall_thickness (0.4) for through-wall cutters.",
           "kind": "composite",
           "nodes": [
             {
@@ -1263,13 +1263,28 @@
               }
             },
             {
+              "ref": "wall_thickness",
+              "typeId": "input.numeric.float",
+              "x": 520,
+              "y": 340,
+              "state": {
+                "value": 0.4
+              }
+            },
+            {
+              "ref": "opening_depth",
+              "typeId": "input.numeric.float",
+              "x": 520,
+              "y": 760,
+              "state": {
+                "value": 0.6
+              }
+            },
+            {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
               "x": 760,
-              "y": 260,
-              "state": {
-                "defaultDepth": 0.3
-              }
+              "y": 260
             },
             {
               "ref": "roof",
@@ -1317,7 +1332,16 @@
               "x": 520,
               "y": 620,
               "state": {
-                "value": 2.5
+                "value": 3.25
+              }
+            },
+            {
+              "ref": "roof_overhang",
+              "typeId": "input.numeric.float",
+              "x": 520,
+              "y": 900,
+              "state": {
+                "value": 0.8
               }
             },
             {
@@ -1495,6 +1519,30 @@
               "fromPort": "output_value",
               "toRef": "roof",
               "toPort": "input_height"
+            },
+            {
+              "fromRef": "roof_overhang",
+              "fromPort": "output_value",
+              "toRef": "roof",
+              "toPort": "input_overhang"
+            },
+            {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "walls",
+              "toPort": "input_thickness"
+            },
+            {
+              "fromRef": "opening_depth",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_depth"
+            },
+            {
+              "fromRef": "opening_depth",
+              "fromPort": "output_value",
+              "toRef": "doors",
+              "toPort": "input_depth"
             },
             {
               "fromRef": "win_cols",

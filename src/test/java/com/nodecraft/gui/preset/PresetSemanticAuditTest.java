@@ -496,8 +496,49 @@ class PresetSemanticAuditTest {
                             + " so Column Grid towers remain at outer corners");
                 }
             }
-            case "architectural.residential.simple_house",
-                 "architectural.residential.medieval_cottage" -> {
+            case "architectural.residential.medieval_cottage" -> {
+                if (!typeByRef.containsValue("geometry.architectural_primitives.wall_along_path")) {
+                    break;
+                }
+                GraphPresetRules.PresetNode wallHeight = nodeByRef.get("wall_height");
+                GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
+                Double height = wallHeight == null ? null : numericStateValue(wallHeight.state, "value");
+                Double sizeY = volume == null ? null : numericStateValue(volume.state, "sizeY");
+                if (height == null || sizeY == null || Math.abs(height - sizeY) > 0.05d) {
+                    errors.add(preset.id + ": wall_height must match volume.sizeY"
+                            + " (Wall Along Path defaults to 3, shorter than the host volume)");
+                }
+                String wallsRef = null;
+                for (Map.Entry<String, String> entry : typeByRef.entrySet()) {
+                    if ("geometry.architectural_primitives.wall_along_path".equals(entry.getValue())) {
+                        wallsRef = entry.getKey();
+                        break;
+                    }
+                }
+                if (wallsRef != null && incomingFromRef(preset, wallsRef, "input_height") == null) {
+                    errors.add(preset.id + ": Wall Along Path has no input_height connection");
+                }
+                if (!"opening_depth".equals(incomingFromRef(preset, "windows", "input_depth"))) {
+                    errors.add(preset.id + ": opening_depth must drive windows.input_depth");
+                }
+                if (!"opening_depth".equals(incomingFromRef(preset, "doors", "input_depth"))) {
+                    errors.add(preset.id + ": opening_depth must drive doors.input_depth");
+                }
+                if (wallsRef != null && !"wall_thickness".equals(incomingFromRef(preset, wallsRef, "input_thickness"))) {
+                    errors.add(preset.id + ": wall_thickness must drive walls.input_thickness");
+                }
+                GraphPresetRules.PresetNode openingDepth = nodeByRef.get("opening_depth");
+                GraphPresetRules.PresetNode wallThickness = nodeByRef.get("wall_thickness");
+                Double depth = openingDepth == null ? null : numericStateValue(openingDepth.state, "value");
+                Double thickness = wallThickness == null ? null : numericStateValue(wallThickness.state, "value");
+                if (depth == null || thickness == null || depth < thickness) {
+                    errors.add(preset.id + ": opening_depth must be >= wall_thickness for through-wall cutters");
+                }
+                if (incomingFromRef(preset, "roof", "input_overhang") == null) {
+                    errors.add(preset.id + ": gable roof must expose input_overhang for cottage eaves");
+                }
+            }
+            case "architectural.residential.simple_house" -> {
                 if (!typeByRef.containsValue("geometry.architectural_primitives.wall_along_path")) {
                     break;
                 }
