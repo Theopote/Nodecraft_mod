@@ -437,15 +437,15 @@ class PresetSemanticAuditTest {
         switch (preset.id) {
             case "architectural.infrastructure.stone_bridge" -> {
                 GraphPresetRules.PresetNode elevation = nodeByRef.get("deck_elevation");
-                GraphPresetRules.PresetNode leftPier = nodeByRef.get("left_pier");
-                if (elevation == null || leftPier == null) {
-                    errors.add(preset.id + ": missing deck_elevation / left_pier for deck-at-pier-top scale");
+                GraphPresetRules.PresetNode bridgeBody = nodeByRef.get("bridge_body");
+                if (elevation == null || bridgeBody == null) {
+                    errors.add(preset.id + ": missing deck_elevation / bridge_body for deck-at-body-top scale");
                     break;
                 }
                 Double deckY = numericStateValue(elevation.state, "value");
-                Double pierH = numericStateValue(leftPier.state, "sizeY");
-                if (deckY == null || pierH == null || Math.abs(deckY - pierH) > 0.05d) {
-                    errors.add(preset.id + ": deck_elevation must match pier sizeY (deck sits on pier tops)");
+                Double bodyH = numericStateValue(bridgeBody.state, "sizeY");
+                if (deckY == null || bodyH == null || Math.abs(deckY - bodyH) > 0.05d) {
+                    errors.add(preset.id + ": deck_elevation must match bridge_body sizeY (deck sits on body top)");
                 }
                 if (!"deck_elevation".equals(incomingFromRef(preset, "span_start", "input_y"))) {
                     errors.add(preset.id + ": span_start.input_y must come from deck_elevation");

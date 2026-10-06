@@ -9,15 +9,19 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.DifferenceGeometryData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.IntersectionGeometryData;
 import com.nodecraft.nodesystem.datatypes.SphereData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -123,6 +127,39 @@ class BooleanFamilyContractTest {
 
         Object forwarded = preview.getOutput("output_geometry");
         assertInstanceOf(IntersectionGeometryData.class, forwarded);
+    }
+
+    @Test
+    void previewGeometryForwardsCompositeContainingDifferenceWithoutExpandingOperands() {
+        PreviewGeometryNode preview = (PreviewGeometryNode) NodeRegistry.getInstance()
+            .createNodeInstance("output.preview.preview_geometry");
+        assertNotNull(preview);
+        preview.setNodeState(Map.of("previewEnabled", false));
+
+        BoxGeometryData body = new BoxGeometryData(new Vector3d(8.0d, 2.5d, 0.0d), new Vector3d(16.0d, 5.0d, 6.0d));
+        BoxGeometryData cutter = new BoxGeometryData(new Vector3d(8.0d, 2.5d, 0.0d), new Vector3d(10.0d, 5.0d, 6.0d));
+        BoxGeometryData deck = new BoxGeometryData(new Vector3d(8.0d, 5.4d, 0.0d), new Vector3d(16.0d, 0.8d, 4.0d));
+        DifferenceGeometryData bridgeCut = new DifferenceGeometryData(body, cutter);
+        CompositeGeometryData composite = new CompositeGeometryData(List.of(bridgeCut, deck));
+
+        preview.setInput("input_geometry", composite);
+        preview.processNode(null);
+
+        Object forwarded = preview.getOutput("output_geometry");
+        assertInstanceOf(CompositeGeometryData.class, forwarded);
+        CompositeGeometryData out = (CompositeGeometryData) forwarded;
+        assertEquals(2, out.size());
+        assertTrue(out.geometries().stream().anyMatch(DifferenceGeometryData.class::isInstance));
+
+        GeometryVoxelizationResult voxel = GeometryVoxelizer.voxelizeStrict(composite, true);
+        assertTrue(voxel.success(), voxel.error());
+        assertFalse(voxel.blocks().isEmpty());
+
+        GeometryVoxelizationResult bodyOnly = GeometryVoxelizer.voxelizeStrict(body, true);
+        assertTrue(bodyOnly.success(), bodyOnly.error());
+        assertTrue(
+            voxel.blocks().size() < bodyOnly.blocks().size(),
+            "Composite with bridge cut must voxelize fewer blocks than uncut body alone");
     }
 
     @Test

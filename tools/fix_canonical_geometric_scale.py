@@ -52,6 +52,9 @@ def add_conns(preset: dict, extra: list[dict]) -> None:
 
 
 def patch_stone_bridge(preset: dict) -> None:
+    """No-op when central-arch topology is present; legacy pier presets are rewritten via rewrite_p3_presets.py."""
+    if node_by_ref(preset, "bridge_body") is not None:
+        return
     preset["nodes"] = [
         n
         for n in preset["nodes"]
@@ -113,7 +116,6 @@ def patch_stone_bridge(preset: dict) -> None:
             {"fromRef": "deck_elevation", "fromPort": "output_value", "toRef": "span_start", "toPort": "input_y"},
             {"fromRef": "span_z", "fromPort": "output_value", "toRef": "span_start", "toPort": "input_z"},
             {"fromRef": "span_start", "fromPort": "output_point", "toRef": "path_end", "toPort": "input_point"},
-            {"fromRef": "span_start", "fromPort": "output_point", "toRef": "span_path", "toPort": "input_start"},
         ],
     )
 
