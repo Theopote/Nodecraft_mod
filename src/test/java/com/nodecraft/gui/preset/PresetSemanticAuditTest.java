@@ -41,7 +41,7 @@ class PresetSemanticAuditTest {
     /** P0 Quickstart + Composites — must pass the full v2 teaching contract. */
     private static final Set<String> P0_CANONICAL_IDS = Set.of(
             "composite.textured_box",
-            "composite.array_transform_deform",
+            "composite.array_transform",
             "composite.boolean_cut_bake",
             "quickstart.basic_box",
             "quickstart.basic_sphere",

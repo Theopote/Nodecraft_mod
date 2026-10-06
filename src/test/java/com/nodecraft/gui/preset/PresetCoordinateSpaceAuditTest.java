@@ -35,7 +35,7 @@ class PresetCoordinateSpaceAuditTest {
     /** Mirrors {@link PresetSemanticAuditTest} canonical coverage (P0–P3). */
     private static final Set<String> CANONICAL_IDS = Set.of(
             "composite.textured_box",
-            "composite.array_transform_deform",
+            "composite.array_transform",
             "composite.boolean_cut_bake",
             "quickstart.basic_box",
             "quickstart.basic_sphere",

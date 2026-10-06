@@ -59,22 +59,23 @@ P0_PRESETS: dict[str, dict] = {
             conn("material_block_type", "output_block_id", "material", "input_block_type"),
         ],
     },
-    "composite.array_transform_deform": {
-        "id": "composite.array_transform_deform",
+    "composite.array_transform": {
+        "id": "composite.array_transform",
         "displayName": "Array Transform",
         "description": (
-            "Box → Linear Array → Transform → Preview Geometry, with optional Voxelize → Preview Blocks."
+            "Box → Linear Array → Transform → Preview Geometry, "
+            "plus Voxelize → Preview Blocks for the transformed result."
         ),
         "kind": "composite",
         "nodes": [
             node("box", "geometry.primitives.box", 0, 120, {"sizeX": 2.0, "sizeY": 2.0, "sizeZ": 2.0}),
-            node("array", "pattern.linear.linear_array_geometry", 280, 120, {"count": 4, "distance": 3.0}),
+            node("array", "pattern.linear.linear_array", 280, 120, {"count": 4, "distance": 3.0}),
             node(
                 "transform",
                 "transform.basic_transforms.transform_geometry",
                 560,
                 120,
-                {"translationX": 0.0, "translationY": 0.0, "translationZ": 0.0, "rotationY": 0.0, "scale": 1.0},
+                {"translationX": 0.0, "translationY": 1.0, "translationZ": 0.0, "rotationY": 25.0, "scale": 1.0},
             ),
             node("preview_geometry", "output.preview.preview_geometry", 860, 40),
             node("voxelize", "geometry.voxel.voxelize_geometry", 860, 220),
