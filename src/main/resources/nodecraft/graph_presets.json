@@ -7,8 +7,8 @@
       "presets": [
         {
           "id": "composite.textured_box",
-          "displayName": "Textured Box",
-          "description": "Box geometry with Preview Geometry plus Voxelize →Assign Block Type →Preview Blocks. Shows Geometry Preview vs Block Preview.",
+          "displayName": "Box: Geometry vs Blocks",
+          "description": "Box geometry with Preview Geometry plus Voxelize →Assign Block Type →Preview Blocks. Shows Geometry Preview vs Block Preview. Local-space teaching preset centered at world origin.",
           "kind": "composite",
           "nodes": [
             {
@@ -44,7 +44,11 @@
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
               "x": 560,
-              "y": 240
+              "y": 240,
+              "state": {
+                "showOutline": true,
+                "showFill": false
+              }
             },
             {
               "ref": "material_block_type",

@@ -25,10 +25,10 @@ def conn(fr: str, fp: str, to: str, tp: str) -> dict:
 P0_PRESETS: dict[str, dict] = {
     "composite.textured_box": {
         "id": "composite.textured_box",
-        "displayName": "Textured Box",
+        "displayName": "Box: Geometry vs Blocks",
         "description": (
             "Box geometry with Preview Geometry plus Voxelize → Assign Block Type → Preview Blocks. "
-            "Shows Geometry Preview vs Block Preview."
+            "Shows Geometry Preview vs Block Preview. Local-space teaching preset centered at world origin."
         ),
         "kind": "composite",
         "nodes": [
@@ -36,13 +36,27 @@ P0_PRESETS: dict[str, dict] = {
             node("voxelize", "geometry.voxel.voxelize_geometry", 300, 40),
             node("material", "material.basic_assignment.assign_block_type", 560, 40),
             node("preview_blocks", "output.preview.preview_blocks", 860, 40),
-            node("preview_geometry", "output.preview.preview_geometry", 560, 240),
+            node(
+                "preview_geometry",
+                "output.preview.preview_geometry",
+                560,
+                240,
+                {"showOutline": True, "showFill": False},
+            ),
+            node(
+                "material_block_type",
+                "input.type_selectors.block_type_selector",
+                900.0,
+                320.0,
+                {"selectedBlock": "minecraft:stone"},
+            ),
         ],
         "connections": [
             conn("box", "output_geometry", "preview_geometry", "input_geometry"),
             conn("box", "output_geometry", "voxelize", "input_geometry"),
             conn("voxelize", "output_blocks", "material", "input_coordinates"),
             conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+            conn("material_block_type", "output_block_id", "material", "input_block_type"),
         ],
     },
     "composite.array_transform_deform": {

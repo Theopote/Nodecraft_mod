@@ -117,14 +117,14 @@ public final class PathFrameUtils {
      * When Up ∥ tangent, falls back to a least-aligned cardinal (tolerant).
      */
     public static Frame initialFrame(Vector3d origin, Vector3d tangent, @Nullable Vector3d upHint) {
-        Vector3d zAxis = normalizeOr(tangent, null);
+        Vector3d zAxis = normalizeOr(tangent);
         if (zAxis == null) {
             return Frame.identity(origin);
         }
 
         Vector3d reference = null;
         if (upHint != null) {
-            Vector3d up = normalizeOr(upHint, null);
+            Vector3d up = normalizeOr(upHint);
             if (up != null) {
                 reference = up;
             }
@@ -157,11 +157,11 @@ public final class PathFrameUtils {
      * @return null when Up is missing, zero, or parallel to tangent
      */
     public static @Nullable Frame initialFrameRequireUp(Vector3d origin, Vector3d tangent, Vector3d upHint) {
-        Vector3d zAxis = normalizeOr(tangent, null);
+        Vector3d zAxis = normalizeOr(tangent);
         if (zAxis == null) {
             return null;
         }
-        Vector3d up = normalizeOr(upHint, null);
+        Vector3d up = normalizeOr(upHint);
         if (up == null) {
             return null;
         }
@@ -355,7 +355,7 @@ public final class PathFrameUtils {
      * Rotates the previous frame's section axes onto the new tangent with minimum rotation.
      */
     public static Frame transport(Frame previous, Vector3d origin, Vector3d tangent) {
-        Vector3d zAxis = normalizeOr(tangent, null);
+        Vector3d zAxis = normalizeOr(tangent);
         if (zAxis == null) {
             return Frame.identity(origin);
         }
@@ -490,7 +490,7 @@ public final class PathFrameUtils {
         if (tangent == null) {
             return null;
         }
-        return normalizeOr(tangent, null);
+        return normalizeOr(tangent);
     }
 
     public static PlaneData fitPlane(List<Vector3d> points, Vector3d center) {
@@ -536,12 +536,12 @@ public final class PathFrameUtils {
         return new Vector3d(0.0d, 0.0d, 1.0d);
     }
 
-    private static @Nullable Vector3d normalizeOr(Vector3d vector, @Nullable Vector3d fallback) {
+    private static @Nullable Vector3d normalizeOr(Vector3d vector) {
         Vector3d unit = VectorUtils.safeNormalize(vector);
         if (unit != null) {
             return unit;
         }
-        return fallback == null ? null : new Vector3d(fallback);
+        return null == null ? null : new Vector3d((Vector3d) null);
     }
 
     private static double clamp(double value, double min, double max) {
