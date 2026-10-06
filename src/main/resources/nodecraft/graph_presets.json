@@ -186,9 +186,9 @@
           ]
         },
         {
-          "id": "composite.boolean_cut_bake",
-          "displayName": "Boolean Cut + Voxelize",
-          "description": "Box A + Box B →Difference →Preview Geometry and Voxelize →Preview Blocks. Demonstrates boolean cut without legacy Bake naming.",
+          "id": "composite.boolean_cut",
+          "displayName": "Boolean Cut",
+          "description": "Subtracts a centered cutter from a base box. Difference is a deferred voxel boolean evaluated on the Minecraft block grid. Preview Geometry shows the continuous base and cutter; Preview Blocks shows the cut result.",
           "kind": "composite",
           "nodes": [
             {
@@ -220,10 +220,23 @@
               "y": 140
             },
             {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 620,
+              "y": 40,
+              "state": {
+                "inputCount": 2
+              }
+            },
+            {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 620,
-              "y": 40
+              "x": 860,
+              "y": 40,
+              "state": {
+                "showOutline": true,
+                "showFill": false
+              }
             },
             {
               "ref": "voxelize",
@@ -252,7 +265,19 @@
               "toPort": "input_cutter"
             },
             {
-              "fromRef": "difference",
+              "fromRef": "base",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "cutter",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
               "toPort": "input_geometry"

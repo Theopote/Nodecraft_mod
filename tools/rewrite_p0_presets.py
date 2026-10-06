@@ -89,26 +89,36 @@ P0_PRESETS: dict[str, dict] = {
             conn("voxelize", "output_blocks", "preview_blocks", "input_blocks"),
         ],
     },
-    "composite.boolean_cut_bake": {
-        "id": "composite.boolean_cut_bake",
-        "displayName": "Boolean Cut + Voxelize",
+    "composite.boolean_cut": {
+        "id": "composite.boolean_cut",
+        "displayName": "Boolean Cut",
         "description": (
-            "Box A + Box B → Difference → Preview Geometry and Voxelize → Preview Blocks. "
-            "Demonstrates boolean cut without legacy Bake naming."
+            "Subtracts a centered cutter from a base box. Difference is a deferred voxel boolean "
+            "evaluated on the Minecraft block grid. Preview Geometry shows the continuous base and "
+            "cutter; Preview Blocks shows the cut result."
         ),
         "kind": "composite",
         "nodes": [
             node("base", "geometry.primitives.box", 0, 40, {"sizeX": 8.0, "sizeY": 4.0, "sizeZ": 6.0}),
             node("cutter", "geometry.primitives.box", 0, 260, {"sizeX": 3.0, "sizeY": 5.0, "sizeZ": 3.0}),
             node("difference", "geometry.boolean.difference", 320, 140),
-            node("preview_geometry", "output.preview.preview_geometry", 620, 40),
+            node("combine", "geometry.combine.geometry", 620, 40, {"inputCount": 2}),
+            node(
+                "preview_geometry",
+                "output.preview.preview_geometry",
+                860,
+                40,
+                {"showOutline": True, "showFill": False},
+            ),
             node("voxelize", "geometry.voxel.voxelize_geometry", 620, 240),
             node("preview_blocks", "output.preview.preview_blocks", 920, 240),
         ],
         "connections": [
             conn("base", "output_geometry", "difference", "input_base"),
             conn("cutter", "output_geometry", "difference", "input_cutter"),
-            conn("difference", "output_geometry", "preview_geometry", "input_geometry"),
+            conn("base", "output_geometry", "combine", "input_geometry_0"),
+            conn("cutter", "output_geometry", "combine", "input_geometry_1"),
+            conn("combine", "output_geometry", "preview_geometry", "input_geometry"),
             conn("difference", "output_geometry", "voxelize", "input_geometry"),
             conn("voxelize", "output_blocks", "preview_blocks", "input_blocks"),
         ],

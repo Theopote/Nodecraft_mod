@@ -32,7 +32,7 @@ BLOCK_BY_PRESET: dict[str, str] = {
     "decorative.gazebo": "minecraft:oak_planks",
     "composite.textured_box": "minecraft:stone",
     "composite.array_transform": "minecraft:stone",
-    "composite.boolean_cut_bake": "minecraft:stone",
+    "composite.boolean_cut": "minecraft:stone",
 }
 
 DEFAULT_BLOCK = "minecraft:stone"

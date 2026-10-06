@@ -42,7 +42,7 @@ class PresetSemanticAuditTest {
     private static final Set<String> P0_CANONICAL_IDS = Set.of(
             "composite.textured_box",
             "composite.array_transform",
-            "composite.boolean_cut_bake",
+            "composite.boolean_cut",
             "quickstart.basic_box",
             "quickstart.basic_sphere",
             "quickstart.garden_wall",
