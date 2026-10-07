@@ -19,4 +19,15 @@ public record NodeRecommendation(
         VIA_CONVERSION,
         MANUAL
     }
+
+    /**
+     * ASCII plan marker safe for fonts that lack Unicode arrows (→/↻/·).
+     */
+    public String planMarkAscii() {
+        return switch (connectionPlan) {
+            case VIA_CONVERSION -> "~ ";
+            case MANUAL -> "* ";
+            case DIRECT -> "> ";
+        };
+    }
 }

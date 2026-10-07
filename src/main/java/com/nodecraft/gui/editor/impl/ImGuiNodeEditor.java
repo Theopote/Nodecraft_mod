@@ -1203,7 +1203,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         for (INode node : nodes) {
             interactionState.getSelectedNodeIds().add(node.getId());
         }
-        setSelectedNodeId(nodes.get(0).getId());
+        setSelectedNodeId(nodes.getFirst().getId());
         NodeCraft.LOGGER.debug("全选当前画布节点: {} 个", nodes.size());
     }
 

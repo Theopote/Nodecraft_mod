@@ -93,12 +93,8 @@ public final class NodeRecommendationPopupRenderer {
 
         List<NodeRecommendation> visible = new ArrayList<>(recommendations);
         for (NodeRecommendation recommendation : visible) {
-            String planMark = switch (recommendation.connectionPlan()) {
-                case VIA_CONVERSION -> "↻ ";
-                case MANUAL -> "· ";
-                case DIRECT -> "→ ";
-            };
-            String label = planMark + recommendation.displayName();
+            // ASCII markers: system CJK fonts often lack →/↻/· and render as "?".
+            String label = recommendation.planMarkAscii() + recommendation.displayName();
             if (ImGui.selectable(label + "##rec_" + recommendation.nodeId())) {
                 applyRecommendation(recommendation);
                 close();

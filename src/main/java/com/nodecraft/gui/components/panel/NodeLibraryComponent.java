@@ -524,17 +524,39 @@ public class NodeLibraryComponent implements EditorComponent {
 
         ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
         ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "Suggested Connections");
+
+        float lineHeight = ImGui.getTextLineHeight();
+        float iconPadding = 4.0f;
+        NodeRegistry registry = NodeRegistry.getInstance();
+
         for (NodeRecommendation recommendation : cachedRecommendations) {
-            String prefix = switch (recommendation.connectionPlan()) {
-                case VIA_CONVERSION -> "  ↻ ";
-                case MANUAL -> "  · ";
-                case DIRECT -> "  → ";
-            };
-            String label = prefix + recommendation.displayName() + "##suggest_" + recommendation.nodeId();
-            if (ImGui.selectable(label)) {
-                if (editor != null && cachedRecommendationContext != null) {
-                    editor.applyRecommendation(cachedRecommendationContext, recommendation);
-                }
+            float availableWidth = ImGui.getContentRegionAvailX();
+            boolean clicked = ImGui.selectable(
+                    "##suggest_" + recommendation.nodeId(),
+                    false,
+                    ImGuiSelectableFlags.AllowItemOverlap,
+                    availableWidth,
+                    lineHeight);
+
+            ImVec2 rectMin = ImGui.getItemRectMin();
+            ImDrawList drawList = ImGui.getWindowDrawList();
+            int textColor = ImGui.getColorU32(ImGuiCol.Text);
+
+            NodeInfo nodeInfo = registry.getNodeInfo(recommendation.nodeId());
+            float textStartX = rectMin.x;
+            if (nodeInfo != null) {
+                String category = recommendation.categoryId() != null && !recommendation.categoryId().isBlank()
+                        ? recommendation.categoryId()
+                        : nodeInfo.getCategoryId();
+                drawNodeIcon(drawList, rectMin, nodeInfo, category, lineHeight);
+                textStartX = rectMin.x + lineHeight + iconPadding;
+            }
+
+            String label = recommendation.planMarkAscii() + recommendation.displayName();
+            drawList.addText(textStartX, rectMin.y, textColor, label);
+
+            if (clicked && editor != null && cachedRecommendationContext != null) {
+                editor.applyRecommendation(cachedRecommendationContext, recommendation);
             }
             if (ImGui.isItemHovered()) {
                 ImGui.setTooltip(recommendation.reason());

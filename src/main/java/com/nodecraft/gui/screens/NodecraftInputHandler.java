@@ -95,11 +95,7 @@ public class NodecraftInputHandler {
     public boolean handleMouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         boolean isMouseOverGui = parentScreen.isMouseOverNodecraftGui(mouseX, mouseY);
 
-        if (parentScreen.isImGuiWantCaptureMouse() || isMouseOverGui) {
-            return true;
-        }
-
-        return false;
+        return parentScreen.isImGuiWantCaptureMouse() || isMouseOverGui;
     }
 
     public boolean handleMouseMoved(double mouseX, double mouseY) {

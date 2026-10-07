@@ -230,6 +230,8 @@ public class ImGuiRenderer {
                 io.getFonts().addFontFromMemoryTTF(fontDataBytes, fontSize, fontConfig, chineseGlyphRanges);
                 NodeCraft.LOGGER.info("已加载内置中文字体。");
             }
+            // System CJK fonts (e.g. YaHei) often omit →/↻/·; merge bundled glyphs for UI marks.
+            mergeUiSymbolGlyphs(io, fontSize);
 
             io.setFontGlobalScale(1.0f);
 
@@ -271,6 +273,23 @@ public class ImGuiRenderer {
         }
 
         return false;
+    }
+
+    private void mergeUiSymbolGlyphs(ImGuiIO io, float fontSize) {
+        if (fontDataBytes == null || fontDataBytes.length == 0) {
+            return;
+        }
+        try {
+            ImFontGlyphRangesBuilder rangesBuilder = new ImFontGlyphRangesBuilder();
+            rangesBuilder.addText(UI_SYMBOL_GLYPHS);
+            short[] symbolRanges = rangesBuilder.buildRanges();
+
+            ImFontConfig mergeConfig = getImFontConfig();
+            mergeConfig.setMergeMode(true);
+            io.getFonts().addFontFromMemoryTTF(fontDataBytes, fontSize, mergeConfig, symbolRanges);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.warn("合并 UI 符号字形失败（推荐箭头等可能显示为 ?）", e);
+        }
     }
 
     private @NotNull ImFontConfig getImFontConfig() {
