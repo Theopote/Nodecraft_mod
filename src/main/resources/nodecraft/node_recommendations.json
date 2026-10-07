@@ -730,8 +730,26 @@
               "connectPortId": "input_block_placements"
             },
             {
-              "nodeId": "output.execute.merge_block_placements",
+              "nodeId": "material.gradient_mapping.gradient_ramp_map",
               "order": 10,
+              "reason": "渐变重映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 20,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 30,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
               "reason": "合并多材质支路",
               "connectPortId": "input_placements_0"
             },
@@ -762,6 +780,284 @@
               "order": 50,
               "reason": "写入世界",
               "connectPortId": "input_block_placements_tree"
+            }
+          ]
+        }
+      }
+    },
+    "material.basic_assignment.block_palette": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览调色板结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "material.gradient_mapping.gradient_ramp_map",
+              "order": 10,
+              "reason": "渐变重映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 20,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 30,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.gradient_mapping.gradient_ramp_map": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.pattern_mapping.brick_pattern_map",
+              "order": 10,
+              "reason": "砖纹图案映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览渐变材质",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.gradient_mapping.noise_material": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.pattern_mapping.brick_pattern_map",
+              "order": 10,
+              "reason": "砖纹图案映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览噪声材质",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.pattern_mapping.brick_pattern_map": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 10,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 20,
+              "reason": "预览砖纹材质",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 30,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 40,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.surface_aging.weathering": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.moss_growth",
+              "order": 0,
+              "reason": "添加苔藓",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.surface_aging.crack_pattern",
+              "order": 10,
+              "reason": "添加裂纹变化",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览做旧结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.surface_aging.moss_growth": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.crack_pattern",
+              "order": 0,
+              "reason": "添加裂纹变化",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 10,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 20,
+              "reason": "预览苔藓结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 30,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 40,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "material.block_state.apply_block_state": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览状态结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 20,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
             }
           ]
         }
@@ -1427,6 +1723,204 @@
     }
   },
   "sourceCategories": {
+    "material.basic_assignment": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "material.gradient_mapping.gradient_ramp_map",
+              "order": 0,
+              "reason": "渐变重映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 10,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览材质结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
+    "material.gradient_mapping": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.pattern_mapping.brick_pattern_map",
+              "order": 10,
+              "reason": "砖纹图案映射",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览映射结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
+    "material.pattern_mapping": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 10,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 20,
+              "reason": "预览图案结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 30,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
+    "material.surface_aging": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.moss_growth",
+              "order": 0,
+              "reason": "添加苔藓",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.surface_aging.crack_pattern",
+              "order": 10,
+              "reason": "添加裂纹变化",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 20,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 30,
+              "reason": "预览做旧结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 40,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
+    "material.block_state": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览状态结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
+    "material.directional_mapping": {
+      "outputTypes": {
+        "block_placement_list": {
+          "downstream": [
+            {
+              "nodeId": "material.surface_aging.weathering",
+              "order": 0,
+              "reason": "继续表面做旧",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "material.block_state.apply_block_state",
+              "order": 10,
+              "reason": "附加方块状态",
+              "connectPortId": "input_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 20,
+              "reason": "预览定向映射结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 30,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            }
+          ]
+        }
+      }
+    },
     "geometry.curves": {
       "outputTypes": {
         "path": {
