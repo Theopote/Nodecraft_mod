@@ -2740,7 +2740,7 @@
         {
           "id": "architectural.workflow.floor_with_beam_grid",
           "displayName": "Floor + Beam Grid",
-          "description": "Floor Slab on footprint face; Beam Grid on slab Bottom Face (beamDrop below slab bottom) →Combine →Preview.",
+          "description": "Footprint Top Face → Floor Slab (Slab Thickness) → Beam Grid on slab Bottom Face (Columns/Rows/Depth/Beam Drop hang below bottom). Volume is footprint carrier only (sizeY ≠ slab thickness). Combine → Preview Geometry; Center Lines → Preview Curves.",
           "kind": "composite",
           "nodes": [
             {
@@ -2764,34 +2764,79 @@
               }
             },
             {
+              "ref": "slab_thickness",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 320,
+              "state": {
+                "value": 0.3
+              }
+            },
+            {
+              "ref": "beam_columns",
+              "typeId": "input.numeric.integer",
+              "x": 280,
+              "y": 460,
+              "state": {
+                "value": 3
+              }
+            },
+            {
+              "ref": "beam_rows",
+              "typeId": "input.numeric.integer",
+              "x": 280,
+              "y": 600,
+              "state": {
+                "value": 3
+              }
+            },
+            {
+              "ref": "beam_depth",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 740,
+              "state": {
+                "value": 0.35
+              }
+            },
+            {
+              "ref": "beam_drop",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 880,
+              "state": {
+                "value": 0.1
+              }
+            },
+            {
               "ref": "slab",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 520,
+              "x": 560,
               "y": 60
             },
             {
               "ref": "beams",
               "typeId": "geometry.architectural_primitives.beam_grid",
-              "x": 520,
-              "y": 260
+              "x": 560,
+              "y": 300
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 760,
+              "x": 820,
               "y": 160
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1000,
+              "x": 1080,
               "y": 100
             },
             {
               "ref": "preview_curves",
               "typeId": "output.preview.preview_curves",
-              "x": 1000,
-              "y": 260
+              "x": 1080,
+              "y": 300
             }
           ],
           "connections": [
@@ -2808,10 +2853,40 @@
               "toPort": "input_face"
             },
             {
+              "fromRef": "slab_thickness",
+              "fromPort": "output_value",
+              "toRef": "slab",
+              "toPort": "input_thickness"
+            },
+            {
               "fromRef": "slab",
               "fromPort": "output_bottom_face",
               "toRef": "beams",
               "toPort": "input_face"
+            },
+            {
+              "fromRef": "beam_columns",
+              "fromPort": "output_value",
+              "toRef": "beams",
+              "toPort": "input_columns"
+            },
+            {
+              "fromRef": "beam_rows",
+              "fromPort": "output_value",
+              "toRef": "beams",
+              "toPort": "input_rows"
+            },
+            {
+              "fromRef": "beam_depth",
+              "fromPort": "output_value",
+              "toRef": "beams",
+              "toPort": "input_beam_depth"
+            },
+            {
+              "fromRef": "beam_drop",
+              "fromPort": "output_value",
+              "toRef": "beams",
+              "toPort": "input_beam_drop"
             },
             {
               "fromRef": "slab",
@@ -2841,8 +2916,8 @@
         },
         {
           "id": "architectural.workflow.roof_with_eave",
-          "displayName": "Roof + Eave Railing",
-          "description": "Roof Base (gable) →Eave Path drives Railing →Combine →Preview Geometry / Curves.",
+          "displayName": "Roof + Primary Eave Railing",
+          "description": "Roof Base (explicit gable/height/overhang) → Primary Eave Path (PATH) drives one Railing; All Eaves (PATH_LIST) → Preview Curves.input_paths → Combine → Preview Geometry.",
           "kind": "composite",
           "nodes": [
             {
@@ -2866,34 +2941,71 @@
               }
             },
             {
+              "ref": "roof_type",
+              "typeId": "input.values.text_input",
+              "x": 280,
+              "y": 340,
+              "state": {
+                "text": "gable",
+                "multiline": false
+              }
+            },
+            {
+              "ref": "roof_height",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 480,
+              "state": {
+                "value": 2.0
+              }
+            },
+            {
+              "ref": "overhang",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 620,
+              "state": {
+                "value": 0.4
+              }
+            },
+            {
+              "ref": "railing_height",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 760,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 520,
+              "x": 560,
               "y": 80
             },
             {
               "ref": "eave_railing",
               "typeId": "geometry.architectural_primitives.railing",
-              "x": 520,
-              "y": 300
+              "x": 560,
+              "y": 320
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 760,
+              "x": 820,
               "y": 180
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1000,
+              "x": 1080,
               "y": 100
             },
             {
               "ref": "preview_curves",
               "typeId": "output.preview.preview_curves",
-              "x": 1000,
-              "y": 280
+              "x": 1080,
+              "y": 300
             }
           ],
           "connections": [
@@ -2910,16 +3022,40 @@
               "toPort": "input_face"
             },
             {
+              "fromRef": "roof_type",
+              "fromPort": "output_text",
+              "toRef": "roof",
+              "toPort": "input_roof_type"
+            },
+            {
+              "fromRef": "roof_height",
+              "fromPort": "output_value",
+              "toRef": "roof",
+              "toPort": "input_height"
+            },
+            {
+              "fromRef": "overhang",
+              "fromPort": "output_value",
+              "toRef": "roof",
+              "toPort": "input_overhang"
+            },
+            {
               "fromRef": "roof",
               "fromPort": "output_eave_path",
               "toRef": "eave_railing",
               "toPort": "input_path"
             },
             {
+              "fromRef": "railing_height",
+              "fromPort": "output_value",
+              "toRef": "eave_railing",
+              "toPort": "input_height"
+            },
+            {
               "fromRef": "roof",
-              "fromPort": "output_eave_path",
+              "fromPort": "output_eaves",
               "toRef": "preview_curves",
-              "toPort": "input_path"
+              "toPort": "input_paths"
             },
             {
               "fromRef": "roof",

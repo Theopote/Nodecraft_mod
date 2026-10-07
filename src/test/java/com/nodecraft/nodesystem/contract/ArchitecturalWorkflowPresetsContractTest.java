@@ -342,6 +342,70 @@ class ArchitecturalWorkflowPresetsContractTest {
     }
 
     @Test
+    void floorWithBeamGridPresetExposesTeachingParams() {
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
+        GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, "architectural.workflow.floor_with_beam_grid");
+        assertNotNull(preset);
+
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "slab".equals(c.fromRef)
+                && "output_bottom_face".equals(c.fromPort)
+                && "beams".equals(c.toRef)
+                && "input_face".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "beams".equals(c.fromRef)
+                && "output_center_lines".equals(c.fromPort)
+                && "preview_curves".equals(c.toRef)
+                && "input_paths".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "slab_thickness".equals(c.fromRef) && "slab".equals(c.toRef) && "input_thickness".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "beam_columns".equals(c.fromRef) && "beams".equals(c.toRef) && "input_columns".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "beam_rows".equals(c.fromRef) && "beams".equals(c.toRef) && "input_rows".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "beam_depth".equals(c.fromRef) && "beams".equals(c.toRef) && "input_beam_depth".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "beam_drop".equals(c.fromRef) && "beams".equals(c.toRef) && "input_beam_drop".equals(c.toPort)));
+    }
+
+    @Test
+    void roofWithEavePresetSeparatesPrimaryEaveAndAllEaves() {
+        GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
+        GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, "architectural.workflow.roof_with_eave");
+        assertNotNull(preset);
+
+        assertTrue(preset.displayName != null && preset.displayName.toLowerCase().contains("primary"),
+            "displayName should mention Primary Eave");
+        assertTrue(preset.nodes.stream().anyMatch(n ->
+            "geometry.architectural_primitives.roof_base".equals(n.typeId) && "roof".equals(n.ref)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "roof".equals(c.fromRef)
+                && "output_eave_path".equals(c.fromPort)
+                && "eave_railing".equals(c.toRef)
+                && "input_path".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "roof".equals(c.fromRef)
+                && "output_eaves".equals(c.fromPort)
+                && "preview_curves".equals(c.toRef)
+                && "input_paths".equals(c.toPort)));
+        assertFalse(preset.connections.stream().anyMatch(c ->
+            "roof".equals(c.fromRef)
+                && "output_eave_path".equals(c.fromPort)
+                && "preview_curves".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "roof_type".equals(c.fromRef) && "roof".equals(c.toRef) && "input_roof_type".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "roof_height".equals(c.fromRef) && "roof".equals(c.toRef) && "input_height".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "overhang".equals(c.fromRef) && "roof".equals(c.toRef) && "input_overhang".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "railing_height".equals(c.fromRef)
+                && "eave_railing".equals(c.toRef)
+                && "input_height".equals(c.toPort)));
+    }
+
+    @Test
     void workflowPresetsAvoidConvenienceGodNodes() {
         GraphPresetRules rules = loadRules(GraphPresetTestResources.BUILTIN_GRAPH_PRESETS);
         for (String workflowId : WORKFLOW_IDS) {
