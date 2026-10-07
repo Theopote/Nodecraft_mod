@@ -3850,7 +3850,7 @@
         {
           "id": "building_elements.stairs.spiral_staircase",
           "displayName": "Spiral Staircase",
-          "description": "Path →Staircase (spiral layout) + center post →Preview Geometry, Voxelize →Assign Block Type →Preview Blocks. Procedural spiral with frozen parameters.",
+          "description": "Local origin tangent path → Staircase (spiral) + center post driven by the same spiral_height / spiral_core_radius → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -3895,8 +3895,24 @@
               "ref": "path_end",
               "typeId": "reference.points.point_along_vector",
               "x": 280,
-              "y": 240,
-              "state": {}
+              "y": 240
+            },
+            {
+              "ref": "up_vector",
+              "typeId": "reference.vectors.vector",
+              "x": 0,
+              "y": 460,
+              "state": {
+                "x": 0.0,
+                "y": 1.0,
+                "z": 0.0
+              }
+            },
+            {
+              "ref": "post_end",
+              "typeId": "reference.points.point_along_vector",
+              "x": 280,
+              "y": 460
             },
             {
               "ref": "stair_path",
@@ -3996,16 +4012,7 @@
               "ref": "center_post",
               "typeId": "geometry.primitives.cylinder",
               "x": 860,
-              "y": 760,
-              "state": {
-                "startX": 0.0,
-                "startY": 0.0,
-                "startZ": 0.0,
-                "endX": 0.0,
-                "endY": 6.0,
-                "endZ": 0.0,
-                "radius": 0.35
-              }
+              "y": 760
             },
             {
               "ref": "combine",
@@ -4020,49 +4027,49 @@
               "y": 620
             },
             {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 940,
+              "y": 620
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1160,
+              "y": 620
+            },
+            {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
               "x": 1620,
-              "y": 460
+              "y": 120
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
               "x": 1620,
-              "y": 660
+              "y": 320
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
               "x": 1880,
-              "y": 660
+              "y": 320
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1920,
+              "y": 460,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
               "x": 2140,
-              "y": 660
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 940.0,
-              "y": 620.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 1160.0,
-              "y": 620.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 2180.0,
-              "y": 1420.0,
-              "state": {
-                "selectedBlock": "minecraft:stone_bricks"
-              }
+              "y": 320
             }
           ],
           "connections": [
@@ -4091,10 +4098,58 @@
               "toPort": "input_distance"
             },
             {
+              "fromRef": "world_origin_deconstruct",
+              "fromPort": "output_origin",
+              "toRef": "stair_path",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "stair_path",
+              "toPort": "input_end"
+            },
+            {
               "fromRef": "stair_path",
               "fromPort": "output_diameter_path",
               "toRef": "staircase",
               "toPort": "input_path"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
+              "fromPort": "output_origin",
+              "toRef": "post_end",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "up_vector",
+              "fromPort": "output_vector",
+              "toRef": "post_end",
+              "toPort": "input_vector"
+            },
+            {
+              "fromRef": "spiral_height",
+              "fromPort": "output_value",
+              "toRef": "post_end",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "world_origin_deconstruct",
+              "fromPort": "output_origin",
+              "toRef": "center_post",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "post_end",
+              "fromPort": "output_point",
+              "toRef": "center_post",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "spiral_core_radius",
+              "fromPort": "output_value",
+              "toRef": "center_post",
+              "toPort": "input_radius"
             },
             {
               "fromRef": "step_count",
@@ -4169,42 +4224,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
-            },
-            {
-              "fromRef": "world_origin_deconstruct",
-              "fromPort": "output_origin",
-              "toRef": "stair_path",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "path_end",
-              "fromPort": "output_point",
-              "toRef": "stair_path",
-              "toPort": "input_end"
-            },
-            {
               "fromRef": "player_pos",
               "fromPort": "output_position",
               "toRef": "move_to_pos_point_deconstruct",
@@ -4235,17 +4254,41 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "building_elements.stairs.straight_staircase",
           "displayName": "Straight Staircase",
-          "description": "Player Position →Path →Staircase (straight layout) →Preview Geometry, Voxelize →Assign Block Type →Preview Blocks.",
+          "description": "Horizontal plan path (run=12) → Staircase (straight); Step Rise owns elevation (12×0.25=3). Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4261,7 +4304,7 @@
               "y": 220,
               "state": {
                 "x": 12.0,
-                "y": 3.0,
+                "y": 0.0,
                 "z": 0.0
               }
             },
@@ -4271,15 +4314,14 @@
               "x": 0,
               "y": 400,
               "state": {
-                "value": 12.36931687685298
+                "value": 12.0
               }
             },
             {
               "ref": "path_end",
               "typeId": "reference.points.point_along_vector",
               "x": 280,
-              "y": 280,
-              "state": {}
+              "y": 280
             },
             {
               "ref": "stair_path",
@@ -4358,19 +4400,19 @@
               "y": 320
             },
             {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1460,
+              "y": 460,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
+            },
+            {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
               "x": 1680,
               "y": 320
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 1720.0,
-              "y": 920.0,
-              "state": {
-                "selectedBlock": "minecraft:stone_bricks"
-              }
             }
           ],
           "connections": [
@@ -4391,6 +4433,18 @@
               "fromPort": "output_value",
               "toRef": "path_end",
               "toPort": "input_distance"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "stair_path",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "path_end",
+              "fromPort": "output_point",
+              "toRef": "stair_path",
+              "toPort": "input_end"
             },
             {
               "fromRef": "stair_path",
@@ -4447,35 +4501,23 @@
               "toPort": "input_coordinates"
             },
             {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "stair_path",
-              "toPort": "input_start"
-            },
-            {
-              "fromRef": "path_end",
-              "fromPort": "output_point",
-              "toRef": "stair_path",
-              "toPort": "input_end"
-            },
-            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "building_elements.windows.arched_window",
           "displayName": "Arched Window",
-          "description": "Rectangle + sector profiles →extruded opening →subtract from frame box →Preview Geometry, Voxelize →Assign Block Type →Preview Blocks.",
+          "description": "XY facade plane: rectangle + semicircle on rect top → UNION → Extrude cutter for frame Difference + short Extrude glass → Combine preview; dual material (smooth_quartz frame / glass) → Merge → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4485,10 +4527,61 @@
               "y": 40
             },
             {
+              "ref": "facade_plane",
+              "typeId": "reference.planes.world_plane",
+              "x": 0,
+              "y": 120,
+              "state": {
+                "planePreset": "XY",
+                "originX": 0.0,
+                "originY": 0.0,
+                "originZ": 0.0
+              }
+            },
+            {
+              "ref": "zero",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 280,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "rect_cy",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 400,
+              "state": {
+                "value": 0.6
+              }
+            },
+            {
+              "ref": "arc_cy",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 520,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
+              "ref": "rect_center",
+              "typeId": "reference.points.construct_point",
+              "x": 220,
+              "y": 280
+            },
+            {
+              "ref": "arc_center",
+              "typeId": "reference.points.construct_point",
+              "x": 220,
+              "y": 480
+            },
+            {
               "ref": "rect_profile",
               "typeId": "geometry.profiles.rectangle_profile",
-              "x": 0,
-              "y": 180,
+              "x": 460,
+              "y": 200,
               "state": {
                 "width": 1.0,
                 "height": 1.2
@@ -4497,10 +4590,10 @@
             {
               "ref": "arc_profile",
               "typeId": "geometry.profiles.sector_profile",
-              "x": 0,
-              "y": 340,
+              "x": 460,
+              "y": 400,
               "state": {
-                "radius": 0.55,
+                "radius": 0.5,
                 "startAngle": 0.0,
                 "endAngle": 180.0,
                 "segments": 24
@@ -4509,8 +4602,8 @@
             {
               "ref": "union_profiles",
               "typeId": "geometry.profiles.boolean_2d",
-              "x": 280,
-              "y": 240,
+              "x": 720,
+              "y": 280,
               "state": {
                 "operation": "UNION"
               }
@@ -4518,8 +4611,8 @@
             {
               "ref": "extrude_dir",
               "typeId": "reference.vectors.vector",
-              "x": 280,
-              "y": 420,
+              "x": 720,
+              "y": 460,
               "state": {
                 "x": 0.0,
                 "y": 0.0,
@@ -4527,16 +4620,33 @@
               }
             },
             {
+              "ref": "glass_dir",
+              "typeId": "reference.vectors.vector",
+              "x": 720,
+              "y": 600,
+              "state": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.08
+              }
+            },
+            {
               "ref": "extrude_opening",
               "typeId": "geometry.solids.extrude",
-              "x": 560,
-              "y": 240
+              "x": 980,
+              "y": 200
+            },
+            {
+              "ref": "extrude_glass",
+              "typeId": "geometry.solids.extrude",
+              "x": 980,
+              "y": 400
             },
             {
               "ref": "frame_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 520,
+              "x": 460,
+              "y": 640,
               "state": {
                 "cornerX": -0.2,
                 "cornerY": -0.2,
@@ -4549,62 +4659,194 @@
             {
               "ref": "subtract_opening",
               "typeId": "geometry.boolean.difference",
-              "x": 820,
-              "y": 360
+              "x": 1240,
+              "y": 280
+            },
+            {
+              "ref": "combine",
+              "typeId": "geometry.combine.geometry",
+              "x": 1500,
+              "y": 320
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1080,
+              "x": 1760,
+              "y": 200
+            },
+            {
+              "ref": "move_frame",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1760,
+              "y": 360
+            },
+            {
+              "ref": "move_glass",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1760,
+              "y": 520
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1500,
+              "y": 40
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1720,
+              "y": 40
+            },
+            {
+              "ref": "move_frame_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1500,
+              "y": 200
+            },
+            {
+              "ref": "move_frame_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1720,
+              "y": 200
+            },
+            {
+              "ref": "move_glass_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1500,
+              "y": 360
+            },
+            {
+              "ref": "move_glass_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1720,
               "y": 360
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1360,
-              "y": 180
+              "x": 2020,
+              "y": 120
             },
             {
-              "ref": "voxelize",
+              "ref": "voxelize_frame",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1360,
-              "y": 380
+              "x": 2020,
+              "y": 320
             },
             {
-              "ref": "material",
+              "ref": "voxelize_glass",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 2020,
+              "y": 480
+            },
+            {
+              "ref": "frame_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 2020,
+              "y": 640,
+              "state": {
+                "selectedBlock": "minecraft:smooth_quartz"
+              }
+            },
+            {
+              "ref": "glass_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 2020,
+              "y": 780,
+              "state": {
+                "selectedBlock": "minecraft:glass"
+              }
+            },
+            {
+              "ref": "material_frame",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1620,
-              "y": 380
+              "x": 2280,
+              "y": 320
+            },
+            {
+              "ref": "material_glass",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 2280,
+              "y": 480
+            },
+            {
+              "ref": "merge_placements",
+              "typeId": "output.execute.merge_block_placements",
+              "x": 2540,
+              "y": 400,
+              "state": {
+                "inputCount": 2
+              }
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1880,
-              "y": 380
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 660.0,
-              "y": 360.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 880.0,
-              "y": 360.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 1920.0,
-              "y": 600.0,
-              "state": {
-                "selectedBlock": "minecraft:glass"
-              }
+              "x": 2800,
+              "y": 400
             }
           ],
           "connections": [
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "rect_center",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "rect_cy",
+              "fromPort": "output_value",
+              "toRef": "rect_center",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "rect_center",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "arc_center",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "arc_cy",
+              "fromPort": "output_value",
+              "toRef": "arc_center",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "arc_center",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "facade_plane",
+              "fromPort": "output_plane",
+              "toRef": "rect_profile",
+              "toPort": "input_plane"
+            },
+            {
+              "fromRef": "facade_plane",
+              "fromPort": "output_plane",
+              "toRef": "arc_profile",
+              "toPort": "input_plane"
+            },
+            {
+              "fromRef": "rect_center",
+              "fromPort": "output_point",
+              "toRef": "rect_profile",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "arc_center",
+              "fromPort": "output_point",
+              "toRef": "arc_profile",
+              "toPort": "input_center"
+            },
             {
               "fromRef": "rect_profile",
               "fromPort": "output_profile",
@@ -4630,6 +4872,18 @@
               "toPort": "input_direction"
             },
             {
+              "fromRef": "union_profiles",
+              "fromPort": "output_profile",
+              "toRef": "extrude_glass",
+              "toPort": "input_profile"
+            },
+            {
+              "fromRef": "glass_dir",
+              "fromPort": "output_vector",
+              "toRef": "extrude_glass",
+              "toPort": "input_direction"
+            },
+            {
               "fromRef": "frame_box",
               "fromPort": "output_geometry",
               "toRef": "subtract_opening",
@@ -4644,32 +4898,32 @@
             {
               "fromRef": "subtract_opening",
               "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "extrude_glass",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine",
+              "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "subtract_opening",
               "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
+              "toRef": "move_frame",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "extrude_glass",
               "fromPort": "output_geometry",
-              "toRef": "voxelize",
+              "toRef": "move_glass",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
             },
             {
               "fromRef": "player_pos",
@@ -4702,17 +4956,131 @@
               "toPort": "input_translation"
             },
             {
-              "fromRef": "material_block_type",
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_frame_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_frame_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_frame",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_glass_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_glass_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_glass",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_frame",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_glass",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize_frame",
+              "fromPort": "output_blocks",
+              "toRef": "material_frame",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "voxelize_glass",
+              "fromPort": "output_blocks",
+              "toRef": "material_glass",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "frame_block",
               "fromPort": "output_block_id",
-              "toRef": "material",
+              "toRef": "material_frame",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "glass_block",
+              "fromPort": "output_block_id",
+              "toRef": "material_glass",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material_frame",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_0"
+            },
+            {
+              "fromRef": "material_glass",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_1"
+            },
+            {
+              "fromRef": "merge_placements",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "building_elements.windows.modern_window",
           "displayName": "Modern Window",
-          "description": "Facade panel →Wall With Openings −opening volumes →frame; Window Array inset glass →Combine →Preview Geometry and block preview chain.",
+          "description": "Wall Slab host → Difference (Window Array openings; depth = 2× wall thickness) + Window Frame + glass pane on frames → Combine preview; triple material (wall / frame / glass) → Merge → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -4796,103 +5164,237 @@
               }
             },
             {
-              "ref": "glass_depth",
+              "ref": "depth_factor",
               "typeId": "input.numeric.float",
               "x": 280,
               "y": 1220,
               "state": {
-                "value": 0.2
+                "value": 2.0
+              }
+            },
+            {
+              "ref": "opening_depth",
+              "typeId": "math.scalar_math.multiplication",
+              "x": 520,
+              "y": 1080
+            },
+            {
+              "ref": "glass_thickness",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 1360,
+              "state": {
+                "value": 0.08
               }
             },
             {
               "ref": "wall",
-              "typeId": "geometry.architectural_primitives.wall_with_openings",
+              "typeId": "geometry.architectural_primitives.wall_slab",
               "x": 560,
-              "y": 200
+              "y": 60
             },
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
               "x": 560,
-              "y": 420,
-              "state": {
-                "defaultDepth": 0.2
-              }
+              "y": 300
             },
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
               "x": 560,
-              "y": 540
+              "y": 480
+            },
+            {
+              "ref": "glass_pane",
+              "typeId": "geometry.primitives.box",
+              "x": 560,
+              "y": 660,
+              "state": {
+                "sizeX": 1.2,
+                "sizeY": 2.0,
+                "sizeZ": 0.08
+              }
+            },
+            {
+              "ref": "cut",
+              "typeId": "geometry.boolean.difference",
+              "x": 820,
+              "y": 60
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
               "x": 820,
-              "y": 420
+              "y": 300
             },
             {
-              "ref": "cut_frame",
-              "typeId": "geometry.boolean.difference",
+              "ref": "place_glass",
+              "typeId": "transform.placement.place_geometry_on_frames",
               "x": 820,
-              "y": 280
+              "y": 480
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
               "x": 1080,
-              "y": 280
+              "y": 240
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
               "x": 1340,
+              "y": 120
+            },
+            {
+              "ref": "move_wall",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1340,
               "y": 280
+            },
+            {
+              "ref": "move_frame",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1340,
+              "y": 440
+            },
+            {
+              "ref": "move_glass",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1340,
+              "y": 600
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1080,
+              "y": 40
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1300,
+              "y": 40
+            },
+            {
+              "ref": "move_wall_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1080,
+              "y": 200
+            },
+            {
+              "ref": "move_wall_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1300,
+              "y": 200
+            },
+            {
+              "ref": "move_frame_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1080,
+              "y": 360
+            },
+            {
+              "ref": "move_frame_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1300,
+              "y": 360
+            },
+            {
+              "ref": "move_glass_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 1080,
+              "y": 520
+            },
+            {
+              "ref": "move_glass_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 1300,
+              "y": 520
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
               "x": 1600,
-              "y": 120
+              "y": 80
             },
             {
-              "ref": "voxelize",
+              "ref": "voxelize_wall",
               "typeId": "geometry.voxel.voxelize_geometry",
               "x": 1600,
-              "y": 320
+              "y": 240
             },
             {
-              "ref": "material",
+              "ref": "voxelize_frame",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1600,
+              "y": 400
+            },
+            {
+              "ref": "voxelize_glass",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1600,
+              "y": 560
+            },
+            {
+              "ref": "wall_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1600,
+              "y": 700,
+              "state": {
+                "selectedBlock": "minecraft:white_concrete"
+              }
+            },
+            {
+              "ref": "frame_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1600,
+              "y": 840,
+              "state": {
+                "selectedBlock": "minecraft:iron_block"
+              }
+            },
+            {
+              "ref": "glass_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1600,
+              "y": 980,
+              "state": {
+                "selectedBlock": "minecraft:glass"
+              }
+            },
+            {
+              "ref": "material_wall",
               "typeId": "material.basic_assignment.assign_block_type",
               "x": 1860,
-              "y": 320
+              "y": 240
+            },
+            {
+              "ref": "material_frame",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1860,
+              "y": 400
+            },
+            {
+              "ref": "material_glass",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1860,
+              "y": 560
+            },
+            {
+              "ref": "merge_placements",
+              "typeId": "output.execute.merge_block_placements",
+              "x": 2120,
+              "y": 400,
+              "state": {
+                "inputCount": 3
+              }
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2120,
-              "y": 320
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 920.0,
-              "y": 280.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 1140.0,
-              "y": 280.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 2160.0,
-              "y": 1300.0,
-              "state": {
-                "selectedBlock": "minecraft:glass"
-              }
+              "x": 2380,
+              "y": 400
             }
           ],
           "connections": [
@@ -4915,10 +5417,28 @@
               "toPort": "input_face"
             },
             {
-              "fromRef": "opening_cols",
+              "fromRef": "wall_thickness",
               "fromPort": "output_value",
               "toRef": "wall",
-              "toPort": "input_columns"
+              "toPort": "input_wall_thickness"
+            },
+            {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "opening_depth",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "depth_factor",
+              "fromPort": "output_value",
+              "toRef": "opening_depth",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "opening_depth",
+              "fromPort": "output_product",
+              "toRef": "windows",
+              "toPort": "input_depth"
             },
             {
               "fromRef": "opening_cols",
@@ -4929,20 +5449,8 @@
             {
               "fromRef": "opening_rows",
               "fromPort": "output_value",
-              "toRef": "wall",
-              "toPort": "input_rows"
-            },
-            {
-              "fromRef": "opening_rows",
-              "fromPort": "output_value",
               "toRef": "windows",
               "toPort": "input_rows"
-            },
-            {
-              "fromRef": "opening_width",
-              "fromPort": "output_value",
-              "toRef": "wall",
-              "toPort": "input_opening_width"
             },
             {
               "fromRef": "opening_width",
@@ -4953,49 +5461,55 @@
             {
               "fromRef": "opening_height",
               "fromPort": "output_value",
-              "toRef": "wall",
-              "toPort": "input_opening_height"
-            },
-            {
-              "fromRef": "opening_height",
-              "fromPort": "output_value",
               "toRef": "windows",
               "toPort": "input_window_height"
             },
             {
               "fromRef": "opening_margin",
               "fromPort": "output_value",
-              "toRef": "wall",
-              "toPort": "input_margin"
-            },
-            {
-              "fromRef": "opening_margin",
-              "fromPort": "output_value",
               "toRef": "windows",
               "toPort": "input_margin"
             },
             {
-              "fromRef": "wall_thickness",
+              "fromRef": "opening_width",
               "fromPort": "output_value",
-              "toRef": "wall",
-              "toPort": "input_wall_thickness"
+              "toRef": "window_frame",
+              "toPort": "input_frame_width"
             },
             {
-              "fromRef": "glass_depth",
+              "fromRef": "opening_height",
               "fromPort": "output_value",
-              "toRef": "windows",
-              "toPort": "input_depth"
+              "toRef": "window_frame",
+              "toPort": "input_frame_height"
+            },
+            {
+              "fromRef": "opening_width",
+              "fromPort": "output_value",
+              "toRef": "glass_pane",
+              "toPort": "input_size_x"
+            },
+            {
+              "fromRef": "opening_height",
+              "fromPort": "output_value",
+              "toRef": "glass_pane",
+              "toPort": "input_size_y"
+            },
+            {
+              "fromRef": "glass_thickness",
+              "fromPort": "output_value",
+              "toRef": "glass_pane",
+              "toPort": "input_size_z"
             },
             {
               "fromRef": "wall",
               "fromPort": "output_geometry",
-              "toRef": "cut_frame",
+              "toRef": "cut",
               "toPort": "input_base"
             },
             {
               "fromRef": "windows",
               "fromPort": "output_openings",
-              "toRef": "cut_frame",
+              "toRef": "cut",
               "toPort": "input_cutter"
             },
             {
@@ -5011,7 +5525,19 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "cut_frame",
+              "fromRef": "windows",
+              "fromPort": "output_frames",
+              "toRef": "place_glass",
+              "toPort": "input_frames"
+            },
+            {
+              "fromRef": "glass_pane",
+              "fromPort": "output_geometry",
+              "toRef": "place_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "cut",
               "fromPort": "output_geometry",
               "toRef": "combine",
               "toPort": "input_geometry_0"
@@ -5023,34 +5549,34 @@
               "toPort": "input_geometry_1"
             },
             {
+              "fromRef": "place_glass",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_2"
+            },
+            {
               "fromRef": "combine",
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "cut",
               "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
+              "toRef": "move_wall",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "place_frames",
               "fromPort": "output_geometry",
-              "toRef": "voxelize",
+              "toRef": "move_frame",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
+              "fromRef": "place_glass",
+              "fromPort": "output_geometry",
+              "toRef": "move_glass",
+              "toPort": "input_geometry"
             },
             {
               "fromRef": "player_pos",
@@ -5083,10 +5609,178 @@
               "toPort": "input_translation"
             },
             {
-              "fromRef": "material_block_type",
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_wall_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_wall_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_wall_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_wall_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_wall_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_wall_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_wall_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_wall_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_wall",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_frame_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_frame_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_frame_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_frame_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_frame",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_glass_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_glass_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_glass_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_glass_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_glass",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_wall",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_wall",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_frame",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_glass",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_glass",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize_wall",
+              "fromPort": "output_blocks",
+              "toRef": "material_wall",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "voxelize_frame",
+              "fromPort": "output_blocks",
+              "toRef": "material_frame",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "voxelize_glass",
+              "fromPort": "output_blocks",
+              "toRef": "material_glass",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "wall_block",
               "fromPort": "output_block_id",
-              "toRef": "material",
+              "toRef": "material_wall",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "frame_block",
+              "fromPort": "output_block_id",
+              "toRef": "material_frame",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "glass_block",
+              "fromPort": "output_block_id",
+              "toRef": "material_glass",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material_wall",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_0"
+            },
+            {
+              "fromRef": "material_frame",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_1"
+            },
+            {
+              "fromRef": "material_glass",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_2"
+            },
+            {
+              "fromRef": "merge_placements",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         }

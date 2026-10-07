@@ -159,17 +159,18 @@ P1_PRESETS: dict[str, dict] = {
         "id": "building_elements.stairs.straight_staircase",
         "displayName": "Straight Staircase",
         "description": (
-            "Player Position → Path → Staircase (straight layout) → Preview Geometry, "
-            "Voxelize → Assign Block Type → Preview Blocks."
+            "Horizontal plan path (run=12) → Staircase (straight); Step Rise owns elevation "
+            "(12×0.25=3). Preview Geometry, Voxelize → Assign Block Type → Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
-            node("run_vector", "reference.vectors.vector", 0, 220, {"x": 12.0, "y": 3.0, "z": 0.0}),
-            node("unit_distance", "input.numeric.float", 0, 400, {"value": (12.0 ** 2 + 3.0 ** 2) ** 0.5}),
+            node("run_vector", "reference.vectors.vector", 0, 220, {"x": 12.0, "y": 0.0, "z": 0.0}),
+            node("unit_distance", "input.numeric.float", 0, 400, {"value": 12.0}),
             node("path_end", "reference.points.point_along_vector", 280, 280),
-            node("point_list", "math.list.create_list", 280, 80, {"inputCount": 2}),
-            node("stair_path", "geometry.curves.points_to_path", 560, 80),
+            # Diameter Path is the only typed two-POINT → PATH bridge in the catalog
+            # (create_list emits LIST, not POINT_LIST, so points_to_path cannot connect).
+            node("stair_path", "geometry.primitives.sphere_from_diameter", 560, 80),
             node("step_count", "input.numeric.integer", 560, 280, {"value": 12}),
             node("step_run", "input.numeric.float", 560, 420, {"value": 1.0}),
             node("step_rise", "input.numeric.float", 560, 560, {"value": 0.25}),
@@ -179,16 +180,18 @@ P1_PRESETS: dict[str, dict] = {
             node("preview_geometry", "output.preview.preview_geometry", 1160, 120),
             node("voxelize", "geometry.voxel.voxelize_geometry", 1160, 320),
             node("material", "material.basic_assignment.assign_block_type", 1420, 320),
+            node("material_block_type", "input.type_selectors.block_type_selector", 1460, 460, {
+                "selectedBlock": "minecraft:stone_bricks",
+            }),
             node("preview_blocks", "output.preview.preview_blocks", 1680, 320),
         ],
         "connections": [
             conn("player_pos", "output_position", "path_end", "input_point"),
             conn("run_vector", "output_vector", "path_end", "input_vector"),
             conn("unit_distance", "output_value", "path_end", "input_distance"),
-            conn("player_pos", "output_position", "point_list", "input_0"),
-            conn("path_end", "output_point", "point_list", "input_1"),
-            conn("point_list", "output_list", "stair_path", "input_points"),
-            conn("stair_path", "output_path", "staircase", "input_path"),
+            conn("player_pos", "output_position", "stair_path", "input_start"),
+            conn("path_end", "output_point", "stair_path", "input_end"),
+            conn("stair_path", "output_diameter_path", "staircase", "input_path"),
             conn("step_count", "output_value", "staircase", "input_step_count"),
             conn("step_run", "output_value", "staircase", "input_step_run"),
             conn("step_rise", "output_value", "staircase", "input_step_rise"),
@@ -197,6 +200,7 @@ P1_PRESETS: dict[str, dict] = {
             conn("staircase", "output_geometry", "preview_geometry", "input_geometry"),
             conn("staircase", "output_geometry", "voxelize", "input_geometry"),
             conn("voxelize", "output_blocks", "material", "input_coordinates"),
+            conn("material_block_type", "output_block_id", "material", "input_block_type"),
             conn("material", "output_placements", "preview_blocks", "input_block_placements"),
         ],
     },

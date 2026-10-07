@@ -20,8 +20,8 @@ FIXES = {
     "building_elements.stairs.straight_staircase": {
         "vector_ref": "run_vector",
         "distance_ref": "unit_distance",
-        "vector": (12.0, 3.0, 0.0),
-        "distance": math.hypot(12.0, 3.0),
+        "vector": (12.0, 0.0, 0.0),
+        "distance": 12.0,
     },
     "building_elements.stairs.spiral_staircase": {
         "vector_ref": "tangent_vector",

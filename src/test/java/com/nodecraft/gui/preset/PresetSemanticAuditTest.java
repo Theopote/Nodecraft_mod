@@ -549,7 +549,7 @@ class PresetSemanticAuditTest {
             return errors;
         }
         double required = stepCount * stepRun;
-        // Sphere-by-diameter path: start → Point Along Vector end; length = Distance.
+        // Two-POINT → PATH via Sphere Diameter Path (create_list is LIST, not POINT_LIST).
         String pathEndRef = null;
         if (preset.connections != null) {
             for (GraphPresetRules.PresetConnection connection : preset.connections) {
@@ -779,6 +779,73 @@ class PresetSemanticAuditTest {
                     if (shape == null || !"input.values.dropdown".equals(shape.typeId)) {
                         errors.add(preset.id + ": " + shapeRef + " must be input.values.dropdown");
                     }
+                }
+            }
+            case "building_elements.stairs.straight_staircase" -> {
+                GraphPresetRules.PresetNode runVector = nodeByRef.get("run_vector");
+                Double runY = runVector == null ? null : numericStateValue(runVector.state, "y");
+                if (runY == null || Math.abs(runY) > 1.0e-6d) {
+                    errors.add(preset.id + ": run_vector.y must be 0 (horizontal plan path;"
+                            + " Step Rise owns elevation)");
+                }
+            }
+            case "building_elements.stairs.spiral_staircase" -> {
+                if (!"spiral_height".equals(incomingFromRef(preset, "staircase", "input_spiral_height"))
+                        || !"spiral_height".equals(incomingFromRef(preset, "post_end", "input_distance"))) {
+                    errors.add(preset.id + ": spiral_height must drive staircase and center-post end");
+                }
+                if (!"spiral_core_radius".equals(incomingFromRef(preset, "staircase", "input_spiral_core_radius"))
+                        || !"spiral_core_radius".equals(incomingFromRef(preset, "center_post", "input_radius"))) {
+                    errors.add(preset.id + ": spiral_core_radius must drive staircase and center_post.radius");
+                }
+                if (!"post_end".equals(incomingFromRef(preset, "center_post", "input_end"))) {
+                    errors.add(preset.id + ": center_post.input_end must come from post_end");
+                }
+            }
+            case "building_elements.windows.arched_window" -> {
+                GraphPresetRules.PresetNode plane = nodeByRef.get("facade_plane");
+                Object presetName = plane == null || plane.state == null ? null : plane.state.get("planePreset");
+                if (!"XY".equals(presetName)) {
+                    errors.add(preset.id + ": facade_plane must be world_plane XY");
+                }
+                if (!"facade_plane".equals(incomingFromRef(preset, "rect_profile", "input_plane"))
+                        || !"facade_plane".equals(incomingFromRef(preset, "arc_profile", "input_plane"))) {
+                    errors.add(preset.id + ": rect/arc profiles must use facade_plane");
+                }
+                GraphPresetRules.PresetNode rectCy = nodeByRef.get("rect_cy");
+                GraphPresetRules.PresetNode arcCy = nodeByRef.get("arc_cy");
+                Double rectY = rectCy == null ? null : numericStateValue(rectCy.state, "value");
+                Double arcY = arcCy == null ? null : numericStateValue(arcCy.state, "value");
+                if (rectY == null || arcY == null || !(arcY > rectY)) {
+                    errors.add(preset.id + ": arc center Y must be above rect center Y (arch on rect top)");
+                }
+                if (!typeByRef.containsKey("material_frame") || !typeByRef.containsKey("material_glass")
+                        || !typeByRef.containsKey("merge_placements")) {
+                    errors.add(preset.id + ": dual frame/glass materials must merge into Preview Blocks");
+                }
+            }
+            case "building_elements.windows.modern_window" -> {
+                if (!"geometry.architectural_primitives.wall_slab".equals(typeByRef.get("wall"))) {
+                    errors.add(preset.id + ": host must be wall_slab (not wall_with_openings)");
+                }
+                if (!"opening_depth".equals(incomingFromRef(preset, "windows", "input_depth"))) {
+                    errors.add(preset.id + ": opening_depth must drive windows.input_depth");
+                }
+                GraphPresetRules.PresetNode depthFactor = nodeByRef.get("depth_factor");
+                Double factor = depthFactor == null ? null : numericStateValue(depthFactor.state, "value");
+                if (factor == null || factor + 1.0e-6d < 2.0d) {
+                    errors.add(preset.id + ": opening_depth must be wall_thickness × ≥2 for through cutters");
+                }
+                if (!typeByRef.containsKey("glass_pane") || !typeByRef.containsKey("place_glass")) {
+                    errors.add(preset.id + ": must place a glass_pane on window frames");
+                }
+                if (!typeByRef.containsKey("material_wall") || !typeByRef.containsKey("material_frame")
+                        || !typeByRef.containsKey("material_glass")
+                        || !typeByRef.containsKey("merge_placements")) {
+                    errors.add(preset.id + ": wall/frame/glass materials must merge into Preview Blocks");
+                }
+                if (!"merge_placements".equals(incomingFromRef(preset, "preview_blocks", "input_block_placements"))) {
+                    errors.add(preset.id + ": Preview Blocks must consume merge_placements");
                 }
             }
             default -> {
