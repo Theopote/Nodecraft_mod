@@ -192,10 +192,8 @@ final class PresetCoordinateSpaceAuditor {
             if (!PLAYER_OUTPUT_PORT.equals(connection.fromPort)) {
                 continue;
             }
-            String moveRef = resolvePlayerAnchoredMoveRef(preset, typeByRef, connection.toRef, connection.toPort);
-            if (moveRef != null) {
-                moves.add(moveRef);
-            }
+            moves.addAll(resolvePlayerAnchoredMoveRefs(
+                    preset, typeByRef, connection.toRef, connection.toPort));
         }
         return moves;
     }
@@ -255,21 +253,24 @@ final class PresetCoordinateSpaceAuditor {
         if (MOVE_GEOMETRY_TYPE.equals(targetType) && MOVE_TRANSLATION_PORT.equals(targetPort)) {
             return true;
         }
-        return resolvePlayerAnchoredMoveRef(preset, typeByRef, targetRef, targetPort) != null;
+        return !resolvePlayerAnchoredMoveRefs(preset, typeByRef, targetRef, targetPort).isEmpty();
     }
 
-    private static String resolvePlayerAnchoredMoveRef(
+    /** One shared translation vector may fan out to multiple Move Geometry nodes. */
+    private static Set<String> resolvePlayerAnchoredMoveRefs(
             GraphPresetRules.GraphPresetDefinition preset,
             Map<String, String> typeByRef,
             String targetRef,
             String targetPort) {
+        Set<String> moves = new LinkedHashSet<>();
         if (MOVE_GEOMETRY_TYPE.equals(typeByRef.get(targetRef)) && MOVE_TRANSLATION_PORT.equals(targetPort)) {
-            return targetRef;
+            moves.add(targetRef);
+            return moves;
         }
         if (!DECONSTRUCT_POINT_TYPE.equals(typeByRef.get(targetRef))
                 || !DECONSTRUCT_POINT_INPUT.equals(targetPort)
                 || preset.connections == null) {
-            return null;
+            return moves;
         }
 
         String vectorRef = null;
@@ -280,7 +281,7 @@ final class PresetCoordinateSpaceAuditor {
             }
         }
         if (vectorRef == null || !CONSTRUCT_VECTOR_TYPE.equals(typeByRef.get(vectorRef))) {
-            return null;
+            return moves;
         }
 
         for (GraphPresetRules.PresetConnection connection : preset.connections) {
@@ -288,10 +289,10 @@ final class PresetCoordinateSpaceAuditor {
                     && CONSTRUCT_VECTOR_OUTPUT.equals(connection.fromPort)
                     && MOVE_GEOMETRY_TYPE.equals(typeByRef.get(connection.toRef))
                     && MOVE_TRANSLATION_PORT.equals(connection.toPort)) {
-                return connection.toRef;
+                moves.add(connection.toRef);
             }
         }
-        return null;
+        return moves;
     }
 
     private static boolean isWorldPlacementPort(String toPort, String targetTypeId) {

@@ -684,6 +684,53 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": keep_body must be inset from footprint corner"
                             + " so Column Grid towers remain at outer corners");
                 }
+                if (!typeByRef.containsValue("pattern.linear.linear_array")
+                        || !typeByRef.containsKey("battlements")) {
+                    errors.add(preset.id + ": roof battlements require linear_array merlons"
+                            + " combined as battlements");
+                }
+                if (!"battlements".equals(incomingFromRef(preset, "combine", "input_geometry_2"))) {
+                    errors.add(preset.id + ": combine must include battlements");
+                }
+            }
+            case "styles.fantasy.wizard_tower" -> {
+                if (!"tower_top".equals(incomingFromRef(preset, "outer", "input_end"))
+                        || !"tower_top".equals(incomingFromRef(preset, "inner", "input_end"))
+                        || !"tower_top".equals(incomingFromRef(preset, "roof", "input_base_center"))) {
+                    errors.add(preset.id + ": tower_top must drive outer/inner end and roof base");
+                }
+                if (!"tower_height".equals(incomingFromRef(preset, "tower_top", "input_y"))) {
+                    errors.add(preset.id + ": tower_height must drive tower_top.input_y");
+                }
+                if (!typeByRef.containsKey("material_body") || !typeByRef.containsKey("material_roof")
+                        || !typeByRef.containsKey("merge_placements")) {
+                    errors.add(preset.id + ": shell/balcony and roof must use dual materials + merge");
+                }
+                if (!"merge_placements".equals(
+                        incomingFromRef(preset, "preview_blocks", "input_block_placements"))) {
+                    errors.add(preset.id + ": Preview Blocks must consume merge_placements");
+                }
+            }
+            case "styles.modern.glass_box_building" -> {
+                if (!"geometry.architectural_primitives.beam_grid".equals(typeByRef.get("frame_grid"))) {
+                    errors.add(preset.id + ": framed front facade must use beam_grid (not column_grid)");
+                }
+                if (typeByRef.containsValue("geometry.architectural_primitives.column_grid")) {
+                    errors.add(preset.id + ": column_grid is forbidden (height grows along face normal)");
+                }
+                if (!typeByRef.containsKey("merge_placements")
+                        || !"merge_placements".equals(
+                        incomingFromRef(preset, "preview_blocks", "input_block_placements"))) {
+                    errors.add(preset.id + ": dual glass/frame materials must merge into Preview Blocks");
+                }
+                String glassTranslation = incomingFromRef(preset, "move_glass", "input_translation");
+                String frameTranslation = incomingFromRef(preset, "move_frame", "input_translation");
+                if (glassTranslation == null || !glassTranslation.equals(frameTranslation)) {
+                    errors.add(preset.id + ": move_glass and move_frame must share one translation vector");
+                }
+                if (!"combine_geo".equals(incomingFromRef(preset, "preview_geometry", "input_geometry"))) {
+                    errors.add(preset.id + ": Preview Geometry must combine moved glass + frame");
+                }
             }
             case "architectural.residential.medieval_cottage" -> {
                 if (!typeByRef.containsValue("geometry.architectural_primitives.wall_along_path")) {

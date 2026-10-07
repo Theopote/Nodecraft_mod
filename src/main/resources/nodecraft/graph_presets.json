@@ -6984,7 +6984,7 @@
         {
           "id": "styles.fantasy.wizard_tower",
           "displayName": "Wizard Tower",
-          "description": "Hollow cylinder shell + Cone roof + balcony ring with explicit dimensions →Preview Geometry and block preview chain.",
+          "description": "Tower Height drives hollow shell top and cone base; balcony ring Boolean; shell/balcony stone vs purple roof materials → Merge Placements → Preview Blocks. Preview Geometry combines moved shell+balcony+roof.",
           "kind": "composite",
           "nodes": [
             {
@@ -6994,10 +6994,175 @@
               "y": 40
             },
             {
-              "ref": "outer",
-              "typeId": "geometry.primitives.cylinder",
+              "ref": "zero",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 120,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "tower_height",
+              "typeId": "input.numeric.float",
               "x": 0,
               "y": 200,
+              "state": {
+                "value": 16.0
+              }
+            },
+            {
+              "ref": "tower_radius",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 280,
+              "state": {
+                "value": 4.0
+              }
+            },
+            {
+              "ref": "wall_thickness",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 360,
+              "state": {
+                "value": 0.8
+              }
+            },
+            {
+              "ref": "inner_radius",
+              "typeId": "math.scalar_math.subtraction",
+              "x": 220,
+              "y": 320
+            },
+            {
+              "ref": "roof_height",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 440,
+              "state": {
+                "value": 6.0
+              }
+            },
+            {
+              "ref": "apex_y",
+              "typeId": "math.scalar_math.addition",
+              "x": 220,
+              "y": 440
+            },
+            {
+              "ref": "roof_overhang",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 520,
+              "state": {
+                "value": 0.5
+              }
+            },
+            {
+              "ref": "roof_radius",
+              "typeId": "math.scalar_math.addition",
+              "x": 220,
+              "y": 520
+            },
+            {
+              "ref": "balcony_elevation",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 600,
+              "state": {
+                "value": 10.0
+              }
+            },
+            {
+              "ref": "balcony_slab",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 680,
+              "state": {
+                "value": 0.6
+              }
+            },
+            {
+              "ref": "balcony_cutter_h",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 760,
+              "state": {
+                "value": 0.8
+              }
+            },
+            {
+              "ref": "balcony_outer_r",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 840,
+              "state": {
+                "value": 5.0
+              }
+            },
+            {
+              "ref": "balcony_inner_r",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 920,
+              "state": {
+                "value": 3.8
+              }
+            },
+            {
+              "ref": "balcony_end_y",
+              "typeId": "math.scalar_math.addition",
+              "x": 220,
+              "y": 680
+            },
+            {
+              "ref": "balcony_cut_end_y",
+              "typeId": "math.scalar_math.addition",
+              "x": 220,
+              "y": 760
+            },
+            {
+              "ref": "origin",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 120
+            },
+            {
+              "ref": "tower_top",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 200
+            },
+            {
+              "ref": "roof_apex",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 440
+            },
+            {
+              "ref": "balcony_start",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 600
+            },
+            {
+              "ref": "balcony_outer_end",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 680
+            },
+            {
+              "ref": "balcony_inner_end",
+              "typeId": "reference.points.construct_point",
+              "x": 440,
+              "y": 760
+            },
+            {
+              "ref": "outer",
+              "typeId": "geometry.primitives.cylinder",
+              "x": 700,
+              "y": 160,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -7011,8 +7176,8 @@
             {
               "ref": "inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 380,
+              "x": 700,
+              "y": 320,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -7026,14 +7191,14 @@
             {
               "ref": "shell",
               "typeId": "geometry.boolean.difference",
-              "x": 280,
-              "y": 280
+              "x": 940,
+              "y": 220
             },
             {
               "ref": "roof",
               "typeId": "geometry.primitives.cone",
-              "x": 0,
-              "y": 560,
+              "x": 700,
+              "y": 480,
               "state": {
                 "baseX": 0.0,
                 "baseY": 16.0,
@@ -7047,8 +7212,8 @@
             {
               "ref": "balcony_outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 740,
+              "x": 700,
+              "y": 640,
               "state": {
                 "startX": 0.0,
                 "startY": 10.0,
@@ -7062,8 +7227,8 @@
             {
               "ref": "balcony_inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 920,
+              "x": 700,
+              "y": 800,
               "state": {
                 "startX": 0.0,
                 "startY": 10.0,
@@ -7077,71 +7242,320 @@
             {
               "ref": "balcony",
               "typeId": "geometry.boolean.difference",
-              "x": 280,
-              "y": 820
+              "x": 940,
+              "y": 700
             },
             {
-              "ref": "combine",
+              "ref": "combine_body",
               "typeId": "geometry.combine.geometry",
-              "x": 560,
-              "y": 520,
+              "x": 1180,
+              "y": 280,
               "state": {
-                "inputCount": 3
+                "inputCount": 2
               }
             },
             {
-              "ref": "move_to_pos",
+              "ref": "move_body",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 800,
-              "y": 520
+              "x": 1420,
+              "y": 280
+            },
+            {
+              "ref": "move_roof",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 1420,
+              "y": 480
+            },
+            {
+              "ref": "combine_preview",
+              "typeId": "geometry.combine.geometry",
+              "x": 1660,
+              "y": 360,
+              "state": {
+                "inputCount": 2
+              }
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1900,
+              "y": 240
             },
             {
-              "ref": "voxelize",
+              "ref": "voxelize_body",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1660,
+              "y": 480
             },
             {
-              "ref": "material",
+              "ref": "voxelize_roof",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1660,
+              "y": 640
+            },
+            {
+              "ref": "body_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1660,
+              "y": 800,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
+            },
+            {
+              "ref": "roof_block",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1660,
+              "y": 960,
+              "state": {
+                "selectedBlock": "minecraft:purple_concrete"
+              }
+            },
+            {
+              "ref": "material_body",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
+              "x": 1900,
+              "y": 480
+            },
+            {
+              "ref": "material_roof",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1900,
+              "y": 640
+            },
+            {
+              "ref": "merge_placements",
+              "typeId": "output.execute.merge_block_placements",
+              "x": 2140,
+              "y": 560,
+              "state": {
+                "inputCount": 2
+              }
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
+              "x": 2380,
+              "y": 560
             },
             {
-              "ref": "move_to_pos_point_deconstruct",
+              "ref": "translation_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 380.0,
-              "y": 520.0
+              "x": 900,
+              "y": 40
             },
             {
-              "ref": "move_to_pos_point_as_vector",
+              "ref": "translation_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 600.0,
-              "y": 520.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 840.0,
-              "y": 1000.0,
-              "state": {
-                "selectedBlock": "minecraft:stone_bricks"
-              }
+              "x": 1120,
+              "y": 40
             }
           ],
           "connections": [
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "origin",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "origin",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "origin",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "tower_top",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "tower_height",
+              "fromPort": "output_value",
+              "toRef": "tower_top",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "tower_top",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "tower_radius",
+              "fromPort": "output_value",
+              "toRef": "inner_radius",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "inner_radius",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "tower_height",
+              "fromPort": "output_value",
+              "toRef": "apex_y",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "roof_height",
+              "fromPort": "output_value",
+              "toRef": "apex_y",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "roof_apex",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "apex_y",
+              "fromPort": "output_sum",
+              "toRef": "roof_apex",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "roof_apex",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "tower_radius",
+              "fromPort": "output_value",
+              "toRef": "roof_radius",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "roof_overhang",
+              "fromPort": "output_value",
+              "toRef": "roof_radius",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_start",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "balcony_elevation",
+              "fromPort": "output_value",
+              "toRef": "balcony_start",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_start",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "balcony_elevation",
+              "fromPort": "output_value",
+              "toRef": "balcony_end_y",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "balcony_slab",
+              "fromPort": "output_value",
+              "toRef": "balcony_end_y",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_outer_end",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "balcony_end_y",
+              "fromPort": "output_sum",
+              "toRef": "balcony_outer_end",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_outer_end",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "balcony_elevation",
+              "fromPort": "output_value",
+              "toRef": "balcony_cut_end_y",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "balcony_cutter_h",
+              "fromPort": "output_value",
+              "toRef": "balcony_cut_end_y",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_inner_end",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "balcony_cut_end_y",
+              "fromPort": "output_sum",
+              "toRef": "balcony_inner_end",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "balcony_inner_end",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "origin",
+              "fromPort": "output_point",
+              "toRef": "outer",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "tower_top",
+              "fromPort": "output_point",
+              "toRef": "outer",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "tower_radius",
+              "fromPort": "output_value",
+              "toRef": "outer",
+              "toPort": "input_radius"
+            },
+            {
+              "fromRef": "origin",
+              "fromPort": "output_point",
+              "toRef": "inner",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "tower_top",
+              "fromPort": "output_point",
+              "toRef": "inner",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "inner_radius",
+              "fromPort": "output_difference",
+              "toRef": "inner",
+              "toPort": "input_radius"
+            },
             {
               "fromRef": "outer",
               "fromPort": "output_geometry",
@@ -7153,6 +7567,60 @@
               "fromPort": "output_geometry",
               "toRef": "shell",
               "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "tower_top",
+              "fromPort": "output_point",
+              "toRef": "roof",
+              "toPort": "input_base_center"
+            },
+            {
+              "fromRef": "roof_apex",
+              "fromPort": "output_point",
+              "toRef": "roof",
+              "toPort": "input_apex"
+            },
+            {
+              "fromRef": "roof_radius",
+              "fromPort": "output_sum",
+              "toRef": "roof",
+              "toPort": "input_radius"
+            },
+            {
+              "fromRef": "balcony_start",
+              "fromPort": "output_point",
+              "toRef": "balcony_outer",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "balcony_outer_end",
+              "fromPort": "output_point",
+              "toRef": "balcony_outer",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "balcony_outer_r",
+              "fromPort": "output_value",
+              "toRef": "balcony_outer",
+              "toPort": "input_radius"
+            },
+            {
+              "fromRef": "balcony_start",
+              "fromPort": "output_point",
+              "toRef": "balcony_inner",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "balcony_inner_end",
+              "fromPort": "output_point",
+              "toRef": "balcony_inner",
+              "toPort": "input_end"
+            },
+            {
+              "fromRef": "balcony_inner_r",
+              "fromPort": "output_value",
+              "toRef": "balcony_inner",
+              "toPort": "input_radius"
             },
             {
               "fromRef": "balcony_outer",
@@ -7169,93 +7637,141 @@
             {
               "fromRef": "shell",
               "fromPort": "output_geometry",
-              "toRef": "combine",
+              "toRef": "combine_body",
               "toPort": "input_geometry_0"
-            },
-            {
-              "fromRef": "roof",
-              "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_1"
             },
             {
               "fromRef": "balcony",
               "fromPort": "output_geometry",
-              "toRef": "combine",
-              "toPort": "input_geometry_2"
+              "toRef": "combine_body",
+              "toPort": "input_geometry_1"
             },
             {
-              "fromRef": "combine",
+              "fromRef": "combine_body",
               "fromPort": "output_geometry",
-              "toRef": "move_to_pos",
+              "toRef": "move_body",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "roof",
+              "fromPort": "output_geometry",
+              "toRef": "move_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "translation_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "translation_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "translation_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "translation_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "translation_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_body",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "translation_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_roof",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_body",
+              "fromPort": "output_geometry",
+              "toRef": "combine_preview",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "move_roof",
+              "fromPort": "output_geometry",
+              "toRef": "combine_preview",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine_preview",
               "fromPort": "output_geometry",
               "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
+              "fromRef": "move_body",
               "fromPort": "output_geometry",
-              "toRef": "voxelize",
+              "toRef": "voxelize_body",
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "voxelize",
+              "fromRef": "move_roof",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize_roof",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize_body",
               "fromPort": "output_blocks",
-              "toRef": "material",
+              "toRef": "material_body",
               "toPort": "input_coordinates"
             },
             {
-              "fromRef": "material",
+              "fromRef": "voxelize_roof",
+              "fromPort": "output_blocks",
+              "toRef": "material_roof",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "body_block",
+              "fromPort": "output_block_id",
+              "toRef": "material_body",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "roof_block",
+              "fromPort": "output_block_id",
+              "toRef": "material_roof",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material_body",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_0"
+            },
+            {
+              "fromRef": "material_roof",
+              "fromPort": "output_placements",
+              "toRef": "merge_placements",
+              "toPort": "input_placements_1"
+            },
+            {
+              "fromRef": "merge_placements",
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos_point_deconstruct",
-              "toPort": "input_point"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_x",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_x"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_y",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_y"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_z",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_z"
-            },
-            {
-              "fromRef": "move_to_pos_point_as_vector",
-              "fromPort": "output_vector",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
-            },
-            {
-              "fromRef": "material_block_type",
-              "fromPort": "output_block_id",
-              "toRef": "material",
-              "toPort": "input_block_type"
             }
           ]
         },
         {
           "id": "styles.medieval.castle_keep",
           "displayName": "Castle Keep",
-          "description": "Keep body + Column Grid corner towers on footprint (not 4 duplicate boxes) →Preview Geometry and block preview chain.",
+          "description": "Keep mass + parametric 2×2 Column Grid corner towers on footprint Top Face, plus rectangular roof-edge battlements (linear arrays of merlons) → Preview Geometry and block preview chain.",
           "kind": "composite",
           "nodes": [
             {
@@ -7341,64 +7857,217 @@
               }
             },
             {
+              "ref": "merlon_count",
+              "typeId": "input.numeric.integer",
+              "x": 0,
+              "y": 1080,
+              "state": {
+                "value": 6
+              }
+            },
+            {
+              "ref": "merlon_spacing",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 1160,
+              "state": {
+                "value": 2.0
+              }
+            },
+            {
+              "ref": "dir_x",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 280,
+              "y": 1080
+            },
+            {
+              "ref": "dir_z",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 280,
+              "y": 1220
+            },
+            {
+              "ref": "one",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 1240,
+              "state": {
+                "value": 1.0
+              }
+            },
+            {
+              "ref": "zero_v",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 1320,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "merlon_front",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 560,
+              "y": 1080,
+              "state": {
+                "cornerX": 1.0,
+                "cornerY": 8.0,
+                "cornerZ": 0.6,
+                "sizeX": 1.2,
+                "sizeY": 0.8,
+                "sizeZ": 0.8
+              }
+            },
+            {
+              "ref": "merlon_back",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 560,
+              "y": 1220,
+              "state": {
+                "cornerX": 1.0,
+                "cornerY": 8.0,
+                "cornerZ": 12.6,
+                "sizeX": 1.2,
+                "sizeY": 0.8,
+                "sizeZ": 0.8
+              }
+            },
+            {
+              "ref": "merlon_left",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 560,
+              "y": 1360,
+              "state": {
+                "cornerX": 0.6,
+                "cornerY": 8.0,
+                "cornerZ": 1.0,
+                "sizeX": 0.8,
+                "sizeY": 0.8,
+                "sizeZ": 1.2
+              }
+            },
+            {
+              "ref": "merlon_right",
+              "typeId": "geometry.primitives.box_from_corner_size",
+              "x": 560,
+              "y": 1500,
+              "state": {
+                "cornerX": 12.6,
+                "cornerY": 8.0,
+                "cornerZ": 1.0,
+                "sizeX": 0.8,
+                "sizeY": 0.8,
+                "sizeZ": 1.2
+              }
+            },
+            {
+              "ref": "battlement_front",
+              "typeId": "pattern.linear.linear_array",
+              "x": 820,
+              "y": 1080,
+              "state": {
+                "count": 6,
+                "distance": 2.0
+              }
+            },
+            {
+              "ref": "battlement_back",
+              "typeId": "pattern.linear.linear_array",
+              "x": 820,
+              "y": 1220,
+              "state": {
+                "count": 6,
+                "distance": 2.0
+              }
+            },
+            {
+              "ref": "battlement_left",
+              "typeId": "pattern.linear.linear_array",
+              "x": 820,
+              "y": 1360,
+              "state": {
+                "count": 6,
+                "distance": 2.0
+              }
+            },
+            {
+              "ref": "battlement_right",
+              "typeId": "pattern.linear.linear_array",
+              "x": 820,
+              "y": 1500,
+              "state": {
+                "count": 6,
+                "distance": 2.0
+              }
+            },
+            {
+              "ref": "battlements",
+              "typeId": "geometry.combine.geometry",
+              "x": 1080,
+              "y": 1240,
+              "state": {
+                "inputCount": 4
+              }
+            },
+            {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 820,
-              "y": 280,
+              "x": 1340,
+              "y": 400,
               "state": {
-                "inputCount": 2
+                "inputCount": 3
               }
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1060,
-              "y": 280
+              "x": 1580,
+              "y": 400
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 120
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 320
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "preview_blocks",
-              "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 640.0,
-              "y": 280.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 860.0,
-              "y": 280.0
+              "x": 1360,
+              "y": 320
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1100.0,
-              "y": 1020.0,
+              "x": 1400,
+              "y": 460,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1620,
+              "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 560,
+              "y": 420
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 780,
+              "y": 420
             }
           ],
           "connections": [
@@ -7439,6 +8108,162 @@
               "toPort": "input_radius"
             },
             {
+              "fromRef": "one",
+              "fromPort": "output_value",
+              "toRef": "dir_x",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "zero_v",
+              "fromPort": "output_value",
+              "toRef": "dir_x",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero_v",
+              "fromPort": "output_value",
+              "toRef": "dir_x",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "zero_v",
+              "fromPort": "output_value",
+              "toRef": "dir_z",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "zero_v",
+              "fromPort": "output_value",
+              "toRef": "dir_z",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "one",
+              "fromPort": "output_value",
+              "toRef": "dir_z",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "merlon_front",
+              "fromPort": "output_geometry",
+              "toRef": "battlement_front",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "dir_x",
+              "fromPort": "output_vector",
+              "toRef": "battlement_front",
+              "toPort": "input_direction"
+            },
+            {
+              "fromRef": "merlon_spacing",
+              "fromPort": "output_value",
+              "toRef": "battlement_front",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "merlon_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_front",
+              "toPort": "input_count"
+            },
+            {
+              "fromRef": "merlon_back",
+              "fromPort": "output_geometry",
+              "toRef": "battlement_back",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "dir_x",
+              "fromPort": "output_vector",
+              "toRef": "battlement_back",
+              "toPort": "input_direction"
+            },
+            {
+              "fromRef": "merlon_spacing",
+              "fromPort": "output_value",
+              "toRef": "battlement_back",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "merlon_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_back",
+              "toPort": "input_count"
+            },
+            {
+              "fromRef": "merlon_left",
+              "fromPort": "output_geometry",
+              "toRef": "battlement_left",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "dir_z",
+              "fromPort": "output_vector",
+              "toRef": "battlement_left",
+              "toPort": "input_direction"
+            },
+            {
+              "fromRef": "merlon_spacing",
+              "fromPort": "output_value",
+              "toRef": "battlement_left",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "merlon_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_left",
+              "toPort": "input_count"
+            },
+            {
+              "fromRef": "merlon_right",
+              "fromPort": "output_geometry",
+              "toRef": "battlement_right",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "dir_z",
+              "fromPort": "output_vector",
+              "toRef": "battlement_right",
+              "toPort": "input_direction"
+            },
+            {
+              "fromRef": "merlon_spacing",
+              "fromPort": "output_value",
+              "toRef": "battlement_right",
+              "toPort": "input_distance"
+            },
+            {
+              "fromRef": "merlon_count",
+              "fromPort": "output_value",
+              "toRef": "battlement_right",
+              "toPort": "input_count"
+            },
+            {
+              "fromRef": "battlement_front",
+              "fromPort": "output_geometry",
+              "toRef": "battlements",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "battlement_back",
+              "fromPort": "output_geometry",
+              "toRef": "battlements",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "battlement_left",
+              "fromPort": "output_geometry",
+              "toRef": "battlements",
+              "toPort": "input_geometry_2"
+            },
+            {
+              "fromRef": "battlement_right",
+              "fromPort": "output_geometry",
+              "toRef": "battlements",
+              "toPort": "input_geometry_3"
+            },
+            {
               "fromRef": "keep_body",
               "fromPort": "output_geometry",
               "toRef": "combine",
@@ -7451,34 +8276,16 @@
               "toPort": "input_geometry_1"
             },
             {
+              "fromRef": "battlements",
+              "fromPort": "output_geometry",
+              "toRef": "combine",
+              "toPort": "input_geometry_2"
+            },
+            {
               "fromRef": "combine",
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
             },
             {
               "fromRef": "player_pos",
@@ -7511,17 +8318,41 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "styles.modern.glass_box_building",
           "displayName": "Modern Glass Box Building",
-          "description": "Glass shell −inner void; separate frame columns; dual Assign Block Type →Merge Placements →Preview Blocks (geometry semantics preserved).",
+          "description": "Glass shell − inner void with Beam Grid mullions/transoms on the framed front facade; dual Assign Block Type → Merge Placements → Preview Blocks. Preview Geometry combines moved glass + frame (shared translation).",
           "kind": "composite",
           "nodes": [
             {
@@ -7572,7 +8403,7 @@
             },
             {
               "ref": "frame_grid",
-              "typeId": "geometry.architectural_primitives.column_grid",
+              "typeId": "geometry.architectural_primitives.beam_grid",
               "x": 560,
               "y": 480
             },
@@ -7582,7 +8413,7 @@
               "x": 280,
               "y": 620,
               "state": {
-                "value": 2
+                "value": 3
               }
             },
             {
@@ -7591,87 +8422,89 @@
               "x": 280,
               "y": 760,
               "state": {
-                "value": 5
+                "value": 4
               }
             },
             {
-              "ref": "frame_radius",
+              "ref": "beam_width",
               "typeId": "input.numeric.float",
               "x": 280,
               "y": 900,
               "state": {
-                "value": 0.15
+                "value": 0.2
               }
             },
             {
-              "ref": "frame_height",
+              "ref": "beam_depth",
               "typeId": "input.numeric.float",
               "x": 280,
               "y": 1040,
               "state": {
-                "value": 10.0
+                "value": 0.25
               }
             },
             {
-              "ref": "frame_shape",
-              "typeId": "input.values.text_input",
+              "ref": "beam_drop",
+              "typeId": "input.numeric.float",
               "x": 280,
               "y": 1180,
               "state": {
-                "text": "box",
-                "multiline": false
+                "value": 0.0
               }
+            },
+            {
+              "ref": "beam_margin",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 1320,
+              "state": {
+                "value": 0.3
+              }
+            },
+            {
+              "ref": "move_glass",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 860,
+              "y": 280
+            },
+            {
+              "ref": "move_frame",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 860,
+              "y": 480
             },
             {
               "ref": "combine_geo",
               "typeId": "geometry.combine.geometry",
-              "x": 820,
+              "x": 1140,
               "y": 360,
               "state": {
                 "inputCount": 2
               }
             },
             {
-              "ref": "move_to_pos",
-              "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1060,
-              "y": 360
-            },
-            {
-              "ref": "move_glass",
-              "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1060,
-              "y": 520
-            },
-            {
-              "ref": "move_frame",
-              "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1060,
-              "y": 680
-            },
-            {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1320,
+              "x": 1400,
               "y": 240
             },
             {
               "ref": "voxelize_glass",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1320,
-              "y": 400
+              "x": 1140,
+              "y": 520
             },
             {
               "ref": "voxelize_frame",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1320,
-              "y": 560
+              "x": 1140,
+              "y": 680
             },
             {
               "ref": "glass_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1060,
-              "y": 720,
+              "x": 860,
+              "y": 840,
               "state": {
                 "selectedBlock": "minecraft:light_blue_stained_glass"
               }
@@ -7679,8 +8512,8 @@
             {
               "ref": "frame_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1060,
-              "y": 880,
+              "x": 860,
+              "y": 1000,
               "state": {
                 "selectedBlock": "minecraft:iron_block"
               }
@@ -7688,20 +8521,20 @@
             {
               "ref": "material_glass",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1580,
-              "y": 400
+              "x": 1400,
+              "y": 520
             },
             {
               "ref": "material_frame",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1580,
-              "y": 560
+              "x": 1400,
+              "y": 680
             },
             {
               "ref": "merge_placements",
               "typeId": "output.execute.merge_block_placements",
-              "x": 1840,
-              "y": 480,
+              "x": 1660,
+              "y": 600,
               "state": {
                 "inputCount": 2
               }
@@ -7709,44 +8542,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2100,
-              "y": 480
+              "x": 1920,
+              "y": 600
             },
             {
-              "ref": "move_frame_point_deconstruct",
+              "ref": "translation_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 640.0,
-              "y": 680.0
+              "x": 560,
+              "y": 40
             },
             {
-              "ref": "move_frame_point_as_vector",
+              "ref": "translation_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 860.0,
-              "y": 680.0
-            },
-            {
-              "ref": "move_glass_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 640.0,
-              "y": 520.0
-            },
-            {
-              "ref": "move_glass_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 860.0,
-              "y": 520.0
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 640.0,
-              "y": 360.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 860.0,
-              "y": 360.0
+              "x": 780,
+              "y": 40
             }
           ],
           "connections": [
@@ -7787,46 +8596,28 @@
               "toPort": "input_rows"
             },
             {
-              "fromRef": "frame_radius",
+              "fromRef": "beam_width",
               "fromPort": "output_value",
               "toRef": "frame_grid",
-              "toPort": "input_radius"
+              "toPort": "input_beam_width"
             },
             {
-              "fromRef": "frame_height",
+              "fromRef": "beam_depth",
               "fromPort": "output_value",
               "toRef": "frame_grid",
-              "toPort": "input_height"
+              "toPort": "input_beam_depth"
             },
             {
-              "fromRef": "frame_shape",
-              "fromPort": "output_text",
+              "fromRef": "beam_drop",
+              "fromPort": "output_value",
               "toRef": "frame_grid",
-              "toPort": "input_shape"
+              "toPort": "input_beam_drop"
             },
             {
-              "fromRef": "glass_shell",
-              "fromPort": "output_geometry",
-              "toRef": "combine_geo",
-              "toPort": "input_geometry_0"
-            },
-            {
-              "fromRef": "frame_grid",
-              "fromPort": "output_geometry",
-              "toRef": "combine_geo",
-              "toPort": "input_geometry_1"
-            },
-            {
-              "fromRef": "combine_geo",
-              "fromPort": "output_geometry",
-              "toRef": "move_to_pos",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
+              "fromRef": "beam_margin",
+              "fromPort": "output_value",
+              "toRef": "frame_grid",
+              "toPort": "input_margin"
             },
             {
               "fromRef": "glass_shell",
@@ -7838,6 +8629,60 @@
               "fromRef": "frame_grid",
               "fromPort": "output_geometry",
               "toRef": "move_frame",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "translation_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "translation_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "translation_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "translation_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "translation_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "translation_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_glass",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "translation_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_frame",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "move_glass",
+              "fromPort": "output_geometry",
+              "toRef": "combine_geo",
+              "toPort": "input_geometry_0"
+            },
+            {
+              "fromRef": "move_frame",
+              "fromPort": "output_geometry",
+              "toRef": "combine_geo",
+              "toPort": "input_geometry_1"
+            },
+            {
+              "fromRef": "combine_geo",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
               "toPort": "input_geometry"
             },
             {
@@ -7893,96 +8738,6 @@
               "fromPort": "output_placements",
               "toRef": "preview_blocks",
               "toPort": "input_block_placements"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_frame_point_deconstruct",
-              "toPort": "input_point"
-            },
-            {
-              "fromRef": "move_frame_point_deconstruct",
-              "fromPort": "output_x",
-              "toRef": "move_frame_point_as_vector",
-              "toPort": "input_x"
-            },
-            {
-              "fromRef": "move_frame_point_deconstruct",
-              "fromPort": "output_y",
-              "toRef": "move_frame_point_as_vector",
-              "toPort": "input_y"
-            },
-            {
-              "fromRef": "move_frame_point_deconstruct",
-              "fromPort": "output_z",
-              "toRef": "move_frame_point_as_vector",
-              "toPort": "input_z"
-            },
-            {
-              "fromRef": "move_frame_point_as_vector",
-              "fromPort": "output_vector",
-              "toRef": "move_frame",
-              "toPort": "input_translation"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_glass_point_deconstruct",
-              "toPort": "input_point"
-            },
-            {
-              "fromRef": "move_glass_point_deconstruct",
-              "fromPort": "output_x",
-              "toRef": "move_glass_point_as_vector",
-              "toPort": "input_x"
-            },
-            {
-              "fromRef": "move_glass_point_deconstruct",
-              "fromPort": "output_y",
-              "toRef": "move_glass_point_as_vector",
-              "toPort": "input_y"
-            },
-            {
-              "fromRef": "move_glass_point_deconstruct",
-              "fromPort": "output_z",
-              "toRef": "move_glass_point_as_vector",
-              "toPort": "input_z"
-            },
-            {
-              "fromRef": "move_glass_point_as_vector",
-              "fromPort": "output_vector",
-              "toRef": "move_glass",
-              "toPort": "input_translation"
-            },
-            {
-              "fromRef": "player_pos",
-              "fromPort": "output_position",
-              "toRef": "move_to_pos_point_deconstruct",
-              "toPort": "input_point"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_x",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_x"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_y",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_y"
-            },
-            {
-              "fromRef": "move_to_pos_point_deconstruct",
-              "fromPort": "output_z",
-              "toRef": "move_to_pos_point_as_vector",
-              "toPort": "input_z"
-            },
-            {
-              "fromRef": "move_to_pos_point_as_vector",
-              "fromPort": "output_vector",
-              "toRef": "move_to_pos",
-              "toPort": "input_translation"
             }
           ]
         }
