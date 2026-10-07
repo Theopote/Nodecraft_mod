@@ -2,6 +2,7 @@
 """Rewrite Quickstart + Composites presets to Preset Library v2 canonical chains."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -20,6 +21,35 @@ def node(ref: str, type_id: str, x: float, y: float, state: dict | None = None) 
 
 def conn(fr: str, fp: str, to: str, tp: str) -> dict:
     return {"fromRef": fr, "fromPort": fp, "toRef": to, "toPort": tp}
+
+
+def placement_tail_nodes(block_type: str, move_y: float = 280) -> list[dict]:
+    return [
+        node("preview_geometry", "output.preview.preview_geometry", 860, 120),
+        node("voxelize", "geometry.voxel.voxelize_geometry", 860, 320),
+        node("material", "material.basic_assignment.assign_block_type", 1140, 320),
+        node("material_block_type", "input.type_selectors.block_type_selector", 1460, 480, {
+            "selectedBlock": block_type,
+        }),
+        node("preview_blocks", "output.preview.preview_blocks", 1420, 320),
+        node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", 160, move_y),
+        node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", 380, move_y),
+    ]
+
+
+def placement_tail_conns(from_ref: str, from_port: str = "output_geometry") -> list[dict]:
+    return [
+        conn("player_pos", "output_position", "move_to_pos_point_deconstruct", "input_point"),
+        conn("move_to_pos_point_deconstruct", "output_x", "move_to_pos_point_as_vector", "input_x"),
+        conn("move_to_pos_point_deconstruct", "output_y", "move_to_pos_point_as_vector", "input_y"),
+        conn("move_to_pos_point_deconstruct", "output_z", "move_to_pos_point_as_vector", "input_z"),
+        conn("move_to_pos_point_as_vector", "output_vector", "move_to_pos", "input_translation"),
+        conn(from_ref, from_port, "preview_geometry", "input_geometry"),
+        conn(from_ref, from_port, "voxelize", "input_geometry"),
+        conn("voxelize", "output_blocks", "material", "input_coordinates"),
+        conn("material_block_type", "output_block_id", "material", "input_block_type"),
+        conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+    ]
 
 
 P0_PRESETS: dict[str, dict] = {
@@ -174,8 +204,9 @@ P0_PRESETS: dict[str, dict] = {
         "id": "quickstart.garden_wall",
         "displayName": "Garden Wall with Gate",
         "description": (
-            "Wall Box − Gate Cutter → Move to player → Preview Geometry, "
-            "and Voxelize → Assign Block Type → Preview Blocks."
+            "Wall Box − through-cut Gate Box (Z extends beyond both wall faces; ground-level "
+            "opening with a 1-block lintel) → Move to player → Preview Geometry, Voxelize → "
+            "Assign Block Type → Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -196,28 +227,22 @@ P0_PRESETS: dict[str, dict] = {
             ),
             node("cut_gate", "geometry.boolean.difference", 320, 280),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 580, 280),
-            node("preview_geometry", "output.preview.preview_geometry", 860, 120),
-            node("voxelize", "geometry.voxel.voxelize_geometry", 860, 320),
-            node("material", "material.basic_assignment.assign_block_type", 1140, 320),
-            node("preview_blocks", "output.preview.preview_blocks", 1420, 320),
+            *placement_tail_nodes("minecraft:cobblestone"),
         ],
         "connections": [
             conn("wall_box", "output_geometry", "cut_gate", "input_base"),
             conn("gate_box", "output_geometry", "cut_gate", "input_cutter"),
             conn("cut_gate", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            conn("move_to_pos", "output_geometry", "preview_geometry", "input_geometry"),
-            conn("move_to_pos", "output_geometry", "voxelize", "input_geometry"),
-            conn("voxelize", "output_blocks", "material", "input_coordinates"),
-            conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+            *placement_tail_conns("move_to_pos"),
         ],
     },
     "quickstart.simple_tower": {
         "id": "quickstart.simple_tower",
-        "displayName": "Simple Tower",
+        "displayName": "Hollow Tower",
         "description": (
-            "Outer − Inner Cylinder → Move to player → Preview Geometry, "
-            "and Voxelize → Assign Block Type → Preview Blocks."
+            "Outer Cylinder − through-cut Inner Cylinder → hollow tower shell (open top and "
+            "bottom) → Move to player → Preview Geometry, Voxelize → Assign Block Type → "
+            "Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -254,44 +279,51 @@ P0_PRESETS: dict[str, dict] = {
             ),
             node("hollow", "geometry.boolean.difference", 320, 280),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 580, 280),
-            node("preview_geometry", "output.preview.preview_geometry", 860, 120),
-            node("voxelize", "geometry.voxel.voxelize_geometry", 860, 320),
-            node("material", "material.basic_assignment.assign_block_type", 1140, 320),
-            node("preview_blocks", "output.preview.preview_blocks", 1420, 320),
+            *placement_tail_nodes("minecraft:stone_bricks"),
         ],
         "connections": [
             conn("outer", "output_geometry", "hollow", "input_base"),
             conn("inner", "output_geometry", "hollow", "input_cutter"),
             conn("hollow", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            conn("move_to_pos", "output_geometry", "preview_geometry", "input_geometry"),
-            conn("move_to_pos", "output_geometry", "voxelize", "input_geometry"),
-            conn("voxelize", "output_blocks", "material", "input_coordinates"),
-            conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+            *placement_tail_conns("move_to_pos"),
         ],
     },
 }
 
 
-def rewrite_file(path: Path) -> None:
+def rewrite_file(path: Path, only: set[str] | None = None) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     replaced = 0
+    targets = P0_PRESETS if only is None else {k: v for k, v in P0_PRESETS.items() if k in only}
     for category in data.get("categories") or []:
         presets = category.get("presets") or []
         for i, preset in enumerate(presets):
             if not preset:
                 continue
             pid = preset.get("id")
-            if pid in P0_PRESETS:
-                presets[i] = P0_PRESETS[pid]
+            if pid in targets:
+                presets[i] = targets[pid]
                 replaced += 1
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{path.name}: replaced {replaced} presets")
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Rewrite P0 Quickstart/composite presets in graph_presets.json")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PRESET_ID",
+        help="Replace only the given preset id (repeatable). Default: all P0 presets.",
+    )
+    args = parser.parse_args()
+    only = set(args.only) if args.only else None
+    if only:
+        unknown = only - set(P0_PRESETS)
+        if unknown:
+            raise SystemExit(f"Unknown preset id(s): {', '.join(sorted(unknown))}")
     for path in PRESET_FILES:
-        rewrite_file(path)
+        rewrite_file(path, only=only)
 
 
 if __name__ == "__main__":

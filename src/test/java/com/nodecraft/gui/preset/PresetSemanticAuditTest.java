@@ -857,6 +857,69 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": dual frame/glass materials must merge into Preview Blocks");
                 }
             }
+            case "quickstart.garden_wall" -> {
+                GraphPresetRules.PresetNode wall = nodeByRef.get("wall_box");
+                GraphPresetRules.PresetNode gate = nodeByRef.get("gate_box");
+                if (wall == null || gate == null) {
+                    errors.add(preset.id + ": missing wall_box / gate_box");
+                    break;
+                }
+                Double wallX = numericStateValue(wall.state, "cornerX");
+                Double wallY = numericStateValue(wall.state, "cornerY");
+                Double wallZ = numericStateValue(wall.state, "cornerZ");
+                Double wallSx = numericStateValue(wall.state, "sizeX");
+                Double wallSy = numericStateValue(wall.state, "sizeY");
+                Double wallSz = numericStateValue(wall.state, "sizeZ");
+                Double gateX = numericStateValue(gate.state, "cornerX");
+                Double gateY = numericStateValue(gate.state, "cornerY");
+                Double gateZ = numericStateValue(gate.state, "cornerZ");
+                Double gateSx = numericStateValue(gate.state, "sizeX");
+                Double gateSy = numericStateValue(gate.state, "sizeY");
+                Double gateSz = numericStateValue(gate.state, "sizeZ");
+                if (wallX == null || wallY == null || wallZ == null
+                        || wallSx == null || wallSy == null || wallSz == null
+                        || gateX == null || gateY == null || gateZ == null
+                        || gateSx == null || gateSy == null || gateSz == null) {
+                    errors.add(preset.id + ": wall/gate must declare corner and size X/Y/Z");
+                    break;
+                }
+                if (!(gateZ < wallZ) || !(gateZ + gateSz > wallZ + wallSz)) {
+                    errors.add(preset.id + ": gate cutter Z must extend beyond both wall depth faces");
+                }
+                if (!(gateY <= wallY)) {
+                    errors.add(preset.id + ": gate.cornerY must be <= wall.cornerY (open from ground)");
+                }
+                if (!(gateY + gateSy < wallY + wallSy)) {
+                    errors.add(preset.id + ": gate top must stay below wall top (lintel remains)");
+                }
+                double gateMidX = gateX + gateSx / 2.0d;
+                double wallMidX = wallX + wallSx / 2.0d;
+                if (Math.abs(gateMidX - wallMidX) >= 0.05d) {
+                    errors.add(preset.id + ": gate must be centered on wall X");
+                }
+            }
+            case "quickstart.simple_tower" -> {
+                GraphPresetRules.PresetNode outer = nodeByRef.get("outer");
+                GraphPresetRules.PresetNode inner = nodeByRef.get("inner");
+                Double outerStartY = outer == null ? null : numericStateValue(outer.state, "startY");
+                Double outerEndY = outer == null ? null : numericStateValue(outer.state, "endY");
+                Double innerStartY = inner == null ? null : numericStateValue(inner.state, "startY");
+                Double innerEndY = inner == null ? null : numericStateValue(inner.state, "endY");
+                Double outerR = outer == null ? null : numericStateValue(outer.state, "radius");
+                Double innerR = inner == null ? null : numericStateValue(inner.state, "radius");
+                if (outerStartY == null || outerEndY == null || innerStartY == null || innerEndY == null
+                        || outerR == null || innerR == null) {
+                    errors.add(preset.id + ": outer/inner must declare startY, endY, and radius");
+                    break;
+                }
+                if (Math.abs(innerStartY - outerStartY) > 1.0e-6d
+                        || Math.abs(innerEndY - outerEndY) > 1.0e-6d) {
+                    errors.add(preset.id + ": inner Y span must match outer (open hollow shell)");
+                }
+                if (!(innerR < outerR)) {
+                    errors.add(preset.id + ": inner.radius must be < outer.radius");
+                }
+            }
             case "building_elements.windows.modern_window" -> {
                 if (!"geometry.architectural_primitives.wall_slab".equals(typeByRef.get("wall"))) {
                     errors.add(preset.id + ": host must be wall_slab (not wall_with_openings)");

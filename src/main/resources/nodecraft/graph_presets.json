@@ -6618,7 +6618,7 @@
         {
           "id": "quickstart.garden_wall",
           "displayName": "Garden Wall with Gate",
-          "description": "Wall Box −Gate Cutter →Move to player →Preview Geometry, and Voxelize →Assign Block Type →Preview Blocks.",
+          "description": "Wall Box − through-cut Gate Box (Z extends beyond both wall faces; ground-level opening with a 1-block lintel) → Move to player → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -6686,6 +6686,15 @@
               "y": 320
             },
             {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1460,
+              "y": 480,
+              "state": {
+                "selectedBlock": "minecraft:cobblestone"
+              }
+            },
+            {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
               "x": 1420,
@@ -6694,23 +6703,14 @@
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 160.0,
-              "y": 280.0
+              "x": 160,
+              "y": 280
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 380.0,
-              "y": 280.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 1460.0,
-              "y": 480.0,
-              "state": {
-                "selectedBlock": "minecraft:cobblestone"
-              }
+              "x": 380,
+              "y": 280
             }
           ],
           "connections": [
@@ -6731,30 +6731,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
             },
             {
               "fromRef": "player_pos",
@@ -6787,17 +6763,41 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "quickstart.simple_tower",
-          "displayName": "Simple Tower",
-          "description": "Outer −Inner Cylinder →Move to player →Preview Geometry, and Voxelize →Assign Block Type →Preview Blocks.",
+          "displayName": "Hollow Tower",
+          "description": "Outer Cylinder − through-cut Inner Cylinder → hollow tower shell (open top and bottom) → Move to player → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -6867,6 +6867,15 @@
               "y": 320
             },
             {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 1460,
+              "y": 480,
+              "state": {
+                "selectedBlock": "minecraft:stone_bricks"
+              }
+            },
+            {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
               "x": 1420,
@@ -6875,23 +6884,14 @@
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 160.0,
-              "y": 280.0
+              "x": 160,
+              "y": 280
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 380.0,
-              "y": 280.0
-            },
-            {
-              "ref": "material_block_type",
-              "typeId": "input.type_selectors.block_type_selector",
-              "x": 1460.0,
-              "y": 480.0,
-              "state": {
-                "selectedBlock": "minecraft:stone_bricks"
-              }
+              "x": 380,
+              "y": 280
             }
           ],
           "connections": [
@@ -6912,30 +6912,6 @@
               "fromPort": "output_geometry",
               "toRef": "move_to_pos",
               "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
             },
             {
               "fromRef": "player_pos",
@@ -6968,10 +6944,34 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         }
