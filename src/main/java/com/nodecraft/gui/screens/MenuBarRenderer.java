@@ -249,38 +249,43 @@ public class MenuBarRenderer {
                         ImGui.separator();
                     }
 
-                    NodeLibraryComponent nodeLibrary = componentManager.getNodeLibraryComponent();
-                    if (nodeLibrary != null) {
-                        boolean showSuggested = nodeLibrary.isShowSuggestedConnections();
+                    ImGuiNodeEditor suggestedEditor = null;
+                    CanvasComponent suggestedCanvas = componentManager.getCanvasComponent();
+                    if (suggestedCanvas != null && suggestedCanvas.getNodeEditor() instanceof ImGuiNodeEditor editor) {
+                        suggestedEditor = editor;
+                    }
+                    if (suggestedEditor != null) {
+                        boolean showSuggested = suggestedEditor.isShowSuggestedConnections();
                         if (ImGui.menuItem("显示 Suggested Connections", null, showSuggested)) {
-                            nodeLibrary.setShowSuggestedConnections(!showSuggested);
+                            suggestedEditor.setShowSuggestedConnections(!showSuggested);
+                        }
+                    }
+
+                    NodeLibraryComponent nodeLibrary = componentManager.getNodeLibraryComponent();
+                    if (nodeLibrary != null && ImGui.beginMenu("节点库显示方式")) {
+                        NodeLibraryComponent.DisplayMode mode = nodeLibrary.getDisplayMode();
+                        if (ImGui.menuItem("列表", null, mode == NodeLibraryComponent.DisplayMode.LIST)) {
+                            nodeLibrary.setDisplayMode(NodeLibraryComponent.DisplayMode.LIST);
+                        }
+                        if (ImGui.menuItem("平铺", null, mode == NodeLibraryComponent.DisplayMode.GRID)) {
+                            nodeLibrary.setDisplayMode(NodeLibraryComponent.DisplayMode.GRID);
                         }
 
-                        if (ImGui.beginMenu("节点库显示方式")) {
-                            NodeLibraryComponent.DisplayMode mode = nodeLibrary.getDisplayMode();
-                            if (ImGui.menuItem("列表", null, mode == NodeLibraryComponent.DisplayMode.LIST)) {
-                                nodeLibrary.setDisplayMode(NodeLibraryComponent.DisplayMode.LIST);
+                        ImGui.separator();
+                        if (ImGui.beginMenu("平铺尺寸倍率")) {
+                            float scale = nodeLibrary.getGridTileSizeScale();
+                            if (ImGui.menuItem("1x", null, Math.abs(scale - 1.0f) < 0.001f)) {
+                                nodeLibrary.setGridTileSizeScale(1.0f);
                             }
-                            if (ImGui.menuItem("平铺", null, mode == NodeLibraryComponent.DisplayMode.GRID)) {
-                                nodeLibrary.setDisplayMode(NodeLibraryComponent.DisplayMode.GRID);
+                            if (ImGui.menuItem("1.5x", null, Math.abs(scale - 1.5f) < 0.001f)) {
+                                nodeLibrary.setGridTileSizeScale(1.5f);
                             }
-
-                            ImGui.separator();
-                            if (ImGui.beginMenu("平铺尺寸倍率")) {
-                                float scale = nodeLibrary.getGridTileSizeScale();
-                                if (ImGui.menuItem("1x", null, Math.abs(scale - 1.0f) < 0.001f)) {
-                                    nodeLibrary.setGridTileSizeScale(1.0f);
-                                }
-                                if (ImGui.menuItem("1.5x", null, Math.abs(scale - 1.5f) < 0.001f)) {
-                                    nodeLibrary.setGridTileSizeScale(1.5f);
-                                }
-                                if (ImGui.menuItem("2x", null, Math.abs(scale - 2.0f) < 0.001f)) {
-                                    nodeLibrary.setGridTileSizeScale(2.0f);
-                                }
-                                ImGui.endMenu();
+                            if (ImGui.menuItem("2x", null, Math.abs(scale - 2.0f) < 0.001f)) {
+                                nodeLibrary.setGridTileSizeScale(2.0f);
                             }
                             ImGui.endMenu();
                         }
+                        ImGui.endMenu();
                     }
 
                     ImGui.separator();

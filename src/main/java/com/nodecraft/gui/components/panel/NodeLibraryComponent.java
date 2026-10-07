@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.Set;
@@ -28,12 +27,6 @@ import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.utils.UserPreferences;
 import com.nodecraft.gui.components.search.NodeSearchManager;
 import com.nodecraft.gui.components.search.NodeSearchMatcher;
-import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
-import com.nodecraft.gui.recommendation.NodeRecommendation;
-import com.nodecraft.gui.recommendation.NodeRecommendationContext;
-import com.nodecraft.gui.recommendation.NodeRecommendations;
-import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.lwjgl.opengl.GL11;
 
 import imgui.ImGui;
@@ -66,7 +59,6 @@ public class NodeLibraryComponent implements EditorComponent {
     private static class NodeLibraryConstants {
         static final String PREF_DISPLAY_MODE_KEY = "node_library.display_mode";
         static final String PREF_GRID_TILE_SCALE_KEY = "node_library.grid_tile_scale";
-        static final String PREF_SHOW_SUGGESTED_CONNECTIONS_KEY = "node_library.show_suggested_connections";
         static final float CHILD_WINDOW_MIN_WIDTH = 50;
         static final float CHILD_WINDOW_MIN_HEIGHT = 50;
         static final float CATEGORY_INDENT = 10f;
@@ -232,7 +224,6 @@ public class NodeLibraryComponent implements EditorComponent {
     private boolean categoryHierarchyCacheDirty = true;
     private boolean visible = true;
     private DisplayMode displayMode;
-    private boolean showSuggestedConnections = true;
     private float gridTileSizeScale = NodeLibraryConstants.GRID_TILE_SIZE_SCALE;
 
     // Icon manager.
@@ -241,10 +232,6 @@ public class NodeLibraryComponent implements EditorComponent {
 
     // Search manager.
     private final NodeSearchManager searchManager = new NodeSearchManager();
-    private UUID selectedNodeId;
-    private UUID cachedRecommendationNodeId;
-    private NodeRecommendationContext cachedRecommendationContext;
-    private List<NodeRecommendation> cachedRecommendations = List.of();
 
     /**
      * Callback used when the user selects a node from the library.
@@ -286,11 +273,6 @@ public class NodeLibraryComponent implements EditorComponent {
                 NodeLibraryConstants.GRID_TILE_SIZE_SCALE
         );
         setGridTileSizeScale(storedGridScale);
-
-        this.showSuggestedConnections = UserPreferences.getBoolean(
-                NodeLibraryConstants.PREF_SHOW_SUGGESTED_CONNECTIONS_KEY,
-                true
-        );
 
         // 彻底移除 CategoryViewMode 的持久化和恢复逻辑
         rebuildPresentationCategories();
@@ -340,7 +322,6 @@ public class NodeLibraryComponent implements EditorComponent {
     public void renderContent(float width, float height, float paddingX) {
         renderSearchBar();
         renderFavoritesSection();
-        renderSuggestedSection();
         ImGui.separator();
         ImGui.spacing();
         renderNodeCategories();
@@ -417,23 +398,6 @@ public class NodeLibraryComponent implements EditorComponent {
         UserPreferences.setFloat(NodeLibraryConstants.PREF_GRID_TILE_SCALE_KEY, clamped);
     }
 
-    public boolean isShowSuggestedConnections() {
-        return showSuggestedConnections;
-    }
-
-    public void setShowSuggestedConnections(boolean show) {
-        if (this.showSuggestedConnections == show) {
-            return;
-        }
-        this.showSuggestedConnections = show;
-        UserPreferences.setBoolean(NodeLibraryConstants.PREF_SHOW_SUGGESTED_CONNECTIONS_KEY, show);
-        if (!show) {
-            clearRecommendationCacheKeepingSelection();
-        } else if (selectedNodeId != null) {
-            refreshRecommendationCache();
-        }
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -447,71 +411,7 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     @Override
     public boolean handleEvent(String eventType, Object data) {
-        switch (eventType) {
-            case "nodeSelected" -> {
-                if (data instanceof UUID nodeId) {
-                    selectedNodeId = nodeId;
-                    if (showSuggestedConnections) {
-                        refreshRecommendationCache();
-                    } else {
-                        clearRecommendationCacheKeepingSelection();
-                    }
-                } else {
-                    clearRecommendationCache();
-                }
-                return true;
-            }
-            case "nodeSelectionCleared", "graphChanged" -> {
-                clearRecommendationCache();
-                return true;
-            }
-            default -> {
-                return false;
-            }
-        }
-    }
-
-    private void clearRecommendationCache() {
-        selectedNodeId = null;
-        clearRecommendationCacheKeepingSelection();
-    }
-
-    private void clearRecommendationCacheKeepingSelection() {
-        cachedRecommendationNodeId = null;
-        cachedRecommendationContext = null;
-        cachedRecommendations = List.of();
-    }
-
-    private void refreshRecommendationCache() {
-        if (selectedNodeId == null) {
-            clearRecommendationCache();
-            return;
-        }
-        if (selectedNodeId.equals(cachedRecommendationNodeId) && cachedRecommendationContext != null) {
-            return;
-        }
-
-        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-        NodeGraph graph = editor != null ? editor.getCurrentGraph() : null;
-        if (graph == null) {
-            cachedRecommendations = List.of();
-            return;
-        }
-
-        INode selectedNode = graph.getNode(selectedNodeId);
-        if (selectedNode == null) {
-            cachedRecommendations = List.of();
-            return;
-        }
-
-        NodeRecommendations.get().initialize();
-        cachedRecommendationContext = NodeRecommendationContext.forSelectedNode(
-                selectedNodeId,
-                (float) selectedNode.getPositionX(),
-                (float) selectedNode.getPositionY(),
-                5);
-        cachedRecommendations = NodeRecommendations.get().recommend(graph, cachedRecommendationContext);
-        cachedRecommendationNodeId = selectedNodeId;
+        return false;
     }
 
     private void renderFavoritesSection() {
@@ -540,61 +440,6 @@ public class NodeLibraryComponent implements EditorComponent {
                     NodeFavoritesStore.remove(node.getId());
                 }
                 ImGui.endPopup();
-            }
-        }
-        ImGui.spacing();
-    }
-
-    private void renderSuggestedSection() {
-        if (!showSuggestedConnections) {
-            return;
-        }
-        if (selectedNodeId == null || !searchManager.getSearchTerm().isEmpty()) {
-            return;
-        }
-
-        if (cachedRecommendations.isEmpty()) {
-            return;
-        }
-
-        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-        ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "Suggested Connections");
-
-        float lineHeight = ImGui.getTextLineHeight();
-        float iconPadding = 4.0f;
-        NodeRegistry registry = NodeRegistry.getInstance();
-
-        for (NodeRecommendation recommendation : cachedRecommendations) {
-            float availableWidth = ImGui.getContentRegionAvailX();
-            boolean clicked = ImGui.selectable(
-                    "##suggest_" + recommendation.nodeId(),
-                    false,
-                    ImGuiSelectableFlags.AllowItemOverlap,
-                    availableWidth,
-                    lineHeight);
-
-            ImVec2 rectMin = ImGui.getItemRectMin();
-            ImDrawList drawList = ImGui.getWindowDrawList();
-            int textColor = ImGui.getColorU32(ImGuiCol.Text);
-
-            NodeInfo nodeInfo = registry.getNodeInfo(recommendation.nodeId());
-            float textStartX = rectMin.x;
-            if (nodeInfo != null) {
-                String category = recommendation.categoryId() != null && !recommendation.categoryId().isBlank()
-                        ? recommendation.categoryId()
-                        : nodeInfo.getCategoryId();
-                drawNodeIcon(drawList, rectMin, nodeInfo, category, lineHeight);
-                textStartX = rectMin.x + lineHeight + iconPadding;
-            }
-
-            String label = recommendation.planMarkAscii() + recommendation.displayName();
-            drawList.addText(textStartX, rectMin.y, textColor, label);
-
-            if (clicked && editor != null && cachedRecommendationContext != null) {
-                editor.applyRecommendation(cachedRecommendationContext, recommendation);
-            }
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip(recommendation.reason());
             }
         }
         ImGui.spacing();

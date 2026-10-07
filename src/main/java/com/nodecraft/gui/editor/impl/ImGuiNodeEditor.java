@@ -26,6 +26,7 @@ import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
 import com.nodecraft.gui.recommendation.NodeRecommendationPopupRenderer;
 import com.nodecraft.gui.recommendation.NodeRecommendations;
+import com.nodecraft.gui.recommendation.SuggestedConnectionsOverlay;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -69,6 +70,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     private final ImGuiNodeHistory history;
     private final ImGuiNodeClipboard clipboard;
     private final NodeRecommendationPopupRenderer recommendationPopup;
+    private final SuggestedConnectionsOverlay suggestedConnectionsOverlay;
 
     // 编辑器状态
     private final EditorSession session;
@@ -114,6 +116,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         this.nodeCommands = new NodeCommandService(new NodeCommandHost());
         this.session = new EditorSession(new SessionHost());
         this.recommendationPopup = new NodeRecommendationPopupRenderer(this, NodeRecommendations.get());
+        this.suggestedConnectionsOverlay = new SuggestedConnectionsOverlay();
         this.autoPreviewController = new AutoPreviewController(
                 document::getGraph,
                 document,
@@ -402,9 +405,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 // 注意：不能用 WantCaptureMouse（鼠标在画布窗口本身上时也为 true，会破坏框选）。
                 // 只在特定 popup 打开时跳过，避免菜单点击误清除选择集。
                 boolean anyEditorPopupOpen = ImGui.isPopupOpen("NodeContextMenu") || ImGui.isPopupOpen("Node Search");
+                boolean overSuggestedOverlay = suggestedConnectionsOverlay.containsScreenPoint(mousePos.x, mousePos.y);
                 if (mouseOverCanvas
                         && ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)
-                        && !anyEditorPopupOpen) {
+                        && !anyEditorPopupOpen
+                        && !overSuggestedOverlay) {
                 NodeCraft.LOGGER.debug("左键点击检测 - 鼠标位置: ({}, {})", mousePos.x, mousePos.y);
 
                 // 检查点击是否在画布区域内
@@ -517,10 +522,19 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             autoPreviewController.tick();
             renderSubgraphRenamePopup();
             renderSubgraphNavigationOverlay(canvasPos);
+            suggestedConnectionsOverlay.render(canvasPos, canvasWidth, canvasHeight, this);
 
         } catch (Exception e) {
             NodeCraft.LOGGER.error("渲染ImGui编辑器时出错: {}", e.getMessage(), e);
         }
+    }
+
+    public boolean isShowSuggestedConnections() {
+        return suggestedConnectionsOverlay.isShowSuggestedConnections();
+    }
+
+    public void setShowSuggestedConnections(boolean show) {
+        suggestedConnectionsOverlay.setShowSuggestedConnections(show);
     }
 
     /** Keeps nested-graph navigation above canvas content without creating a separate top-level window. */
