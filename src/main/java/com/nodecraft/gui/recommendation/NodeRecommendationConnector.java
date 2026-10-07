@@ -161,15 +161,33 @@ final class NodeRecommendationConnector {
             return applyManual(editor, recommendation, x, y);
         }
 
-        INode conversionNode = editor.addNode(conversion.nodeId(), x, y);
-        if (conversionNode == null) {
-            return applyManual(editor, recommendation, x, y);
+        // Horizontal chain: source → conversion → target.
+        // PORT_DRAG: target at drop (x,y); conversion to the left by portDragOffset.
+        // Selection: conversion at source+defaultOffset (x,y); target further right.
+        float chainDx = rules.placement.portDragOffset != null ? rules.placement.portDragOffset.dx() : 220f;
+        float chainDy = rules.placement.portDragOffset != null ? rules.placement.portDragOffset.dy() : 0f;
+        float conversionX;
+        float conversionY;
+        float targetX;
+        float targetY;
+        if (context.trigger() == RecommendationTrigger.PORT_DRAG) {
+            targetX = x;
+            targetY = y;
+            conversionX = targetX - chainDx;
+            conversionY = targetY - chainDy;
+        } else {
+            conversionX = x;
+            conversionY = y;
+            targetX = conversionX + chainDx;
+            targetY = conversionY + chainDy;
         }
 
-        INode targetNode = editor.addNode(
-                recommendation.nodeId(),
-                x + rules.placement.stackOffset.dx(),
-                y + rules.placement.stackOffset.dy());
+        INode conversionNode = editor.addNode(conversion.nodeId(), conversionX, conversionY);
+        if (conversionNode == null) {
+            return applyManual(editor, recommendation, targetX, targetY);
+        }
+
+        INode targetNode = editor.addNode(recommendation.nodeId(), targetX, targetY);
         if (targetNode == null) {
             return NodeRecommendationApplyResult.success(
                     conversionNode.getId(),

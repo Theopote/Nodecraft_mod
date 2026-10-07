@@ -3,9 +3,9 @@ package com.nodecraft.gui.recommendation;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.impl.ICanvasEditor;
 import com.nodecraft.gui.layout.ImGuiChildScope;
+import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;
-import imgui.ImVec2;
 import imgui.flag.ImGuiWindowFlags;
 
 import java.util.ArrayList;
@@ -91,22 +91,23 @@ public final class NodeRecommendationPopupRenderer {
             return;
         }
 
+        INode sourceNode = null;
+        NodeGraph graph = editor.getCurrentGraph();
+        if (graph != null && context.sourceNodeId() != null) {
+            sourceNode = graph.getNode(context.sourceNodeId());
+        }
+
         List<NodeRecommendation> visible = new ArrayList<>(recommendations);
         for (NodeRecommendation recommendation : visible) {
-            // ASCII markers: system CJK fonts often lack →/↻/· and render as "?".
-            String label = recommendation.planMarkAscii() + recommendation.displayName();
+            String label = RecommendationUiPresentation.formatLabel(recommendation);
             if (ImGui.selectable(label + "##rec_" + recommendation.nodeId())) {
                 applyRecommendation(recommendation);
                 close();
             }
             if (ImGui.isItemHovered()) {
                 ImGui.beginTooltip();
-                ImGui.text("ID: " + recommendation.nodeId());
-                ImGui.text(recommendation.reason());
-                ImGui.textDisabled("Plan: " + recommendation.connectionPlan().name());
-                if (recommendation.connectPortId() != null) {
-                    ImGui.text("Port: " + recommendation.connectPortId());
-                }
+                ImGui.text(RecommendationUiPresentation.formatTooltip(recommendation, sourceNode));
+                ImGui.textDisabled("ID: " + recommendation.nodeId());
                 ImGui.endTooltip();
             }
         }

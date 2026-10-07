@@ -30,4 +30,13 @@ public interface NodeRecommendationService {
             NodeRecommendation recommendation);
 
     void reloadRules();
+
+    /** Bumped whenever recommendation rules are (re)loaded — used by Overlay cache identity. */
+    long getRulesRevision();
+
+    /**
+     * Stable semantic key for selection-level recommendations (e.g. Get Box Face orientation).
+     * Empty string when the node has no dynamic semantic axis.
+     */
+    String resolveSelectionSemanticKey(INode sourceNode);
 }

@@ -34,6 +34,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     private NodeRecommendationScorer scorer;
     private NodeRecommendationConnector connector;
     private volatile boolean initialized;
+    private volatile long rulesRevision;
 
     @Override
     public synchronized void initialize() {
@@ -44,6 +45,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         scorer = new NodeRecommendationScorer(rules, portIndex);
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
+        rulesRevision++;
         NodeCraft.LOGGER.info("Node recommendation service initialized (rules v{})", rules.version);
     }
 
@@ -58,6 +60,24 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         scorer = new NodeRecommendationScorer(rules, portIndex);
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
+        rulesRevision++;
+    }
+
+    @Override
+    public long getRulesRevision() {
+        return rulesRevision;
+    }
+
+    @Override
+    public String resolveSelectionSemanticKey(INode sourceNode) {
+        if (sourceNode == null || sourceNode.getTypeId() == null) {
+            return "";
+        }
+        if (GET_BOX_FACE_TYPE_ID.equalsIgnoreCase(sourceNode.getTypeId())) {
+            String orientation = resolveGetBoxFaceOrientation(sourceNode);
+            return orientation != null ? "face:" + orientation : "";
+        }
+        return "";
     }
 
     @Override

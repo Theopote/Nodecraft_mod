@@ -48,6 +48,7 @@ public final class SuggestedConnectionsOverlay {
 
     private boolean showSuggestedConnections;
     private UUID cachedRecommendationNodeId;
+    private String cachedFingerprint;
     private NodeRecommendationContext cachedRecommendationContext;
     private List<NodeRecommendation> cachedRecommendations = List.of();
     private float lastPanelX;
@@ -105,7 +106,7 @@ public final class SuggestedConnectionsOverlay {
         int itemCount = visible.size();
         float maxLabelWidth = ImGui.calcTextSize(HEADER_TEXT).x;
         for (NodeRecommendation recommendation : visible) {
-            String label = recommendation.planMarkAscii() + recommendation.displayName();
+            String label = RecommendationUiPresentation.formatLabel(recommendation);
             maxLabelWidth = Math.max(maxLabelWidth, ImGui.calcTextSize(label).x);
         }
 
@@ -155,6 +156,10 @@ public final class SuggestedConnectionsOverlay {
             ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, HEADER_TEXT);
 
             NodeRegistry registry = NodeRegistry.getInstance();
+            INode sourceNode = null;
+            if (cachedRecommendationContext != null && editor.getCurrentGraph() != null) {
+                sourceNode = editor.getCurrentGraph().getNode(cachedRecommendationContext.sourceNodeId());
+            }
             for (NodeRecommendation recommendation : visible) {
                 float availableWidth = ImGui.getContentRegionAvailX();
                 boolean clicked = ImGui.selectable(
@@ -178,14 +183,14 @@ public final class SuggestedConnectionsOverlay {
                     textStartX = rectMin.x + lineHeight + ICON_PADDING;
                 }
 
-                String label = recommendation.planMarkAscii() + recommendation.displayName();
+                String label = RecommendationUiPresentation.formatLabel(recommendation);
                 drawList.addText(textStartX, rectMin.y, textColor, label);
 
                 if (clicked) {
                     editor.applyRecommendation(cachedRecommendationContext, recommendation);
                 }
                 if (ImGui.isItemHovered()) {
-                    ImGui.setTooltip(recommendation.reason());
+                    ImGui.setTooltip(RecommendationUiPresentation.formatTooltip(recommendation, sourceNode));
                 }
             }
         } finally {
@@ -207,10 +212,6 @@ public final class SuggestedConnectionsOverlay {
             return;
         }
 
-        if (selectedNodeId.equals(cachedRecommendationNodeId) && cachedRecommendationContext != null) {
-            return;
-        }
-
         NodeGraph graph = editor.getCurrentGraph();
         if (graph == null) {
             clearCache();
@@ -223,18 +224,28 @@ public final class SuggestedConnectionsOverlay {
             return;
         }
 
+        NodeRecommendationService service = NodeRecommendations.get();
+        service.initialize();
+        String fingerprint = RecommendationCacheKey.build(
+                selectedNode,
+                service.getRulesRevision(),
+                service.resolveSelectionSemanticKey(selectedNode));
+        if (fingerprint.equals(cachedFingerprint) && cachedRecommendationContext != null) {
+            return;
+        }
+
         NodePosition nodePos = editor.getNodePosition(selectedNodeId);
         float placementX = nodePos != null ? nodePos.x : (float) selectedNode.getPositionX();
         float placementY = nodePos != null ? nodePos.y : (float) selectedNode.getPositionY();
 
-        NodeRecommendations.get().initialize();
         cachedRecommendationContext = NodeRecommendationContext.forSelectedNode(
                 selectedNodeId,
                 placementX,
                 placementY,
                 RECOMMENDATION_LIMIT);
-        cachedRecommendations = NodeRecommendations.get().recommend(graph, cachedRecommendationContext);
+        cachedRecommendations = service.recommend(graph, cachedRecommendationContext);
         cachedRecommendationNodeId = selectedNodeId;
+        cachedFingerprint = fingerprint;
     }
 
     /** True when the node has at least one non-exec output that can drive downstream suggestions. */
@@ -253,6 +264,7 @@ public final class SuggestedConnectionsOverlay {
 
     private void clearCache() {
         cachedRecommendationNodeId = null;
+        cachedFingerprint = null;
         cachedRecommendationContext = null;
         cachedRecommendations = List.of();
     }
