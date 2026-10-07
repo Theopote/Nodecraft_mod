@@ -16,6 +16,7 @@ import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiSelectableFlags;
+import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import org.lwjgl.opengl.GL11;
 
@@ -31,11 +32,17 @@ public final class SuggestedConnectionsOverlay {
     private static final String PREF_KEY = "canvas.show_suggested_connections";
     private static final String LEGACY_PREF_KEY = "node_library.show_suggested_connections";
 
-    private static final float PANEL_WIDTH = 240.0f;
-    private static final float MARGIN = 12.0f;
+    private static final float PANEL_MIN_WIDTH = 100.0f;
+    private static final float PANEL_MAX_WIDTH = 260.0f;
+    private static final float MARGIN = 8.0f;
     private static final float ICON_PADDING = 4.0f;
+    private static final float ROW_TEXT_SLACK = 6.0f;
+    private static final float COMPACT_PAD_X = 8.0f;
+    private static final float COMPACT_PAD_Y = 6.0f;
+    private static final float COMPACT_ITEM_SPACING_Y = 2.0f;
     private static final int MAX_VISIBLE_ITEMS = 8;
     private static final int RECOMMENDATION_LIMIT = 5;
+    private static final String HEADER_TEXT = "Suggested Connections";
 
     private final NodeIconManager iconManager = NodeIconManager.getInstance();
 
@@ -90,13 +97,32 @@ public final class SuggestedConnectionsOverlay {
             return;
         }
 
+        List<NodeRecommendation> visible = cachedRecommendations.size() > MAX_VISIBLE_ITEMS
+                ? cachedRecommendations.subList(0, MAX_VISIBLE_ITEMS)
+                : cachedRecommendations;
+
         float lineHeight = ImGui.getTextLineHeight();
-        float headerHeight = lineHeight + ImGui.getStyle().getItemSpacingY() + 4.0f;
-        float paddingY = ImGui.getStyle().getWindowPaddingY() * 2.0f;
-        int itemCount = Math.min(MAX_VISIBLE_ITEMS, cachedRecommendations.size());
-        float contentHeight = headerHeight + itemCount * (lineHeight + ImGui.getStyle().getItemSpacingY());
-        float panelHeight = Math.min(contentHeight + paddingY, Math.max(48.0f, canvasHeight - MARGIN * 2.0f));
-        float panelWidth = Math.min(PANEL_WIDTH, Math.max(120.0f, canvasWidth - MARGIN * 2.0f));
+        int itemCount = visible.size();
+        float maxLabelWidth = ImGui.calcTextSize(HEADER_TEXT).x;
+        for (NodeRecommendation recommendation : visible) {
+            String label = recommendation.planMarkAscii() + recommendation.displayName();
+            maxLabelWidth = Math.max(maxLabelWidth, ImGui.calcTextSize(label).x);
+        }
+
+        // Row content: icon + gap + label; header is text-only (no icon).
+        float rowContentWidth = lineHeight + ICON_PADDING + maxLabelWidth + ROW_TEXT_SLACK;
+        float contentWidth = Math.max(maxLabelWidth, rowContentWidth);
+        float panelWidth = contentWidth + COMPACT_PAD_X * 2.0f;
+        panelWidth = Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, panelWidth));
+        panelWidth = Math.min(panelWidth, Math.max(PANEL_MIN_WIDTH, canvasWidth - MARGIN * 2.0f));
+
+        // Tight height: header + rows with spacing only between items (not after the last).
+        float contentHeight = lineHeight
+                + (itemCount > 0 ? COMPACT_ITEM_SPACING_Y : 0.0f)
+                + itemCount * lineHeight
+                + Math.max(0, itemCount - 1) * COMPACT_ITEM_SPACING_Y;
+        float panelHeight = contentHeight + COMPACT_PAD_Y * 2.0f;
+        panelHeight = Math.min(panelHeight, Math.max(lineHeight + COMPACT_PAD_Y * 2.0f, canvasHeight - MARGIN * 2.0f));
 
         float panelX = canvasPos.x + MARGIN;
         float panelY = canvasPos.y + canvasHeight - panelHeight - MARGIN;
@@ -108,6 +134,8 @@ public final class SuggestedConnectionsOverlay {
 
         ImGui.setCursorScreenPos(panelX, panelY);
 
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, COMPACT_PAD_X, COMPACT_PAD_Y);
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, ImGui.getStyle().getItemSpacingX(), COMPACT_ITEM_SPACING_Y);
         ImGui.pushStyleColor(ImGuiCol.ChildBg, 0.08f, 0.10f, 0.14f, 0.92f);
         ImGui.pushStyleColor(ImGuiCol.Border, 0.35f, 0.55f, 0.75f, 0.65f);
         try (ImGuiChildScope scope = new ImGuiChildScope(
@@ -124,13 +152,9 @@ public final class SuggestedConnectionsOverlay {
                 ImGui.getIO().setWantCaptureMouse(true);
             }
 
-            ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, "Suggested Connections");
+            ImGui.textColored(0.55f, 0.85f, 1.0f, 1.0f, HEADER_TEXT);
 
             NodeRegistry registry = NodeRegistry.getInstance();
-            List<NodeRecommendation> visible = cachedRecommendations.size() > MAX_VISIBLE_ITEMS
-                    ? cachedRecommendations.subList(0, MAX_VISIBLE_ITEMS)
-                    : cachedRecommendations;
-
             for (NodeRecommendation recommendation : visible) {
                 float availableWidth = ImGui.getContentRegionAvailX();
                 boolean clicked = ImGui.selectable(
@@ -166,6 +190,7 @@ public final class SuggestedConnectionsOverlay {
             }
         } finally {
             ImGui.popStyleColor(2);
+            ImGui.popStyleVar(2);
         }
     }
 
