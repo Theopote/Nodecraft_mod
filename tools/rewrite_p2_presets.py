@@ -328,7 +328,7 @@ P2_PRESETS: dict[str, dict] = {
             node("extrude_opening", "geometry.solids.extrude", 980, 200),
             node("extrude_glass", "geometry.solids.extrude", 980, 400),
             node("frame_box", "geometry.primitives.box_from_corner_size", 460, 640, {
-                "cornerX": -0.2, "cornerY": -0.2, "cornerZ": -0.05,
+                "cornerX": -0.2, "cornerY": -0.2, "cornerZ": 0.0,
                 "sizeX": 1.4, "sizeY": 2.2, "sizeZ": 0.3,
             }),
             node("subtract_opening", "geometry.boolean.difference", 1240, 280),

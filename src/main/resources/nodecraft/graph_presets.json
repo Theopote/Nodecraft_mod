@@ -4650,7 +4650,7 @@
               "state": {
                 "cornerX": -0.2,
                 "cornerY": -0.2,
-                "cornerZ": -0.05,
+                "cornerZ": 0.0,
                 "sizeX": 1.4,
                 "sizeY": 2.2,
                 "sizeZ": 0.3

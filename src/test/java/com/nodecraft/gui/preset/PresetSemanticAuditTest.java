@@ -903,6 +903,25 @@ class PresetSemanticAuditTest {
                         || !typeByRef.containsKey("merge_placements")) {
                     errors.add(preset.id + ": dual frame/glass materials must merge into Preview Blocks");
                 }
+                GraphPresetRules.PresetNode frameBox = nodeByRef.get("frame_box");
+                GraphPresetRules.PresetNode extrudeDir = nodeByRef.get("extrude_dir");
+                Double frameZ = frameBox == null ? null : numericStateValue(frameBox.state, "cornerZ");
+                Double frameSz = frameBox == null ? null : numericStateValue(frameBox.state, "sizeZ");
+                Double cutterLen = extrudeDir == null ? null : numericStateValue(extrudeDir.state, "z");
+                if (frameZ == null || frameSz == null || cutterLen == null) {
+                    errors.add(preset.id + ": frame_box cornerZ/sizeZ and extrude_dir.z required for through-cut");
+                } else {
+                    // Facade profile at Z=0 extruded +Z; cutter must cover full frame depth.
+                    double frameMinZ = frameZ;
+                    double frameMaxZ = frameZ + frameSz;
+                    double cutterMinZ = 0.0d;
+                    double cutterMaxZ = cutterLen;
+                    if (!(cutterMinZ <= frameMinZ + 1.0e-6d) || !(cutterMaxZ + 1.0e-6d >= frameMaxZ)) {
+                        errors.add(preset.id + ": opening cutter must fully traverse frame depth"
+                                + " (frame Z [" + frameMinZ + "," + frameMaxZ + "],"
+                                + " cutter Z [" + cutterMinZ + "," + cutterMaxZ + "])");
+                    }
+                }
             }
             case "quickstart.garden_wall" -> {
                 GraphPresetRules.PresetNode wall = nodeByRef.get("wall_box");
