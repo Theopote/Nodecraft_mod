@@ -104,8 +104,9 @@ P1_PRESETS: dict[str, dict] = {
         "id": "building_elements.roofs.gable_roof",
         "displayName": "Gable Roof",
         "description": (
-            "Building volume top face → Roof Base (Gable) → Preview Geometry, "
-            "Voxelize → Assign Block Type → Preview Blocks."
+            "Building volume 10×4×8 (wall top at local Y=4 / ~playerY+4) → top face → "
+            "Roof Base with explicit gable type, ridge direction, overhang, and height → "
+            "Preview Geometry, Voxelize → Assign Block Type → Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -114,23 +115,43 @@ P1_PRESETS: dict[str, dict] = {
                 "sizeX": 10.0, "sizeY": 4.0, "sizeZ": 8.0,
             }),
             node("roof_face", "reference.points.get_box_face", 280, 200, {"defaultFaceName": "top"}),
+            node("roof_type", "input.values.text_input", 40, 380, {
+                "text": "gable", "multiline": False,
+            }),
+            node("ridge_direction", "input.values.text_input", 40, 520, {
+                "text": "x", "multiline": False,
+            }),
+            node("overhang", "input.numeric.float", 40, 660, {"value": 0.4}),
             node("roof_height", "input.numeric.float", 280, 380, {"value": 2.5}),
             node("roof", "geometry.architectural_primitives.roof_base", 560, 260),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 820, 260),
+            node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", 400, 260),
+            node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", 620, 260),
             node("preview_geometry", "output.preview.preview_geometry", 1100, 120),
             node("voxelize", "geometry.voxel.voxelize_geometry", 1100, 320),
             node("material", "material.basic_assignment.assign_block_type", 1360, 320),
+            node("material_block_type", "input.type_selectors.block_type_selector", 1400, 460, {
+                "selectedBlock": "minecraft:spruce_planks",
+            }),
             node("preview_blocks", "output.preview.preview_blocks", 1620, 320),
         ],
         "connections": [
             conn("volume", "output_box_geometry", "roof_face", "input_box_geometry"),
             conn("roof_face", "output_face", "roof", "input_face"),
+            conn("roof_type", "output_text", "roof", "input_roof_type"),
+            conn("ridge_direction", "output_text", "roof", "input_ridge_direction"),
+            conn("overhang", "output_value", "roof", "input_overhang"),
             conn("roof_height", "output_value", "roof", "input_height"),
             conn("roof", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
+            conn("player_pos", "output_position", "move_to_pos_point_deconstruct", "input_point"),
+            conn("move_to_pos_point_deconstruct", "output_x", "move_to_pos_point_as_vector", "input_x"),
+            conn("move_to_pos_point_deconstruct", "output_y", "move_to_pos_point_as_vector", "input_y"),
+            conn("move_to_pos_point_deconstruct", "output_z", "move_to_pos_point_as_vector", "input_z"),
+            conn("move_to_pos_point_as_vector", "output_vector", "move_to_pos", "input_translation"),
             conn("move_to_pos", "output_geometry", "preview_geometry", "input_geometry"),
             conn("move_to_pos", "output_geometry", "voxelize", "input_geometry"),
             conn("voxelize", "output_blocks", "material", "input_coordinates"),
+            conn("material_block_type", "output_block_id", "material", "input_block_type"),
             conn("material", "output_placements", "preview_blocks", "input_block_placements"),
         ],
     },

@@ -717,6 +717,70 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": Wall Along Path has no input_height connection");
                 }
             }
+            case "building_elements.doors.simple_door" -> {
+                GraphPresetRules.PresetNode outer = nodeByRef.get("outer_frame");
+                GraphPresetRules.PresetNode inner = nodeByRef.get("inner_opening");
+                if (outer == null || inner == null) {
+                    errors.add(preset.id + ": missing outer_frame / inner_opening for open-bottom door");
+                    break;
+                }
+                Double outerY = numericStateValue(outer.state, "cornerY");
+                Double outerH = numericStateValue(outer.state, "sizeY");
+                Double innerY = numericStateValue(inner.state, "cornerY");
+                Double innerH = numericStateValue(inner.state, "sizeY");
+                if (outerY == null || outerH == null || innerY == null || innerH == null) {
+                    errors.add(preset.id + ": outer/inner must declare cornerY and sizeY");
+                    break;
+                }
+                if (!(innerY < outerY)) {
+                    errors.add(preset.id + ": inner.cornerY must be below outer.cornerY"
+                            + " (Y-through cutter opens the sill)");
+                }
+                if (!(innerY + innerH < outerY + outerH)) {
+                    errors.add(preset.id + ": inner top must stay below outer top"
+                            + " (head band / lintel must remain)");
+                }
+            }
+            case "building_elements.roofs.gable_roof" -> {
+                GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
+                Double sizeX = volume == null ? null : numericStateValue(volume.state, "sizeX");
+                Double sizeY = volume == null ? null : numericStateValue(volume.state, "sizeY");
+                Double sizeZ = volume == null ? null : numericStateValue(volume.state, "sizeZ");
+                if (sizeX == null || Math.abs(sizeX - 10.0d) > 0.05d
+                        || sizeY == null || Math.abs(sizeY - 4.0d) > 0.05d
+                        || sizeZ == null || Math.abs(sizeZ - 8.0d) > 0.05d) {
+                    errors.add(preset.id + ": volume.state must be sizeX=10, sizeY=4, sizeZ=8"
+                            + " (building footprint; roof sits on wall top ~playerY+4)");
+                }
+                if (!"roof_type".equals(incomingFromRef(preset, "roof", "input_roof_type"))) {
+                    errors.add(preset.id + ": roof_type must drive roof.input_roof_type");
+                }
+                if (!"ridge_direction".equals(incomingFromRef(preset, "roof", "input_ridge_direction"))) {
+                    errors.add(preset.id + ": ridge_direction must drive roof.input_ridge_direction");
+                }
+                if (!"overhang".equals(incomingFromRef(preset, "roof", "input_overhang"))) {
+                    errors.add(preset.id + ": overhang must drive roof.input_overhang");
+                }
+                if (!"roof_height".equals(incomingFromRef(preset, "roof", "input_height"))) {
+                    errors.add(preset.id + ": roof_height must drive roof.input_height");
+                }
+            }
+            case "building_elements.columns.classical_column" -> {
+                if (!"local_origin".equals(incomingFromRef(preset, "base", "input_frame"))) {
+                    errors.add(preset.id + ": local_origin.output_frame must drive base.input_frame");
+                }
+                if (!"base_shape".equals(incomingFromRef(preset, "base", "input_shape"))
+                        || !"shaft_shape".equals(incomingFromRef(preset, "shaft", "input_shape"))
+                        || !"capital_shape".equals(incomingFromRef(preset, "capital", "input_shape"))) {
+                    errors.add(preset.id + ": shape dropdowns must drive Column input_shape ports");
+                }
+                for (String shapeRef : List.of("base_shape", "shaft_shape", "capital_shape")) {
+                    GraphPresetRules.PresetNode shape = nodeByRef.get(shapeRef);
+                    if (shape == null || !"input.values.dropdown".equals(shape.typeId)) {
+                        errors.add(preset.id + ": " + shapeRef + " must be input.values.dropdown");
+                    }
+                }
+            }
             default -> {
             }
         }

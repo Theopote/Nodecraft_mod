@@ -2,6 +2,7 @@
 """Rewrite P2 Building Elements presets to Preset Library v2."""
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -27,8 +28,51 @@ def local_origin_node(x: float = 0, y: float = 40) -> dict:
     return node("local_origin", "reference.frames.world_frame", x, y)
 
 
+SHAPE_OPTIONS = "cylinder,box,frustum"
+
+
+def placement_nodes(
+    move_x: float,
+    move_y: float,
+    preview_x: float,
+    voxel_x: float,
+    material_x: float,
+    preview_blocks_x: float,
+    block_type: str,
+) -> list[dict]:
+    """Move + POINT→VECTOR adapters + Preview/Voxelize/Material/Preview Blocks."""
+    return [
+        node("move_to_pos", "transform.basic_transforms.move_geometry", move_x, move_y),
+        node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", move_x - 420, move_y),
+        node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", move_x - 200, move_y),
+        node("preview_geometry", "output.preview.preview_geometry", preview_x, 120),
+        node("voxelize", "geometry.voxel.voxelize_geometry", voxel_x, 320),
+        node("material", "material.basic_assignment.assign_block_type", material_x, 320),
+        node("material_block_type", "input.type_selectors.block_type_selector", material_x + 40, 460, {
+            "selectedBlock": block_type,
+        }),
+        node("preview_blocks", "output.preview.preview_blocks", preview_blocks_x, 320),
+    ]
+
+
+def placement_connections(from_ref: str, from_port: str = "output_geometry") -> list[dict]:
+    """Player → adapters → Move translation; geometry → Preview + Voxelize → Material → Preview Blocks."""
+    return [
+        conn("player_pos", "output_position", "move_to_pos_point_deconstruct", "input_point"),
+        conn("move_to_pos_point_deconstruct", "output_x", "move_to_pos_point_as_vector", "input_x"),
+        conn("move_to_pos_point_deconstruct", "output_y", "move_to_pos_point_as_vector", "input_y"),
+        conn("move_to_pos_point_deconstruct", "output_z", "move_to_pos_point_as_vector", "input_z"),
+        conn("move_to_pos_point_as_vector", "output_vector", "move_to_pos", "input_translation"),
+        conn(from_ref, from_port, "preview_geometry", "input_geometry"),
+        conn(from_ref, from_port, "voxelize", "input_geometry"),
+        conn("voxelize", "output_blocks", "material", "input_coordinates"),
+        conn("material_block_type", "output_block_id", "material", "input_block_type"),
+        conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+    ]
+
+
 def block_chain(from_ref: str, from_port: str = "output_geometry") -> list[dict]:
-    """Standard Preview Geometry + Voxelize → Material → Preview Blocks."""
+    """Legacy Preview Geometry + Voxelize → Material → Preview Blocks (no adapters)."""
     return [
         conn(from_ref, from_port, "preview_geometry", "input_geometry"),
         conn(from_ref, from_port, "voxelize", "input_geometry"),
@@ -42,8 +86,9 @@ P2_PRESETS: dict[str, dict] = {
         "id": "building_elements.columns.classical_column",
         "displayName": "Classical Column",
         "description": (
-            "Stacked Column nodes (base, shaft, capital) with explicit dimensions → "
-            "Preview Geometry, Voxelize → Assign Block Type → Preview Blocks."
+            "Stacked Column nodes (base, shaft, capital) with Frame placement and shape "
+            "dropdowns (cylinder/box/frustum) → Preview Geometry, Voxelize → Assign Block Type "
+            "→ Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -56,47 +101,48 @@ P2_PRESETS: dict[str, dict] = {
             node("capital_height", "input.numeric.float", 0, 740, {"value": 0.55}),
             node("capital_radius", "input.numeric.float", 0, 880, {"value": 0.65}),
             node("capital_top_scale", "input.numeric.float", 0, 1020, {"value": 1.35}),
-            node("base_shape", "input.values.text_input", 220, 180, {"text": "cylinder", "multiline": False}),
-            node("shaft_shape", "input.values.text_input", 220, 460, {"text": "cylinder", "multiline": False}),
-            node("capital_shape", "input.values.text_input", 220, 740, {"text": "frustum", "multiline": False}),
+            node("base_shape", "input.values.dropdown", 220, 180, {
+                "options": SHAPE_OPTIONS, "selectedIndex": 0,
+            }),
+            node("shaft_shape", "input.values.dropdown", 220, 460, {
+                "options": SHAPE_OPTIONS, "selectedIndex": 0,
+            }),
+            node("capital_shape", "input.values.dropdown", 220, 740, {
+                "options": SHAPE_OPTIONS, "selectedIndex": 2,
+            }),
             node("base", "geometry.architectural_primitives.column", 480, 240),
             node("shaft", "geometry.architectural_primitives.column", 720, 240),
             node("capital", "geometry.architectural_primitives.column", 960, 240),
             node("combine", "geometry.combine.geometry", 1200, 240),
-            node("move_to_pos", "transform.basic_transforms.move_geometry", 1440, 240),
-            node("preview_geometry", "output.preview.preview_geometry", 1700, 120),
-            node("voxelize", "geometry.voxel.voxelize_geometry", 1700, 320),
-            node("material", "material.basic_assignment.assign_block_type", 1960, 320),
-            node("preview_blocks", "output.preview.preview_blocks", 2220, 320),
+            *placement_nodes(1440, 240, 1700, 1700, 1960, 2220, "minecraft:smooth_quartz"),
         ],
         "connections": [
-            conn("local_origin", "output_origin", "base", "input_base"),
+            conn("local_origin", "output_frame", "base", "input_frame"),
             conn("base_height", "output_value", "base", "input_height"),
             conn("base_radius", "output_value", "base", "input_radius"),
-            conn("base_shape", "output_text", "base", "input_shape"),
+            conn("base_shape", "output_value", "base", "input_shape"),
             conn("base", "output_top", "shaft", "input_base"),
             conn("shaft_height", "output_value", "shaft", "input_height"),
             conn("shaft_radius", "output_value", "shaft", "input_radius"),
-            conn("shaft_shape", "output_text", "shaft", "input_shape"),
+            conn("shaft_shape", "output_value", "shaft", "input_shape"),
             conn("shaft", "output_top", "capital", "input_base"),
             conn("capital_height", "output_value", "capital", "input_height"),
             conn("capital_radius", "output_value", "capital", "input_radius"),
             conn("capital_top_scale", "output_value", "capital", "input_top_scale"),
-            conn("capital_shape", "output_text", "capital", "input_shape"),
+            conn("capital_shape", "output_value", "capital", "input_shape"),
             conn("base", "output_geometry", "combine", "input_geometry_0"),
             conn("shaft", "output_geometry", "combine", "input_geometry_1"),
             conn("capital", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            *block_chain("move_to_pos"),
+            *placement_connections("move_to_pos"),
         ],
     },
     "building_elements.doors.simple_door": {
         "id": "building_elements.doors.simple_door",
         "displayName": "Simple Door Frame",
         "description": (
-            "Outer frame box − inner opening → frame geometry → Preview Geometry, "
-            "Voxelize → Assign Block Type → Preview Blocks."
+            "Open-bottom door frame (jambs + head; no sill): outer box − Y-through inner "
+            "opening → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -106,22 +152,17 @@ P2_PRESETS: dict[str, dict] = {
                 "sizeX": 1.4, "sizeY": 2.4, "sizeZ": 0.25,
             }),
             node("inner_opening", "geometry.primitives.box_from_corner_size", 0, 380, {
-                "cornerX": 0.2, "cornerY": 0.2, "cornerZ": -0.05,
-                "sizeX": 1.0, "sizeY": 2.0, "sizeZ": 0.35,
+                "cornerX": 0.2, "cornerY": -0.05, "cornerZ": -0.05,
+                "sizeX": 1.0, "sizeY": 2.25, "sizeZ": 0.35,
             }),
             node("frame_cut", "geometry.boolean.difference", 320, 280),
-            node("move_to_pos", "transform.basic_transforms.move_geometry", 580, 280),
-            node("preview_geometry", "output.preview.preview_geometry", 860, 120),
-            node("voxelize", "geometry.voxel.voxelize_geometry", 860, 320),
-            node("material", "material.basic_assignment.assign_block_type", 1120, 320),
-            node("preview_blocks", "output.preview.preview_blocks", 1380, 320),
+            *placement_nodes(580, 280, 860, 860, 1120, 1380, "minecraft:oak_planks"),
         ],
         "connections": [
             conn("outer_frame", "output_geometry", "frame_cut", "input_base"),
             conn("inner_opening", "output_geometry", "frame_cut", "input_cutter"),
             conn("frame_cut", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            *block_chain("move_to_pos"),
+            *placement_connections("move_to_pos"),
         ],
     },
     "building_elements.windows.modern_window": {
@@ -287,25 +328,39 @@ P2_PRESETS: dict[str, dict] = {
 }
 
 
-def rewrite_file(path: Path) -> None:
+def rewrite_file(path: Path, only: set[str] | None = None) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     replaced = 0
+    targets = P2_PRESETS if only is None else {k: v for k, v in P2_PRESETS.items() if k in only}
     for category in data.get("categories") or []:
         presets = category.get("presets") or []
         for i, preset in enumerate(presets):
             if not preset:
                 continue
             pid = preset.get("id")
-            if pid in P2_PRESETS:
-                presets[i] = P2_PRESETS[pid]
+            if pid in targets:
+                presets[i] = targets[pid]
                 replaced += 1
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{path.name}: replaced {replaced} presets")
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Rewrite P2 Building Elements presets in graph_presets.json")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PRESET_ID",
+        help="Replace only the given preset id (repeatable). Default: all P2 presets.",
+    )
+    args = parser.parse_args()
+    only = set(args.only) if args.only else None
+    if only:
+        unknown = only - set(P2_PRESETS)
+        if unknown:
+            raise SystemExit(f"Unknown preset id(s): {', '.join(sorted(unknown))}")
     for path in PRESET_FILES:
-        rewrite_file(path)
+        rewrite_file(path, only=only)
 
 
 if __name__ == "__main__":
