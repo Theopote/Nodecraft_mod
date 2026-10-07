@@ -16,10 +16,18 @@
     ],
     "excludeCategories": [
       "utilities.organization",
+      "utilities.assist",
       "flow"
     ],
+    "selectionExcludeCategories": [
+      "output.export",
+      "utilities.fileio"
+    ],
     "excludeNodeIds": [
-      "utilities.organization.subgraph_register"
+      "utilities.organization.subgraph_register",
+      "output.execute.undo_last_bake",
+      "output.execute.redo_last_bake",
+      "output.execute.clear_preview"
     ]
   },
   "sourceNodes": {
@@ -698,6 +706,16 @@
               "connectPortId": "input_blocks"
             }
           ]
+        },
+        "output_blocks_tree": {
+          "downstream": [
+            {
+              "nodeId": "material.basic_assignment.assign_block_type",
+              "order": 0,
+              "reason": "分支体素坐标赋材质",
+              "connectPortId": "input_blocks_tree"
+            }
+          ]
         }
       }
     },
@@ -724,6 +742,28 @@
               "connectPortId": "input_block_placements"
             }
           ]
+        },
+        "output_placements_tree": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览分支材质结果",
+              "connectPortId": "input_block_placements_tree"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并分支材质",
+              "connectPortId": "input_placements_tree_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements_tree"
+            }
+          ]
         }
       }
     },
@@ -742,6 +782,484 @@
               "order": 10,
               "reason": "写入世界",
               "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.curves.face_boundary_curve": {
+      "outputs": {
+        "output_path": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.wall_along_path",
+              "order": 0,
+              "reason": "沿面边界筑墙",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 10,
+              "reason": "沿面边界加栏杆",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 20,
+              "reason": "沿面边界生成梁",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 30,
+              "reason": "预览面边界",
+              "connectPortId": "input_path"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_sphere": {
+      "outputs": {
+        "output_sdf": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.sdf_boolean",
+              "order": 0,
+              "reason": "组合 SDF",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_to_geometry",
+              "order": 10,
+              "reason": "SDF 转几何",
+              "connectPortId": "input_sdf"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_sample_point",
+              "order": 20,
+              "reason": "采样 SDF 距离",
+              "connectPortId": "input_sdf"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_box": {
+      "outputs": {
+        "output_sdf": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.sdf_boolean",
+              "order": 0,
+              "reason": "组合 SDF",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_to_geometry",
+              "order": 10,
+              "reason": "SDF 转几何",
+              "connectPortId": "input_sdf"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_sample_point",
+              "order": 20,
+              "reason": "采样 SDF 距离",
+              "connectPortId": "input_sdf"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_capsule": {
+      "outputs": {
+        "output_sdf": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.sdf_boolean",
+              "order": 0,
+              "reason": "组合 SDF",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_to_geometry",
+              "order": 10,
+              "reason": "SDF 转几何",
+              "connectPortId": "input_sdf"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_sample_point",
+              "order": 20,
+              "reason": "采样 SDF 距离",
+              "connectPortId": "input_sdf"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_torus": {
+      "outputs": {
+        "output_sdf": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.sdf_boolean",
+              "order": 0,
+              "reason": "组合 SDF",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_to_geometry",
+              "order": 10,
+              "reason": "SDF 转几何",
+              "connectPortId": "input_sdf"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_sample_point",
+              "order": 20,
+              "reason": "采样 SDF 距离",
+              "connectPortId": "input_sdf"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_boolean": {
+      "outputs": {
+        "output_sdf": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.sdf_to_geometry",
+              "order": 0,
+              "reason": "SDF 转几何",
+              "connectPortId": "input_sdf"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_boolean",
+              "order": 10,
+              "reason": "继续组合 SDF",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "geometry.boolean.sdf_sample_point",
+              "order": 20,
+              "reason": "采样 SDF 距离",
+              "connectPortId": "input_sdf"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.boolean.sdf_to_geometry": {
+      "outputs": {
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 0,
+              "reason": "预览 SDF 几何",
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "geometry.voxel.voxelize_geometry",
+              "order": 10,
+              "reason": "体素化",
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "transform.basic_transforms.transform_geometry",
+              "order": 20,
+              "reason": "变换几何",
+              "connectPortId": "input_geometry"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.height_seed_field": {
+      "outputs": {
+        "output_height_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.flow_direction_field",
+              "order": 0,
+              "reason": "计算流向",
+              "connectPortId": "input_height_field"
+            },
+            {
+              "nodeId": "world.terrain.temperature_field",
+              "order": 10,
+              "reason": "由高程推温度",
+              "connectPortId": "input_height_field"
+            },
+            {
+              "nodeId": "world.terrain.thermal_erosion_step",
+              "order": 20,
+              "reason": "热侵蚀",
+              "connectPortId": "input_height_field"
+            },
+            {
+              "nodeId": "world.terrain.heightfield_to_blocks",
+              "order": 30,
+              "reason": "高程场转方块",
+              "connectPortId": "input_height_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.flow_direction_field": {
+      "outputs": {
+        "output_flow_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.flow_accumulation_field",
+              "order": 0,
+              "reason": "汇流累积",
+              "connectPortId": "input_flow_field"
+            }
+          ]
+        },
+        "output_slope_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.deposition_step",
+              "order": 0,
+              "reason": "坡度参与沉积",
+              "connectPortId": "input_slope_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.flow_accumulation_field": {
+      "outputs": {
+        "output_accumulation_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.river_mask_field",
+              "order": 0,
+              "reason": "提取河道掩膜",
+              "connectPortId": "input_accumulation_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.temperature_field": {
+      "outputs": {
+        "output_temperature_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.biome_classify",
+              "order": 0,
+              "reason": "气候分类生物群系",
+              "connectPortId": "input_temperature_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.precipitation_field": {
+      "outputs": {
+        "output_rain_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.biome_classify",
+              "order": 0,
+              "reason": "降水参与生物群系",
+              "connectPortId": "input_precipitation_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.thermal_erosion_step": {
+      "outputs": {
+        "output_height_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.deposition_step",
+              "order": 0,
+              "reason": "侵蚀后沉积",
+              "connectPortId": "input_height_field"
+            },
+            {
+              "nodeId": "world.terrain.heightfield_to_blocks",
+              "order": 10,
+              "reason": "侵蚀结果转方块",
+              "connectPortId": "input_height_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.deposition_step": {
+      "outputs": {
+        "output_height_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.heightfield_to_blocks",
+              "order": 0,
+              "reason": "沉积结果转方块",
+              "connectPortId": "input_height_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.biome_classify": {
+      "outputs": {
+        "output_biome_id_field": {
+          "downstream": [
+            {
+              "nodeId": "world.terrain.biome_field_to_blocks",
+              "order": 0,
+              "reason": "生物群系转方块",
+              "connectPortId": "input_biome_id_field"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.heightfield_to_blocks": {
+      "outputs": {
+        "output_block_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览地形 placements",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并地形支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 20,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "world.terrain.biome_field_to_blocks": {
+      "outputs": {
+        "output_block_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览生物群系 placements",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并生物群系支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 20,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "world.selection.selected_region": {
+      "outputs": {
+        "output_region": {
+          "downstream": [
+            {
+              "nodeId": "world.read.get_heightmap",
+              "order": 0,
+              "reason": "采样选区高程",
+              "connectPortId": "input_region"
+            },
+            {
+              "nodeId": "world.read.get_surface_blocks",
+              "order": 10,
+              "reason": "读取地表方块",
+              "connectPortId": "input_region"
+            },
+            {
+              "nodeId": "world.read.find_blocks",
+              "order": 20,
+              "reason": "在选区查找方块",
+              "connectPortId": "input_region"
+            },
+            {
+              "nodeId": "world.read.get_blocks_in_region",
+              "order": 30,
+              "reason": "读取选区全部方块",
+              "connectPortId": "input_region"
+            },
+            {
+              "nodeId": "world.terrain.height_seed_field",
+              "order": 40,
+              "reason": "以选区生成地形高程",
+              "connectPortId": "input_region"
+            }
+          ]
+        }
+      }
+    },
+    "world.read.get_heightmap": {
+      "outputs": {
+        "output_surface_points": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览地表采样点",
+              "connectPortId": "input_blocks"
+            },
+            {
+              "nodeId": "material.basic_assignment.assign_block_type",
+              "order": 10,
+              "reason": "为采样点赋材质",
+              "connectPortId": "input_coordinates"
+            }
+          ]
+        }
+      }
+    },
+    "output.execute.apply_changes": {
+      "outputs": {
+        "output_task_id": {
+          "downstream": [
+            {
+              "nodeId": "output.execute.bake_status",
+              "order": 0,
+              "reason": "查询 bake 任务状态",
+              "connectPortId": "input_task_id"
+            },
+            {
+              "nodeId": "output.execute.cancel_bake",
+              "order": 10,
+              "reason": "取消正在执行的任务",
+              "connectPortId": "input_task_id"
+            }
+          ]
+        }
+      }
+    },
+    "utilities.fileio.image_sampler": {
+      "inputs": {
+        "input_image": {
+          "upstream": [
+            {
+              "nodeId": "utilities.fileio.read_image",
+              "order": 0,
+              "reason": "读取图像作为采样源",
+              "connectPortId": "output_image"
             }
           ]
         }
@@ -1140,12 +1658,6 @@
           "order": 10,
           "reason": "预览体素结果",
           "connectPortId": "input_blocks"
-        },
-        {
-          "nodeId": "output.execute.apply_changes",
-          "order": 50,
-          "reason": "应用到世界",
-          "connectPortId": "input_blocks"
         }
       ]
     },
@@ -1162,12 +1674,100 @@
           "order": 10,
           "reason": "合并多支材质",
           "connectPortId": "input_placements_0"
+        }
+      ]
+    },
+    "sdf": {
+      "downstream": [
+        {
+          "nodeId": "geometry.boolean.sdf_boolean",
+          "order": 0,
+          "reason": "组合 SDF",
+          "connectPortId": "input_a"
         },
         {
-          "nodeId": "output.execute.apply_changes",
-          "order": 50,
-          "reason": "应用到世界",
-          "connectPortId": "input_block_placements"
+          "nodeId": "geometry.boolean.sdf_to_geometry",
+          "order": 10,
+          "reason": "SDF 转几何",
+          "connectPortId": "input_sdf"
+        },
+        {
+          "nodeId": "geometry.boolean.sdf_sample_point",
+          "order": 20,
+          "reason": "采样 SDF 距离",
+          "connectPortId": "input_sdf"
+        }
+      ]
+    },
+    "list": {
+      "downstream": [
+        {
+          "nodeId": "math.list.get_item",
+          "order": 0,
+          "reason": "取列表单项",
+          "connectPortId": "input_list"
+        },
+        {
+          "nodeId": "math.list.list_length",
+          "order": 10,
+          "reason": "列表长度",
+          "connectPortId": "input_list"
+        },
+        {
+          "nodeId": "math.list.filter_list",
+          "order": 20,
+          "reason": "按条件过滤列表",
+          "connectPortId": "input_list"
+        }
+      ]
+    },
+    "frame": {
+      "downstream": [
+        {
+          "nodeId": "transform.placement.place_geometry_on_frames",
+          "order": 0,
+          "reason": "按坐标系放置",
+          "connectPortId": "input_frame"
+        },
+        {
+          "nodeId": "transform.placement.orient_geometry_to_frame",
+          "order": 10,
+          "reason": "按坐标系定向",
+          "connectPortId": "input_frame"
+        },
+        {
+          "nodeId": "reference.frames.deconstruct_frame",
+          "order": 20,
+          "reason": "分解坐标系",
+          "connectPortId": "input_frame"
+        }
+      ]
+    },
+    "plane": {
+      "downstream": [
+        {
+          "nodeId": "geometry.profiles.rectangle_profile",
+          "order": 0,
+          "reason": "平面矩形轮廓",
+          "connectPortId": "input_plane"
+        },
+        {
+          "nodeId": "geometry.profiles.circle_profile",
+          "order": 10,
+          "reason": "平面圆轮廓",
+          "connectPortId": "input_plane"
+        },
+        {
+          "nodeId": "transform.placement.place_geometry_on_plane",
+          "order": 20,
+          "reason": "落在平面上",
+          "connectPortId": "input_plane"
+        },
+        {
+          "nodeId": "reference.planes.deconstruct_plane",
+          "order": 30,
+          "reason": "分解平面",
+          "connectPortId": "input_plane"
         }
       ]
     },

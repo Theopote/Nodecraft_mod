@@ -49,10 +49,11 @@ final class NodeRecommendationScorer {
                 candidate.nodeId(),
                 preferredConnectPortId);
         score += ruleMatch.score();
-        // Soft-demote preview sinks only when ranking by type compatibility alone;
+        // Soft-demote effectful candidates only when ranking by type compatibility alone;
         // exact/category rule rows already encode intended Preview vs bake order.
         if (ruleMatch.score() == 0) {
             score += scoreEffectPenalty(info, candidate.nodeId());
+            score += scoreSourceWorldReadBias(sourceNodeTypeId, candidate.nodeId());
         }
 
         NodeRecommendation.ConnectionPlan plan = resolvePlan(sourceDataType, candidate.dataType());
@@ -119,6 +120,36 @@ final class NodeRecommendationScorer {
         NodeEffect effect = NodeEffectResolver.resolve(nodeClass, nodeId);
         if (effect == NodeEffect.PREVIEW_WRITE) {
             return -20;
+        }
+        if (effect == NodeEffect.WORLD_WRITE
+                || effect == NodeEffect.FILE_IO
+                || effect == NodeEffect.CONTEXT_WRITE) {
+            return -40;
+        }
+        return 0;
+    }
+
+    /**
+     * When the source is WORLD_READ, demote write/file candidates that only matched by type
+     * so analysis/PURE nodes stay ahead on Port Drag.
+     */
+    private static int scoreSourceWorldReadBias(String sourceNodeTypeId, String candidateNodeId) {
+        if (sourceNodeTypeId == null || candidateNodeId == null) {
+            return 0;
+        }
+        NodeInfo sourceInfo = NodeRegistry.getInstance().getNodeInfo(sourceNodeTypeId);
+        Class<? extends INode> sourceClass = sourceInfo != null ? sourceInfo.getNodeClass() : null;
+        NodeEffect sourceEffect = NodeEffectResolver.resolve(sourceClass, sourceNodeTypeId);
+        if (sourceEffect != NodeEffect.WORLD_READ) {
+            return 0;
+        }
+        NodeInfo candidateInfo = NodeRegistry.getInstance().getNodeInfo(candidateNodeId);
+        Class<? extends INode> candidateClass = candidateInfo != null ? candidateInfo.getNodeClass() : null;
+        NodeEffect candidateEffect = NodeEffectResolver.resolve(candidateClass, candidateNodeId);
+        if (candidateEffect == NodeEffect.WORLD_WRITE
+                || candidateEffect == NodeEffect.FILE_IO
+                || candidateEffect == NodeEffect.CONTEXT_WRITE) {
+            return -80;
         }
         return 0;
     }
@@ -208,8 +239,7 @@ final class NodeRecommendationScorer {
                 continue;
             }
             int score = baseScore - entry.order;
-            if (preferredConnectPortId != null
-                    && entry.connectPortId != null
+            if (entry.connectPortId != null
                     && entry.connectPortId.equals(preferredConnectPortId)) {
                 score += 20;
             }

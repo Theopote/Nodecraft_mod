@@ -26,6 +26,8 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     private static final String OUTPUT_FACE_PORT_ID = "output_face";
     private static final String INPUT_FACE_NAME_PORT_ID = "input_face_name";
     private static final String OUTPUT_NAME_PORT_ID = "output_name";
+    /** Max exact-rule ports kept for selection/context recommendations. */
+    private static final int MAX_EXACT_RULE_PORTS = 6;
 
     private final NodePortIndex portIndex = new NodePortIndex();
     private NodeRecommendationRules rules = new NodeRecommendationRules();
@@ -88,8 +90,40 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
 
             String rulePortKey = resolveRulePortKey(sourceNode, sourcePort.portId(), context.direction());
 
+            boolean listSelectionGate = isSelectionOrContext(context)
+                    && sourcePort.dataType() == NodeDataType.LIST;
+
+            boolean selectionOrContext = isSelectionOrContext(context);
+
             for (NodePortIndex.CandidatePort candidate : candidates) {
                 if (shouldExclude(candidate.nodeId(), candidate.categoryId())) {
+                    continue;
+                }
+
+                NodeEffect candidateEffect = resolveEffect(candidate.nodeId());
+                if (candidateEffect == NodeEffect.UI_EFFECT) {
+                    continue;
+                }
+
+                boolean hasExact = hasExactSourceNodeTarget(
+                        sourceNode.getTypeId(),
+                        rulePortKey,
+                        candidate.nodeId(),
+                        context.direction());
+
+                // Selection: export/fileio categories stay out unless exact rule (Port Drag unaffected).
+                if (selectionOrContext
+                        && !hasExact
+                        && isSelectionExcludedCategory(candidate.categoryId())) {
+                    continue;
+                }
+
+                if (listSelectionGate
+                        && !isAllowedListSelectionCandidate(
+                                sourceNode.getTypeId(),
+                                rulePortKey,
+                                candidate.nodeId(),
+                                context.direction())) {
                     continue;
                 }
 
@@ -102,22 +136,15 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
 
                 // Skip same-type candidates unless an exact rule targets that type
                 // (e.g. Column.output_top → Column.input_base stacking).
-                if (candidate.nodeId().equalsIgnoreCase(sourceNode.getTypeId())
-                        && !hasExactSourceNodeTarget(
-                                sourceNode.getTypeId(),
-                                rulePortKey,
-                                candidate.nodeId(),
-                                context.direction())) {
+                if (candidate.nodeId().equalsIgnoreCase(sourceNode.getTypeId()) && !hasExact) {
                     continue;
                 }
 
-                // WORLD_WRITE / CONTEXT_WRITE only via exact sourceNodes rules (never generic type fallback).
-                if (isWriteEffectCandidate(candidate.nodeId())
-                        && !hasExactSourceNodeTarget(
-                                sourceNode.getTypeId(),
-                                rulePortKey,
-                                candidate.nodeId(),
-                                context.direction())) {
+                // Selection hard-gate: WORLD_WRITE / CONTEXT_WRITE / FILE_IO / PREVIEW_WRITE
+                // require exact sourceNodes targets. Port Drag allows type-compatible effects through.
+                if (selectionOrContext
+                        && isSelectionEffectGated(candidateEffect)
+                        && !hasExact) {
                     continue;
                 }
 
@@ -194,18 +221,24 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
             }
         }
 
-        boolean collapseByType = context.trigger() == RecommendationTrigger.SELECTION_PANEL
-                || context.trigger() == RecommendationTrigger.NODE_CONTEXT_MENU;
-        if (context.direction() == RecommendationDirection.DOWNSTREAM) {
-            collectPorts(sourceNode.getOutputPorts(), ports, collapseByType);
+        List<IPort> nodePorts = context.direction() == RecommendationDirection.DOWNSTREAM
+                ? sourceNode.getOutputPorts()
+                : sourceNode.getInputPorts();
+        if (isSelectionOrContext(context)) {
+            collectPortsForSelection(sourceNode.getTypeId(), nodePorts, ports, context.direction());
         } else {
-            collectPorts(sourceNode.getInputPorts(), ports, collapseByType);
+            collectPorts(nodePorts, ports, false);
         }
 
         if (ports.isEmpty() && context.sourceDataType() != null) {
-            ports.add(new SourcePortContext(context.sourcePortId(), context.sourceDataType()));
+            ports.add(new SourcePortContext(null, context.sourceDataType()));
         }
         return ports;
+    }
+
+    private static boolean isSelectionOrContext(NodeRecommendationContext context) {
+        return context.trigger() == RecommendationTrigger.SELECTION_PANEL
+                || context.trigger() == RecommendationTrigger.NODE_CONTEXT_MENU;
     }
 
     private static void collectPorts(List<IPort> nodePorts, List<SourcePortContext> ports, boolean collapseByType) {
@@ -232,6 +265,115 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     }
 
     /**
+     * Selection/context: keep exact-rule ports first (cap {@link #MAX_EXACT_RULE_PORTS}),
+     * then one representative per remaining data type.
+     */
+    private void collectPortsForSelection(
+            String sourceNodeTypeId,
+            List<IPort> nodePorts,
+            List<SourcePortContext> ports,
+            RecommendationDirection direction) {
+        List<SourcePortContext> exactRulePorts = new ArrayList<>();
+        List<IPort> unruled = new ArrayList<>();
+
+        for (IPort port : nodePorts) {
+            if (port == null || port.getDataType() == NodeDataType.EXEC) {
+                continue;
+            }
+            if (hasSourceNodePortRule(sourceNodeTypeId, port.getId(), direction)) {
+                exactRulePorts.add(new SourcePortContext(port.getId(), port.getDataType()));
+            } else {
+                unruled.add(port);
+            }
+        }
+
+        if (exactRulePorts.size() > MAX_EXACT_RULE_PORTS) {
+            exactRulePorts = new ArrayList<>(exactRulePorts.subList(0, MAX_EXACT_RULE_PORTS));
+        }
+        ports.addAll(exactRulePorts);
+
+        java.util.Set<NodeDataType> coveredTypes = new java.util.HashSet<>();
+        for (SourcePortContext exact : exactRulePorts) {
+            coveredTypes.add(exact.dataType());
+        }
+
+        Map<NodeDataType, String> uniqueByType = new LinkedHashMap<>();
+        for (IPort port : unruled) {
+            if (coveredTypes.contains(port.getDataType())) {
+                continue;
+            }
+            uniqueByType.putIfAbsent(port.getDataType(), port.getId());
+        }
+        for (Map.Entry<NodeDataType, String> entry : uniqueByType.entrySet()) {
+            ports.add(new SourcePortContext(entry.getValue(), entry.getKey()));
+        }
+    }
+
+    /** True when sourceNodes declares rules for this physical port (or synthetic keys like {@code output_face:*}). */
+    private boolean hasSourceNodePortRule(
+            String sourceNodeTypeId,
+            String portId,
+            RecommendationDirection direction) {
+        if (sourceNodeTypeId == null || portId == null || rules.sourceNodes == null) {
+            return false;
+        }
+        NodeRecommendationRules.SourceNodeRule sourceRule =
+                rules.sourceNodes.get(sourceNodeTypeId.toLowerCase(Locale.ROOT));
+        if (sourceRule == null) {
+            return false;
+        }
+        Map<String, NodeRecommendationRules.PortDirectionRule> portMap =
+                direction == RecommendationDirection.DOWNSTREAM
+                        ? sourceRule.outputs
+                        : sourceRule.inputs;
+        if (portMap == null || portMap.isEmpty()) {
+            return false;
+        }
+        if (portMap.containsKey(portId)) {
+            return true;
+        }
+        String prefix = portId + ":";
+        for (String key : portMap.keySet()) {
+            if (key != null && key.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Selection LIST recommendations: only high-confidence list ops from {@code outputTypes.list}
+     * or exact sourceNodes targets.
+     */
+    private boolean isAllowedListSelectionCandidate(
+            String sourceNodeTypeId,
+            String rulePortKey,
+            String candidateNodeId,
+            RecommendationDirection direction) {
+        if (hasExactSourceNodeTarget(sourceNodeTypeId, rulePortKey, candidateNodeId, direction)) {
+            return true;
+        }
+        if (rules.outputTypes == null) {
+            return false;
+        }
+        NodeRecommendationRules.OutputTypeRule listRule = rules.outputTypes.get("list");
+        if (listRule == null) {
+            return false;
+        }
+        List<NodeRecommendationRules.RuleEntry> entries =
+                direction == RecommendationDirection.DOWNSTREAM ? listRule.downstream : listRule.upstream;
+        if (entries == null) {
+            return false;
+        }
+        for (NodeRecommendationRules.RuleEntry entry : entries) {
+            if (entry != null && entry.nodeId != null && entry.nodeId.equalsIgnoreCase(candidateNodeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Maps Get Box Face's physical {@code output_face} port to a synthetic rule key
      * ({@code output_face:horizontal} / {@code output_face:vertical}) based on the
      * resolved semantic face name.
@@ -239,7 +381,6 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     private String resolveRulePortKey(INode sourceNode, String portId, RecommendationDirection direction) {
         if (direction != RecommendationDirection.DOWNSTREAM
                 || sourceNode == null
-                || portId == null
                 || !GET_BOX_FACE_TYPE_ID.equalsIgnoreCase(sourceNode.getTypeId())
                 || !OUTPUT_FACE_PORT_ID.equals(portId)) {
             return portId;
@@ -475,6 +616,34 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         return false;
     }
 
+    private boolean isSelectionExcludedCategory(String categoryId) {
+        if (categoryId == null || rules.defaults.selectionExcludeCategories == null) {
+            return false;
+        }
+        String lowerCategory = categoryId.toLowerCase(Locale.ROOT);
+        for (String excludedCategory : rules.defaults.selectionExcludeCategories) {
+            if (excludedCategory == null) {
+                continue;
+            }
+            String lowerExcluded = excludedCategory.toLowerCase(Locale.ROOT);
+            if (lowerCategory.equals(lowerExcluded) || lowerCategory.startsWith(lowerExcluded + ".")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Selection / context: side-effect candidates only via exact {@code sourceNodes} rules.
+     * Port Drag does not use this hard gate.
+     */
+    private static boolean isSelectionEffectGated(NodeEffect effect) {
+        return effect == NodeEffect.WORLD_WRITE
+                || effect == NodeEffect.CONTEXT_WRITE
+                || effect == NodeEffect.FILE_IO
+                || effect == NodeEffect.PREVIEW_WRITE;
+    }
+
     /**
      * Selection / context-menu recommendations hide for preview and world-write sinks
      * (status outputs are not useful modeling continuations). Port-drag remains open.
@@ -490,11 +659,6 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         }
         NodeEffect effect = resolveEffect(typeId);
         return effect == NodeEffect.PREVIEW_WRITE || effect == NodeEffect.WORLD_WRITE;
-    }
-
-    private boolean isWriteEffectCandidate(String candidateNodeId) {
-        NodeEffect effect = resolveEffect(candidateNodeId);
-        return effect == NodeEffect.WORLD_WRITE || effect == NodeEffect.CONTEXT_WRITE;
     }
 
     private static NodeEffect resolveEffect(String typeId) {

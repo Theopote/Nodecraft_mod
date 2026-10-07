@@ -19,6 +19,8 @@ public final class NodeRecommendationRules {
         public int limit = 8;
         public List<String> workflowOrder = List.of();
         public List<String> excludeCategories = List.of();
+        /** Categories hidden from Selection/Context Suggested unless an exact sourceNodes rule targets them. */
+        public List<String> selectionExcludeCategories = List.of();
         public List<String> excludeNodeIds = List.of();
     }
 
