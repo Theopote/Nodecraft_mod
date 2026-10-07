@@ -819,6 +819,88 @@
         }
       }
     },
+    "geometry.solids.extrude_region": {
+      "outputs": {
+        "output_top_region": {
+          "downstream": [
+            {
+              "nodeId": "geometry.solids.extrude_region",
+              "order": 0,
+              "reason": "顶面再拉伸",
+              "connectPortId": "input_region"
+            },
+            {
+              "nodeId": "geometry.profiles.region_offset_plane",
+              "order": 10,
+              "reason": "顶面偏移后再塑",
+              "connectPortId": "input_region"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.solids.sweep": {
+      "outputs": {
+        "output_surface_strip": {
+          "downstream": [
+            {
+              "nodeId": "geometry.solids.surface_strip_to_lattice",
+              "order": 0,
+              "reason": "生成扫掠条带线框格架",
+              "connectPortId": "input_surface_strip"
+            },
+            {
+              "nodeId": "geometry.solids.offset_surface_strip",
+              "order": 10,
+              "reason": "偏移扫掠条带",
+              "connectPortId": "input_surface_strip"
+            },
+            {
+              "nodeId": "geometry.solids.deconstruct_surface_strip",
+              "order": 20,
+              "reason": "拆解扫掠条带",
+              "connectPortId": "input_surface_strip"
+            }
+          ]
+        },
+        "output_section_profiles": {
+          "downstream": [
+            {
+              "nodeId": "geometry.solids.loft_multi_section",
+              "order": 0,
+              "reason": "截面列表可继续放样",
+              "connectPortId": "input_profiles"
+            }
+          ]
+        }
+      }
+    },
+    "geometry.solids.loft_multi_section": {
+      "outputs": {
+        "output_side_surface": {
+          "downstream": [
+            {
+              "nodeId": "geometry.solids.surface_strip_to_lattice",
+              "order": 0,
+              "reason": "生成放样侧壁线框格架",
+              "connectPortId": "input_surface_strip"
+            },
+            {
+              "nodeId": "geometry.solids.offset_surface_strip",
+              "order": 10,
+              "reason": "偏移放样侧壁",
+              "connectPortId": "input_surface_strip"
+            },
+            {
+              "nodeId": "geometry.solids.deconstruct_surface_strip",
+              "order": 20,
+              "reason": "拆解放样侧壁",
+              "connectPortId": "input_surface_strip"
+            }
+          ]
+        }
+      }
+    },
     "geometry.boolean.sdf_sphere": {
       "outputs": {
         "output_sdf": {
@@ -1267,6 +1349,44 @@
     }
   },
   "sourceCategories": {
+    "geometry.curves": {
+      "outputTypes": {
+        "path": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_curves",
+              "order": 0,
+              "reason": "预览曲线",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.solids.sweep",
+              "order": 10,
+              "reason": "截面沿路径扫掠",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "pattern.linear.curve_array",
+              "order": 20,
+              "reason": "沿曲线阵列",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.curves.trim_path",
+              "order": 30,
+              "reason": "修剪路径",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 40,
+              "reason": "沿路径生成梁",
+              "connectPortId": "input_path"
+            }
+          ]
+        }
+      }
+    },
     "geometry.primitives": {
       "outputTypes": {
         "geometry": {
@@ -1828,6 +1948,106 @@
           "nodeId": "output.preview.preview_curves",
           "order": 0,
           "connectPortId": "input_paths"
+        }
+      ]
+    },
+    "polygon_profile": {
+      "downstream": [
+        {
+          "nodeId": "geometry.solids.extrude",
+          "order": 0,
+          "reason": "拉伸截面",
+          "connectPortId": "input_profile"
+        },
+        {
+          "nodeId": "geometry.solids.sweep",
+          "order": 10,
+          "reason": "沿路径扫掠",
+          "connectPortId": "input_profile"
+        },
+        {
+          "nodeId": "geometry.profiles.profile_to_region",
+          "order": 20,
+          "reason": "转为平面区域",
+          "connectPortId": "input_profile"
+        },
+        {
+          "nodeId": "geometry.profiles.offset_profile_plane",
+          "order": 30,
+          "reason": "截面偏移",
+          "connectPortId": "input_profile"
+        },
+        {
+          "nodeId": "output.preview.preview_profiles",
+          "order": 40,
+          "reason": "预览截面",
+          "connectPortId": "input_profile"
+        }
+      ]
+    },
+    "polygon_profile_list": {
+      "downstream": [
+        {
+          "nodeId": "geometry.solids.loft_multi_section",
+          "order": 0,
+          "reason": "多截面放样",
+          "connectPortId": "input_profiles"
+        },
+        {
+          "nodeId": "output.preview.preview_profiles",
+          "order": 10,
+          "reason": "预览截面列表",
+          "connectPortId": "input_profiles"
+        }
+      ]
+    },
+    "planar_region": {
+      "downstream": [
+        {
+          "nodeId": "geometry.solids.extrude_region",
+          "order": 0,
+          "reason": "拉伸区域成体",
+          "connectPortId": "input_region"
+        },
+        {
+          "nodeId": "geometry.profiles.region_offset_plane",
+          "order": 10,
+          "reason": "区域偏移",
+          "connectPortId": "input_region"
+        },
+        {
+          "nodeId": "geometry.profiles.region_boolean_2d",
+          "order": 20,
+          "reason": "区域布尔",
+          "connectPortId": "input_region_a"
+        }
+      ]
+    },
+    "surface_strip": {
+      "downstream": [
+        {
+          "nodeId": "geometry.solids.surface_strip_to_lattice",
+          "order": 0,
+          "reason": "生成条带线框格架",
+          "connectPortId": "input_surface_strip"
+        },
+        {
+          "nodeId": "geometry.solids.offset_surface_strip",
+          "order": 10,
+          "reason": "偏移曲面条带",
+          "connectPortId": "input_surface_strip"
+        },
+        {
+          "nodeId": "geometry.solids.extract_surface_strip_range",
+          "order": 20,
+          "reason": "提取条带区间",
+          "connectPortId": "input_surface_strip"
+        },
+        {
+          "nodeId": "geometry.solids.deconstruct_surface_strip",
+          "order": 30,
+          "reason": "拆解条带",
+          "connectPortId": "input_surface_strip"
         }
       ]
     },
