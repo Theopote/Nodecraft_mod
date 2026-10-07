@@ -1687,6 +1687,66 @@
         }
       }
     },
+    "world.read.get_blocks_in_region": {
+      "outputs": {
+        "output_coordinates": {
+          "downstream": [
+            {
+              "nodeId": "geometry.analysis.block_bounds",
+              "order": 0,
+              "reason": "计算读取坐标包围盒",
+              "connectPortId": "input_blocks"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 40,
+              "reason": "预览读取结果",
+              "connectPortId": "input_blocks"
+            }
+          ]
+        }
+      }
+    },
+    "world.read.get_surface_blocks": {
+      "outputs": {
+        "output_surface_positions": {
+          "downstream": [
+            {
+              "nodeId": "geometry.analysis.block_bounds",
+              "order": 0,
+              "reason": "计算地表坐标包围盒",
+              "connectPortId": "input_blocks"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 40,
+              "reason": "预览地表坐标",
+              "connectPortId": "input_blocks"
+            }
+          ]
+        }
+      }
+    },
+    "world.read.find_blocks": {
+      "outputs": {
+        "output_found_blocks": {
+          "downstream": [
+            {
+              "nodeId": "geometry.analysis.block_bounds",
+              "order": 0,
+              "reason": "计算匹配坐标包围盒",
+              "connectPortId": "input_blocks"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 40,
+              "reason": "预览匹配坐标",
+              "connectPortId": "input_blocks"
+            }
+          ]
+        }
+      }
+    },
     "output.execute.apply_changes": {
       "outputs": {
         "output_task_id": {
@@ -1723,6 +1783,26 @@
     }
   },
   "sourceCategories": {
+    "world.read": {
+      "outputTypes": {
+        "block_list": {
+          "downstream": [
+            {
+              "nodeId": "geometry.analysis.block_bounds",
+              "order": 0,
+              "reason": "计算方块包围盒",
+              "connectPortId": "input_blocks"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 40,
+              "reason": "预览读取结果",
+              "connectPortId": "input_blocks"
+            }
+          ]
+        }
+      }
+    },
     "material.basic_assignment": {
       "outputTypes": {
         "block_placement_list": {
@@ -2523,6 +2603,48 @@
         }
       ]
     },
+    "data_tree": {
+      "downstream": [
+        {
+          "nodeId": "math.data_tree.branch",
+          "order": 0,
+          "reason": "取树分支",
+          "connectPortId": "input_tree"
+        },
+        {
+          "nodeId": "math.data_tree.item",
+          "order": 10,
+          "reason": "取树节点项",
+          "connectPortId": "input_tree"
+        },
+        {
+          "nodeId": "math.data_tree.statistics",
+          "order": 20,
+          "reason": "树统计",
+          "connectPortId": "input_tree"
+        },
+        {
+          "nodeId": "math.data_tree.viewer",
+          "order": 30,
+          "reason": "查看树结构",
+          "connectPortId": "input_tree"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "math.data_tree.graft_list",
+          "order": 0,
+          "reason": "列表嫁接为树",
+          "connectPortId": "output_tree"
+        },
+        {
+          "nodeId": "math.data_tree.merge",
+          "order": 10,
+          "reason": "合并多棵树",
+          "connectPortId": "output_tree"
+        }
+      ]
+    },
     "polygon_profile": {
       "downstream": [
         {
@@ -2555,6 +2677,26 @@
           "reason": "预览截面",
           "connectPortId": "input_profile"
         }
+      ],
+      "upstream": [
+        {
+          "nodeId": "geometry.profiles.rectangle_profile",
+          "order": 0,
+          "reason": "矩形截面",
+          "connectPortId": "output_profile"
+        },
+        {
+          "nodeId": "geometry.profiles.circle_profile",
+          "order": 10,
+          "reason": "圆形截面",
+          "connectPortId": "output_profile"
+        },
+        {
+          "nodeId": "geometry.profiles.polygon_profile",
+          "order": 20,
+          "reason": "正多边形截面",
+          "connectPortId": "output_profile"
+        }
       ]
     },
     "polygon_profile_list": {
@@ -2570,6 +2712,20 @@
           "order": 10,
           "reason": "预览截面列表",
           "connectPortId": "input_profiles"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "geometry.solids.sweep",
+          "order": 0,
+          "reason": "扫掠截面列表",
+          "connectPortId": "output_section_profiles"
+        },
+        {
+          "nodeId": "geometry.solids.loft_multi_section",
+          "order": 10,
+          "reason": "放样截面列表",
+          "connectPortId": "output_profiles"
         }
       ]
     },
@@ -2592,6 +2748,20 @@
           "order": 20,
           "reason": "区域布尔",
           "connectPortId": "input_region_a"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "geometry.profiles.profile_to_region",
+          "order": 0,
+          "reason": "截面转平面区域",
+          "connectPortId": "output_region"
+        },
+        {
+          "nodeId": "geometry.profiles.region_offset_plane",
+          "order": 10,
+          "reason": "偏移后的平面区域",
+          "connectPortId": "output_region"
         }
       ]
     },
@@ -2620,6 +2790,26 @@
           "order": 30,
           "reason": "拆解条带",
           "connectPortId": "input_surface_strip"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "geometry.solids.sweep",
+          "order": 0,
+          "reason": "扫掠侧壁条带",
+          "connectPortId": "output_surface_strip"
+        },
+        {
+          "nodeId": "geometry.solids.loft_multi_section",
+          "order": 10,
+          "reason": "放样侧壁条带",
+          "connectPortId": "output_side_surface"
+        },
+        {
+          "nodeId": "geometry.solids.extrude_region",
+          "order": 20,
+          "reason": "拉伸外侧面条带",
+          "connectPortId": "output_outer_side_surface"
         }
       ]
     },
