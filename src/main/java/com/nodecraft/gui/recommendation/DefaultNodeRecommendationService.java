@@ -227,7 +227,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         if (isSelectionOrContext(context)) {
             collectPortsForSelection(sourceNode.getTypeId(), nodePorts, ports, context.direction());
         } else {
-            collectPorts(nodePorts, ports, false);
+            collectPorts(nodePorts, ports);
         }
 
         if (ports.isEmpty() && context.sourceDataType() != null) {
@@ -241,8 +241,8 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                 || context.trigger() == RecommendationTrigger.NODE_CONTEXT_MENU;
     }
 
-    private static void collectPorts(List<IPort> nodePorts, List<SourcePortContext> ports, boolean collapseByType) {
-        if (collapseByType) {
+    private static void collectPorts(List<IPort> nodePorts, List<SourcePortContext> ports) {
+        if (false) {
             Map<NodeDataType, String> uniqueByType = new LinkedHashMap<>();
             for (IPort port : nodePorts) {
                 if (port.getDataType() == NodeDataType.EXEC) {
