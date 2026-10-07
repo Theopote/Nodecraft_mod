@@ -25,6 +25,7 @@ public class NodecraftInputHandler {
         GLFW.GLFW_KEY_BACKSPACE,
         GLFW.GLFW_KEY_Z,
         GLFW.GLFW_KEY_Y,
+        GLFW.GLFW_KEY_A,
         GLFW.GLFW_KEY_X,
         GLFW.GLFW_KEY_C,
         GLFW.GLFW_KEY_D,
@@ -216,6 +217,15 @@ public class NodecraftInputHandler {
             if (NodeCraft.LOGGER.isDebugEnabled()) {
                 NodeCraft.LOGGER.debug("无法重做: 重做栈为空");
             }
+            return true;
+        }
+
+        if (isCtrlPressed && keyCode == GLFW.GLFW_KEY_A) {
+            if (typingInTextField) {
+                return false;
+            }
+            NodeCraft.LOGGER.info("触发全选快捷键: Ctrl+A");
+            editor.selectAllNodes();
             return true;
         }
 

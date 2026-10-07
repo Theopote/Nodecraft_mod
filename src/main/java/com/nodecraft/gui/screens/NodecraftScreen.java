@@ -114,12 +114,6 @@ public class NodecraftScreen extends Screen {
      *   <li>更新交互管理器</li>
      *   <li>协调ImGui和传统GUI渲染</li>
      * </ul>
-     * 设计为幂等且故障安全，每次调用都会进行必要的状态检查。
-     *
-     * @param context 绘制上下文（用于传统GUI渲染）
-     * @param mouseX  鼠标X坐标
-     * @param mouseY  鼠标Y坐标
-     * @param delta   帧时间增量
      */
     void pollEditorShortcuts() {
         if (initialized) {
@@ -299,14 +293,11 @@ private boolean isMouseOverImGuiForInteraction(com.nodecraft.nodesystem.interact
             
             // 在交互模式下，如果鼠标在窗口边界内但 WantCaptureMouse 为 false，
             // 倾向于认为不在UI上，优先处理世界交互
-            if (!isMouseOverImGui) {
-                return false;
-            }
+            return isMouseOverImGui;
             
             // 只要 ImGui 明确要求捕获鼠标（例如菜单、弹窗、控件交互），
             // 就应稳定地视为在 UI 上，避免菜单在移动鼠标时被误关闭。
-            return true;
-            
+
         } else {
             // 非交互模式下，使用标准的检测逻辑
             isMouseOverImGui = ImGui.getIO().getWantCaptureMouse();

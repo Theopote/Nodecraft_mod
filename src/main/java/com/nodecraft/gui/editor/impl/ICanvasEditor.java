@@ -78,6 +78,8 @@ public interface ICanvasEditor {
     boolean pasteNodesAt(float x, float y);
     boolean deleteSelectedNodes();
 
+    void selectAllNodes();
+
     boolean createSubgraphFromSelection();
     boolean openSelectedSubgraph();
     boolean dissolveSelectedSubgraph();

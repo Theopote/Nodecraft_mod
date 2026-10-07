@@ -1186,6 +1186,27 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         return nodeCommands.deleteSelected();
     }
 
+    @Override
+    public void selectAllNodes() {
+        NodeGraph graph = getCurrentGraph();
+        if (graph == null) {
+            return;
+        }
+
+        java.util.List<INode> nodes = graph.getNodes();
+        if (nodes.isEmpty()) {
+            clearSelectedNodes();
+            return;
+        }
+
+        interactionState.clearSelection();
+        for (INode node : nodes) {
+            interactionState.getSelectedNodeIds().add(node.getId());
+        }
+        setSelectedNodeId(nodes.get(0).getId());
+        NodeCraft.LOGGER.debug("全选当前画布节点: {} 个", nodes.size());
+    }
+
     public boolean createSubgraphFromSelection() {
         return subgraphEdits.createFromSelection();
     }
