@@ -452,7 +452,7 @@
             },
             {
               "nodeId": "geometry.architectural_primitives.railing",
-              "order": 10,
+              "order": 50,
               "reason": "沿行走路径加栏杆",
               "connectPortId": "input_path"
             }
