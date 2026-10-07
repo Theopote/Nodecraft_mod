@@ -110,7 +110,9 @@ final class NodeRecommendationConnector {
             NodeRecommendation recommendation,
             float x,
             float y) {
-        INode created = editor.addNode(recommendation.nodeId(), x, y);
+        NodeGraph graph = editor.getCurrentGraph();
+        float[] clear = findClearPlacement(editor, graph, x, y, List.of());
+        INode created = editor.addNode(recommendation.nodeId(), clear[0], clear[1]);
         if (created == null) {
             return NodeRecommendationApplyResult.failure("Failed to create node: " + recommendation.displayName());
         }
@@ -136,7 +138,9 @@ final class NodeRecommendationConnector {
             NodeRecommendation recommendation,
             float x,
             float y) {
-        INode created = editor.addNode(recommendation.nodeId(), x, y);
+        NodeGraph graph = editor.getCurrentGraph();
+        float[] clear = findClearPlacement(editor, graph, x, y, List.of());
+        INode created = editor.addNode(recommendation.nodeId(), clear[0], clear[1]);
         if (created == null) {
             return NodeRecommendationApplyResult.failure("Failed to create node: " + recommendation.displayName());
         }
@@ -182,12 +186,18 @@ final class NodeRecommendationConnector {
             targetY = conversionY + chainDy;
         }
 
-        INode conversionNode = editor.addNode(conversion.nodeId(), conversionX, conversionY);
+        NodeGraph graph = editor.getCurrentGraph();
+        // Prefer keeping the target near its preferred point; then clear conversion around that.
+        float[] clearTarget = findClearPlacement(editor, graph, targetX, targetY, List.of());
+        float[] clearConversion = findClearPlacement(
+                editor, graph, conversionX, conversionY, List.of(clearTarget));
+
+        INode conversionNode = editor.addNode(conversion.nodeId(), clearConversion[0], clearConversion[1]);
         if (conversionNode == null) {
-            return applyManual(editor, recommendation, targetX, targetY);
+            return applyManual(editor, recommendation, clearTarget[0], clearTarget[1]);
         }
 
-        INode targetNode = editor.addNode(recommendation.nodeId(), targetX, targetY);
+        INode targetNode = editor.addNode(recommendation.nodeId(), clearTarget[0], clearTarget[1]);
         if (targetNode == null) {
             return NodeRecommendationApplyResult.success(
                     conversionNode.getId(),
@@ -339,5 +349,70 @@ final class NodeRecommendationConnector {
             }
         }
         return null;
+    }
+
+    /** Half-extents of the occupancy box used for simple placement collision (~120×80). */
+    private static final float OCCUPANCY_HALF_W = 60f;
+    private static final float OCCUPANCY_HALF_H = 40f;
+    private static final float[] Y_LADDER = {0f, 80f, -80f, 160f, -160f};
+
+    /**
+     * Try preferred (x,y) then Y offsets to find a spot not overlapping existing nodes
+     * or already-reserved placements in this apply call.
+     */
+    private static float[] findClearPlacement(
+            ICanvasEditor editor,
+            NodeGraph graph,
+            float preferredX,
+            float preferredY,
+            List<float[]> reserved) {
+        for (float dy : Y_LADDER) {
+            float x = preferredX;
+            float y = preferredY + dy;
+            if (!isOccupied(editor, graph, x, y, reserved)) {
+                return new float[] {x, y};
+            }
+        }
+        return new float[] {preferredX, preferredY};
+    }
+
+    private static boolean isOccupied(
+            ICanvasEditor editor,
+            NodeGraph graph,
+            float x,
+            float y,
+            List<float[]> reserved) {
+        if (graph != null) {
+            for (INode node : graph.getNodes()) {
+                if (node == null) {
+                    continue;
+                }
+                float nx;
+                float ny;
+                NodePosition pos = editor != null ? editor.getNodePosition(node.getId()) : null;
+                if (pos != null) {
+                    nx = pos.x;
+                    ny = pos.y;
+                } else {
+                    nx = (float) node.getPositionX();
+                    ny = (float) node.getPositionY();
+                }
+                if (Math.abs(nx - x) < OCCUPANCY_HALF_W && Math.abs(ny - y) < OCCUPANCY_HALF_H) {
+                    return true;
+                }
+            }
+        }
+        if (reserved != null) {
+            for (float[] point : reserved) {
+                if (point == null || point.length < 2) {
+                    continue;
+                }
+                if (Math.abs(point[0] - x) < OCCUPANCY_HALF_W
+                        && Math.abs(point[1] - y) < OCCUPANCY_HALF_H) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

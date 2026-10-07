@@ -81,11 +81,54 @@ class SelectionSemanticRecommendationContractTest {
     }
 
     @Test
-    void stringSourceDoesNotSuggestAssistStringFormat() {
-        List<NodeRecommendation> recs = recommendPort(
-            new TextInputNode(), "output_text", NodeDataType.STRING);
-        assertFalse(ids(recs).contains(STRING_FORMAT),
-            "utilities.assist.string_format must be excluded from Suggested, got " + ids(recs));
+    void stringSelectionExcludesAssistNodes() {
+        TextInputNode text = new TextInputNode();
+        NodeGraph graph = new NodeGraph();
+        graph.addNode(text);
+        // Selection may be empty if only assist candidates were type-compatible.
+        List<NodeRecommendation> selection =
+            NodeRecommendations.get().recommendForSelectedNode(graph, text, 8);
+        assertFalse(ids(selection).contains(STRING_FORMAT),
+            "utilities.assist must be selection-excluded, got " + ids(selection));
+        assertFalse(ids(selection).stream().anyMatch(id -> id.startsWith("utilities.assist.")),
+            "no utilities.assist.* on selection, got " + ids(selection));
+    }
+
+    @Test
+    void stringPortDragMaySuggestAssistStringFormat() {
+        // Port index must still expose assist (not globally excluded).
+        com.nodecraft.gui.recommendation.NodePortIndex index =
+            new com.nodecraft.gui.recommendation.NodePortIndex();
+        assertTrue(index.findDownstreamCandidates(NodeDataType.STRING).stream()
+                .anyMatch(port -> STRING_FORMAT.equalsIgnoreCase(port.nodeId())),
+            "port index must include string_format for STRING after assist left global exclude");
+
+        // Recommend with a wide limit — assist ranks below workflow-boosted STRING consumers.
+        List<NodeRecommendation> drag = recommendPort(
+            new TextInputNode(), "output_text", NodeDataType.STRING, 200);
+        assertTrue(ids(drag).stream().anyMatch(id -> id.startsWith("utilities.assist.")),
+            "PORT_DRAG must not selection-exclude utilities.assist, got top="
+                + ids(drag).stream().limit(20).toList());
+    }
+
+    @Test
+    void selectionPreservesMultipleExactSemanticPorts() {
+        WallAlongPathNode wall = new WallAlongPathNode();
+        List<NodeRecommendation> recs = recommendSelection(wall, 8);
+        Set<String> sourcePorts = new HashSet<>();
+        for (NodeRecommendation rec : recs) {
+            if (rec.sourcePortId() != null && !rec.sourcePortId().isBlank()) {
+                sourcePorts.add(rec.sourcePortId());
+            }
+        }
+        assertTrue(sourcePorts.size() >= 2,
+            "selection must preserve multiple exact-rule source ports, got " + sourcePorts
+                + " from " + ids(recs));
+        assertTrue(sourcePorts.contains("output_top_path"),
+            "expected output_top_path among source ports, got " + sourcePorts);
+        assertTrue(
+            sourcePorts.contains("output_frames") || sourcePorts.contains("output_center_line"),
+            "expected frames or center_line among source ports, got " + sourcePorts);
     }
 
     @Test
@@ -163,6 +206,11 @@ class SelectionSemanticRecommendationContractTest {
     }
 
     private static List<NodeRecommendation> recommendPort(INode source, String portId, NodeDataType type) {
+        return recommendPort(source, portId, type, 8);
+    }
+
+    private static List<NodeRecommendation> recommendPort(
+            INode source, String portId, NodeDataType type, int limit) {
         NodeGraph graph = new NodeGraph();
         graph.addNode(source);
         NodeRecommendationContext context = new NodeRecommendationContext(
@@ -173,7 +221,7 @@ class SelectionSemanticRecommendationContractTest {
             type,
             0f,
             0f,
-            8);
+            limit);
         List<NodeRecommendation> recommendations = NodeRecommendations.get().recommend(graph, context);
         assertFalse(recommendations.isEmpty(),
             "expected recommendations for " + source.getTypeId() + "#" + portId);
