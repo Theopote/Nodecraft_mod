@@ -42,6 +42,8 @@ public class NodecraftWindowRenderer {
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         try {
             imGuiRenderer.beginFrame();
+            // Poll after beginFrame so ImGui IO reflects the current frame before widgets render.
+            parentScreen.pollEditorShortcuts();
             try {
                 renderWithStyles(context, mouseX, mouseY, delta);
             } finally {

@@ -22,6 +22,7 @@ import org.lwjgl.glfw.GLFW;
 public class NodecraftInputHandler {
     private static final int[] POLLED_SHORTCUT_KEYS = {
         GLFW.GLFW_KEY_DELETE,
+        GLFW.GLFW_KEY_BACKSPACE,
         GLFW.GLFW_KEY_Z,
         GLFW.GLFW_KEY_Y,
         GLFW.GLFW_KEY_X,
@@ -155,14 +156,15 @@ public class NodecraftInputHandler {
             NodeCraft.LOGGER.debug("编辑器状态 - componentManager: {}, canvas: {}, editor: {}", true, true, true);
         }
 
-        final boolean textInputActive = ImGui.getIO() != null
-            && (ImGui.getIO().getWantTextInput() || ImGui.isAnyItemActive());
+        // Only block canvas shortcuts while a text field is being edited.
+        // isAnyItemActive() stays true for canvas/node invisible buttons and breaks Delete.
+        final boolean typingInTextField = isTypingInTextField();
 
-        if (handleGlobalShortcuts(editor, keyCode, isCtrlPressed, textInputActive)) {
+        if (handleGlobalShortcuts(editor, keyCode, isCtrlPressed, typingInTextField)) {
             return true;
         }
 
-        if (!isCtrlPressed && GizmoModeShortcuts.handleKey(keyCode, textInputActive)) {
+        if (!isCtrlPressed && GizmoModeShortcuts.handleKey(keyCode, typingInTextField)) {
             return true;
         }
 
@@ -177,14 +179,18 @@ public class NodecraftInputHandler {
         return handleOtherShortcuts(editor, canvas, keyCode, modifiers);
     }
 
+    private static boolean isTypingInTextField() {
+        return ImGui.getIO() != null && ImGui.getIO().getWantTextInput();
+    }
+
     private boolean handleGlobalShortcuts(
         ImGuiNodeEditor editor,
         int keyCode,
         boolean isCtrlPressed,
-        boolean textInputActive
+        boolean typingInTextField
     ) {
         if (isCtrlPressed && keyCode == GLFW.GLFW_KEY_Z) {
-            if (textInputActive) {
+            if (typingInTextField) {
                 return true;
             }
             NodeCraft.LOGGER.info("触发撤销快捷键: Ctrl+Z");
@@ -199,7 +205,7 @@ public class NodecraftInputHandler {
         }
 
         if (isCtrlPressed && keyCode == GLFW.GLFW_KEY_Y) {
-            if (textInputActive) {
+            if (typingInTextField) {
                 return true;
             }
             NodeCraft.LOGGER.info("触发重做快捷键: Ctrl+Y");
@@ -213,13 +219,13 @@ public class NodecraftInputHandler {
             return true;
         }
 
-        if (keyCode == GLFW.GLFW_KEY_DELETE) {
-            if (textInputActive) {
+        if (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+            if (typingInTextField) {
                 return true;
             }
             boolean hasSelection = !editor.getSelectedNodeIds().isEmpty();
             if (hasSelection) {
-                NodeCraft.LOGGER.info("触发删除快捷键: Delete");
+                NodeCraft.LOGGER.info("触发删除快捷键: {}", keyCode == GLFW.GLFW_KEY_DELETE ? "Delete" : "Backspace");
                 editor.deleteSelectedNodes();
             } else if (NodeCraft.LOGGER.isDebugEnabled()) {
                 NodeCraft.LOGGER.debug("无法删除: 没有选中的节点");

@@ -121,6 +121,12 @@ public class NodecraftScreen extends Screen {
      * @param mouseY  鼠标Y坐标
      * @param delta   帧时间增量
      */
+    void pollEditorShortcuts() {
+        if (initialized) {
+            inputHandler.pollEditorShortcuts();
+        }
+    }
+
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         // 处理错误状态
@@ -156,10 +162,7 @@ public class NodecraftScreen extends Screen {
         // 更新交互管理器
         updateInteractionManager();
 
-        // 统一从当前活动 GLFW 窗口轮询业务快捷键，避免 detached 模式依赖 Screen 事件链
-        inputHandler.pollEditorShortcuts();
-        
-        // 渲染主窗口
+        // 渲染主窗口（业务快捷键在 ImGui beginFrame 之后轮询，见 NodecraftWindowRenderer）
         if (windowRenderer != null) {
             windowRenderer.render(context, mouseX, mouseY, delta);
         }
