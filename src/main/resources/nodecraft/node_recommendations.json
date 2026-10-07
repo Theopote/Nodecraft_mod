@@ -901,6 +901,84 @@
         }
       }
     },
+    "pattern.linear.curve_array": {
+      "outputs": {
+        "output_origins": {
+          "downstream": [
+            {
+              "nodeId": "geometry.curves.points_to_path",
+              "order": 0,
+              "reason": "阵列原点连成路径",
+              "connectPortId": "input_points"
+            },
+            {
+              "nodeId": "math.fields.scalar_sample_points",
+              "order": 10,
+              "reason": "用原点采样标量场",
+              "connectPortId": "input_points"
+            },
+            {
+              "nodeId": "math.fields.vector_sample_points",
+              "order": 20,
+              "reason": "用原点采样矢量场",
+              "connectPortId": "input_points"
+            }
+          ]
+        }
+      }
+    },
+    "math.fields.scalar_from_sdf": {
+      "outputs": {
+        "output_field": {
+          "downstream": [
+            {
+              "nodeId": "math.fields.scalar_binary_op",
+              "order": 0,
+              "reason": "SDF 标量场可继续组合",
+              "connectPortId": "input_a"
+            },
+            {
+              "nodeId": "math.fields.scalar_sample_point",
+              "order": 10,
+              "reason": "采样 SDF 距离场",
+              "connectPortId": "input_field"
+            },
+            {
+              "nodeId": "math.fields.scalar_sample_points",
+              "order": 20,
+              "reason": "多点采样 SDF 距离场",
+              "connectPortId": "input_field"
+            }
+          ]
+        }
+      }
+    },
+    "math.fields.vector_from_sdf_gradient": {
+      "outputs": {
+        "output_field": {
+          "downstream": [
+            {
+              "nodeId": "math.fields.vector_sample_points",
+              "order": 0,
+              "reason": "采样 SDF 梯度方向",
+              "connectPortId": "input_field"
+            },
+            {
+              "nodeId": "math.fields.attractor_blend",
+              "order": 10,
+              "reason": "与吸引子场混合",
+              "connectPortId": "input_field_a"
+            },
+            {
+              "nodeId": "math.fields.vector_binary_op",
+              "order": 20,
+              "reason": "组合梯度场",
+              "connectPortId": "input_a"
+            }
+          ]
+        }
+      }
+    },
     "geometry.boolean.sdf_sphere": {
       "outputs": {
         "output_sdf": {
@@ -2048,6 +2126,56 @@
           "order": 30,
           "reason": "拆解条带",
           "connectPortId": "input_surface_strip"
+        }
+      ]
+    },
+    "scalar_field": {
+      "downstream": [
+        {
+          "nodeId": "math.fields.scalar_binary_op",
+          "order": 0,
+          "reason": "组合标量场",
+          "connectPortId": "input_a"
+        },
+        {
+          "nodeId": "math.fields.scalar_sample_point",
+          "order": 10,
+          "reason": "单点采样",
+          "connectPortId": "input_field"
+        },
+        {
+          "nodeId": "math.fields.scalar_sample_points",
+          "order": 20,
+          "reason": "多点采样",
+          "connectPortId": "input_field"
+        }
+      ]
+    },
+    "vector_field": {
+      "downstream": [
+        {
+          "nodeId": "math.fields.vector_binary_op",
+          "order": 0,
+          "reason": "组合矢量场",
+          "connectPortId": "input_a"
+        },
+        {
+          "nodeId": "math.fields.vector_sample_point",
+          "order": 10,
+          "reason": "单点采样",
+          "connectPortId": "input_field"
+        },
+        {
+          "nodeId": "math.fields.vector_sample_points",
+          "order": 20,
+          "reason": "多点采样",
+          "connectPortId": "input_field"
+        },
+        {
+          "nodeId": "math.fields.attractor_blend",
+          "order": 30,
+          "reason": "混合矢量场",
+          "connectPortId": "input_field_a"
         }
       ]
     },
