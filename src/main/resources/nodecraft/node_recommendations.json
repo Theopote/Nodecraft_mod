@@ -52,12 +52,6 @@
               "connectPortId": "input_geometry"
             },
             {
-              "nodeId": "material.basic_assignment.assign_block_type",
-              "order": 30,
-              "reason": "分配方块材质",
-              "connectPortId": "input_geometry"
-            },
-            {
               "nodeId": "geometry.voxel.voxelize_geometry",
               "order": 40,
               "reason": "烘焙为方块",
@@ -686,6 +680,72 @@
           ]
         }
       }
+    },
+    "geometry.voxel.voxelize_geometry": {
+      "outputs": {
+        "output_blocks": {
+          "downstream": [
+            {
+              "nodeId": "material.basic_assignment.assign_block_type",
+              "order": 0,
+              "reason": "体素坐标赋材质",
+              "connectPortId": "input_coordinates"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 10,
+              "reason": "预览体素结果",
+              "connectPortId": "input_blocks"
+            }
+          ]
+        }
+      }
+    },
+    "material.basic_assignment.assign_block_type": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览材质结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.merge_block_placements",
+              "order": 10,
+              "reason": "合并多材质支路",
+              "connectPortId": "input_placements_0"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 50,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
+    },
+    "output.execute.merge_block_placements": {
+      "outputs": {
+        "output_placements": {
+          "downstream": [
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 0,
+              "reason": "预览合并结果",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.execute.apply_changes",
+              "order": 10,
+              "reason": "写入世界",
+              "connectPortId": "input_block_placements"
+            }
+          ]
+        }
+      }
     }
   },
   "sourceCategories": {
@@ -697,7 +757,6 @@
             "geometry.combine.geometry",
             "geometry.boolean.difference",
             "output.preview.preview_geometry",
-            "material.basic_assignment.assign_block_type",
             "geometry.voxel.voxelize_geometry"
           ]
         }
@@ -707,10 +766,38 @@
       "outputTypes": {
         "geometry": {
           "downstream": [
-            "material.basic_assignment.assign_block_type",
             "output.preview.preview_geometry",
             "geometry.voxel.voxelize_geometry",
+            "transform.basic_transforms.transform_geometry",
             "pattern.linear.linear_array"
+          ]
+        }
+      }
+    },
+    "geometry.combine": {
+      "outputTypes": {
+        "geometry": {
+          "downstream": [
+            {
+              "nodeId": "transform.basic_transforms.transform_geometry",
+              "order": 0,
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 10,
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "geometry.voxel.voxelize_geometry",
+              "order": 20,
+              "connectPortId": "input_geometry"
+            },
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 30,
+              "connectPortId": "input_base"
+            }
           ]
         }
       }
@@ -998,13 +1085,8 @@
           "connectPortId": "input_geometry"
         },
         {
-          "nodeId": "material.basic_assignment.assign_block_type",
-          "order": 40,
-          "connectPortId": "input_geometry"
-        },
-        {
           "nodeId": "geometry.voxel.voxelize_geometry",
-          "order": 50,
+          "order": 40,
           "connectPortId": "input_geometry"
         }
       ],
@@ -1042,8 +1124,51 @@
     },
     "block_pos": {
       "downstream": [
-        "world.read.get_block",
-        "world.write.set_block"
+        "world.read.get_block"
+      ]
+    },
+    "block_list": {
+      "downstream": [
+        {
+          "nodeId": "material.basic_assignment.assign_block_type",
+          "order": 0,
+          "reason": "体素坐标赋材质",
+          "connectPortId": "input_coordinates"
+        },
+        {
+          "nodeId": "output.preview.preview_blocks",
+          "order": 10,
+          "reason": "预览体素结果",
+          "connectPortId": "input_blocks"
+        },
+        {
+          "nodeId": "output.execute.apply_changes",
+          "order": 50,
+          "reason": "应用到世界",
+          "connectPortId": "input_blocks"
+        }
+      ]
+    },
+    "block_placement_list": {
+      "downstream": [
+        {
+          "nodeId": "output.preview.preview_blocks",
+          "order": 0,
+          "reason": "预览带材质 placements",
+          "connectPortId": "input_block_placements"
+        },
+        {
+          "nodeId": "output.execute.merge_block_placements",
+          "order": 10,
+          "reason": "合并多支材质",
+          "connectPortId": "input_placements_0"
+        },
+        {
+          "nodeId": "output.execute.apply_changes",
+          "order": 50,
+          "reason": "应用到世界",
+          "connectPortId": "input_block_placements"
+        }
       ]
     },
     "path": {

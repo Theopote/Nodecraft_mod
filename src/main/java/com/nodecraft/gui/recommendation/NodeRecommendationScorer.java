@@ -1,8 +1,11 @@
 package com.nodecraft.gui.recommendation;
 
 import com.nodecraft.gui.node.NodeInfo;
+import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
+import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
@@ -46,6 +49,11 @@ final class NodeRecommendationScorer {
                 candidate.nodeId(),
                 preferredConnectPortId);
         score += ruleMatch.score();
+        // Soft-demote preview sinks only when ranking by type compatibility alone;
+        // exact/category rule rows already encode intended Preview vs bake order.
+        if (ruleMatch.score() == 0) {
+            score += scoreEffectPenalty(info, candidate.nodeId());
+        }
 
         NodeRecommendation.ConnectionPlan plan = resolvePlan(sourceDataType, candidate.dataType());
         if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION
@@ -101,6 +109,16 @@ final class NodeRecommendationScorer {
             if (lower.equals(prefix) || lower.startsWith(prefix + ".")) {
                 return Math.max(0, 60 - i * 5);
             }
+        }
+        return 0;
+    }
+
+    /** Soft demote preview-write candidates so bake/material stays ahead of ghost preview. */
+    private static int scoreEffectPenalty(NodeInfo info, String nodeId) {
+        Class<? extends INode> nodeClass = info != null ? info.getNodeClass() : null;
+        NodeEffect effect = NodeEffectResolver.resolve(nodeClass, nodeId);
+        if (effect == NodeEffect.PREVIEW_WRITE) {
+            return -20;
         }
         return 0;
     }

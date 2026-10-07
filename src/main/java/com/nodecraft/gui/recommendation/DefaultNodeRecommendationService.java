@@ -6,7 +6,9 @@ import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
+import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.core.BasePort;
+import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -68,6 +70,10 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
             return List.of();
         }
 
+        if (isSelectionLevelSink(context, sourceNode)) {
+            return List.of();
+        }
+
         int limit = context.limit() != null ? context.limit() : rules.defaults.limit;
         NodeInfo sourceInfo = NodeRegistry.getInstance().getNodeInfo(sourceNode.getTypeId());
         String sourceCategory = sourceInfo != null ? sourceInfo.getCategoryId() : null;
@@ -97,6 +103,16 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                 // Skip same-type candidates unless an exact rule targets that type
                 // (e.g. Column.output_top → Column.input_base stacking).
                 if (candidate.nodeId().equalsIgnoreCase(sourceNode.getTypeId())
+                        && !hasExactSourceNodeTarget(
+                                sourceNode.getTypeId(),
+                                rulePortKey,
+                                candidate.nodeId(),
+                                context.direction())) {
+                    continue;
+                }
+
+                // WORLD_WRITE / CONTEXT_WRITE only via exact sourceNodes rules (never generic type fallback).
+                if (isWriteEffectCandidate(candidate.nodeId())
                         && !hasExactSourceNodeTarget(
                                 sourceNode.getTypeId(),
                                 rulePortKey,
@@ -457,6 +473,37 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
             }
         }
         return false;
+    }
+
+    /**
+     * Selection / context-menu recommendations hide for preview and world-write sinks
+     * (status outputs are not useful modeling continuations). Port-drag remains open.
+     */
+    private boolean isSelectionLevelSink(NodeRecommendationContext context, INode sourceNode) {
+        if (context.trigger() != RecommendationTrigger.SELECTION_PANEL
+                && context.trigger() != RecommendationTrigger.NODE_CONTEXT_MENU) {
+            return false;
+        }
+        String typeId = sourceNode.getTypeId();
+        if (typeId != null && typeId.equalsIgnoreCase("output.execute.apply_changes")) {
+            return true;
+        }
+        NodeEffect effect = resolveEffect(typeId);
+        return effect == NodeEffect.PREVIEW_WRITE || effect == NodeEffect.WORLD_WRITE;
+    }
+
+    private boolean isWriteEffectCandidate(String candidateNodeId) {
+        NodeEffect effect = resolveEffect(candidateNodeId);
+        return effect == NodeEffect.WORLD_WRITE || effect == NodeEffect.CONTEXT_WRITE;
+    }
+
+    private static NodeEffect resolveEffect(String typeId) {
+        if (typeId == null) {
+            return NodeEffect.PURE;
+        }
+        NodeInfo info = NodeRegistry.getInstance().getNodeInfo(typeId);
+        Class<? extends INode> nodeClass = info != null ? info.getNodeClass() : null;
+        return NodeEffectResolver.resolve(nodeClass, typeId);
     }
 
     private record SourcePortContext(String portId, NodeDataType dataType) {
