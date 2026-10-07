@@ -438,7 +438,7 @@
           "downstream": [
             {
               "nodeId": "transform.placement.place_geometry_on_frames",
-              "order": 0,
+              "order": 10,
               "reason": "在平台位放置构件",
               "connectPortId": "input_frames"
             }

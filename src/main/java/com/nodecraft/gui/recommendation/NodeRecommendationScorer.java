@@ -59,8 +59,8 @@ final class NodeRecommendationScorer {
         NodeRecommendation.ConnectionPlan plan = resolvePlan(sourceDataType, candidate.dataType());
         if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION
                 && TypeConversionRegistry.getSuggestedConversion(sourceDataType, candidate.dataType()) != null) {
-            // Keep known conversion bridges visible in the short suggested list.
-            score += 90;
+            // Small visibility bump only — must stay below exact (+120) and compatible-direct (+80).
+            score += 20;
         }
         String reason = buildReason(
                 ruleMatch.reason(),

@@ -65,6 +65,9 @@ class SelectionSemanticRecommendationContractTest {
         WallAlongPathNode wall = new WallAlongPathNode();
         List<NodeRecommendation> recs = recommendSelection(wall, 8);
         assertTopContains(recs, RAILING);
+        assertEquals("output_top_path", sourcePort(recs, RAILING),
+            "Railing must come from Top Path exact rule, not first PATH collapse");
+        assertEquals("input_path", connectPort(recs, RAILING));
     }
 
     @Test
@@ -72,6 +75,8 @@ class SelectionSemanticRecommendationContractTest {
         StaircaseNode stair = new StaircaseNode();
         List<NodeRecommendation> recs = recommendSelection(stair, 8);
         assertTopContains(recs, PLACE_ON_FRAMES);
+        assertEquals("output_step_frames", sourcePort(recs, PLACE_ON_FRAMES),
+            "PlaceOnFrames must come from Step Frames exact rule, not first FRAME_LIST collapse");
         assertEquals("input_frames", connectPort(recs, PLACE_ON_FRAMES));
     }
 
@@ -199,6 +204,14 @@ class SelectionSemanticRecommendationContractTest {
         return recs.stream()
             .filter(rec -> nodeId.equalsIgnoreCase(rec.nodeId()))
             .map(NodeRecommendation::connectPortId)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("missing recommendation for " + nodeId));
+    }
+
+    private static String sourcePort(List<NodeRecommendation> recs, String nodeId) {
+        return recs.stream()
+            .filter(rec -> nodeId.equalsIgnoreCase(rec.nodeId()))
+            .map(NodeRecommendation::sourcePortId)
             .findFirst()
             .orElseThrow(() -> new AssertionError("missing recommendation for " + nodeId));
     }

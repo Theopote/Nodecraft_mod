@@ -242,20 +242,6 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     }
 
     private static void collectPorts(List<IPort> nodePorts, List<SourcePortContext> ports) {
-        if (false) {
-            Map<NodeDataType, String> uniqueByType = new LinkedHashMap<>();
-            for (IPort port : nodePorts) {
-                if (port.getDataType() == NodeDataType.EXEC) {
-                    continue;
-                }
-                uniqueByType.putIfAbsent(port.getDataType(), port.getId());
-            }
-            for (Map.Entry<NodeDataType, String> entry : uniqueByType.entrySet()) {
-                ports.add(new SourcePortContext(entry.getValue(), entry.getKey()));
-            }
-            return;
-        }
-
         for (IPort port : nodePorts) {
             if (port.getDataType() == NodeDataType.EXEC) {
                 continue;
