@@ -16,12 +16,12 @@
     ],
     "excludeCategories": [
       "utilities.organization",
-      "utilities.assist",
       "flow"
     ],
     "selectionExcludeCategories": [
       "output.export",
-      "utilities.fileio"
+      "utilities.fileio",
+      "utilities.assist"
     ],
     "excludeNodeIds": [
       "utilities.organization.subgraph_register",
