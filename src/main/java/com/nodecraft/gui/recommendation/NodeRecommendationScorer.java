@@ -39,7 +39,7 @@ final class NodeRecommendationScorer {
         String categoryId = info != null ? info.getCategoryId() : candidate.categoryId();
 
         int score = scoreTypeMatch(sourceDataType, candidate.dataType());
-        score += scoreWorkflowCategory(categoryId);
+        score += scoreWorkflowCategory(sourceDataType, categoryId);
         RuleMatch ruleMatch = scoreRuleTable(
                 direction,
                 sourceNodeTypeId,
@@ -99,8 +99,12 @@ final class NodeRecommendationScorer {
         return 0;
     }
 
-    private int scoreWorkflowCategory(String categoryId) {
+    private int scoreWorkflowCategory(NodeDataType sourceDataType, String categoryId) {
         if (categoryId == null || rules.defaults.workflowOrder.isEmpty()) {
+            return 0;
+        }
+        // Generic scalars must not inherit architecture/transform workflow bias.
+        if (isSelectionSilentSourceType(sourceDataType)) {
             return 0;
         }
         String lower = categoryId.toLowerCase(Locale.ROOT);
@@ -112,6 +116,23 @@ final class NodeRecommendationScorer {
             }
         }
         return 0;
+    }
+
+    private boolean isSelectionSilentSourceType(NodeDataType sourceDataType) {
+        if (sourceDataType == null || rules.defaults.selectionSilentTypes == null) {
+            return false;
+        }
+        String typeId = sourceDataType.getId();
+        if (typeId == null) {
+            return false;
+        }
+        String lower = typeId.toLowerCase(Locale.ROOT);
+        for (String silent : rules.defaults.selectionSilentTypes) {
+            if (silent != null && silent.equalsIgnoreCase(lower)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Soft demote preview-write candidates so bake/material stays ahead of ghost preview. */

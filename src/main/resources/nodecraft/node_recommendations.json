@@ -23,6 +23,13 @@
       "utilities.fileio",
       "utilities.assist"
     ],
+    "selectionSilentTypes": [
+      "double",
+      "float",
+      "integer",
+      "boolean",
+      "string"
+    ],
     "excludeNodeIds": [
       "utilities.organization.subgraph_register",
       "output.execute.undo_last_bake",

@@ -21,6 +21,12 @@ public final class NodeRecommendationRules {
         public List<String> excludeCategories = List.of();
         /** Categories hidden from Selection/Context Suggested unless an exact sourceNodes rule targets them. */
         public List<String> selectionExcludeCategories = List.of();
+        /**
+         * Source data-type ids that stay silent on Selection/Context unless an exact sourceNodes rule
+         * targets the port (Port Drag still uses full type compatibility). Also disables workflow
+         * category bonus for these types on all triggers.
+         */
+        public List<String> selectionSilentTypes = List.of();
         public List<String> excludeNodeIds = List.of();
     }
 

@@ -114,6 +114,8 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                     && sourcePort.dataType() == NodeDataType.LIST;
 
             boolean selectionOrContext = isSelectionOrContext(context);
+            boolean selectionSilentGate = selectionOrContext
+                    && isSelectionSilentType(sourcePort.dataType());
 
             for (NodePortIndex.CandidatePort candidate : candidates) {
                 if (shouldExclude(candidate.nodeId(), candidate.categoryId())) {
@@ -144,6 +146,11 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                                 rulePortKey,
                                 candidate.nodeId(),
                                 context.direction())) {
+                    continue;
+                }
+
+                // Selection: generic scalars stay silent unless an exact sourceNodes rule targets them.
+                if (selectionSilentGate && !hasExact) {
                     continue;
                 }
 
@@ -633,6 +640,23 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
             }
             String lowerExcluded = excludedCategory.toLowerCase(Locale.ROOT);
             if (lowerCategory.equals(lowerExcluded) || lowerCategory.startsWith(lowerExcluded + ".")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when source type is listed in {@code defaults.selectionSilentTypes}. */
+    private boolean isSelectionSilentType(NodeDataType dataType) {
+        if (dataType == null || rules.defaults.selectionSilentTypes == null) {
+            return false;
+        }
+        String typeId = dataType.getId();
+        if (typeId == null) {
+            return false;
+        }
+        for (String silent : rules.defaults.selectionSilentTypes) {
+            if (silent != null && silent.equalsIgnoreCase(typeId)) {
                 return true;
             }
         }
