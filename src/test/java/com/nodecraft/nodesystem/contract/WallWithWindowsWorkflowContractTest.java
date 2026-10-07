@@ -6,10 +6,11 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallSlabNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFrameNode;
 import com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode;
@@ -20,6 +21,7 @@ import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +31,10 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class WallWithWindowsWorkflowContractTest {
+
+    private static final double THICKNESS = 0.4d;
+    private static final double DEPTH = 0.8d;
+    private static final double NORMAL_EPS = 1.0e-6d;
 
     private static NodeRegistry registry;
 
@@ -48,14 +54,10 @@ class WallWithWindowsWorkflowContractTest {
         );
         BoxFaceData face = requireFace(box, "Front");
 
-        WallWithOpeningsNode wall = new WallWithOpeningsNode();
+        WallSlabProbe wall = new WallSlabProbe();
+        wall.connectInput("input_wall_thickness", NodeDataType.DOUBLE);
         wall.setInput("input_face", face);
-        wall.setInput("input_columns", 1);
-        wall.setInput("input_rows", 1);
-        wall.setInput("input_wall_thickness", 0.4d);
-        wall.setInput("input_opening_width", 0.5d);
-        wall.setInput("input_opening_height", 0.5d);
-        wall.setInput("input_margin", 0.4d);
+        wall.setInput("input_wall_thickness", THICKNESS);
         wall.processNode(null);
         assertEquals(Boolean.TRUE, wall.getOutput("output_valid"));
 
@@ -74,7 +76,7 @@ class WallWithWindowsWorkflowContractTest {
         windows.setInput("input_window_width", 1.2d);
         windows.setInput("input_window_height", 1.0d);
         windows.setInput("input_margin", 1.0d);
-        windows.setInput("input_depth", 0.8d);
+        windows.setInput("input_depth", DEPTH);
         windows.processNode(null);
         assertEquals(Boolean.TRUE, windows.getOutput("output_valid"));
         assertEquals(2, windows.getOutput("output_count"));
@@ -82,13 +84,12 @@ class WallWithWindowsWorkflowContractTest {
         GeometryData wallGeom = assertInstanceOf(GeometryData.class, wall.getOutput("output_geometry"));
         GeometryData openings = assertInstanceOf(GeometryData.class, windows.getOutput("output_openings"));
 
+        assertWindowCuttersFullyTraverseHostWallThickness(wallGeom, openings, face);
+
         BlockPosList solidWall = GeometryVoxelizer.voxelize(wallGeom, true);
         BlockPosList openingBlocks = GeometryVoxelizer.voxelize(openings, true);
         assertTrue(solidWall.size() > 0, "wall must produce voxels");
         assertTrue(openingBlocks.size() > 0, "openings must produce voxels");
-        assertTrue(setsOverlap(ArchitecturalVoxelAssert.toSolidSet(solidWall),
-                ArchitecturalVoxelAssert.toSolidSet(openingBlocks)),
-            "Window Array openings (centered on the face plane) must spatially overlap the wall slab");
 
         BaseNode difference = (BaseNode) registry.createNodeInstance("geometry.boolean.difference");
         difference.setInput("input_base", wallGeom);
@@ -132,7 +133,7 @@ class WallWithWindowsWorkflowContractTest {
         windows.setInput("input_rows", 1);
         windows.setInput("input_window_width", 1.2d);
         windows.setInput("input_window_height", 1.4d);
-        windows.setInput("input_depth", 0.8d);
+        windows.setInput("input_depth", DEPTH);
         windows.processNode(null);
 
         WindowFrameProbe frame = new WindowFrameProbe();
@@ -153,16 +154,54 @@ class WallWithWindowsWorkflowContractTest {
         assertInstanceOf(GeometryData.class, place.getOutput("output_geometry"));
     }
 
-    private static boolean setsOverlap(
-        Set<net.minecraft.util.math.BlockPos> a,
-        Set<net.minecraft.util.math.BlockPos> b
+    /**
+     * Centered face cutters must cover the full outward host slab [0, thickness]
+     * along the face normal — overlap alone is not enough.
+     */
+    private static void assertWindowCuttersFullyTraverseHostWallThickness(
+        GeometryData wallGeom,
+        GeometryData openings,
+        BoxFaceData face
     ) {
-        for (net.minecraft.util.math.BlockPos pos : a) {
-            if (b.contains(pos)) {
-                return true;
+        Vector3d faceCenter = face.getCenter();
+        Vector3d normal = new Vector3d(face.getNormal()).normalize();
+        double[] wallRange = rangeAlongNormal(wallGeom, faceCenter, normal);
+        double[] cutterRange = rangeAlongNormal(openings, faceCenter, normal);
+
+        assertTrue(wallRange[0] <= NORMAL_EPS,
+            "host wall should start at face plane (got min=" + wallRange[0] + ")");
+        assertTrue(wallRange[1] + NORMAL_EPS >= THICKNESS,
+            "host wall should reach +thickness (got max=" + wallRange[1] + ")");
+        assertTrue(cutterRange[0] <= wallRange[0] + NORMAL_EPS
+                && cutterRange[1] + NORMAL_EPS >= wallRange[1],
+            "cutter [" + cutterRange[0] + "," + cutterRange[1]
+                + "] must cover host [" + wallRange[0] + "," + wallRange[1] + "]");
+        assertTrue(DEPTH + NORMAL_EPS >= 2.0d * THICKNESS,
+            "test depth must be >= 2× thickness for centered cutters");
+    }
+
+    private static double[] rangeAlongNormal(GeometryData geometry, Vector3d origin, Vector3d normal) {
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+        for (BoxGeometryData box : collectBoxes(geometry)) {
+            for (Vector3d corner : box.getCorners()) {
+                double t = new Vector3d(corner).sub(origin).dot(normal);
+                min = Math.min(min, t);
+                max = Math.max(max, t);
             }
         }
-        return false;
+        assertTrue(Double.isFinite(min) && Double.isFinite(max), "expected box geometry along normal");
+        return new double[]{min, max};
+    }
+
+    private static List<BoxGeometryData> collectBoxes(GeometryData geometry) {
+        List<GeometryData> leaves = new ArrayList<>();
+        CompositeGeometryData.appendLeaves(leaves, geometry);
+        List<BoxGeometryData> boxes = new ArrayList<>();
+        for (GeometryData leaf : leaves) {
+            boxes.add(assertInstanceOf(BoxGeometryData.class, leaf));
+        }
+        return boxes;
     }
 
     private static void connectInput(BaseNode target, String inputPortId, NodeDataType outputType) {
@@ -174,6 +213,12 @@ class WallWithWindowsWorkflowContractTest {
             .orElseThrow(() -> new AssertionError(target.getTypeId() + " missing port " + inputPortId));
         assertTrue(output.connectTo(input), inputPortId + " connect failed");
         target.getInput(inputPortId);
+    }
+
+    private static final class WallSlabProbe extends WallSlabNode {
+        void connectInput(String portId, NodeDataType outputType) {
+            WallWithWindowsWorkflowContractTest.connectInput(this, portId, outputType);
+        }
     }
 
     private static final class WindowArrayProbe extends WindowArrayNode {

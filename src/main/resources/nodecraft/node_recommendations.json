@@ -220,6 +220,45 @@
         }
       }
     },
+    "geometry.architectural_primitives.wall_slab": {
+      "outputs": {
+        "output_geometry": {
+          "downstream": [
+            {
+              "nodeId": "geometry.boolean.difference",
+              "order": 0,
+              "reason": "墙体作为差集底板",
+              "connectPortId": "input_base"
+            },
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 10,
+              "connectPortId": "input_geometry_0"
+            },
+            {
+              "nodeId": "output.preview.preview_geometry",
+              "order": 20,
+              "connectPortId": "input_geometry"
+            }
+          ]
+        },
+        "output_top_edge": {
+          "downstream": [
+            {
+              "nodeId": "geometry.architectural_primitives.railing",
+              "order": 0,
+              "reason": "墙顶栏杆",
+              "connectPortId": "input_path"
+            },
+            {
+              "nodeId": "geometry.architectural_primitives.beam_along_path",
+              "order": 10,
+              "connectPortId": "input_path"
+            }
+          ]
+        }
+      }
+    },
     "geometry.architectural_primitives.wall_with_openings": {
       "outputs": {
         "output_geometry": {

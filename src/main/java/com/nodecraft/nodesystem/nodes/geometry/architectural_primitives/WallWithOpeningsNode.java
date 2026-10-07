@@ -5,14 +5,10 @@ import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
-import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
-import com.nodecraft.nodesystem.datatypes.LineData;
-import com.nodecraft.nodesystem.datatypes.PathData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -30,12 +26,15 @@ import java.util.UUID;
  * Does <strong>not</strong> boolean-subtract openings into the wall. Connect
  * {@code output_geometry} and {@code output_openings} to a Difference node
  * when a cut wall is required.
+ * <p>
+ * Prefer {@code wall_slab} + Window/Door Array + Difference when openings are
+ * owned by a separate array node (avoids a second unused opening layout).
  */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.wall_with_openings",
     displayName = "Wall With Openings",
-    description = "Generates a wall slab and separate opening volumes (use Difference to cut holes)",
+    description = "Wall slab plus opening volumes (prefer Wall Slab + Window Array + Difference when openings are owned elsewhere)",
     category = "geometry.architectural_primitives",
     order = 9
 )
@@ -94,7 +93,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
 
     @Override
     public String getDescription() {
-        return "Generates a wall slab and separate opening volumes (use Difference to cut holes)";
+        return "Wall slab plus opening volumes (prefer Wall Slab + Window Array + Difference when openings are owned elsewhere)";
     }
 
     @Override
@@ -175,7 +174,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
             return;
         }
 
-        GeometryData wallGeometry = createWall(frame, wallThickness);
+        GeometryData wallGeometry = WallHostSupport.createWallSlab(frame, wallThickness);
         List<GeometryData> openings = buildOpenings(layout, openingDepth);
         if (openings == null) {
             writeInvalid("Failed to generate array geometry");
@@ -184,21 +183,14 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
 
         outputValues.put(OUTPUT_GEOMETRY_ID, wallGeometry);
         outputValues.put(OUTPUT_OPENINGS_ID, GeometryOutputUtils.packGeometry(openings));
-        outputValues.put(OUTPUT_TOP_EDGE_ID, edgePath(frame, frame.height() / 2.0d));
-        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, edgePath(frame, -frame.height() / 2.0d));
-        outputValues.put(OUTPUT_CENTER_LINE_ID, edgePath(frame, 0.0d));
-        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, planarFace("exterior", frame, 0.0d, new Vector3d(frame.zAxis()).negate()));
-        outputValues.put(OUTPUT_INTERIOR_FACE_ID, planarFace("interior", frame, wallThickness, frame.zAxis()));
+        outputValues.put(OUTPUT_TOP_EDGE_ID, WallHostSupport.edgePath(frame, frame.height() / 2.0d));
+        outputValues.put(OUTPUT_BOTTOM_EDGE_ID, WallHostSupport.edgePath(frame, -frame.height() / 2.0d));
+        outputValues.put(OUTPUT_CENTER_LINE_ID, WallHostSupport.edgePath(frame, 0.0d));
+        outputValues.put(OUTPUT_EXTERIOR_FACE_ID, WallHostSupport.exteriorFace(frame));
+        outputValues.put(OUTPUT_INTERIOR_FACE_ID, WallHostSupport.interiorFace(frame, wallThickness));
         outputValues.put(OUTPUT_COUNT_ID, columns * rows);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    private BoxGeometryData createWall(ArchitecturalPrimitiveSupport.FaceFrame frame, double wallThickness) {
-        // Host slab occupies 0..thickness along +outward normal from the face plane.
-        Vector3d center = new Vector3d(frame.center()).fma(wallThickness / 2.0d, frame.zAxis());
-        Vector3d halfExtents = new Vector3d(frame.width() / 2.0d, frame.height() / 2.0d, wallThickness / 2.0d);
-        return ArchitecturalPrimitiveSupport.createOrientedBox(center, halfExtents, frame.xAxis(), frame.yAxis(), frame.zAxis());
     }
 
     private @Nullable List<GeometryData> buildOpenings(FaceArrayLayout layout, double openingDepth) {
@@ -208,37 +200,6 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
             return ArchitecturalPrimitiveSupport.createOrientedBox(
                 center, halfExtents, layout.frame().xAxis(), layout.frame().yAxis(), layout.frame().zAxis());
         });
-    }
-
-    private static PathData edgePath(ArchitecturalPrimitiveSupport.FaceFrame frame, double heightOffset) {
-        Vector3d left = new Vector3d(frame.center())
-            .fma(-frame.width() / 2.0d, frame.xAxis())
-            .fma(heightOffset, frame.yAxis());
-        Vector3d right = new Vector3d(frame.center())
-            .fma(frame.width() / 2.0d, frame.xAxis())
-            .fma(heightOffset, frame.yAxis());
-        return PathData.fromLine(new LineData(
-            new Vec3d(left.x, left.y, left.z),
-            new Vec3d(right.x, right.y, right.z)
-        ));
-    }
-
-    private static BoxFaceData planarFace(
-        String name,
-        ArchitecturalPrimitiveSupport.FaceFrame frame,
-        double depthAlongNormal,
-        Vector3d outwardNormal
-    ) {
-        Vector3d center = new Vector3d(frame.center()).fma(depthAlongNormal, frame.zAxis());
-        Vector3d hx = new Vector3d(frame.xAxis()).mul(frame.width() / 2.0d);
-        Vector3d hy = new Vector3d(frame.yAxis()).mul(frame.height() / 2.0d);
-        List<Vector3d> corners = List.of(
-            new Vector3d(center).sub(hx).sub(hy),
-            new Vector3d(center).add(hx).sub(hy),
-            new Vector3d(center).add(hx).add(hy),
-            new Vector3d(center).sub(hx).add(hy)
-        );
-        return new BoxFaceData(0, name, List.of(0, 1, 2, 3), corners, center, outwardNormal);
     }
 
     private void writeInvalid(String error) {

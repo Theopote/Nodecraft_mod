@@ -2473,7 +2473,7 @@
         {
           "id": "architectural.workflow.wall_with_windows",
           "displayName": "Wall + Windows",
-          "description": "Wall slab →Difference (Window Array openings as sole cutter) + Window Frame on frames →Combine →Preview. Window Array owns opening count/size/placement.",
+          "description": "Wall Slab host → Difference (Window Array openings as sole cutter; depth = 2× wall thickness for centered cutters through outward wall) + Window Frame on frames → Combine → Preview. Window Array owns opening count/size/placement.",
           "kind": "composite",
           "nodes": [
             {
@@ -2551,8 +2551,23 @@
               }
             },
             {
+              "ref": "depth_factor",
+              "typeId": "input.numeric.float",
+              "x": 280,
+              "y": 1200,
+              "state": {
+                "value": 2.0
+              }
+            },
+            {
+              "ref": "opening_depth",
+              "typeId": "math.scalar_math.multiplication",
+              "x": 520,
+              "y": 1060
+            },
+            {
               "ref": "wall",
-              "typeId": "geometry.architectural_primitives.wall_with_openings",
+              "typeId": "geometry.architectural_primitives.wall_slab",
               "x": 520,
               "y": 60
             },
@@ -2560,10 +2575,7 @@
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
               "x": 520,
-              "y": 300,
-              "state": {
-                "defaultDepth": 0.5
-              }
+              "y": 300
             },
             {
               "ref": "window_frame",
@@ -2620,6 +2632,24 @@
               "fromPort": "output_value",
               "toRef": "wall",
               "toPort": "input_wall_thickness"
+            },
+            {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "opening_depth",
+              "toPort": "input_a"
+            },
+            {
+              "fromRef": "depth_factor",
+              "fromPort": "output_value",
+              "toRef": "opening_depth",
+              "toPort": "input_b"
+            },
+            {
+              "fromRef": "opening_depth",
+              "fromPort": "output_product",
+              "toRef": "windows",
+              "toPort": "input_depth"
             },
             {
               "fromRef": "win_cols",

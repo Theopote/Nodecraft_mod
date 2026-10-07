@@ -15,6 +15,7 @@ import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofBase
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.RoofGeneratorNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.StaircaseNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallAlongPathNode;
+import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallSlabNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WallWithOpeningsNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowArrayNode;
 import com.nodecraft.nodesystem.nodes.geometry.architectural_primitives.WindowFrameNode;
@@ -91,6 +92,19 @@ class ArchitecturalFamilyContractTest {
         assertPortType(new BeamGridNode(), "output_center_lines", NodeDataType.PATH_LIST);
         assertPortType(new RoofBaseNode(), "output_ridge_path", NodeDataType.PATH);
         assertPortType(new RoofGeneratorNode(), "output_ridge_path", NodeDataType.PATH);
+    }
+
+    @Test
+    void wallSlabIsFaceHostWithoutOpenings() {
+        assertNotNull(registry.createNodeInstance("geometry.architectural_primitives.wall_slab"));
+        assertPortType(new WallSlabNode(), "input_face", NodeDataType.BOX_FACE);
+        assertPortType(new WallSlabNode(), "input_wall_thickness", NodeDataType.DOUBLE);
+        assertPortType(new WallSlabNode(), "output_geometry", NodeDataType.GEOMETRY);
+        assertPortType(new WallSlabNode(), "output_exterior_face", NodeDataType.BOX_FACE);
+        assertPortType(new WallSlabNode(), "output_interior_face", NodeDataType.BOX_FACE);
+        WallSlabNode slab = new WallSlabNode();
+        assertTrue(allPorts(slab).stream().noneMatch(p -> "output_openings".equals(p.getId())));
+        assertTrue(allPorts(slab).stream().noneMatch(p -> "input_columns".equals(p.getId())));
     }
 
     @Test

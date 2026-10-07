@@ -299,10 +299,16 @@ class ArchitecturalWorkflowPresetsContractTest {
         GraphPresetRules.GraphPresetDefinition preset = findPreset(rules, "architectural.workflow.wall_with_windows");
         assertNotNull(preset);
 
+        assertTrue(preset.nodes.stream().anyMatch(n ->
+            "geometry.architectural_primitives.wall_slab".equals(n.typeId) && "wall".equals(n.ref)));
+        assertFalse(preset.nodes.stream().anyMatch(n ->
+            "geometry.architectural_primitives.wall_with_openings".equals(n.typeId)));
         assertTrue(preset.nodes.stream().anyMatch(n -> "geometry.boolean.difference".equals(n.typeId)));
         assertTrue(preset.nodes.stream().anyMatch(n -> "geometry.architectural_primitives.window_frame".equals(n.typeId)));
         assertTrue(preset.nodes.stream().anyMatch(n ->
             "transform.placement.place_geometry_on_frames".equals(n.typeId)));
+        assertTrue(preset.nodes.stream().anyMatch(n ->
+            "math.scalar_math.multiplication".equals(n.typeId) && "opening_depth".equals(n.ref)));
 
         assertTrue(preset.connections.stream().anyMatch(c ->
             "windows".equals(c.fromRef) && "output_openings".equals(c.fromPort) && "cut".equals(c.toRef)));
@@ -314,6 +320,19 @@ class ArchitecturalWorkflowPresetsContractTest {
             "windows".equals(c.fromRef)
                 && "output_openings".equals(c.fromPort)
                 && "combine".equals(c.toRef)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "wall_thickness".equals(c.fromRef)
+                && "opening_depth".equals(c.toRef)
+                && "input_a".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "depth_factor".equals(c.fromRef)
+                && "opening_depth".equals(c.toRef)
+                && "input_b".equals(c.toPort)));
+        assertTrue(preset.connections.stream().anyMatch(c ->
+            "opening_depth".equals(c.fromRef)
+                && "output_product".equals(c.fromPort)
+                && "windows".equals(c.toRef)
+                && "input_depth".equals(c.toPort)));
         assertTrue(preset.connections.stream().anyMatch(c ->
             "win_width".equals(c.fromRef) && "windows".equals(c.toRef)));
         assertTrue(preset.connections.stream().anyMatch(c ->

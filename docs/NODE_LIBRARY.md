@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **537**
+- Total nodes: **538**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -12,7 +12,7 @@
 | `flow.control` | 4 |
 | `flow.loop` | 2 |
 | `geometry.analysis` | 3 |
-| `geometry.architectural_primitives` | 19 |
+| `geometry.architectural_primitives` | 20 |
 | `geometry.boolean` | 2 |
 | `geometry.combine` | 1 |
 | `geometry.curves` | 28 |
@@ -94,7 +94,7 @@
 | Geometry Bounds | `geometry.analysis.geometry_bounds` | Calculates a continuous AABB from any supported geometry | `GeometryBoundsNode` |
 | Convex Hull 3D From Points | `geometry.analysis.convex_hull_3d` | Builds a 3D convex hull mesh from points; intended for small clouds due to brute-force enumeration; coplanar / collinear inputs yield no facets | `ConvexHull3DFromPointsNode` |
 
-## geometry.architectural_primitives (19)
+## geometry.architectural_primitives (20)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -107,7 +107,7 @@
 | Roof Generator | `geometry.architectural_primitives.roof_generator` | Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable | `RoofGeneratorNode` |
 | Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
 | Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
-| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Generates a wall slab and separate opening volumes (use Difference to cut holes) | `WallWithOpeningsNode` |
+| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Wall slab plus opening volumes (prefer Wall Slab + Window Array + Difference when openings are owned elsewhere) | `WallWithOpeningsNode` |
 | Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
 | Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
 | Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
@@ -117,6 +117,7 @@
 | Beam Along Path | `geometry.architectural_primitives.beam_along_path` | Generates one structural beam box per path segment (not a continuous sweep) | `BeamAlongPathNode` |
 | Column | `geometry.architectural_primitives.column` | Generates a single column from a frame or base point | `ColumnNode` |
 | Window Frame | `geometry.architectural_primitives.window_frame` | Generates a hollow window frame solid aligned to local X/Y/Z for placement on frames | `WindowFrameNode` |
+| Wall Slab | `geometry.architectural_primitives.wall_slab` | Generates a solid wall slab from a box face (no openings; use Window Array + Difference to cut) | `WallSlabNode` |
 
 ## geometry.boolean (2)
 
