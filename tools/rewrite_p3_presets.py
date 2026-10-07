@@ -46,6 +46,36 @@ def block_tail_conns(from_ref: str, from_port: str = "output_geometry") -> list[
     ]
 
 
+def placement_tail_nodes(block_type: str) -> list[dict]:
+    """Preview/Voxelize/Material + POINT→VECTOR adapters + block type selector."""
+    return [
+        node("preview_geometry", "output.preview.preview_geometry", 1100, 120),
+        node("voxelize", "geometry.voxel.voxelize_geometry", 1100, 320),
+        node("material", "material.basic_assignment.assign_block_type", 1360, 320),
+        node("material_block_type", "input.type_selectors.block_type_selector", 1400, 460, {
+            "selectedBlock": block_type,
+        }),
+        node("preview_blocks", "output.preview.preview_blocks", 1620, 320),
+        node("move_to_pos_point_deconstruct", "reference.points.deconstruct_point", 560, 420),
+        node("move_to_pos_point_as_vector", "reference.vectors.construct_vector", 780, 420),
+    ]
+
+
+def placement_tail_conns(from_ref: str, from_port: str = "output_geometry") -> list[dict]:
+    return [
+        conn("player_pos", "output_position", "move_to_pos_point_deconstruct", "input_point"),
+        conn("move_to_pos_point_deconstruct", "output_x", "move_to_pos_point_as_vector", "input_x"),
+        conn("move_to_pos_point_deconstruct", "output_y", "move_to_pos_point_as_vector", "input_y"),
+        conn("move_to_pos_point_deconstruct", "output_z", "move_to_pos_point_as_vector", "input_z"),
+        conn("move_to_pos_point_as_vector", "output_vector", "move_to_pos", "input_translation"),
+        conn(from_ref, from_port, "preview_geometry", "input_geometry"),
+        conn(from_ref, from_port, "voxelize", "input_geometry"),
+        conn("voxelize", "output_blocks", "material", "input_coordinates"),
+        conn("material_block_type", "output_block_id", "material", "input_block_type"),
+        conn("material", "output_placements", "preview_blocks", "input_block_placements"),
+    ]
+
+
 def cottage_chain(
     preset_id: str,
     display_name: str,
@@ -419,8 +449,8 @@ P3_PRESETS: dict[str, dict] = {
         "id": "decorative.fountain_circular",
         "displayName": "Circular Fountain",
         "description": (
-            "Outer basin − inner hollow + tier + center spout with explicit dimensions → "
-            "Preview Geometry and block preview chain."
+            "Basin with floor (inner cutter starts at Y=0.25) − hollow + tier + spout seated on "
+            "the floor → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
@@ -430,21 +460,21 @@ P3_PRESETS: dict[str, dict] = {
                 "endX": 0.0, "endY": 1.0, "endZ": 0.0, "radius": 5.0,
             }),
             node("inner_hollow", "geometry.primitives.cylinder", 0, 360, {
-                "startX": 0.0, "startY": 0.0, "startZ": 0.0,
+                "startX": 0.0, "startY": 0.25, "startZ": 0.0,
                 "endX": 0.0, "endY": 1.2, "endZ": 0.0, "radius": 4.0,
             }),
             node("basin", "geometry.boolean.difference", 280, 260),
             node("inner_tier", "geometry.primitives.cylinder", 0, 540, {
-                "startX": 0.0, "startY": 1.0, "startZ": 0.0,
+                "startX": 0.0, "startY": 0.25, "startZ": 0.0,
                 "endX": 0.0, "endY": 2.5, "endZ": 0.0, "radius": 2.5,
             }),
             node("center_spout", "geometry.primitives.cylinder", 0, 720, {
-                "startX": 0.0, "startY": 1.0, "startZ": 0.0,
+                "startX": 0.0, "startY": 0.25, "startZ": 0.0,
                 "endX": 0.0, "endY": 4.0, "endZ": 0.0, "radius": 0.4,
             }),
             node("combine", "geometry.combine.geometry", 560, 420, {"inputCount": 3}),
             node("move_to_pos", "transform.basic_transforms.move_geometry", 800, 420),
-            *block_tail_nodes(),
+            *placement_tail_nodes("minecraft:stone_bricks"),
         ],
         "connections": [
             conn("outer_basin", "output_geometry", "basin", "input_base"),
@@ -453,55 +483,67 @@ P3_PRESETS: dict[str, dict] = {
             conn("inner_tier", "output_geometry", "combine", "input_geometry_1"),
             conn("center_spout", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            *block_tail_conns("move_to_pos"),
+            *placement_tail_conns("move_to_pos"),
         ],
     },
     "decorative.gazebo": {
         "id": "decorative.gazebo",
-        "displayName": "Garden Gazebo",
+        "displayName": "Open Garden Pavilion",
         "description": (
-            "Floor slab + Polar Array columns + Roof Base on host volume → "
-            "Preview Geometry and block preview chain."
+            "Square host: floor slab + polar columns + gable Roof Base. Shared pavilion_height "
+            "drives volume sizeY and column tops → Preview Geometry, Voxelize → Assign Block Type "
+            "→ Preview Blocks."
         ),
         "kind": "composite",
         "nodes": [
             node("player_pos", "input.context.player_position", 0, 40),
-            node("volume", "geometry.primitives.box_from_corner_size", 0, 200, {
+            node("pavilion_height", "input.numeric.float", 0, 120, {"value": 3.5}),
+            node("ring_radius", "input.numeric.float", 0, 260, {"value": 4.0}),
+            node("zero", "input.numeric.float", 0, 400, {"value": 0.0}),
+            node("volume", "geometry.primitives.box_from_corner_size", 280, 200, {
                 "cornerX": -5.0, "cornerY": 0.0, "cornerZ": -5.0,
                 "sizeX": 10.0, "sizeY": 3.5, "sizeZ": 10.0,
             }),
-            node("floor_face", "reference.points.get_box_face", 280, 120, {"defaultFaceName": "bottom"}),
-            node("roof_face", "reference.points.get_box_face", 280, 320, {"defaultFaceName": "top"}),
-            node("floor", "geometry.architectural_primitives.floor_slab", 520, 120),
-            node("column", "geometry.primitives.cylinder", 0, 480, {
-                "startX": 4.0, "startY": 0.0, "startZ": 0.0,
-                "endX": 4.0, "endY": 3.5, "endZ": 0.0, "radius": 0.25,
+            node("floor_face", "reference.points.get_box_face", 520, 120, {"defaultFaceName": "bottom"}),
+            node("roof_face", "reference.points.get_box_face", 520, 320, {"defaultFaceName": "top"}),
+            node("floor", "geometry.architectural_primitives.floor_slab", 760, 120),
+            node("column_start", "reference.points.construct_point", 280, 480),
+            node("column_end", "reference.points.construct_point", 280, 620),
+            node("column", "geometry.primitives.cylinder", 520, 520, {"radius": 0.25}),
+            node("column_count", "input.numeric.integer", 520, 700, {"value": 8}),
+            node("column_span", "input.numeric.float", 520, 840, {"value": 360.0}),
+            node("columns", "pattern.radial.polar_array", 800, 520, {"includeEnd": False}),
+            node("roof", "geometry.architectural_primitives.roof_base", 760, 320),
+            node("roof_type", "input.values.dropdown", 520, 980, {
+                "options": "flat,shed,gable", "selectedIndex": 2,
             }),
-            node("column_count", "input.numeric.integer", 280, 480, {"value": 8}),
-            node("column_span", "input.numeric.float", 280, 620, {"value": 360.0}),
-            node("columns", "pattern.radial.polar_array", 560, 480, {"includeEnd": False}),
-            node("roof", "geometry.architectural_primitives.roof_base", 520, 320),
-            node("roof_type", "input.values.text_input", 280, 760, {"text": "gable", "multiline": False}),
-            node("combine", "geometry.combine.geometry", 800, 280, {"inputCount": 3}),
-            node("move_to_pos", "transform.basic_transforms.move_geometry", 1040, 280),
-            *block_tail_nodes(),
+            node("combine", "geometry.combine.geometry", 1040, 320, {"inputCount": 3}),
+            node("move_to_pos", "transform.basic_transforms.move_geometry", 1280, 320),
+            *placement_tail_nodes("minecraft:oak_planks"),
         ],
         "connections": [
+            conn("pavilion_height", "output_value", "volume", "input_size_y"),
             conn("volume", "output_box_geometry", "floor_face", "input_box_geometry"),
             conn("volume", "output_box_geometry", "roof_face", "input_box_geometry"),
             conn("floor_face", "output_face", "floor", "input_face"),
+            conn("ring_radius", "output_value", "column_start", "input_x"),
+            conn("zero", "output_value", "column_start", "input_y"),
+            conn("zero", "output_value", "column_start", "input_z"),
+            conn("ring_radius", "output_value", "column_end", "input_x"),
+            conn("pavilion_height", "output_value", "column_end", "input_y"),
+            conn("zero", "output_value", "column_end", "input_z"),
+            conn("column_start", "output_point", "column", "input_start"),
+            conn("column_end", "output_point", "column", "input_end"),
             conn("column", "output_geometry", "columns", "input_geometry"),
             conn("column_count", "output_value", "columns", "input_count"),
             conn("column_span", "output_value", "columns", "input_total_angle"),
             conn("roof_face", "output_face", "roof", "input_face"),
-            conn("roof_type", "output_text", "roof", "input_roof_type"),
+            conn("roof_type", "output_value", "roof", "input_roof_type"),
             conn("floor", "output_geometry", "combine", "input_geometry_0"),
             conn("columns", "output_geometry", "combine", "input_geometry_1"),
             conn("roof", "output_geometry", "combine", "input_geometry_2"),
             conn("combine", "output_geometry", "move_to_pos", "input_geometry"),
-            conn("player_pos", "output_position", "move_to_pos", "input_translation"),
-            *block_tail_conns("move_to_pos"),
+            *placement_tail_conns("move_to_pos"),
         ],
     },
     "styles.fantasy.wizard_tower": {

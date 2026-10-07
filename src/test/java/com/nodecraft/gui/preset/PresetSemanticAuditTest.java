@@ -634,6 +634,26 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": battlement_count must drive polar_array input_count");
                 }
             }
+            case "decorative.fountain_circular" -> {
+                GraphPresetRules.PresetNode outer = nodeByRef.get("outer_basin");
+                GraphPresetRules.PresetNode inner = nodeByRef.get("inner_hollow");
+                GraphPresetRules.PresetNode tier = nodeByRef.get("inner_tier");
+                GraphPresetRules.PresetNode spout = nodeByRef.get("center_spout");
+                Double outerY = outer == null ? null : numericStateValue(outer.state, "startY");
+                Double innerY = inner == null ? null : numericStateValue(inner.state, "startY");
+                Double tierY = tier == null ? null : numericStateValue(tier.state, "startY");
+                Double spoutY = spout == null ? null : numericStateValue(spout.state, "startY");
+                if (outerY == null || innerY == null || !(innerY > outerY)) {
+                    errors.add(preset.id + ": inner_hollow.startY must be > outer_basin.startY"
+                            + " (retain basin floor)");
+                }
+                if (innerY == null || tierY == null || spoutY == null
+                        || Math.abs(tierY - innerY) > 1.0e-6d
+                        || Math.abs(spoutY - innerY) > 1.0e-6d) {
+                    errors.add(preset.id + ": inner_tier and center_spout must start at"
+                            + " inner_hollow.startY (seat on basin floor)");
+                }
+            }
             case "decorative.gazebo" -> {
                 GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
                 Double cornerX = volume == null ? null : numericStateValue(volume.state, "cornerX");
@@ -641,6 +661,19 @@ class PresetSemanticAuditTest {
                 if (cornerX == null || cornerZ == null || cornerX >= -0.1d || cornerZ >= -0.1d) {
                     errors.add(preset.id + ": volume must be centered (negative cornerX/Z)"
                             + " so polar columns at r=4 stay on the floor slab");
+                }
+                if (!"pavilion_height".equals(incomingFromRef(preset, "volume", "input_size_y"))) {
+                    errors.add(preset.id + ": pavilion_height must drive volume.input_size_y");
+                }
+                if (!"pavilion_height".equals(incomingFromRef(preset, "column_end", "input_y"))) {
+                    errors.add(preset.id + ": pavilion_height must drive column_end.input_y");
+                }
+                GraphPresetRules.PresetNode roofType = nodeByRef.get("roof_type");
+                if (roofType == null || !"input.values.dropdown".equals(roofType.typeId)) {
+                    errors.add(preset.id + ": roof_type must be input.values.dropdown");
+                }
+                if (!"roof_type".equals(incomingFromRef(preset, "roof", "input_roof_type"))) {
+                    errors.add(preset.id + ": roof_type must drive roof.input_roof_type");
                 }
             }
             case "styles.medieval.castle_keep" -> {

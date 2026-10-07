@@ -5793,7 +5793,7 @@
         {
           "id": "decorative.fountain_circular",
           "displayName": "Circular Fountain",
-          "description": "Outer basin −inner hollow + tier + center spout with explicit dimensions →Preview Geometry and block preview chain.",
+          "description": "Basin with floor (inner cutter starts at Y=0.25) − hollow + tier + spout seated on the floor → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -5824,7 +5824,7 @@
               "y": 360,
               "state": {
                 "startX": 0.0,
-                "startY": 0.0,
+                "startY": 0.25,
                 "startZ": 0.0,
                 "endX": 0.0,
                 "endY": 1.2,
@@ -5845,7 +5845,7 @@
               "y": 540,
               "state": {
                 "startX": 0.0,
-                "startY": 1.0,
+                "startY": 0.25,
                 "startZ": 0.0,
                 "endX": 0.0,
                 "endY": 2.5,
@@ -5860,7 +5860,7 @@
               "y": 720,
               "state": {
                 "startX": 0.0,
-                "startY": 1.0,
+                "startY": 0.25,
                 "startZ": 0.0,
                 "endX": 0.0,
                 "endY": 4.0,
@@ -5886,47 +5886,47 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 120
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 320
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "preview_blocks",
-              "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 380.0,
-              "y": 420.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 600.0,
-              "y": 420.0
+              "x": 1360,
+              "y": 320
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 840.0,
-              "y": 800.0,
+              "x": 1400,
+              "y": 460,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1620,
+              "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 560,
+              "y": 420
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 780,
+              "y": 420
             }
           ],
           "connections": [
@@ -5967,30 +5967,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
-            },
-            {
               "fromRef": "player_pos",
               "fromPort": "output_position",
               "toRef": "move_to_pos_point_deconstruct",
@@ -6021,17 +5997,41 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         },
         {
           "id": "decorative.gazebo",
-          "displayName": "Garden Gazebo",
-          "description": "Floor slab + Polar Array columns + Roof Base on host volume →Preview Geometry and block preview chain.",
+          "displayName": "Open Garden Pavilion",
+          "description": "Square host: floor slab + polar columns + gable Roof Base. Shared pavilion_height drives volume sizeY and column tops → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
           "kind": "composite",
           "nodes": [
             {
@@ -6041,9 +6041,36 @@
               "y": 40
             },
             {
+              "ref": "pavilion_height",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 120,
+              "state": {
+                "value": 3.5
+              }
+            },
+            {
+              "ref": "ring_radius",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 260,
+              "state": {
+                "value": 4.0
+              }
+            },
+            {
+              "ref": "zero",
+              "typeId": "input.numeric.float",
+              "x": 0,
+              "y": 400,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
+              "x": 280,
               "y": 200,
               "state": {
                 "cornerX": -5.0,
@@ -6057,7 +6084,7 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
+              "x": 520,
               "y": 120,
               "state": {
                 "defaultFaceName": "bottom"
@@ -6066,7 +6093,7 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
+              "x": 520,
               "y": 320,
               "state": {
                 "defaultFaceName": "top"
@@ -6075,29 +6102,35 @@
             {
               "ref": "floor",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 520,
+              "x": 760,
               "y": 120
+            },
+            {
+              "ref": "column_start",
+              "typeId": "reference.points.construct_point",
+              "x": 280,
+              "y": 480
+            },
+            {
+              "ref": "column_end",
+              "typeId": "reference.points.construct_point",
+              "x": 280,
+              "y": 620
             },
             {
               "ref": "column",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 480,
+              "x": 520,
+              "y": 520,
               "state": {
-                "startX": 4.0,
-                "startY": 0.0,
-                "startZ": 0.0,
-                "endX": 4.0,
-                "endY": 3.5,
-                "endZ": 0.0,
                 "radius": 0.25
               }
             },
             {
               "ref": "column_count",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 480,
+              "x": 520,
+              "y": 700,
               "state": {
                 "value": 8
               }
@@ -6105,8 +6138,8 @@
             {
               "ref": "column_span",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 620,
+              "x": 520,
+              "y": 840,
               "state": {
                 "value": 360.0
               }
@@ -6114,8 +6147,8 @@
             {
               "ref": "columns",
               "typeId": "pattern.radial.polar_array",
-              "x": 560,
-              "y": 480,
+              "x": 800,
+              "y": 520,
               "state": {
                 "includeEnd": false
               }
@@ -6123,24 +6156,24 @@
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 520,
+              "x": 760,
               "y": 320
             },
             {
               "ref": "roof_type",
-              "typeId": "input.values.text_input",
-              "x": 280,
-              "y": 760,
+              "typeId": "input.values.dropdown",
+              "x": 520,
+              "y": 980,
               "state": {
-                "text": "gable",
-                "multiline": false
+                "options": "flat,shed,gable",
+                "selectedIndex": 2
               }
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 800,
-              "y": 280,
+              "x": 1040,
+              "y": 320,
               "state": {
                 "inputCount": 3
               }
@@ -6148,56 +6181,62 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1040,
-              "y": 280
+              "x": 1280,
+              "y": 320
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 120
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1100,
+              "y": 320
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "preview_blocks",
-              "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
-            },
-            {
-              "ref": "move_to_pos_point_deconstruct",
-              "typeId": "reference.points.deconstruct_point",
-              "x": 620.0,
-              "y": 280.0
-            },
-            {
-              "ref": "move_to_pos_point_as_vector",
-              "typeId": "reference.vectors.construct_vector",
-              "x": 840.0,
-              "y": 280.0
+              "x": 1360,
+              "y": 320
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1080.0,
-              "y": 840.0,
+              "x": 1400,
+              "y": 460,
               "state": {
                 "selectedBlock": "minecraft:oak_planks"
               }
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1620,
+              "y": 320
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 560,
+              "y": 420
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 780,
+              "y": 420
             }
           ],
           "connections": [
+            {
+              "fromRef": "pavilion_height",
+              "fromPort": "output_value",
+              "toRef": "volume",
+              "toPort": "input_size_y"
+            },
             {
               "fromRef": "volume",
               "fromPort": "output_box_geometry",
@@ -6215,6 +6254,54 @@
               "fromPort": "output_face",
               "toRef": "floor",
               "toPort": "input_face"
+            },
+            {
+              "fromRef": "ring_radius",
+              "fromPort": "output_value",
+              "toRef": "column_start",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "column_start",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "column_start",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "ring_radius",
+              "fromPort": "output_value",
+              "toRef": "column_end",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "pavilion_height",
+              "fromPort": "output_value",
+              "toRef": "column_end",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "zero",
+              "fromPort": "output_value",
+              "toRef": "column_end",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "column_start",
+              "fromPort": "output_point",
+              "toRef": "column",
+              "toPort": "input_start"
+            },
+            {
+              "fromRef": "column_end",
+              "fromPort": "output_point",
+              "toRef": "column",
+              "toPort": "input_end"
             },
             {
               "fromRef": "column",
@@ -6242,7 +6329,7 @@
             },
             {
               "fromRef": "roof_type",
-              "fromPort": "output_text",
+              "fromPort": "output_value",
               "toRef": "roof",
               "toPort": "input_roof_type"
             },
@@ -6271,30 +6358,6 @@
               "toPort": "input_geometry"
             },
             {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "preview_geometry",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "move_to_pos",
-              "fromPort": "output_geometry",
-              "toRef": "voxelize",
-              "toPort": "input_geometry"
-            },
-            {
-              "fromRef": "voxelize",
-              "fromPort": "output_blocks",
-              "toRef": "material",
-              "toPort": "input_coordinates"
-            },
-            {
-              "fromRef": "material",
-              "fromPort": "output_placements",
-              "toRef": "preview_blocks",
-              "toPort": "input_block_placements"
-            },
-            {
               "fromRef": "player_pos",
               "fromPort": "output_position",
               "toRef": "move_to_pos_point_deconstruct",
@@ -6325,10 +6388,34 @@
               "toPort": "input_translation"
             },
             {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
               "fromRef": "material_block_type",
               "fromPort": "output_block_id",
               "toRef": "material",
               "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
             }
           ]
         }
