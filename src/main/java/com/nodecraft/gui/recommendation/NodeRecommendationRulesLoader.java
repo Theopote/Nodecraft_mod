@@ -162,6 +162,11 @@ public final class NodeRecommendationRulesLoader {
                         collectFromDirectionRule(portRule, knownIds);
                     }
                 }
+                if (categoryRule.inputTypes != null) {
+                    for (NodeRecommendationRules.PortDirectionRule portRule : categoryRule.inputTypes.values()) {
+                        collectFromDirectionRule(portRule, knownIds);
+                    }
+                }
             }
         }
         if (rules.outputTypes != null) {

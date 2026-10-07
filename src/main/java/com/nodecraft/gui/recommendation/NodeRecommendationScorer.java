@@ -27,6 +27,7 @@ final class NodeRecommendationScorer {
             String sourceNodeTypeId,
             String sourceCategoryId,
             String sourcePortId,
+            String rulePortKey,
             NodeDataType sourceDataType,
             NodePortIndex.CandidatePort candidate,
             String preferredConnectPortId) {
@@ -36,14 +37,15 @@ final class NodeRecommendationScorer {
 
         int score = scoreTypeMatch(sourceDataType, candidate.dataType());
         score += scoreWorkflowCategory(categoryId);
-        score += scoreRuleTable(
+        RuleMatch ruleMatch = scoreRuleTable(
                 direction,
                 sourceNodeTypeId,
                 sourceCategoryId,
-                sourcePortId,
+                rulePortKey != null ? rulePortKey : sourcePortId,
                 sourceDataType,
                 candidate.nodeId(),
                 preferredConnectPortId);
+        score += ruleMatch.score();
 
         NodeRecommendation.ConnectionPlan plan = resolvePlan(sourceDataType, candidate.dataType());
         if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION
@@ -51,7 +53,13 @@ final class NodeRecommendationScorer {
             // Keep known conversion bridges visible in the short suggested list.
             score += 90;
         }
-        String reason = buildReason(score, categoryId, plan, sourceDataType, candidate.dataType());
+        String reason = buildReason(
+                ruleMatch.reason(),
+                score,
+                categoryId,
+                plan,
+                sourceDataType,
+                candidate.dataType());
 
         return new NodeRecommendation(
                 candidate.nodeId(),
@@ -97,7 +105,7 @@ final class NodeRecommendationScorer {
         return 0;
     }
 
-    private int scoreRuleTable(
+    private RuleMatch scoreRuleTable(
             RecommendationDirection direction,
             String sourceNodeTypeId,
             String sourceCategoryId,
@@ -106,13 +114,20 @@ final class NodeRecommendationScorer {
             String candidateNodeId,
             String preferredConnectPortId) {
         String dirKey = direction == RecommendationDirection.DOWNSTREAM ? "downstream" : "upstream";
-        int best = 0;
+        RuleMatch best = RuleMatch.NONE;
 
         if (sourceNodeTypeId != null && rules.sourceNodes != null) {
-            NodeRecommendationRules.SourceNodeRule sourceRule = rules.sourceNodes.get(sourceNodeTypeId.toLowerCase(Locale.ROOT));
-            if (sourceRule != null && sourcePortId != null && sourceRule.outputs != null) {
-                NodeRecommendationRules.PortDirectionRule portRule = sourceRule.outputs.get(sourcePortId);
-                best = Math.max(best, scoreEntries(portRule, dirKey, candidateNodeId, preferredConnectPortId, 1000));
+            NodeRecommendationRules.SourceNodeRule sourceRule =
+                    rules.sourceNodes.get(sourceNodeTypeId.toLowerCase(Locale.ROOT));
+            if (sourceRule != null && sourcePortId != null) {
+                Map<String, NodeRecommendationRules.PortDirectionRule> portMap =
+                        direction == RecommendationDirection.DOWNSTREAM
+                                ? sourceRule.outputs
+                                : sourceRule.inputs;
+                if (portMap != null) {
+                    NodeRecommendationRules.PortDirectionRule portRule = portMap.get(sourcePortId);
+                    best = best.max(scoreEntries(portRule, dirKey, candidateNodeId, preferredConnectPortId, 1000));
+                }
             }
         }
 
@@ -122,10 +137,13 @@ final class NodeRecommendationScorer {
                     continue;
                 }
                 NodeRecommendationRules.SourceCategoryRule categoryRule = entry.getValue();
-                if (sourceDataType != null && categoryRule.outputTypes != null) {
-                    NodeRecommendationRules.PortDirectionRule typeRule =
-                            categoryRule.outputTypes.get(sourceDataType.getId());
-                    best = Math.max(best, scoreEntries(typeRule, dirKey, candidateNodeId, preferredConnectPortId, 800));
+                Map<String, NodeRecommendationRules.PortDirectionRule> typeMap =
+                        direction == RecommendationDirection.DOWNSTREAM
+                                ? categoryRule.outputTypes
+                                : categoryRule.inputTypes;
+                if (sourceDataType != null && typeMap != null) {
+                    NodeRecommendationRules.PortDirectionRule typeRule = typeMap.get(sourceDataType.getId());
+                    best = best.max(scoreEntries(typeRule, dirKey, candidateNodeId, preferredConnectPortId, 800));
                 }
             }
         }
@@ -135,34 +153,34 @@ final class NodeRecommendationScorer {
             if (typeRule != null) {
                 List<NodeRecommendationRules.RuleEntry> entries =
                         direction == RecommendationDirection.DOWNSTREAM ? typeRule.downstream : typeRule.upstream;
-                best = Math.max(best, scoreEntryList(entries, candidateNodeId, preferredConnectPortId, 600));
+                best = best.max(scoreEntryList(entries, candidateNodeId, preferredConnectPortId, 600));
             }
         }
 
         return best;
     }
 
-    private int scoreEntries(
+    private RuleMatch scoreEntries(
             NodeRecommendationRules.PortDirectionRule portRule,
             String dirKey,
             String candidateNodeId,
             String preferredConnectPortId,
             int baseScore) {
         if (portRule == null || candidateNodeId == null) {
-            return 0;
+            return RuleMatch.NONE;
         }
         List<NodeRecommendationRules.RuleEntry> entries =
                 "downstream".equals(dirKey) ? portRule.downstream : portRule.upstream;
         return scoreEntryList(entries, candidateNodeId, preferredConnectPortId, baseScore);
     }
 
-    private int scoreEntryList(
+    private RuleMatch scoreEntryList(
             List<NodeRecommendationRules.RuleEntry> entries,
             String candidateNodeId,
             String preferredConnectPortId,
             int baseScore) {
         if (entries == null || candidateNodeId == null) {
-            return 0;
+            return RuleMatch.NONE;
         }
         for (NodeRecommendationRules.RuleEntry entry : entries) {
             if (entry == null || entry.nodeId == null) {
@@ -177,9 +195,10 @@ final class NodeRecommendationScorer {
                     && entry.connectPortId.equals(preferredConnectPortId)) {
                 score += 20;
             }
-            return score;
+            String reason = entry.reason != null && !entry.reason.isBlank() ? entry.reason.trim() : null;
+            return new RuleMatch(score, reason);
         }
-        return 0;
+        return RuleMatch.NONE;
     }
 
     private static boolean matchesCategoryPrefix(String categoryId, String prefix) {
@@ -205,11 +224,15 @@ final class NodeRecommendationScorer {
     }
 
     private String buildReason(
+            String ruleReason,
             int score,
             String categoryId,
             NodeRecommendation.ConnectionPlan plan,
             NodeDataType sourceType,
             NodeDataType targetType) {
+        if (ruleReason != null && !ruleReason.isBlank()) {
+            return ruleReason;
+        }
         if (plan == NodeRecommendation.ConnectionPlan.VIA_CONVERSION) {
             TypeConversionRegistry.ConversionSuggestion conversion =
                     TypeConversionRegistry.getSuggestedConversion(sourceType, targetType);
@@ -251,5 +274,16 @@ final class NodeRecommendationScorer {
                     right.score() >= left.score() ? right : left);
         }
         return deduped;
+    }
+
+    private record RuleMatch(int score, String reason) {
+        static final RuleMatch NONE = new RuleMatch(0, null);
+
+        RuleMatch max(RuleMatch other) {
+            if (other == null) {
+                return this;
+            }
+            return other.score > this.score ? other : this;
+        }
     }
 }

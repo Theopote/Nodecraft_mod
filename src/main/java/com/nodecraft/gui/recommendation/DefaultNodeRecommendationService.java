@@ -7,7 +7,9 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,6 +18,11 @@ import java.util.Locale;
 import java.util.Map;
 
 public final class DefaultNodeRecommendationService implements NodeRecommendationService {
+
+    private static final String GET_BOX_FACE_TYPE_ID = "reference.points.get_box_face";
+    private static final String OUTPUT_FACE_PORT_ID = "output_face";
+    private static final String INPUT_FACE_NAME_PORT_ID = "input_face_name";
+    private static final String OUTPUT_NAME_PORT_ID = "output_name";
 
     private final NodePortIndex portIndex = new NodePortIndex();
     private NodeRecommendationRules rules = new NodeRecommendationRules();
@@ -72,6 +79,8 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                     ? portIndex.findDownstreamCandidates(sourcePort.dataType())
                     : portIndex.findUpstreamCandidates(sourcePort.dataType());
 
+            String rulePortKey = resolveRulePortKey(sourceNode, sourcePort.portId(), context.direction());
+
             for (NodePortIndex.CandidatePort candidate : candidates) {
                 if (shouldExclude(candidate.nodeId(), candidate.categoryId())) {
                     continue;
@@ -82,7 +91,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
 
                 String preferredPortId = resolvePreferredPortId(
                         sourceNode.getTypeId(),
-                        sourcePort.portId(),
+                        rulePortKey,
                         sourcePort.dataType(),
                         candidate.nodeId(),
                         context.direction());
@@ -101,6 +110,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
                         sourceNode.getTypeId(),
                         sourceCategory,
                         sourcePort.portId(),
+                        rulePortKey,
                         sourcePort.dataType(),
                         resolvedCandidate,
                         preferredPortId));
@@ -196,6 +206,79 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         }
     }
 
+    /**
+     * Maps Get Box Face's physical {@code output_face} port to a synthetic rule key
+     * ({@code output_face:horizontal} / {@code output_face:vertical}) based on the
+     * resolved semantic face name.
+     */
+    private String resolveRulePortKey(INode sourceNode, String portId, RecommendationDirection direction) {
+        if (direction != RecommendationDirection.DOWNSTREAM
+                || sourceNode == null
+                || portId == null
+                || !GET_BOX_FACE_TYPE_ID.equalsIgnoreCase(sourceNode.getTypeId())
+                || !OUTPUT_FACE_PORT_ID.equals(portId)) {
+            return portId;
+        }
+        String orientation = resolveGetBoxFaceOrientation(sourceNode);
+        if (orientation == null) {
+            return portId;
+        }
+        return OUTPUT_FACE_PORT_ID + ":" + orientation;
+    }
+
+    private static String resolveGetBoxFaceOrientation(INode sourceNode) {
+        String faceName = null;
+
+        if (OptionalPortDrive.isConnected(sourceNode, INPUT_FACE_NAME_PORT_ID)) {
+            Object connected = sourceNode.getInput(INPUT_FACE_NAME_PORT_ID);
+            if (connected instanceof String text && !text.isBlank()) {
+                faceName = text;
+            }
+        }
+
+        if (faceName == null && sourceNode instanceof GetBoxFaceNode getBoxFace) {
+            String defaults = getBoxFace.getDefaultFaceName();
+            if (defaults != null && !defaults.isBlank()) {
+                faceName = defaults;
+            }
+        }
+
+        if (faceName == null) {
+            Object resolved = sourceNode.getOutput(OUTPUT_NAME_PORT_ID);
+            if (resolved instanceof String text && !text.isBlank()) {
+                faceName = text;
+            }
+        }
+
+        String normalized = normalizeFaceName(faceName);
+        if (normalized == null) {
+            return null;
+        }
+        return switch (normalized) {
+            case "top", "bottom" -> "horizontal";
+            case "front", "back", "left", "right" -> "vertical";
+            default -> null;
+        };
+    }
+
+    private static String normalizeFaceName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        String normalized = name.trim().toLowerCase(Locale.ROOT)
+                .replace('_', ' ')
+                .replace('-', ' ');
+        return switch (normalized) {
+            case "top", "up", "upper" -> "top";
+            case "bottom", "down", "lower" -> "bottom";
+            case "left", "west" -> "left";
+            case "right", "east" -> "right";
+            case "front", "south" -> "front";
+            case "back", "north", "rear" -> "back";
+            default -> null;
+        };
+    }
+
     private String resolvePreferredPortId(
             String sourceNodeTypeId,
             String sourcePortId,
@@ -207,11 +290,17 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         if (sourceNodeTypeId != null && rules.sourceNodes != null) {
             NodeRecommendationRules.SourceNodeRule sourceRule =
                     rules.sourceNodes.get(sourceNodeTypeId.toLowerCase(Locale.ROOT));
-            if (sourceRule != null && sourcePortId != null && sourceRule.outputs != null) {
-                NodeRecommendationRules.PortDirectionRule portRule = sourceRule.outputs.get(sourcePortId);
-                String fromRule = findConnectPortId(portRule, dirKey, candidateNodeId);
-                if (fromRule != null) {
-                    return fromRule;
+            if (sourceRule != null && sourcePortId != null) {
+                Map<String, NodeRecommendationRules.PortDirectionRule> portMap =
+                        direction == RecommendationDirection.DOWNSTREAM
+                                ? sourceRule.outputs
+                                : sourceRule.inputs;
+                if (portMap != null) {
+                    NodeRecommendationRules.PortDirectionRule portRule = portMap.get(sourcePortId);
+                    String fromRule = findConnectPortId(portRule, dirKey, candidateNodeId);
+                    if (fromRule != null) {
+                        return fromRule;
+                    }
                 }
             }
         }
