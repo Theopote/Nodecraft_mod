@@ -23,7 +23,7 @@
     "category": "architectural",
     "difficulty": "intermediate",
     "estimated_build_time": "3 minutes",
-    "estimated_node_count": 21
+    "estimated_node_count": 25
   },
   "thumbnails": {
     "main": "",
@@ -96,7 +96,7 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 952.0
         },
         "parameters": {
           "startX": {
@@ -127,7 +127,7 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 380.0
+          "y": 1256.0
         },
         "parameters": {
           "startX": {
@@ -143,7 +143,7 @@
             "value": 0.0
           },
           "endY": {
-            "value": 14.0
+            "value": 13.5
           },
           "endZ": {
             "value": 0.0
@@ -157,74 +157,153 @@
         "id": "node_hollow",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 280.0,
-          "y": 280.0
+          "x": 320.0,
+          "y": 1622.0
         },
         "parameters": {}
       },
       {
-        "id": "node_roof_volume",
+        "id": "node_door_host",
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 560.0
+          "y": 3384.0
         },
         "parameters": {
           "cornerX": {
-            "value": -5.0
+            "value": -1.0
           },
           "cornerY": {
-            "value": 14.0
+            "value": 0.0
           },
           "cornerZ": {
-            "value": -5.0
+            "value": -5.2
           },
           "sizeX": {
-            "value": 10.0
+            "value": 2.0
           },
           "sizeY": {
-            "value": 0.5
+            "value": 3.0
           },
           "sizeZ": {
-            "value": 10.0
+            "value": 1.2
           }
         }
       },
       {
-        "id": "node_roof_face",
+        "id": "node_door_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 560.0
+          "x": 320.0,
+          "y": 1982.0
         },
         "parameters": {
           "defaultFaceName": {
-            "value": "top"
+            "value": "back"
           }
         }
       },
       {
-        "id": "node_roof",
-        "type": "geometry.architectural_primitives.roof_base",
+        "id": "node_door_opening",
+        "type": "geometry.architectural_primitives.arch_opening",
         "position": {
-          "x": 560.0,
-          "y": 560.0
+          "x": 640.0,
+          "y": 1802.0
         },
         "parameters": {}
       },
       {
-        "id": "node_roof_type",
+        "id": "node_door_type",
         "type": "input.values.text_input",
         "position": {
-          "x": 280.0,
-          "y": 700.0
+          "x": 0.0,
+          "y": 1560.0
         },
         "parameters": {
           "text": {
-            "value": "shed"
+            "value": "round"
           },
           "multiline": {
             "value": false
+          }
+        }
+      },
+      {
+        "id": "node_door_width",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1864.0
+        },
+        "parameters": {
+          "value": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_door_stem_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2168.0
+        },
+        "parameters": {
+          "value": {
+            "value": 2.5
+          }
+        }
+      },
+      {
+        "id": "node_door_depth",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2472.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_tower_cut",
+        "type": "geometry.boolean.difference",
+        "position": {
+          "x": 960.0,
+          "y": 1712.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_top_deck",
+        "type": "geometry.primitives.cylinder",
+        "position": {
+          "x": 0.0,
+          "y": 344.0
+        },
+        "parameters": {
+          "startX": {
+            "value": 0.0
+          },
+          "startY": {
+            "value": 13.5
+          },
+          "startZ": {
+            "value": 0.0
+          },
+          "endX": {
+            "value": 0.0
+          },
+          "endY": {
+            "value": 14.0
+          },
+          "endZ": {
+            "value": 0.0
+          },
+          "radius": {
+            "value": 5.0
           }
         }
       },
@@ -233,7 +312,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 740.0
+          "y": 2776.0
         },
         "parameters": {
           "cornerX": {
@@ -260,12 +339,12 @@
         "id": "node_battlement_array",
         "type": "pattern.radial.polar_array",
         "position": {
-          "x": 280.0,
-          "y": 740.0
+          "x": 320.0,
+          "y": 1802.0
         },
         "parameters": {
           "count": {
-            "value": 8
+            "value": 12
           },
           "includeEnd": {
             "value": false
@@ -277,33 +356,24 @@
         "type": "input.numeric.integer",
         "position": {
           "x": 0.0,
-          "y": 900.0
+          "y": 3080.0
         },
         "parameters": {
           "value": {
-            "value": 8
+            "value": 12
           }
         }
-      },
-      {
-        "id": "node_eave_railing",
-        "type": "geometry.architectural_primitives.railing",
-        "position": {
-          "x": 560.0,
-          "y": 720.0
-        },
-        "parameters": {}
       },
       {
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 820.0,
-          "y": 480.0
+          "x": 1280.0,
+          "y": 1712.0
         },
         "parameters": {
           "inputCount": {
-            "value": 4
+            "value": 3
           }
         }
       },
@@ -311,8 +381,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1060.0,
-          "y": 480.0
+          "x": 1600.0,
+          "y": 1712.0
         },
         "parameters": {}
       },
@@ -320,8 +390,8 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 1622.0
         },
         "parameters": {}
       },
@@ -329,8 +399,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 1802.0
         },
         "parameters": {}
       },
@@ -338,8 +408,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2240.0,
+          "y": 1712.0
         },
         "parameters": {}
       },
@@ -347,8 +417,8 @@
         "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2560.0,
+          "y": 1712.0
         },
         "parameters": {}
       },
@@ -356,8 +426,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 640.0,
-          "y": 480.0
+          "x": 320.0,
+          "y": 1442.0
         },
         "parameters": {}
       },
@@ -365,8 +435,8 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 860.0,
-          "y": 480.0
+          "x": 640.0,
+          "y": 1622.0
         },
         "parameters": {}
       },
@@ -374,8 +444,8 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1100.0,
-          "y": 980.0
+          "x": 0.0,
+          "y": 648.0
         },
         "parameters": {
           "selectedBlock": {
@@ -407,32 +477,82 @@
       },
       {
         "from": {
-          "node": "node_roof_volume",
+          "node": "node_door_host",
           "port": "output_box_geometry"
         },
         "to": {
-          "node": "node_roof_face",
+          "node": "node_door_face",
           "port": "input_box_geometry"
         }
       },
       {
         "from": {
-          "node": "node_roof_face",
+          "node": "node_door_face",
           "port": "output_face"
         },
         "to": {
-          "node": "node_roof",
+          "node": "node_door_opening",
           "port": "input_face"
         }
       },
       {
         "from": {
-          "node": "node_roof_type",
+          "node": "node_door_type",
           "port": "output_text"
         },
         "to": {
-          "node": "node_roof",
-          "port": "input_roof_type"
+          "node": "node_door_opening",
+          "port": "input_arch_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_door_width",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_door_opening",
+          "port": "input_width"
+        }
+      },
+      {
+        "from": {
+          "node": "node_door_stem_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_door_opening",
+          "port": "input_height"
+        }
+      },
+      {
+        "from": {
+          "node": "node_door_depth",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_door_opening",
+          "port": "input_depth"
+        }
+      },
+      {
+        "from": {
+          "node": "node_hollow",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_tower_cut",
+          "port": "input_base"
+        }
+      },
+      {
+        "from": {
+          "node": "node_door_opening",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_tower_cut",
+          "port": "input_cutter"
         }
       },
       {
@@ -447,17 +567,17 @@
       },
       {
         "from": {
-          "node": "node_roof",
-          "port": "output_eave_path"
+          "node": "node_battlement_count",
+          "port": "output_value"
         },
         "to": {
-          "node": "node_eave_railing",
-          "port": "input_path"
+          "node": "node_battlement_array",
+          "port": "input_count"
         }
       },
       {
         "from": {
-          "node": "node_hollow",
+          "node": "node_tower_cut",
           "port": "output_geometry"
         },
         "to": {
@@ -467,7 +587,7 @@
       },
       {
         "from": {
-          "node": "node_roof",
+          "node": "node_top_deck",
           "port": "output_geometry"
         },
         "to": {
@@ -477,22 +597,12 @@
       },
       {
         "from": {
-          "node": "node_eave_railing",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_combine",
-          "port": "input_geometry_2"
-        }
-      },
-      {
-        "from": {
           "node": "node_battlement_array",
           "port": "output_geometry"
         },
         "to": {
           "node": "node_combine",
-          "port": "input_geometry_3"
+          "port": "input_geometry_2"
         }
       },
       {
@@ -603,16 +713,6 @@
         "to": {
           "node": "node_material",
           "port": "input_block_type"
-        }
-      },
-      {
-        "from": {
-          "node": "node_battlement_count",
-          "port": "output_value"
-        },
-        "to": {
-          "node": "node_battlement_array",
-          "port": "input_count"
         }
       }
     ]

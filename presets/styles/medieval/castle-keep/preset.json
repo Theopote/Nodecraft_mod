@@ -23,7 +23,7 @@
     "category": "styles",
     "difficulty": "advanced",
     "estimated_build_time": "6 minutes",
-    "estimated_node_count": 18
+    "estimated_node_count": 33
   },
   "thumbnails": {
     "main": "",
@@ -107,7 +107,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 360.0
         },
         "parameters": {
           "cornerX": {
@@ -135,7 +135,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 380.0
+          "y": 1000.0
         },
         "parameters": {
           "sizeX": {
@@ -153,8 +153,8 @@
         "id": "node_footprint_top",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 380.0
+          "x": 320.0,
+          "y": 2350.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -166,8 +166,8 @@
         "id": "node_tower_grid",
         "type": "geometry.architectural_primitives.column_grid",
         "position": {
-          "x": 560.0,
-          "y": 380.0
+          "x": 640.0,
+          "y": 2092.0
         },
         "parameters": {}
       },
@@ -175,8 +175,8 @@
         "id": "node_tower_cols",
         "type": "input.numeric.integer",
         "position": {
-          "x": 280.0,
-          "y": 520.0
+          "x": 0.0,
+          "y": 1320.0
         },
         "parameters": {
           "value": {
@@ -188,8 +188,8 @@
         "id": "node_tower_rows",
         "type": "input.numeric.integer",
         "position": {
-          "x": 280.0,
-          "y": 660.0
+          "x": 0.0,
+          "y": 1640.0
         },
         "parameters": {
           "value": {
@@ -201,8 +201,8 @@
         "id": "node_tower_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 800.0
+          "x": 0.0,
+          "y": 1960.0
         },
         "parameters": {
           "value": {
@@ -214,8 +214,8 @@
         "id": "node_tower_radius",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 940.0
+          "x": 0.0,
+          "y": 2280.0
         },
         "parameters": {
           "value": {
@@ -224,15 +224,274 @@
         }
       },
       {
-        "id": "node_combine",
+        "id": "node_merlon_count",
+        "type": "input.numeric.integer",
+        "position": {
+          "x": 0.0,
+          "y": 3880.0
+        },
+        "parameters": {
+          "value": {
+            "value": 6
+          }
+        }
+      },
+      {
+        "id": "node_merlon_spacing",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 4200.0
+        },
+        "parameters": {
+          "value": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_dir_x",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 320.0,
+          "y": 2530.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_dir_z",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 320.0,
+          "y": 2710.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_one",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2920.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.0
+          }
+        }
+      },
+      {
+        "id": "node_zero_v",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 3240.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_merlon_front",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 2600.0
+        },
+        "parameters": {
+          "cornerX": {
+            "value": 1.0
+          },
+          "cornerY": {
+            "value": 8.0
+          },
+          "cornerZ": {
+            "value": 0.6
+          },
+          "sizeX": {
+            "value": 1.2
+          },
+          "sizeY": {
+            "value": 0.8
+          },
+          "sizeZ": {
+            "value": 0.8
+          }
+        }
+      },
+      {
+        "id": "node_merlon_back",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 3560.0
+        },
+        "parameters": {
+          "cornerX": {
+            "value": 1.0
+          },
+          "cornerY": {
+            "value": 8.0
+          },
+          "cornerZ": {
+            "value": 12.6
+          },
+          "sizeX": {
+            "value": 1.2
+          },
+          "sizeY": {
+            "value": 0.8
+          },
+          "sizeZ": {
+            "value": 0.8
+          }
+        }
+      },
+      {
+        "id": "node_merlon_left",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 4520.0
+        },
+        "parameters": {
+          "cornerX": {
+            "value": 0.6
+          },
+          "cornerY": {
+            "value": 8.0
+          },
+          "cornerZ": {
+            "value": 1.0
+          },
+          "sizeX": {
+            "value": 0.8
+          },
+          "sizeY": {
+            "value": 0.8
+          },
+          "sizeZ": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_merlon_right",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 4840.0
+        },
+        "parameters": {
+          "cornerX": {
+            "value": 12.6
+          },
+          "cornerY": {
+            "value": 8.0
+          },
+          "cornerZ": {
+            "value": 1.0
+          },
+          "sizeX": {
+            "value": 0.8
+          },
+          "sizeY": {
+            "value": 0.8
+          },
+          "sizeZ": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_battlement_front",
+        "type": "pattern.linear.linear_array",
+        "position": {
+          "x": 640.0,
+          "y": 2324.0
+        },
+        "parameters": {
+          "count": {
+            "value": 6
+          },
+          "distance": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_battlement_back",
+        "type": "pattern.linear.linear_array",
+        "position": {
+          "x": 640.0,
+          "y": 2556.0
+        },
+        "parameters": {
+          "count": {
+            "value": 6
+          },
+          "distance": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_battlement_left",
+        "type": "pattern.linear.linear_array",
+        "position": {
+          "x": 640.0,
+          "y": 2788.0
+        },
+        "parameters": {
+          "count": {
+            "value": 6
+          },
+          "distance": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_battlement_right",
+        "type": "pattern.linear.linear_array",
+        "position": {
+          "x": 640.0,
+          "y": 3020.0
+        },
+        "parameters": {
+          "count": {
+            "value": 6
+          },
+          "distance": {
+            "value": 2.0
+          }
+        }
+      },
+      {
+        "id": "node_battlements",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 820.0,
-          "y": 280.0
+          "x": 960.0,
+          "y": 2440.0
         },
         "parameters": {
           "inputCount": {
-            "value": 2
+            "value": 4
+          }
+        }
+      },
+      {
+        "id": "node_combine",
+        "type": "geometry.combine.geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 2440.0
+        },
+        "parameters": {
+          "inputCount": {
+            "value": 3
           }
         }
       },
@@ -240,8 +499,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1060.0,
-          "y": 280.0
+          "x": 1600.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -249,8 +508,8 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 2350.0
         },
         "parameters": {}
       },
@@ -258,8 +517,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 2530.0
         },
         "parameters": {}
       },
@@ -267,35 +526,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
-          "x": 640.0,
-          "y": 280.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 860.0,
-          "y": 280.0
+          "x": 2240.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -303,14 +535,41 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1100.0,
-          "y": 1020.0
+          "x": 0.0,
+          "y": 680.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:stone_bricks"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 2560.0,
+          "y": 2440.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 2170.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 1860.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
@@ -376,6 +635,266 @@
       },
       {
         "from": {
+          "node": "node_one",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_x",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero_v",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_x",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero_v",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_x",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero_v",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_z",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero_v",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_z",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_one",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_dir_z",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_front",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlement_front",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_dir_x",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_battlement_front",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_spacing",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_front",
+          "port": "input_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_front",
+          "port": "input_count"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_back",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlement_back",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_dir_x",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_battlement_back",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_spacing",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_back",
+          "port": "input_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_back",
+          "port": "input_count"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_left",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlement_left",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_dir_z",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_battlement_left",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_spacing",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_left",
+          "port": "input_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_left",
+          "port": "input_count"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_right",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlement_right",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_dir_z",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_battlement_right",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_spacing",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_right",
+          "port": "input_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merlon_count",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_battlement_right",
+          "port": "input_count"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_front",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlements",
+          "port": "input_geometry_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_back",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlements",
+          "port": "input_geometry_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_left",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlements",
+          "port": "input_geometry_2"
+        }
+      },
+      {
+        "from": {
+          "node": "node_battlement_right",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_battlements",
+          "port": "input_geometry_3"
+        }
+      },
+      {
+        "from": {
           "node": "node_keep_body",
           "port": "output_geometry"
         },
@@ -396,52 +915,22 @@
       },
       {
         "from": {
+          "node": "node_battlements",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine",
+          "port": "input_geometry_2"
+        }
+      },
+      {
+        "from": {
           "node": "node_combine",
           "port": "output_geometry"
         },
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
         }
       },
       {
@@ -496,12 +985,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

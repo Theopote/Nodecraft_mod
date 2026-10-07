@@ -104,7 +104,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 1112.0
         },
         "parameters": {
           "sizeX": {
@@ -122,8 +122,8 @@
         "id": "node_floor_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 40.0
+          "x": 320.0,
+          "y": 1022.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -135,8 +135,8 @@
         "id": "node_front_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 260.0
+          "x": 320.0,
+          "y": 1382.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -148,8 +148,8 @@
         "id": "node_roof_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 480.0
+          "x": 320.0,
+          "y": 1202.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -161,8 +161,8 @@
         "id": "node_perimeter",
         "type": "geometry.curves.face_boundary_curve",
         "position": {
-          "x": 520.0,
-          "y": 40.0
+          "x": 640.0,
+          "y": 892.0
         },
         "parameters": {}
       },
@@ -170,8 +170,8 @@
         "id": "node_floor",
         "type": "geometry.architectural_primitives.floor_slab",
         "position": {
-          "x": 520.0,
-          "y": 180.0
+          "x": 640.0,
+          "y": 1112.0
         },
         "parameters": {}
       },
@@ -179,8 +179,8 @@
         "id": "node_walls",
         "type": "geometry.architectural_primitives.wall_along_path",
         "position": {
-          "x": 760.0,
-          "y": 40.0
+          "x": 960.0,
+          "y": 1022.0
         },
         "parameters": {}
       },
@@ -188,8 +188,8 @@
         "id": "node_wall_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 520.0,
-          "y": 200.0
+          "x": 0.0,
+          "y": 308.0
         },
         "parameters": {
           "value": {
@@ -201,8 +201,8 @@
         "id": "node_windows",
         "type": "geometry.architectural_primitives.window_array",
         "position": {
-          "x": 760.0,
-          "y": 260.0
+          "x": 640.0,
+          "y": 1552.0
         },
         "parameters": {
           "defaultDepth": {
@@ -214,8 +214,8 @@
         "id": "node_roof",
         "type": "geometry.architectural_primitives.roof_base",
         "position": {
-          "x": 760.0,
-          "y": 480.0
+          "x": 640.0,
+          "y": 1332.0
         },
         "parameters": {}
       },
@@ -223,8 +223,8 @@
         "id": "node_roof_type",
         "type": "input.values.text_input",
         "position": {
-          "x": 520.0,
-          "y": 480.0
+          "x": 0.0,
+          "y": 1380.0
         },
         "parameters": {
           "text": {
@@ -239,8 +239,8 @@
         "id": "node_roof_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 520.0,
-          "y": 620.0
+          "x": 0.0,
+          "y": 1648.0
         },
         "parameters": {
           "value": {
@@ -252,8 +252,8 @@
         "id": "node_win_cols",
         "type": "input.numeric.integer",
         "position": {
-          "x": 760.0,
-          "y": 620.0
+          "x": 0.0,
+          "y": 1916.0
         },
         "parameters": {
           "value": {
@@ -265,8 +265,8 @@
         "id": "node_win_rows",
         "type": "input.numeric.integer",
         "position": {
-          "x": 760.0,
-          "y": 760.0
+          "x": 0.0,
+          "y": 2184.0
         },
         "parameters": {
           "value": {
@@ -278,8 +278,8 @@
         "id": "node_window_frame",
         "type": "geometry.architectural_primitives.window_frame",
         "position": {
-          "x": 760.0,
-          "y": 400.0
+          "x": 0.0,
+          "y": 844.0
         },
         "parameters": {}
       },
@@ -287,8 +287,8 @@
         "id": "node_cut_walls",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 920.0,
-          "y": 120.0
+          "x": 1280.0,
+          "y": 1112.0
         },
         "parameters": {}
       },
@@ -296,8 +296,8 @@
         "id": "node_place_frames",
         "type": "transform.placement.place_geometry_on_frames",
         "position": {
-          "x": 920.0,
-          "y": 320.0
+          "x": 960.0,
+          "y": 1202.0
         },
         "parameters": {}
       },
@@ -305,8 +305,8 @@
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 1000.0,
-          "y": 280.0
+          "x": 1600.0,
+          "y": 1112.0
         },
         "parameters": {
           "inputCount": {
@@ -318,8 +318,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1240.0,
-          "y": 280.0
+          "x": 1920.0,
+          "y": 1112.0
         },
         "parameters": {}
       },
@@ -327,8 +327,8 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2240.0,
+          "y": 1022.0
         },
         "parameters": {}
       },
@@ -336,8 +336,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2240.0,
+          "y": 1202.0
         },
         "parameters": {}
       },
@@ -345,8 +345,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2560.0,
+          "y": 1112.0
         },
         "parameters": {}
       },
@@ -354,8 +354,8 @@
         "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2880.0,
+          "y": 1112.0
         },
         "parameters": {}
       },
@@ -363,8 +363,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 820.0,
-          "y": 280.0
+          "x": 320.0,
+          "y": 842.0
         },
         "parameters": {}
       },
@@ -372,8 +372,8 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 1040.0,
-          "y": 280.0
+          "x": 640.0,
+          "y": 672.0
         },
         "parameters": {}
       },
@@ -381,8 +381,8 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1280.0,
-          "y": 840.0
+          "x": 0.0,
+          "y": 576.0
         },
         "parameters": {
           "selectedBlock": {

@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 16
+    "estimated_node_count": 35
   },
   "thumbnails": {
     "main": "",
@@ -98,7 +98,86 @@
         "type": "input.context.player_position",
         "position": {
           "x": 0.0,
-          "y": 40.0
+          "y": 1720.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_facade_plane",
+        "type": "reference.planes.world_plane",
+        "position": {
+          "x": 0.0,
+          "y": 2000.0
+        },
+        "parameters": {
+          "planePreset": {
+            "value": "XY"
+          },
+          "originX": {
+            "value": 0.0
+          },
+          "originY": {
+            "value": 0.0
+          },
+          "originZ": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_zero",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2280.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_rect_cy",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 320.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.6
+          }
+        }
+      },
+      {
+        "id": "node_arc_cy",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2560.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.2
+          }
+        }
+      },
+      {
+        "id": "node_rect_center",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 860.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_arc_center",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1740.0
         },
         "parameters": {}
       },
@@ -106,8 +185,8 @@
         "id": "node_rect_profile",
         "type": "geometry.profiles.rectangle_profile",
         "position": {
-          "x": 0.0,
-          "y": 180.0
+          "x": 640.0,
+          "y": 1520.0
         },
         "parameters": {
           "width": {
@@ -122,12 +201,12 @@
         "id": "node_arc_profile",
         "type": "geometry.profiles.sector_profile",
         "position": {
-          "x": 0.0,
-          "y": 340.0
+          "x": 640.0,
+          "y": 1740.0
         },
         "parameters": {
           "radius": {
-            "value": 0.55
+            "value": 0.5
           },
           "startAngle": {
             "value": 0.0
@@ -144,8 +223,8 @@
         "id": "node_union_profiles",
         "type": "geometry.profiles.boolean_2d",
         "position": {
-          "x": 280.0,
-          "y": 240.0
+          "x": 960.0,
+          "y": 1300.0
         },
         "parameters": {
           "operation": {
@@ -157,8 +236,8 @@
         "id": "node_extrude_dir",
         "type": "reference.vectors.vector",
         "position": {
-          "x": 280.0,
-          "y": 420.0
+          "x": 0.0,
+          "y": 600.0
         },
         "parameters": {
           "x": {
@@ -173,11 +252,39 @@
         }
       },
       {
+        "id": "node_glass_dir",
+        "type": "reference.vectors.vector",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {
+          "x": {
+            "value": 0.0
+          },
+          "y": {
+            "value": 0.0
+          },
+          "z": {
+            "value": 0.08
+          }
+        }
+      },
+      {
         "id": "node_extrude_opening",
         "type": "geometry.solids.extrude",
         "position": {
-          "x": 560.0,
-          "y": 240.0
+          "x": 1280.0,
+          "y": 1390.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_extrude_glass",
+        "type": "geometry.solids.extrude",
+        "position": {
+          "x": 1280.0,
+          "y": 1210.0
         },
         "parameters": {}
       },
@@ -186,7 +293,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 520.0
+          "y": 880.0
         },
         "parameters": {
           "cornerX": {
@@ -196,7 +303,7 @@
             "value": -0.2
           },
           "cornerZ": {
-            "value": -0.05
+            "value": 0.0
           },
           "sizeX": {
             "value": 1.4
@@ -213,8 +320,17 @@
         "id": "node_subtract_opening",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 820.0,
-          "y": 360.0
+          "x": 1600.0,
+          "y": 1390.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_combine",
+        "type": "geometry.combine.geometry",
+        "position": {
+          "x": 1920.0,
+          "y": 1300.0
         },
         "parameters": {}
       },
@@ -222,44 +338,26 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1080.0,
-          "y": 360.0
+          "x": 2240.0,
+          "y": 1120.0
         },
         "parameters": {}
       },
       {
-        "id": "node_preview_geometry",
-        "type": "output.preview.preview_geometry",
+        "id": "node_move_frame",
+        "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1360.0,
-          "y": 180.0
+          "x": 1920.0,
+          "y": 1480.0
         },
         "parameters": {}
       },
       {
-        "id": "node_voxelize",
-        "type": "geometry.voxel.voxelize_geometry",
+        "id": "node_move_glass",
+        "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1360.0,
-          "y": 380.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 1620.0,
-          "y": 380.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 1880.0,
-          "y": 380.0
+          "x": 1600.0,
+          "y": 1210.0
         },
         "parameters": {}
       },
@@ -267,8 +365,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 660.0,
-          "y": 360.0
+          "x": 320.0,
+          "y": 1080.0
         },
         "parameters": {}
       },
@@ -276,26 +374,242 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 880.0,
-          "y": 360.0
+          "x": 640.0,
+          "y": 860.0
         },
         "parameters": {}
       },
       {
-        "id": "node_material_block_type",
-        "type": "input.type_selectors.block_type_selector",
+        "id": "node_move_frame_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1520.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_frame_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 1300.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_glass_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1300.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_glass_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 1080.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 2560.0,
+          "y": 1210.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize_frame",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 2240.0,
+          "y": 1300.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize_glass",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {
           "x": 1920.0,
-          "y": 600.0
+          "y": 1120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_frame_block",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 1160.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:smooth_quartz"
+          }
+        }
+      },
+      {
+        "id": "node_glass_block",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 1440.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:glass"
           }
         }
+      },
+      {
+        "id": "node_material_frame",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 2560.0,
+          "y": 1390.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_glass",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 2240.0,
+          "y": 1480.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_merge_placements",
+        "type": "output.execute.merge_block_placements",
+        "position": {
+          "x": 2880.0,
+          "y": 1300.0
+        },
+        "parameters": {
+          "inputCount": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 3200.0,
+          "y": 1300.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_rect_center",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_rect_cy",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_rect_center",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_rect_center",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_arc_center",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc_cy",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_arc_center",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_arc_center",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_facade_plane",
+          "port": "output_plane"
+        },
+        "to": {
+          "node": "node_rect_profile",
+          "port": "input_plane"
+        }
+      },
+      {
+        "from": {
+          "node": "node_facade_plane",
+          "port": "output_plane"
+        },
+        "to": {
+          "node": "node_arc_profile",
+          "port": "input_plane"
+        }
+      },
+      {
+        "from": {
+          "node": "node_rect_center",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_rect_profile",
+          "port": "input_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc_center",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_arc_profile",
+          "port": "input_center"
+        }
+      },
       {
         "from": {
           "node": "node_rect_profile",
@@ -338,6 +652,26 @@
       },
       {
         "from": {
+          "node": "node_union_profiles",
+          "port": "output_profile"
+        },
+        "to": {
+          "node": "node_extrude_glass",
+          "port": "input_profile"
+        }
+      },
+      {
+        "from": {
+          "node": "node_glass_dir",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_extrude_glass",
+          "port": "input_direction"
+        }
+      },
+      {
+        "from": {
           "node": "node_frame_box",
           "port": "output_geometry"
         },
@@ -362,48 +696,48 @@
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_move_to_pos",
-          "port": "input_geometry"
+          "node": "node_combine",
+          "port": "input_geometry_0"
         }
       },
       {
         "from": {
-          "node": "node_move_to_pos",
+          "node": "node_extrude_glass",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
+          "node": "node_combine",
+          "port": "input_geometry_1"
         }
       },
       {
         "from": {
-          "node": "node_move_to_pos",
+          "node": "node_combine",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_voxelize",
+          "node": "node_move_to_pos",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
+          "node": "node_subtract_opening",
+          "port": "output_geometry"
         },
         "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
+          "node": "node_move_frame",
+          "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_material",
-          "port": "output_placements"
+          "node": "node_extrude_glass",
+          "port": "output_geometry"
         },
         "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
+          "node": "node_move_glass",
+          "port": "input_geometry"
         }
       },
       {
@@ -458,12 +792,202 @@
       },
       {
         "from": {
-          "node": "node_material_block_type",
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_frame_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_frame_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_frame_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_frame_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_frame",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_glass_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_glass_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_glass_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_glass_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_glass",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize_frame",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize_glass",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_frame",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material_frame",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_glass",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material_glass",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_frame_block",
           "port": "output_block_id"
         },
         "to": {
-          "node": "node_material",
+          "node": "node_material_frame",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_glass_block",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material_glass",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_frame",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_merge_placements",
+          "port": "input_placements_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_glass",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_merge_placements",
+          "port": "input_placements_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merge_placements",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

@@ -23,7 +23,7 @@
     "category": "decorative",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
-    "estimated_node_count": 20
+    "estimated_node_count": 25
   },
   "thumbnails": {
     "main": "",
@@ -111,11 +111,50 @@
         "parameters": {}
       },
       {
+        "id": "node_pavilion_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1064.0
+        },
+        "parameters": {
+          "value": {
+            "value": 3.5
+          }
+        }
+      },
+      {
+        "id": "node_ring_radius",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1576.0
+        },
+        "parameters": {
+          "value": {
+            "value": 4.0
+          }
+        }
+      },
+      {
+        "id": "node_zero",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1832.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
         "id": "node_volume",
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
-          "x": 0.0,
-          "y": 200.0
+          "x": 320.0,
+          "y": 846.0
         },
         "parameters": {
           "cornerX": {
@@ -142,8 +181,8 @@
         "id": "node_floor_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 120.0
+          "x": 640.0,
+          "y": 846.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -155,8 +194,8 @@
         "id": "node_roof_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 320.0
+          "x": 640.0,
+          "y": 1026.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -168,8 +207,26 @@
         "id": "node_floor",
         "type": "geometry.architectural_primitives.floor_slab",
         "position": {
-          "x": 520.0,
-          "y": 120.0
+          "x": 960.0,
+          "y": 756.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_column_start",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1206.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_column_end",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1026.0
         },
         "parameters": {}
       },
@@ -177,28 +234,10 @@
         "id": "node_column",
         "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 0.0,
-          "y": 480.0
+          "x": 640.0,
+          "y": 1206.0
         },
         "parameters": {
-          "startX": {
-            "value": 4.0
-          },
-          "startY": {
-            "value": 0.0
-          },
-          "startZ": {
-            "value": 0.0
-          },
-          "endX": {
-            "value": 4.0
-          },
-          "endY": {
-            "value": 3.5
-          },
-          "endZ": {
-            "value": 0.0
-          },
           "radius": {
             "value": 0.25
           }
@@ -208,8 +247,8 @@
         "id": "node_column_count",
         "type": "input.numeric.integer",
         "position": {
-          "x": 280.0,
-          "y": 480.0
+          "x": 0.0,
+          "y": 552.0
         },
         "parameters": {
           "value": {
@@ -221,8 +260,8 @@
         "id": "node_column_span",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 620.0
+          "x": 0.0,
+          "y": 808.0
         },
         "parameters": {
           "value": {
@@ -234,8 +273,8 @@
         "id": "node_columns",
         "type": "pattern.radial.polar_array",
         "position": {
-          "x": 560.0,
-          "y": 480.0
+          "x": 960.0,
+          "y": 936.0
         },
         "parameters": {
           "includeEnd": {
@@ -247,24 +286,24 @@
         "id": "node_roof",
         "type": "geometry.architectural_primitives.roof_base",
         "position": {
-          "x": 520.0,
-          "y": 320.0
+          "x": 960.0,
+          "y": 1116.0
         },
         "parameters": {}
       },
       {
         "id": "node_roof_type",
-        "type": "input.values.text_input",
+        "type": "input.values.dropdown",
         "position": {
-          "x": 280.0,
-          "y": 760.0
+          "x": 0.0,
+          "y": 1320.0
         },
         "parameters": {
-          "text": {
-            "value": "gable"
+          "options": {
+            "value": "flat,shed,gable"
           },
-          "multiline": {
-            "value": false
+          "selectedIndex": {
+            "value": 2
           }
         }
       },
@@ -272,8 +311,8 @@
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 800.0,
-          "y": 280.0
+          "x": 1280.0,
+          "y": 936.0
         },
         "parameters": {
           "inputCount": {
@@ -285,8 +324,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1040.0,
-          "y": 280.0
+          "x": 1600.0,
+          "y": 936.0
         },
         "parameters": {}
       },
@@ -294,8 +333,8 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 846.0
         },
         "parameters": {}
       },
@@ -303,8 +342,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 1026.0
         },
         "parameters": {}
       },
@@ -312,35 +351,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
-          "x": 620.0,
-          "y": 280.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 840.0,
-          "y": 280.0
+          "x": 2240.0,
+          "y": 936.0
         },
         "parameters": {}
       },
@@ -348,17 +360,54 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1080.0,
-          "y": 840.0
+          "x": 0.0,
+          "y": 296.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:oak_planks"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 2560.0,
+          "y": 936.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 666.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 666.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
+      {
+        "from": {
+          "node": "node_pavilion_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_volume",
+          "port": "input_size_y"
+        }
+      },
       {
         "from": {
           "node": "node_volume",
@@ -387,6 +436,86 @@
         "to": {
           "node": "node_floor",
           "port": "input_face"
+        }
+      },
+      {
+        "from": {
+          "node": "node_ring_radius",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_start",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_start",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_start",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_ring_radius",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_end",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_pavilion_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_end",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_column_end",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_column_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_column",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_column_end",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_column",
+          "port": "input_end"
         }
       },
       {
@@ -432,7 +561,7 @@
       {
         "from": {
           "node": "node_roof_type",
-          "port": "output_text"
+          "port": "output_value"
         },
         "to": {
           "node": "node_roof",
@@ -477,46 +606,6 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
         }
       },
       {
@@ -571,12 +660,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

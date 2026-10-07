@@ -899,8 +899,19 @@ def rewrite_file(path: Path, only: set[str] | None = None) -> None:
             if pid in targets:
                 presets[i] = targets[pid]
                 replaced += 1
+    if replaced:
+        _apply_auto_layout(data, set(targets.keys()))
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"{path.name}: replaced {replaced} presets")
+
+
+def _apply_auto_layout(data: dict, preset_ids: set[str]) -> None:
+    import sys
+    tools_dir = str(Path(__file__).resolve().parent)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    from layout_graph_presets import apply_auto_layout_to_data
+    apply_auto_layout_to_data(data, preset_ids)
 
 
 def main() -> None:

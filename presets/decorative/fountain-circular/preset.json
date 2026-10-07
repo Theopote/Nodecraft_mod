@@ -115,7 +115,7 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 180.0
+          "y": 504.0
         },
         "parameters": {
           "startX": {
@@ -146,14 +146,14 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 360.0
+          "y": 736.0
         },
         "parameters": {
           "startX": {
             "value": 0.0
           },
           "startY": {
-            "value": 0.0
+            "value": 0.25
           },
           "startZ": {
             "value": 0.0
@@ -176,8 +176,8 @@
         "id": "node_basin",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 280.0,
-          "y": 260.0
+          "x": 320.0,
+          "y": 710.0
         },
         "parameters": {}
       },
@@ -186,14 +186,14 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 540.0
+          "y": 968.0
         },
         "parameters": {
           "startX": {
             "value": 0.0
           },
           "startY": {
-            "value": 1.0
+            "value": 0.25
           },
           "startZ": {
             "value": 0.0
@@ -217,14 +217,14 @@
         "type": "geometry.primitives.cylinder",
         "position": {
           "x": 0.0,
-          "y": 720.0
+          "y": 1200.0
         },
         "parameters": {
           "startX": {
             "value": 0.0
           },
           "startY": {
-            "value": 1.0
+            "value": 0.25
           },
           "startZ": {
             "value": 0.0
@@ -247,8 +247,8 @@
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 560.0,
-          "y": 420.0
+          "x": 640.0,
+          "y": 710.0
         },
         "parameters": {
           "inputCount": {
@@ -260,8 +260,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 800.0,
-          "y": 420.0
+          "x": 960.0,
+          "y": 620.0
         },
         "parameters": {}
       },
@@ -269,8 +269,8 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1280.0,
+          "y": 530.0
         },
         "parameters": {}
       },
@@ -278,8 +278,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1280.0,
+          "y": 710.0
         },
         "parameters": {}
       },
@@ -287,35 +287,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
-          "x": 380.0,
-          "y": 420.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 600.0,
-          "y": 420.0
+          "x": 1600.0,
+          "y": 620.0
         },
         "parameters": {}
       },
@@ -323,14 +296,41 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 840.0,
-          "y": 800.0
+          "x": 0.0,
+          "y": 272.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:stone_bricks"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1920.0,
+          "y": 620.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 530.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 530.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
@@ -396,46 +396,6 @@
       },
       {
         "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
-        }
-      },
-      {
-        "from": {
           "node": "node_player_pos",
           "port": "output_position"
         },
@@ -486,12 +446,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

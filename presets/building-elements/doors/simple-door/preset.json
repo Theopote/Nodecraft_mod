@@ -88,7 +88,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 400.0
         },
         "parameters": {
           "cornerX": {
@@ -116,14 +116,14 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 380.0
+          "y": 580.0
         },
         "parameters": {
           "cornerX": {
             "value": 0.2
           },
           "cornerY": {
-            "value": 0.2
+            "value": -0.05
           },
           "cornerZ": {
             "value": -0.05
@@ -132,7 +132,7 @@
             "value": 1.0
           },
           "sizeY": {
-            "value": 2.0
+            "value": 2.25
           },
           "sizeZ": {
             "value": 0.35
@@ -144,7 +144,7 @@
         "type": "geometry.boolean.difference",
         "position": {
           "x": 320.0,
-          "y": 280.0
+          "y": 400.0
         },
         "parameters": {}
       },
@@ -152,44 +152,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 580.0,
-          "y": 280.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_geometry",
-        "type": "output.preview.preview_geometry",
-        "position": {
-          "x": 860.0,
-          "y": 120.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_voxelize",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {
-          "x": 860.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 1120.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 1380.0,
-          "y": 320.0
+          "x": 960.0,
+          "y": 310.0
         },
         "parameters": {}
       },
@@ -197,8 +161,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 160.0,
-          "y": 280.0
+          "x": 320.0,
+          "y": 220.0
         },
         "parameters": {}
       },
@@ -206,8 +170,35 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 380.0,
-          "y": 280.0
+          "x": 640.0,
+          "y": 310.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 400.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1600.0,
+          "y": 310.0
         },
         "parameters": {}
       },
@@ -215,14 +206,23 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1420.0,
-          "y": 460.0
+          "x": 0.0,
+          "y": 220.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:oak_planks"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1920.0,
+          "y": 310.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
@@ -254,46 +254,6 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
         }
       },
       {
@@ -348,12 +308,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

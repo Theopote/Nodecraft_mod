@@ -126,7 +126,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 80.0
+          "y": 3240.0
         },
         "parameters": {
           "value": {
@@ -139,7 +139,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 140.0
+          "y": 3560.0
         },
         "parameters": {
           "value": {
@@ -152,7 +152,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 3880.0
         },
         "parameters": {
           "value": {
@@ -164,8 +164,8 @@
         "id": "node_span_start",
         "type": "reference.points.construct_point",
         "position": {
-          "x": 220.0,
-          "y": 140.0
+          "x": 320.0,
+          "y": 2620.0
         },
         "parameters": {}
       },
@@ -174,7 +174,7 @@
         "type": "reference.vectors.vector",
         "position": {
           "x": 0.0,
-          "y": 180.0
+          "y": 4200.0
         },
         "parameters": {
           "x": {
@@ -193,7 +193,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 320.0
+          "y": 4520.0
         },
         "parameters": {
           "value": {
@@ -205,8 +205,8 @@
         "id": "node_path_end",
         "type": "reference.points.point_along_vector",
         "position": {
-          "x": 280.0,
-          "y": 240.0
+          "x": 640.0,
+          "y": 2620.0
         },
         "parameters": {}
       },
@@ -214,8 +214,8 @@
         "id": "node_span_path",
         "type": "geometry.primitives.sphere_from_diameter",
         "position": {
-          "x": 560.0,
-          "y": 40.0
+          "x": 960.0,
+          "y": 2530.0
         },
         "parameters": {}
       },
@@ -223,17 +223,8 @@
         "id": "node_deck",
         "type": "geometry.architectural_primitives.beam_along_path",
         "position": {
-          "x": 820.0,
-          "y": 40.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_railings",
-        "type": "geometry.architectural_primitives.railing",
-        "position": {
-          "x": 820.0,
-          "y": 200.0
+          "x": 1280.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -241,8 +232,8 @@
         "id": "node_deck_width",
         "type": "input.numeric.float",
         "position": {
-          "x": 560.0,
-          "y": 200.0
+          "x": 0.0,
+          "y": 1320.0
         },
         "parameters": {
           "value": {
@@ -254,8 +245,8 @@
         "id": "node_deck_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 560.0,
-          "y": 340.0
+          "x": 0.0,
+          "y": 1640.0
         },
         "parameters": {
           "value": {
@@ -264,102 +255,96 @@
         }
       },
       {
-        "id": "node_left_pier",
-        "type": "geometry.primitives.box_from_corner_size",
+        "id": "node_railing_left",
+        "type": "geometry.architectural_primitives.railing",
         "position": {
-          "x": 0.0,
-          "y": 480.0
-        },
-        "parameters": {
-          "cornerX": {
-            "value": 0.0
-          },
-          "cornerY": {
-            "value": 0.0
-          },
-          "cornerZ": {
-            "value": -1.0
-          },
-          "sizeX": {
-            "value": 2.5
-          },
-          "sizeY": {
-            "value": 5.0
-          },
-          "sizeZ": {
-            "value": 6.0
-          }
-        }
-      },
-      {
-        "id": "node_right_pier",
-        "type": "geometry.primitives.box_from_corner_size",
-        "position": {
-          "x": 0.0,
-          "y": 660.0
-        },
-        "parameters": {
-          "cornerX": {
-            "value": 13.5
-          },
-          "cornerY": {
-            "value": 0.0
-          },
-          "cornerZ": {
-            "value": -1.0
-          },
-          "sizeX": {
-            "value": 2.5
-          },
-          "sizeY": {
-            "value": 5.0
-          },
-          "sizeZ": {
-            "value": 6.0
-          }
-        }
-      },
-      {
-        "id": "node_pier_face_l",
-        "type": "reference.points.get_box_face",
-        "position": {
-          "x": 280.0,
-          "y": 480.0
-        },
-        "parameters": {
-          "defaultFaceName": {
-            "value": "front"
-          }
-        }
-      },
-      {
-        "id": "node_pier_face_r",
-        "type": "reference.points.get_box_face",
-        "position": {
-          "x": 280.0,
-          "y": 660.0
-        },
-        "parameters": {
-          "defaultFaceName": {
-            "value": "front"
-          }
-        }
-      },
-      {
-        "id": "node_arch_l",
-        "type": "geometry.architectural_primitives.arch_opening",
-        "position": {
-          "x": 560.0,
-          "y": 480.0
+          "x": 1280.0,
+          "y": 2260.0
         },
         "parameters": {}
       },
       {
-        "id": "node_arch_r",
+        "id": "node_railing_right",
+        "type": "geometry.architectural_primitives.railing",
+        "position": {
+          "x": 1280.0,
+          "y": 2620.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_railing_offset_left",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 360.0
+        },
+        "parameters": {
+          "value": {
+            "value": -1.7
+          }
+        }
+      },
+      {
+        "id": "node_railing_offset_right",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 4840.0
+        },
+        "parameters": {
+          "value": {
+            "value": 1.7
+          }
+        }
+      },
+      {
+        "id": "node_bridge_body",
+        "type": "geometry.primitives.box_from_corner_size",
+        "position": {
+          "x": 0.0,
+          "y": 1000.0
+        },
+        "parameters": {
+          "cornerX": {
+            "value": 0.0
+          },
+          "cornerY": {
+            "value": 0.0
+          },
+          "cornerZ": {
+            "value": -3.0
+          },
+          "sizeX": {
+            "value": 16.0
+          },
+          "sizeY": {
+            "value": 5.0
+          },
+          "sizeZ": {
+            "value": 6.0
+          }
+        }
+      },
+      {
+        "id": "node_bridge_face",
+        "type": "reference.points.get_box_face",
+        "position": {
+          "x": 320.0,
+          "y": 2440.0
+        },
+        "parameters": {
+          "defaultFaceName": {
+            "value": "front"
+          }
+        }
+      },
+      {
+        "id": "node_central_arch",
         "type": "geometry.architectural_primitives.arch_opening",
         "position": {
-          "x": 560.0,
-          "y": 660.0
+          "x": 640.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -367,8 +352,8 @@
         "id": "node_arch_type",
         "type": "input.values.text_input",
         "position": {
-          "x": 560.0,
-          "y": 820.0
+          "x": 0.0,
+          "y": 1960.0
         },
         "parameters": {
           "text": {
@@ -383,21 +368,21 @@
         "id": "node_arch_width",
         "type": "input.numeric.float",
         "position": {
-          "x": 560.0,
-          "y": 960.0
+          "x": 0.0,
+          "y": 2280.0
         },
         "parameters": {
           "value": {
-            "value": 2.0
+            "value": 10.0
           }
         }
       },
       {
-        "id": "node_arch_height",
+        "id": "node_arch_stem_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 560.0,
-          "y": 1100.0
+          "x": 0.0,
+          "y": 2600.0
         },
         "parameters": {
           "value": {
@@ -406,20 +391,24 @@
         }
       },
       {
-        "id": "node_cut_left",
-        "type": "geometry.boolean.difference",
+        "id": "node_arch_depth",
+        "type": "input.numeric.float",
         "position": {
-          "x": 820.0,
-          "y": 480.0
+          "x": 0.0,
+          "y": 2920.0
         },
-        "parameters": {}
+        "parameters": {
+          "value": {
+            "value": 6.2
+          }
+        }
       },
       {
-        "id": "node_cut_right",
+        "id": "node_bridge_cut",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 820.0,
-          "y": 660.0
+          "x": 960.0,
+          "y": 2350.0
         },
         "parameters": {}
       },
@@ -427,8 +416,8 @@
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 1080.0,
-          "y": 360.0
+          "x": 1600.0,
+          "y": 2440.0
         },
         "parameters": {
           "inputCount": {
@@ -440,44 +429,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1320.0,
-          "y": 360.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_geometry",
-        "type": "output.preview.preview_geometry",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_voxelize",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1920.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -485,8 +438,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 900.0,
-          "y": 360.0
+          "x": 320.0,
+          "y": 2260.0
         },
         "parameters": {}
       },
@@ -494,8 +447,44 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 1120.0,
-          "y": 360.0
+          "x": 640.0,
+          "y": 2260.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 2240.0,
+          "y": 2350.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 2240.0,
+          "y": 2530.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 2560.0,
+          "y": 2440.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 2880.0,
+          "y": 2440.0
         },
         "parameters": {}
       },
@@ -503,8 +492,8 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1360.0,
-          "y": 1180.0
+          "x": 0.0,
+          "y": 680.0
         },
         "parameters": {
           "selectedBlock": {
@@ -514,6 +503,46 @@
       }
     ],
     "connections": [
+      {
+        "from": {
+          "node": "node_span_x",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_deck_elevation",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_z",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_span_start",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_path_end",
+          "port": "input_point"
+        }
+      },
       {
         "from": {
           "node": "node_run_vector",
@@ -536,6 +565,26 @@
       },
       {
         "from": {
+          "node": "node_span_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_span_path",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_path_end",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_span_path",
+          "port": "input_end"
+        }
+      },
+      {
+        "from": {
           "node": "node_span_path",
           "port": "output_diameter_path"
         },
@@ -550,7 +599,17 @@
           "port": "output_diameter_path"
         },
         "to": {
-          "node": "node_railings",
+          "node": "node_railing_left",
+          "port": "input_path"
+        }
+      },
+      {
+        "from": {
+          "node": "node_span_path",
+          "port": "output_diameter_path"
+        },
+        "to": {
+          "node": "node_railing_right",
           "port": "input_path"
         }
       },
@@ -576,41 +635,41 @@
       },
       {
         "from": {
-          "node": "node_left_pier",
+          "node": "node_railing_offset_left",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_railing_left",
+          "port": "input_offset"
+        }
+      },
+      {
+        "from": {
+          "node": "node_railing_offset_right",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_railing_right",
+          "port": "input_offset"
+        }
+      },
+      {
+        "from": {
+          "node": "node_bridge_body",
           "port": "output_box_geometry"
         },
         "to": {
-          "node": "node_pier_face_l",
+          "node": "node_bridge_face",
           "port": "input_box_geometry"
         }
       },
       {
         "from": {
-          "node": "node_right_pier",
-          "port": "output_box_geometry"
-        },
-        "to": {
-          "node": "node_pier_face_r",
-          "port": "input_box_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_pier_face_l",
+          "node": "node_bridge_face",
           "port": "output_face"
         },
         "to": {
-          "node": "node_arch_l",
-          "port": "input_face"
-        }
-      },
-      {
-        "from": {
-          "node": "node_pier_face_r",
-          "port": "output_face"
-        },
-        "to": {
-          "node": "node_arch_r",
+          "node": "node_central_arch",
           "port": "input_face"
         }
       },
@@ -620,17 +679,7 @@
           "port": "output_text"
         },
         "to": {
-          "node": "node_arch_l",
-          "port": "input_arch_type"
-        }
-      },
-      {
-        "from": {
-          "node": "node_arch_type",
-          "port": "output_text"
-        },
-        "to": {
-          "node": "node_arch_r",
+          "node": "node_central_arch",
           "port": "input_arch_type"
         }
       },
@@ -640,83 +689,53 @@
           "port": "output_value"
         },
         "to": {
-          "node": "node_arch_l",
+          "node": "node_central_arch",
           "port": "input_width"
         }
       },
       {
         "from": {
-          "node": "node_arch_width",
+          "node": "node_arch_stem_height",
           "port": "output_value"
         },
         "to": {
-          "node": "node_arch_r",
-          "port": "input_width"
-        }
-      },
-      {
-        "from": {
-          "node": "node_arch_height",
-          "port": "output_value"
-        },
-        "to": {
-          "node": "node_arch_l",
+          "node": "node_central_arch",
           "port": "input_height"
         }
       },
       {
         "from": {
-          "node": "node_arch_height",
+          "node": "node_arch_depth",
           "port": "output_value"
         },
         "to": {
-          "node": "node_arch_r",
-          "port": "input_height"
+          "node": "node_central_arch",
+          "port": "input_depth"
         }
       },
       {
         "from": {
-          "node": "node_left_pier",
+          "node": "node_bridge_body",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_cut_left",
+          "node": "node_bridge_cut",
           "port": "input_base"
         }
       },
       {
         "from": {
-          "node": "node_arch_l",
+          "node": "node_central_arch",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_cut_left",
+          "node": "node_bridge_cut",
           "port": "input_cutter"
         }
       },
       {
         "from": {
-          "node": "node_right_pier",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_cut_right",
-          "port": "input_base"
-        }
-      },
-      {
-        "from": {
-          "node": "node_arch_r",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_cut_right",
-          "port": "input_cutter"
-        }
-      },
-      {
-        "from": {
-          "node": "node_deck",
+          "node": "node_bridge_cut",
           "port": "output_geometry"
         },
         "to": {
@@ -726,7 +745,7 @@
       },
       {
         "from": {
-          "node": "node_railings",
+          "node": "node_deck",
           "port": "output_geometry"
         },
         "to": {
@@ -736,7 +755,7 @@
       },
       {
         "from": {
-          "node": "node_cut_left",
+          "node": "node_railing_left",
           "port": "output_geometry"
         },
         "to": {
@@ -746,7 +765,7 @@
       },
       {
         "from": {
-          "node": "node_cut_right",
+          "node": "node_railing_right",
           "port": "output_geometry"
         },
         "to": {
@@ -762,56 +781,6 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
-        }
-      },
-      {
-        "from": {
-          "node": "node_path_end",
-          "port": "output_point"
-        },
-        "to": {
-          "node": "node_span_path",
-          "port": "input_end"
         }
       },
       {
@@ -876,52 +845,42 @@
       },
       {
         "from": {
-          "node": "node_span_x",
-          "port": "output_value"
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
         },
         "to": {
-          "node": "node_span_start",
-          "port": "input_x"
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_deck_elevation",
-          "port": "output_value"
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
         },
         "to": {
-          "node": "node_span_start",
-          "port": "input_y"
+          "node": "node_voxelize",
+          "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_span_z",
-          "port": "output_value"
+          "node": "node_voxelize",
+          "port": "output_blocks"
         },
         "to": {
-          "node": "node_span_start",
-          "port": "input_z"
+          "node": "node_material",
+          "port": "input_coordinates"
         }
       },
       {
         "from": {
-          "node": "node_span_start",
-          "port": "output_point"
+          "node": "node_material",
+          "port": "output_placements"
         },
         "to": {
-          "node": "node_path_end",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
-          "node": "node_span_start",
-          "port": "output_point"
-        },
-        "to": {
-          "node": "node_span_path",
-          "port": "input_start"
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

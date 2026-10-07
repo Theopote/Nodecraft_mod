@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 25
+    "estimated_node_count": 24
   },
   "thumbnails": {
     "main": "",
@@ -98,17 +98,8 @@
         "id": "node_local_origin",
         "type": "reference.frames.world_frame",
         "position": {
-          "x": 220.0,
-          "y": 40.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_world_origin_deconstruct",
-        "type": "reference.frames.deconstruct_frame",
-        "position": {
-          "x": 220.0,
-          "y": 120.0
+          "x": 0.0,
+          "y": 1936.0
         },
         "parameters": {}
       },
@@ -117,7 +108,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 180.0
+          "y": 2252.0
         },
         "parameters": {
           "value": {
@@ -130,7 +121,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 320.0
+          "y": 2568.0
         },
         "parameters": {
           "value": {
@@ -143,7 +134,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 460.0
+          "y": 2884.0
         },
         "parameters": {
           "value": {
@@ -156,7 +147,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 600.0
+          "y": 3200.0
         },
         "parameters": {
           "value": {
@@ -169,7 +160,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 740.0
+          "y": 356.0
         },
         "parameters": {
           "value": {
@@ -182,7 +173,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 880.0
+          "y": 672.0
         },
         "parameters": {
           "value": {
@@ -195,7 +186,7 @@
         "type": "input.numeric.float",
         "position": {
           "x": 0.0,
-          "y": 1020.0
+          "y": 988.0
         },
         "parameters": {
           "value": {
@@ -205,49 +196,49 @@
       },
       {
         "id": "node_base_shape",
-        "type": "input.values.text_input",
+        "type": "input.values.dropdown",
         "position": {
-          "x": 220.0,
-          "y": 180.0
+          "x": 0.0,
+          "y": 3516.0
         },
         "parameters": {
-          "text": {
-            "value": "cylinder"
+          "options": {
+            "value": "cylinder,box,frustum"
           },
-          "multiline": {
-            "value": false
+          "selectedIndex": {
+            "value": 0
           }
         }
       },
       {
         "id": "node_shaft_shape",
-        "type": "input.values.text_input",
+        "type": "input.values.dropdown",
         "position": {
-          "x": 220.0,
-          "y": 460.0
+          "x": 0.0,
+          "y": 3832.0
         },
         "parameters": {
-          "text": {
-            "value": "cylinder"
+          "options": {
+            "value": "cylinder,box,frustum"
           },
-          "multiline": {
-            "value": false
+          "selectedIndex": {
+            "value": 0
           }
         }
       },
       {
         "id": "node_capital_shape",
-        "type": "input.values.text_input",
+        "type": "input.values.dropdown",
         "position": {
-          "x": 220.0,
-          "y": 740.0
+          "x": 0.0,
+          "y": 1304.0
         },
         "parameters": {
-          "text": {
-            "value": "frustum"
+          "options": {
+            "value": "cylinder,box,frustum"
           },
-          "multiline": {
-            "value": false
+          "selectedIndex": {
+            "value": 2
           }
         }
       },
@@ -255,8 +246,8 @@
         "id": "node_base",
         "type": "geometry.architectural_primitives.column",
         "position": {
-          "x": 480.0,
-          "y": 240.0
+          "x": 320.0,
+          "y": 2026.0
         },
         "parameters": {}
       },
@@ -264,8 +255,8 @@
         "id": "node_shaft",
         "type": "geometry.architectural_primitives.column",
         "position": {
-          "x": 720.0,
-          "y": 240.0
+          "x": 640.0,
+          "y": 2026.0
         },
         "parameters": {}
       },
@@ -274,7 +265,7 @@
         "type": "geometry.architectural_primitives.column",
         "position": {
           "x": 960.0,
-          "y": 240.0
+          "y": 1936.0
         },
         "parameters": {}
       },
@@ -282,8 +273,8 @@
         "id": "node_combine",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 1200.0,
-          "y": 240.0
+          "x": 1280.0,
+          "y": 1936.0
         },
         "parameters": {}
       },
@@ -291,44 +282,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 1440.0,
-          "y": 240.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_geometry",
-        "type": "output.preview.preview_geometry",
-        "position": {
-          "x": 1700.0,
-          "y": 120.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_voxelize",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {
-          "x": 1700.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 1960.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 2220.0,
-          "y": 320.0
+          "x": 1600.0,
+          "y": 1936.0
         },
         "parameters": {}
       },
@@ -336,8 +291,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 1020.0,
-          "y": 240.0
+          "x": 320.0,
+          "y": 1846.0
         },
         "parameters": {}
       },
@@ -345,8 +300,35 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 1240.0,
-          "y": 240.0
+          "x": 640.0,
+          "y": 1846.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1920.0,
+          "y": 1846.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1920.0,
+          "y": 2026.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 2240.0,
+          "y": 1936.0
         },
         "parameters": {}
       },
@@ -354,14 +336,23 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 2260.0,
-          "y": 1100.0
+          "x": 0.0,
+          "y": 1620.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:smooth_quartz"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 2560.0,
+          "y": 1936.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
@@ -371,18 +362,8 @@
           "port": "output_frame"
         },
         "to": {
-          "node": "node_world_origin_deconstruct",
-          "port": "input_frame"
-        }
-      },
-      {
-        "from": {
-          "node": "node_world_origin_deconstruct",
-          "port": "output_origin"
-        },
-        "to": {
           "node": "node_base",
-          "port": "input_base"
+          "port": "input_frame"
         }
       },
       {
@@ -408,7 +389,7 @@
       {
         "from": {
           "node": "node_base_shape",
-          "port": "output_text"
+          "port": "output_value"
         },
         "to": {
           "node": "node_base",
@@ -448,7 +429,7 @@
       {
         "from": {
           "node": "node_shaft_shape",
-          "port": "output_text"
+          "port": "output_value"
         },
         "to": {
           "node": "node_shaft",
@@ -498,7 +479,7 @@
       {
         "from": {
           "node": "node_capital_shape",
-          "port": "output_text"
+          "port": "output_value"
         },
         "to": {
           "node": "node_capital",
@@ -543,46 +524,6 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
         }
       },
       {
@@ -637,12 +578,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

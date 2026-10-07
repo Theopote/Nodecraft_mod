@@ -23,7 +23,7 @@
     "category": "building_elements",
     "difficulty": "beginner",
     "estimated_build_time": "2 minutes",
-    "estimated_node_count": 13
+    "estimated_node_count": 16
   },
   "thumbnails": {
     "main": "",
@@ -99,7 +99,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 528.0
         },
         "parameters": {
           "sizeX": {
@@ -117,8 +117,8 @@
         "id": "node_roof_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 200.0
+          "x": 320.0,
+          "y": 862.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -127,11 +127,56 @@
         }
       },
       {
+        "id": "node_roof_type",
+        "type": "input.values.text_input",
+        "position": {
+          "x": 0.0,
+          "y": 772.0
+        },
+        "parameters": {
+          "text": {
+            "value": "gable"
+          },
+          "multiline": {
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "node_ridge_direction",
+        "type": "input.values.text_input",
+        "position": {
+          "x": 0.0,
+          "y": 1016.0
+        },
+        "parameters": {
+          "text": {
+            "value": "x"
+          },
+          "multiline": {
+            "value": false
+          }
+        }
+      },
+      {
+        "id": "node_overhang",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1260.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.4
+          }
+        }
+      },
+      {
         "id": "node_roof_height",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 380.0
+          "x": 0.0,
+          "y": 1504.0
         },
         "parameters": {
           "value": {
@@ -143,8 +188,8 @@
         "id": "node_roof",
         "type": "geometry.architectural_primitives.roof_base",
         "position": {
-          "x": 560.0,
-          "y": 260.0
+          "x": 640.0,
+          "y": 862.0
         },
         "parameters": {}
       },
@@ -152,44 +197,8 @@
         "id": "node_move_to_pos",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 820.0,
-          "y": 260.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_geometry",
-        "type": "output.preview.preview_geometry",
-        "position": {
-          "x": 1100.0,
-          "y": 120.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_voxelize",
-        "type": "geometry.voxel.voxelize_geometry",
-        "position": {
-          "x": 1100.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
-        "position": {
-          "x": 1360.0,
-          "y": 320.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 1620.0,
-          "y": 320.0
+          "x": 960.0,
+          "y": 772.0
         },
         "parameters": {}
       },
@@ -197,8 +206,8 @@
         "id": "node_move_to_pos_point_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 400.0,
-          "y": 260.0
+          "x": 320.0,
+          "y": 682.0
         },
         "parameters": {}
       },
@@ -206,8 +215,35 @@
         "id": "node_move_to_pos_point_as_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 620.0,
-          "y": 260.0
+          "x": 640.0,
+          "y": 682.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 682.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 862.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1600.0,
+          "y": 772.0
         },
         "parameters": {}
       },
@@ -215,14 +251,23 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1660.0,
-          "y": 460.0
+          "x": 0.0,
+          "y": 284.0
         },
         "parameters": {
           "selectedBlock": {
             "value": "minecraft:spruce_planks"
           }
         }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1920.0,
+          "y": 772.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
@@ -248,6 +293,36 @@
       },
       {
         "from": {
+          "node": "node_roof_type",
+          "port": "output_text"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_roof_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_ridge_direction",
+          "port": "output_text"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_ridge_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_overhang",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_overhang"
+        }
+      },
+      {
+        "from": {
           "node": "node_roof_height",
           "port": "output_value"
         },
@@ -264,46 +339,6 @@
         "to": {
           "node": "node_move_to_pos",
           "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_voxelize",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_voxelize",
-          "port": "output_blocks"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_coordinates"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material",
-          "port": "output_placements"
-        },
-        "to": {
-          "node": "node_preview_blocks",
-          "port": "input_block_placements"
         }
       },
       {
@@ -358,12 +393,52 @@
       },
       {
         "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
           "node": "node_material_block_type",
           "port": "output_block_id"
         },
         "to": {
           "node": "node_material",
           "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
         }
       }
     ]

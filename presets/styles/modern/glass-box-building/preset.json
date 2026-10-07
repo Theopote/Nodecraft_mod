@@ -23,7 +23,7 @@
     "category": "styles",
     "difficulty": "intermediate",
     "estimated_build_time": "4 minutes",
-    "estimated_node_count": 30
+    "estimated_node_count": 26
   },
   "thumbnails": {
     "main": "",
@@ -114,7 +114,7 @@
         "type": "input.context.player_position",
         "position": {
           "x": 0.0,
-          "y": 40.0
+          "y": 1792.0
         },
         "parameters": {}
       },
@@ -123,7 +123,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 200.0
+          "y": 2084.0
         },
         "parameters": {
           "sizeX": {
@@ -142,7 +142,7 @@
         "type": "geometry.primitives.box_from_corner_size",
         "position": {
           "x": 0.0,
-          "y": 380.0
+          "y": 2668.0
         },
         "parameters": {
           "cornerX": {
@@ -169,8 +169,8 @@
         "id": "node_glass_shell",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 280.0,
-          "y": 280.0
+          "x": 320.0,
+          "y": 1680.0
         },
         "parameters": {}
       },
@@ -178,8 +178,8 @@
         "id": "node_front_face",
         "type": "reference.points.get_box_face",
         "position": {
-          "x": 280.0,
-          "y": 480.0
+          "x": 320.0,
+          "y": 1500.0
         },
         "parameters": {
           "defaultFaceName": {
@@ -189,10 +189,10 @@
       },
       {
         "id": "node_frame_grid",
-        "type": "geometry.architectural_primitives.column_grid",
+        "type": "geometry.architectural_primitives.beam_grid",
         "position": {
-          "x": 560.0,
-          "y": 480.0
+          "x": 640.0,
+          "y": 1590.0
         },
         "parameters": {}
       },
@@ -200,12 +200,12 @@
         "id": "node_frame_cols",
         "type": "input.numeric.integer",
         "position": {
-          "x": 280.0,
-          "y": 620.0
+          "x": 0.0,
+          "y": 40.0
         },
         "parameters": {
           "value": {
-            "value": 2
+            "value": 3
           }
         }
       },
@@ -213,63 +213,91 @@
         "id": "node_frame_rows",
         "type": "input.numeric.integer",
         "position": {
-          "x": 280.0,
-          "y": 760.0
+          "x": 0.0,
+          "y": 332.0
         },
         "parameters": {
           "value": {
-            "value": 5
+            "value": 4
           }
         }
       },
       {
-        "id": "node_frame_radius",
+        "id": "node_beam_width",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 900.0
+          "x": 0.0,
+          "y": 624.0
         },
         "parameters": {
           "value": {
-            "value": 0.15
+            "value": 0.2
           }
         }
       },
       {
-        "id": "node_frame_height",
+        "id": "node_beam_depth",
         "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 1040.0
+          "x": 0.0,
+          "y": 916.0
         },
         "parameters": {
           "value": {
-            "value": 10.0
+            "value": 0.25
           }
         }
       },
       {
-        "id": "node_frame_shape",
-        "type": "input.values.text_input",
+        "id": "node_beam_drop",
+        "type": "input.numeric.float",
         "position": {
-          "x": 280.0,
-          "y": 1180.0
+          "x": 0.0,
+          "y": 1208.0
         },
         "parameters": {
-          "text": {
-            "value": "box"
-          },
-          "multiline": {
-            "value": false
+          "value": {
+            "value": 0.0
           }
         }
+      },
+      {
+        "id": "node_beam_margin",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1500.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.3
+          }
+        }
+      },
+      {
+        "id": "node_move_glass",
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 1590.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_frame",
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 1410.0
+        },
+        "parameters": {}
       },
       {
         "id": "node_combine_geo",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 820.0,
-          "y": 360.0
+          "x": 1280.0,
+          "y": 1500.0
         },
         "parameters": {
           "inputCount": {
@@ -278,38 +306,11 @@
         }
       },
       {
-        "id": "node_move_to_pos",
-        "type": "transform.basic_transforms.move_geometry",
-        "position": {
-          "x": 1060.0,
-          "y": 360.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_glass",
-        "type": "transform.basic_transforms.move_geometry",
-        "position": {
-          "x": 1060.0,
-          "y": 520.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_frame",
-        "type": "transform.basic_transforms.move_geometry",
-        "position": {
-          "x": 1060.0,
-          "y": 680.0
-        },
-        "parameters": {}
-      },
-      {
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 1320.0,
-          "y": 240.0
+          "x": 1600.0,
+          "y": 1320.0
         },
         "parameters": {}
       },
@@ -317,8 +318,8 @@
         "id": "node_voxelize_glass",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 1320.0,
-          "y": 400.0
+          "x": 1280.0,
+          "y": 1680.0
         },
         "parameters": {}
       },
@@ -326,8 +327,8 @@
         "id": "node_voxelize_frame",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 1320.0,
-          "y": 560.0
+          "x": 1280.0,
+          "y": 1320.0
         },
         "parameters": {}
       },
@@ -335,8 +336,8 @@
         "id": "node_glass_block",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1060.0,
-          "y": 720.0
+          "x": 0.0,
+          "y": 2960.0
         },
         "parameters": {
           "selectedBlock": {
@@ -348,8 +349,8 @@
         "id": "node_frame_block",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1060.0,
-          "y": 880.0
+          "x": 0.0,
+          "y": 2376.0
         },
         "parameters": {
           "selectedBlock": {
@@ -361,8 +362,8 @@
         "id": "node_material_glass",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 1580.0,
-          "y": 400.0
+          "x": 1600.0,
+          "y": 1680.0
         },
         "parameters": {}
       },
@@ -370,8 +371,8 @@
         "id": "node_material_frame",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 1580.0,
-          "y": 560.0
+          "x": 1600.0,
+          "y": 1500.0
         },
         "parameters": {}
       },
@@ -379,8 +380,8 @@
         "id": "node_merge_placements",
         "type": "output.execute.merge_block_placements",
         "position": {
-          "x": 1840.0,
-          "y": 480.0
+          "x": 1920.0,
+          "y": 1500.0
         },
         "parameters": {
           "inputCount": {
@@ -392,62 +393,26 @@
         "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 2100.0,
-          "y": 480.0
+          "x": 2240.0,
+          "y": 1500.0
         },
         "parameters": {}
       },
       {
-        "id": "node_move_frame_point_deconstruct",
+        "id": "node_translation_deconstruct",
         "type": "reference.points.deconstruct_point",
         "position": {
-          "x": 640.0,
-          "y": 680.0
+          "x": 320.0,
+          "y": 1320.0
         },
         "parameters": {}
       },
       {
-        "id": "node_move_frame_point_as_vector",
+        "id": "node_translation_vector",
         "type": "reference.vectors.construct_vector",
         "position": {
-          "x": 860.0,
-          "y": 680.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_glass_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
           "x": 640.0,
-          "y": 520.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_glass_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 860.0,
-          "y": 520.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
-          "x": 640.0,
-          "y": 360.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 860.0,
-          "y": 360.0
+          "y": 1410.0
         },
         "parameters": {}
       }
@@ -515,72 +480,42 @@
       },
       {
         "from": {
-          "node": "node_frame_radius",
+          "node": "node_beam_width",
           "port": "output_value"
         },
         "to": {
           "node": "node_frame_grid",
-          "port": "input_radius"
+          "port": "input_beam_width"
         }
       },
       {
         "from": {
-          "node": "node_frame_height",
+          "node": "node_beam_depth",
           "port": "output_value"
         },
         "to": {
           "node": "node_frame_grid",
-          "port": "input_height"
+          "port": "input_beam_depth"
         }
       },
       {
         "from": {
-          "node": "node_frame_shape",
-          "port": "output_text"
+          "node": "node_beam_drop",
+          "port": "output_value"
         },
         "to": {
           "node": "node_frame_grid",
-          "port": "input_shape"
+          "port": "input_beam_drop"
         }
       },
       {
         "from": {
-          "node": "node_glass_shell",
-          "port": "output_geometry"
+          "node": "node_beam_margin",
+          "port": "output_value"
         },
         "to": {
-          "node": "node_combine_geo",
-          "port": "input_geometry_0"
-        }
-      },
-      {
-        "from": {
           "node": "node_frame_grid",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_combine_geo",
-          "port": "input_geometry_1"
-        }
-      },
-      {
-        "from": {
-          "node": "node_combine_geo",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_move_to_pos",
-          "port": "input_geometry"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_preview_geometry",
-          "port": "input_geometry"
+          "port": "input_margin"
         }
       },
       {
@@ -600,6 +535,96 @@
         },
         "to": {
           "node": "node_move_frame",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_translation_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_glass",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_frame",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_glass",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine_geo",
+          "port": "input_geometry_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_frame",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine_geo",
+          "port": "input_geometry_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_combine_geo",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
           "port": "input_geometry"
         }
       },
@@ -691,156 +716,6 @@
         "to": {
           "node": "node_preview_blocks",
           "port": "input_block_placements"
-        }
-      },
-      {
-        "from": {
-          "node": "node_player_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "node_move_frame_point_deconstruct",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_frame_point_deconstruct",
-          "port": "output_x"
-        },
-        "to": {
-          "node": "node_move_frame_point_as_vector",
-          "port": "input_x"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_frame_point_deconstruct",
-          "port": "output_y"
-        },
-        "to": {
-          "node": "node_move_frame_point_as_vector",
-          "port": "input_y"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_frame_point_deconstruct",
-          "port": "output_z"
-        },
-        "to": {
-          "node": "node_move_frame_point_as_vector",
-          "port": "input_z"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_frame_point_as_vector",
-          "port": "output_vector"
-        },
-        "to": {
-          "node": "node_move_frame",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "node_player_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "node_move_glass_point_deconstruct",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_glass_point_deconstruct",
-          "port": "output_x"
-        },
-        "to": {
-          "node": "node_move_glass_point_as_vector",
-          "port": "input_x"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_glass_point_deconstruct",
-          "port": "output_y"
-        },
-        "to": {
-          "node": "node_move_glass_point_as_vector",
-          "port": "input_y"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_glass_point_deconstruct",
-          "port": "output_z"
-        },
-        "to": {
-          "node": "node_move_glass_point_as_vector",
-          "port": "input_z"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_glass_point_as_vector",
-          "port": "output_vector"
-        },
-        "to": {
-          "node": "node_move_glass",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "node_player_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_x"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_x"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_y"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_y"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_z"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_z"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "output_vector"
-        },
-        "to": {
-          "node": "node_move_to_pos",
-          "port": "input_translation"
         }
       }
     ]

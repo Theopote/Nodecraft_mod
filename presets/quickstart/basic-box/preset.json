@@ -79,7 +79,7 @@
         "type": "input.context.player_position",
         "position": {
           "x": 0.0,
-          "y": 140.0
+          "y": 40.0
         },
         "parameters": {}
       },
@@ -87,8 +87,8 @@
         "id": "node_box",
         "type": "geometry.primitives.box",
         "position": {
-          "x": 280.0,
-          "y": 140.0
+          "x": 320.0,
+          "y": 130.0
         },
         "parameters": {
           "sizeX": {
@@ -106,7 +106,7 @@
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 580.0,
+          "x": 640.0,
           "y": 40.0
         },
         "parameters": {}
@@ -115,8 +115,8 @@
         "id": "node_voxelize",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 580.0,
-          "y": 240.0
+          "x": 640.0,
+          "y": 220.0
         },
         "parameters": {}
       },
@@ -124,8 +124,8 @@
         "id": "node_material",
         "type": "material.basic_assignment.assign_block_type",
         "position": {
-          "x": 860.0,
-          "y": 240.0
+          "x": 960.0,
+          "y": 130.0
         },
         "parameters": {}
       },
@@ -133,8 +133,8 @@
         "id": "node_preview_blocks",
         "type": "output.preview.preview_blocks",
         "position": {
-          "x": 1140.0,
-          "y": 240.0
+          "x": 1280.0,
+          "y": 130.0
         },
         "parameters": {}
       },
@@ -142,8 +142,8 @@
         "id": "node_material_block_type",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 1180.0,
-          "y": 320.0
+          "x": 0.0,
+          "y": 220.0
         },
         "parameters": {
           "selectedBlock": {

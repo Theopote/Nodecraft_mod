@@ -413,7 +413,6 @@ class PresetSemanticAuditTest {
         String applyFrom = incomingFromRef(preset, applyRef, "input_block_placements");
         String applyPort = incomingFromPort(preset, applyRef, "input_block_placements");
         if (previewFrom == null
-                || applyFrom == null
                 || !previewFrom.equals(applyFrom)
                 || !MATERIAL_PLACEMENTS_PORT.equals(previewPort)
                 || !MATERIAL_PLACEMENTS_PORT.equals(applyPort)) {

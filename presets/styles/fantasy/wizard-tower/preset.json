@@ -23,7 +23,7 @@
     "category": "styles",
     "difficulty": "intermediate",
     "estimated_build_time": "5 minutes",
-    "estimated_node_count": 17
+    "estimated_node_count": 45
   },
   "thumbnails": {
     "main": "",
@@ -114,7 +114,249 @@
         "type": "input.context.player_position",
         "position": {
           "x": 0.0,
+          "y": 1640.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_zero",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2920.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_tower_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1320.0
+        },
+        "parameters": {
+          "value": {
+            "value": 16.0
+          }
+        }
+      },
+      {
+        "id": "node_tower_radius",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2280.0
+        },
+        "parameters": {
+          "value": {
+            "value": 4.0
+          }
+        }
+      },
+      {
+        "id": "node_wall_thickness",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 3240.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.8
+          }
+        }
+      },
+      {
+        "id": "node_inner_radius",
+        "type": "math.scalar_math.subtraction",
+        "position": {
+          "x": 320.0,
+          "y": 2120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_roof_height",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
           "y": 40.0
+        },
+        "parameters": {
+          "value": {
+            "value": 6.0
+          }
+        }
+      },
+      {
+        "id": "node_apex_y",
+        "type": "math.scalar_math.addition",
+        "position": {
+          "x": 320.0,
+          "y": 1048.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_roof_overhang",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 680.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.5
+          }
+        }
+      },
+      {
+        "id": "node_roof_radius",
+        "type": "math.scalar_math.addition",
+        "position": {
+          "x": 320.0,
+          "y": 1316.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_balcony_elevation",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 3560.0
+        },
+        "parameters": {
+          "value": {
+            "value": 10.0
+          }
+        }
+      },
+      {
+        "id": "node_balcony_slab",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 3880.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.6
+          }
+        }
+      },
+      {
+        "id": "node_balcony_cutter_h",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 4200.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.8
+          }
+        }
+      },
+      {
+        "id": "node_balcony_outer_r",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1960.0
+        },
+        "parameters": {
+          "value": {
+            "value": 5.0
+          }
+        }
+      },
+      {
+        "id": "node_balcony_inner_r",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 2600.0
+        },
+        "parameters": {
+          "value": {
+            "value": 3.8
+          }
+        }
+      },
+      {
+        "id": "node_balcony_end_y",
+        "type": "math.scalar_math.addition",
+        "position": {
+          "x": 320.0,
+          "y": 2924.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_balcony_cut_end_y",
+        "type": "math.scalar_math.addition",
+        "position": {
+          "x": 320.0,
+          "y": 3192.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_origin",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 2388.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_tower_top",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1852.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_roof_apex",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 640.0,
+          "y": 2236.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_balcony_start",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 2656.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_balcony_outer_end",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 640.0,
+          "y": 2468.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_balcony_inner_end",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 640.0,
+          "y": 2700.0
         },
         "parameters": {}
       },
@@ -122,8 +364,8 @@
         "id": "node_outer",
         "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 0.0,
-          "y": 200.0
+          "x": 640.0,
+          "y": 2004.0
         },
         "parameters": {
           "startX": {
@@ -153,8 +395,8 @@
         "id": "node_inner",
         "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 0.0,
-          "y": 380.0
+          "x": 640.0,
+          "y": 1772.0
         },
         "parameters": {
           "startX": {
@@ -184,8 +426,8 @@
         "id": "node_shell",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 280.0,
-          "y": 280.0
+          "x": 960.0,
+          "y": 1850.0
         },
         "parameters": {}
       },
@@ -193,8 +435,8 @@
         "id": "node_roof",
         "type": "geometry.primitives.cone",
         "position": {
-          "x": 0.0,
-          "y": 560.0
+          "x": 960.0,
+          "y": 2030.0
         },
         "parameters": {
           "baseX": {
@@ -224,8 +466,8 @@
         "id": "node_balcony_outer",
         "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 0.0,
-          "y": 740.0
+          "x": 960.0,
+          "y": 2210.0
         },
         "parameters": {
           "startX": {
@@ -255,8 +497,8 @@
         "id": "node_balcony_inner",
         "type": "geometry.primitives.cylinder",
         "position": {
-          "x": 0.0,
-          "y": 920.0
+          "x": 960.0,
+          "y": 2390.0
         },
         "parameters": {
           "startX": {
@@ -286,92 +528,87 @@
         "id": "node_balcony",
         "type": "geometry.boolean.difference",
         "position": {
-          "x": 280.0,
-          "y": 820.0
+          "x": 1280.0,
+          "y": 2210.0
         },
         "parameters": {}
       },
       {
-        "id": "node_combine",
+        "id": "node_combine_body",
         "type": "geometry.combine.geometry",
         "position": {
-          "x": 560.0,
-          "y": 520.0
+          "x": 1600.0,
+          "y": 2210.0
         },
         "parameters": {
           "inputCount": {
-            "value": 3
+            "value": 2
           }
         }
       },
       {
-        "id": "node_move_to_pos",
+        "id": "node_move_body",
         "type": "transform.basic_transforms.move_geometry",
         "position": {
-          "x": 800.0,
-          "y": 520.0
+          "x": 1920.0,
+          "y": 2210.0
         },
         "parameters": {}
+      },
+      {
+        "id": "node_move_roof",
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 2030.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_combine_preview",
+        "type": "geometry.combine.geometry",
+        "position": {
+          "x": 2240.0,
+          "y": 2030.0
+        },
+        "parameters": {
+          "inputCount": {
+            "value": 2
+          }
+        }
       },
       {
         "id": "node_preview_geometry",
         "type": "output.preview.preview_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2560.0,
+          "y": 2030.0
         },
         "parameters": {}
       },
       {
-        "id": "node_voxelize",
+        "id": "node_voxelize_body",
         "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 2240.0,
+          "y": 2210.0
         },
         "parameters": {}
       },
       {
-        "id": "node_material",
-        "type": "material.basic_assignment.assign_block_type",
+        "id": "node_voxelize_roof",
+        "type": "geometry.voxel.voxelize_geometry",
         "position": {
-          "x": 0.0,
-          "y": 0.0
+          "x": 1600.0,
+          "y": 2030.0
         },
         "parameters": {}
       },
       {
-        "id": "node_preview_blocks",
-        "type": "output.preview.preview_blocks",
-        "position": {
-          "x": 0.0,
-          "y": 0.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_deconstruct",
-        "type": "reference.points.deconstruct_point",
-        "position": {
-          "x": 380.0,
-          "y": 520.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_move_to_pos_point_as_vector",
-        "type": "reference.vectors.construct_vector",
-        "position": {
-          "x": 600.0,
-          "y": 520.0
-        },
-        "parameters": {}
-      },
-      {
-        "id": "node_material_block_type",
+        "id": "node_body_block",
         "type": "input.type_selectors.block_type_selector",
         "position": {
-          "x": 840.0,
+          "x": 0.0,
           "y": 1000.0
         },
         "parameters": {
@@ -379,9 +616,420 @@
             "value": "minecraft:stone_bricks"
           }
         }
+      },
+      {
+        "id": "node_roof_block",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 360.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:purple_concrete"
+          }
+        }
+      },
+      {
+        "id": "node_material_body",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 2560.0,
+          "y": 2210.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_roof",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1920.0,
+          "y": 2030.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_merge_placements",
+        "type": "output.execute.merge_block_placements",
+        "position": {
+          "x": 2880.0,
+          "y": 2120.0
+        },
+        "parameters": {
+          "inputCount": {
+            "value": 2
+          }
+        }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 3200.0,
+          "y": 2120.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_translation_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1584.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_translation_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 1540.0
+        },
+        "parameters": {}
       }
     ],
     "connections": [
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_origin",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_origin",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_origin",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_tower_top",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_tower_top",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_tower_top",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_radius",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_inner_radius",
+          "port": "input_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_wall_thickness",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_inner_radius",
+          "port": "input_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_apex_y",
+          "port": "input_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_height",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_apex_y",
+          "port": "input_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_roof_apex",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_apex_y",
+          "port": "output_sum"
+        },
+        "to": {
+          "node": "node_roof_apex",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_roof_apex",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_radius",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_roof_radius",
+          "port": "input_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_overhang",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_roof_radius",
+          "port": "input_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_start",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_elevation",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_start",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_start",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_elevation",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_end_y",
+          "port": "input_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_slab",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_end_y",
+          "port": "input_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_outer_end",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_end_y",
+          "port": "output_sum"
+        },
+        "to": {
+          "node": "node_balcony_outer_end",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_outer_end",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_elevation",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_cut_end_y",
+          "port": "input_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_cutter_h",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_cut_end_y",
+          "port": "input_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_inner_end",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_cut_end_y",
+          "port": "output_sum"
+        },
+        "to": {
+          "node": "node_balcony_inner_end",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_zero",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_inner_end",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_origin",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_outer",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_top",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_outer",
+          "port": "input_end"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_radius",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_outer",
+          "port": "input_radius"
+        }
+      },
+      {
+        "from": {
+          "node": "node_origin",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_inner",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_top",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_inner",
+          "port": "input_end"
+        }
+      },
+      {
+        "from": {
+          "node": "node_inner_radius",
+          "port": "output_difference"
+        },
+        "to": {
+          "node": "node_inner",
+          "port": "input_radius"
+        }
+      },
       {
         "from": {
           "node": "node_outer",
@@ -400,6 +1048,96 @@
         "to": {
           "node": "node_shell",
           "port": "input_cutter"
+        }
+      },
+      {
+        "from": {
+          "node": "node_tower_top",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_base_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_apex",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_apex"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_radius",
+          "port": "output_sum"
+        },
+        "to": {
+          "node": "node_roof",
+          "port": "input_radius"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_balcony_outer",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_outer_end",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_balcony_outer",
+          "port": "input_end"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_outer_r",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_outer",
+          "port": "input_radius"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_start",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_balcony_inner",
+          "port": "input_start"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_inner_end",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_balcony_inner",
+          "port": "input_end"
+        }
+      },
+      {
+        "from": {
+          "node": "node_balcony_inner_r",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_balcony_inner",
+          "port": "input_radius"
         }
       },
       {
@@ -428,18 +1166,8 @@
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_combine",
+          "node": "node_combine_body",
           "port": "input_geometry_0"
-        }
-      },
-      {
-        "from": {
-          "node": "node_roof",
-          "port": "output_geometry"
-        },
-        "to": {
-          "node": "node_combine",
-          "port": "input_geometry_1"
         }
       },
       {
@@ -448,23 +1176,113 @@
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_combine",
-          "port": "input_geometry_2"
+          "node": "node_combine_body",
+          "port": "input_geometry_1"
         }
       },
       {
         "from": {
-          "node": "node_combine",
+          "node": "node_combine_body",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_move_to_pos",
+          "node": "node_move_body",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_move_to_pos",
+          "node": "node_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_move_roof",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_translation_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_translation_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_body",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_translation_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_roof",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_body",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine_preview",
+          "port": "input_geometry_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_combine_preview",
+          "port": "input_geometry_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_combine_preview",
           "port": "output_geometry"
         },
         "to": {
@@ -474,92 +1292,92 @@
       },
       {
         "from": {
-          "node": "node_move_to_pos",
+          "node": "node_move_body",
           "port": "output_geometry"
         },
         "to": {
-          "node": "node_voxelize",
+          "node": "node_voxelize_body",
           "port": "input_geometry"
         }
       },
       {
         "from": {
-          "node": "node_voxelize",
+          "node": "node_move_roof",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize_roof",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_body",
           "port": "output_blocks"
         },
         "to": {
-          "node": "node_material",
+          "node": "node_material_body",
           "port": "input_coordinates"
         }
       },
       {
         "from": {
-          "node": "node_material",
+          "node": "node_voxelize_roof",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material_roof",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_body_block",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material_body",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_roof_block",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material_roof",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_body",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_merge_placements",
+          "port": "input_placements_0"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_roof",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_merge_placements",
+          "port": "input_placements_1"
+        }
+      },
+      {
+        "from": {
+          "node": "node_merge_placements",
           "port": "output_placements"
         },
         "to": {
           "node": "node_preview_blocks",
           "port": "input_block_placements"
-        }
-      },
-      {
-        "from": {
-          "node": "node_player_pos",
-          "port": "output_position"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "input_point"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_x"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_x"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_y"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_y"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_deconstruct",
-          "port": "output_z"
-        },
-        "to": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "input_z"
-        }
-      },
-      {
-        "from": {
-          "node": "node_move_to_pos_point_as_vector",
-          "port": "output_vector"
-        },
-        "to": {
-          "node": "node_move_to_pos",
-          "port": "input_translation"
-        }
-      },
-      {
-        "from": {
-          "node": "node_material_block_type",
-          "port": "output_block_id"
-        },
-        "to": {
-          "node": "node_material",
-          "port": "input_block_type"
         }
       }
     ]

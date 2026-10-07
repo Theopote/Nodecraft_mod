@@ -14,8 +14,8 @@
             {
               "ref": "box",
               "typeId": "geometry.primitives.box",
-              "x": 0,
-              "y": 120,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "sizeX": 4.0,
                 "sizeY": 4.0,
@@ -25,26 +25,26 @@
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 300,
-              "y": 40
+              "x": 320.0,
+              "y": 40.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 560,
-              "y": 40
+              "x": 640.0,
+              "y": 130.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 860,
-              "y": 40
+              "x": 960.0,
+              "y": 130.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 560,
-              "y": 240,
+              "x": 320.0,
+              "y": 220.0,
               "state": {
                 "showOutline": true,
                 "showFill": false
@@ -53,8 +53,8 @@
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 900.0,
-              "y": 320.0,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "selectedBlock": "minecraft:stone"
               }
@@ -102,8 +102,8 @@
             {
               "ref": "box",
               "typeId": "geometry.primitives.box",
-              "x": 0,
-              "y": 120,
+              "x": 0.0,
+              "y": 130.0,
               "state": {
                 "sizeX": 2.0,
                 "sizeY": 2.0,
@@ -113,8 +113,8 @@
             {
               "ref": "array",
               "typeId": "pattern.linear.linear_array",
-              "x": 280,
-              "y": 120,
+              "x": 320.0,
+              "y": 130.0,
               "state": {
                 "count": 4,
                 "distance": 3.0
@@ -123,8 +123,8 @@
             {
               "ref": "transform",
               "typeId": "transform.basic_transforms.transform_geometry",
-              "x": 560,
-              "y": 120,
+              "x": 640.0,
+              "y": 130.0,
               "state": {
                 "translationX": 0.0,
                 "translationY": 1.0,
@@ -136,20 +136,20 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 860,
-              "y": 40
+              "x": 960.0,
+              "y": 40.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 860,
-              "y": 220
+              "x": 960.0,
+              "y": 220.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1140,
-              "y": 220
+              "x": 1280.0,
+              "y": 130.0
             }
           ],
           "connections": [
@@ -205,8 +205,8 @@
             {
               "ref": "cutter",
               "typeId": "geometry.primitives.box",
-              "x": 0,
-              "y": 260,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "sizeX": 3.0,
                 "sizeY": 5.0,
@@ -216,14 +216,14 @@
             {
               "ref": "difference",
               "typeId": "geometry.boolean.difference",
-              "x": 320,
-              "y": 140
+              "x": 320.0,
+              "y": 40.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 620,
-              "y": 40,
+              "x": 320.0,
+              "y": 220.0,
               "state": {
                 "inputCount": 2
               }
@@ -231,8 +231,8 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 860,
-              "y": 40,
+              "x": 640.0,
+              "y": 220.0,
               "state": {
                 "showOutline": true,
                 "showFill": false
@@ -241,14 +241,14 @@
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 620,
-              "y": 240
+              "x": 640.0,
+              "y": 40.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 920,
-              "y": 240
+              "x": 960.0,
+              "y": 130.0
             }
           ],
           "connections": [
@@ -317,8 +317,8 @@
             {
               "ref": "span_x",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 80,
+              "x": 0.0,
+              "y": 3240.0,
               "state": {
                 "value": 0.0
               }
@@ -326,8 +326,8 @@
             {
               "ref": "deck_elevation",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 140,
+              "x": 0.0,
+              "y": 3560.0,
               "state": {
                 "value": 5.0
               }
@@ -335,8 +335,8 @@
             {
               "ref": "span_z",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 3880.0,
               "state": {
                 "value": 0.0
               }
@@ -344,14 +344,14 @@
             {
               "ref": "span_start",
               "typeId": "reference.points.construct_point",
-              "x": 220,
-              "y": 140
+              "x": 320.0,
+              "y": 2620.0
             },
             {
               "ref": "run_vector",
               "typeId": "reference.vectors.vector",
-              "x": 0,
-              "y": 180,
+              "x": 0.0,
+              "y": 4200.0,
               "state": {
                 "x": 1.0,
                 "y": 0.0,
@@ -361,8 +361,8 @@
             {
               "ref": "unit_distance",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 320,
+              "x": 0.0,
+              "y": 4520.0,
               "state": {
                 "value": 16.0
               }
@@ -370,26 +370,26 @@
             {
               "ref": "path_end",
               "typeId": "reference.points.point_along_vector",
-              "x": 280,
-              "y": 240
+              "x": 640.0,
+              "y": 2620.0
             },
             {
               "ref": "span_path",
               "typeId": "geometry.primitives.sphere_from_diameter",
-              "x": 560,
-              "y": 40
+              "x": 960.0,
+              "y": 2530.0
             },
             {
               "ref": "deck",
               "typeId": "geometry.architectural_primitives.beam_along_path",
-              "x": 820,
-              "y": 40
+              "x": 1280.0,
+              "y": 2440.0
             },
             {
               "ref": "deck_width",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 200,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "value": 4.0
               }
@@ -397,8 +397,8 @@
             {
               "ref": "deck_height",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 340,
+              "x": 0.0,
+              "y": 1640.0,
               "state": {
                 "value": 0.8
               }
@@ -406,20 +406,20 @@
             {
               "ref": "railing_left",
               "typeId": "geometry.architectural_primitives.railing",
-              "x": 820,
-              "y": 200
+              "x": 1280.0,
+              "y": 2260.0
             },
             {
               "ref": "railing_right",
               "typeId": "geometry.architectural_primitives.railing",
-              "x": 820,
-              "y": 360
+              "x": 1280.0,
+              "y": 2620.0
             },
             {
               "ref": "railing_offset_left",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 480,
+              "x": 0.0,
+              "y": 360.0,
               "state": {
                 "value": -1.7
               }
@@ -427,8 +427,8 @@
             {
               "ref": "railing_offset_right",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 620,
+              "x": 0.0,
+              "y": 4840.0,
               "state": {
                 "value": 1.7
               }
@@ -436,8 +436,8 @@
             {
               "ref": "bridge_body",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 480,
+              "x": 0.0,
+              "y": 1000.0,
               "state": {
                 "cornerX": 0.0,
                 "cornerY": 0.0,
@@ -450,8 +450,8 @@
             {
               "ref": "bridge_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 480,
+              "x": 320.0,
+              "y": 2440.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -459,14 +459,14 @@
             {
               "ref": "central_arch",
               "typeId": "geometry.architectural_primitives.arch_opening",
-              "x": 560,
-              "y": 480
+              "x": 640.0,
+              "y": 2440.0
             },
             {
               "ref": "arch_type",
               "typeId": "input.values.text_input",
-              "x": 560,
-              "y": 820,
+              "x": 0.0,
+              "y": 1960.0,
               "state": {
                 "text": "round",
                 "multiline": false
@@ -475,8 +475,8 @@
             {
               "ref": "arch_width",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 960,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "value": 10.0
               }
@@ -484,8 +484,8 @@
             {
               "ref": "arch_stem_height",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 1100,
+              "x": 0.0,
+              "y": 2600.0,
               "state": {
                 "value": 3.5
               }
@@ -493,8 +493,8 @@
             {
               "ref": "arch_depth",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 1240,
+              "x": 0.0,
+              "y": 2920.0,
               "state": {
                 "value": 6.2
               }
@@ -502,14 +502,14 @@
             {
               "ref": "bridge_cut",
               "typeId": "geometry.boolean.difference",
-              "x": 820,
-              "y": 480
+              "x": 960.0,
+              "y": 2350.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1080,
-              "y": 360,
+              "x": 1600.0,
+              "y": 2440.0,
               "state": {
                 "inputCount": 4
               }
@@ -517,50 +517,50 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1320,
-              "y": 360
+              "x": 1920.0,
+              "y": 2440.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 900.0,
-              "y": 360.0
+              "x": 320.0,
+              "y": 2260.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1120.0,
-              "y": 360.0
+              "x": 640.0,
+              "y": 2260.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2240.0,
+              "y": 2350.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2240.0,
+              "y": 2530.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
+              "x": 2560.0,
+              "y": 2440.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
+              "x": 2880.0,
+              "y": 2440.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1360.0,
-              "y": 1180.0,
+              "x": 0.0,
+              "y": 680.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -812,8 +812,8 @@
             {
               "ref": "outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 952.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -827,8 +827,8 @@
             {
               "ref": "inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 380,
+              "x": 0.0,
+              "y": 1256.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -842,14 +842,14 @@
             {
               "ref": "hollow",
               "typeId": "geometry.boolean.difference",
-              "x": 280,
-              "y": 280
+              "x": 320.0,
+              "y": 1622.0
             },
             {
               "ref": "door_host",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 560,
+              "x": 0.0,
+              "y": 3384.0,
               "state": {
                 "cornerX": -1.0,
                 "cornerY": 0.0,
@@ -862,8 +862,8 @@
             {
               "ref": "door_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 560,
+              "x": 320.0,
+              "y": 1982.0,
               "state": {
                 "defaultFaceName": "back"
               }
@@ -871,14 +871,14 @@
             {
               "ref": "door_opening",
               "typeId": "geometry.architectural_primitives.arch_opening",
-              "x": 560,
-              "y": 560
+              "x": 640.0,
+              "y": 1802.0
             },
             {
               "ref": "door_type",
               "typeId": "input.values.text_input",
-              "x": 280,
-              "y": 700,
+              "x": 0.0,
+              "y": 1560.0,
               "state": {
                 "text": "round",
                 "multiline": false
@@ -887,8 +887,8 @@
             {
               "ref": "door_width",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 840,
+              "x": 0.0,
+              "y": 1864.0,
               "state": {
                 "value": 2.0
               }
@@ -896,8 +896,8 @@
             {
               "ref": "door_stem_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 980,
+              "x": 0.0,
+              "y": 2168.0,
               "state": {
                 "value": 2.5
               }
@@ -905,8 +905,8 @@
             {
               "ref": "door_depth",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1120,
+              "x": 0.0,
+              "y": 2472.0,
               "state": {
                 "value": 1.2
               }
@@ -914,14 +914,14 @@
             {
               "ref": "tower_cut",
               "typeId": "geometry.boolean.difference",
-              "x": 820,
-              "y": 420
+              "x": 960.0,
+              "y": 1712.0
             },
             {
               "ref": "top_deck",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 740,
+              "x": 0.0,
+              "y": 344.0,
               "state": {
                 "startX": 0.0,
                 "startY": 13.5,
@@ -935,8 +935,8 @@
             {
               "ref": "battlement_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 920,
+              "x": 0.0,
+              "y": 2776.0,
               "state": {
                 "cornerX": 4.4,
                 "cornerY": 14.0,
@@ -949,8 +949,8 @@
             {
               "ref": "battlement_array",
               "typeId": "pattern.radial.polar_array",
-              "x": 280,
-              "y": 920,
+              "x": 320.0,
+              "y": 1802.0,
               "state": {
                 "count": 12,
                 "includeEnd": false
@@ -959,8 +959,8 @@
             {
               "ref": "battlement_count",
               "typeId": "input.numeric.integer",
-              "x": 0,
-              "y": 1080,
+              "x": 0.0,
+              "y": 3080.0,
               "state": {
                 "value": 12
               }
@@ -968,8 +968,8 @@
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1080,
-              "y": 480,
+              "x": 1280.0,
+              "y": 1712.0,
               "state": {
                 "inputCount": 3
               }
@@ -977,50 +977,50 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1060,
-              "y": 480
+              "x": 1600.0,
+              "y": 1712.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1920.0,
+              "y": 1622.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 1920.0,
+              "y": 1802.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
+              "x": 2240.0,
+              "y": 1712.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
+              "x": 2560.0,
+              "y": 1712.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 640.0,
-              "y": 480.0
+              "x": 320.0,
+              "y": 1442.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 860.0,
-              "y": 480.0
+              "x": 640.0,
+              "y": 1622.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1100.0,
-              "y": 980.0,
+              "x": 0.0,
+              "y": 648.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -1200,8 +1200,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "sizeX": 12.0,
                 "sizeY": 4.0,
@@ -1211,8 +1211,8 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 40,
+              "x": 320.0,
+              "y": 2030.0,
               "state": {
                 "defaultFaceName": "bottom"
               }
@@ -1220,8 +1220,8 @@
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 260,
+              "x": 320.0,
+              "y": 2390.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -1229,8 +1229,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 480,
+              "x": 320.0,
+              "y": 2210.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -1238,26 +1238,26 @@
             {
               "ref": "perimeter",
               "typeId": "geometry.curves.face_boundary_curve",
-              "x": 520,
-              "y": 40
+              "x": 640.0,
+              "y": 1772.0
             },
             {
               "ref": "floor",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 520,
-              "y": 180
+              "x": 640.0,
+              "y": 2004.0
             },
             {
               "ref": "walls",
               "typeId": "geometry.architectural_primitives.wall_along_path",
-              "x": 760,
-              "y": 40
+              "x": 960.0,
+              "y": 1940.0
             },
             {
               "ref": "wall_height",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 200,
+              "x": 0.0,
+              "y": 360.0,
               "state": {
                 "value": 4.0
               }
@@ -1265,8 +1265,8 @@
             {
               "ref": "wall_thickness",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 340,
+              "x": 0.0,
+              "y": 680.0,
               "state": {
                 "value": 0.4
               }
@@ -1274,8 +1274,8 @@
             {
               "ref": "opening_depth",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 760,
+              "x": 0.0,
+              "y": 3560.0,
               "state": {
                 "value": 0.6
               }
@@ -1283,20 +1283,20 @@
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
-              "x": 760,
-              "y": 260
+              "x": 640.0,
+              "y": 2700.0
             },
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 760,
-              "y": 480
+              "x": 640.0,
+              "y": 2236.0
             },
             {
               "ref": "door_rows",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 1040,
+              "x": 0.0,
+              "y": 2920.0,
               "state": {
                 "value": 1
               }
@@ -1304,8 +1304,8 @@
             {
               "ref": "door_cols",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 900,
+              "x": 0.0,
+              "y": 3240.0,
               "state": {
                 "value": 1
               }
@@ -1313,14 +1313,14 @@
             {
               "ref": "doors",
               "typeId": "geometry.architectural_primitives.door_array",
-              "x": 760,
-              "y": 400
+              "x": 640.0,
+              "y": 2468.0
             },
             {
               "ref": "roof_type",
               "typeId": "input.values.text_input",
-              "x": 520,
-              "y": 480,
+              "x": 0.0,
+              "y": 1960.0,
               "state": {
                 "text": "gable",
                 "multiline": false
@@ -1329,8 +1329,8 @@
             {
               "ref": "roof_height",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 620,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "value": 3.25
               }
@@ -1338,8 +1338,8 @@
             {
               "ref": "roof_overhang",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 900,
+              "x": 0.0,
+              "y": 2600.0,
               "state": {
                 "value": 0.8
               }
@@ -1347,8 +1347,8 @@
             {
               "ref": "win_cols",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 620,
+              "x": 0.0,
+              "y": 3880.0,
               "state": {
                 "value": 2
               }
@@ -1356,8 +1356,8 @@
             {
               "ref": "win_rows",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 760,
+              "x": 0.0,
+              "y": 4200.0,
               "state": {
                 "value": 1
               }
@@ -1365,14 +1365,14 @@
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
-              "x": 760,
-              "y": 880
+              "x": 0.0,
+              "y": 1640.0
             },
             {
               "ref": "combine_openings",
               "typeId": "geometry.combine.geometry",
-              "x": 920,
-              "y": 400,
+              "x": 960.0,
+              "y": 2120.0,
               "state": {
                 "inputCount": 2
               }
@@ -1380,20 +1380,20 @@
             {
               "ref": "cut_walls",
               "typeId": "geometry.boolean.difference",
-              "x": 920,
-              "y": 120
+              "x": 1280.0,
+              "y": 2120.0
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 920,
-              "y": 560
+              "x": 960.0,
+              "y": 2300.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1000,
-              "y": 280,
+              "x": 1600.0,
+              "y": 2120.0,
               "state": {
                 "inputCount": 3
               }
@@ -1401,8 +1401,8 @@
             {
               "ref": "combine_final",
               "typeId": "geometry.combine.geometry",
-              "x": 1240,
-              "y": 280,
+              "x": 1920.0,
+              "y": 2120.0,
               "state": {
                 "inputCount": 2
               }
@@ -1410,50 +1410,50 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1480,
-              "y": 280
+              "x": 2240.0,
+              "y": 2120.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2560.0,
+              "y": 2030.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2560.0,
+              "y": 2210.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
+              "x": 2880.0,
+              "y": 2120.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
+              "x": 3200.0,
+              "y": 2120.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1060.0,
-              "y": 280.0
+              "x": 320.0,
+              "y": 1850.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1280.0,
-              "y": 280.0
+              "x": 640.0,
+              "y": 1540.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1520.0,
-              "y": 1120.0,
+              "x": 0.0,
+              "y": 1000.0,
               "state": {
                 "selectedBlock": "minecraft:oak_planks"
               }
@@ -1729,8 +1729,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 1112.0,
               "state": {
                 "sizeX": 14.0,
                 "sizeY": 4.0,
@@ -1740,8 +1740,8 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 40,
+              "x": 320.0,
+              "y": 1022.0,
               "state": {
                 "defaultFaceName": "bottom"
               }
@@ -1749,8 +1749,8 @@
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 260,
+              "x": 320.0,
+              "y": 1382.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -1758,8 +1758,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 480,
+              "x": 320.0,
+              "y": 1202.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -1767,26 +1767,26 @@
             {
               "ref": "perimeter",
               "typeId": "geometry.curves.face_boundary_curve",
-              "x": 520,
-              "y": 40
+              "x": 640.0,
+              "y": 892.0
             },
             {
               "ref": "floor",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 520,
-              "y": 180
+              "x": 640.0,
+              "y": 1112.0
             },
             {
               "ref": "walls",
               "typeId": "geometry.architectural_primitives.wall_along_path",
-              "x": 760,
-              "y": 40
+              "x": 960.0,
+              "y": 1022.0
             },
             {
               "ref": "wall_height",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 200,
+              "x": 0.0,
+              "y": 308.0,
               "state": {
                 "value": 4.0
               }
@@ -1794,8 +1794,8 @@
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
-              "x": 760,
-              "y": 260,
+              "x": 640.0,
+              "y": 1552.0,
               "state": {
                 "defaultDepth": 0.3
               }
@@ -1803,14 +1803,14 @@
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 760,
-              "y": 480
+              "x": 640.0,
+              "y": 1332.0
             },
             {
               "ref": "roof_type",
               "typeId": "input.values.text_input",
-              "x": 520,
-              "y": 480,
+              "x": 0.0,
+              "y": 1380.0,
               "state": {
                 "text": "flat",
                 "multiline": false
@@ -1819,8 +1819,8 @@
             {
               "ref": "roof_height",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 620,
+              "x": 0.0,
+              "y": 1648.0,
               "state": {
                 "value": 2.5
               }
@@ -1828,8 +1828,8 @@
             {
               "ref": "win_cols",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 620,
+              "x": 0.0,
+              "y": 1916.0,
               "state": {
                 "value": 2
               }
@@ -1837,8 +1837,8 @@
             {
               "ref": "win_rows",
               "typeId": "input.numeric.integer",
-              "x": 760,
-              "y": 760,
+              "x": 0.0,
+              "y": 2184.0,
               "state": {
                 "value": 1
               }
@@ -1846,26 +1846,26 @@
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
-              "x": 760,
-              "y": 400
+              "x": 0.0,
+              "y": 844.0
             },
             {
               "ref": "cut_walls",
               "typeId": "geometry.boolean.difference",
-              "x": 920,
-              "y": 120
+              "x": 1280.0,
+              "y": 1112.0
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 920,
-              "y": 320
+              "x": 960.0,
+              "y": 1202.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1000,
-              "y": 280,
+              "x": 1600.0,
+              "y": 1112.0,
               "state": {
                 "inputCount": 4
               }
@@ -1873,50 +1873,50 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1240,
-              "y": 280
+              "x": 1920.0,
+              "y": 1112.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2240.0,
+              "y": 1022.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 0,
-              "y": 0
+              "x": 2240.0,
+              "y": 1202.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 0,
-              "y": 0
+              "x": 2560.0,
+              "y": 1112.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 0,
-              "y": 0
+              "x": 2880.0,
+              "y": 1112.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 820.0,
-              "y": 280.0
+              "x": 320.0,
+              "y": 842.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1040.0,
-              "y": 280.0
+              "x": 640.0,
+              "y": 672.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1280.0,
-              "y": 840.0,
+              "x": 0.0,
+              "y": 576.0,
               "state": {
                 "selectedBlock": "minecraft:smooth_quartz"
               }
@@ -2132,8 +2132,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 40,
-              "y": 220,
+              "x": 0.0,
+              "y": 920.0,
               "state": {
                 "sizeX": 10.0,
                 "sizeY": 3.0,
@@ -2143,8 +2143,8 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 40,
+              "x": 320.0,
+              "y": 390.0,
               "state": {
                 "defaultFaceName": "bottom"
               }
@@ -2152,8 +2152,8 @@
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 260,
+              "x": 320.0,
+              "y": 750.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -2161,8 +2161,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 460,
+              "x": 320.0,
+              "y": 570.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -2170,26 +2170,26 @@
             {
               "ref": "perimeter",
               "typeId": "geometry.curves.face_boundary_curve",
-              "x": 520,
-              "y": 40
+              "x": 640.0,
+              "y": 260.0
             },
             {
               "ref": "floor",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 520,
-              "y": 180
+              "x": 640.0,
+              "y": 480.0
             },
             {
               "ref": "walls",
               "typeId": "geometry.architectural_primitives.wall_along_path",
-              "x": 760,
-              "y": 40
+              "x": 960.0,
+              "y": 390.0
             },
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
-              "x": 760,
-              "y": 260,
+              "x": 640.0,
+              "y": 920.0,
               "state": {
                 "defaultDepth": 0.5
               }
@@ -2197,74 +2197,74 @@
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
-              "x": 760,
-              "y": 400
+              "x": 0.0,
+              "y": 480.0
             },
             {
               "ref": "cut_walls",
               "typeId": "geometry.boolean.difference",
-              "x": 920,
-              "y": 120
+              "x": 1280.0,
+              "y": 480.0
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 920,
-              "y": 320
+              "x": 960.0,
+              "y": 570.0
             },
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 760,
-              "y": 460
+              "x": 640.0,
+              "y": 700.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1000,
-              "y": 240
+              "x": 1600.0,
+              "y": 480.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1120,
-              "y": 240
+              "x": 1920.0,
+              "y": 480.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 820,
-              "y": 280
+              "x": 320.0,
+              "y": 210.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1040,
-              "y": 280
+              "x": 640.0,
+              "y": 40.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1280,
-              "y": 80
+              "x": 2240.0,
+              "y": 390.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1360,
-              "y": 240
+              "x": 2240.0,
+              "y": 570.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1600,
-              "y": 240
+              "x": 2560.0,
+              "y": 480.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1600,
-              "y": 400,
+              "x": 0.0,
+              "y": 260.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -2272,14 +2272,14 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1880,
-              "y": 80
+              "x": 2880.0,
+              "y": 390.0
             },
             {
               "ref": "apply_changes",
               "typeId": "output.execute.apply_changes",
-              "x": 1880,
-              "y": 240,
+              "x": 2880.0,
+              "y": 570.0,
               "state": {
                 "placementMode": "OVERWRITE",
                 "useAsyncBake": true,
@@ -2289,8 +2289,8 @@
             {
               "ref": "apply_trigger",
               "typeId": "flow.control.manual_trigger",
-              "x": 1880,
-              "y": 440
+              "x": 0.0,
+              "y": 700.0
             }
           ],
           "connections": [
@@ -2479,8 +2479,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 40,
-              "y": 180,
+              "x": 0.0,
+              "y": 1832.0,
               "state": {
                 "sizeX": 8.0,
                 "sizeY": 3.0,
@@ -2490,8 +2490,8 @@
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 180,
+              "x": 320.0,
+              "y": 1116.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -2499,8 +2499,8 @@
             {
               "ref": "win_cols",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 360,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "value": 2
               }
@@ -2508,8 +2508,8 @@
             {
               "ref": "win_rows",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 500,
+              "x": 0.0,
+              "y": 296.0,
               "state": {
                 "value": 1
               }
@@ -2517,8 +2517,8 @@
             {
               "ref": "win_width",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 640,
+              "x": 0.0,
+              "y": 552.0,
               "state": {
                 "value": 1.2
               }
@@ -2526,8 +2526,8 @@
             {
               "ref": "win_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 780,
+              "x": 0.0,
+              "y": 808.0,
               "state": {
                 "value": 1.4
               }
@@ -2535,8 +2535,8 @@
             {
               "ref": "win_margin",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 920,
+              "x": 0.0,
+              "y": 1064.0,
               "state": {
                 "value": 0.4
               }
@@ -2544,8 +2544,8 @@
             {
               "ref": "wall_thickness",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1060,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "value": 0.4
               }
@@ -2553,8 +2553,8 @@
             {
               "ref": "depth_factor",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1200,
+              "x": 0.0,
+              "y": 1576.0,
               "state": {
                 "value": 2.0
               }
@@ -2562,50 +2562,50 @@
             {
               "ref": "opening_depth",
               "typeId": "math.scalar_math.multiplication",
-              "x": 520,
-              "y": 1060
+              "x": 320.0,
+              "y": 936.0
             },
             {
               "ref": "wall",
               "typeId": "geometry.architectural_primitives.wall_slab",
-              "x": 520,
-              "y": 60
+              "x": 640.0,
+              "y": 1026.0
             },
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
-              "x": 520,
-              "y": 300
+              "x": 640.0,
+              "y": 846.0
             },
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
-              "x": 520,
-              "y": 480
+              "x": 320.0,
+              "y": 756.0
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 760,
-              "y": 300
+              "x": 960.0,
+              "y": 846.0
             },
             {
               "ref": "cut",
               "typeId": "geometry.boolean.difference",
-              "x": 760,
-              "y": 60
+              "x": 960.0,
+              "y": 1026.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1000,
-              "y": 180
+              "x": 1280.0,
+              "y": 936.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1240,
-              "y": 180
+              "x": 1600.0,
+              "y": 936.0
             }
           ],
           "connections": [
@@ -2746,8 +2746,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 40,
-              "y": 160,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "sizeX": 10.0,
                 "sizeY": 0.4,
@@ -2757,8 +2757,8 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 160,
+              "x": 320.0,
+              "y": 620.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -2766,8 +2766,8 @@
             {
               "ref": "slab_thickness",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 320,
+              "x": 0.0,
+              "y": 272.0,
               "state": {
                 "value": 0.3
               }
@@ -2775,8 +2775,8 @@
             {
               "ref": "beam_columns",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 460,
+              "x": 0.0,
+              "y": 504.0,
               "state": {
                 "value": 3
               }
@@ -2784,8 +2784,8 @@
             {
               "ref": "beam_rows",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 600,
+              "x": 0.0,
+              "y": 736.0,
               "state": {
                 "value": 3
               }
@@ -2793,8 +2793,8 @@
             {
               "ref": "beam_depth",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 740,
+              "x": 0.0,
+              "y": 968.0,
               "state": {
                 "value": 0.35
               }
@@ -2802,8 +2802,8 @@
             {
               "ref": "beam_drop",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 880,
+              "x": 0.0,
+              "y": 1200.0,
               "state": {
                 "value": 0.1
               }
@@ -2811,32 +2811,32 @@
             {
               "ref": "slab",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 560,
-              "y": 60
+              "x": 640.0,
+              "y": 620.0
             },
             {
               "ref": "beams",
               "typeId": "geometry.architectural_primitives.beam_grid",
-              "x": 560,
-              "y": 300
+              "x": 960.0,
+              "y": 620.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 820,
-              "y": 160
+              "x": 1280.0,
+              "y": 530.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1080,
-              "y": 100
+              "x": 1600.0,
+              "y": 620.0
             },
             {
               "ref": "preview_curves",
               "typeId": "output.preview.preview_curves",
-              "x": 1080,
-              "y": 300
+              "x": 1280.0,
+              "y": 710.0
             }
           ],
           "connections": [
@@ -2923,8 +2923,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 40,
-              "y": 180,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "sizeX": 10.0,
                 "sizeY": 0.4,
@@ -2934,8 +2934,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 180,
+              "x": 320.0,
+              "y": 480.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -2943,8 +2943,8 @@
             {
               "ref": "roof_type",
               "typeId": "input.values.text_input",
-              "x": 280,
-              "y": 340,
+              "x": 0.0,
+              "y": 260.0,
               "state": {
                 "text": "gable",
                 "multiline": false
@@ -2953,8 +2953,8 @@
             {
               "ref": "roof_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 480,
+              "x": 0.0,
+              "y": 480.0,
               "state": {
                 "value": 2.0
               }
@@ -2962,8 +2962,8 @@
             {
               "ref": "overhang",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 620,
+              "x": 0.0,
+              "y": 700.0,
               "state": {
                 "value": 0.4
               }
@@ -2971,8 +2971,8 @@
             {
               "ref": "railing_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 760,
+              "x": 0.0,
+              "y": 920.0,
               "state": {
                 "value": 1.2
               }
@@ -2980,32 +2980,32 @@
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 560,
-              "y": 80
+              "x": 640.0,
+              "y": 480.0
             },
             {
               "ref": "eave_railing",
               "typeId": "geometry.architectural_primitives.railing",
-              "x": 560,
-              "y": 320
+              "x": 960.0,
+              "y": 570.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 820,
-              "y": 180
+              "x": 1280.0,
+              "y": 480.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1080,
-              "y": 100
+              "x": 1600.0,
+              "y": 480.0
             },
             {
               "ref": "preview_curves",
               "typeId": "output.preview.preview_curves",
-              "x": 1080,
-              "y": 300
+              "x": 960.0,
+              "y": 390.0
             }
           ],
           "connections": [
@@ -3098,14 +3098,14 @@
             {
               "ref": "local_origin",
               "typeId": "reference.frames.world_frame",
-              "x": 220,
-              "y": 40
+              "x": 0.0,
+              "y": 1936.0
             },
             {
               "ref": "base_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 180,
+              "x": 0.0,
+              "y": 2252.0,
               "state": {
                 "value": 0.6
               }
@@ -3113,8 +3113,8 @@
             {
               "ref": "base_radius",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 320,
+              "x": 0.0,
+              "y": 2568.0,
               "state": {
                 "value": 0.75
               }
@@ -3122,8 +3122,8 @@
             {
               "ref": "shaft_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 460,
+              "x": 0.0,
+              "y": 2884.0,
               "state": {
                 "value": 3.0
               }
@@ -3131,8 +3131,8 @@
             {
               "ref": "shaft_radius",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 600,
+              "x": 0.0,
+              "y": 3200.0,
               "state": {
                 "value": 0.45
               }
@@ -3140,8 +3140,8 @@
             {
               "ref": "capital_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 740,
+              "x": 0.0,
+              "y": 356.0,
               "state": {
                 "value": 0.55
               }
@@ -3149,8 +3149,8 @@
             {
               "ref": "capital_radius",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 880,
+              "x": 0.0,
+              "y": 672.0,
               "state": {
                 "value": 0.65
               }
@@ -3158,8 +3158,8 @@
             {
               "ref": "capital_top_scale",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 1020,
+              "x": 0.0,
+              "y": 988.0,
               "state": {
                 "value": 1.35
               }
@@ -3167,8 +3167,8 @@
             {
               "ref": "base_shape",
               "typeId": "input.values.dropdown",
-              "x": 220,
-              "y": 180,
+              "x": 0.0,
+              "y": 3516.0,
               "state": {
                 "options": "cylinder,box,frustum",
                 "selectedIndex": 0
@@ -3177,8 +3177,8 @@
             {
               "ref": "shaft_shape",
               "typeId": "input.values.dropdown",
-              "x": 220,
-              "y": 460,
+              "x": 0.0,
+              "y": 3832.0,
               "state": {
                 "options": "cylinder,box,frustum",
                 "selectedIndex": 0
@@ -3187,8 +3187,8 @@
             {
               "ref": "capital_shape",
               "typeId": "input.values.dropdown",
-              "x": 220,
-              "y": 740,
+              "x": 0.0,
+              "y": 1304.0,
               "state": {
                 "options": "cylinder,box,frustum",
                 "selectedIndex": 2
@@ -3197,68 +3197,68 @@
             {
               "ref": "base",
               "typeId": "geometry.architectural_primitives.column",
-              "x": 480,
-              "y": 240
+              "x": 320.0,
+              "y": 2026.0
             },
             {
               "ref": "shaft",
               "typeId": "geometry.architectural_primitives.column",
-              "x": 720,
-              "y": 240
+              "x": 640.0,
+              "y": 2026.0
             },
             {
               "ref": "capital",
               "typeId": "geometry.architectural_primitives.column",
-              "x": 960,
-              "y": 240
+              "x": 960.0,
+              "y": 1936.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1200,
-              "y": 240
+              "x": 1280.0,
+              "y": 1936.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1440,
-              "y": 240
+              "x": 1600.0,
+              "y": 1936.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1020,
-              "y": 240
+              "x": 320.0,
+              "y": 1846.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1240,
-              "y": 240
+              "x": 640.0,
+              "y": 1846.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1700,
-              "y": 120
+              "x": 1920.0,
+              "y": 1846.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1700,
-              "y": 320
+              "x": 1920.0,
+              "y": 2026.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1960,
-              "y": 320
+              "x": 2240.0,
+              "y": 1936.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 2000,
-              "y": 460,
+              "x": 0.0,
+              "y": 1620.0,
               "state": {
                 "selectedBlock": "minecraft:smooth_quartz"
               }
@@ -3266,8 +3266,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2220,
-              "y": 320
+              "x": 2560.0,
+              "y": 1936.0
             }
           ],
           "connections": [
@@ -3450,8 +3450,8 @@
             {
               "ref": "outer_frame",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 400.0,
               "state": {
                 "cornerX": 0.0,
                 "cornerY": 0.0,
@@ -3464,8 +3464,8 @@
             {
               "ref": "inner_opening",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 380,
+              "x": 0.0,
+              "y": 580.0,
               "state": {
                 "cornerX": 0.2,
                 "cornerY": -0.05,
@@ -3478,50 +3478,50 @@
             {
               "ref": "frame_cut",
               "typeId": "geometry.boolean.difference",
-              "x": 320,
-              "y": 280
+              "x": 320.0,
+              "y": 400.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 580,
-              "y": 280
+              "x": 960.0,
+              "y": 310.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 160,
-              "y": 280
+              "x": 320.0,
+              "y": 220.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 380,
-              "y": 280
+              "x": 640.0,
+              "y": 310.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 860,
-              "y": 120
+              "x": 1280.0,
+              "y": 220.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 860,
-              "y": 320
+              "x": 1280.0,
+              "y": 400.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1120,
-              "y": 320
+              "x": 1600.0,
+              "y": 310.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1160,
-              "y": 460,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "selectedBlock": "minecraft:oak_planks"
               }
@@ -3529,8 +3529,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1380,
-              "y": 320
+              "x": 1920.0,
+              "y": 310.0
             }
           ],
           "connections": [
@@ -3629,8 +3629,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 528.0,
               "state": {
                 "sizeX": 10.0,
                 "sizeY": 4.0,
@@ -3640,8 +3640,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 200,
+              "x": 320.0,
+              "y": 862.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -3649,8 +3649,8 @@
             {
               "ref": "roof_type",
               "typeId": "input.values.text_input",
-              "x": 40,
-              "y": 380,
+              "x": 0.0,
+              "y": 772.0,
               "state": {
                 "text": "gable",
                 "multiline": false
@@ -3659,8 +3659,8 @@
             {
               "ref": "ridge_direction",
               "typeId": "input.values.text_input",
-              "x": 40,
-              "y": 520,
+              "x": 0.0,
+              "y": 1016.0,
               "state": {
                 "text": "x",
                 "multiline": false
@@ -3669,8 +3669,8 @@
             {
               "ref": "overhang",
               "typeId": "input.numeric.float",
-              "x": 40,
-              "y": 660,
+              "x": 0.0,
+              "y": 1260.0,
               "state": {
                 "value": 0.4
               }
@@ -3678,8 +3678,8 @@
             {
               "ref": "roof_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 380,
+              "x": 0.0,
+              "y": 1504.0,
               "state": {
                 "value": 2.5
               }
@@ -3687,50 +3687,50 @@
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 560,
-              "y": 260
+              "x": 640.0,
+              "y": 862.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 820,
-              "y": 260
+              "x": 960.0,
+              "y": 772.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 400,
-              "y": 260
+              "x": 320.0,
+              "y": 682.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 620,
-              "y": 260
+              "x": 640.0,
+              "y": 682.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1100,
-              "y": 120
+              "x": 1280.0,
+              "y": 682.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1100,
-              "y": 320
+              "x": 1280.0,
+              "y": 862.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1360,
-              "y": 320
+              "x": 1600.0,
+              "y": 772.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1400,
-              "y": 460,
+              "x": 0.0,
+              "y": 284.0,
               "state": {
                 "selectedBlock": "minecraft:spruce_planks"
               }
@@ -3738,8 +3738,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1620,
-              "y": 320
+              "x": 1920.0,
+              "y": 772.0
             }
           ],
           "connections": [
@@ -3862,20 +3862,20 @@
             {
               "ref": "local_origin",
               "typeId": "reference.frames.world_frame",
-              "x": 220,
-              "y": 40
+              "x": 0.0,
+              "y": 3240.0
             },
             {
               "ref": "world_origin_deconstruct",
               "typeId": "reference.frames.deconstruct_frame",
-              "x": 220,
-              "y": 120
+              "x": 320.0,
+              "y": 2370.0
             },
             {
               "ref": "tangent_vector",
               "typeId": "reference.vectors.vector",
-              "x": 0,
-              "y": 180,
+              "x": 0.0,
+              "y": 3560.0,
               "state": {
                 "x": 1.0,
                 "y": 0.0,
@@ -3885,8 +3885,8 @@
             {
               "ref": "unit_distance",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 320,
+              "x": 0.0,
+              "y": 3880.0,
               "state": {
                 "value": 2.0
               }
@@ -3894,14 +3894,14 @@
             {
               "ref": "path_end",
               "typeId": "reference.points.point_along_vector",
-              "x": 280,
-              "y": 240
+              "x": 640.0,
+              "y": 2280.0
             },
             {
               "ref": "up_vector",
               "typeId": "reference.vectors.vector",
-              "x": 0,
-              "y": 460,
+              "x": 0.0,
+              "y": 4520.0,
               "state": {
                 "x": 0.0,
                 "y": 1.0,
@@ -3911,20 +3911,20 @@
             {
               "ref": "post_end",
               "typeId": "reference.points.point_along_vector",
-              "x": 280,
-              "y": 460
+              "x": 640.0,
+              "y": 2460.0
             },
             {
               "ref": "stair_path",
               "typeId": "geometry.primitives.sphere_from_diameter",
-              "x": 560,
-              "y": 40
+              "x": 960.0,
+              "y": 2190.0
             },
             {
               "ref": "step_count",
               "typeId": "input.numeric.integer",
-              "x": 560,
-              "y": 220,
+              "x": 0.0,
+              "y": 360.0,
               "state": {
                 "value": 18
               }
@@ -3932,8 +3932,8 @@
             {
               "ref": "step_run",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 360,
+              "x": 0.0,
+              "y": 680.0,
               "state": {
                 "value": 0.8
               }
@@ -3941,8 +3941,8 @@
             {
               "ref": "step_rise",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 500,
+              "x": 0.0,
+              "y": 1000.0,
               "state": {
                 "value": 0.33
               }
@@ -3950,8 +3950,8 @@
             {
               "ref": "step_width",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 640,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "value": 1.0
               }
@@ -3959,8 +3959,8 @@
             {
               "ref": "spiral_radius",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 780,
+              "x": 0.0,
+              "y": 1640.0,
               "state": {
                 "value": 2.5
               }
@@ -3968,8 +3968,8 @@
             {
               "ref": "spiral_core_radius",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 920,
+              "x": 0.0,
+              "y": 2920.0,
               "state": {
                 "value": 0.35
               }
@@ -3977,8 +3977,8 @@
             {
               "ref": "spiral_turns",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 1060,
+              "x": 0.0,
+              "y": 1960.0,
               "state": {
                 "value": 1.5
               }
@@ -3986,8 +3986,8 @@
             {
               "ref": "spiral_height",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 1200,
+              "x": 0.0,
+              "y": 4200.0,
               "state": {
                 "value": 6.0
               }
@@ -3995,8 +3995,8 @@
             {
               "ref": "layout",
               "typeId": "input.values.text_input",
-              "x": 560,
-              "y": 1340,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "text": "spiral",
                 "multiline": false
@@ -4005,62 +4005,62 @@
             {
               "ref": "staircase",
               "typeId": "geometry.architectural_primitives.staircase",
-              "x": 860,
-              "y": 520
+              "x": 1280.0,
+              "y": 2280.0
             },
             {
               "ref": "center_post",
               "typeId": "geometry.primitives.cylinder",
-              "x": 860,
-              "y": 760
+              "x": 960.0,
+              "y": 2370.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1120,
-              "y": 620
+              "x": 1600.0,
+              "y": 2280.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1360,
-              "y": 620
+              "x": 1920.0,
+              "y": 2280.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 940,
-              "y": 620
+              "x": 320.0,
+              "y": 2190.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1160,
-              "y": 620
+              "x": 640.0,
+              "y": 2100.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1620,
-              "y": 120
+              "x": 2240.0,
+              "y": 2190.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1620,
-              "y": 320
+              "x": 2240.0,
+              "y": 2370.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1880,
-              "y": 320
+              "x": 2560.0,
+              "y": 2280.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1920,
-              "y": 460,
+              "x": 0.0,
+              "y": 2600.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -4068,8 +4068,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2140,
-              "y": 320
+              "x": 2880.0,
+              "y": 2280.0
             }
           ],
           "connections": [
@@ -4300,8 +4300,8 @@
             {
               "ref": "run_vector",
               "typeId": "reference.vectors.vector",
-              "x": 0,
-              "y": 220,
+              "x": 0.0,
+              "y": 308.0,
               "state": {
                 "x": 12.0,
                 "y": 0.0,
@@ -4311,8 +4311,8 @@
             {
               "ref": "unit_distance",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 400,
+              "x": 0.0,
+              "y": 576.0,
               "state": {
                 "value": 12.0
               }
@@ -4320,20 +4320,20 @@
             {
               "ref": "path_end",
               "typeId": "reference.points.point_along_vector",
-              "x": 280,
-              "y": 280
+              "x": 320.0,
+              "y": 1112.0
             },
             {
               "ref": "stair_path",
               "typeId": "geometry.primitives.sphere_from_diameter",
-              "x": 560,
-              "y": 80
+              "x": 640.0,
+              "y": 1112.0
             },
             {
               "ref": "step_count",
               "typeId": "input.numeric.integer",
-              "x": 560,
-              "y": 280,
+              "x": 0.0,
+              "y": 844.0,
               "state": {
                 "value": 12
               }
@@ -4341,8 +4341,8 @@
             {
               "ref": "step_run",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 420,
+              "x": 0.0,
+              "y": 1112.0,
               "state": {
                 "value": 1.0
               }
@@ -4350,8 +4350,8 @@
             {
               "ref": "step_rise",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 560,
+              "x": 0.0,
+              "y": 1380.0,
               "state": {
                 "value": 0.25
               }
@@ -4359,8 +4359,8 @@
             {
               "ref": "step_width",
               "typeId": "input.numeric.float",
-              "x": 560,
-              "y": 700,
+              "x": 0.0,
+              "y": 1648.0,
               "state": {
                 "value": 1.2
               }
@@ -4368,8 +4368,8 @@
             {
               "ref": "layout",
               "typeId": "input.values.text_input",
-              "x": 560,
-              "y": 840,
+              "x": 0.0,
+              "y": 1916.0,
               "state": {
                 "text": "straight",
                 "multiline": false
@@ -4378,32 +4378,32 @@
             {
               "ref": "staircase",
               "typeId": "geometry.architectural_primitives.staircase",
-              "x": 860,
-              "y": 280
+              "x": 960.0,
+              "y": 1112.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1160,
-              "y": 120
+              "x": 1280.0,
+              "y": 1022.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1160,
-              "y": 320
+              "x": 1280.0,
+              "y": 1202.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1420,
-              "y": 320
+              "x": 1600.0,
+              "y": 1112.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1460,
-              "y": 460,
+              "x": 0.0,
+              "y": 2184.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -4411,8 +4411,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1680,
-              "y": 320
+              "x": 1920.0,
+              "y": 1112.0
             }
           ],
           "connections": [
@@ -4523,14 +4523,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 40
+              "x": 0.0,
+              "y": 1720.0
             },
             {
               "ref": "facade_plane",
               "typeId": "reference.planes.world_plane",
-              "x": 0,
-              "y": 120,
+              "x": 0.0,
+              "y": 2000.0,
               "state": {
                 "planePreset": "XY",
                 "originX": 0.0,
@@ -4541,8 +4541,8 @@
             {
               "ref": "zero",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 280,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "value": 0.0
               }
@@ -4550,8 +4550,8 @@
             {
               "ref": "rect_cy",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 400,
+              "x": 0.0,
+              "y": 320.0,
               "state": {
                 "value": 0.6
               }
@@ -4559,8 +4559,8 @@
             {
               "ref": "arc_cy",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 520,
+              "x": 0.0,
+              "y": 2560.0,
               "state": {
                 "value": 1.2
               }
@@ -4568,20 +4568,20 @@
             {
               "ref": "rect_center",
               "typeId": "reference.points.construct_point",
-              "x": 220,
-              "y": 280
+              "x": 320.0,
+              "y": 860.0
             },
             {
               "ref": "arc_center",
               "typeId": "reference.points.construct_point",
-              "x": 220,
-              "y": 480
+              "x": 320.0,
+              "y": 1740.0
             },
             {
               "ref": "rect_profile",
               "typeId": "geometry.profiles.rectangle_profile",
-              "x": 460,
-              "y": 200,
+              "x": 640.0,
+              "y": 1520.0,
               "state": {
                 "width": 1.0,
                 "height": 1.2
@@ -4590,8 +4590,8 @@
             {
               "ref": "arc_profile",
               "typeId": "geometry.profiles.sector_profile",
-              "x": 460,
-              "y": 400,
+              "x": 640.0,
+              "y": 1740.0,
               "state": {
                 "radius": 0.5,
                 "startAngle": 0.0,
@@ -4602,8 +4602,8 @@
             {
               "ref": "union_profiles",
               "typeId": "geometry.profiles.boolean_2d",
-              "x": 720,
-              "y": 280,
+              "x": 960.0,
+              "y": 1300.0,
               "state": {
                 "operation": "UNION"
               }
@@ -4611,8 +4611,8 @@
             {
               "ref": "extrude_dir",
               "typeId": "reference.vectors.vector",
-              "x": 720,
-              "y": 460,
+              "x": 0.0,
+              "y": 600.0,
               "state": {
                 "x": 0.0,
                 "y": 0.0,
@@ -4622,8 +4622,8 @@
             {
               "ref": "glass_dir",
               "typeId": "reference.vectors.vector",
-              "x": 720,
-              "y": 600,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "x": 0.0,
                 "y": 0.0,
@@ -4633,20 +4633,20 @@
             {
               "ref": "extrude_opening",
               "typeId": "geometry.solids.extrude",
-              "x": 980,
-              "y": 200
+              "x": 1280.0,
+              "y": 1390.0
             },
             {
               "ref": "extrude_glass",
               "typeId": "geometry.solids.extrude",
-              "x": 980,
-              "y": 400
+              "x": 1280.0,
+              "y": 1210.0
             },
             {
               "ref": "frame_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 460,
-              "y": 640,
+              "x": 0.0,
+              "y": 880.0,
               "state": {
                 "cornerX": -0.2,
                 "cornerY": -0.2,
@@ -4659,92 +4659,92 @@
             {
               "ref": "subtract_opening",
               "typeId": "geometry.boolean.difference",
-              "x": 1240,
-              "y": 280
+              "x": 1600.0,
+              "y": 1390.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1500,
-              "y": 320
+              "x": 1920.0,
+              "y": 1300.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1760,
-              "y": 200
+              "x": 2240.0,
+              "y": 1120.0
             },
             {
               "ref": "move_frame",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1760,
-              "y": 360
+              "x": 1920.0,
+              "y": 1480.0
             },
             {
               "ref": "move_glass",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1760,
-              "y": 520
+              "x": 1600.0,
+              "y": 1210.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1500,
-              "y": 40
+              "x": 320.0,
+              "y": 1080.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1720,
-              "y": 40
+              "x": 640.0,
+              "y": 860.0
             },
             {
               "ref": "move_frame_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1500,
-              "y": 200
+              "x": 320.0,
+              "y": 1520.0
             },
             {
               "ref": "move_frame_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1720,
-              "y": 200
+              "x": 640.0,
+              "y": 1300.0
             },
             {
               "ref": "move_glass_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1500,
-              "y": 360
+              "x": 320.0,
+              "y": 1300.0
             },
             {
               "ref": "move_glass_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1720,
-              "y": 360
+              "x": 640.0,
+              "y": 1080.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 2020,
-              "y": 120
+              "x": 2560.0,
+              "y": 1210.0
             },
             {
               "ref": "voxelize_frame",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 2020,
-              "y": 320
+              "x": 2240.0,
+              "y": 1300.0
             },
             {
               "ref": "voxelize_glass",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 2020,
-              "y": 480
+              "x": 1920.0,
+              "y": 1120.0
             },
             {
               "ref": "frame_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 2020,
-              "y": 640,
+              "x": 0.0,
+              "y": 1160.0,
               "state": {
                 "selectedBlock": "minecraft:smooth_quartz"
               }
@@ -4752,8 +4752,8 @@
             {
               "ref": "glass_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 2020,
-              "y": 780,
+              "x": 0.0,
+              "y": 1440.0,
               "state": {
                 "selectedBlock": "minecraft:glass"
               }
@@ -4761,20 +4761,20 @@
             {
               "ref": "material_frame",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 2280,
-              "y": 320
+              "x": 2560.0,
+              "y": 1390.0
             },
             {
               "ref": "material_glass",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 2280,
-              "y": 480
+              "x": 2240.0,
+              "y": 1480.0
             },
             {
               "ref": "merge_placements",
               "typeId": "output.execute.merge_block_placements",
-              "x": 2540,
-              "y": 400,
+              "x": 2880.0,
+              "y": 1300.0,
               "state": {
                 "inputCount": 2
               }
@@ -4782,8 +4782,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2800,
-              "y": 400
+              "x": 3200.0,
+              "y": 1300.0
             }
           ],
           "connections": [
@@ -5086,14 +5086,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 40
+              "x": 0.0,
+              "y": 3200.0
             },
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 1304.0,
               "state": {
                 "sizeX": 2.4,
                 "sizeY": 2.6,
@@ -5103,8 +5103,8 @@
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 200,
+              "x": 320.0,
+              "y": 1296.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -5112,8 +5112,8 @@
             {
               "ref": "opening_cols",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 380,
+              "x": 0.0,
+              "y": 1620.0,
               "state": {
                 "value": 1
               }
@@ -5121,8 +5121,8 @@
             {
               "ref": "opening_rows",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 520,
+              "x": 0.0,
+              "y": 1936.0,
               "state": {
                 "value": 1
               }
@@ -5130,8 +5130,8 @@
             {
               "ref": "opening_width",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 660,
+              "x": 0.0,
+              "y": 672.0,
               "state": {
                 "value": 1.2
               }
@@ -5139,8 +5139,8 @@
             {
               "ref": "opening_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 800,
+              "x": 0.0,
+              "y": 988.0,
               "state": {
                 "value": 2.0
               }
@@ -5148,8 +5148,8 @@
             {
               "ref": "opening_margin",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 940,
+              "x": 0.0,
+              "y": 2252.0,
               "state": {
                 "value": 0.5
               }
@@ -5157,8 +5157,8 @@
             {
               "ref": "wall_thickness",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1080,
+              "x": 0.0,
+              "y": 2568.0,
               "state": {
                 "value": 0.35
               }
@@ -5166,8 +5166,8 @@
             {
               "ref": "depth_factor",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1220,
+              "x": 0.0,
+              "y": 3832.0,
               "state": {
                 "value": 2.0
               }
@@ -5175,14 +5175,14 @@
             {
               "ref": "opening_depth",
               "typeId": "math.scalar_math.multiplication",
-              "x": 520,
-              "y": 1080
+              "x": 320.0,
+              "y": 2320.0
             },
             {
               "ref": "glass_thickness",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1360,
+              "x": 0.0,
+              "y": 3516.0,
               "state": {
                 "value": 0.08
               }
@@ -5190,26 +5190,26 @@
             {
               "ref": "wall",
               "typeId": "geometry.architectural_primitives.wall_slab",
-              "x": 560,
-              "y": 60
+              "x": 640.0,
+              "y": 2052.0
             },
             {
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
-              "x": 560,
-              "y": 300
+              "x": 640.0,
+              "y": 1820.0
             },
             {
               "ref": "window_frame",
               "typeId": "geometry.architectural_primitives.window_frame",
-              "x": 560,
-              "y": 480
+              "x": 320.0,
+              "y": 1040.0
             },
             {
               "ref": "glass_pane",
               "typeId": "geometry.primitives.box",
-              "x": 560,
-              "y": 660,
+              "x": 320.0,
+              "y": 1552.0,
               "state": {
                 "sizeX": 1.2,
                 "sizeY": 2.0,
@@ -5219,128 +5219,128 @@
             {
               "ref": "cut",
               "typeId": "geometry.boolean.difference",
-              "x": 820,
-              "y": 60
+              "x": 960.0,
+              "y": 2116.0
             },
             {
               "ref": "place_frames",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 820,
-              "y": 300
+              "x": 960.0,
+              "y": 1756.0
             },
             {
               "ref": "place_glass",
               "typeId": "transform.placement.place_geometry_on_frames",
-              "x": 820,
-              "y": 480
+              "x": 960.0,
+              "y": 1936.0
             },
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1080,
-              "y": 240
+              "x": 1280.0,
+              "y": 1666.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1340,
-              "y": 120
+              "x": 1600.0,
+              "y": 1666.0
             },
             {
               "ref": "move_wall",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1340,
-              "y": 280
+              "x": 1280.0,
+              "y": 1846.0
             },
             {
               "ref": "move_frame",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1340,
-              "y": 440
+              "x": 1280.0,
+              "y": 2026.0
             },
             {
               "ref": "move_glass",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1340,
-              "y": 600
+              "x": 1280.0,
+              "y": 2206.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1080,
-              "y": 40
+              "x": 320.0,
+              "y": 1808.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1300,
-              "y": 40
+              "x": 640.0,
+              "y": 1356.0
             },
             {
               "ref": "move_wall_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1080,
-              "y": 200
+              "x": 320.0,
+              "y": 2064.0
             },
             {
               "ref": "move_wall_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1300,
-              "y": 200
+              "x": 640.0,
+              "y": 1588.0
             },
             {
               "ref": "move_frame_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1080,
-              "y": 360
+              "x": 320.0,
+              "y": 2576.0
             },
             {
               "ref": "move_frame_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1300,
-              "y": 360
+              "x": 640.0,
+              "y": 2284.0
             },
             {
               "ref": "move_glass_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 1080,
-              "y": 520
+              "x": 320.0,
+              "y": 2832.0
             },
             {
               "ref": "move_glass_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1300,
-              "y": 520
+              "x": 640.0,
+              "y": 2516.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1600,
-              "y": 80
+              "x": 1920.0,
+              "y": 1666.0
             },
             {
               "ref": "voxelize_wall",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1600,
-              "y": 240
+              "x": 1600.0,
+              "y": 1846.0
             },
             {
               "ref": "voxelize_frame",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1600,
-              "y": 400
+              "x": 1600.0,
+              "y": 2026.0
             },
             {
               "ref": "voxelize_glass",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1600,
-              "y": 560
+              "x": 1600.0,
+              "y": 2206.0
             },
             {
               "ref": "wall_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1600,
-              "y": 700,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "selectedBlock": "minecraft:white_concrete"
               }
@@ -5348,8 +5348,8 @@
             {
               "ref": "frame_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1600,
-              "y": 840,
+              "x": 0.0,
+              "y": 356.0,
               "state": {
                 "selectedBlock": "minecraft:iron_block"
               }
@@ -5357,8 +5357,8 @@
             {
               "ref": "glass_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1600,
-              "y": 980,
+              "x": 0.0,
+              "y": 2884.0,
               "state": {
                 "selectedBlock": "minecraft:glass"
               }
@@ -5366,26 +5366,26 @@
             {
               "ref": "material_wall",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1860,
-              "y": 240
+              "x": 1920.0,
+              "y": 1846.0
             },
             {
               "ref": "material_frame",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1860,
-              "y": 400
+              "x": 1920.0,
+              "y": 2026.0
             },
             {
               "ref": "material_glass",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1860,
-              "y": 560
+              "x": 1920.0,
+              "y": 2206.0
             },
             {
               "ref": "merge_placements",
               "typeId": "output.execute.merge_block_placements",
-              "x": 2120,
-              "y": 400,
+              "x": 2240.0,
+              "y": 1936.0,
               "state": {
                 "inputCount": 3
               }
@@ -5393,8 +5393,8 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2380,
-              "y": 400
+              "x": 2560.0,
+              "y": 1936.0
             }
           ],
           "connections": [
@@ -5805,8 +5805,8 @@
             {
               "ref": "outer_basin",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 180,
+              "x": 0.0,
+              "y": 504.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -5820,8 +5820,8 @@
             {
               "ref": "inner_hollow",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 360,
+              "x": 0.0,
+              "y": 736.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.25,
@@ -5835,14 +5835,14 @@
             {
               "ref": "basin",
               "typeId": "geometry.boolean.difference",
-              "x": 280,
-              "y": 260
+              "x": 320.0,
+              "y": 710.0
             },
             {
               "ref": "inner_tier",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 540,
+              "x": 0.0,
+              "y": 968.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.25,
@@ -5856,8 +5856,8 @@
             {
               "ref": "center_spout",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 720,
+              "x": 0.0,
+              "y": 1200.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.25,
@@ -5871,8 +5871,8 @@
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 560,
-              "y": 420,
+              "x": 640.0,
+              "y": 710.0,
               "state": {
                 "inputCount": 3
               }
@@ -5880,32 +5880,32 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 800,
-              "y": 420
+              "x": 960.0,
+              "y": 620.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1100,
-              "y": 120
+              "x": 1280.0,
+              "y": 530.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1100,
-              "y": 320
+              "x": 1280.0,
+              "y": 710.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1360,
-              "y": 320
+              "x": 1600.0,
+              "y": 620.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1400,
-              "y": 460,
+              "x": 0.0,
+              "y": 272.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -5913,20 +5913,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1620,
-              "y": 320
+              "x": 1920.0,
+              "y": 620.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 560,
-              "y": 420
+              "x": 320.0,
+              "y": 530.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 780,
-              "y": 420
+              "x": 640.0,
+              "y": 530.0
             }
           ],
           "connections": [
@@ -6043,8 +6043,8 @@
             {
               "ref": "pavilion_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 120,
+              "x": 0.0,
+              "y": 1064.0,
               "state": {
                 "value": 3.5
               }
@@ -6052,8 +6052,8 @@
             {
               "ref": "ring_radius",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 260,
+              "x": 0.0,
+              "y": 1576.0,
               "state": {
                 "value": 4.0
               }
@@ -6061,8 +6061,8 @@
             {
               "ref": "zero",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 400,
+              "x": 0.0,
+              "y": 1832.0,
               "state": {
                 "value": 0.0
               }
@@ -6070,8 +6070,8 @@
             {
               "ref": "volume",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 280,
-              "y": 200,
+              "x": 320.0,
+              "y": 846.0,
               "state": {
                 "cornerX": -5.0,
                 "cornerY": 0.0,
@@ -6084,8 +6084,8 @@
             {
               "ref": "floor_face",
               "typeId": "reference.points.get_box_face",
-              "x": 520,
-              "y": 120,
+              "x": 640.0,
+              "y": 846.0,
               "state": {
                 "defaultFaceName": "bottom"
               }
@@ -6093,8 +6093,8 @@
             {
               "ref": "roof_face",
               "typeId": "reference.points.get_box_face",
-              "x": 520,
-              "y": 320,
+              "x": 640.0,
+              "y": 1026.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -6102,26 +6102,26 @@
             {
               "ref": "floor",
               "typeId": "geometry.architectural_primitives.floor_slab",
-              "x": 760,
-              "y": 120
+              "x": 960.0,
+              "y": 756.0
             },
             {
               "ref": "column_start",
               "typeId": "reference.points.construct_point",
-              "x": 280,
-              "y": 480
+              "x": 320.0,
+              "y": 1206.0
             },
             {
               "ref": "column_end",
               "typeId": "reference.points.construct_point",
-              "x": 280,
-              "y": 620
+              "x": 320.0,
+              "y": 1026.0
             },
             {
               "ref": "column",
               "typeId": "geometry.primitives.cylinder",
-              "x": 520,
-              "y": 520,
+              "x": 640.0,
+              "y": 1206.0,
               "state": {
                 "radius": 0.25
               }
@@ -6129,8 +6129,8 @@
             {
               "ref": "column_count",
               "typeId": "input.numeric.integer",
-              "x": 520,
-              "y": 700,
+              "x": 0.0,
+              "y": 552.0,
               "state": {
                 "value": 8
               }
@@ -6138,8 +6138,8 @@
             {
               "ref": "column_span",
               "typeId": "input.numeric.float",
-              "x": 520,
-              "y": 840,
+              "x": 0.0,
+              "y": 808.0,
               "state": {
                 "value": 360.0
               }
@@ -6147,8 +6147,8 @@
             {
               "ref": "columns",
               "typeId": "pattern.radial.polar_array",
-              "x": 800,
-              "y": 520,
+              "x": 960.0,
+              "y": 936.0,
               "state": {
                 "includeEnd": false
               }
@@ -6156,14 +6156,14 @@
             {
               "ref": "roof",
               "typeId": "geometry.architectural_primitives.roof_base",
-              "x": 760,
-              "y": 320
+              "x": 960.0,
+              "y": 1116.0
             },
             {
               "ref": "roof_type",
               "typeId": "input.values.dropdown",
-              "x": 520,
-              "y": 980,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "options": "flat,shed,gable",
                 "selectedIndex": 2
@@ -6172,8 +6172,8 @@
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1040,
-              "y": 320,
+              "x": 1280.0,
+              "y": 936.0,
               "state": {
                 "inputCount": 3
               }
@@ -6181,32 +6181,32 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1280,
-              "y": 320
+              "x": 1600.0,
+              "y": 936.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1100,
-              "y": 120
+              "x": 1920.0,
+              "y": 846.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1100,
-              "y": 320
+              "x": 1920.0,
+              "y": 1026.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1360,
-              "y": 320
+              "x": 2240.0,
+              "y": 936.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1400,
-              "y": 460,
+              "x": 0.0,
+              "y": 296.0,
               "state": {
                 "selectedBlock": "minecraft:oak_planks"
               }
@@ -6214,20 +6214,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1620,
-              "y": 320
+              "x": 2560.0,
+              "y": 936.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 560,
-              "y": 420
+              "x": 320.0,
+              "y": 666.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 780,
-              "y": 420
+              "x": 640.0,
+              "y": 666.0
             }
           ],
           "connections": [
@@ -6434,14 +6434,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 140
+              "x": 0.0,
+              "y": 40.0
             },
             {
               "ref": "box",
               "typeId": "geometry.primitives.box",
-              "x": 280,
-              "y": 140,
+              "x": 320.0,
+              "y": 130.0,
               "state": {
                 "sizeX": 5.0,
                 "sizeY": 5.0,
@@ -6451,32 +6451,32 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 580,
-              "y": 40
+              "x": 640.0,
+              "y": 40.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 580,
-              "y": 240
+              "x": 640.0,
+              "y": 220.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 860,
-              "y": 240
+              "x": 960.0,
+              "y": 130.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1140,
-              "y": 240
+              "x": 1280.0,
+              "y": 130.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1180.0,
-              "y": 320.0,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "selectedBlock": "minecraft:stone"
               }
@@ -6530,14 +6530,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 140
+              "x": 0.0,
+              "y": 40.0
             },
             {
               "ref": "sphere",
               "typeId": "geometry.primitives.sphere",
-              "x": 280,
-              "y": 140,
+              "x": 320.0,
+              "y": 130.0,
               "state": {
                 "radius": 5.0
               }
@@ -6545,32 +6545,32 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 580,
-              "y": 40
+              "x": 640.0,
+              "y": 40.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 580,
-              "y": 240
+              "x": 640.0,
+              "y": 220.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 860,
-              "y": 240
+              "x": 960.0,
+              "y": 130.0
             },
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1140,
-              "y": 240
+              "x": 1280.0,
+              "y": 130.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1180.0,
-              "y": 320.0,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "selectedBlock": "minecraft:stone"
               }
@@ -6630,8 +6630,8 @@
             {
               "ref": "wall_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 400.0,
               "state": {
                 "sizeX": 12.0,
                 "sizeY": 4.0,
@@ -6644,8 +6644,8 @@
             {
               "ref": "gate_box",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 400,
+              "x": 0.0,
+              "y": 580.0,
               "state": {
                 "sizeX": 3.0,
                 "sizeY": 3.0,
@@ -6658,38 +6658,38 @@
             {
               "ref": "cut_gate",
               "typeId": "geometry.boolean.difference",
-              "x": 320,
-              "y": 280
+              "x": 320.0,
+              "y": 400.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 580,
-              "y": 280
+              "x": 960.0,
+              "y": 310.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 860,
-              "y": 120
+              "x": 1280.0,
+              "y": 220.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 860,
-              "y": 320
+              "x": 1280.0,
+              "y": 400.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1140,
-              "y": 320
+              "x": 1600.0,
+              "y": 310.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1460,
-              "y": 480,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "selectedBlock": "minecraft:cobblestone"
               }
@@ -6697,20 +6697,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1420,
-              "y": 320
+              "x": 1920.0,
+              "y": 310.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 160,
-              "y": 280
+              "x": 320.0,
+              "y": 220.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 380,
-              "y": 280
+              "x": 640.0,
+              "y": 310.0
             }
           ],
           "connections": [
@@ -6809,8 +6809,8 @@
             {
               "ref": "outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 400.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -6824,8 +6824,8 @@
             {
               "ref": "inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 0,
-              "y": 400,
+              "x": 0.0,
+              "y": 580.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -6839,38 +6839,38 @@
             {
               "ref": "hollow",
               "typeId": "geometry.boolean.difference",
-              "x": 320,
-              "y": 280
+              "x": 320.0,
+              "y": 400.0
             },
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 580,
-              "y": 280
+              "x": 960.0,
+              "y": 310.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 860,
-              "y": 120
+              "x": 1280.0,
+              "y": 220.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 860,
-              "y": 320
+              "x": 1280.0,
+              "y": 400.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1140,
-              "y": 320
+              "x": 1600.0,
+              "y": 310.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1460,
-              "y": 480,
+              "x": 0.0,
+              "y": 220.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -6878,20 +6878,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1420,
-              "y": 320
+              "x": 1920.0,
+              "y": 310.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 160,
-              "y": 280
+              "x": 320.0,
+              "y": 220.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 380,
-              "y": 280
+              "x": 640.0,
+              "y": 310.0
             }
           ],
           "connections": [
@@ -6990,14 +6990,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 40
+              "x": 0.0,
+              "y": 1640.0
             },
             {
               "ref": "zero",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 120,
+              "x": 0.0,
+              "y": 2920.0,
               "state": {
                 "value": 0.0
               }
@@ -7005,8 +7005,8 @@
             {
               "ref": "tower_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "value": 16.0
               }
@@ -7014,8 +7014,8 @@
             {
               "ref": "tower_radius",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 280,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "value": 4.0
               }
@@ -7023,8 +7023,8 @@
             {
               "ref": "wall_thickness",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 360,
+              "x": 0.0,
+              "y": 3240.0,
               "state": {
                 "value": 0.8
               }
@@ -7032,14 +7032,14 @@
             {
               "ref": "inner_radius",
               "typeId": "math.scalar_math.subtraction",
-              "x": 220,
-              "y": 320
+              "x": 320.0,
+              "y": 2120.0
             },
             {
               "ref": "roof_height",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 440,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "value": 6.0
               }
@@ -7047,14 +7047,14 @@
             {
               "ref": "apex_y",
               "typeId": "math.scalar_math.addition",
-              "x": 220,
-              "y": 440
+              "x": 320.0,
+              "y": 1048.0
             },
             {
               "ref": "roof_overhang",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 520,
+              "x": 0.0,
+              "y": 680.0,
               "state": {
                 "value": 0.5
               }
@@ -7062,14 +7062,14 @@
             {
               "ref": "roof_radius",
               "typeId": "math.scalar_math.addition",
-              "x": 220,
-              "y": 520
+              "x": 320.0,
+              "y": 1316.0
             },
             {
               "ref": "balcony_elevation",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 600,
+              "x": 0.0,
+              "y": 3560.0,
               "state": {
                 "value": 10.0
               }
@@ -7077,8 +7077,8 @@
             {
               "ref": "balcony_slab",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 680,
+              "x": 0.0,
+              "y": 3880.0,
               "state": {
                 "value": 0.6
               }
@@ -7086,8 +7086,8 @@
             {
               "ref": "balcony_cutter_h",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 760,
+              "x": 0.0,
+              "y": 4200.0,
               "state": {
                 "value": 0.8
               }
@@ -7095,8 +7095,8 @@
             {
               "ref": "balcony_outer_r",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 840,
+              "x": 0.0,
+              "y": 1960.0,
               "state": {
                 "value": 5.0
               }
@@ -7104,8 +7104,8 @@
             {
               "ref": "balcony_inner_r",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 920,
+              "x": 0.0,
+              "y": 2600.0,
               "state": {
                 "value": 3.8
               }
@@ -7113,56 +7113,56 @@
             {
               "ref": "balcony_end_y",
               "typeId": "math.scalar_math.addition",
-              "x": 220,
-              "y": 680
+              "x": 320.0,
+              "y": 2924.0
             },
             {
               "ref": "balcony_cut_end_y",
               "typeId": "math.scalar_math.addition",
-              "x": 220,
-              "y": 760
+              "x": 320.0,
+              "y": 3192.0
             },
             {
               "ref": "origin",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 120
+              "x": 320.0,
+              "y": 2388.0
             },
             {
               "ref": "tower_top",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 200
+              "x": 320.0,
+              "y": 1852.0
             },
             {
               "ref": "roof_apex",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 440
+              "x": 640.0,
+              "y": 2236.0
             },
             {
               "ref": "balcony_start",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 600
+              "x": 320.0,
+              "y": 2656.0
             },
             {
               "ref": "balcony_outer_end",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 680
+              "x": 640.0,
+              "y": 2468.0
             },
             {
               "ref": "balcony_inner_end",
               "typeId": "reference.points.construct_point",
-              "x": 440,
-              "y": 760
+              "x": 640.0,
+              "y": 2700.0
             },
             {
               "ref": "outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 700,
-              "y": 160,
+              "x": 640.0,
+              "y": 2004.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -7176,8 +7176,8 @@
             {
               "ref": "inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 700,
-              "y": 320,
+              "x": 640.0,
+              "y": 1772.0,
               "state": {
                 "startX": 0.0,
                 "startY": 0.0,
@@ -7191,14 +7191,14 @@
             {
               "ref": "shell",
               "typeId": "geometry.boolean.difference",
-              "x": 940,
-              "y": 220
+              "x": 960.0,
+              "y": 1850.0
             },
             {
               "ref": "roof",
               "typeId": "geometry.primitives.cone",
-              "x": 700,
-              "y": 480,
+              "x": 960.0,
+              "y": 2030.0,
               "state": {
                 "baseX": 0.0,
                 "baseY": 16.0,
@@ -7212,8 +7212,8 @@
             {
               "ref": "balcony_outer",
               "typeId": "geometry.primitives.cylinder",
-              "x": 700,
-              "y": 640,
+              "x": 960.0,
+              "y": 2210.0,
               "state": {
                 "startX": 0.0,
                 "startY": 10.0,
@@ -7227,8 +7227,8 @@
             {
               "ref": "balcony_inner",
               "typeId": "geometry.primitives.cylinder",
-              "x": 700,
-              "y": 800,
+              "x": 960.0,
+              "y": 2390.0,
               "state": {
                 "startX": 0.0,
                 "startY": 10.0,
@@ -7242,14 +7242,14 @@
             {
               "ref": "balcony",
               "typeId": "geometry.boolean.difference",
-              "x": 940,
-              "y": 700
+              "x": 1280.0,
+              "y": 2210.0
             },
             {
               "ref": "combine_body",
               "typeId": "geometry.combine.geometry",
-              "x": 1180,
-              "y": 280,
+              "x": 1600.0,
+              "y": 2210.0,
               "state": {
                 "inputCount": 2
               }
@@ -7257,20 +7257,20 @@
             {
               "ref": "move_body",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1420,
-              "y": 280
+              "x": 1920.0,
+              "y": 2210.0
             },
             {
               "ref": "move_roof",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1420,
-              "y": 480
+              "x": 1280.0,
+              "y": 2030.0
             },
             {
               "ref": "combine_preview",
               "typeId": "geometry.combine.geometry",
-              "x": 1660,
-              "y": 360,
+              "x": 2240.0,
+              "y": 2030.0,
               "state": {
                 "inputCount": 2
               }
@@ -7278,26 +7278,26 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1900,
-              "y": 240
+              "x": 2560.0,
+              "y": 2030.0
             },
             {
               "ref": "voxelize_body",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1660,
-              "y": 480
+              "x": 2240.0,
+              "y": 2210.0
             },
             {
               "ref": "voxelize_roof",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1660,
-              "y": 640
+              "x": 1600.0,
+              "y": 2030.0
             },
             {
               "ref": "body_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1660,
-              "y": 800,
+              "x": 0.0,
+              "y": 1000.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -7305,8 +7305,8 @@
             {
               "ref": "roof_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1660,
-              "y": 960,
+              "x": 0.0,
+              "y": 360.0,
               "state": {
                 "selectedBlock": "minecraft:purple_concrete"
               }
@@ -7314,20 +7314,20 @@
             {
               "ref": "material_body",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1900,
-              "y": 480
+              "x": 2560.0,
+              "y": 2210.0
             },
             {
               "ref": "material_roof",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1900,
-              "y": 640
+              "x": 1920.0,
+              "y": 2030.0
             },
             {
               "ref": "merge_placements",
               "typeId": "output.execute.merge_block_placements",
-              "x": 2140,
-              "y": 560,
+              "x": 2880.0,
+              "y": 2120.0,
               "state": {
                 "inputCount": 2
               }
@@ -7335,20 +7335,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 2380,
-              "y": 560
+              "x": 3200.0,
+              "y": 2120.0
             },
             {
               "ref": "translation_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 900,
-              "y": 40
+              "x": 320.0,
+              "y": 1584.0
             },
             {
               "ref": "translation_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 1120,
-              "y": 40
+              "x": 640.0,
+              "y": 1540.0
             }
           ],
           "connections": [
@@ -7783,8 +7783,8 @@
             {
               "ref": "keep_body",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 360.0,
               "state": {
                 "cornerX": 1.0,
                 "cornerY": 0.0,
@@ -7797,8 +7797,8 @@
             {
               "ref": "footprint",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 380,
+              "x": 0.0,
+              "y": 1000.0,
               "state": {
                 "sizeX": 14.0,
                 "sizeY": 0.2,
@@ -7808,8 +7808,8 @@
             {
               "ref": "footprint_top",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 380,
+              "x": 320.0,
+              "y": 2350.0,
               "state": {
                 "defaultFaceName": "top"
               }
@@ -7817,14 +7817,14 @@
             {
               "ref": "tower_grid",
               "typeId": "geometry.architectural_primitives.column_grid",
-              "x": 560,
-              "y": 380
+              "x": 640.0,
+              "y": 2092.0
             },
             {
               "ref": "tower_cols",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 520,
+              "x": 0.0,
+              "y": 1320.0,
               "state": {
                 "value": 2
               }
@@ -7832,8 +7832,8 @@
             {
               "ref": "tower_rows",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 660,
+              "x": 0.0,
+              "y": 1640.0,
               "state": {
                 "value": 2
               }
@@ -7841,8 +7841,8 @@
             {
               "ref": "tower_height",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 800,
+              "x": 0.0,
+              "y": 1960.0,
               "state": {
                 "value": 10.0
               }
@@ -7850,8 +7850,8 @@
             {
               "ref": "tower_radius",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 940,
+              "x": 0.0,
+              "y": 2280.0,
               "state": {
                 "value": 1.2
               }
@@ -7859,8 +7859,8 @@
             {
               "ref": "merlon_count",
               "typeId": "input.numeric.integer",
-              "x": 0,
-              "y": 1080,
+              "x": 0.0,
+              "y": 3880.0,
               "state": {
                 "value": 6
               }
@@ -7868,8 +7868,8 @@
             {
               "ref": "merlon_spacing",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 1160,
+              "x": 0.0,
+              "y": 4200.0,
               "state": {
                 "value": 2.0
               }
@@ -7877,20 +7877,20 @@
             {
               "ref": "dir_x",
               "typeId": "reference.vectors.construct_vector",
-              "x": 280,
-              "y": 1080
+              "x": 320.0,
+              "y": 2530.0
             },
             {
               "ref": "dir_z",
               "typeId": "reference.vectors.construct_vector",
-              "x": 280,
-              "y": 1220
+              "x": 320.0,
+              "y": 2710.0
             },
             {
               "ref": "one",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 1240,
+              "x": 0.0,
+              "y": 2920.0,
               "state": {
                 "value": 1.0
               }
@@ -7898,8 +7898,8 @@
             {
               "ref": "zero_v",
               "typeId": "input.numeric.float",
-              "x": 0,
-              "y": 1320,
+              "x": 0.0,
+              "y": 3240.0,
               "state": {
                 "value": 0.0
               }
@@ -7907,8 +7907,8 @@
             {
               "ref": "merlon_front",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 560,
-              "y": 1080,
+              "x": 0.0,
+              "y": 2600.0,
               "state": {
                 "cornerX": 1.0,
                 "cornerY": 8.0,
@@ -7921,8 +7921,8 @@
             {
               "ref": "merlon_back",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 560,
-              "y": 1220,
+              "x": 0.0,
+              "y": 3560.0,
               "state": {
                 "cornerX": 1.0,
                 "cornerY": 8.0,
@@ -7935,8 +7935,8 @@
             {
               "ref": "merlon_left",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 560,
-              "y": 1360,
+              "x": 0.0,
+              "y": 4520.0,
               "state": {
                 "cornerX": 0.6,
                 "cornerY": 8.0,
@@ -7949,8 +7949,8 @@
             {
               "ref": "merlon_right",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 560,
-              "y": 1500,
+              "x": 0.0,
+              "y": 4840.0,
               "state": {
                 "cornerX": 12.6,
                 "cornerY": 8.0,
@@ -7963,8 +7963,8 @@
             {
               "ref": "battlement_front",
               "typeId": "pattern.linear.linear_array",
-              "x": 820,
-              "y": 1080,
+              "x": 640.0,
+              "y": 2324.0,
               "state": {
                 "count": 6,
                 "distance": 2.0
@@ -7973,8 +7973,8 @@
             {
               "ref": "battlement_back",
               "typeId": "pattern.linear.linear_array",
-              "x": 820,
-              "y": 1220,
+              "x": 640.0,
+              "y": 2556.0,
               "state": {
                 "count": 6,
                 "distance": 2.0
@@ -7983,8 +7983,8 @@
             {
               "ref": "battlement_left",
               "typeId": "pattern.linear.linear_array",
-              "x": 820,
-              "y": 1360,
+              "x": 640.0,
+              "y": 2788.0,
               "state": {
                 "count": 6,
                 "distance": 2.0
@@ -7993,8 +7993,8 @@
             {
               "ref": "battlement_right",
               "typeId": "pattern.linear.linear_array",
-              "x": 820,
-              "y": 1500,
+              "x": 640.0,
+              "y": 3020.0,
               "state": {
                 "count": 6,
                 "distance": 2.0
@@ -8003,8 +8003,8 @@
             {
               "ref": "battlements",
               "typeId": "geometry.combine.geometry",
-              "x": 1080,
-              "y": 1240,
+              "x": 960.0,
+              "y": 2440.0,
               "state": {
                 "inputCount": 4
               }
@@ -8012,8 +8012,8 @@
             {
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
-              "x": 1340,
-              "y": 400,
+              "x": 1280.0,
+              "y": 2440.0,
               "state": {
                 "inputCount": 3
               }
@@ -8021,32 +8021,32 @@
             {
               "ref": "move_to_pos",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 1580,
-              "y": 400
+              "x": 1600.0,
+              "y": 2440.0
             },
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1100,
-              "y": 120
+              "x": 1920.0,
+              "y": 2350.0
             },
             {
               "ref": "voxelize",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1100,
-              "y": 320
+              "x": 1920.0,
+              "y": 2530.0
             },
             {
               "ref": "material",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1360,
-              "y": 320
+              "x": 2240.0,
+              "y": 2440.0
             },
             {
               "ref": "material_block_type",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 1400,
-              "y": 460,
+              "x": 0.0,
+              "y": 680.0,
               "state": {
                 "selectedBlock": "minecraft:stone_bricks"
               }
@@ -8054,20 +8054,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1620,
-              "y": 320
+              "x": 2560.0,
+              "y": 2440.0
             },
             {
               "ref": "move_to_pos_point_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 560,
-              "y": 420
+              "x": 320.0,
+              "y": 2170.0
             },
             {
               "ref": "move_to_pos_point_as_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 780,
-              "y": 420
+              "x": 640.0,
+              "y": 1860.0
             }
           ],
           "connections": [
@@ -8358,14 +8358,14 @@
             {
               "ref": "player_pos",
               "typeId": "input.context.player_position",
-              "x": 0,
-              "y": 40
+              "x": 0.0,
+              "y": 1792.0
             },
             {
               "ref": "outer_shell",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 200,
+              "x": 0.0,
+              "y": 2084.0,
               "state": {
                 "sizeX": 14.0,
                 "sizeY": 10.0,
@@ -8375,8 +8375,8 @@
             {
               "ref": "inner_void",
               "typeId": "geometry.primitives.box_from_corner_size",
-              "x": 0,
-              "y": 380,
+              "x": 0.0,
+              "y": 2668.0,
               "state": {
                 "cornerX": 0.5,
                 "cornerY": 0.5,
@@ -8389,14 +8389,14 @@
             {
               "ref": "glass_shell",
               "typeId": "geometry.boolean.difference",
-              "x": 280,
-              "y": 280
+              "x": 320.0,
+              "y": 1680.0
             },
             {
               "ref": "front_face",
               "typeId": "reference.points.get_box_face",
-              "x": 280,
-              "y": 480,
+              "x": 320.0,
+              "y": 1500.0,
               "state": {
                 "defaultFaceName": "front"
               }
@@ -8404,14 +8404,14 @@
             {
               "ref": "frame_grid",
               "typeId": "geometry.architectural_primitives.beam_grid",
-              "x": 560,
-              "y": 480
+              "x": 640.0,
+              "y": 1590.0
             },
             {
               "ref": "frame_cols",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 620,
+              "x": 0.0,
+              "y": 40.0,
               "state": {
                 "value": 3
               }
@@ -8419,8 +8419,8 @@
             {
               "ref": "frame_rows",
               "typeId": "input.numeric.integer",
-              "x": 280,
-              "y": 760,
+              "x": 0.0,
+              "y": 332.0,
               "state": {
                 "value": 4
               }
@@ -8428,8 +8428,8 @@
             {
               "ref": "beam_width",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 900,
+              "x": 0.0,
+              "y": 624.0,
               "state": {
                 "value": 0.2
               }
@@ -8437,8 +8437,8 @@
             {
               "ref": "beam_depth",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1040,
+              "x": 0.0,
+              "y": 916.0,
               "state": {
                 "value": 0.25
               }
@@ -8446,8 +8446,8 @@
             {
               "ref": "beam_drop",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1180,
+              "x": 0.0,
+              "y": 1208.0,
               "state": {
                 "value": 0.0
               }
@@ -8455,8 +8455,8 @@
             {
               "ref": "beam_margin",
               "typeId": "input.numeric.float",
-              "x": 280,
-              "y": 1320,
+              "x": 0.0,
+              "y": 1500.0,
               "state": {
                 "value": 0.3
               }
@@ -8464,20 +8464,20 @@
             {
               "ref": "move_glass",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 860,
-              "y": 280
+              "x": 960.0,
+              "y": 1590.0
             },
             {
               "ref": "move_frame",
               "typeId": "transform.basic_transforms.move_geometry",
-              "x": 860,
-              "y": 480
+              "x": 960.0,
+              "y": 1410.0
             },
             {
               "ref": "combine_geo",
               "typeId": "geometry.combine.geometry",
-              "x": 1140,
-              "y": 360,
+              "x": 1280.0,
+              "y": 1500.0,
               "state": {
                 "inputCount": 2
               }
@@ -8485,26 +8485,26 @@
             {
               "ref": "preview_geometry",
               "typeId": "output.preview.preview_geometry",
-              "x": 1400,
-              "y": 240
+              "x": 1600.0,
+              "y": 1320.0
             },
             {
               "ref": "voxelize_glass",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1140,
-              "y": 520
+              "x": 1280.0,
+              "y": 1680.0
             },
             {
               "ref": "voxelize_frame",
               "typeId": "geometry.voxel.voxelize_geometry",
-              "x": 1140,
-              "y": 680
+              "x": 1280.0,
+              "y": 1320.0
             },
             {
               "ref": "glass_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 860,
-              "y": 840,
+              "x": 0.0,
+              "y": 2960.0,
               "state": {
                 "selectedBlock": "minecraft:light_blue_stained_glass"
               }
@@ -8512,8 +8512,8 @@
             {
               "ref": "frame_block",
               "typeId": "input.type_selectors.block_type_selector",
-              "x": 860,
-              "y": 1000,
+              "x": 0.0,
+              "y": 2376.0,
               "state": {
                 "selectedBlock": "minecraft:iron_block"
               }
@@ -8521,20 +8521,20 @@
             {
               "ref": "material_glass",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1400,
-              "y": 520
+              "x": 1600.0,
+              "y": 1680.0
             },
             {
               "ref": "material_frame",
               "typeId": "material.basic_assignment.assign_block_type",
-              "x": 1400,
-              "y": 680
+              "x": 1600.0,
+              "y": 1500.0
             },
             {
               "ref": "merge_placements",
               "typeId": "output.execute.merge_block_placements",
-              "x": 1660,
-              "y": 600,
+              "x": 1920.0,
+              "y": 1500.0,
               "state": {
                 "inputCount": 2
               }
@@ -8542,20 +8542,20 @@
             {
               "ref": "preview_blocks",
               "typeId": "output.preview.preview_blocks",
-              "x": 1920,
-              "y": 600
+              "x": 2240.0,
+              "y": 1500.0
             },
             {
               "ref": "translation_deconstruct",
               "typeId": "reference.points.deconstruct_point",
-              "x": 560,
-              "y": 40
+              "x": 320.0,
+              "y": 1320.0
             },
             {
               "ref": "translation_vector",
               "typeId": "reference.vectors.construct_vector",
-              "x": 780,
-              "y": 40
+              "x": 640.0,
+              "y": 1410.0
             }
           ],
           "connections": [
