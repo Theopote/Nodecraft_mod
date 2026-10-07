@@ -66,6 +66,7 @@ public class NodeLibraryComponent implements EditorComponent {
     private static class NodeLibraryConstants {
         static final String PREF_DISPLAY_MODE_KEY = "node_library.display_mode";
         static final String PREF_GRID_TILE_SCALE_KEY = "node_library.grid_tile_scale";
+        static final String PREF_SHOW_SUGGESTED_CONNECTIONS_KEY = "node_library.show_suggested_connections";
         static final float CHILD_WINDOW_MIN_WIDTH = 50;
         static final float CHILD_WINDOW_MIN_HEIGHT = 50;
         static final float CATEGORY_INDENT = 10f;
@@ -231,6 +232,7 @@ public class NodeLibraryComponent implements EditorComponent {
     private boolean categoryHierarchyCacheDirty = true;
     private boolean visible = true;
     private DisplayMode displayMode;
+    private boolean showSuggestedConnections = true;
     private float gridTileSizeScale = NodeLibraryConstants.GRID_TILE_SIZE_SCALE;
 
     // Icon manager.
@@ -284,6 +286,11 @@ public class NodeLibraryComponent implements EditorComponent {
                 NodeLibraryConstants.GRID_TILE_SIZE_SCALE
         );
         setGridTileSizeScale(storedGridScale);
+
+        this.showSuggestedConnections = UserPreferences.getBoolean(
+                NodeLibraryConstants.PREF_SHOW_SUGGESTED_CONNECTIONS_KEY,
+                true
+        );
 
         // 彻底移除 CategoryViewMode 的持久化和恢复逻辑
         rebuildPresentationCategories();
@@ -410,6 +417,23 @@ public class NodeLibraryComponent implements EditorComponent {
         UserPreferences.setFloat(NodeLibraryConstants.PREF_GRID_TILE_SCALE_KEY, clamped);
     }
 
+    public boolean isShowSuggestedConnections() {
+        return showSuggestedConnections;
+    }
+
+    public void setShowSuggestedConnections(boolean show) {
+        if (this.showSuggestedConnections == show) {
+            return;
+        }
+        this.showSuggestedConnections = show;
+        UserPreferences.setBoolean(NodeLibraryConstants.PREF_SHOW_SUGGESTED_CONNECTIONS_KEY, show);
+        if (!show) {
+            clearRecommendationCacheKeepingSelection();
+        } else if (selectedNodeId != null) {
+            refreshRecommendationCache();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -427,7 +451,11 @@ public class NodeLibraryComponent implements EditorComponent {
             case "nodeSelected" -> {
                 if (data instanceof UUID nodeId) {
                     selectedNodeId = nodeId;
-                    refreshRecommendationCache();
+                    if (showSuggestedConnections) {
+                        refreshRecommendationCache();
+                    } else {
+                        clearRecommendationCacheKeepingSelection();
+                    }
                 } else {
                     clearRecommendationCache();
                 }
@@ -445,6 +473,10 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private void clearRecommendationCache() {
         selectedNodeId = null;
+        clearRecommendationCacheKeepingSelection();
+    }
+
+    private void clearRecommendationCacheKeepingSelection() {
         cachedRecommendationNodeId = null;
         cachedRecommendationContext = null;
         cachedRecommendations = List.of();
@@ -514,6 +546,9 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private void renderSuggestedSection() {
+        if (!showSuggestedConnections) {
+            return;
+        }
         if (selectedNodeId == null || !searchManager.getSearchTerm().isEmpty()) {
             return;
         }
