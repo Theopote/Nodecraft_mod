@@ -1,11 +1,13 @@
 package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.gui.ai.AiGraphDiffService;
+import com.nodecraft.gui.ai.AiPlanChangeSummary;
 import com.nodecraft.gui.ai.model.AiPlanConnection;
 import com.nodecraft.gui.ai.model.AiPlanNode;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
+import imgui.type.ImBoolean;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,17 +40,18 @@ final class AiAssistantPlanPreviewRenderer {
             TopologyPreviewState topologyPreviewState,
             AiGraphDiffService.GraphDiffSummary heuristicDiff,
             AiGraphDiffService.MappedDiffSummary mappedDiff,
+            ImBoolean reviewOnlyMode,
             boolean canApply,
             boolean canUndo,
-                String undoDisabledReason,
+            String undoDisabledReason,
             String statusMessage
     ) {
     }
 
     interface Actions {
-        void applyPlan();
+        void applyChanges();
 
-        void dryRunReport();
+        void reviewChanges();
 
         void saveAsTemplate();
 
@@ -72,6 +75,7 @@ final class AiAssistantPlanPreviewRenderer {
         }
 
         ImGui.textWrapped(state.summary() == null ? "" : state.summary());
+        renderChangeSummary(state);
         if (state.applyModeHint() != null && !state.applyModeHint().isBlank()) {
             ImGui.textDisabled(state.applyModeHint());
         }
@@ -85,10 +89,7 @@ final class AiAssistantPlanPreviewRenderer {
         }
 
         if (ImGui.treeNode("Graph Topology Preview")) {
-            ImGui.textDisabled("Auto-layout + drag nodes to adjust manually");
-            if (ImGui.smallButton("Reset Topology Layout")) {
-                state.topologyPreviewState().reset();
-            }
+            ImGui.textDisabled("Click a node to inspect it. Layout here does not change the canvas.");
             String selectedNodeRef = renderTopologyPreview(
                     state.planNodes(),
                     state.planConnections(),
@@ -102,42 +103,80 @@ final class AiAssistantPlanPreviewRenderer {
         }
 
         renderTechnicalPlanDetails(state, actions);
-        renderDebugDiffDetails(state);
-
-        if (!state.canApply()) ImGui.beginDisabled();
-        if (ImGui.button("Apply Plan")) {
-            actions.applyPlan();
-        }
-        if (!state.canApply()) ImGui.endDisabled();
-
-        boolean compactActions = ImGui.getContentRegionAvailX() < 430.0f;
-        if (!compactActions) ImGui.sameLine();
-        if (!state.canApply()) ImGui.beginDisabled();
-        if (ImGui.button("Dry Run Report")) {
-            actions.dryRunReport();
-        }
-        if (!state.canApply()) ImGui.endDisabled();
-
-        if (!compactActions) ImGui.sameLine();
-        if (!state.hasPlan()) ImGui.beginDisabled();
-        if (ImGui.button("Save as Template")) {
-            actions.saveAsTemplate();
-        }
-        if (!state.hasPlan()) ImGui.endDisabled();
-
-        if (!compactActions) ImGui.sameLine();
-        if (!state.canUndo()) ImGui.beginDisabled();
-        if (ImGui.button("Undo Last AI Apply")) {
-            actions.undoLastApply();
-        }
-        if (!state.canUndo()) ImGui.endDisabled();
-
-        if (!state.canUndo() && state.undoDisabledReason() != null && !state.undoDisabledReason().isBlank()) {
-            ImGui.textDisabled(state.undoDisabledReason());
-        }
+        renderPlanActions(state, actions);
 
         if (state.statusMessage() != null && !state.statusMessage().isBlank()) {
             AiUiHelper.renderStatusMessage(state.statusMessage());
+        }
+    }
+
+    private static void renderChangeSummary(State state) {
+        AiPlanChangeSummary.View changeSummary = AiPlanChangeSummary.build(
+                state.mappedDiff(),
+                state.heuristicDiff()
+        );
+        if (changeSummary == null) {
+            return;
+        }
+
+        ImGui.text("Change Summary: " + changeSummary.headline());
+        if (changeSummary.detailLines() == null || changeSummary.detailLines().isEmpty()) {
+            return;
+        }
+        if (!ImGui.treeNode("Details")) {
+            return;
+        }
+        for (String line : changeSummary.detailLines()) {
+            ImGui.bulletText(line);
+        }
+        ImGui.treePop();
+    }
+
+    private static void renderPlanActions(State state, Actions actions) {
+        if (state.reviewOnlyMode() != null) {
+            ImGui.checkbox("Review only", state.reviewOnlyMode());
+        }
+
+        boolean reviewOnly = state.reviewOnlyMode() != null && state.reviewOnlyMode().get();
+        if (!state.canApply()) {
+            ImGui.beginDisabled();
+        }
+        if (reviewOnly) {
+            if (ImGui.button("Review Changes")) {
+                actions.reviewChanges();
+            }
+        } else if (ImGui.button("Apply Changes")) {
+            actions.applyChanges();
+        }
+        if (!state.canApply()) {
+            ImGui.endDisabled();
+        }
+
+        if (ImGui.treeNode("More ▾")) {
+            if (!state.hasPlan()) {
+                ImGui.beginDisabled();
+            }
+            if (ImGui.smallButton("Save as Template")) {
+                actions.saveAsTemplate();
+            }
+            if (!state.hasPlan()) {
+                ImGui.endDisabled();
+            }
+
+            if (!state.canUndo()) {
+                ImGui.beginDisabled();
+            }
+            if (ImGui.smallButton("Undo Last AI Apply")) {
+                actions.undoLastApply();
+            }
+            if (!state.canUndo()) {
+                ImGui.endDisabled();
+            }
+
+            if (!state.canUndo() && state.undoDisabledReason() != null && !state.undoDisabledReason().isBlank()) {
+                ImGui.textDisabled(state.undoDisabledReason());
+            }
+            ImGui.treePop();
         }
     }
 
@@ -189,64 +228,6 @@ final class AiAssistantPlanPreviewRenderer {
         ImGui.treePop();
     }
 
-    private static void renderDebugDiffDetails(State state) {
-        AiGraphDiffService.GraphDiffSummary diff = state.heuristicDiff();
-        AiGraphDiffService.MappedDiffSummary mapped = state.mappedDiff();
-        if (diff == null && mapped == null) {
-            return;
-        }
-        if (!ImGui.treeNode("Debug diff details")) {
-            return;
-        }
-
-        if (diff != null && ImGui.treeNode("Heuristic diff")) {
-            ImGui.textDisabled("Compared by node type+params signature and typed connection signature.");
-            ImGui.text("Potential additions: nodes=" + diff.nodeAdditions() + ", connections=" + diff.connectionAdditions());
-            ImGui.text("Potential missing from plan: nodes=" + diff.nodeMissingFromPlan() + ", connections=" + diff.connectionMissingFromPlan());
-
-            renderDiffSamples("Node additions", diff.nodeAdditionSamples());
-            renderDiffSamples("Node missing from plan", diff.nodeMissingSamples());
-            renderDiffSamples("Connection additions", diff.connectionAdditionSamples());
-            renderDiffSamples("Connection missing from plan", diff.connectionMissingSamples());
-            ImGui.treePop();
-        }
-
-        if (mapped != null && ImGui.treeNode("Mapped diff")) {
-            ImGui.textDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
-            ImGui.text("Reusable matches=" + mapped.reusableNodeMatches()
-                    + ", new nodes=" + mapped.newNodesToCreate());
-            ImGui.text("Unchanged reused=" + mapped.unchangedReusableNodes()
-                    + ", param updates=" + mapped.paramUpdateCandidates());
-            ImGui.text("Connection additions=" + mapped.connectionAdditions()
-                    + ", connection removal candidates=" + mapped.connectionRemovalCandidates()
-                    + ", incoming replacements=" + mapped.incomingReplacementCandidates());
-
-            renderDiffSamples("Node reuse matches", mapped.nodeReuseSamples());
-            renderDiffSamples("Node creation candidates", mapped.nodeCreationSamples());
-            renderDiffSamples("Param update candidates", mapped.paramUpdateSamples());
-            renderDiffSamples("Connection additions", mapped.connectionAdditionSamples());
-            renderDiffSamples("Connection removal candidates", mapped.connectionRemovalSamples());
-            renderDiffSamples("Incoming replacement candidates", mapped.incomingReplacementSamples());
-            ImGui.treePop();
-        }
-
-        ImGui.treePop();
-    }
-
-    private static void renderDiffSamples(String title, List<String> samples) {
-        if (!ImGui.treeNode(title)) {
-            return;
-        }
-        if (samples == null || samples.isEmpty()) {
-            ImGui.textDisabled("None");
-        } else {
-            for (String sample : samples) {
-                ImGui.bulletText(sample);
-            }
-        }
-        ImGui.treePop();
-    }
-
     private static String renderTopologyPreview(
             List<AiPlanNode> nodes,
             List<AiPlanConnection> connections,
@@ -288,10 +269,7 @@ final class AiAssistantPlanPreviewRenderer {
         Map<String, float[]> autoUvByRef = buildAdaptiveTopologyUv(nodes, connections, contentWidth, contentHeight, nodeWidth, nodeHeight);
         Map<String, float[]> nodeAnchors = new HashMap<>();
         for (AiPlanNode node : nodes) {
-            float[] uv = topologyPreviewState.getManualUv(node.ref());
-            if (uv == null) {
-                uv = autoUvByRef.get(node.ref());
-            }
+            float[] uv = autoUvByRef.get(node.ref());
             if (uv == null) {
                 uv = new float[]{0.5f, 0.5f};
             }
@@ -302,36 +280,6 @@ final class AiAssistantPlanPreviewRenderer {
 
         ImVec2 mouse = ImGui.getIO().getMousePos();
         boolean mouseInCanvas = pointInRect(mouse.x, mouse.y, cursor.x, cursor.y, previewWidth, previewHeight);
-
-        if (topologyPreviewState.getDraggingNodeRef() != null) {
-            if (ImGui.isMouseDown(0)) {
-                float nx = clamp(mouse.x - topologyPreviewState.getDragOffsetX(), cursor.x + padding, cursor.x + padding + contentWidth);
-                float ny = clamp(mouse.y - topologyPreviewState.getDragOffsetY(), cursor.y + padding, cursor.y + padding + contentHeight);
-                float u = (nx - (cursor.x + padding)) / contentWidth;
-                float v = (ny - (cursor.y + padding)) / contentHeight;
-                String draggingNodeRef = topologyPreviewState.getDraggingNodeRef();
-                topologyPreviewState.setManualUv(draggingNodeRef, clamp(u, 0.0f, 1.0f), clamp(v, 0.0f, 1.0f));
-                nodeAnchors.put(draggingNodeRef, new float[]{nx, ny});
-            } else {
-                topologyPreviewState.stopDragging();
-            }
-        }
-
-        if (mouseInCanvas && ImGui.isMouseClicked(0) && topologyPreviewState.getDraggingNodeRef() == null) {
-            for (int i = nodes.size() - 1; i >= 0; i--) {
-                AiPlanNode node = nodes.get(i);
-                float[] anchor = nodeAnchors.get(node.ref());
-                if (anchor == null) {
-                    continue;
-                }
-                float nx = anchor[0];
-                float ny = anchor[1];
-                if (mouse.x >= nx && mouse.x <= nx + nodeWidth && mouse.y >= ny && mouse.y <= ny + nodeHeight) {
-                    topologyPreviewState.startDragging(node.ref(), mouse.x - nx, mouse.y - ny);
-                    break;
-                }
-            }
-        }
 
         if (connections != null) {
             for (AiPlanConnection connection : connections) {

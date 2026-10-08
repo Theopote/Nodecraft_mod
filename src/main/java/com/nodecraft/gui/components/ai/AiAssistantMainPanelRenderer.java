@@ -23,12 +23,7 @@ final class AiAssistantMainPanelRenderer {
             ImBoolean includeGraphContext,
             ImBoolean includePlayerWorldContext,
             ImBoolean includeSelectedWorldRegionContext,
-            ImBoolean previewOnlyMode,
-            ImBoolean patchApplyMode,
-            ImBoolean patchRemoveScopedConnections,
             ImBoolean enterToSend,
-            String inputLanguageDetected,
-            String normalizedIntentPreview,
             String streamingPreview,
             String runtimeStage,
             String runtimeDetail,
@@ -69,7 +64,6 @@ final class AiAssistantMainPanelRenderer {
 
         int chatCount = renderChatHistory(state, actions);
         renderPromptInput(state, actions);
-        renderLanguageDiagnostics(state);
         renderModeHint(state);
         return chatCount;
     }
@@ -159,22 +153,6 @@ final class AiAssistantMainPanelRenderer {
             ImGui.textDisabled("Enabled world context is sent to the configured remote planner.");
         }
         ImGui.checkbox("Press Enter to send", state.enterToSend());
-
-        if (!ImGui.treeNode("Advanced apply options")) {
-            return;
-        }
-
-        ImGui.checkbox("Preview only", state.previewOnlyMode());
-        ImGui.checkbox("Reuse matching nodes", state.patchApplyMode());
-        if (state.patchApplyMode().get()) {
-            ImGui.checkbox("Remove stale scoped connections", state.patchRemoveScopedConnections());
-            ImGui.textColored(0.95f, 0.72f, 0.22f, 1.0f,
-                    "Some reused-node parameter updates may require manual revert.");
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip("Graph edits are undoable, but direct state updates on reused nodes may not be fully reversible.");
-            }
-        }
-        ImGui.treePop();
     }
 
     private static void renderSelectionContext(State state) {
@@ -310,20 +288,5 @@ final class AiAssistantMainPanelRenderer {
         ImGui.textDisabled(state.remotePlannerEnabled()
                 ? "Planner: remote"
                 : "Planner: local draft");
-    }
-
-    private static void renderLanguageDiagnostics(State state) {
-        String language = state.inputLanguageDetected();
-        String intent = state.normalizedIntentPreview();
-        if ((language == null || language.isBlank()) && (intent == null || intent.isBlank())) {
-            return;
-        }
-
-        if (!ImGui.treeNode("Request diagnostics")) {
-            return;
-        }
-        ImGui.textDisabled("Input language: " + (language == null || language.isBlank() ? "unknown" : language));
-        ImGui.textDisabled("Normalized intent: " + (intent == null || intent.isBlank() ? "general-request" : intent));
-        ImGui.treePop();
     }
 }

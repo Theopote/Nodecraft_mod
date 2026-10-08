@@ -62,22 +62,22 @@ public final class AiAssistantPanel {
         boolean plannerBusy = controller.isRemotePlannerBusy();
         String streamingPreview = aiAssistantComponent.getRemoteStreamingBuffer();
 
+        boolean hasDebugData = controller.hasAiDebugData()
+                || (inputLanguageDetected != null && !inputLanguageDetected.isBlank())
+                || (normalizedIntentPreview != null && !normalizedIntentPreview.isBlank())
+                || controller.pendingPlan() != null;
+
         lastRenderedChatCount = AiAssistantMainPanelRenderer.renderMainPanel(
                 new AiAssistantMainPanelRenderer.State(
                         controller.settingsSummary(),
                         controller.settingsStatusMessage(),
-                        controller.hasAiDebugData(),
+                        hasDebugData,
                         plannerBusy,
                         ui.aiUseSelectionContext,
                         ui.aiIncludeGraphContext,
                         ui.aiIncludePlayerWorldContext,
                         ui.aiIncludeSelectedWorldRegionContext,
-                        ui.aiPreviewOnlyMode,
-                        ui.aiPatchApplyMode,
-                        ui.aiPatchRemoveScopedConnections,
                         ui.aiEnterToSend,
-                        inputLanguageDetected,
-                        normalizedIntentPreview,
                         streamingPreview,
                         controller.resolveAiRuntimeStageLabel(plannerBusy, streamingPreview),
                         controller.planStatusMessage(),
@@ -196,6 +196,11 @@ public final class AiAssistantPanel {
         String fullDiagnostics = AiDiagnosticsService.buildAiDiagnosticsExportText(
                 aiAssistantComponent, controller.planStatusMessage(), true);
         AiAssistantComponent.RemotePlannerSnapshot remoteSnapshot = aiAssistantComponent.getRemotePlannerSnapshot();
+        String inputLanguageDetected = AiIntentAnalysisService.detectInputLanguage(ui.aiPromptInput.get());
+        String normalizedIntentPreview = AiIntentAnalysisService.buildNormalizedIntentPreview(ui.aiPromptInput.get());
+        AiGraphPlan plan = controller.pendingPlan();
+        AiGraphDiffService.GraphDiffSummary heuristicDiff = plan != null ? controller.buildGraphDiffSummary(plan) : null;
+        AiGraphDiffService.MappedDiffSummary mappedDiff = plan != null ? controller.buildMappedDiffSummary(plan) : null;
 
         AiAssistantDebugConsoleRenderer.renderDebugConsolePopup(
                 new AiAssistantDebugConsoleRenderer.State(
@@ -205,7 +210,11 @@ public final class AiAssistantPanel {
                         remoteSnapshot.modelText(),
                         remoteSnapshot.requestSnapshot(),
                         compactDiagnostics,
-                        fullDiagnostics
+                        fullDiagnostics,
+                        inputLanguageDetected,
+                        normalizedIntentPreview,
+                        heuristicDiff,
+                        mappedDiff
                 ),
                 new AiAssistantDebugConsoleRenderer.Actions() {
                     @Override
@@ -315,6 +324,7 @@ public final class AiAssistantPanel {
                         ui.aiTopologyPreviewState,
                         heuristicDiff,
                         mappedDiff,
+                        ui.aiPreviewOnlyMode,
                         canApply,
                         canUndoLastAiApply,
                         undoUnavailableReason,
@@ -322,16 +332,12 @@ public final class AiAssistantPanel {
                 ),
                 new AiAssistantPlanPreviewRenderer.Actions() {
                     @Override
-                    public void applyPlan() {
-                        if (ui.aiPreviewOnlyMode.get()) {
-                            controller.dryRunPendingPlan();
-                        } else {
-                            controller.applyPendingPlan();
-                        }
+                    public void applyChanges() {
+                        controller.applyPendingPlan();
                     }
 
                     @Override
-                    public void dryRunReport() {
+                    public void reviewChanges() {
                         controller.dryRunPendingPlan();
                     }
 

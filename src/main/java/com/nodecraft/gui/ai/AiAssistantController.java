@@ -340,18 +340,43 @@ public final class AiAssistantController {
 
     public String resolveApplyModeHint() {
         if (ui.aiPreviewOnlyMode.get()) {
-            return "Apply mode: Preview only (dry-run report, no graph mutation).";
-        }
-
-        if (!ui.aiPatchApplyMode.get()) {
-            return "Apply mode: Exact replace/apply.";
+            return "Apply mode: Review only (dry-run report, no graph mutation).";
         }
 
         UserIntent intent = AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt());
+        if (!resolvePatchApplyMode(intent)) {
+            return "Apply mode: Exact replace/apply.";
+        }
         if (intent == UserIntent.MODIFY_PARAM) {
             return "Apply mode: Patch + parameter merge (partial params keep existing fields).";
         }
+        if (intent == UserIntent.RESTRUCTURE) {
+            return "Apply mode: Patch + restructure (stale scoped connections removed).";
+        }
         return "Apply mode: Patch + replace node state.";
+    }
+
+    /**
+     * Patch apply for MODIFY_PARAM / RESTRUCTURE; exact apply for GENERATE_NEW and others.
+     */
+    public boolean resolvePatchApplyMode() {
+        return resolvePatchApplyMode(AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt()));
+    }
+
+    static boolean resolvePatchApplyMode(UserIntent intent) {
+        return intent == UserIntent.MODIFY_PARAM || intent == UserIntent.RESTRUCTURE;
+    }
+
+    /**
+     * Scoped disconnect only for RESTRUCTURE; off for MODIFY_PARAM and exact apply.
+     */
+    public boolean resolveRemoveScopedConnections() {
+        return resolveRemoveScopedConnections(
+                AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt()));
+    }
+
+    static boolean resolveRemoveScopedConnections(UserIntent intent) {
+        return intent == UserIntent.RESTRUCTURE;
     }
 
     public String resolveAiRuntimeStageLabel(boolean plannerBusy, String streamingPreview) {
@@ -1667,7 +1692,8 @@ public final class AiAssistantController {
             return;
         }
 
-        logAiApplyHistoryContext("before-apply", applyTarget, pendingAiPlan, ui.aiPatchApplyMode.get());
+        boolean patchMode = resolvePatchApplyMode();
+        logAiApplyHistoryContext("before-apply", applyTarget, pendingAiPlan, patchMode);
 
         float[] anchor = resolveAiPlanAnchorPosition(applyTarget);
         List<AiPlanNode> nodesToApply = ui.aiAutoLayoutBeforeApply.get()
@@ -1678,7 +1704,7 @@ public final class AiAssistantController {
         }
         List<AiPlanConnection> connectionsToApply = safePlanConnections(pendingAiPlan);
 
-        if (ui.aiPatchApplyMode.get()) {
+        if (patchMode) {
             applyPendingAiPlanPatch(applyTarget, nodesToApply, anchor);
             return;
         }
@@ -1747,7 +1773,7 @@ public final class AiAssistantController {
                 payload.nodes(),
                 payload.connections(),
                 anchor,
-                ui.aiPatchRemoveScopedConnections.get(),
+                resolveRemoveScopedConnections(intent),
                 mergeExistingNodeState
         );
         if (result.success()) {
@@ -1823,7 +1849,7 @@ public final class AiAssistantController {
                 phase,
                 patchMode,
                 ui.aiAutoLayoutBeforeApply.get(),
-                ui.aiPatchRemoveScopedConnections.get(),
+                resolveRemoveScopedConnections(),
                 nodes.size(),
                 connections.size(),
                 session.lastUndoStepCount(),

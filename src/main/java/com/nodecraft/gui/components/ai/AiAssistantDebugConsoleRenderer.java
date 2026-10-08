@@ -1,7 +1,10 @@
 package com.nodecraft.gui.components.ai;
 
+import com.nodecraft.gui.ai.AiGraphDiffService;
 import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
+
+import java.util.List;
 
 final class AiAssistantDebugConsoleRenderer {
 
@@ -15,7 +18,11 @@ final class AiAssistantDebugConsoleRenderer {
             String modelText,
             String requestSnapshot,
             String compactDiagnostics,
-            String fullDiagnostics
+            String fullDiagnostics,
+            String inputLanguageDetected,
+            String normalizedIntentPreview,
+            AiGraphDiffService.GraphDiffSummary heuristicDiff,
+            AiGraphDiffService.MappedDiffSummary mappedDiff
     ) {
     }
 
@@ -47,6 +54,9 @@ final class AiAssistantDebugConsoleRenderer {
                 : state.errorCategory();
         ImGui.textDisabled("Category: " + categoryText + " | Attempts: " + state.attempts());
         ImGui.separator();
+
+        renderRequestDiagnostics(state);
+        renderDebugDiffDetails(state);
 
         if (ImGui.beginTabBar("aiDebugConsoleTabs")) {
             if (ImGui.beginTabItem("Raw Response")) {
@@ -123,5 +133,79 @@ final class AiAssistantDebugConsoleRenderer {
         }
 
         ImGui.endPopup();
+    }
+
+    private static void renderRequestDiagnostics(State state) {
+        String language = state.inputLanguageDetected();
+        String intent = state.normalizedIntentPreview();
+        if ((language == null || language.isBlank()) && (intent == null || intent.isBlank())) {
+            return;
+        }
+
+        if (!ImGui.treeNode("Request diagnostics")) {
+            return;
+        }
+        ImGui.textDisabled("Input language: " + (language == null || language.isBlank() ? "unknown" : language));
+        ImGui.textDisabled("Normalized intent: " + (intent == null || intent.isBlank() ? "general-request" : intent));
+        ImGui.treePop();
+    }
+
+    private static void renderDebugDiffDetails(State state) {
+        AiGraphDiffService.GraphDiffSummary diff = state.heuristicDiff();
+        AiGraphDiffService.MappedDiffSummary mapped = state.mappedDiff();
+        if (diff == null && mapped == null) {
+            return;
+        }
+        if (!ImGui.treeNode("Debug diff details")) {
+            return;
+        }
+
+        if (diff != null && ImGui.treeNode("Heuristic diff")) {
+            ImGui.textDisabled("Compared by node type+params signature and typed connection signature.");
+            ImGui.text("Potential additions: nodes=" + diff.nodeAdditions() + ", connections=" + diff.connectionAdditions());
+            ImGui.text("Potential missing from plan: nodes=" + diff.nodeMissingFromPlan()
+                    + ", connections=" + diff.connectionMissingFromPlan());
+
+            renderDiffSamples("Node additions", diff.nodeAdditionSamples());
+            renderDiffSamples("Node missing from plan", diff.nodeMissingSamples());
+            renderDiffSamples("Connection additions", diff.connectionAdditionSamples());
+            renderDiffSamples("Connection missing from plan", diff.connectionMissingSamples());
+            ImGui.treePop();
+        }
+
+        if (mapped != null && ImGui.treeNode("Mapped diff")) {
+            ImGui.textDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
+            ImGui.text("Reusable matches=" + mapped.reusableNodeMatches()
+                    + ", new nodes=" + mapped.newNodesToCreate());
+            ImGui.text("Unchanged reused=" + mapped.unchangedReusableNodes()
+                    + ", param updates=" + mapped.paramUpdateCandidates());
+            ImGui.text("Connection additions=" + mapped.connectionAdditions()
+                    + ", connection removal candidates=" + mapped.connectionRemovalCandidates()
+                    + ", incoming replacements=" + mapped.incomingReplacementCandidates());
+
+            renderDiffSamples("Node reuse matches", mapped.nodeReuseSamples());
+            renderDiffSamples("Node creation candidates", mapped.nodeCreationSamples());
+            renderDiffSamples("Param update candidates", mapped.paramUpdateSamples());
+            renderDiffSamples("Connection additions", mapped.connectionAdditionSamples());
+            renderDiffSamples("Connection removal candidates", mapped.connectionRemovalSamples());
+            renderDiffSamples("Incoming replacement candidates", mapped.incomingReplacementSamples());
+            ImGui.treePop();
+        }
+
+        ImGui.treePop();
+    }
+
+    private static void renderDiffSamples(String title, List<String> samples) {
+        if (!ImGui.treeNode(title)) {
+            return;
+        }
+        if (samples == null || samples.isEmpty()) {
+            ImGui.textDisabled("None");
+        } else {
+            for (String sample : samples) {
+                ImGui.bulletText(sample);
+            }
+        }
+        ImGui.treePop();
     }
 }

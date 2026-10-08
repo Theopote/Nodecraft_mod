@@ -1,5 +1,6 @@
 package com.nodecraft.gui.ai;
 
+import com.nodecraft.gui.ai.AiIntentAnalysisService.UserIntent;
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,6 +77,51 @@ class AiAssistantControllerTest {
                 controller.settingsStatusMessage().toLowerCase().contains("saved"),
                 controller.settingsStatusMessage()
         );
+    }
+
+    @Test
+    void resolvePatchApplyModeFollowsIntent() {
+        assertTrue(AiAssistantController.resolvePatchApplyMode(UserIntent.MODIFY_PARAM));
+        assertTrue(AiAssistantController.resolvePatchApplyMode(UserIntent.RESTRUCTURE));
+        assertFalse(AiAssistantController.resolvePatchApplyMode(UserIntent.GENERATE_NEW));
+        assertFalse(AiAssistantController.resolvePatchApplyMode(UserIntent.EXPLAIN));
+        assertFalse(AiAssistantController.resolvePatchApplyMode(UserIntent.UNCLEAR));
+    }
+
+    @Test
+    void resolveRemoveScopedConnectionsOnlyForRestructure() {
+        assertTrue(AiAssistantController.resolveRemoveScopedConnections(UserIntent.RESTRUCTURE));
+        assertFalse(AiAssistantController.resolveRemoveScopedConnections(UserIntent.MODIFY_PARAM));
+        assertFalse(AiAssistantController.resolveRemoveScopedConnections(UserIntent.GENERATE_NEW));
+        assertFalse(AiAssistantController.resolveRemoveScopedConnections(UserIntent.EXPLAIN));
+    }
+
+    @Test
+    void resolveApplyModeHintIgnoresUiPatchCheckboxWhenIntentIsModify() {
+        AiAssistantUiBindings ui = new AiAssistantUiBindings();
+        AiAssistantController controller = newController(ui, tempDir.resolve("ai_settings.json"));
+
+        ui.aiEnableRemotePlanner.set(false);
+        ui.aiPatchApplyMode.set(false);
+        ui.aiPreviewOnlyMode.set(false);
+        controller.setPrompt("modify the radius parameter");
+        controller.submitPrompt();
+
+        assertEquals(UserIntent.MODIFY_PARAM,
+                AiIntentAnalysisService.classifyIntent(controller.lastSubmittedPrompt()));
+        String hint = controller.resolveApplyModeHint();
+        assertTrue(hint.toLowerCase().contains("patch"), hint);
+        assertFalse(hint.toLowerCase().contains("exact"), hint);
+    }
+
+    @Test
+    void resolveApplyModeHintReportsReviewOnly() {
+        AiAssistantUiBindings ui = new AiAssistantUiBindings();
+        AiAssistantController controller = newController(ui, tempDir.resolve("ai_settings.json"));
+        ui.aiPreviewOnlyMode.set(true);
+
+        String hint = controller.resolveApplyModeHint();
+        assertTrue(hint.toLowerCase().contains("review only"), hint);
     }
 
     private static AiAssistantController newController(AiAssistantUiBindings ui, Path settingsPath) {
