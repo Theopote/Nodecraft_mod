@@ -6,7 +6,7 @@ import com.nodecraft.gui.ai.AiDiagnosticsService;
 import com.nodecraft.gui.ai.AiGraphDiffService;
 import com.nodecraft.gui.ai.AiIntentAnalysisService;
 import com.nodecraft.gui.ai.AiProviderModelService;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;

@@ -4,9 +4,9 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.ai.AiIntentAnalysisService.UserIntent;
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
 import com.nodecraft.gui.components.ai.AiAssistantComponent.AiChatMessage;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanConnection;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanNode;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.gui.editor.GraphApplyTargetResolver;
 import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
 import com.nodecraft.gui.editor.base.GraphApplyTarget;
@@ -448,7 +448,7 @@ public final class AiAssistantController {
         }
 
         try {
-            String dslJson = AiPlanDslWorkflowService.toDslJson(toServiceGraphPlanForHistory(pendingAiPlan));
+            String dslJson = AiPlanDslWorkflowService.toDslJson(pendingAiPlan);
             String suggestedName = buildTemplateFileStem(pendingAiPlan.summary());
             Path savedPath = AiTemplateLibrary.saveTemplate(suggestedName, dslJson);
             session.setPlanStatusMessage("Template saved: " + savedPath.getFileName());
@@ -487,23 +487,11 @@ public final class AiAssistantController {
     }
 
     public AiGraphDiffService.GraphDiffSummary buildGraphDiffSummary(AiGraphPlan plan) {
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-        return AiGraphDiffAdapterService.buildGraphDiffSummary(
-                toDiffPlanNodes(planNodes),
-                toDiffPlanConnections(planConnections),
-                getNodeGraph()
-        );
+        return AiGraphDiffAdapterService.buildGraphDiffSummary(plan, getNodeGraph());
     }
 
     public AiGraphDiffService.MappedDiffSummary buildMappedDiffSummary(AiGraphPlan plan) {
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-        return AiGraphDiffAdapterService.buildMappedDiffSummary(
-                toDiffPlanNodes(planNodes),
-                toDiffPlanConnections(planConnections),
-                getNodeGraph()
-        );
+        return AiGraphDiffAdapterService.buildMappedDiffSummary(plan, getNodeGraph());
     }
 
     public void setPrompt(String text) {
@@ -733,7 +721,7 @@ public final class AiAssistantController {
         String latestUserMessage = userPromptPayload;
         AiGraphPlan pendingAiPlan = pendingPlan();
         if (pendingAiPlan != null) {
-            String currentPlanJson = AiPlanDslWorkflowService.toDslJsonCompact(toServiceGraphPlanForHistory(pendingAiPlan));
+            String currentPlanJson = AiPlanDslWorkflowService.toDslJsonCompact(pendingAiPlan);
             latestUserMessage = "Current plan in effect:\n```json\n"
                     + currentPlanJson
                     + "\n```\n\n"
@@ -871,7 +859,7 @@ public final class AiAssistantController {
 
         session.setDslRepairAttempts(0);
 
-        AiGraphPlanDslAdapterService.GraphPlan enrichedPlan = enrichPlanWithIntentDefaults(
+        AiGraphPlan enrichedPlan = enrichPlanWithIntentDefaults(
             prompt,
             AiPlanDslWorkflowService.fromDsl(parsed.graph())
         );
@@ -882,7 +870,7 @@ public final class AiAssistantController {
         }
 
         session.setGraphExpansionAttempts(0);
-        setPendingAiPlan(fromServiceGraphPlan(enrichedPlan));
+        setPendingAiPlan(enrichedPlan);
         ui.aiPreviewFocusedNodeRef = "";
         ui.aiPreviewFocusScrollPending = false;
         AiGraphPlan pendingAiPlan = pendingPlan();
@@ -982,7 +970,7 @@ public final class AiAssistantController {
 
     private boolean shouldRequestConnectedGraphExpansion(
             String prompt,
-            AiGraphPlanDslAdapterService.GraphPlan plan
+            AiGraphPlan plan
     ) {
         return plannerService.shouldRequestConnectedGraphExpansion(
                 prompt,
@@ -1001,7 +989,7 @@ public final class AiAssistantController {
 
     private boolean tryStartRemoteGraphExpansion(
             String originalPrompt,
-            AiGraphPlanDslAdapterService.GraphPlan underspecifiedPlan,
+            AiGraphPlan underspecifiedPlan,
             String originalModelPayload
     ) {
         if (session.graphExpansionAttempts() >= plannerService.maxGraphExpansionAttempts()) {
@@ -1197,22 +1185,22 @@ public final class AiAssistantController {
     ) {
     }
 
-    private AiGraphPlanDslAdapterService.GraphPlan enrichPlanWithIntentDefaults(
+    private AiGraphPlan enrichPlanWithIntentDefaults(
             String prompt,
-            AiGraphPlanDslAdapterService.GraphPlan plan
+            AiGraphPlan plan
     ) {
         if (plan == null || plan.nodes() == null || plan.nodes().isEmpty()) {
             return plan;
         }
 
-        List<AiGraphPlanDslAdapterService.PlanNode> normalizedNodes = applyDefaultNodeParams(plan.nodes());
-        List<AiGraphPlanDslAdapterService.PlanConnection> normalizedConnections =
+        List<AiPlanNode> normalizedNodes = applyDefaultNodeParams(plan.nodes());
+        List<AiPlanConnection> normalizedConnections =
                 plan.connections() == null ? new ArrayList<>() : new ArrayList<>(plan.connections());
 
         int beforeConnectionCount = normalizedConnections.size();
         UserIntent intent = AiIntentAnalysisService.classifyIntent(prompt);
         if (intent == UserIntent.GENERATE_NEW && normalizedNodes.size() > 1 && normalizedConnections.isEmpty()) {
-            List<AiGraphPlanDslAdapterService.PlanConnection> inferredConnections = buildAutoConnections(normalizedNodes);
+            List<AiPlanConnection> inferredConnections = buildAutoConnections(normalizedNodes);
             normalizedConnections.addAll(filterValidInferredConnections(
                     plan.summary(),
                     normalizedNodes,
@@ -1230,7 +1218,7 @@ public final class AiAssistantController {
             );
         }
 
-        return new AiGraphPlanDslAdapterService.GraphPlan(
+        return new AiGraphPlan(
                 plan.summary(),
                 normalizedNodes,
                 normalizedConnections,
@@ -1238,24 +1226,24 @@ public final class AiAssistantController {
         );
     }
 
-    private List<AiGraphPlanDslAdapterService.PlanConnection> filterValidInferredConnections(
+    private List<AiPlanConnection> filterValidInferredConnections(
             String summary,
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes,
-            List<AiGraphPlanDslAdapterService.PlanConnection> existingConnections,
-            List<AiGraphPlanDslAdapterService.PlanConnection> inferredConnections
+            List<AiPlanNode> nodes,
+            List<AiPlanConnection> existingConnections,
+            List<AiPlanConnection> inferredConnections
     ) {
         if (inferredConnections == null || inferredConnections.isEmpty()) {
             return List.of();
         }
 
-        List<AiGraphPlanDslAdapterService.PlanConnection> accepted = new ArrayList<>();
-        List<AiGraphPlanDslAdapterService.PlanConnection> working = new ArrayList<>(
+        List<AiPlanConnection> accepted = new ArrayList<>();
+        List<AiPlanConnection> working = new ArrayList<>(
                 existingConnections == null ? List.of() : existingConnections
         );
 
-        for (AiGraphPlanDslAdapterService.PlanConnection candidate : inferredConnections) {
+        for (AiPlanConnection candidate : inferredConnections) {
             working.add(candidate);
-            AiGraphPlanDslAdapterService.GraphPlan trial = new AiGraphPlanDslAdapterService.GraphPlan(
+            AiGraphPlan trial = new AiGraphPlan(
                     summary,
                     nodes,
                     working,
@@ -1281,14 +1269,14 @@ public final class AiAssistantController {
         return accepted;
     }
 
-    private List<AiGraphPlanDslAdapterService.PlanNode> applyDefaultNodeParams(
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes
+    private List<AiPlanNode> applyDefaultNodeParams(
+            List<AiPlanNode> nodes
     ) {
         NodeRegistry registry = NodeRegistry.getInstance();
         Map<String, Map<String, Object>> defaultStateCache = new HashMap<>();
-        List<AiGraphPlanDslAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
+        List<AiPlanNode> result = new ArrayList<>(nodes.size());
 
-        for (AiGraphPlanDslAdapterService.PlanNode node : nodes) {
+        for (AiPlanNode node : nodes) {
             Map<String, Object> existingState = toStateMap(node.nodeState());
             Map<String, Object> defaultState = defaultStateCache.computeIfAbsent(
                     node.typeId(),
@@ -1303,7 +1291,7 @@ public final class AiAssistantController {
             Map<String, Object> merged = new HashMap<>(defaultState);
             merged.putAll(existingState);
 
-            result.add(new AiGraphPlanDslAdapterService.PlanNode(
+            result.add(new AiPlanNode(
                     node.ref(),
                     node.typeId(),
                     node.offsetX(),
@@ -1339,10 +1327,10 @@ public final class AiAssistantController {
         return normalized;
     }
 
-    private List<AiGraphPlanDslAdapterService.PlanConnection> buildAutoConnections(
-            List<AiGraphPlanDslAdapterService.PlanNode> nodes
+    private List<AiPlanConnection> buildAutoConnections(
+            List<AiPlanNode> nodes
     ) {
-        List<AiGraphPlanDslAdapterService.PlanConnection> generated = new ArrayList<>();
+        List<AiPlanConnection> generated = new ArrayList<>();
         if (nodes == null || nodes.size() < 2) {
             return generated;
         }
@@ -1384,7 +1372,7 @@ public final class AiAssistantController {
                     continue;
                 }
 
-                generated.add(new AiGraphPlanDslAdapterService.PlanConnection(
+                generated.add(new AiPlanConnection(
                         source.ref(),
                         sourcePort.id(),
                         target.ref(),
@@ -1397,10 +1385,10 @@ public final class AiAssistantController {
         return generated;
     }
 
-    private List<NodeMeta> buildNodeMetas(List<AiGraphPlanDslAdapterService.PlanNode> nodes) {
+    private List<NodeMeta> buildNodeMetas(List<AiPlanNode> nodes) {
         NodeRegistry registry = NodeRegistry.getInstance();
         List<NodeMeta> metas = new ArrayList<>(nodes.size());
-        for (AiGraphPlanDslAdapterService.PlanNode node : nodes) {
+        for (AiPlanNode node : nodes) {
             String category = "";
             if (registry != null && node.typeId() != null && !node.typeId().isBlank()) {
                 var info = registry.getNodeInfo(node.typeId());
@@ -1665,42 +1653,6 @@ public final class AiAssistantController {
         aiSettingsStatusMessage = "Provider preset applied: " + preset.label() + ".";
     }
 
-    private AiGraphPlanDslAdapterService.GraphPlan toServiceGraphPlanForHistory(AiGraphPlan plan) {
-        if (plan == null) {
-            return new AiGraphPlanDslAdapterService.GraphPlan("", List.of(), List.of(), List.of());
-        }
-
-        List<AiPlanNode> planNodes = safePlanNodes(plan);
-        List<AiPlanConnection> planConnections = safePlanConnections(plan);
-
-        return new AiGraphPlanDslAdapterService.GraphPlan(
-                plan.summary(),
-                toDslAdapterNodes(planNodes),
-                toDslAdapterConnections(planConnections),
-                plan.validationErrors() == null ? List.of() : plan.validationErrors()
-        );
-    }
-
-    private AiGraphPlan fromServiceGraphPlan(AiGraphPlanDslAdapterService.GraphPlan plan) {
-        List<AiPlanNode> nodes = new ArrayList<>();
-        for (AiGraphPlanDslAdapterService.PlanNode node : plan.nodes()) {
-            nodes.add(new AiPlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
-        }
-
-        List<AiPlanConnection> connections = new ArrayList<>();
-        for (AiGraphPlanDslAdapterService.PlanConnection connection : plan.connections()) {
-            connections.add(new AiPlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-
-        List<String> errors = plan.validationErrors() == null ? List.of() : plan.validationErrors();
-        return new AiGraphPlan(plan.summary(), nodes, connections, errors);
-    }
-
     public void applyPendingPlan() {
         AiGraphPlan pendingAiPlan = pendingPlan();
         AiPlanValidator.GateResult gate = planValidator.checkBeforeApply(pendingAiPlan);
@@ -1922,66 +1874,6 @@ public final class AiAssistantController {
 
     private List<AiPlanConnection> safePlanConnections(AiGraphPlan plan) {
         return plan == null || plan.connections() == null ? List.of() : plan.connections();
-    }
-
-    private List<AiGraphDiffAdapterService.PlanNode> toDiffPlanNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphDiffAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiGraphDiffAdapterService.PlanNode(node.ref(), node.typeId(), node.nodeState()));
-        }
-        return result;
-    }
-
-    private List<AiGraphDiffAdapterService.PlanConnection> toDiffPlanConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphDiffAdapterService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiGraphDiffAdapterService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanNode> toDslAdapterNodes(List<AiPlanNode> nodes) {
-        if (nodes == null || nodes.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphPlanDslAdapterService.PlanNode> result = new ArrayList<>(nodes.size());
-        for (AiPlanNode node : nodes) {
-            result.add(new AiGraphPlanDslAdapterService.PlanNode(
-                    node.ref(),
-                    node.typeId(),
-                    node.offsetX(),
-                    node.offsetY(),
-                    node.nodeState()
-            ));
-        }
-        return result;
-    }
-
-    private List<AiGraphPlanDslAdapterService.PlanConnection> toDslAdapterConnections(List<AiPlanConnection> connections) {
-        if (connections == null || connections.isEmpty()) {
-            return List.of();
-        }
-        List<AiGraphPlanDslAdapterService.PlanConnection> result = new ArrayList<>(connections.size());
-        for (AiPlanConnection connection : connections) {
-            result.add(new AiGraphPlanDslAdapterService.PlanConnection(
-                    connection.sourceRef(),
-                    connection.sourcePortId(),
-                    connection.targetRef(),
-                    connection.targetPortId()
-            ));
-        }
-        return result;
     }
 
     private List<AiPlanApplyCoordinatorService.PlanNode> toCoordinatorApplyNodes(List<AiPlanNode> nodes) {

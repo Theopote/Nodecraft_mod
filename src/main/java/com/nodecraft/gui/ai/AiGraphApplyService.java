@@ -273,18 +273,13 @@ public final class AiGraphApplyService {
             }
         }
 
-        // 2. Fallback to matching parameters
-        String plannedSig = normalizeStateForSignature(planned.nodeState());
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
-                return candidate;
-            }
-        }
-
-        // 3. Fallback to matching first unused of same type
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id())) {
-                return candidate;
+        // 2. Match by parameter signature only when planned state is explicitly provided
+        if (planned.nodeState() != null) {
+            String plannedSig = normalizeStateForSignature(planned.nodeState());
+            for (CurrentNodeInfo candidate : candidates) {
+                if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
+                    return candidate;
+                }
             }
         }
         return null;

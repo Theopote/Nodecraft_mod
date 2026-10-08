@@ -2,6 +2,9 @@ package com.nodecraft.gui.ai;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -18,15 +21,6 @@ public final class AiGraphDiffService {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private AiGraphDiffService() {
-    }
-
-    public record PlanNode(String ref, String typeId, Object nodeState) {
-    }
-
-    public record PlanConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
-    }
-
-    public record GraphPlan(List<PlanNode> nodes, List<PlanConnection> connections) {
     }
 
     public record GraphDiffSummary(
@@ -58,7 +52,7 @@ public final class AiGraphDiffService {
     ) {
     }
 
-    public static GraphDiffSummary buildGraphDiffSummary(GraphPlan plan, NodeGraph graph) {
+    public static GraphDiffSummary buildGraphDiffSummary(AiGraphPlan plan, NodeGraph graph) {
         if (plan == null || graph == null) {
             return new GraphDiffSummary(0, 0, 0, 0, List.of(), List.of(), List.of(), List.of());
         }
@@ -90,7 +84,7 @@ public final class AiGraphDiffService {
         );
     }
 
-    public static MappedDiffSummary buildMappedDiffSummary(GraphPlan plan, NodeGraph graph) {
+    public static MappedDiffSummary buildMappedDiffSummary(AiGraphPlan plan, NodeGraph graph) {
         return AiGraphDiffMappingService.buildMappedDiffSummary(plan, graph);
     }
 
@@ -104,9 +98,9 @@ public final class AiGraphDiffService {
         return counts;
     }
 
-    private static Map<String, Integer> buildPlannedNodeSignatureCounts(GraphPlan plan) {
+    private static Map<String, Integer> buildPlannedNodeSignatureCounts(AiGraphPlan plan) {
         Map<String, Integer> counts = new HashMap<>();
-        for (PlanNode node : safeNodes(plan)) {
+        for (AiPlanNode node : safeNodes(plan)) {
             String signature = buildNodeSignature(node.typeId(), node.nodeState());
             counts.merge(signature, 1, Integer::sum);
         }
@@ -127,14 +121,14 @@ public final class AiGraphDiffService {
         return counts;
     }
 
-    private static Map<String, Integer> buildPlannedConnectionSignatureCounts(GraphPlan plan) {
+    private static Map<String, Integer> buildPlannedConnectionSignatureCounts(AiGraphPlan plan) {
         Map<String, String> refToType = new HashMap<>();
-        for (PlanNode node : safeNodes(plan)) {
+        for (AiPlanNode node : safeNodes(plan)) {
             refToType.put(node.ref(), node.typeId());
         }
 
         Map<String, Integer> counts = new HashMap<>();
-        for (PlanConnection conn : safeConnections(plan)) {
+        for (AiPlanConnection conn : safeConnections(plan)) {
             String sourceType = refToType.getOrDefault(conn.sourceRef(), "unknown");
             String targetType = refToType.getOrDefault(conn.targetRef(), "unknown");
             String signature = buildConnectionSignature(
@@ -172,11 +166,11 @@ public final class AiGraphDiffService {
         return total;
     }
 
-    private static List<PlanNode> safeNodes(GraphPlan plan) {
+    private static List<AiPlanNode> safeNodes(AiGraphPlan plan) {
         return plan.nodes() == null ? List.of() : plan.nodes();
     }
 
-    private static List<PlanConnection> safeConnections(GraphPlan plan) {
+    private static List<AiPlanConnection> safeConnections(AiGraphPlan plan) {
         return plan.connections() == null ? List.of() : plan.connections();
     }
 

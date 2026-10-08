@@ -1,6 +1,6 @@
 package com.nodecraft.gui.ai;
 
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 /**
@@ -39,21 +39,38 @@ public final class AiPlanValidator {
     }
 
     public GateResult checkBeforeApply(AiGraphPlan plan) {
-        if (plan == null) {
-            return GateResult.reject("No plan available.");
+        GateResult base = checkPlanPresentAndMarkedValid(plan, "Cannot apply");
+        if (base != null) {
+            return base;
         }
-        if (!plan.isValid()) {
-            return GateResult.reject("Cannot apply: plan has validation errors.");
-        }
-        return GateResult.allow();
+        return gateFromSemanticValidation(plan);
     }
 
     public GateResult checkBeforeDryRun(AiGraphPlan plan) {
+        GateResult base = checkPlanPresentAndMarkedValid(plan, "Dry run aborted");
+        if (base != null) {
+            return base;
+        }
+        return gateFromSemanticValidation(plan);
+    }
+
+    private GateResult checkPlanPresentAndMarkedValid(AiGraphPlan plan, String prefix) {
         if (plan == null) {
-            return GateResult.reject("Dry run aborted: no plan available.");
+            return GateResult.reject(prefix + ": no plan available.");
         }
         if (!plan.isValid()) {
-            return GateResult.reject("Dry run aborted: plan has validation errors.");
+            return GateResult.reject(prefix + ": plan has validation errors.");
+        }
+        return null;
+    }
+
+    private GateResult gateFromSemanticValidation(AiGraphPlan plan) {
+        AiGraphDslSupport.PlanValidationResult validation = AiGraphDslSupport.validatePlan(plan, registry);
+        if (!validation.isSuccess()) {
+            String message = validation.errors().isEmpty()
+                    ? "Plan failed semantic validation."
+                    : validation.errors().getFirst();
+            return GateResult.reject(message);
         }
         return GateResult.allow();
     }

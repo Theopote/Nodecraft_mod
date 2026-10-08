@@ -1,7 +1,7 @@
 package com.nodecraft.gui.ai;
 
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

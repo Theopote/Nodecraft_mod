@@ -1,7 +1,7 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.gui.components.ai.AiAssistantComponent;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 
 /**
  * In-flight planning run state for one AI assistant controller.

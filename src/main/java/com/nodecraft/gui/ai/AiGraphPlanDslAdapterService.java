@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,29 +22,20 @@ public final class AiGraphPlanDslAdapterService {
     private AiGraphPlanDslAdapterService() {
     }
 
-    public record PlanNode(String ref, String typeId, float offsetX, float offsetY, Object nodeState) {
-    }
-
-    public record PlanConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
-    }
-
-    public record GraphPlan(String summary, List<PlanNode> nodes, List<PlanConnection> connections, List<String> validationErrors) {
-    }
-
-    public static String toDslJson(GraphPlan plan) {
+    public static String toDslJson(AiGraphPlan plan) {
         return toDslJson(plan, false);
     }
 
-    public static String toDslJsonCompact(GraphPlan plan) {
+    public static String toDslJsonCompact(AiGraphPlan plan) {
         return toDslJson(plan, true);
     }
 
-    private static String toDslJson(GraphPlan plan, boolean compact) {
+    private static String toDslJson(AiGraphPlan plan, boolean compact) {
         JsonObject root = new JsonObject();
         root.addProperty("description", plan.summary());
 
         JsonArray nodesArray = new JsonArray();
-        for (PlanNode node : safeNodes(plan)) {
+        for (AiPlanNode node : safeNodes(plan)) {
             JsonObject nodeObj = new JsonObject();
             nodeObj.addProperty("id", node.ref());
             nodeObj.addProperty("type", node.typeId());
@@ -61,7 +55,7 @@ public final class AiGraphPlanDslAdapterService {
         root.add("nodes", nodesArray);
 
         JsonArray connectionsArray = new JsonArray();
-        for (PlanConnection connection : safeConnections(plan)) {
+        for (AiPlanConnection connection : safeConnections(plan)) {
             JsonObject connObj = new JsonObject();
 
             JsonObject fromObj = new JsonObject();
@@ -81,19 +75,19 @@ public final class AiGraphPlanDslAdapterService {
         return compact ? GSON_COMPACT.toJson(root) : GSON.toJson(root);
     }
 
-    public static GraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {
-        List<PlanNode> nodes = new ArrayList<>();
-        List<PlanConnection> connections = new ArrayList<>();
+    public static AiGraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {
+        List<AiPlanNode> nodes = new ArrayList<>();
+        List<AiPlanConnection> connections = new ArrayList<>();
 
         for (AiGraphDslSupport.DslNode node : dslGraph.nodes()) {
             float x = node.position() != null ? node.position().x() : 0.0f;
             float y = node.position() != null ? node.position().y() : 0.0f;
             Object state = node.params() == null ? null : new HashMap<>(node.params());
-            nodes.add(new PlanNode(node.id(), node.type(), x, y, state));
+            nodes.add(new AiPlanNode(node.id(), node.type(), x, y, state));
         }
 
         for (AiGraphDslSupport.DslConnection connection : dslGraph.connections()) {
-            connections.add(new PlanConnection(
+            connections.add(new AiPlanConnection(
                     connection.from().nodeId(),
                     connection.from().port(),
                     connection.to().nodeId(),
@@ -104,18 +98,18 @@ public final class AiGraphPlanDslAdapterService {
         String summary = dslGraph.description() == null || dslGraph.description().isBlank()
                 ? "AI JSON plan parsed and validated."
                 : dslGraph.description();
-        return new GraphPlan(summary, nodes, connections, List.of());
+        return new AiGraphPlan(summary, nodes, connections, List.of());
     }
 
-    public static GraphPlan fromMockPlan(AiMockPlanService.MockPlan mockPlan) {
-        List<PlanNode> nodes = new ArrayList<>();
+    public static AiGraphPlan fromMockPlan(AiMockPlanService.MockPlan mockPlan) {
+        List<AiPlanNode> nodes = new ArrayList<>();
         for (AiMockPlanService.MockNode node : mockPlan.nodes()) {
-            nodes.add(new PlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
+            nodes.add(new AiPlanNode(node.ref(), node.typeId(), node.offsetX(), node.offsetY(), node.nodeState()));
         }
 
-        List<PlanConnection> connections = new ArrayList<>();
+        List<AiPlanConnection> connections = new ArrayList<>();
         for (AiMockPlanService.MockConnection connection : mockPlan.connections()) {
-            connections.add(new PlanConnection(
+            connections.add(new AiPlanConnection(
                     connection.sourceRef(),
                     connection.sourcePortId(),
                     connection.targetRef(),
@@ -125,14 +119,14 @@ public final class AiGraphPlanDslAdapterService {
 
         String summary = mockPlan.summary() == null ? "" : mockPlan.summary();
         List<String> errors = mockPlan.validationErrors() == null ? List.of() : mockPlan.validationErrors();
-        return new GraphPlan(summary, nodes, connections, errors);
+        return new AiGraphPlan(summary, nodes, connections, errors);
     }
 
-    private static List<PlanNode> safeNodes(GraphPlan plan) {
+    private static List<AiPlanNode> safeNodes(AiGraphPlan plan) {
         return plan.nodes() == null ? List.of() : plan.nodes();
     }
 
-    private static List<PlanConnection> safeConnections(GraphPlan plan) {
+    private static List<AiPlanConnection> safeConnections(AiGraphPlan plan) {
         return plan.connections() == null ? List.of() : plan.connections();
     }
 

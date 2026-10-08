@@ -147,6 +147,17 @@ looks like a local proxy; auth headers are omitted when the key is blank.
 Exit for A1: `AiAssistantPanel` no longer calls remote planner / apply / settings persistence directly;
 tests cover controller without ImGui (`AiAssistantControllerTest`).
 
+## Phase 1 hardening (P1 — frozen)
+
+| Item | Decision |
+|------|----------|
+| **P1-1 Plan model** | Single canonical `com.nodecraft.gui.ai.model.{AiGraphPlan,AiPlanNode,AiPlanConnection}`; DSL/diff adapters consume the same type |
+| **P1-2 Patch reuse** | Patch apply reuses nodes only by ref→UUID (full or 8-char prefix) or matching parameter signature; **no** first-unused same-type fallback |
+| **P1-3 Validator** | `checkBeforeApply` / `checkBeforeDryRun` re-validate registry types, ports, type compatibility, duplicate refs, required inputs, and cycles via `AiGraphDslSupport.validatePlan` |
+| **P1-4 Effect safety** | AI may **author** preview-forbidden nodes (`WORLD_WRITE`, `FILE_IO`, …); apply paths only mutate the editor graph through `GraphApplyTarget` — they never call `NodeExecutor`, bake, or other runtime side effects. Policy: `AiPlanEffectPolicy`; runtime preview gate unchanged (`PreviewSideEffectPolicy`) |
+
+Tests: `AiGraphApplyServiceTest`, `AiPlanValidatorTest`, `AiPlanEffectSafetyContractTest`.
+
 ## Related
 
 - `docs/architecture/imgui-node-editor-breakup.md` (same “UI must not own the system” pattern)

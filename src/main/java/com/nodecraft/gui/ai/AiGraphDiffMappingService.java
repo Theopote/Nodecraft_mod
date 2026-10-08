@@ -2,6 +2,9 @@ package com.nodecraft.gui.ai;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -28,7 +31,7 @@ final class AiGraphDiffMappingService {
     private AiGraphDiffMappingService() {
     }
 
-    static AiGraphDiffService.MappedDiffSummary buildMappedDiffSummary(AiGraphDiffService.GraphPlan plan, NodeGraph graph) {
+    static AiGraphDiffService.MappedDiffSummary buildMappedDiffSummary(AiGraphPlan plan, NodeGraph graph) {
         if (plan == null) {
             return new AiGraphDiffService.MappedDiffSummary(0, 0, 0, 0, 0, 0, 0,
                     List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
@@ -51,7 +54,7 @@ final class AiGraphDiffMappingService {
         int unchanged = 0;
         int paramUpdates = 0;
 
-        for (AiGraphDiffService.PlanNode planned : safeNodes(plan)) {
+        for (AiPlanNode planned : safeNodes(plan)) {
             CurrentNodeInfo matched = matchCurrentNode(planned, currentNodesByType, usedCurrent);
             if (matched == null) {
                 if (createSamples.size() < 12) {
@@ -96,7 +99,7 @@ final class AiGraphDiffMappingService {
         Set<String> plannedConnMappedScoped = new HashSet<>();
         List<String> incomingReplacementSamples = new ArrayList<>();
         int incomingReplacementCandidates = 0;
-        for (AiGraphDiffService.PlanConnection conn : safeConnections(plan)) {
+        for (AiPlanConnection conn : safeConnections(plan)) {
             String sourceToken = tokenForPlanRef(conn.sourceRef(), refToMatched);
             String targetToken = tokenForPlanRef(conn.targetRef(), refToMatched);
             String mapped = buildMappedConnectionSignature(sourceToken, conn.sourcePortId(), targetToken, conn.targetPortId());
@@ -190,16 +193,16 @@ final class AiGraphDiffMappingService {
         return byType;
     }
 
-    private static List<AiGraphDiffService.PlanNode> safeNodes(AiGraphDiffService.GraphPlan plan) {
+    private static List<AiPlanNode> safeNodes(AiGraphPlan plan) {
         return plan.nodes() == null ? List.of() : plan.nodes();
     }
 
-    private static List<AiGraphDiffService.PlanConnection> safeConnections(AiGraphDiffService.GraphPlan plan) {
+    private static List<AiPlanConnection> safeConnections(AiGraphPlan plan) {
         return plan.connections() == null ? List.of() : plan.connections();
     }
 
     private static CurrentNodeInfo matchCurrentNode(
-            AiGraphDiffService.PlanNode planned,
+            AiPlanNode planned,
             Map<String, List<CurrentNodeInfo>> byType,
             Set<UUID> usedCurrent
     ) {
@@ -208,15 +211,12 @@ final class AiGraphDiffMappingService {
             return null;
         }
 
-        String plannedSig = normalizeStateForSignature(planned.nodeState());
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
-                return candidate;
-            }
-        }
-        for (CurrentNodeInfo candidate : candidates) {
-            if (!usedCurrent.contains(candidate.id())) {
-                return candidate;
+        if (planned.nodeState() != null) {
+            String plannedSig = normalizeStateForSignature(planned.nodeState());
+            for (CurrentNodeInfo candidate : candidates) {
+                if (!usedCurrent.contains(candidate.id()) && plannedSig.equals(candidate.paramSignature())) {
+                    return candidate;
+                }
             }
         }
         return null;

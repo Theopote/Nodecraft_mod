@@ -7,10 +7,15 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
+import com.nodecraft.nodesystem.execution.GraphExecutionPlanner;
+import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.lang.reflect.Type;
@@ -21,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Utility for parsing and validating AI-generated node graph JSON DSL.
@@ -51,6 +57,133 @@ public final class AiGraphDslSupport {
     public record ParseValidationResult(DslGraph graph, List<String> errors, List<String> warnings, String normalizedJson) {
         public boolean isSuccess() {
             return errors == null || errors.isEmpty();
+        }
+    }
+
+    public record PlanValidationResult(List<String> errors, List<String> warnings) {
+        public boolean isSuccess() {
+            return errors == null || errors.isEmpty();
+        }
+    }
+
+    /**
+     * Re-validates a pending {@link AiGraphPlan} against registry types, ports, type compatibility,
+     * duplicate refs, required inputs, and cycles.
+     */
+    public static PlanValidationResult validatePlan(AiGraphPlan plan, NodeRegistry registry) {
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+        if (plan == null) {
+            errors.add("No plan available.");
+            return new PlanValidationResult(errors, warnings);
+        }
+        if (registry == null) {
+            errors.add("Node registry is unavailable.");
+            return new PlanValidationResult(errors, warnings);
+        }
+        if (plan.nodes() == null || plan.nodes().isEmpty()) {
+            errors.add("Graph must contain at least one node.");
+            return new PlanValidationResult(errors, warnings);
+        }
+
+        DslGraph graph = toDslGraph(plan);
+        validateGraph(graph, registry, errors, warnings);
+        if (!errors.isEmpty()) {
+            return new PlanValidationResult(errors, warnings);
+        }
+        validateRequiredInputs(graph, registry, errors);
+        validateAcyclic(graph, registry, errors);
+        return new PlanValidationResult(errors, warnings);
+    }
+
+    private static DslGraph toDslGraph(AiGraphPlan plan) {
+        List<DslNode> nodes = new ArrayList<>();
+        for (AiPlanNode node : plan.nodes()) {
+            if (node == null) {
+                continue;
+            }
+            Map<String, Object> params = null;
+            if (node.nodeState() instanceof Map<?, ?> stateMap) {
+                params = new HashMap<>();
+                for (Map.Entry<?, ?> entry : stateMap.entrySet()) {
+                    params.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            nodes.add(new DslNode(
+                    node.ref(),
+                    node.typeId(),
+                    params,
+                    new DslPosition(node.offsetX(), node.offsetY())
+            ));
+        }
+
+        List<DslConnection> connections = new ArrayList<>();
+        if (plan.connections() != null) {
+            for (AiPlanConnection connection : plan.connections()) {
+                if (connection == null) {
+                    continue;
+                }
+                connections.add(new DslConnection(
+                        new DslEndpoint(connection.sourceRef(), connection.sourcePortId()),
+                        new DslEndpoint(connection.targetRef(), connection.targetPortId())
+                ));
+            }
+        }
+
+        String summary = plan.summary() == null ? "" : plan.summary();
+        return new DslGraph(nodes, connections, summary);
+    }
+
+    private static void validateRequiredInputs(DslGraph graph, NodeRegistry registry, List<String> errors) {
+        Set<String> connectedInputs = new HashSet<>();
+        for (DslConnection connection : graph.connections()) {
+            connectedInputs.add(connection.to().nodeId() + "." + connection.to().port());
+        }
+
+        for (DslNode node : graph.nodes()) {
+            INode instance;
+            try {
+                instance = registry.createNodeInstance(node.type());
+            } catch (Exception e) {
+                continue;
+            }
+            for (IPort port : instance.getInputPorts()) {
+                if (!port.isRequired()) {
+                    continue;
+                }
+                String key = node.id() + "." + port.getId();
+                if (!connectedInputs.contains(key)) {
+                    errors.add("Required input not connected: " + node.id() + "." + port.getId());
+                }
+            }
+        }
+    }
+
+    private static void validateAcyclic(DslGraph graph, NodeRegistry registry, List<String> errors) {
+        NodeGraph tempGraph = new NodeGraph("ai-plan-validate");
+        Map<String, UUID> refToId = new HashMap<>();
+        for (DslNode node : graph.nodes()) {
+            INode instance;
+            try {
+                instance = registry.createNodeInstance(node.type());
+            } catch (Exception e) {
+                continue;
+            }
+            tempGraph.addNode(instance);
+            refToId.put(node.id(), instance.getId());
+        }
+
+        for (DslConnection connection : graph.connections()) {
+            UUID sourceId = refToId.get(connection.from().nodeId());
+            UUID targetId = refToId.get(connection.to().nodeId());
+            if (sourceId == null || targetId == null) {
+                continue;
+            }
+            tempGraph.connect(sourceId, connection.from().port(), targetId, connection.to().port());
+        }
+
+        if (GraphExecutionPlanner.plan(tempGraph).hasCycle()) {
+            errors.add("Graph contains a cycle.");
         }
     }
 

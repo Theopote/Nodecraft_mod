@@ -1,6 +1,7 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.gui.ai.AiIntentAnalysisService.UserIntent;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.List;
@@ -212,7 +213,7 @@ public final class AiRemotePlanningOrchestrator {
 
     public boolean shouldRequestConnectedGraphExpansion(
             String prompt,
-            AiGraphPlanDslAdapterService.GraphPlan plan,
+            AiGraphPlan plan,
             int currentAttempt,
             boolean complexGenerationPrompt
     ) {
@@ -236,7 +237,7 @@ public final class AiRemotePlanningOrchestrator {
     public PreparedRetryRequest prepareGraphExpansionRequest(
             RequestSettings settings,
             String originalPrompt,
-            AiGraphPlanDslAdapterService.GraphPlan underspecifiedPlan,
+            AiGraphPlan underspecifiedPlan,
             String originalModelPayload,
             int currentAttempt,
             String frozenWorldContextJson

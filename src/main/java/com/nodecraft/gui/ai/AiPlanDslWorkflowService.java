@@ -1,6 +1,7 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.List;
@@ -11,19 +12,19 @@ public final class AiPlanDslWorkflowService {
     private AiPlanDslWorkflowService() {
     }
 
-    public static String toDslJson(AiGraphPlanDslAdapterService.GraphPlan plan) {
+    public static String toDslJson(AiGraphPlan plan) {
         return AiGraphPlanDslAdapterService.toDslJson(plan);
     }
 
-    public static String toDslJsonCompact(AiGraphPlanDslAdapterService.GraphPlan plan) {
+    public static String toDslJsonCompact(AiGraphPlan plan) {
         return AiGraphPlanDslAdapterService.toDslJsonCompact(plan);
     }
 
-    public static AiGraphPlanDslAdapterService.GraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {
+    public static AiGraphPlan fromDsl(AiGraphDslSupport.DslGraph dslGraph) {
         return AiGraphPlanDslAdapterService.fromDsl(dslGraph);
     }
 
-    public static AiGraphPlanDslAdapterService.GraphPlan buildMockGraphPlan(String prompt) {
+    public static AiGraphPlan buildMockGraphPlan(String prompt) {
         List<AiTemplateLibrary.Template> templates = AiTemplateLibrary.loadAll(AiTemplateLibrary.resolveTemplateDir());
         Optional<AiTemplateLibrary.MatchResult> bestMatch = AiTemplateLibrary.findBestMatch(prompt, templates);
         if (bestMatch.isPresent()) {

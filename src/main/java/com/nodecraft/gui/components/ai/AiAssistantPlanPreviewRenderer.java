@@ -1,8 +1,8 @@
 package com.nodecraft.gui.components.ai;
 
 import com.nodecraft.gui.ai.AiGraphDiffService;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanConnection;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanNode;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;

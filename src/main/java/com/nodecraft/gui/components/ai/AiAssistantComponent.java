@@ -3,6 +3,7 @@ package com.nodecraft.gui.components.ai;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.ai.AiRemotePlannerService;
 import com.nodecraft.gui.ai.AiSessionStateStore;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.components.EditorComponent;
 import net.minecraft.client.MinecraftClient;
 import org.jspecify.annotations.NonNull;
@@ -41,18 +42,6 @@ public class AiAssistantComponent implements EditorComponent {
     private final RemotePlannerState remotePlannerState = new RemotePlannerState();
 
     public record AiChatMessage(String role, String content, long timestampMs) {
-    }
-
-    public record AiPlanNode(String ref, String typeId, float offsetX, float offsetY, Object nodeState) {
-    }
-
-    public record AiPlanConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
-    }
-
-    public record AiGraphPlan(String summary, List<AiPlanNode> nodes, List<AiPlanConnection> connections, List<String> validationErrors) {
-        public boolean isValid() {
-            return validationErrors == null || validationErrors.isEmpty();
-        }
     }
 
     public record RemotePollResult(String prompt, AiRemotePlannerService.RemotePlanResult result, String exceptionMessage) {

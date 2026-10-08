@@ -1,7 +1,10 @@
 package com.nodecraft.gui.ai;
 
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiGraphPlan;
-import com.nodecraft.gui.components.ai.AiAssistantComponent.AiPlanNode;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
+import com.nodecraft.gui.ai.model.AiPlanNode;
+import com.nodecraft.nodesystem.registry.NodeRegistry;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,12 +15,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AiPlanValidatorTest {
 
-    private final AiPlanValidator validator = new AiPlanValidator();
+    private static AiPlanValidator validator;
+
+    @BeforeAll
+    static void ensureRegistry() {
+        NodeRegistry registry = NodeRegistry.getInstance();
+        if (!registry.isInitialized()) {
+            registry.initialize();
+        }
+        validator = new AiPlanValidator(registry);
+    }
 
     @Test
     void checkBeforeApplyRejectsNullAndInvalidPlans() {
         assertFalse(validator.checkBeforeApply(null).allowed());
-        assertEquals("No plan available.", validator.checkBeforeApply(null).rejectionMessage());
+        assertEquals("Cannot apply: no plan available.", validator.checkBeforeApply(null).rejectionMessage());
 
         AiGraphPlan invalid = new AiGraphPlan(
                 "bad",
@@ -31,14 +43,53 @@ class AiPlanValidatorTest {
     }
 
     @Test
-    void checkBeforeApplyAllowsValidPlan() {
+    void checkBeforeApplyAllowsValidSourceOnlyPlan() {
         AiGraphPlan valid = new AiGraphPlan(
                 "ok",
-                List.of(new AiPlanNode("n1", "geometry.primitives.box", 0, 0, null)),
+                List.of(new AiPlanNode("n1", "input.values.boolean_toggle", 0, 0, null)),
                 List.of(),
                 List.of()
         );
         assertTrue(validator.checkBeforeApply(valid).allowed());
+    }
+
+    @Test
+    void checkBeforeApplyRejectsUnknownTypeAndMissingRequiredInput() {
+        AiGraphPlan unknownType = new AiGraphPlan(
+                "bad",
+                List.of(new AiPlanNode("n1", "not.a.real.node", 0, 0, null)),
+                List.of(),
+                List.of()
+        );
+        assertFalse(validator.checkBeforeApply(unknownType).allowed());
+        assertTrue(validator.checkBeforeApply(unknownType).rejectionMessage().contains("Unknown node type"));
+
+        AiGraphPlan missingRequired = new AiGraphPlan(
+                "bad",
+                List.of(new AiPlanNode("n1", "geometry.primitives.box", 0, 0, null)),
+                List.of(),
+                List.of()
+        );
+        assertFalse(validator.checkBeforeApply(missingRequired).allowed());
+        assertTrue(validator.checkBeforeApply(missingRequired).rejectionMessage().contains("Required input not connected"));
+    }
+
+    @Test
+    void checkBeforeApplyRejectsCycles() {
+        AiGraphPlan cyclic = new AiGraphPlan(
+                "cycle",
+                List.of(
+                        new AiPlanNode("n1", "math.scalar_math.absolute", 0, 0, null),
+                        new AiPlanNode("n2", "math.scalar_math.absolute", 200, 0, null)
+                ),
+                List.of(
+                        new AiPlanConnection("n1", "output_absolute", "n2", "input_value"),
+                        new AiPlanConnection("n2", "output_absolute", "n1", "input_value")
+                ),
+                List.of()
+        );
+        assertFalse(validator.checkBeforeApply(cyclic).allowed());
+        assertTrue(validator.checkBeforeApply(cyclic).rejectionMessage().contains("cycle"));
     }
 
     @Test
