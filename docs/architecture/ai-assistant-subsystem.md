@@ -171,6 +171,18 @@ P2: unify into `NodeSemanticCatalog` (capabilities + conversions + recommendatio
 
 Tests: `AiSchemaRetrievalContractTest`, `AiPlanCapabilityCoverageContractTest`.
 
+## Edit / Patch / Restructure safety (P1 — frozen)
+
+| Item | Decision |
+|------|----------|
+| **Selected context** | Always include short id + full UUID + complete editable params + direct connections |
+| **Graph context** | Selected-neighborhood-first (selected → 1-hop → 2-hop) with omitted counts; no list-order prefix truncate when a selection exists |
+| **Patch identity** | Reuse only by UUID/short-id or explicit param signature; never first-unused same type |
+| **MODIFY_PARAM gate** | Every planned ref must resolve by stable id; otherwise reject Apply (do not create/guess) |
+| **RESTRUCTURE scope** | Insert + rewire + scoped disconnect + param merge only. Omitting a node does **not** delete it. True delete/replace waits for Operation DSL (P2) |
+
+Tests: `AiPromptContextServiceTest`, `AiGraphApplyServiceTest` (stable-id / no-guess), edit-hint contract assertions.
+
 ## Related
 
 - `docs/architecture/imgui-node-editor-breakup.md` (same “UI must not own the system” pattern)

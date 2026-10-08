@@ -20,15 +20,21 @@ public final class AiRemotePlanningOrchestrator {
             """
                     If the user asks to modify a specific parameter value on an existing node,
                     return only the affected node with its updated params. Keep all other nodes and connections unchanged.
-                    Use the same node ids as in the "Current plan in effect" JSON.""";
+                    When modifying the selected node, reuse Selected node.id (or fullId) exactly as the plan node id.
+                    Prefer short UUID ids from Selected node / canvas snapshot over invented refs like "n1".
+                    Use the same node ids as in the "Current plan in effect" JSON when that plan is the edit target.""";
     private static final String RESTRUCTURE_SYSTEM_HINT =
             """
-                    If the user asks to restructure, delete, or optimize the existing graph:
-                    - Analyze the 'Current canvas graph snapshot' and connections carefully.
-                    - Perform the requested structural changes (e.g., deleting, replacing, or inserting nodes and changing connections).
+                    If the user asks to restructure or optimize the existing graph:
+                    - Analyze the 'Current canvas graph snapshot' and Selected node carefully.
+                    - Supported operations only: modify existing node params (reuse short/full UUID ids),
+                      insert new nodes, rewire/reconnect, and disconnect scoped connections among mapped nodes.
                     - Retain all other nodes and connections that the user did not ask to modify.
-                    - Reuse the existing node IDs (e.g. n1, n2, or short UUIDs like 8ef1a2c3) for any nodes that are retained.
-                    - Output the complete, updated graph containing both retained nodes and new/modified nodes.
+                    - Reuse existing short UUID ids (e.g. 8ef1a2c3) for any nodes that are retained or updated.
+                    - Do not claim nodes were deleted. Omitting a node from the plan does not remove it from the canvas.
+                    - Do not claim nodes were replaced. To introduce a substitute, insert a new node and rewire;
+                      the previous node remains until a future delete operation exists.
+                    - Output a graph containing retained/updated nodes plus any newly inserted nodes and connections.
                     """;
     private static final String DSL_REPAIR_SYSTEM_HINT =
             """

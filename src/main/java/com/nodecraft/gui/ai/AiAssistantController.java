@@ -1730,7 +1730,16 @@ public final class AiAssistantController {
 
         AiGraphApplyAdapterService.PatchPayload payload =
                 AiGraphApplyAdapterService.toPatchPayload(patchNodes, patchConnections);
-        boolean mergeExistingNodeState = AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt()) == UserIntent.MODIFY_PARAM || AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt()) == UserIntent.RESTRUCTURE;
+        UserIntent intent = AiIntentAnalysisService.classifyIntent(session.lastSubmittedPrompt());
+        boolean mergeExistingNodeState = intent == UserIntent.MODIFY_PARAM || intent == UserIntent.RESTRUCTURE;
+
+        if (intent == UserIntent.MODIFY_PARAM
+                && !AiGraphApplyService.allRefsResolveByStableId(graph, payload.nodes())) {
+            session.setPlanStatusMessage(
+                    "Patch rejected: target existing node identity could not be resolved.");
+            session.clearApplyBookkeeping();
+            return;
+        }
 
         AiGraphApplyService.ApplyResult result = AiGraphApplyService.applyPatch(
                 applyTarget,

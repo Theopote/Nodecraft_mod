@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AiGraphApplyServiceTest {
@@ -101,6 +102,23 @@ class AiGraphApplyServiceTest {
         assertTrue(result.success());
         assertTrue(applyTarget.createdNodes.isEmpty());
         assertEquals(1, graph.getNodes().size());
+    }
+
+    @Test
+    void modifyParamRequiresStableIdResolution() {
+        UUID targetId = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        NodeGraph graph = new NodeGraph("modify-gate");
+        TestNode existing = new TestNode(targetId, TYPE);
+        graph.addNode(existing);
+
+        assertTrue(AiGraphApplyService.allRefsResolveByStableId(
+                graph,
+                List.of(new AiGraphApplyService.ApplyNode("aaaaaaaa", TYPE, 0f, 0f, Map.of("height", 6)))
+        ));
+        assertFalse(AiGraphApplyService.allRefsResolveByStableId(
+                graph,
+                List.of(new AiGraphApplyService.ApplyNode("window", TYPE, 0f, 0f, Map.of("height", 6)))
+        ), "invented refs must not resolve by stable id");
     }
 
     @Test

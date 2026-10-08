@@ -38,6 +38,47 @@ public final class AiGraphApplyService {
     private record CurrentNodeInfo(UUID id, String typeId, String paramSignature) {
     }
 
+    /**
+     * True when every planned ref resolves to an existing graph node by full UUID or 8-char short id.
+     * Used to reject MODIFY_PARAM patches that would create or guess nodes.
+     */
+    public static boolean allRefsResolveByStableId(NodeGraph graph, List<ApplyNode> nodesToApply) {
+        if (graph == null) {
+            return false;
+        }
+        if (nodesToApply == null || nodesToApply.isEmpty()) {
+            return false;
+        }
+        Set<UUID> used = new HashSet<>();
+        for (ApplyNode node : nodesToApply) {
+            UUID matched = resolveStableNodeId(graph, node == null ? null : node.ref(), used);
+            if (matched == null) {
+                return false;
+            }
+            used.add(matched);
+        }
+        return true;
+    }
+
+    public static UUID resolveStableNodeId(NodeGraph graph, String ref, Set<UUID> usedCurrent) {
+        if (graph == null || ref == null || ref.isBlank()) {
+            return null;
+        }
+        String plannedRef = ref.trim().toLowerCase(Locale.ROOT);
+        Set<UUID> used = usedCurrent == null ? Set.of() : usedCurrent;
+        for (INode node : graph.getNodes()) {
+            if (node == null || node.getId() == null || used.contains(node.getId())) {
+                continue;
+            }
+            String fullId = node.getId().toString().toLowerCase(Locale.ROOT);
+            String shortId = fullId.length() <= 8 ? fullId : fullId.substring(0, 8);
+            if (plannedRef.equals(fullId) || plannedRef.equals(shortId)) {
+                return node.getId();
+            }
+        }
+        return null;
+    }
+
     public static ApplyResult applyPatch(
             GraphApplyTarget applyTarget,
             NodeGraph graph,

@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -211,6 +212,21 @@ final class AiGraphDiffMappingService {
             return null;
         }
 
+        // 1. Exact ref-to-ID matching (short UUID or full UUID) — aligned with Apply
+        if (planned.ref() != null && !planned.ref().isBlank()) {
+            String plannedRef = planned.ref().trim().toLowerCase(Locale.ROOT);
+            for (CurrentNodeInfo candidate : candidates) {
+                if (!usedCurrent.contains(candidate.id())) {
+                    String fullId = candidate.id().toString().toLowerCase(java.util.Locale.ROOT);
+                    String shortId = fullId.length() <= 8 ? fullId : fullId.substring(0, 8);
+                    if (plannedRef.equals(fullId) || plannedRef.equals(shortId)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+
+        // 2. Parameter signature only when planned state is explicitly provided
         if (planned.nodeState() != null) {
             String plannedSig = normalizeStateForSignature(planned.nodeState());
             for (CurrentNodeInfo candidate : candidates) {
