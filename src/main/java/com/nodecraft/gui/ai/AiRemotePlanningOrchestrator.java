@@ -59,9 +59,10 @@ public final class AiRemotePlanningOrchestrator {
     private static final String CONNECTED_GRAPH_EXPANSION_HINT =
             """
                 You are now in connected graph expansion mode.
-                The previous valid DSL was too small for the user's generation request.
-                Return JSON only. Expand the plan into a connected workflow with at least 3 nodes and at least 2 valid connections when the library allows it.
-                Use output.preview.* or output.execute.* nodes when compatible. Use world.write.* nodes only with compatible block/region/list inputs.
+                The previous valid DSL is missing required modeling capabilities for the user's request.
+                Return JSON only. Expand the plan into a connected workflow that covers the missing capabilities listed in the user message.
+                Default to ending with output.preview.* when compatible. Use output.execute.* or world.write.* only if the user explicitly asked to apply/build/write/bake into the Minecraft world.
+                Prefer recommendedNext / recommendedUpstream edges from AVAILABLE_NODE_LIBRARY when present.
                 Do not invent typeIds or ports. If no connected workflow is possible with the listed library, return {"error":"connected_workflow_not_possible:<reason>"}.
                 """;
 
@@ -229,6 +230,10 @@ public final class AiRemotePlanningOrchestrator {
         if (!complexGenerationPrompt) {
             return false;
         }
+        AiPlanCapabilityCoverage.CoverageResult coverage = AiPlanCapabilityCoverage.analyze(prompt, plan);
+        if (coverage.hasMissing()) {
+            return true;
+        }
         int nodeCount = plan == null || plan.nodes() == null ? 0 : plan.nodes().size();
         int connectionCount = plan == null || plan.connections() == null ? 0 : plan.connections().size();
         return nodeCount <= 1 || connectionCount == 0;
@@ -250,10 +255,16 @@ public final class AiRemotePlanningOrchestrator {
         String currentDsl = underspecifiedPlan == null
                 ? ""
                 : AiGraphPlanDslAdapterService.toDslJsonCompact(underspecifiedPlan);
+        AiPlanCapabilityCoverage.CoverageResult coverage =
+                AiPlanCapabilityCoverage.analyze(originalPrompt, underspecifiedPlan);
+        String missingText = AiPlanCapabilityCoverage.formatMissingForHint(coverage.missing());
         String promptPayload = "Remote planner produced a valid but underspecified graph.\n\n"
                 + "Expansion attempt: " + nextAttempt + " / " + MAX_GRAPH_EXPANSION_ATTEMPTS + "\n"
                 + "Original user prompt:\n"
                 + nullToEmpty(originalPrompt)
+                + "\n\n"
+                + "Missing capabilities to cover: "
+                + (missingText.isBlank() ? "(graph too small — expand into a connected preview workflow)" : missingText)
                 + "\n\n"
                 + "Current underspecified DSL:\n"
                 + currentDsl
@@ -262,7 +273,7 @@ public final class AiRemotePlanningOrchestrator {
                 + nullToEmpty(originalModelPayload)
                 + "\n\n"
                 + buildFrozenWorldContextSection(frozenWorldContextJson)
-                + "Required outcome: return a connected NodeCraft graph, not a single standalone node. Return JSON only.";
+                + "Required outcome: return a connected NodeCraft graph that covers the missing capabilities. Prefer output.preview.* unless the user explicitly asked to write into the world. Return JSON only.";
 
         return buildPreparedRetryRequest(
                 settings,

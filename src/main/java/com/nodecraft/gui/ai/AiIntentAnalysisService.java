@@ -1,8 +1,10 @@
 package com.nodecraft.gui.ai;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class AiIntentAnalysisService {
 
@@ -15,6 +17,120 @@ public final class AiIntentAnalysisService {
         RESTRUCTURE,
         EXPLAIN,
         UNCLEAR
+    }
+
+    /**
+     * Domain tags for schema retrieval / capability coverage. Orthogonal to {@link UserIntent}.
+     * Keyword-derived for P1; P2 may replace this with NodeSemanticCatalog.
+     */
+    public enum DomainTag {
+        ARCHITECTURE,
+        CURVE,
+        PROFILE,
+        TERRAIN,
+        MATERIAL,
+        SDF,
+        FIELD,
+        ARRAY,
+        WORLD,
+        MATH,
+        DATA_TREE,
+        GEOMETRY
+    }
+
+    public static Set<DomainTag> detectDomainTags(String prompt) {
+        Set<DomainTag> tags = EnumSet.noneOf(DomainTag.class);
+        if (prompt == null || prompt.isBlank()) {
+            return tags;
+        }
+        String lower = prompt.toLowerCase(Locale.ROOT);
+
+        if (containsAnyLower(lower,
+                "墙", "壁", "窗", "门", "屋顶", "栏杆", "楼梯", "塔", "楼", "建筑",
+                "wall", "window", "door", "roof", "railing", "stair", "tower", "building", "architecture",
+                "стена", "окно", "дверь", "крыша",
+                "muro", "ventana", "puerta", "techo",
+                "parede", "janela", "porta", "telhado",
+                "mur", "fenêtre", "porte", "toit",
+                "wand", "fenster", "tür", "dach")) {
+            tags.add(DomainTag.ARCHITECTURE);
+        }
+        if (containsAnyLower(lower,
+                "曲线", "路径", "曲线阵列", "curve", "path", "spline",
+                "крив", "путь", "camino", "caminho", "courbe", "kurve")) {
+            tags.add(DomainTag.CURVE);
+        }
+        if (containsAnyLower(lower,
+                "剖面", "轮廓", "profile", "轮廓线", "polygon profile",
+                "профиль", "perfil", "profil")) {
+            tags.add(DomainTag.PROFILE);
+        }
+        if (containsAnyLower(lower,
+                "地形", "山地", "terrain", "heightmap", "landscape",
+                "рельеф", "terreno", "terrain", "gelände")) {
+            tags.add(DomainTag.TERRAIN);
+        }
+        if (containsAnyLower(lower,
+                "材质", "方块", "调色", "砖", "苔藓", "风化",
+                "material", "palette", "brick", "moss", "weather", "block type",
+                "материал", "material", "matériau", "material")) {
+            tags.add(DomainTag.MATERIAL);
+        }
+        if (containsAnyLower(lower,
+                "sdf", "有符号距离", "signed distance")) {
+            tags.add(DomainTag.SDF);
+        }
+        if (containsAnyLower(lower,
+                "场", "标量场", "向量场", "field", "scalar field", "vector field",
+                "поле", "campo", "champ", "feld")) {
+            tags.add(DomainTag.FIELD);
+        }
+        if (containsAnyLower(lower,
+                "阵列", "数组", "array", "repeat", "grid",
+                "массив", "matriz", "matrice", "anordnung")) {
+            tags.add(DomainTag.ARRAY);
+        }
+        if (containsAnyLower(lower,
+                "世界", "读取", "选区", "world", "region", "selection",
+                "мир", "mundo", "monde", "welt")) {
+            tags.add(DomainTag.WORLD);
+        }
+        if (containsAnyLower(lower,
+                "计算", "数学", "加", "减", "乘", "除", "比较",
+                "math", "add", "sub", "mul", "div", "logic", "compare",
+                "матем", "математи", "matem", "mathématique", "mathe")) {
+            tags.add(DomainTag.MATH);
+        }
+        if (containsAnyLower(lower,
+                "数据树", "列表", "graft", "flatten", "data tree", "list", "tree",
+                "дерево", "lista", "arbre", "baum")) {
+            tags.add(DomainTag.DATA_TREE);
+        }
+        if (containsAnyLower(lower,
+                "几何", "球体", "盒子", "方块体", "mesh", "geometry", "sphere", "box", "shape",
+                "геометр", "geometr", "géométr", "kugel")) {
+            tags.add(DomainTag.GEOMETRY);
+        }
+        return tags;
+    }
+
+    /**
+     * True when the user explicitly asks to write / bake / apply into the Minecraft world.
+     */
+    public static boolean hasWorldApplyIntent(String prompt) {
+        if (prompt == null || prompt.isBlank()) {
+            return false;
+        }
+        String lower = prompt.toLowerCase(Locale.ROOT);
+        return containsAnyLower(lower,
+                "应用到世界", "写入世界", "建造到世界", "放到世界", "烘焙到世界", "直接建到世界",
+                "apply changes", "apply to world", "write to world", "build in world", "bake to world",
+                "bake into", "place into world", "commit to world",
+                "применить к миру", "записать в мир",
+                "aplicar al mundo", "escribir en el mundo",
+                "aplicar ao mundo", "escrever no mundo",
+                "appliquer au monde", "écrire dans le monde",
+                "in die welt", "welt schreiben");
     }
 
     public static String detectInputLanguage(String text) {
@@ -173,7 +289,7 @@ public final class AiIntentAnalysisService {
         }
 
         if (containsAnyLower(lower,
-                "新建", "生成", "创建", "做一个", "添加", "放置", "连接", "连线",
+                "新建", "生成", "创建", "做一个", "做一", "做个", "添加", "放置", "连接", "连线",
                 "帮我", "需要一个", "我想", "造一个", "建一个", "搭一个",
                 "generate", "create", "build", "make", "add", "place", "connect")) {
             return UserIntent.GENERATE_NEW;

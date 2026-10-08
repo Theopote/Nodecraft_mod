@@ -158,6 +158,19 @@ tests cover controller without ImGui (`AiAssistantControllerTest`).
 
 Tests: `AiGraphApplyServiceTest`, `AiPlanValidatorTest`, `AiPlanEffectSafetyContractTest`.
 
+## Schema / Prompt semantics (P1 — frozen)
+
+| Item | Decision |
+|------|----------|
+| **Schema retrieval** | Lexical seed → exact `NodeRecommendationRules` neighbor expand (1–2 hops) → diversity → cap; optional `recommendedNext` / `recommendedUpstream` on selected schemas |
+| **Always include** | Intent-aware core only (`input.context` + preview sink; math/data_tree/fields/world-write by `DomainTag` / explicit world-apply intent) |
+| **Expansion** | Trigger on missing plan capabilities (`AiPlanCapabilityCoverage`), with too-small graph as fallback |
+| **Preview-first** | Default generation ends at `output.preview.*`; `WORLD_WRITE` / `output.execute.*` only on explicit apply/build/write/bake-to-world intent |
+
+P2: unify into `NodeSemanticCatalog` (capabilities + conversions + recommendation edges as single SoT). Mock Planner stays offline fallback — do not expand its keyword matrix.
+
+Tests: `AiSchemaRetrievalContractTest`, `AiPlanCapabilityCoverageContractTest`.
+
 ## Related
 
 - `docs/architecture/imgui-node-editor-breakup.md` (same “UI must not own the system” pattern)

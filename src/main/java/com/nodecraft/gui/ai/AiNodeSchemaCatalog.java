@@ -6,7 +6,6 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -18,23 +17,7 @@ import java.util.Set;
  */
 public final class AiNodeSchemaCatalog {
 
-    private static final List<String> ALWAYS_INCLUDE_TYPE_PREFIXES = List.of(
-            "output.execute.",
-            "output.preview.",
-            "world.write.",
-            "input.context.",
-            "input.basic.",
-            "input.numeric.",
-            "input.type_selectors.",
-            "math.scalar_math.",
-            "math.data_tree.",
-            "math.fields.",
-            "material.basic_assignment.create_block_palette",
-            "reference.points.",
-            "geometry.voxel.voxelize_geometry"
-    );
-
-        private static final List<String> DIVERSITY_CATEGORY_PREFIXES = List.of(
+    static final List<String> DIVERSITY_CATEGORY_PREFIXES = List.of(
             "input.",
             "math.",
             "geometry.",
@@ -53,6 +36,9 @@ public final class AiNodeSchemaCatalog {
     public record ParamSchema(String name, String valueType) {
     }
 
+    public record RecommendationHint(String nodeId, String fromPort, String toPort, String reason) {
+    }
+
     public record NodeSchema(
             String typeId,
             String displayName,
@@ -60,8 +46,38 @@ public final class AiNodeSchemaCatalog {
             String category,
             List<PortSchema> inputs,
             List<PortSchema> outputs,
-            List<ParamSchema> params
+            List<ParamSchema> params,
+            List<RecommendationHint> recommendedNext,
+            List<RecommendationHint> recommendedUpstream
     ) {
+        public NodeSchema(
+                String typeId,
+                String displayName,
+                String description,
+                String category,
+                List<PortSchema> inputs,
+                List<PortSchema> outputs,
+                List<ParamSchema> params
+        ) {
+            this(typeId, displayName, description, category, inputs, outputs, params, List.of(), List.of());
+        }
+
+        public NodeSchema withHints(
+                List<RecommendationHint> recommendedNext,
+                List<RecommendationHint> recommendedUpstream
+        ) {
+            return new NodeSchema(
+                    typeId,
+                    displayName,
+                    description,
+                    category,
+                    inputs,
+                    outputs,
+                    params,
+                    recommendedNext == null ? List.of() : List.copyOf(recommendedNext),
+                    recommendedUpstream == null ? List.of() : List.copyOf(recommendedUpstream)
+            );
+        }
     }
 
     public static List<NodeSchema> collectAll(NodeRegistry registry) {
@@ -124,7 +140,9 @@ public final class AiNodeSchemaCatalog {
                         info.getCategoryId(),
                         inputs,
                         outputs,
-                        params
+                        params,
+                        List.of(),
+                        List.of()
                 ));
             } catch (Exception ignored) {
                 // Skip nodes that cannot be instantiated in current runtime state.
@@ -134,104 +152,7 @@ public final class AiNodeSchemaCatalog {
     }
 
     public static List<NodeSchema> selectRelevant(List<NodeSchema> allSchemas, String userPrompt, int limit) {
-        if (allSchemas == null || allSchemas.isEmpty()) {
-            return List.of();
-        }
-        int safeLimit = Math.max(1, limit);
-        String prompt = userPrompt == null ? "" : userPrompt.toLowerCase(Locale.ROOT);
-        Set<String> tokens = expandIntentTokens(prompt, tokenize(prompt));
-        boolean generationIntent = hasGenerationIntent(prompt);
-        boolean geometryIntent = hasGeometryIntent(prompt);
-        boolean spatialIntent = hasSpatialIntent(prompt);
-
-        List<NodeSchema> sorted = new ArrayList<>(allSchemas);
-        sorted.sort(Comparator
-                .comparingInt((NodeSchema schema) -> relevanceScore(schema, prompt, tokens, generationIntent, geometryIntent, spatialIntent))
-                .reversed()
-                .thenComparing(NodeSchema::typeId, String.CASE_INSENSITIVE_ORDER));
-
-        List<NodeSchema> mustHave = new ArrayList<>();
-        List<NodeSchema> scored = new ArrayList<>();
-        for (NodeSchema schema : sorted) {
-            if (isAlwaysIncludeSchema(schema)) {
-                mustHave.add(schema);
-            } else {
-                scored.add(schema);
-            }
-        }
-
-        List<NodeSchema> result = new ArrayList<>(safeLimit);
-        for (NodeSchema schema : mustHave) {
-            if (result.size() >= safeLimit) {
-                return result;
-            }
-            result.add(schema);
-        }
-
-        // Ensure basic category diversity before consuming all remaining high-score slots.
-        for (String categoryPrefix : DIVERSITY_CATEGORY_PREFIXES) {
-            if (result.size() >= safeLimit) {
-                break;
-            }
-            if (containsCategoryPrefix(result, categoryPrefix)) {
-                continue;
-            }
-
-            NodeSchema candidate = findFirstByCategoryPrefix(scored, categoryPrefix);
-            if (candidate != null && !result.contains(candidate)) {
-                result.add(candidate);
-            }
-        }
-
-        for (NodeSchema schema : scored) {
-            if (result.size() >= safeLimit) {
-                break;
-            }
-            if (result.contains(schema)) {
-                continue;
-            }
-            result.add(schema);
-        }
-
-        return result;
-    }
-
-    private static boolean containsCategoryPrefix(List<NodeSchema> schemas, String categoryPrefix) {
-        if (schemas == null || schemas.isEmpty() || categoryPrefix == null || categoryPrefix.isBlank()) {
-            return false;
-        }
-        for (NodeSchema schema : schemas) {
-            if (schema != null && safeLower(schema.category()).startsWith(safeLower(categoryPrefix))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static NodeSchema findFirstByCategoryPrefix(List<NodeSchema> schemas, String categoryPrefix) {
-        if (schemas == null || schemas.isEmpty() || categoryPrefix == null || categoryPrefix.isBlank()) {
-            return null;
-        }
-        String prefix = safeLower(categoryPrefix);
-        for (NodeSchema schema : schemas) {
-            if (schema != null && safeLower(schema.category()).startsWith(prefix)) {
-                return schema;
-            }
-        }
-        return null;
-    }
-
-    private static boolean isAlwaysIncludeSchema(NodeSchema schema) {
-        if (schema == null || schema.typeId() == null) {
-            return false;
-        }
-        String typeId = schema.typeId().toLowerCase(Locale.ROOT);
-        for (String prefix : ALWAYS_INCLUDE_TYPE_PREFIXES) {
-            if (typeId.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
+        return AiSchemaRetrievalService.selectRelevant(allSchemas, userPrompt, limit);
     }
 
     private static List<PortSchema> convertPorts(List<IPort> ports) {
@@ -276,11 +197,10 @@ public final class AiNodeSchemaCatalog {
         return params;
     }
 
-    private static int relevanceScore(
+    static int relevanceScore(
             NodeSchema schema,
             String prompt,
             Set<String> tokens,
-            boolean generationIntent,
             boolean geometryIntent,
             boolean spatialIntent
     ) {
@@ -341,13 +261,15 @@ public final class AiNodeSchemaCatalog {
             }
         }
 
-        if (schema.category().startsWith("output.")) {
+        if (schema.category().startsWith("output.preview.")) {
             score += 1;
         }
 
-        if (generationIntent) {
-            if (category.startsWith("output.")) score += 6;
-            if (typeId.contains("bake") || category.contains("bake")) score += 5;
+        if (AiIntentAnalysisService.hasWorldApplyIntent(prompt)) {
+            if (typeId.startsWith("world.write.") || typeId.startsWith("output.execute.")
+                    || typeId.contains("bake") || category.contains("bake")) {
+                score += 6;
+            }
         }
 
         if (geometryIntent) {
@@ -403,7 +325,7 @@ public final class AiNodeSchemaCatalog {
         return score;
     }
 
-    private static Set<String> expandIntentTokens(String prompt, Set<String> baseTokens) {
+    static Set<String> expandIntentTokens(String prompt, Set<String> baseTokens) {
         Set<String> tokens = new HashSet<>(baseTokens == null ? Set.of() : baseTokens);
         String text = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
 
@@ -450,35 +372,44 @@ public final class AiNodeSchemaCatalog {
         }
 
         if (containsAny(text,
-            "生成", "放置", "输出", "烘焙", "bake", "spawn", "produce", "output", "create",
-            "создать", "сгенер", "вывод", "запечь",
-            "crear", "generar", "salida", "hornear",
-            "criar", "gerar", "saida", "assar",
+            "墙", "墙壁", "墙体", "wall",
+            "стена", "muro", "parede", "mur", "wand")) {
+            tokens.add("wall");
+            tokens.add("slab");
+            tokens.add("architectural");
+        }
+
+        if (containsAny(text,
+            "窗", "窗户", "窗洞", "window", "opening",
+            "окно", "ventana", "janela", "fenêtre", "fenster")) {
+            tokens.add("window");
+            tokens.add("opening");
+            tokens.add("array");
+        }
+
+        if (containsAny(text,
+            "生成", "放置", "输出", "spawn", "produce", "output", "create",
+            "создать", "сгенер", "вывод",
+            "crear", "generar", "salida",
+            "criar", "gerar", "saida",
             "créer", "générer", "sortie",
             "erstellen", "generieren", "ausgabe",
             "生成", "出力", "作成",
             "생성", "출력", "만들")) {
             tokens.add("output");
-            tokens.add("bake");
             tokens.add("preview");
+        }
+
+        if (AiIntentAnalysisService.hasWorldApplyIntent(text)) {
+            tokens.add("bake");
+            tokens.add("apply");
+            tokens.add("write");
         }
 
         return tokens;
     }
 
-    private static boolean hasGenerationIntent(String prompt) {
-        return containsAny(prompt,
-            "生成", "放置", "输出", "烘焙", "spawn", "produce", "output", "create", "bake",
-            "создать", "сгенер", "вывод", "запечь",
-            "crear", "generar", "salida",
-            "criar", "gerar", "saida",
-            "créer", "générer", "sortie",
-            "erstellen", "generieren", "ausgabe",
-            "出力", "作成",
-            "생성", "출력", "만들");
-    }
-
-    private static boolean hasGeometryIntent(String prompt) {
+    static boolean hasGeometryIntent(String prompt) {
         return containsAny(prompt,
             "几何", "模型", "球", "圆球", "sphere", "mesh", "geometry", "shape",
             "геометр", "сфера", "форма",
@@ -490,7 +421,7 @@ public final class AiNodeSchemaCatalog {
             "기하", "구체", "형상");
     }
 
-    private static boolean hasSpatialIntent(String prompt) {
+    static boolean hasSpatialIntent(String prompt) {
         return containsAny(prompt,
             "位置", "坐标", "头上", "头顶", "上方", "position", "offset", "above", "overhead",
             "позици", "координ", "смещ", "над",
@@ -502,7 +433,7 @@ public final class AiNodeSchemaCatalog {
             "위치", "좌표", "오프셋", "위");
     }
 
-    private static boolean containsAny(String text, String... keywords) {
+    static boolean containsAny(String text, String... keywords) {
         if (text == null || text.isBlank() || keywords == null) {
             return false;
         }
@@ -515,11 +446,11 @@ public final class AiNodeSchemaCatalog {
         return false;
     }
 
-    private static String safeLower(String text) {
+    static String safeLower(String text) {
         return text == null ? "" : text.toLowerCase(Locale.ROOT);
     }
 
-    private static Set<String> tokenize(String text) {
+    static Set<String> tokenize(String text) {
         Set<String> tokens = new HashSet<>();
         if (text == null || text.isBlank()) {
             return tokens;

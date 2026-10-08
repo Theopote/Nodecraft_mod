@@ -49,7 +49,7 @@ public final class AiPromptBuilder {
             2. Every connection port id must exactly match a declared input/output port for that node type.
             3. Verify port data types before connecting. Use converter nodes when the type registry requires explicit conversion.
             4. For generation/build tasks, produce a connected functional graph, not a single symbolic node.
-            5. Functional build graphs should end in an output node, usually output.preview.* or output.execute.*.
+            5. Functional build graphs should end in an output.preview.* node by default. Use output.execute.* or world.write.* only when the user explicitly asks to apply/build/write/bake into the Minecraft world.
             6. For generation/build tasks, use at least 3 nodes and at least 2 connections when compatible nodes are listed.
             7. A single node with no output node is allowed only for explicit placement-only canvas requests.
             8. Prefer simple, direct graphs. Do not invent helper nodes, aliases, ports, parameters, or categories.
@@ -111,7 +111,8 @@ public final class AiPromptBuilder {
             - If a useful node is missing from AVAILABLE_NODE_LIBRARY, return {"error":"missing_node_type:<needed capability>"}.
             - Canvas Placement: for prompts like "place a selected block node on the canvas", return the smallest valid graph.
             - Generation tasks must not collapse a whole structure into one standalone node unless the user explicitly asked for only one canvas node.
-            - Generation tasks should include an output node only if a compatible output.* node is listed.
+            - Generation tasks should include a preview output node only if a compatible output.preview.* node is listed.
+            - Prefer recommendedNext / recommendedUpstream edges when present on library entries; they encode NodeCraft modeling idioms.
 
             # AVAILABLE_NODE_LIBRARY
             Runtime schema revision:""" + schemaRevision + "\n" + """
@@ -174,7 +175,39 @@ public final class AiPromptBuilder {
             params.add(paramObj);
         }
         nodeObj.add("params", params);
+
+        if (schema.recommendedNext() != null && !schema.recommendedNext().isEmpty()) {
+            nodeObj.add("recommendedNext", hintsToJson(schema.recommendedNext()));
+        }
+        if (schema.recommendedUpstream() != null && !schema.recommendedUpstream().isEmpty()) {
+            nodeObj.add("recommendedUpstream", hintsToJson(schema.recommendedUpstream()));
+        }
         return nodeObj;
+    }
+
+    private static JsonArray hintsToJson(List<AiNodeSchemaCatalog.RecommendationHint> hints) {
+        JsonArray array = new JsonArray();
+        if (hints == null) {
+            return array;
+        }
+        for (AiNodeSchemaCatalog.RecommendationHint hint : hints) {
+            if (hint == null || hint.nodeId() == null || hint.nodeId().isBlank()) {
+                continue;
+            }
+            JsonObject obj = new JsonObject();
+            obj.addProperty("nodeId", hint.nodeId());
+            if (hint.fromPort() != null && !hint.fromPort().isBlank()) {
+                obj.addProperty("fromPort", hint.fromPort());
+            }
+            if (hint.toPort() != null && !hint.toPort().isBlank()) {
+                obj.addProperty("toPort", hint.toPort());
+            }
+            if (hint.reason() != null && !hint.reason().isBlank()) {
+                obj.addProperty("reason", hint.reason());
+            }
+            array.add(obj);
+        }
+        return array;
     }
 
     public static String buildUserPrompt(String prompt, String selectionContext) {
