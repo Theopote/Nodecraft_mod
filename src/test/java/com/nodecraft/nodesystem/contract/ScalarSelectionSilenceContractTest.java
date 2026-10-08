@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.input.context.PlayerPositionNode;
 import com.nodecraft.nodesystem.nodes.input.numeric.FloatSliderNode;
+import com.nodecraft.nodesystem.nodes.input.numeric.IntegerSliderNode;
 import com.nodecraft.nodesystem.nodes.input.values.BooleanToggleNode;
 import com.nodecraft.nodesystem.nodes.input.values.TextInputNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -61,6 +62,13 @@ class ScalarSelectionSilenceContractTest {
         List<NodeRecommendation> recs = recommendSelection(new FloatSliderNode(), 8);
         assertTrue(recs.isEmpty(),
             "Number Slider selection should be silent without exact rules, got " + ids(recs));
+    }
+
+    @Test
+    void integerSliderSelectionIsEmptyWithoutSemanticRule() {
+        List<NodeRecommendation> recs = recommendSelection(new IntegerSliderNode(), 8);
+        assertTrue(recs.isEmpty(),
+            "Integer Slider selection should be silent without exact rules, got " + ids(recs));
     }
 
     @Test
