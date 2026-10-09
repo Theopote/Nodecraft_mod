@@ -1,12 +1,12 @@
 package com.nodecraft.gui.ai;
 
-import com.nodecraft.gui.ai.AiIntentAnalysisService.DomainTag;
 import com.nodecraft.gui.ai.AiNodeSchemaCatalog.NodeSchema;
-import com.nodecraft.gui.ai.AiNodeSchemaCatalog.RecommendationHint;
 import com.nodecraft.gui.recommendation.NodeRecommendationRules;
-import com.nodecraft.gui.recommendation.NodeRecommendationRulesLoader;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
+import com.nodecraft.nodesystem.semantic.NodeDomain;
+import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
+import com.nodecraft.nodesystem.semantic.NodeSemanticEdge;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,12 +20,11 @@ import java.util.Set;
 
 /**
  * Two-phase AI schema retrieval: lexical seed then semantic neighbor expansion via
- * {@link NodeRecommendationRules} and explicit {@link TypeConversionRegistry} converters.
+ * {@link NodeSemanticCatalog} (recommendation edges + converters).
  */
 public final class AiSchemaRetrievalService {
 
     private static final int LEXICAL_SEED_LIMIT = 20;
-    private static final int MAX_HINTS_PER_DIRECTION = 3;
     private static final int MAX_NEIGHBORS_PER_SEED = 4;
     private static final int MAX_EXPANSION_HOPS = 2;
 
@@ -47,11 +46,13 @@ public final class AiSchemaRetrievalService {
         Set<String> tokens = AiNodeSchemaCatalog.expandIntentTokens(prompt, AiNodeSchemaCatalog.tokenize(prompt));
         boolean geometryIntent = AiNodeSchemaCatalog.hasGeometryIntent(prompt);
         boolean spatialIntent = AiNodeSchemaCatalog.hasSpatialIntent(prompt);
-        Set<DomainTag> domainTags = AiIntentAnalysisService.detectDomainTags(userPrompt);
+        Set<NodeDomain> domainTags = AiIntentAnalysisService.detectDomainTags(userPrompt);
         boolean worldApply = AiIntentAnalysisService.hasWorldApplyIntent(userPrompt);
 
         Map<String, NodeSchema> byTypeId = indexByTypeId(allSchemas);
-        NodeRecommendationRules rules = NodeRecommendationRulesLoader.load();
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
+        catalog.refreshIfNeeded();
+        NodeRecommendationRules rules = catalog.currentRules();
 
         Map<String, Integer> scores = new HashMap<>();
         for (NodeSchema schema : allSchemas) {
@@ -72,7 +73,7 @@ public final class AiSchemaRetrievalService {
         for (int hop = 0; hop < MAX_EXPANSION_HOPS; hop++) {
             Set<String> next = new LinkedHashSet<>();
             for (String typeId : frontier) {
-                for (NeighborEdge edge : collectExactNeighbors(typeId, byTypeId.get(typeId), rules)) {
+                for (NeighborEdge edge : collectExactNeighbors(typeId, catalog)) {
                     if (!byTypeId.containsKey(edge.nodeId())) {
                         continue;
                     }
@@ -100,7 +101,7 @@ public final class AiSchemaRetrievalService {
             if (schema == null) {
                 continue;
             }
-            for (String converterId : collectConverterNeighbors(schema)) {
+            for (String converterId : collectConverterNeighbors(schema, catalog)) {
                 if (byTypeId.containsKey(converterId)) {
                     selected.add(converterId);
                     scores.merge(converterId, WEIGHT_CONVERTER, Math::max);
@@ -165,38 +166,38 @@ public final class AiSchemaRetrievalService {
 
         List<NodeSchema> withHints = new ArrayList<>(result.size());
         for (NodeSchema schema : result) {
-            withHints.add(attachRecommendationHints(schema, rules));
+            withHints.add(AiNodeSchemaCatalog.enrichFromCatalog(schema));
         }
         return withHints;
     }
 
     private static List<NodeSchema> resolveIntentAwareCore(
             List<NodeSchema> allSchemas,
-            Set<DomainTag> domainTags,
+            Set<NodeDomain> domainTags,
             boolean worldApply,
             boolean geometryIntent
     ) {
         List<NodeSchema> core = new ArrayList<>();
         addExactIfPresent(allSchemas, core, "input.context.player_position");
 
-        boolean wantsBlocks = domainTags.contains(DomainTag.MATERIAL) || worldApply;
+        boolean wantsBlocks = domainTags.contains(NodeDomain.MATERIAL) || worldApply;
         if (wantsBlocks) {
             addExactIfPresent(allSchemas, core, "output.preview.preview_blocks");
         } else {
             addExactIfPresent(allSchemas, core, "output.preview.preview_geometry");
         }
 
-        if (geometryIntent || domainTags.contains(DomainTag.GEOMETRY) || domainTags.contains(DomainTag.ARCHITECTURE)) {
+        if (geometryIntent || domainTags.contains(NodeDomain.GEOMETRY) || domainTags.contains(NodeDomain.ARCHITECTURE)) {
             addExactIfPresent(allSchemas, core, "geometry.voxel.voxelize_geometry");
         }
 
-        if (domainTags.contains(DomainTag.MATH)) {
+        if (domainTags.contains(NodeDomain.MATH)) {
             addPrefixLimited(allSchemas, core, "math.scalar_math.", 6);
         }
-        if (domainTags.contains(DomainTag.DATA_TREE)) {
+        if (domainTags.contains(NodeDomain.DATA_TREE)) {
             addPrefixLimited(allSchemas, core, "math.data_tree.", 8);
         }
-        if (domainTags.contains(DomainTag.FIELD) || domainTags.contains(DomainTag.SDF)) {
+        if (domainTags.contains(NodeDomain.FIELD) || domainTags.contains(NodeDomain.SDF)) {
             addPrefixLimited(allSchemas, core, "math.fields.", 8);
         }
         if (worldApply) {
@@ -233,68 +234,43 @@ public final class AiSchemaRetrievalService {
     private record NeighborEdge(String nodeId, String fromPort, String toPort, String reason, int order) {
     }
 
-    private static List<NeighborEdge> collectExactNeighbors(
-            String typeId,
-            NodeSchema schema,
-            NodeRecommendationRules rules
-    ) {
+    private static List<NeighborEdge> collectExactNeighbors(String typeId, NodeSemanticCatalog catalog) {
         List<NeighborEdge> edges = new ArrayList<>();
-        if (typeId == null || rules == null || rules.sourceNodes == null) {
+        if (typeId == null || catalog == null) {
             return edges;
         }
-        NodeRecommendationRules.SourceNodeRule rule =
-                rules.sourceNodes.get(typeId.toLowerCase(Locale.ROOT));
-        if (rule == null) {
-            return edges;
-        }
-
-        if (rule.outputs != null) {
-            for (Map.Entry<String, NodeRecommendationRules.PortDirectionRule> entry : rule.outputs.entrySet()) {
-                List<NodeRecommendationRules.RuleEntry> downstream =
-                        entry.getValue() == null ? List.of() : entry.getValue().downstream;
-                List<NodeRecommendationRules.RuleEntry> sorted = sortByOrder(downstream);
-                int taken = 0;
-                for (NodeRecommendationRules.RuleEntry row : sorted) {
-                    if (row == null || row.nodeId == null || row.nodeId.isBlank()) {
-                        continue;
-                    }
-                    edges.add(new NeighborEdge(
-                            row.nodeId,
-                            entry.getKey(),
-                            row.connectPortId,
-                            row.reason,
-                            row.order
-                    ));
-                    taken++;
-                    if (taken >= MAX_NEIGHBORS_PER_SEED) {
-                        break;
-                    }
-                }
+        int takenDown = 0;
+        for (NodeSemanticEdge edge : catalog.downstream(typeId)) {
+            if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
+                continue;
+            }
+            edges.add(new NeighborEdge(
+                    edge.targetNodeId(),
+                    edge.sourcePortId(),
+                    edge.targetPortId(),
+                    edge.reason(),
+                    edge.priority()
+            ));
+            takenDown++;
+            if (takenDown >= MAX_NEIGHBORS_PER_SEED) {
+                break;
             }
         }
-
-        if (rule.inputs != null) {
-            for (Map.Entry<String, NodeRecommendationRules.PortDirectionRule> entry : rule.inputs.entrySet()) {
-                List<NodeRecommendationRules.RuleEntry> upstream =
-                        entry.getValue() == null ? List.of() : entry.getValue().upstream;
-                List<NodeRecommendationRules.RuleEntry> sorted = sortByOrder(upstream);
-                int taken = 0;
-                for (NodeRecommendationRules.RuleEntry row : sorted) {
-                    if (row == null || row.nodeId == null || row.nodeId.isBlank()) {
-                        continue;
-                    }
-                    edges.add(new NeighborEdge(
-                            row.nodeId,
-                            row.connectPortId,
-                            entry.getKey(),
-                            row.reason,
-                            row.order
-                    ));
-                    taken++;
-                    if (taken >= MAX_NEIGHBORS_PER_SEED) {
-                        break;
-                    }
-                }
+        int takenUp = 0;
+        for (NodeSemanticEdge edge : catalog.upstream(typeId)) {
+            if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
+                continue;
+            }
+            edges.add(new NeighborEdge(
+                    edge.targetNodeId(),
+                    edge.sourcePortId(),
+                    edge.targetPortId(),
+                    edge.reason(),
+                    edge.priority()
+            ));
+            takenUp++;
+            if (takenUp >= MAX_NEIGHBORS_PER_SEED) {
+                break;
             }
         }
         return edges;
@@ -328,7 +304,7 @@ public final class AiSchemaRetrievalService {
         return neighbors;
     }
 
-    private static List<String> collectConverterNeighbors(NodeSchema schema) {
+    private static List<String> collectConverterNeighbors(NodeSchema schema, NodeSemanticCatalog catalog) {
         Set<String> converters = new LinkedHashSet<>();
         if (schema == null) {
             return List.of();
@@ -353,21 +329,28 @@ public final class AiSchemaRetrievalService {
 
         // Only known explicit LANGUAGE_V1 bridges when those types appear on the seed schema.
         if (present.contains(NodeDataType.LIST) || present.contains(NodeDataType.DATA_TREE)) {
-            addConverter(converters, NodeDataType.LIST, NodeDataType.DATA_TREE);
-            addConverter(converters, NodeDataType.DATA_TREE, NodeDataType.LIST);
+            addConverter(converters, catalog, NodeDataType.LIST, NodeDataType.DATA_TREE);
+            addConverter(converters, catalog, NodeDataType.DATA_TREE, NodeDataType.LIST);
         }
         if (present.contains(NodeDataType.SDF)
                 || present.contains(NodeDataType.SCALAR_FIELD)
                 || present.contains(NodeDataType.VECTOR_FIELD)) {
-            addConverter(converters, NodeDataType.SDF, NodeDataType.SCALAR_FIELD);
-            addConverter(converters, NodeDataType.SDF, NodeDataType.VECTOR_FIELD);
+            addConverter(converters, catalog, NodeDataType.SDF, NodeDataType.SCALAR_FIELD);
+            addConverter(converters, catalog, NodeDataType.SDF, NodeDataType.VECTOR_FIELD);
         }
         return List.copyOf(converters);
     }
 
-    private static void addConverter(Set<String> converters, NodeDataType out, NodeDataType in) {
+    private static void addConverter(
+            Set<String> converters,
+            NodeSemanticCatalog catalog,
+            NodeDataType out,
+            NodeDataType in
+    ) {
         TypeConversionRegistry.ConversionSuggestion suggestion =
-                TypeConversionRegistry.getSuggestedConversion(out, in);
+                catalog == null
+                        ? TypeConversionRegistry.getSuggestedConversion(out, in)
+                        : catalog.suggestedConversion(out, in);
         if (suggestion != null && suggestion.nodeId() != null) {
             converters.add(suggestion.nodeId());
         }
@@ -382,67 +365,6 @@ public final class AiSchemaRetrievalService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static NodeSchema attachRecommendationHints(NodeSchema schema, NodeRecommendationRules rules) {
-        List<RecommendationHint> next = new ArrayList<>();
-        List<RecommendationHint> upstream = new ArrayList<>();
-        if (schema == null || schema.typeId() == null || rules == null || rules.sourceNodes == null) {
-            return schema;
-        }
-        NodeRecommendationRules.SourceNodeRule rule =
-                rules.sourceNodes.get(schema.typeId().toLowerCase(Locale.ROOT));
-        if (rule == null) {
-            return schema.withHints(List.of(), List.of());
-        }
-
-        if (rule.outputs != null) {
-            for (Map.Entry<String, NodeRecommendationRules.PortDirectionRule> entry : rule.outputs.entrySet()) {
-                for (NodeRecommendationRules.RuleEntry row : sortByOrder(
-                        entry.getValue() == null ? List.of() : entry.getValue().downstream)) {
-                    if (row == null || row.nodeId == null) {
-                        continue;
-                    }
-                    next.add(new RecommendationHint(
-                            row.nodeId,
-                            entry.getKey(),
-                            row.connectPortId,
-                            row.reason
-                    ));
-                    if (next.size() >= MAX_HINTS_PER_DIRECTION) {
-                        break;
-                    }
-                }
-                if (next.size() >= MAX_HINTS_PER_DIRECTION) {
-                    break;
-                }
-            }
-        }
-
-        if (rule.inputs != null) {
-            for (Map.Entry<String, NodeRecommendationRules.PortDirectionRule> entry : rule.inputs.entrySet()) {
-                for (NodeRecommendationRules.RuleEntry row : sortByOrder(
-                        entry.getValue() == null ? List.of() : entry.getValue().upstream)) {
-                    if (row == null || row.nodeId == null) {
-                        continue;
-                    }
-                    upstream.add(new RecommendationHint(
-                            row.nodeId,
-                            row.connectPortId,
-                            entry.getKey(),
-                            row.reason
-                    ));
-                    if (upstream.size() >= MAX_HINTS_PER_DIRECTION) {
-                        break;
-                    }
-                }
-                if (upstream.size() >= MAX_HINTS_PER_DIRECTION) {
-                    break;
-                }
-            }
-        }
-
-        return schema.withHints(next, upstream);
     }
 
     private static List<NodeRecommendationRules.RuleEntry> sortByOrder(List<NodeRecommendationRules.RuleEntry> rows) {

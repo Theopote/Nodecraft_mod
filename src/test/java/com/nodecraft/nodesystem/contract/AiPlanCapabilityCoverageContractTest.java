@@ -5,6 +5,7 @@ import com.nodecraft.gui.ai.AiRemotePlanningOrchestrator;
 import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.ai.model.AiPlanConnection;
 import com.nodecraft.gui.ai.model.AiPlanNode;
+import com.nodecraft.nodesystem.semantic.NodeCapability;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,13 +23,13 @@ class AiPlanCapabilityCoverageContractTest {
 
     @Test
     void wallWithWindowPromptRequiresOpeningAndCut() {
-        Set<AiPlanCapabilityCoverage.Capability> required =
+        Set<NodeCapability> required =
                 AiPlanCapabilityCoverage.requiredFromPrompt("做一面带窗户的墙");
-        assertTrue(required.contains(AiPlanCapabilityCoverage.Capability.WALL));
-        assertTrue(required.contains(AiPlanCapabilityCoverage.Capability.WINDOW)
-                || required.contains(AiPlanCapabilityCoverage.Capability.OPENING));
-        assertTrue(required.contains(AiPlanCapabilityCoverage.Capability.BOOLEAN_CUT));
-        assertTrue(required.contains(AiPlanCapabilityCoverage.Capability.PREVIEW));
+        assertTrue(required.contains(NodeCapability.WALL));
+        assertTrue(required.contains(NodeCapability.WINDOW)
+                || required.contains(NodeCapability.OPENING));
+        assertTrue(required.contains(NodeCapability.BOOLEAN_CUT));
+        assertTrue(required.contains(NodeCapability.PREVIEW));
     }
 
     @Test
@@ -46,9 +47,9 @@ class AiPlanCapabilityCoverageContractTest {
         AiPlanCapabilityCoverage.CoverageResult coverage =
                 AiPlanCapabilityCoverage.analyze("做一面带窗户的墙", plan);
         assertTrue(coverage.hasMissing());
-        assertTrue(coverage.missing().contains(AiPlanCapabilityCoverage.Capability.WINDOW)
-                || coverage.missing().contains(AiPlanCapabilityCoverage.Capability.OPENING)
-                || coverage.missing().contains(AiPlanCapabilityCoverage.Capability.BOOLEAN_CUT));
+        assertTrue(coverage.missing().contains(NodeCapability.WINDOW)
+                || coverage.missing().contains(NodeCapability.OPENING)
+                || coverage.missing().contains(NodeCapability.BOOLEAN_CUT));
 
         assertTrue(orchestrator.shouldRequestConnectedGraphExpansion(
                 "做一面带窗户的墙",

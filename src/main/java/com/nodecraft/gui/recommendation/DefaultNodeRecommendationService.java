@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
         rulesRevision++;
+        NodeSemanticCatalog.get().invalidateRules();
         NodeCraft.LOGGER.info("Node recommendation service initialized (rules v{})", rules.version);
     }
 
@@ -61,6 +63,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
         rulesRevision++;
+        NodeSemanticCatalog.get().invalidateRules();
     }
 
     @Override

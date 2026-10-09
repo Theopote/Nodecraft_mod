@@ -4,6 +4,9 @@ import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
+import com.nodecraft.nodesystem.semantic.NodeSemanticDescriptor;
+import com.nodecraft.nodesystem.semantic.NodeSemanticEdge;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,8 +51,18 @@ public final class AiNodeSchemaCatalog {
             List<PortSchema> outputs,
             List<ParamSchema> params,
             List<RecommendationHint> recommendedNext,
-            List<RecommendationHint> recommendedUpstream
+            List<RecommendationHint> recommendedUpstream,
+            String effect,
+            List<String> domains,
+            List<String> capabilities
     ) {
+        public NodeSchema {
+            recommendedNext = recommendedNext == null ? List.of() : List.copyOf(recommendedNext);
+            recommendedUpstream = recommendedUpstream == null ? List.of() : List.copyOf(recommendedUpstream);
+            domains = domains == null ? List.of() : List.copyOf(domains);
+            capabilities = capabilities == null ? List.of() : List.copyOf(capabilities);
+        }
+
         public NodeSchema(
                 String typeId,
                 String displayName,
@@ -59,7 +72,23 @@ public final class AiNodeSchemaCatalog {
                 List<PortSchema> outputs,
                 List<ParamSchema> params
         ) {
-            this(typeId, displayName, description, category, inputs, outputs, params, List.of(), List.of());
+            this(typeId, displayName, description, category, inputs, outputs, params,
+                    List.of(), List.of(), null, List.of(), List.of());
+        }
+
+        public NodeSchema(
+                String typeId,
+                String displayName,
+                String description,
+                String category,
+                List<PortSchema> inputs,
+                List<PortSchema> outputs,
+                List<ParamSchema> params,
+                List<RecommendationHint> recommendedNext,
+                List<RecommendationHint> recommendedUpstream
+        ) {
+            this(typeId, displayName, description, category, inputs, outputs, params,
+                    recommendedNext, recommendedUpstream, null, List.of(), List.of());
         }
 
         public NodeSchema withHints(
@@ -74,8 +103,11 @@ public final class AiNodeSchemaCatalog {
                     inputs,
                     outputs,
                     params,
-                    recommendedNext == null ? List.of() : List.copyOf(recommendedNext),
-                    recommendedUpstream == null ? List.of() : List.copyOf(recommendedUpstream)
+                    recommendedNext,
+                    recommendedUpstream,
+                    effect,
+                    domains,
+                    capabilities
             );
         }
     }
@@ -117,6 +149,8 @@ public final class AiNodeSchemaCatalog {
 
     private static List<NodeSchema> buildAll(NodeRegistry registry) {
         List<NodeSchema> schemas = new ArrayList<>();
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
+        catalog.refreshIfNeeded();
 
         List<String> nodeIds = new ArrayList<>(registry.getAllNodeIds());
         nodeIds.sort(String::compareToIgnoreCase);
@@ -133,6 +167,20 @@ public final class AiNodeSchemaCatalog {
                 List<PortSchema> outputs = convertPorts(node.getOutputPorts());
                 List<ParamSchema> params = extractParamSchema(node.getNodeState());
 
+                NodeSemanticDescriptor descriptor = catalog.describe(info.getId());
+                List<RecommendationHint> next = List.of();
+                List<RecommendationHint> upstream = List.of();
+                String effect = null;
+                List<String> domains = List.of();
+                List<String> capabilities = List.of();
+                if (descriptor != null) {
+                    next = toHints(descriptor.downstream());
+                    upstream = toHints(descriptor.upstream());
+                    effect = descriptor.effect() == null ? null : descriptor.effect().name();
+                    domains = enumNames(descriptor.domains());
+                    capabilities = enumNames(descriptor.capabilities());
+                }
+
                 schemas.add(new NodeSchema(
                         info.getId(),
                         info.getDisplayName(),
@@ -141,14 +189,90 @@ public final class AiNodeSchemaCatalog {
                         inputs,
                         outputs,
                         params,
-                        List.of(),
-                        List.of()
+                        next,
+                        upstream,
+                        effect,
+                        domains,
+                        capabilities
                 ));
             } catch (Exception ignored) {
                 // Skip nodes that cannot be instantiated in current runtime state.
             }
         }
         return schemas;
+    }
+
+    private static List<RecommendationHint> toHints(List<NodeSemanticEdge> edges) {
+        if (edges == null || edges.isEmpty()) {
+            return List.of();
+        }
+        List<RecommendationHint> hints = new ArrayList<>(edges.size());
+        for (NodeSemanticEdge edge : edges) {
+            if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
+                continue;
+            }
+            hints.add(new RecommendationHint(
+                    edge.targetNodeId(),
+                    edge.sourcePortId(),
+                    edge.targetPortId(),
+                    edge.reason()
+            ));
+        }
+        return List.copyOf(hints);
+    }
+
+    private static List<String> enumNames(Set<? extends Enum<?>> values) {
+        if (values == null || values.isEmpty()) {
+            return List.of();
+        }
+        List<String> names = new ArrayList<>(values.size());
+        for (Enum<?> value : values) {
+            if (value != null) {
+                names.add(value.name());
+            }
+        }
+        names.sort(String::compareTo);
+        return List.copyOf(names);
+    }
+
+    /** Compact semantic attach for retrieval results when full build cache is stale. */
+    public static NodeSchema enrichFromCatalog(NodeSchema schema) {
+        if (schema == null || schema.typeId() == null) {
+            return schema;
+        }
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
+        NodeSemanticDescriptor descriptor = catalog.describe(schema.typeId());
+        if (descriptor != null) {
+            return new NodeSchema(
+                    schema.typeId(),
+                    schema.displayName(),
+                    schema.description(),
+                    schema.category(),
+                    schema.inputs(),
+                    schema.outputs(),
+                    schema.params(),
+                    toHints(descriptor.downstream()),
+                    toHints(descriptor.upstream()),
+                    descriptor.effect() == null ? schema.effect() : descriptor.effect().name(),
+                    enumNames(descriptor.domains()),
+                    enumNames(descriptor.capabilities())
+            );
+        }
+        // Registry miss (unit tests / partial bootstrap): still attach derived caps/domains.
+        return new NodeSchema(
+                schema.typeId(),
+                schema.displayName(),
+                schema.description(),
+                schema.category(),
+                schema.inputs(),
+                schema.outputs(),
+                schema.params(),
+                schema.recommendedNext(),
+                schema.recommendedUpstream(),
+                catalog.effect(schema.typeId()).name(),
+                enumNames(catalog.domains(schema.typeId())),
+                enumNames(catalog.capabilities(schema.typeId()))
+        );
     }
 
     public static List<NodeSchema> selectRelevant(List<NodeSchema> allSchemas, String userPrompt, int limit) {

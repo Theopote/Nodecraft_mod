@@ -2,6 +2,8 @@ package com.nodecraft.gui.ai;
 
 import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.ai.model.AiPlanNode;
+import com.nodecraft.nodesystem.semantic.NodeCapability;
+import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -9,35 +11,42 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Lightweight prompt/plan capability coverage for graph-expansion decisions.
+ * Prompt / plan capability coverage for graph-expansion decisions.
  *
- * <p>P1 uses keyword + typeId/category heuristics. P2 should replace this with
- * NodeSemanticCatalog-derived capabilities.</p>
+ * <p>Prompt → required capabilities may use keyword heuristics.
+ * Plan → present capabilities come from {@link NodeSemanticCatalog}.</p>
  */
 public final class AiPlanCapabilityCoverage {
 
-    public enum Capability {
-        WALL,
-        OPENING,
-        WINDOW,
-        ROOF,
-        ARRAY,
-        BOOLEAN_CUT,
-        MATERIAL,
-        PREVIEW,
-        SPHERE,
-        BOX,
-        CURVE,
-        TERRAIN,
-        SDF,
-        FIELD,
-        WORLD_APPLY
+    /**
+     * @deprecated Use {@link NodeCapability}. Kept as a bridge for older call sites.
+     */
+    @Deprecated
+    public static final class Capability {
+        private Capability() {
+        }
+
+        public static final NodeCapability WALL = NodeCapability.WALL;
+        public static final NodeCapability OPENING = NodeCapability.OPENING;
+        public static final NodeCapability WINDOW = NodeCapability.WINDOW;
+        public static final NodeCapability ROOF = NodeCapability.ROOF;
+        public static final NodeCapability ARRAY = NodeCapability.ARRAY;
+        public static final NodeCapability BOOLEAN_CUT = NodeCapability.BOOLEAN_CUT;
+        public static final NodeCapability MATERIAL = NodeCapability.MATERIAL;
+        public static final NodeCapability PREVIEW = NodeCapability.PREVIEW;
+        public static final NodeCapability SPHERE = NodeCapability.SPHERE;
+        public static final NodeCapability BOX = NodeCapability.BOX;
+        public static final NodeCapability CURVE = NodeCapability.CURVE;
+        public static final NodeCapability TERRAIN = NodeCapability.TERRAIN;
+        public static final NodeCapability SDF = NodeCapability.SDF;
+        public static final NodeCapability FIELD = NodeCapability.FIELD;
+        public static final NodeCapability WORLD_APPLY = NodeCapability.WORLD_APPLY;
     }
 
     public record CoverageResult(
-            Set<Capability> required,
-            Set<Capability> present,
-            Set<Capability> missing
+            Set<NodeCapability> required,
+            Set<NodeCapability> present,
+            Set<NodeCapability> missing
     ) {
         public boolean hasMissing() {
             return missing != null && !missing.isEmpty();
@@ -47,8 +56,8 @@ public final class AiPlanCapabilityCoverage {
     private AiPlanCapabilityCoverage() {
     }
 
-    public static Set<Capability> requiredFromPrompt(String prompt) {
-        Set<Capability> required = EnumSet.noneOf(Capability.class);
+    public static Set<NodeCapability> requiredFromPrompt(String prompt) {
+        Set<NodeCapability> required = EnumSet.noneOf(NodeCapability.class);
         if (prompt == null || prompt.isBlank()) {
             return required;
         }
@@ -68,77 +77,79 @@ public final class AiPlanCapabilityCoverage {
         boolean array = containsAny(lower, "阵列", "array", "repeat", "grid");
 
         if (wall) {
-            required.add(Capability.WALL);
+            required.add(NodeCapability.WALL);
         }
         if (window) {
-            required.add(Capability.WINDOW);
-            required.add(Capability.OPENING);
+            required.add(NodeCapability.WINDOW);
+            required.add(NodeCapability.OPENING);
             if (wall) {
-                required.add(Capability.BOOLEAN_CUT);
+                required.add(NodeCapability.BOOLEAN_CUT);
             }
         }
         if (roof) {
-            required.add(Capability.ROOF);
+            required.add(NodeCapability.ROOF);
         }
         if (sphere) {
-            required.add(Capability.SPHERE);
+            required.add(NodeCapability.SPHERE);
         }
         if (box) {
-            required.add(Capability.BOX);
+            required.add(NodeCapability.BOX);
         }
         if (curve) {
-            required.add(Capability.CURVE);
+            required.add(NodeCapability.CURVE);
         }
         if (terrain) {
-            required.add(Capability.TERRAIN);
+            required.add(NodeCapability.TERRAIN);
         }
         if (sdf) {
-            required.add(Capability.SDF);
+            required.add(NodeCapability.SDF);
         }
         if (field) {
-            required.add(Capability.FIELD);
+            required.add(NodeCapability.FIELD);
         }
         if (material) {
-            required.add(Capability.MATERIAL);
+            required.add(NodeCapability.MATERIAL);
         }
         if (array) {
-            required.add(Capability.ARRAY);
+            required.add(NodeCapability.ARRAY);
         }
 
         if (AiIntentAnalysisService.hasWorldApplyIntent(prompt)) {
-            required.add(Capability.WORLD_APPLY);
+            required.add(NodeCapability.WORLD_APPLY);
+            required.add(NodeCapability.APPLY);
         }
 
         // Generation-style requests that mention a structure should end with a preview sink.
         if (!required.isEmpty()
                 || containsAny(lower, "生成", "创建", "做一个", "造一个", "generate", "create", "make", "build")) {
-            if (!required.contains(Capability.WORLD_APPLY)) {
-                required.add(Capability.PREVIEW);
+            if (!required.contains(NodeCapability.WORLD_APPLY)) {
+                required.add(NodeCapability.PREVIEW);
             }
         }
 
         return required;
     }
 
-    public static Set<Capability> presentFromPlan(AiGraphPlan plan) {
-        Set<Capability> present = EnumSet.noneOf(Capability.class);
+    public static Set<NodeCapability> presentFromPlan(AiGraphPlan plan) {
+        Set<NodeCapability> present = EnumSet.noneOf(NodeCapability.class);
         if (plan == null || plan.nodes() == null) {
             return present;
         }
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
         for (AiPlanNode node : plan.nodes()) {
             if (node == null || node.typeId() == null) {
                 continue;
             }
-            present.addAll(capabilitiesForTypeId(node.typeId()));
+            present.addAll(catalog.capabilities(node.typeId()));
         }
         return present;
     }
 
     public static CoverageResult analyze(String prompt, AiGraphPlan plan) {
-        Set<Capability> required = requiredFromPrompt(prompt);
-        Set<Capability> present = presentFromPlan(plan);
-        Set<Capability> missing = EnumSet.noneOf(Capability.class);
-        for (Capability capability : required) {
+        Set<NodeCapability> required = requiredFromPrompt(prompt);
+        Set<NodeCapability> present = presentFromPlan(plan);
+        Set<NodeCapability> missing = EnumSet.noneOf(NodeCapability.class);
+        for (NodeCapability capability : required) {
             if (!present.contains(capability)) {
                 missing.add(capability);
             }
@@ -146,65 +157,11 @@ public final class AiPlanCapabilityCoverage {
         return new CoverageResult(required, present, missing);
     }
 
-    public static Set<Capability> capabilitiesForTypeId(String typeId) {
-        Set<Capability> caps = EnumSet.noneOf(Capability.class);
-        if (typeId == null || typeId.isBlank()) {
-            return caps;
-        }
-        String id = typeId.toLowerCase(Locale.ROOT);
-
-        if (id.contains("wall_slab") || id.contains("wall_along") || id.contains("wall_with")) {
-            caps.add(Capability.WALL);
-        }
-        if (id.contains("window_array") || id.contains("window")) {
-            caps.add(Capability.WINDOW);
-            caps.add(Capability.OPENING);
-            caps.add(Capability.ARRAY);
-        }
-        if (id.contains("door_array") || id.contains(".door")) {
-            caps.add(Capability.OPENING);
-            caps.add(Capability.ARRAY);
-        }
-        if (id.contains("roof") || id.contains("gable") || id.contains("hip_")) {
-            caps.add(Capability.ROOF);
-        }
-        if (id.contains("difference") || id.contains("boolean")) {
-            caps.add(Capability.BOOLEAN_CUT);
-        }
-        if (id.contains("array") || id.contains("linear_array") || id.contains("polar_array")) {
-            caps.add(Capability.ARRAY);
-        }
-        if (id.startsWith("material.") || id.contains("assign_block") || id.contains("palette")) {
-            caps.add(Capability.MATERIAL);
-        }
-        if (id.startsWith("output.preview.")) {
-            caps.add(Capability.PREVIEW);
-        }
-        if (id.contains("sphere")) {
-            caps.add(Capability.SPHERE);
-        }
-        if (id.contains(".box") || id.endsWith("box") || id.contains("box_from")) {
-            caps.add(Capability.BOX);
-        }
-        if (id.contains("curve") || id.contains("path") || id.contains("spline")) {
-            caps.add(Capability.CURVE);
-        }
-        if (id.contains("terrain") || id.contains("heightmap")) {
-            caps.add(Capability.TERRAIN);
-        }
-        if (id.contains("sdf")) {
-            caps.add(Capability.SDF);
-        }
-        if (id.contains("field") || id.contains("scalar_from") || id.contains("vector_from")) {
-            caps.add(Capability.FIELD);
-        }
-        if (id.startsWith("world.write.") || id.startsWith("output.execute.")) {
-            caps.add(Capability.WORLD_APPLY);
-        }
-        return caps;
+    public static Set<NodeCapability> capabilitiesForTypeId(String typeId) {
+        return NodeSemanticCatalog.get().capabilities(typeId);
     }
 
-    public static String formatMissingForHint(Set<Capability> missing) {
+    public static String formatMissingForHint(Set<NodeCapability> missing) {
         if (missing == null || missing.isEmpty()) {
             return "";
         }

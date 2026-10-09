@@ -1,5 +1,7 @@
 package com.nodecraft.gui.ai;
 
+import com.nodecraft.nodesystem.semantic.NodeDomain;
+
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -20,9 +22,9 @@ public final class AiIntentAnalysisService {
     }
 
     /**
-     * Domain tags for schema retrieval / capability coverage. Orthogonal to {@link UserIntent}.
-     * Keyword-derived for P1; P2 may replace this with NodeSemanticCatalog.
+     * @deprecated Use {@link NodeDomain}. Kept as a binary-compatible alias for older call sites.
      */
+    @Deprecated
     public enum DomainTag {
         ARCHITECTURE,
         CURVE,
@@ -35,11 +37,20 @@ public final class AiIntentAnalysisService {
         WORLD,
         MATH,
         DATA_TREE,
-        GEOMETRY
+        GEOMETRY;
+
+        public NodeDomain toNodeDomain() {
+            return NodeDomain.valueOf(name());
+        }
+
+        public static DomainTag from(NodeDomain domain) {
+            return domain == null ? null : DomainTag.valueOf(domain.name());
+        }
     }
 
-    public static Set<DomainTag> detectDomainTags(String prompt) {
-        Set<DomainTag> tags = EnumSet.noneOf(DomainTag.class);
+    /** Prompt → domain tags (keyword heuristic). Node domains for typeIds come from the catalog. */
+    public static Set<NodeDomain> detectDomainTags(String prompt) {
+        Set<NodeDomain> tags = EnumSet.noneOf(NodeDomain.class);
         if (prompt == null || prompt.isBlank()) {
             return tags;
         }
@@ -53,63 +64,63 @@ public final class AiIntentAnalysisService {
                 "parede", "janela", "porta", "telhado",
                 "mur", "fenêtre", "porte", "toit",
                 "wand", "fenster", "tür", "dach")) {
-            tags.add(DomainTag.ARCHITECTURE);
+            tags.add(NodeDomain.ARCHITECTURE);
         }
         if (containsAnyLower(lower,
                 "曲线", "路径", "曲线阵列", "curve", "path", "spline",
                 "крив", "путь", "camino", "caminho", "courbe", "kurve")) {
-            tags.add(DomainTag.CURVE);
+            tags.add(NodeDomain.CURVE);
         }
         if (containsAnyLower(lower,
                 "剖面", "轮廓", "profile", "轮廓线", "polygon profile",
                 "профиль", "perfil", "profil")) {
-            tags.add(DomainTag.PROFILE);
+            tags.add(NodeDomain.PROFILE);
         }
         if (containsAnyLower(lower,
                 "地形", "山地", "terrain", "heightmap", "landscape",
                 "рельеф", "terreno", "terrain", "gelände")) {
-            tags.add(DomainTag.TERRAIN);
+            tags.add(NodeDomain.TERRAIN);
         }
         if (containsAnyLower(lower,
                 "材质", "方块", "调色", "砖", "苔藓", "风化",
                 "material", "palette", "brick", "moss", "weather", "block type",
                 "материал", "material", "matériau", "material")) {
-            tags.add(DomainTag.MATERIAL);
+            tags.add(NodeDomain.MATERIAL);
         }
         if (containsAnyLower(lower,
                 "sdf", "有符号距离", "signed distance")) {
-            tags.add(DomainTag.SDF);
+            tags.add(NodeDomain.SDF);
         }
         if (containsAnyLower(lower,
                 "场", "标量场", "向量场", "field", "scalar field", "vector field",
                 "поле", "campo", "champ", "feld")) {
-            tags.add(DomainTag.FIELD);
+            tags.add(NodeDomain.FIELD);
         }
         if (containsAnyLower(lower,
                 "阵列", "数组", "array", "repeat", "grid",
                 "массив", "matriz", "matrice", "anordnung")) {
-            tags.add(DomainTag.ARRAY);
+            tags.add(NodeDomain.ARRAY);
         }
         if (containsAnyLower(lower,
                 "世界", "读取", "选区", "world", "region", "selection",
                 "мир", "mundo", "monde", "welt")) {
-            tags.add(DomainTag.WORLD);
+            tags.add(NodeDomain.WORLD);
         }
         if (containsAnyLower(lower,
                 "计算", "数学", "加", "减", "乘", "除", "比较",
                 "math", "add", "sub", "mul", "div", "logic", "compare",
                 "матем", "математи", "matem", "mathématique", "mathe")) {
-            tags.add(DomainTag.MATH);
+            tags.add(NodeDomain.MATH);
         }
         if (containsAnyLower(lower,
                 "数据树", "列表", "graft", "flatten", "data tree", "list", "tree",
                 "дерево", "lista", "arbre", "baum")) {
-            tags.add(DomainTag.DATA_TREE);
+            tags.add(NodeDomain.DATA_TREE);
         }
         if (containsAnyLower(lower,
                 "几何", "球体", "盒子", "方块体", "mesh", "geometry", "sphere", "box", "shape",
                 "геометр", "geometr", "géométr", "kugel")) {
-            tags.add(DomainTag.GEOMETRY);
+            tags.add(NodeDomain.GEOMETRY);
         }
         return tags;
     }

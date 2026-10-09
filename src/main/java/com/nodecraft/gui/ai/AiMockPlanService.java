@@ -302,7 +302,7 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
         connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
         connections.add(new MockConnection("helix", "output_path", "sweep", "input_path"));
-        appendSweepPreviewChain(nodes, connections, "sweep", prompt);
+        appendSweepPreviewChain(nodes, connections, prompt);
     }
 
     private static void buildTowerTemplate(
@@ -397,7 +397,7 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
         connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
         connections.add(new MockConnection("arch_curve", "output_path", "sweep", "input_path"));
-        appendSweepPreviewChain(nodes, connections, "sweep", prompt);
+        appendSweepPreviewChain(nodes, connections, prompt);
     }
 
     private static void buildRingWalkwayTemplate(
@@ -502,26 +502,24 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 200.0f, 80.0f,
                 createNodeState("fillGeometry", fillGeometry)));
         connections.add(new MockConnection(geometryRef, "output_geometry", "bake", "input_geometry"));
-        appendBlocksMaterialPreviewChain(nodes, connections, "bake", "output_blocks", prompt);
+        appendBlocksMaterialPreviewChain(nodes, connections, "bake", prompt);
     }
 
     private static void appendSweepPreviewChain(
             List<MockNode> nodes,
             List<MockConnection> connections,
-            String sweepRef,
             String prompt
     ) {
         nodes.add(new MockNode("strip_blocks", "geometry.voxel.surface_strip_to_blocks", 200.0f, 80.0f,
                 createNodeState("mode", "LATTICE")));
-        connections.add(new MockConnection(sweepRef, "output_surface_strip", "strip_blocks", "input_surface_strip"));
-        appendBlocksMaterialPreviewChain(nodes, connections, "strip_blocks", "output_blocks", prompt);
+        connections.add(new MockConnection("sweep", "output_surface_strip", "strip_blocks", "input_surface_strip"));
+        appendBlocksMaterialPreviewChain(nodes, connections, "strip_blocks", prompt);
     }
 
     private static void appendBlocksMaterialPreviewChain(
             List<MockNode> nodes,
             List<MockConnection> connections,
             String blocksSourceRef,
-            String blocksSourcePort,
             String prompt
     ) {
         nodes.add(new MockNode("block_type", "input.type_selectors.block_type_selector", 420.0f, -80.0f,
@@ -530,7 +528,7 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("preview", "output.preview.preview_blocks", 680.0f, 40.0f,
                 createNodeState("previewEnabled", true)));
 
-        connections.add(new MockConnection(blocksSourceRef, blocksSourcePort, "assign", "input_coordinates"));
+        connections.add(new MockConnection(blocksSourceRef, "output_blocks", "assign", "input_coordinates"));
         connections.add(new MockConnection("block_type", "output_block_id", "assign", "input_block_type"));
         connections.add(new MockConnection("assign", "output_placements", "preview", "input_block_placements"));
 
@@ -570,7 +568,7 @@ public final class AiMockPlanService {
                     new MockPlan("validate", nodes, connections, List.of()));
             AiGraphDslSupport.PlanValidationResult result =
                     AiGraphDslSupport.validatePlan(plan, registry);
-            if (result == null || result.errors() == null || result.errors().isEmpty()) {
+            if (result.errors() == null || result.errors().isEmpty()) {
                 return true;
             }
             errors.addAll(result.errors());

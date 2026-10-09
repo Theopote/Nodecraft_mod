@@ -145,6 +145,23 @@ public final class AiPromptBuilder {
         nodeObj.addProperty("displayName", schema.displayName());
         nodeObj.addProperty("description", schema.description());
         nodeObj.addProperty("category", schema.category());
+        if (schema.effect() != null && !schema.effect().isBlank()) {
+            nodeObj.addProperty("effect", schema.effect());
+        }
+        if (schema.domains() != null && !schema.domains().isEmpty()) {
+            JsonArray domains = new JsonArray();
+            for (String domain : schema.domains()) {
+                domains.add(domain);
+            }
+            nodeObj.add("domains", domains);
+        }
+        if (schema.capabilities() != null && !schema.capabilities().isEmpty()) {
+            JsonArray capabilities = new JsonArray();
+            for (String capability : schema.capabilities()) {
+                capabilities.add(capability);
+            }
+            nodeObj.add("capabilities", capabilities);
+        }
 
         JsonArray inputPorts = new JsonArray();
         for (AiNodeSchemaCatalog.PortSchema input : schema.inputs()) {
