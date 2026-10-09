@@ -2,8 +2,8 @@ package com.nodecraft.nodesystem.contract;
 
 import com.nodecraft.gui.recommendation.NodeRecommendation;
 import com.nodecraft.gui.recommendation.NodeRecommendationContext;
-import com.nodecraft.gui.recommendation.NodeRecommendationRules;
-import com.nodecraft.gui.recommendation.NodeRecommendationRulesLoader;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRules;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRulesLoader;
 import com.nodecraft.gui.recommendation.NodeRecommendations;
 import com.nodecraft.gui.recommendation.RecommendationDirection;
 import com.nodecraft.gui.recommendation.RecommendationTrigger;

@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.semantic.NodeSemanticDescriptor;
 import com.nodecraft.nodesystem.semantic.NodeSemanticEdge;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -202,12 +203,19 @@ public final class AiNodeSchemaCatalog {
         return schemas;
     }
 
+    private static final int MAX_SCHEMA_HINTS = 6;
+
     private static List<RecommendationHint> toHints(List<NodeSemanticEdge> edges) {
         if (edges == null || edges.isEmpty()) {
             return List.of();
         }
-        List<RecommendationHint> hints = new ArrayList<>(edges.size());
-        for (NodeSemanticEdge edge : edges) {
+        // Prefer EXACT, then CATEGORY, then TYPE — keep prompt compact.
+        List<NodeSemanticEdge> ordered = new ArrayList<>(edges);
+        ordered.sort(Comparator
+                .comparingInt((NodeSemanticEdge e) -> e.kind() == null ? 0 : e.kind().ordinal())
+                .thenComparingInt(NodeSemanticEdge::priority));
+        List<RecommendationHint> hints = new ArrayList<>();
+        for (NodeSemanticEdge edge : ordered) {
             if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
                 continue;
             }
@@ -217,6 +225,9 @@ public final class AiNodeSchemaCatalog {
                     edge.targetPortId(),
                     edge.reason()
             ));
+            if (hints.size() >= MAX_SCHEMA_HINTS) {
+                break;
+            }
         }
         return List.copyOf(hints);
     }
@@ -258,7 +269,7 @@ public final class AiNodeSchemaCatalog {
                     enumNames(descriptor.capabilities())
             );
         }
-        // Registry miss (unit tests / partial bootstrap): still attach derived caps/domains.
+        // Registry miss (unit tests / partial bootstrap): still attach derived caps/domains + edges.
         return new NodeSchema(
                 schema.typeId(),
                 schema.displayName(),
@@ -267,8 +278,8 @@ public final class AiNodeSchemaCatalog {
                 schema.inputs(),
                 schema.outputs(),
                 schema.params(),
-                schema.recommendedNext(),
-                schema.recommendedUpstream(),
+                toHints(catalog.effectiveDownstream(schema.typeId())),
+                toHints(catalog.effectiveUpstream(schema.typeId())),
                 catalog.effect(schema.typeId()).name(),
                 enumNames(catalog.domains(schema.typeId())),
                 enumNames(catalog.capabilities(schema.typeId()))

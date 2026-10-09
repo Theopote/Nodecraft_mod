@@ -1,10 +1,11 @@
-package com.nodecraft.gui.recommendation;
+package com.nodecraft.nodesystem.recommendation;
 
 import java.util.List;
 import java.util.Map;
 
 /**
  * In-memory model for {@code node_recommendations.json}.
+ * Lives in nodesystem so semantic catalog and GUI recommendation share one core model.
  */
 public final class NodeRecommendationRules {
 

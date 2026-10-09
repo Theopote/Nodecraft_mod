@@ -8,7 +8,9 @@ import java.util.Set;
 
 /**
  * Deterministic capability / domain derivation from typeId, category, and effect.
- * No external semantic config — override annotations are a later P2 concern.
+ *
+ * <p>Priority: exact known families → category-family → {@link NodeEffect} → conservative fallback.
+ * Prefer missing a capability over a false positive.</p>
  */
 public final class NodeSemanticDeriver {
 
@@ -18,39 +20,58 @@ public final class NodeSemanticDeriver {
     public static Set<NodeCapability> deriveCapabilities(String typeId, String category, NodeEffect effect) {
         Set<NodeCapability> caps = EnumSet.noneOf(NodeCapability.class);
         if (typeId == null || typeId.isBlank()) {
+            applyEffectCaps(caps, effect);
             return caps;
         }
         String id = typeId.toLowerCase(Locale.ROOT);
         String cat = category == null ? "" : category.toLowerCase(Locale.ROOT);
 
+        // --- Exact / family rules (conservative) ---
         if (id.contains("wall_slab") || id.contains("wall_along") || id.contains("wall_with")
                 || (cat.contains("architectural") && id.contains("wall"))) {
             caps.add(NodeCapability.WALL);
         }
-        if (id.contains("window_array") || id.contains("window")) {
+
+        if (id.contains("window_array")) {
             caps.add(NodeCapability.WINDOW);
             caps.add(NodeCapability.OPENING);
             caps.add(NodeCapability.ARRAY);
+        } else if (id.contains("window")) {
+            caps.add(NodeCapability.WINDOW);
+            // Do not auto-tag ARRAY / OPENING for every window* id (e.g. window_frame).
         }
-        if (id.contains("door_array") || id.contains(".door")) {
+
+        if (id.contains("door_array")) {
             caps.add(NodeCapability.OPENING);
             caps.add(NodeCapability.ARRAY);
+        } else if (id.contains(".door") || id.endsWith("_door") || id.contains("door_")) {
+            caps.add(NodeCapability.OPENING);
         }
+
         if (id.contains("roof") || id.contains("gable") || id.contains("hip_")) {
             caps.add(NodeCapability.ROOF);
         }
-        if (id.contains("difference") || (id.contains("boolean") && !id.contains("boolean_2d"))) {
+
+        // BOOLEAN_CUT only for subtractive difference — not union / intersection / generic boolean.
+        if (id.contains("difference") || id.contains("subtract")) {
             caps.add(NodeCapability.BOOLEAN_CUT);
         }
-        if (id.contains("array") || id.contains("linear_array") || id.contains("polar_array")) {
+
+        if (id.contains("linear_array") || id.contains("polar_array")
+                || id.endsWith("_array") || id.contains(".array.")) {
+            caps.add(NodeCapability.ARRAY);
+        } else if (id.contains("array") && !id.contains("window") && !id.contains("door")) {
             caps.add(NodeCapability.ARRAY);
         }
+
         if (id.startsWith("material.") || id.contains("assign_block") || id.contains("palette")) {
             caps.add(NodeCapability.MATERIAL);
         }
+
         if (id.startsWith("output.preview.")) {
             caps.add(NodeCapability.PREVIEW);
         }
+
         if (id.contains("sphere")) {
             caps.add(NodeCapability.SPHERE);
         }
@@ -78,10 +99,18 @@ public final class NodeSemanticDeriver {
         if (id.contains("extrude")) {
             caps.add(NodeCapability.EXTRUDE);
         }
-        if (id.startsWith("world.write.") || id.startsWith("output.execute.")) {
+
+        // WORLD_APPLY: effect-first. Namespace world.write only when effect is unspecified.
+        applyEffectCaps(caps, effect);
+        if ((effect == null || effect == NodeEffect.UNSPECIFIED) && id.startsWith("world.write.")) {
             caps.add(NodeCapability.WORLD_APPLY);
             caps.add(NodeCapability.APPLY);
         }
+
+        return caps;
+    }
+
+    private static void applyEffectCaps(Set<NodeCapability> caps, NodeEffect effect) {
         if (effect == NodeEffect.WORLD_WRITE) {
             caps.add(NodeCapability.WORLD_APPLY);
             caps.add(NodeCapability.APPLY);
@@ -89,7 +118,6 @@ public final class NodeSemanticDeriver {
         if (effect == NodeEffect.PREVIEW_WRITE) {
             caps.add(NodeCapability.PREVIEW);
         }
-        return caps;
     }
 
     public static Set<NodeDomain> deriveDomains(String typeId, String category) {

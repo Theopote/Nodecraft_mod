@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRules;
 
 import java.util.ArrayList;
 import java.util.Comparator;

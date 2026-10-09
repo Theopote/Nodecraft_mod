@@ -11,8 +11,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRules;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRulesLoader;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
-import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 
 import java.util.ArrayList;
@@ -35,7 +36,6 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
     private NodeRecommendationScorer scorer;
     private NodeRecommendationConnector connector;
     private volatile boolean initialized;
-    private volatile long rulesRevision;
 
     @Override
     public synchronized void initialize() {
@@ -46,8 +46,7 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         scorer = new NodeRecommendationScorer(rules, portIndex);
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
-        rulesRevision++;
-        NodeSemanticCatalog.get().invalidateRules();
+        NodeRecommendationRulesLoader.bumpRulesRevision();
         NodeCraft.LOGGER.info("Node recommendation service initialized (rules v{})", rules.version);
     }
 
@@ -62,13 +61,12 @@ public final class DefaultNodeRecommendationService implements NodeRecommendatio
         scorer = new NodeRecommendationScorer(rules, portIndex);
         connector = new NodeRecommendationConnector(portIndex, rules);
         initialized = true;
-        rulesRevision++;
-        NodeSemanticCatalog.get().invalidateRules();
+        NodeRecommendationRulesLoader.bumpRulesRevision();
     }
 
     @Override
     public long getRulesRevision() {
-        return rulesRevision;
+        return NodeRecommendationRulesLoader.getRulesRevision();
     }
 
     @Override

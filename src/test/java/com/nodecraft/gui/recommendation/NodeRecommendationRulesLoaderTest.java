@@ -1,10 +1,13 @@
 package com.nodecraft.gui.recommendation;
 
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRules;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRulesLoader;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodeRecommendationRulesLoaderTest {
 
@@ -27,5 +30,13 @@ class NodeRecommendationRulesLoaderTest {
         assertEquals(
                 "transform.basic_transforms.transform_geometry",
                 geometryRule.downstream.get(0).nodeId);
+    }
+
+    @Test
+    void bumpRulesRevisionIsShared() {
+        long before = NodeRecommendationRulesLoader.getRulesRevision();
+        long after = NodeRecommendationRulesLoader.bumpRulesRevision();
+        assertTrue(after > before);
+        assertEquals(after, NodeRecommendationRulesLoader.getRulesRevision());
     }
 }

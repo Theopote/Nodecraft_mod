@@ -1,12 +1,12 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.gui.ai.AiNodeSchemaCatalog.NodeSchema;
-import com.nodecraft.gui.recommendation.NodeRecommendationRules;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.semantic.NodeDomain;
 import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 import com.nodecraft.nodesystem.semantic.NodeSemanticEdge;
+import com.nodecraft.nodesystem.semantic.NodeSemanticEdgeKind;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,6 +31,7 @@ public final class AiSchemaRetrievalService {
     private static final int WEIGHT_PROMPT_MATCH = 100;
     private static final int WEIGHT_EXACT_NEIGHBOR = 80;
     private static final int WEIGHT_CATEGORY_WORKFLOW = 50;
+    private static final int WEIGHT_TYPE_WORKFLOW = 35;
     private static final int WEIGHT_CONVERTER = 40;
     private static final int WEIGHT_CORE_INCLUDE = 30;
 
@@ -52,7 +53,6 @@ public final class AiSchemaRetrievalService {
         Map<String, NodeSchema> byTypeId = indexByTypeId(allSchemas);
         NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
         catalog.refreshIfNeeded();
-        NodeRecommendationRules rules = catalog.currentRules();
 
         Map<String, Integer> scores = new HashMap<>();
         for (NodeSchema schema : allSchemas) {
@@ -68,24 +68,34 @@ public final class AiSchemaRetrievalService {
             selected.add(seed.typeId());
         }
 
-        // Phase B: semantic expansion (1-2 hops from exact recommendation neighbors)
+        // Phase B: semantic expansion via catalog effective edges (exact / category / type)
         Set<String> frontier = new LinkedHashSet<>(selected);
         for (int hop = 0; hop < MAX_EXPANSION_HOPS; hop++) {
             Set<String> next = new LinkedHashSet<>();
             for (String typeId : frontier) {
-                for (NeighborEdge edge : collectExactNeighbors(typeId, catalog)) {
-                    if (!byTypeId.containsKey(edge.nodeId())) {
+                int taken = 0;
+                for (NodeSemanticEdge edge : catalog.effectiveDownstream(typeId)) {
+                    if (edge == null || edge.targetNodeId() == null || !byTypeId.containsKey(edge.targetNodeId())) {
                         continue;
                     }
-                    next.add(edge.nodeId());
-                    scores.merge(edge.nodeId(), WEIGHT_EXACT_NEIGHBOR - edge.order(), Math::max);
+                    next.add(edge.targetNodeId());
+                    scores.merge(edge.targetNodeId(), neighborWeight(edge), Math::max);
+                    taken++;
+                    if (taken >= MAX_NEIGHBORS_PER_SEED) {
+                        break;
+                    }
                 }
-                for (String categoryNeighbor : collectCategoryWorkflowNeighbors(byTypeId.get(typeId), rules)) {
-                    if (!byTypeId.containsKey(categoryNeighbor)) {
+                int takenUp = 0;
+                for (NodeSemanticEdge edge : catalog.effectiveUpstream(typeId)) {
+                    if (edge == null || edge.targetNodeId() == null || !byTypeId.containsKey(edge.targetNodeId())) {
                         continue;
                     }
-                    next.add(categoryNeighbor);
-                    scores.merge(categoryNeighbor, WEIGHT_CATEGORY_WORKFLOW, Math::max);
+                    next.add(edge.targetNodeId());
+                    scores.merge(edge.targetNodeId(), neighborWeight(edge), Math::max);
+                    takenUp++;
+                    if (takenUp >= MAX_NEIGHBORS_PER_SEED) {
+                        break;
+                    }
                 }
             }
             selected.addAll(next);
@@ -171,6 +181,16 @@ public final class AiSchemaRetrievalService {
         return withHints;
     }
 
+    private static int neighborWeight(NodeSemanticEdge edge) {
+        NodeSemanticEdgeKind kind = edge.kind() == null ? NodeSemanticEdgeKind.EXACT : edge.kind();
+        int base = switch (kind) {
+            case EXACT -> WEIGHT_EXACT_NEIGHBOR;
+            case CATEGORY -> WEIGHT_CATEGORY_WORKFLOW;
+            case TYPE -> WEIGHT_TYPE_WORKFLOW;
+        };
+        return base - edge.priority();
+    }
+
     private static List<NodeSchema> resolveIntentAwareCore(
             List<NodeSchema> allSchemas,
             Set<NodeDomain> domainTags,
@@ -231,79 +251,6 @@ public final class AiSchemaRetrievalService {
         }
     }
 
-    private record NeighborEdge(String nodeId, String fromPort, String toPort, String reason, int order) {
-    }
-
-    private static List<NeighborEdge> collectExactNeighbors(String typeId, NodeSemanticCatalog catalog) {
-        List<NeighborEdge> edges = new ArrayList<>();
-        if (typeId == null || catalog == null) {
-            return edges;
-        }
-        int takenDown = 0;
-        for (NodeSemanticEdge edge : catalog.downstream(typeId)) {
-            if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
-                continue;
-            }
-            edges.add(new NeighborEdge(
-                    edge.targetNodeId(),
-                    edge.sourcePortId(),
-                    edge.targetPortId(),
-                    edge.reason(),
-                    edge.priority()
-            ));
-            takenDown++;
-            if (takenDown >= MAX_NEIGHBORS_PER_SEED) {
-                break;
-            }
-        }
-        int takenUp = 0;
-        for (NodeSemanticEdge edge : catalog.upstream(typeId)) {
-            if (edge == null || edge.targetNodeId() == null || edge.targetNodeId().isBlank()) {
-                continue;
-            }
-            edges.add(new NeighborEdge(
-                    edge.targetNodeId(),
-                    edge.sourcePortId(),
-                    edge.targetPortId(),
-                    edge.reason(),
-                    edge.priority()
-            ));
-            takenUp++;
-            if (takenUp >= MAX_NEIGHBORS_PER_SEED) {
-                break;
-            }
-        }
-        return edges;
-    }
-
-    private static List<String> collectCategoryWorkflowNeighbors(NodeSchema schema, NodeRecommendationRules rules) {
-        List<String> neighbors = new ArrayList<>();
-        if (schema == null || rules == null || rules.sourceCategories == null) {
-            return neighbors;
-        }
-        String category = schema.category() == null ? "" : schema.category().toLowerCase(Locale.ROOT);
-        NodeRecommendationRules.SourceCategoryRule categoryRule = rules.sourceCategories.get(category);
-        if (categoryRule == null) {
-            return neighbors;
-        }
-        if (categoryRule.outputTypes != null) {
-            for (NodeRecommendationRules.PortDirectionRule direction : categoryRule.outputTypes.values()) {
-                if (direction == null || direction.downstream == null) {
-                    continue;
-                }
-                for (NodeRecommendationRules.RuleEntry row : sortByOrder(direction.downstream)) {
-                    if (row != null && row.nodeId != null && !row.nodeId.isBlank()) {
-                        neighbors.add(row.nodeId);
-                        if (neighbors.size() >= MAX_NEIGHBORS_PER_SEED) {
-                            return neighbors;
-                        }
-                    }
-                }
-            }
-        }
-        return neighbors;
-    }
-
     private static List<String> collectConverterNeighbors(NodeSchema schema, NodeSemanticCatalog catalog) {
         Set<String> converters = new LinkedHashSet<>();
         if (schema == null) {
@@ -327,7 +274,6 @@ public final class AiSchemaRetrievalService {
             }
         }
 
-        // Only known explicit LANGUAGE_V1 bridges when those types appear on the seed schema.
         if (present.contains(NodeDataType.LIST) || present.contains(NodeDataType.DATA_TREE)) {
             addConverter(converters, catalog, NodeDataType.LIST, NodeDataType.DATA_TREE);
             addConverter(converters, catalog, NodeDataType.DATA_TREE, NodeDataType.LIST);
@@ -365,15 +311,6 @@ public final class AiSchemaRetrievalService {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static List<NodeRecommendationRules.RuleEntry> sortByOrder(List<NodeRecommendationRules.RuleEntry> rows) {
-        if (rows == null || rows.isEmpty()) {
-            return List.of();
-        }
-        List<NodeRecommendationRules.RuleEntry> sorted = new ArrayList<>(rows);
-        sorted.sort(Comparator.comparingInt(row -> row == null ? Integer.MAX_VALUE : row.order));
-        return sorted;
     }
 
     private static Map<String, NodeSchema> indexByTypeId(List<NodeSchema> schemas) {

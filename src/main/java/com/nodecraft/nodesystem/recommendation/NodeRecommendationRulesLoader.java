@@ -1,4 +1,4 @@
-package com.nodecraft.gui.recommendation;
+package com.nodecraft.nodesystem.recommendation;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -13,17 +13,31 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * Loads {@code node_recommendations.json} and owns the shared rules revision counter
+ * used by Suggested Connections and {@code NodeSemanticCatalog}.
+ */
 public final class NodeRecommendationRulesLoader {
 
     private static final String RESOURCE_PATH = "/nodecraft/node_recommendations.json";
     private static final Gson GSON = new Gson();
+    private static final AtomicLong RULES_REVISION = new AtomicLong(0L);
 
     private NodeRecommendationRulesLoader() {
+    }
+
+    public static long getRulesRevision() {
+        return RULES_REVISION.get();
+    }
+
+    /** Bump when rules are reloaded so catalog / recommendation caches invalidate together. */
+    public static long bumpRulesRevision() {
+        return RULES_REVISION.incrementAndGet();
     }
 
     public static NodeRecommendationRules load() {

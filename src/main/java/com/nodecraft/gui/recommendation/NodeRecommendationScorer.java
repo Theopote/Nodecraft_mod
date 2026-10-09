@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
+import com.nodecraft.nodesystem.recommendation.NodeRecommendationRules;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.util.ArrayList;

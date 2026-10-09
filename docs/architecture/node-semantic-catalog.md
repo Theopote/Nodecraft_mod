@@ -1,6 +1,6 @@
 # NodeSemanticCatalog & Semantic Composer
 
-Status: **P1 implemented** (read-only facade). AiSemanticComposer remains P2.
+Status: **P1 hardened (S1–S3)**. AiSemanticComposer remains P2.
 
 ## Principle (locked)
 
@@ -8,99 +8,75 @@ Status: **P1 implemented** (read-only facade). AiSemanticComposer remains P2.
 
 - No `node_semantics.json`
 - No parallel edge table
-- No long-lived `typeId.contains(...)` capability table in `gui.ai`
-
-Sources of truth remain:
-
-| Source | Role |
-|--------|------|
-| `NodeRegistry` / `NodeInfo` | Facts (typeId, category, ports) |
-| `NodeEffect` / `NodeEffectResolver` | Behavior side effects |
-| `NodeRecommendationRules` + `node_recommendations.json` | Workflow edges |
-| `TypeConversionRegistry` | Type language / converters |
+- Prefer missing a capability over a false positive
 
 ```text
 NodeRegistry + NodeInfo + NodeEffect
-NodeRecommendationRules
+NodeRecommendationRules (+ Loader revision)
 TypeConversionRegistry
         ↓
 NodeSemanticCatalog   (read-only facade)
         ↓
 AiPlanCapabilityCoverage / AiNodeSchemaCatalog / AiSchemaRetrievalService
         ⇣ (P2)
-AiSemanticComposer / Suggested Connections (optional later)
+AiSemanticComposer
 ```
 
-## Package
+## Packages
 
-`com.nodecraft.nodesystem.semantic` — **not** under `gui.ai`.
+| Package | Contents |
+|---------|----------|
+| `com.nodecraft.nodesystem.semantic` | Catalog, Descriptor, Edge(+Kind), Capability, Domain, Deriver |
+| `com.nodecraft.nodesystem.recommendation` | `NodeRecommendationRules`, `NodeRecommendationRulesLoader` (shared SoT + revision) |
+| `com.nodecraft.gui.recommendation` | Scorer, Connector, Overlay, UI — **consumers**, not rules owners |
 
-| Type | Role |
-|------|------|
-| `NodeCapability` | Product-level caps (WALL, WINDOW, VOXELIZE, PREVIEW, …) — keep coarse |
-| `NodeDomain` | Domain tags (ARCHITECTURE, CURVE, …) — orthogonal to capability |
-| `NodeSemanticEdge` | Derived from recommendation rules |
-| `NodeSemanticDescriptor` | Per-node semantic view |
-| `NodeSemanticCatalog` | Facade: `describe`, `capabilities`, `domains`, `downstream`/`upstream`, `conversionBetween` |
-| `NodeSemanticDeriver` | Deterministic category/typeId/effect → caps/domains |
+Catalog must **not** depend on `gui.ai`. Rules POJO/Loader live in nodesystem so semantic core is not tied to GUI.
 
-Catalog must **not** depend on AI classes. AI is a consumer.
+## Edge tiers
 
-Cache key: `(NodeRegistry.introspectionEpoch, NodeSemanticCatalog.getRulesRevision())`.
-`DefaultNodeRecommendationService` bumps catalog rules revision on init/reload.
+`NodeSemanticEdge.kind`:
 
-## Domain vs Capability
+| Kind | Source | Typical Composer cost |
+|------|--------|------------------------|
+| `EXACT` | `sourceNodes` port rules | 1 |
+| `CATEGORY` | `sourceCategories` output/input type maps | 3 |
+| `TYPE` | global `outputTypes` | 5 |
 
-Do **not** merge these enums.
+APIs:
 
-- Domain = area of modeling language (`ARCHITECTURE`, `SDF`, …)
-- Capability = product ability (`WALL`, `BOOLEAN_CUT`, `PREVIEW`, …)
+- `exactDownstream` / `exactUpstream`
+- `effectiveDownstream` / `effectiveUpstream` (merged; best tier wins on dedupe)
+- Port-local overloads: `effectiveDownstream(nodeId, portId, dataType)`
 
-Fine-grained roles (`output_openings`, wall top path) stay on **edges / ports**, not as Capability explosion.
+`describe().downstream/upstream` = **effective** merged list. AI schema export caps hints (EXACT first).
 
-## P1 consumers
+## Capability derivation
 
-1. **AiPlanCapabilityCoverage** — prompt→required stays keyword heuristic; plan→present uses `catalog.capabilities(typeId)`.
-2. **AiNodeSchemaCatalog** — builds `effect` / `domains` / `capabilities` / `recommendedNext|Upstream` from catalog.
-3. **AiSchemaRetrievalService** — neighbor expansion + converters via catalog; still owns prompt→selection.
-4. **AiPromptBuilder** — exports compact semantic metadata when present.
+`NodeSemanticDeriver` priority: exact families → category-family → `NodeEffect` → conservative fallback.
 
-## Local Planner path (locked for P2)
+Examples:
+
+- `window_array` → WINDOW + OPENING + ARRAY; other `window*` → WINDOW only
+- `door_array` → OPENING + ARRAY; other door ids → OPENING
+- `difference` / subtract → BOOLEAN_CUT; union/intersection → not BOOLEAN_CUT
+- `WORLD_APPLY` from `effect == WORLD_WRITE` (not `output.execute.*` namespace)
+
+## Cache / revision
+
+Cache key: `(NodeRegistry.introspectionEpoch, NodeRecommendationRulesLoader.getRulesRevision())`.
+
+Loader owns the shared `AtomicLong`. Recommendation service and catalog both bump/read it.
+
+## Local Planner path (P2)
 
 ```text
-Prompt
-  → Intent / Domain / Capability hints
-  → Template Library match
-       → confident → instantiate
-  → else AiSemanticComposer (small canonical chain)
-       → confident → AiGraphPlan
-  → else abstain
+Template match → AiSemanticComposer → abstain
 ```
 
-Do **not** expand `MockTemplateKind`. Mock demotes to smoke/tests once Composer lands.
+Do not expand `MockTemplateKind` meanwhile.
 
-## AiSemanticComposer (P2 — not in this round)
+## Non-goals (this harden round)
 
-Thin path searcher, **not** a second Mock Planner:
-
-- Seed capabilities / seed nodes → walk tiered semantic edges
-- Default goal `PREVIEW` for GENERATE_NEW without world intent
-- Effect policy as search constraint (`WORLD_WRITE` / `FILE_IO` blocked unless explicit)
-- Exclude generic scalar compatibility from default graph
-- Output **only** `AiGraphPlan` (then validator / dry-run / apply)
-
-Edge tiers (planned): exact source-node rule → category rule → typed output rule → explicit conversion → safe structural (never “all compatible ports”).
-
-## Non-goals (P1)
-
-- No Composer / Local Planner Template→Composer wiring
+- No Composer
 - No Suggested Connections rewrite
-- No `@NodeInfo(capabilities=…)` mass annotation
-- No new semantic config file
-
-## Related
-
-- Preview-first Local Mock: `AiMockPlanService`
-- Effect policy: `AiPlanEffectPolicy`
-- SurfaceStrip conversion (PURE): `geometry.voxel.surface_strip_to_blocks`
-- AI subsystem: `docs/architecture/ai-assistant-subsystem.md`
+- No APPLY vs WORLD_APPLY enum collapse
