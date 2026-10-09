@@ -27,12 +27,22 @@ public final class AiPlannerService {
 
     /**
      * Synchronous local plan: template match or dynamic mock → DSL JSON.
+     * May abstain when the local draft cannot confidently plan the prompt.
      */
     public LocalPlanPayload planLocal(String prompt) {
-        String dslJson = AiPlanDslWorkflowService.toDslJson(
-                AiPlanDslWorkflowService.buildMockGraphPlan(prompt)
-        );
-        return new LocalPlanPayload(dslJson, "local-template");
+        AiPlanDslWorkflowService.LocalGraphBuildResult built =
+                AiPlanDslWorkflowService.buildLocalGraphPlan(prompt);
+        if (built.abstained()) {
+            return new LocalPlanPayload(
+                    true,
+                    built.abstainCode(),
+                    built.abstainMessage(),
+                    "",
+                    "local-template"
+            );
+        }
+        String dslJson = AiPlanDslWorkflowService.toDslJson(built.plan());
+        return new LocalPlanPayload(false, null, null, dslJson, "local-template");
     }
 
     public AiRemotePlanningOrchestrator.PreparedRequest prepareInitialRemoteRequest(
@@ -111,6 +121,15 @@ public final class AiPlannerService {
         return remoteOrchestrator.sanitizeUserPromptForSnapshot(prompt);
     }
 
-    public record LocalPlanPayload(String dslJson, String source) {
+    public record LocalPlanPayload(
+            boolean abstained,
+            String abstainCode,
+            String message,
+            String dslJson,
+            String source
+    ) {
+        public LocalPlanPayload(String dslJson, String source) {
+            this(false, null, null, dslJson, source);
+        }
     }
 }

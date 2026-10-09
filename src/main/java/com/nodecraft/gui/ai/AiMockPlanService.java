@@ -6,6 +6,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 public final class AiMockPlanService {
@@ -30,9 +31,32 @@ public final class AiMockPlanService {
     public record MockConnection(String sourceRef, String sourcePortId, String targetRef, String targetPortId) {
     }
 
-    public record MockPlan(String summary, List<MockNode> nodes, List<MockConnection> connections, List<String> validationErrors) {
+    public static final String ABSTAIN_CODE = "local_planner_no_confident_plan";
+    public static final String ABSTAIN_MESSAGE =
+            "本地模式无法可靠规划这个请求。请使用 Remote Planner，或选择一个模板。";
+    public static final String ABSTAIN_MOBIUS_MESSAGE =
+            "本地模式无法可靠生成 Möbius。请使用 Remote Planner，或选择一个模板。";
+
+    private static final double MIN_CONFIDENT_SCORE = 2.5d;
+
+    public record MockPlan(
+            String summary,
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            List<String> validationErrors,
+            boolean abstained,
+            String abstainCode
+    ) {
+        public MockPlan(String summary, List<MockNode> nodes, List<MockConnection> connections, List<String> validationErrors) {
+            this(summary, nodes, connections, validationErrors, false, null);
+        }
+
         public boolean isValid() {
-            return validationErrors == null || validationErrors.isEmpty();
+            return !abstained && (validationErrors == null || validationErrors.isEmpty());
+        }
+
+        static MockPlan abstain(String code, String message) {
+            return new MockPlan(message, List.of(), List.of(), List.of(code), true, code);
         }
     }
 
@@ -41,15 +65,13 @@ public final class AiMockPlanService {
 
     enum MockTemplateKind {
         PLACEMENT,
-        MOBIUS,
         SPHERE,
         BOX_FILL,
         HELIX_PATH,
         TOWER,
         ARCH_PATH,
         RING_WALKWAY,
-        MULTI_LEVEL_PLATFORM,
-        GENERIC
+        MULTI_LEVEL_PLATFORM
     }
 
     record TemplateSelection(MockTemplateKind kind, double score) {
@@ -80,271 +102,289 @@ public final class AiMockPlanService {
         String lowerPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
         ParsedParameters params = parseAiPromptParameters(prompt);
 
+        if (isMobiusPrompt(lowerPrompt)) {
+            return MockPlan.abstain(ABSTAIN_CODE, ABSTAIN_MOBIUS_MESSAGE);
+        }
+
         TemplateSelectionResult selectionResult = selectTemplateCandidates(lowerPrompt);
         List<TemplateSelection> candidates = selectionResult.topCandidates();
-        List<MockNode> nodes = new ArrayList<>();
-        List<MockConnection> connections = new ArrayList<>();
-        List<String> errors = new ArrayList<>();
+        if (candidates.isEmpty() || candidates.getFirst().score() < MIN_CONFIDENT_SCORE) {
+            return MockPlan.abstain(ABSTAIN_CODE, ABSTAIN_MESSAGE);
+        }
 
-        MockTemplateKind selectedTemplate = MockTemplateKind.GENERIC;
-        MockTemplateKind attemptedFallback = candidates.size() > 1 ? candidates.get(1).kind() : MockTemplateKind.GENERIC;
+        MockTemplateKind selectedTemplate = null;
+        MockTemplateKind attemptedFallback = candidates.size() > 1 ? candidates.get(1).kind() : null;
         boolean fallbackUsed = false;
+        List<MockNode> nodes = List.of();
+        List<MockConnection> connections = List.of();
+        List<String> errors = List.of();
+        List<String> lastValidationErrors = new ArrayList<>();
 
         for (int i = 0; i < Math.min(2, candidates.size()); i++) {
-            MockTemplateKind candidateKind = candidates.get(i).kind();
+            TemplateSelection candidate = candidates.get(i);
+            if (candidate.score() < MIN_CONFIDENT_SCORE && i > 0) {
+                break;
+            }
             List<MockNode> trialNodes = new ArrayList<>();
             List<MockConnection> trialConnections = new ArrayList<>();
             List<String> trialErrors = new ArrayList<>();
 
-            buildTemplate(candidateKind, params, trialNodes, trialConnections);
+            buildTemplate(candidate.kind(), params, prompt, trialNodes, trialConnections);
             validatePlan(trialNodes, trialConnections, trialErrors);
-            if (trialErrors.isEmpty()) {
-                nodes = trialNodes;
-                connections = trialConnections;
-                errors = trialErrors;
-                selectedTemplate = candidateKind;
-                fallbackUsed = i > 0;
-                break;
+            if (!trialErrors.isEmpty()) {
+                lastValidationErrors = new ArrayList<>(trialErrors);
+                continue;
             }
+            if (!passesRegistryValidation(trialNodes, trialConnections, trialErrors)) {
+                lastValidationErrors = new ArrayList<>(trialErrors);
+                continue;
+            }
+            nodes = trialNodes;
+            connections = trialConnections;
+            errors = trialErrors;
+            selectedTemplate = candidate.kind();
+            fallbackUsed = i > 0;
+            break;
         }
 
-        if (nodes.isEmpty()) {
-            buildGenericTemplate(params, nodes, connections);
-            validatePlan(nodes, connections, errors);
-            selectedTemplate = MockTemplateKind.GENERIC;
+        if (selectedTemplate == null || nodes.isEmpty()) {
+            if (!lastValidationErrors.isEmpty()) {
+                NodeCraft.LOGGER.warn("[AI_MOCK] All candidates failed validation: {}", lastValidationErrors);
+            }
+            return MockPlan.abstain(ABSTAIN_CODE, ABSTAIN_MESSAGE);
         }
 
-        String summary = buildAiPlanSummary(params, selectedTemplate, attemptedFallback, fallbackUsed, selectionResult.rankedCandidates());
-        return new MockPlan(summary, nodes, connections, errors);
+        String summary = buildAiPlanSummary(
+                params, selectedTemplate, attemptedFallback, fallbackUsed, selectionResult.rankedCandidates());
+        return new MockPlan(summary, nodes, connections, errors, false, null);
+    }
+
+    /** Package-visible for tests: primary ranked kind, or null when abstaining. */
+    static MockTemplateKind selectPrimaryTemplateKind(String prompt) {
+        ensureTemplateWeightsLoaded();
+        String lowerPrompt = prompt == null ? "" : prompt.toLowerCase(Locale.ROOT);
+        if (isMobiusPrompt(lowerPrompt)) {
+            return null;
+        }
+        TemplateSelectionResult selectionResult = selectTemplateCandidates(lowerPrompt);
+        List<TemplateSelection> candidates = selectionResult.topCandidates();
+        if (candidates.isEmpty() || candidates.getFirst().score() < MIN_CONFIDENT_SCORE) {
+            return null;
+        }
+        return candidates.getFirst().kind();
+    }
+
+    private static boolean isMobiusPrompt(String lowerPrompt) {
+        return containsAny(lowerPrompt, "mobius", "möbius", "莫比乌斯");
+    }
+
+    private static boolean isExplicitPlacementIntent(String lowerPrompt) {
+        if (containsAny(lowerPrompt,
+                "选择节点", "方块选择", "selected block", "block selector", "选中方块",
+                "生成一个节点", "添加一个节点", "放置节点", "插入节点", "放一个节点")) {
+            return true;
+        }
+        boolean action = containsAny(lowerPrompt, "place", "add", "create", "insert", "放置", "添加", "插入", "放一个");
+        boolean context = containsAny(lowerPrompt, "node", "nodes", "canvas", "selector", "节点", "画布");
+        return action && context;
     }
 
     private static void buildTemplate(
-        MockTemplateKind kind,
-        ParsedParameters params,
-        List<MockNode> nodes,
-        List<MockConnection> connections
+            MockTemplateKind kind,
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
     ) {
         if (applyExternalTemplate(kind, nodes, connections)) {
             return;
         }
 
         switch (kind) {
-            case MOBIUS -> buildMobiusTemplate(params, nodes, connections);
-            case HELIX_PATH -> buildHelixPathTemplate(params, nodes, connections);
-            case BOX_FILL -> buildBoxFillTemplate(params, nodes, connections);
-            case TOWER -> buildTowerTemplate(params, nodes, connections);
-            case ARCH_PATH -> buildArchPathTemplate(params, nodes, connections);
-            case RING_WALKWAY -> buildRingWalkwayTemplate(params, nodes, connections);
-            case MULTI_LEVEL_PLATFORM -> buildMultiLevelPlatformTemplate(params, nodes, connections);
-            case SPHERE -> buildSphereTemplate(params, nodes, connections);
-            default -> buildGenericTemplate(params, nodes, connections);
+            case PLACEMENT -> buildPlacementTemplate(nodes, connections);
+            case HELIX_PATH -> buildHelixPathTemplate(params, prompt, nodes, connections);
+            case BOX_FILL -> buildBoxFillTemplate(params, prompt, nodes, connections);
+            case TOWER -> buildTowerTemplate(params, prompt, nodes, connections);
+            case ARCH_PATH -> buildArchPathTemplate(params, prompt, nodes, connections);
+            case RING_WALKWAY -> buildRingWalkwayTemplate(params, prompt, nodes, connections);
+            case MULTI_LEVEL_PLATFORM -> buildMultiLevelPlatformTemplate(params, prompt, nodes, connections);
+            case SPHERE -> buildSphereTemplate(params, prompt, nodes, connections);
         }
     }
 
-    private static void buildMobiusTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        nodes.add(new MockNode("center", "reference.points.block_position", -720.0f, -180.0f,
-            createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("axis", "reference.vectors.vector", -720.0f, 120.0f,
-            createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", true, "precision", 2)));
-        nodes.add(new MockNode("radius", "input.numeric.float", -360.0f, -220.0f,
-            createNodeState("value", (float) params.radius(), "min", 0.1f, "max", 2048.0f, "precision", 2)));
-        nodes.add(new MockNode("width", "input.numeric.float", -360.0f, -60.0f,
-            createNodeState("value", (float) params.width(), "min", 0.1f, "max", 512.0f, "precision", 2)));
-        nodes.add(new MockNode("thickness", "input.numeric.float", -360.0f, 100.0f,
-            createNodeState("value", (float) params.thickness(), "min", 0.1f, "max", 512.0f, "precision", 2)));
-        nodes.add(new MockNode("two", "input.numeric.float", -360.0f, 260.0f,
-            createNodeState("value", 2.0f, "min", 2.0f, "max", 2.0f, "precision", 0, "showLabel", false)));
-        nodes.add(new MockNode("width_half", "math.scalar_math.division", -120.0f, 20.0f, null));
-        nodes.add(new MockNode("minor_max", "math.scalar_math.max", 120.0f, 100.0f, null));
-        nodes.add(new MockNode("torus", "geometry.primitives.torus", 0.0f, 0.0f, null));
-        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 360.0f, 0.0f,
-            createNodeState("fillGeometry", params.thickness() <= 1.2d)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 720.0f, -120.0f,
-            createNodeState(
-                "previewEnabled", true,
-                "previewColor", pickPreviewColorByWidth(params.width()),
-                "transparency", pickPreviewTransparencyByThickness(params.thickness()),
-                "showOutline", params.width() >= 2.0d
-            )));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 720.0f, 120.0f,
-            createNodeState(
-                "recordUndo", true,
-                "useAsyncBake", true,
-                "solidGeometry", params.thickness() >= 1.0d
-            )));
-
-        connections.add(new MockConnection("center", "output_coordinate", "torus", "input_center"));
-        connections.add(new MockConnection("axis", "output_vector", "torus", "input_axis"));
-        connections.add(new MockConnection("radius", "output_value", "torus", "input_major_radius"));
-        connections.add(new MockConnection("width", "output_value", "width_half", "input_a"));
-        connections.add(new MockConnection("two", "output_value", "width_half", "input_b"));
-        connections.add(new MockConnection("width_half", "output_quotient", "minor_max", "input_a"));
-        connections.add(new MockConnection("thickness", "output_value", "minor_max", "input_b"));
-        connections.add(new MockConnection("minor_max", "output_max", "torus", "input_minor_radius"));
-        connections.add(new MockConnection("torus", "output_geometry", "bake", "input_geometry"));
-        connections.add(new MockConnection("bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("bake", "output_blocks", "apply", "input_blocks"));
+    private static void buildPlacementTemplate(List<MockNode> nodes, List<MockConnection> connections) {
+        nodes.add(new MockNode("selected_block", "world.selection.selected_block", 0.0f, 0.0f,
+                createNodeState("showLabel", true)));
     }
 
-    private static void buildSphereTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildSphereTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         nodes.add(new MockNode("center", "reference.points.block_position", -520.0f, -120.0f,
-            createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
+                createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("radius", "input.numeric.float", -520.0f, 40.0f,
-            createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
+                createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("sphere", "geometry.primitives.sphere", -180.0f, -20.0f, null));
-        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 120.0f, -20.0f,
-            createNodeState("fillGeometry", params.thickness() >= 1.0d)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, -120.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#3A86FF", "transparency", 0.34f, "showOutline", true)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 420.0f, 120.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", true)));
 
         connections.add(new MockConnection("center", "output_coordinate", "sphere", "input_center"));
         connections.add(new MockConnection("radius", "output_value", "sphere", "input_radius"));
-        connections.add(new MockConnection("sphere", "output_geometry", "bake", "input_geometry"));
-        connections.add(new MockConnection("bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("bake", "output_blocks", "apply", "input_blocks"));
+        appendSolidPreviewChain(nodes, connections, "sphere", prompt, params.thickness() >= 1.0d);
     }
 
-    private static void buildBoxFillTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildBoxFillTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         int sizeX = clampInt((int) Math.round(params.radius() * 2.0d), 4, 256);
         int sizeY = clampInt((int) Math.round(params.height()), 4, 256);
         int sizeZ = clampInt((int) Math.round(Math.max(params.radius() * 1.8d, params.width() * 4.0d)), 4, 256);
 
         nodes.add(new MockNode("center", "reference.points.block_position", -660.0f, -120.0f,
-            createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("size_x", "input.numeric.integer", -660.0f, 60.0f,
-            createNodeState("value", sizeX, "min", 1, "max", 1024, "step", 1)));
+                createNodeState("value", sizeX, "min", 1, "max", 1024, "step", 1)));
         nodes.add(new MockNode("size_y", "input.numeric.integer", -660.0f, 220.0f,
-            createNodeState("value", sizeY, "min", 1, "max", 512, "step", 1)));
+                createNodeState("value", sizeY, "min", 1, "max", 512, "step", 1)));
         nodes.add(new MockNode("size_z", "input.numeric.integer", -660.0f, 380.0f,
-            createNodeState("value", sizeZ, "min", 1, "max", 1024, "step", 1)));
+                createNodeState("value", sizeZ, "min", 1, "max", 1024, "step", 1)));
         nodes.add(new MockNode("box", "geometry.primitives.box", -280.0f, 180.0f, null));
-        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 80.0f, 180.0f,
-            createNodeState("fillGeometry", true)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, 80.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#2AA876", "transparency", 0.30f, "showOutline", true)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 420.0f, 280.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", true)));
 
         connections.add(new MockConnection("center", "output_coordinate", "box", "input_center"));
         connections.add(new MockConnection("size_x", "output_value", "box", "input_size_x"));
         connections.add(new MockConnection("size_y", "output_value", "box", "input_size_y"));
         connections.add(new MockConnection("size_z", "output_value", "box", "input_size_z"));
-        connections.add(new MockConnection("box", "output_geometry", "bake", "input_geometry"));
-        connections.add(new MockConnection("bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("bake", "output_blocks", "apply", "input_blocks"));
+        appendSolidPreviewChain(nodes, connections, "box", prompt, true);
     }
 
-    private static void buildHelixPathTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildHelixPathTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         int segmentsPerTurn = clampInt((int) Math.round(Math.max(12.0d, params.width() * 8.0d)), 12, 96);
-        float seedRadius = (float) Math.max(0.6d, Math.min(2.0d, params.thickness() * 0.8d));
+        float profileRadius = (float) Math.max(0.6d, Math.min(2.5d, params.thickness()));
 
         nodes.add(new MockNode("center", "reference.points.block_position", -1000.0f, -180.0f,
-            createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("axis", "reference.vectors.vector", -1000.0f, 40.0f,
-            createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
+                createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("radius", "input.numeric.float", -1000.0f, 220.0f,
-            createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
+                createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("pitch", "input.numeric.float", -1000.0f, 380.0f,
-            createNodeState("value", (float) params.pitch(), "min", 0.2f, "max", 256.0f, "precision", 2)));
+                createNodeState("value", (float) params.pitch(), "min", 0.2f, "max", 256.0f, "precision", 2)));
         nodes.add(new MockNode("turns", "input.numeric.float", -760.0f, 380.0f,
-            createNodeState("value", (float) params.turns(), "min", 0.5f, "max", 128.0f, "precision", 2)));
+                createNodeState("value", (float) params.turns(), "min", 0.5f, "max", 128.0f, "precision", 2)));
         nodes.add(new MockNode("segments", "input.numeric.integer", -760.0f, 220.0f,
-            createNodeState("value", segmentsPerTurn, "min", 6, "max", 128, "step", 1)));
-
-        nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 40.0f,
-            createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
-        nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -520.0f, 40.0f, null));
+                createNodeState("value", segmentsPerTurn, "min", 6, "max", 128, "step", 1)));
+        nodes.add(new MockNode("profile_radius", "input.numeric.float", -760.0f, 40.0f,
+                createNodeState("value", profileRadius, "min", 0.25f, "max", 8.0f, "precision", 2)));
         nodes.add(new MockNode("helix", "geometry.curves.helix", -520.0f, 280.0f, null));
         nodes.add(new MockNode("path_preview", "output.preview.preview_curves", -260.0f, 280.0f,
-            createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", true)));
-        nodes.add(new MockNode("curve_array", "pattern.linear.curve_array", 40.0f, 180.0f,
-            createNodeState("orientToPath", true, "includeEnds", true)));
-        nodes.add(new MockNode("array_bake", "geometry.voxel.voxelize_geometry", 200.0f, 180.0f,
-            createNodeState("fillGeometry", true)));
+                createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", true)));
+        nodes.add(new MockNode("profile", "geometry.profiles.circle_profile", -520.0f, 40.0f, null));
+        nodes.add(new MockNode("sweep", "geometry.solids.sweep", 40.0f, 160.0f,
+                createNodeState("orientToPath", true, "closeProfile", true)));
 
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 80.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#45B36B", "transparency", 0.36f, "showOutline", false)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 360.0f, 280.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", false)));
-
-        connections.add(new MockConnection("center", "output_coordinate", "seed_sphere", "input_center"));
-        connections.add(new MockConnection("seed_radius", "output_value", "seed_sphere", "input_radius"));
         connections.add(new MockConnection("center", "output_coordinate", "helix", "input_center"));
         connections.add(new MockConnection("axis", "output_vector", "helix", "input_axis"));
         connections.add(new MockConnection("radius", "output_value", "helix", "input_radius"));
         connections.add(new MockConnection("pitch", "output_value", "helix", "input_pitch"));
         connections.add(new MockConnection("turns", "output_value", "helix", "input_turns"));
         connections.add(new MockConnection("segments", "output_value", "helix", "input_segments_per_turn"));
-
         connections.add(new MockConnection("helix", "output_path", "path_preview", "input_path"));
-        connections.add(new MockConnection("seed_sphere", "output_geometry", "curve_array", "input_geometry"));
-        connections.add(new MockConnection("helix", "output_path", "curve_array", "input_path"));
-        connections.add(new MockConnection("curve_array", "output_geometry", "array_bake", "input_geometry"));
-        connections.add(new MockConnection("array_bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("array_bake", "output_blocks", "apply", "input_blocks"));
+        connections.add(new MockConnection("center", "output_coordinate", "profile", "input_center"));
+        connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
+        connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
+        connections.add(new MockConnection("helix", "output_path", "sweep", "input_path"));
+        appendSweepPreviewChain(nodes, connections, "sweep", prompt);
     }
 
-    private static void buildTowerTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildTowerTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         int baseY = 72;
-        int topY = baseY + clampInt((int) Math.round(params.height()), 8, 192);
-        float radius = (float) Math.max(1.0d, Math.min(64.0d, params.radius() * 0.35d));
+        int gap = clampInt((int) Math.round(Math.max(6.0d, params.height() * 0.28d)), 6, 48);
+        int baseSize = clampInt((int) Math.round(Math.max(8.0d, params.radius() * 0.9d)), 6, 64);
+        int midSize = clampInt(baseSize - 2, 4, 56);
+        int topSize = clampInt(midSize - 2, 3, 48);
+        int slab = clampInt((int) Math.round(Math.max(2.0d, params.thickness())), 1, 12);
 
-        nodes.add(new MockNode("tower_bottom", "reference.points.block_position", -640.0f, -80.0f,
-            createNodeState("x", 0, "y", baseY, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("tower_top", "reference.points.block_position", -640.0f, 120.0f,
-            createNodeState("x", 0, "y", topY, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("tower_radius", "input.numeric.float", -640.0f, 300.0f,
-            createNodeState("value", radius, "min", 1.0f, "max", 128.0f, "precision", 2)));
-        nodes.add(new MockNode("tower_cylinder", "geometry.primitives.cylinder", -260.0f, 120.0f, null));
-        nodes.add(new MockNode("tower_bake", "geometry.voxel.voxelize_geometry", 80.0f, 120.0f,
-            createNodeState("fillGeometry", true)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 420.0f, 30.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#6BA368", "transparency", 0.30f, "showOutline", true)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 420.0f, 220.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", true)));
+        nodes.add(new MockNode("base_center", "reference.points.block_position", -900.0f, -160.0f,
+                createNodeState("x", 0, "y", baseY, "z", 0, "showLabel", true)));
+        nodes.add(new MockNode("mid_center", "reference.points.block_position", -900.0f, 20.0f,
+                createNodeState("x", 0, "y", baseY + gap, "z", 0, "showLabel", false)));
+        nodes.add(new MockNode("top_center", "reference.points.block_position", -900.0f, 200.0f,
+                createNodeState("x", 0, "y", baseY + gap * 2, "z", 0, "showLabel", false)));
+        nodes.add(new MockNode("sx0", "input.numeric.integer", -700.0f, -200.0f,
+                createNodeState("value", baseSize, "min", 2, "max", 128, "step", 1)));
+        nodes.add(new MockNode("sx1", "input.numeric.integer", -700.0f, 0.0f,
+                createNodeState("value", midSize, "min", 2, "max", 128, "step", 1)));
+        nodes.add(new MockNode("sx2", "input.numeric.integer", -700.0f, 200.0f,
+                createNodeState("value", topSize, "min", 2, "max", 128, "step", 1)));
+        nodes.add(new MockNode("sy", "input.numeric.integer", -700.0f, 360.0f,
+                createNodeState("value", slab, "min", 1, "max", 32, "step", 1)));
+        nodes.add(new MockNode("base_box", "geometry.primitives.box", -420.0f, -120.0f, null));
+        nodes.add(new MockNode("mid_box", "geometry.primitives.box", -420.0f, 60.0f, null));
+        nodes.add(new MockNode("top_box", "geometry.primitives.box", -420.0f, 240.0f, null));
+        nodes.add(new MockNode("union", "geometry.combine.geometry", -120.0f, 80.0f,
+                createNodeState("inputCount", 3)));
 
-        connections.add(new MockConnection("tower_bottom", "output_coordinate", "tower_cylinder", "input_start"));
-        connections.add(new MockConnection("tower_top", "output_coordinate", "tower_cylinder", "input_end"));
-        connections.add(new MockConnection("tower_radius", "output_value", "tower_cylinder", "input_radius"));
-        connections.add(new MockConnection("tower_cylinder", "output_geometry", "tower_bake", "input_geometry"));
-        connections.add(new MockConnection("tower_bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("tower_bake", "output_blocks", "apply", "input_blocks"));
+        connections.add(new MockConnection("base_center", "output_coordinate", "base_box", "input_center"));
+        connections.add(new MockConnection("sx0", "output_value", "base_box", "input_size_x"));
+        connections.add(new MockConnection("sy", "output_value", "base_box", "input_size_y"));
+        connections.add(new MockConnection("sx0", "output_value", "base_box", "input_size_z"));
+        connections.add(new MockConnection("mid_center", "output_coordinate", "mid_box", "input_center"));
+        connections.add(new MockConnection("sx1", "output_value", "mid_box", "input_size_x"));
+        connections.add(new MockConnection("sy", "output_value", "mid_box", "input_size_y"));
+        connections.add(new MockConnection("sx1", "output_value", "mid_box", "input_size_z"));
+        connections.add(new MockConnection("top_center", "output_coordinate", "top_box", "input_center"));
+        connections.add(new MockConnection("sx2", "output_value", "top_box", "input_size_x"));
+        connections.add(new MockConnection("sy", "output_value", "top_box", "input_size_y"));
+        connections.add(new MockConnection("sx2", "output_value", "top_box", "input_size_z"));
+        connections.add(new MockConnection("base_box", "output_geometry", "union", "input_geometry_0"));
+        connections.add(new MockConnection("mid_box", "output_geometry", "union", "input_geometry_1"));
+        connections.add(new MockConnection("top_box", "output_geometry", "union", "input_geometry_2"));
+        appendSolidPreviewChain(nodes, connections, "union", prompt, true);
     }
 
-    private static void buildArchPathTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildArchPathTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         int segments = clampInt((int) Math.round(Math.max(16.0d, params.width() * 10.0d)), 16, 120);
-        float seedRadius = (float) Math.max(0.8d, Math.min(3.0d, params.thickness()));
+        float profileRadius = (float) Math.max(0.8d, Math.min(3.0d, params.thickness()));
 
         nodes.add(new MockNode("arch_center", "reference.points.block_position", -980.0f, -160.0f,
-            createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("arch_normal", "reference.vectors.vector", -980.0f, 20.0f,
-            createNodeState("x", 0.0d, "y", 0.0d, "z", 1.0d, "showLabel", false, "precision", 2)));
+                createNodeState("x", 0.0d, "y", 0.0d, "z", 1.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("arch_radius", "input.numeric.float", -980.0f, 200.0f,
-            createNodeState("value", (float) Math.max(4.0d, params.radius()), "min", 1.0f, "max", 512.0f, "precision", 2)));
+                createNodeState("value", (float) Math.max(4.0d, params.radius()), "min", 1.0f, "max", 512.0f, "precision", 2)));
         nodes.add(new MockNode("arch_start", "input.numeric.float", -980.0f, 360.0f,
-            createNodeState("value", 180.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
+                createNodeState("value", 180.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
         nodes.add(new MockNode("arch_end", "input.numeric.float", -760.0f, 360.0f,
-            createNodeState("value", 0.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
+                createNodeState("value", 0.0f, "min", -360.0f, "max", 360.0f, "precision", 1, "showLabel", false)));
         nodes.add(new MockNode("arch_segments", "input.numeric.integer", -760.0f, 200.0f,
-            createNodeState("value", segments, "min", 8, "max", 256, "step", 1)));
-
+                createNodeState("value", segments, "min", 8, "max", 256, "step", 1)));
+        nodes.add(new MockNode("profile_radius", "input.numeric.float", -760.0f, 20.0f,
+                createNodeState("value", profileRadius, "min", 0.25f, "max", 8.0f, "precision", 2)));
         nodes.add(new MockNode("arch_curve", "geometry.curves.arc", -540.0f, 200.0f, null));
         nodes.add(new MockNode("path_preview", "output.preview.preview_curves", -280.0f, 200.0f,
-            createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", false)));
-
-        nodes.add(new MockNode("seed_radius", "input.numeric.float", -760.0f, 20.0f,
-            createNodeState("value", seedRadius, "min", 0.25f, "max", 8.0f, "precision", 2, "showLabel", false)));
-        nodes.add(new MockNode("seed_sphere", "geometry.primitives.sphere", -540.0f, 20.0f, null));
-        nodes.add(new MockNode("curve_array", "pattern.linear.curve_array", 20.0f, 120.0f,
-            createNodeState("orientToPath", true, "includeEnds", true)));
-        nodes.add(new MockNode("array_bake", "geometry.voxel.voxelize_geometry", 180.0f, 120.0f,
-            createNodeState("fillGeometry", true)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 40.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#F4A261", "transparency", 0.34f, "showOutline", false)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 360.0f, 220.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", false)));
+                createNodeState("previewEnabled", true, "pathColor", "#FFD933", "lineWidth", 1.8f, "showDirection", false)));
+        nodes.add(new MockNode("profile", "geometry.profiles.circle_profile", -540.0f, 20.0f, null));
+        nodes.add(new MockNode("sweep", "geometry.solids.sweep", 20.0f, 120.0f,
+                createNodeState("orientToPath", true, "closeProfile", true)));
 
         connections.add(new MockConnection("arch_center", "output_coordinate", "arch_curve", "input_center"));
         connections.add(new MockConnection("arch_normal", "output_vector", "arch_curve", "input_normal"));
@@ -352,49 +392,56 @@ public final class AiMockPlanService {
         connections.add(new MockConnection("arch_start", "output_value", "arch_curve", "input_start_angle"));
         connections.add(new MockConnection("arch_end", "output_value", "arch_curve", "input_end_angle"));
         connections.add(new MockConnection("arch_segments", "output_value", "arch_curve", "input_resolution"));
-
         connections.add(new MockConnection("arch_curve", "output_path", "path_preview", "input_path"));
-
-        connections.add(new MockConnection("arch_center", "output_coordinate", "seed_sphere", "input_center"));
-        connections.add(new MockConnection("seed_radius", "output_value", "seed_sphere", "input_radius"));
-        connections.add(new MockConnection("seed_sphere", "output_geometry", "curve_array", "input_geometry"));
-        connections.add(new MockConnection("arch_curve", "output_path", "curve_array", "input_path"));
-        connections.add(new MockConnection("curve_array", "output_geometry", "array_bake", "input_geometry"));
-        connections.add(new MockConnection("array_bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("array_bake", "output_blocks", "apply", "input_blocks"));
+        connections.add(new MockConnection("arch_center", "output_coordinate", "profile", "input_center"));
+        connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
+        connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
+        connections.add(new MockConnection("arch_curve", "output_path", "sweep", "input_path"));
+        appendSweepPreviewChain(nodes, connections, "sweep", prompt);
     }
 
-    private static void buildRingWalkwayTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        float majorRadius = (float) Math.max(6.0d, params.radius());
-        float minorRadius = (float) Math.max(1.2d, Math.min(8.0d, params.width() * 0.6d));
+    private static void buildRingWalkwayTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
+        float outerRadius = (float) Math.max(6.0d, params.radius());
+        float walkwayWidth = (float) Math.max(1.5d, Math.min(8.0d, params.width()));
+        float innerRadius = Math.max(1.0f, outerRadius - walkwayWidth);
+        float thickness = (float) Math.max(0.8d, Math.min(4.0d, params.thickness()));
 
-        nodes.add(new MockNode("center", "reference.points.block_position", -700.0f, -120.0f,
-            createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("axis", "reference.vectors.vector", -700.0f, 60.0f,
-            createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
-        nodes.add(new MockNode("major", "input.numeric.float", -700.0f, 240.0f,
-            createNodeState("value", majorRadius, "min", 2.0f, "max", 1024.0f, "precision", 2)));
-        nodes.add(new MockNode("minor", "input.numeric.float", -700.0f, 380.0f,
-            createNodeState("value", minorRadius, "min", 0.5f, "max", 128.0f, "precision", 2)));
+        nodes.add(new MockNode("center", "reference.points.block_position", -800.0f, -80.0f,
+                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+        nodes.add(new MockNode("outer_r", "input.numeric.float", -800.0f, 80.0f,
+                createNodeState("value", outerRadius, "min", 2.0f, "max", 1024.0f, "precision", 2)));
+        nodes.add(new MockNode("inner_r", "input.numeric.float", -800.0f, 220.0f,
+                createNodeState("value", innerRadius, "min", 0.5f, "max", 1024.0f, "precision", 2)));
+        nodes.add(new MockNode("up", "reference.vectors.vector", -800.0f, 360.0f,
+                createNodeState("x", 0.0d, "y", thickness, "z", 0.0d, "showLabel", false, "precision", 2)));
+        nodes.add(new MockNode("outer", "geometry.profiles.circle_profile", -480.0f, 40.0f, null));
+        nodes.add(new MockNode("inner", "geometry.profiles.circle_profile", -480.0f, 220.0f, null));
+        nodes.add(new MockNode("ring_region", "geometry.profiles.boolean_2d", -200.0f, 120.0f,
+                createNodeState("operation", "DIFFERENCE")));
+        nodes.add(new MockNode("extrude", "geometry.solids.extrude_region", 80.0f, 120.0f, null));
 
-        nodes.add(new MockNode("torus", "geometry.primitives.torus", -320.0f, 150.0f, null));
-        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 40.0f, 150.0f,
-            createNodeState("fillGeometry", true)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 380.0f, 60.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#7FB069", "transparency", 0.30f, "showOutline", true)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 380.0f, 250.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", true)));
-
-        connections.add(new MockConnection("center", "output_coordinate", "torus", "input_center"));
-        connections.add(new MockConnection("axis", "output_vector", "torus", "input_axis"));
-        connections.add(new MockConnection("major", "output_value", "torus", "input_major_radius"));
-        connections.add(new MockConnection("minor", "output_value", "torus", "input_minor_radius"));
-        connections.add(new MockConnection("torus", "output_geometry", "bake", "input_geometry"));
-        connections.add(new MockConnection("bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("bake", "output_blocks", "apply", "input_blocks"));
+        connections.add(new MockConnection("center", "output_coordinate", "outer", "input_center"));
+        connections.add(new MockConnection("outer_r", "output_value", "outer", "input_radius"));
+        connections.add(new MockConnection("center", "output_coordinate", "inner", "input_center"));
+        connections.add(new MockConnection("inner_r", "output_value", "inner", "input_radius"));
+        connections.add(new MockConnection("outer", "output_profile", "ring_region", "input_profile_a"));
+        connections.add(new MockConnection("inner", "output_profile", "ring_region", "input_profile_b"));
+        connections.add(new MockConnection("ring_region", "output_region", "extrude", "input_region"));
+        connections.add(new MockConnection("up", "output_vector", "extrude", "input_direction"));
+        appendSolidPreviewChain(nodes, connections, "extrude", prompt, true);
     }
 
-    private static void buildMultiLevelPlatformTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
+    private static void buildMultiLevelPlatformTemplate(
+            ParsedParameters params,
+            String prompt,
+            List<MockNode> nodes,
+            List<MockConnection> connections
+    ) {
         int baseSize = clampInt((int) Math.round(Math.max(10.0d, params.radius() * 1.6d)), 8, 180);
         int middleSize = clampInt(baseSize - 4, 6, 160);
         int topSize = clampInt(middleSize - 4, 4, 140);
@@ -402,98 +449,157 @@ public final class AiMockPlanService {
         int gap = clampInt((int) Math.round(Math.max(4.0d, params.height() * 0.25d)), 3, 48);
 
         nodes.add(new MockNode("level0_center", "reference.points.block_position", -1120.0f, -180.0f,
-            createNodeState("x", 0, "y", 70, "z", 0, "showLabel", true)));
+                createNodeState("x", 0, "y", 70, "z", 0, "showLabel", true)));
         nodes.add(new MockNode("level1_center", "reference.points.block_position", -1120.0f, 0.0f,
-            createNodeState("x", 0, "y", 70 + gap, "z", 0, "showLabel", false)));
+                createNodeState("x", 0, "y", 70 + gap, "z", 0, "showLabel", false)));
         nodes.add(new MockNode("level2_center", "reference.points.block_position", -1120.0f, 180.0f,
-            createNodeState("x", 0, "y", 70 + gap * 2, "z", 0, "showLabel", false)));
-
+                createNodeState("x", 0, "y", 70 + gap * 2, "z", 0, "showLabel", false)));
         nodes.add(new MockNode("sx0", "input.numeric.integer", -900.0f, -230.0f,
-            createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
+                createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz0", "input.numeric.integer", -900.0f, -120.0f,
-            createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-
+                createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sx1", "input.numeric.integer", -900.0f, -10.0f,
-            createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
+                createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz1", "input.numeric.integer", -900.0f, 100.0f,
-            createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-
+                createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sx2", "input.numeric.integer", -900.0f, 210.0f,
-            createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
+                createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sz2", "input.numeric.integer", -900.0f, 320.0f,
-            createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-
+                createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("sy", "input.numeric.integer", -900.0f, 430.0f,
-            createNodeState("value", thickness, "min", 1, "max", 32, "step", 1, "showLabel", false)));
-
+                createNodeState("value", thickness, "min", 1, "max", 32, "step", 1, "showLabel", false)));
         nodes.add(new MockNode("box0", "geometry.primitives.box", -620.0f, -120.0f, null));
         nodes.add(new MockNode("box1", "geometry.primitives.box", -620.0f, 80.0f, null));
         nodes.add(new MockNode("box2", "geometry.primitives.box", -620.0f, 280.0f, null));
-
         nodes.add(new MockNode("union", "geometry.combine.geometry", -320.0f, 120.0f,
-            createNodeState("inputCount", 3)));
-        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 20.0f, 120.0f,
-            createNodeState("fillGeometry", true)));
-        nodes.add(new MockNode("preview", "output.preview.geometry_viewer", 360.0f, 40.0f,
-            createNodeState("previewEnabled", true, "previewColor", "#5AA9E6", "transparency", 0.32f, "showOutline", true)));
-        nodes.add(new MockNode("apply", "output.execute.apply_changes", 360.0f, 230.0f,
-            createNodeState("recordUndo", true, "useAsyncBake", true, "solidGeometry", true)));
+                createNodeState("inputCount", 3)));
 
         connections.add(new MockConnection("level0_center", "output_coordinate", "box0", "input_center"));
         connections.add(new MockConnection("sx0", "output_value", "box0", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box0", "input_size_y"));
         connections.add(new MockConnection("sz0", "output_value", "box0", "input_size_z"));
-
         connections.add(new MockConnection("level1_center", "output_coordinate", "box1", "input_center"));
         connections.add(new MockConnection("sx1", "output_value", "box1", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box1", "input_size_y"));
         connections.add(new MockConnection("sz1", "output_value", "box1", "input_size_z"));
-
         connections.add(new MockConnection("level2_center", "output_coordinate", "box2", "input_center"));
         connections.add(new MockConnection("sx2", "output_value", "box2", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box2", "input_size_y"));
         connections.add(new MockConnection("sz2", "output_value", "box2", "input_size_z"));
-
         connections.add(new MockConnection("box0", "output_geometry", "union", "input_geometry_0"));
         connections.add(new MockConnection("box1", "output_geometry", "union", "input_geometry_1"));
         connections.add(new MockConnection("box2", "output_geometry", "union", "input_geometry_2"));
-
-        connections.add(new MockConnection("union", "output_geometry", "bake", "input_geometry"));
-        connections.add(new MockConnection("bake", "output_blocks", "preview", "input_blocks"));
-        connections.add(new MockConnection("bake", "output_blocks", "apply", "input_blocks"));
+        appendSolidPreviewChain(nodes, connections, "union", prompt, true);
     }
 
-    private static void buildGenericTemplate(ParsedParameters params, List<MockNode> nodes, List<MockConnection> connections) {
-        buildSphereTemplate(params, nodes, connections);
+    private static void appendSolidPreviewChain(
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            String geometryRef,
+            String prompt,
+            boolean fillGeometry
+    ) {
+        nodes.add(new MockNode("bake", "geometry.voxel.voxelize_geometry", 200.0f, 80.0f,
+                createNodeState("fillGeometry", fillGeometry)));
+        connections.add(new MockConnection(geometryRef, "output_geometry", "bake", "input_geometry"));
+        appendBlocksMaterialPreviewChain(nodes, connections, "bake", "output_blocks", prompt);
+    }
+
+    private static void appendSweepPreviewChain(
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            String sweepRef,
+            String prompt
+    ) {
+        nodes.add(new MockNode("strip_bake", "output.execute.bake_surface_strip_to_blocks", 200.0f, 80.0f,
+                createNodeState("mode", "LATTICE")));
+        connections.add(new MockConnection(sweepRef, "output_surface_strip", "strip_bake", "input_surface_strip"));
+        appendBlocksMaterialPreviewChain(nodes, connections, "strip_bake", "output_blocks", prompt);
+    }
+
+    private static void appendBlocksMaterialPreviewChain(
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            String blocksSourceRef,
+            String blocksSourcePort,
+            String prompt
+    ) {
+        nodes.add(new MockNode("block_type", "input.type_selectors.block_type_selector", 420.0f, -80.0f,
+                createNodeState("selectedBlock", "minecraft:stone")));
+        nodes.add(new MockNode("assign", "material.basic_assignment.assign_block_type", 420.0f, 80.0f, null));
+        nodes.add(new MockNode("preview", "output.preview.preview_blocks", 680.0f, 40.0f,
+                createNodeState("previewEnabled", true)));
+
+        connections.add(new MockConnection(blocksSourceRef, blocksSourcePort, "assign", "input_coordinates"));
+        connections.add(new MockConnection("block_type", "output_block_id", "assign", "input_block_type"));
+        connections.add(new MockConnection("assign", "output_placements", "preview", "input_block_placements"));
+
+        if (AiIntentAnalysisService.hasWorldApplyIntent(prompt)) {
+            nodes.add(new MockNode("apply", "output.execute.apply_changes", 680.0f, 220.0f,
+                    createNodeState("recordUndo", true, "useAsyncBake", true)));
+            connections.add(new MockConnection("assign", "output_placements", "apply", "input_block_placements"));
+        }
+    }
+
+    private static boolean passesRegistryValidation(
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            List<String> errors
+    ) {
+        try {
+            NodeRegistry registry = NodeRegistry.getInstance();
+            if (registry == null) {
+                return true;
+            }
+            boolean anyKnownType = false;
+            for (MockNode node : nodes) {
+                if (node == null || node.typeId() == null || node.typeId().isBlank()) {
+                    continue;
+                }
+                if (registry.createNodeInstance(node.typeId()) != null) {
+                    anyKnownType = true;
+                    break;
+                }
+            }
+            // Unit / early-bootstrap contexts may lack a populated registry.
+            if (!anyKnownType) {
+                return true;
+            }
+
+            AiGraphPlan plan = AiGraphPlanDslAdapterService.fromMockPlan(
+                    new MockPlan("validate", nodes, connections, List.of()));
+            AiGraphDslSupport.PlanValidationResult result =
+                    AiGraphDslSupport.validatePlan(plan, registry);
+            if (result == null || result.errors() == null || result.errors().isEmpty()) {
+                return true;
+            }
+            errors.addAll(result.errors());
+            NodeCraft.LOGGER.warn("[AI_MOCK] Registry validation failed for mock candidate: {}", result.errors());
+            return false;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("AiMockPlanService: registry validation skipped: {}", e.toString());
+            return true;
+        }
     }
 
     private static TemplateSelectionResult selectTemplateCandidates(String lowerPrompt) {
-        if (containsAny(lowerPrompt, "place", "add", "create", "insert", "放置", "添加", "插入", "生成一个节点", "放一个", "选择节点", "方块选择", "selected block", "block selector")) {
+        if (isExplicitPlacementIntent(lowerPrompt)) {
             List<TemplateSelection> ranked = List.of(
-                new TemplateSelection(MockTemplateKind.PLACEMENT, 1000.0d),
-                new TemplateSelection(MockTemplateKind.GENERIC, 1.0d)
-            );
-            return new TemplateSelectionResult(ranked, ranked);
-        }
-
-        if (containsAny(lowerPrompt, "mobius", "möbius", "莫比乌斯")) {
-            List<TemplateSelection> ranked = List.of(
-                new TemplateSelection(MockTemplateKind.MOBIUS, 1000.0d),
-                new TemplateSelection(MockTemplateKind.RING_WALKWAY, 10.0d)
+                    new TemplateSelection(MockTemplateKind.PLACEMENT, 1000.0d)
             );
             return new TemplateSelectionResult(ranked, ranked);
         }
 
         List<TemplateSelection> scored = new ArrayList<>();
         for (MockTemplateKind kind : List.of(
-            MockTemplateKind.PLACEMENT,
-            MockTemplateKind.HELIX_PATH,
-            MockTemplateKind.BOX_FILL,
-            MockTemplateKind.SPHERE,
-            MockTemplateKind.TOWER,
-            MockTemplateKind.ARCH_PATH,
-            MockTemplateKind.RING_WALKWAY,
-            MockTemplateKind.MULTI_LEVEL_PLATFORM
+                MockTemplateKind.PLACEMENT,
+                MockTemplateKind.HELIX_PATH,
+                MockTemplateKind.BOX_FILL,
+                MockTemplateKind.SPHERE,
+                MockTemplateKind.TOWER,
+                MockTemplateKind.ARCH_PATH,
+                MockTemplateKind.RING_WALKWAY,
+                MockTemplateKind.MULTI_LEVEL_PLATFORM
         )) {
             scored.add(new TemplateSelection(kind, scoreFromWeightedKeywords(lowerPrompt, kind)));
         }
@@ -502,23 +608,12 @@ public final class AiMockPlanService {
 
         List<TemplateSelection> top = new ArrayList<>();
         for (TemplateSelection candidate : scored) {
-            if (candidate.score() > 0.0d) {
+            if (candidate.score() >= MIN_CONFIDENT_SCORE) {
                 top.add(candidate);
             }
             if (top.size() >= 2) {
                 break;
             }
-        }
-
-        if (top.isEmpty()) {
-            List<TemplateSelection> fallback = List.of(
-                new TemplateSelection(MockTemplateKind.GENERIC, 0.0d),
-                new TemplateSelection(MockTemplateKind.SPHERE, 0.0d)
-            );
-            return new TemplateSelectionResult(fallback, scored);
-        }
-        if (top.size() == 1) {
-            top.add(new TemplateSelection(MockTemplateKind.GENERIC, 0.0d));
         }
         return new TemplateSelectionResult(top, scored);
     }
@@ -585,26 +680,6 @@ public final class AiMockPlanService {
         return -1.0d;
     }
 
-    private static String pickPreviewColorByWidth(double width) {
-        if (width >= 4.0d) {
-            return "#3A86FF";
-        }
-        if (width >= 2.5d) {
-            return "#2AA876";
-        }
-        return "#45B36B";
-    }
-
-    private static float pickPreviewTransparencyByThickness(double thickness) {
-        if (thickness >= 2.0d) {
-            return 0.28f;
-        }
-        if (thickness >= 1.2d) {
-            return 0.34f;
-        }
-        return 0.42f;
-    }
-
     private static String buildAiPlanSummary(
         ParsedParameters params,
         MockTemplateKind templateKind,
@@ -612,9 +687,8 @@ public final class AiMockPlanService {
         boolean fallbackUsed,
         List<TemplateSelection> rankedCandidates
     ) {
-        String templateName = switch (Objects.requireNonNullElse(templateKind, MockTemplateKind.GENERIC)) {
+        String templateName = templateKind == null ? "none" : switch (templateKind) {
             case PLACEMENT -> "placement";
-            case MOBIUS -> "mobius";
             case SPHERE -> "sphere";
             case BOX_FILL -> "box_fill";
             case HELIX_PATH -> "helix_path";
@@ -622,11 +696,9 @@ public final class AiMockPlanService {
             case ARCH_PATH -> "arch_path";
             case RING_WALKWAY -> "ring_walkway";
             case MULTI_LEVEL_PLATFORM -> "multi_level_platform";
-            case GENERIC -> "generic";
         };
-        String fallbackName = switch (Objects.requireNonNullElse(fallbackTemplate, MockTemplateKind.GENERIC)) {
+        String fallbackName = fallbackTemplate == null ? "none" : switch (fallbackTemplate) {
             case PLACEMENT -> "placement";
-            case MOBIUS -> "mobius";
             case SPHERE -> "sphere";
             case BOX_FILL -> "box_fill";
             case HELIX_PATH -> "helix_path";
@@ -634,7 +706,6 @@ public final class AiMockPlanService {
             case ARCH_PATH -> "arch_path";
             case RING_WALKWAY -> "ring_walkway";
             case MULTI_LEVEL_PLATFORM -> "multi_level_platform";
-            case GENERIC -> "generic";
         };
 
         String scoreDebug = buildScoreDebugText(rankedCandidates, 3);
@@ -1027,8 +1098,11 @@ public final class AiMockPlanService {
     private static Map<MockTemplateKind, List<WeightedKeyword>> createPositiveKeywordTable() {
         Map<MockTemplateKind, List<WeightedKeyword>> map = new HashMap<>();
         map.put(MockTemplateKind.PLACEMENT, List.of(
-            kw("place", 4.0d), kw("add", 3.0d), kw("insert", 2.8d), kw("create", 2.6d), kw("node", 2.0d), kw("selector", 3.0d), kw("selected block", 4.0d), kw("block selector", 4.0d),
-            kw("放置", 4.0d), kw("添加", 3.0d), kw("插入", 2.8d), kw("创建", 2.6d), kw("节点", 2.0d), kw("选择节点", 4.0d), kw("方块选择", 4.0d), kw("选中方块", 3.2d)
+            kw("selected block", 4.0d), kw("block selector", 4.0d), kw("selector", 2.5d),
+            kw("place a node", 5.0d), kw("add node", 5.0d), kw("insert node", 5.0d),
+            kw("选择节点", 4.0d), kw("方块选择", 4.0d), kw("选中方块", 3.2d),
+            kw("放置节点", 5.0d), kw("添加一个节点", 5.0d), kw("插入节点", 5.0d),
+            kw("canvas", 1.5d), kw("画布", 1.5d), kw("节点", 1.2d)
         ));
         map.put(MockTemplateKind.HELIX_PATH, List.of(
             kw("helix", 3.2d), kw("spiral", 2.6d), kw("coil", 2.4d), kw("spring", 2.2d),

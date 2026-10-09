@@ -562,6 +562,16 @@ public final class AiAssistantController {
             }
 
             AiPlannerService.LocalPlanPayload localPlan = plannerService.planLocal(trimmedPrompt);
+            if (localPlan.abstained()) {
+                String message = localPlan.message() == null || localPlan.message().isBlank()
+                        ? AiMockPlanService.ABSTAIN_MESSAGE
+                        : localPlan.message();
+                setPendingAiPlan(null);
+                session.setPlanStatusMessage(message);
+                addAiChatMessage("assistant", message);
+                NodeCraft.LOGGER.info("[AI_SEND] Local planner abstained. code={}", localPlan.abstainCode());
+                return;
+            }
             applyDslResponse(trimmedPrompt, localPlan.dslJson(), localPlan.source());
         } catch (Exception e) {
             String error = "Failed to submit prompt: " + e.getMessage();
