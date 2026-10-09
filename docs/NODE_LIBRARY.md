@@ -20,7 +20,7 @@
 | `geometry.profiles` | 26 |
 | `geometry.sdf` | 13 |
 | `geometry.solids` | 23 |
-| `geometry.voxel` | 1 |
+| `geometry.voxel` | 2 |
 | `input.context` | 4 |
 | `input.numeric` | 16 |
 | `input.type_selectors` | 4 |
@@ -42,7 +42,7 @@
 | `math.trigonometry` | 10 |
 | `math.vector` | 1 |
 | `output.debug` | 4 |
-| `output.execute` | 9 |
+| `output.execute` | 8 |
 | `output.export` | 4 |
 | `output.preview` | 12 |
 | `pattern.grid` | 5 |
@@ -278,11 +278,12 @@
 | Shrinkwrap Points To Voxel Geometry | `geometry.solids.shrinkwrap_points_voxel_geometry` | Voxelizes geometry to blocks, then snaps each query point to the nearest voxel block center (shell when fill is off); distinct from triangle strip shrinkwrap | `ShrinkwrapPointsToVoxelGeometryNode` |
 | Extrude Region | `geometry.solids.extrude_region` | Extrudes a planar region (outer + holes) into solid geometry via prism difference | `ExtrudeRegionNode` |
 
-## geometry.voxel (1)
+## geometry.voxel (2)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Voxelize Geometry | `geometry.voxel.voxelize_geometry` | Converts geometry into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world. Use Apply Changes to place. | `VoxelizeGeometryNode` |
+| Surface Strip To Blocks | `geometry.voxel.surface_strip_to_blocks` | Converts a surface strip into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world. Use Apply Changes to place. | `SurfaceStripToBlocksNode` |
 
 ## input.context (4)
 
@@ -556,7 +557,7 @@
 | Stopwatch | `output.debug.execution_timer` | Measures elapsed wall-clock time between explicit Start and Stop pulses. | `StopwatchNode` |
 | Panel | `output.debug.data_inspector` | Displays the connected input value as bounded text for inspection. | `PanelNode` |
 
-## output.execute (9)
+## output.execute (8)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
@@ -564,7 +565,6 @@
 | Bake Status | `output.execute.bake_status` | Polls BakePlacementService for a task ID owned by the current actor and reports state, progress, placed, skipped, and rollback-failed counts. | `BakeStatusNode` |
 | Clear Preview | `output.execute.clear_preview` | Clears all active previews | `ClearAllPreviewsNode` |
 | Undo Last Change | `output.execute.undo_last_bake` | Reverts the most recent recorded world mutation (Apply Changes or world.write blocks) from the unified history stack | `UndoLastBakeNode` |
-| Bake Surface Strip To Blocks | `output.execute.bake_surface_strip_to_blocks` | Bakes a surface strip into block coordinates for final execution | `SurfaceStripToBlocksNode` |
 | Redo Last Change | `output.execute.redo_last_bake` | Reapplies the most recently undone world mutation from the unified history stack | `RedoLastBakeNode` |
 | SDF To Blocks | `output.execute.sdf_to_blocks` | Voxelizes a signed distance field directly into Minecraft block coordinates | `SdfToBlocksNode` |
 | Cancel Bake | `output.execute.cancel_bake` | Cancels an in-flight bake or apply-changes task owned by the current actor and rolls back its in-world progress | `CancelBakeNode` |

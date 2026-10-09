@@ -240,7 +240,7 @@ Current implementation notes:
 - `SurfaceStripData` remains the compact reusable surface representation; tree outputs are parallel diagnostic/modeling views.
 - `Surface Strip To Geometry` accepts `Surface Strip Tree` and outputs `Geometry Tree`, preserving source branch paths.
 - `Bake Geometry To Blocks` accepts `Geometry Tree` and outputs `Blocks Tree`, preserving source branch paths.
-- `Bake Surface Strip To Blocks` accepts `Surface Strip Tree` and outputs `Blocks Tree`, preserving source branch paths.
+- `Surface Strip To Blocks` (`geometry.voxel.surface_strip_to_blocks`) accepts `Surface Strip Tree` and outputs `Blocks Tree`, preserving source branch paths.
 - Tree-aware bake nodes compute `Region` from all valid branch items, not only the first input object.
 - `Section Cut` accepts a `Planes` list and adds list/tree outputs for traced section profiles, boundary contours, slice blocks, and projected slice points.
 - `Section Cut` traces exposed slice-cell edges instead of using a convex hull, so concave outlines and multiple contours remain available as separate boundaries.

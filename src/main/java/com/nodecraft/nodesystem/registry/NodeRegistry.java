@@ -28,6 +28,8 @@ public class NodeRegistry {
 
     private final Map<String, NodeInfo> nodeInfoMap = new ConcurrentHashMap<>();
     private final Map<String, NodeCategory> categoryMap = new ConcurrentHashMap<>();
+    /** Legacy typeId → canonical typeId. Aliases are not listed in {@link #getAllNodeIds()}. */
+    private final Map<String, String> nodeIdAliases = new ConcurrentHashMap<>();
     private volatile boolean initialized = false;
     private volatile List<NodeCategory> sortedCategoriesCache = null;
     private volatile long introspectionEpoch = 0L;
@@ -49,7 +51,39 @@ public class NodeRegistry {
         return instance;
     }
 
-    // addMovedNodeAlias was a no-op wrapper — callers now use addAlias directly.
+    /**
+     * Registers a legacy typeId that resolves to an already-registered canonical node.
+     * Aliases are not enumerated by {@link #getAllNodeIds()} but work for create/get.
+     */
+    public synchronized void addAlias(String legacyNodeId, String canonicalNodeId) {
+        String legacy = normalizeNodeId(legacyNodeId);
+        String canonical = normalizeNodeId(canonicalNodeId);
+        if (legacy == null || legacy.isBlank() || canonical == null || canonical.isBlank()) {
+            NodeCraft.LOGGER.warn("Ignored invalid node alias registration (legacy={}, canonical={}).",
+                    legacyNodeId, canonicalNodeId);
+            return;
+        }
+        if (legacy.equals(canonical)) {
+            return;
+        }
+        if (!nodeInfoMap.containsKey(canonical)) {
+            NodeCraft.LOGGER.warn("Ignored node alias {} → {}: canonical id is not registered.",
+                    legacy, canonical);
+            return;
+        }
+        if (nodeInfoMap.containsKey(legacy)) {
+            NodeCraft.LOGGER.warn("Ignored node alias {} → {}: legacy id is already a registered node.",
+                    legacy, canonical);
+            return;
+        }
+        String previous = nodeIdAliases.put(legacy, canonical);
+        if (previous != null && !previous.equals(canonical)) {
+            NodeCraft.LOGGER.warn("Replaced node alias {} → {} (was → {}).", legacy, canonical, previous);
+        } else {
+            NodeCraft.LOGGER.debug("Registered node alias {} → {}.", legacy, canonical);
+        }
+        introspectionEpoch++;
+    }
 
     private String normalizeNodeId(String nodeId) {
         if (nodeId == null) {
@@ -59,7 +93,12 @@ public class NodeRegistry {
     }
 
     public String resolveCanonicalNodeId(String nodeId) {
-        return normalizeNodeId(nodeId);
+        String normalized = normalizeNodeId(nodeId);
+        if (normalized == null) {
+            return null;
+        }
+        String aliased = nodeIdAliases.get(normalized);
+        return aliased != null ? aliased : normalized;
     }
 
     private String remapCategory(String normalizedNodeId, String categoryId) {
@@ -238,7 +277,7 @@ public class NodeRegistry {
      * @throws RuntimeException if instantiation fails
      */
     public INode createNodeInstance(String nodeId) {
-        String resolvedNodeId = normalizeNodeId(nodeId);
+        String resolvedNodeId = resolveCanonicalNodeId(nodeId);
         NodeInfo nodeInfo = nodeInfoMap.get(resolvedNodeId);
         if (nodeInfo == null) {
             throw new NodeValidationException("Unregistered node type ID: " + nodeId);
@@ -268,7 +307,7 @@ public class NodeRegistry {
      * Results are cached per type until the registry is cleared or re-initialized.
      */
     public Map<String, Object> getDefaultNodeState(String nodeId) {
-        String resolvedNodeId = normalizeNodeId(nodeId);
+        String resolvedNodeId = resolveCanonicalNodeId(nodeId);
         if (resolvedNodeId == null) {
             return Map.of();
         }
@@ -357,7 +396,7 @@ public class NodeRegistry {
      * @return matching {@link NodeInfo}, or null when not found
      */
     public NodeInfo getNodeInfo(String nodeId) {
-        return nodeInfoMap.get(normalizeNodeId(nodeId));
+        return nodeInfoMap.get(resolveCanonicalNodeId(nodeId));
     }
 
     /**
@@ -390,6 +429,7 @@ public class NodeRegistry {
     private void clearInternal() {
         nodeInfoMap.clear();
         categoryMap.clear();
+        nodeIdAliases.clear();
         defaultNodeStateCache.clear();
         introspectionEpoch++;
         invalidateCategoryCache();

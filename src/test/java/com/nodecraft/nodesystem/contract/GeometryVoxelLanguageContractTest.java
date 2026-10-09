@@ -64,16 +64,35 @@ class GeometryVoxelLanguageContractTest {
 
 
     @Test
-    void voxelCategoryHasSingleNode() {
+    void voxelCategoryHasVoxelizeAndSurfaceStripNodes() {
         List<String> ids = registry.getAllNodeIds().stream()
             .filter(id -> id.startsWith("geometry.voxel."))
             .sorted()
             .toList();
-        assertEquals(1, ids.size());
-        assertEquals("geometry.voxel.voxelize_geometry", ids.getFirst());
-        NodeInfo info = registry.getNodeInfo(ids.getFirst());
+        assertEquals(
+            List.of(
+                "geometry.voxel.surface_strip_to_blocks",
+                "geometry.voxel.voxelize_geometry"
+            ),
+            ids
+        );
+        for (String id : ids) {
+            NodeInfo info = registry.getNodeInfo(id);
+            assertNotNull(info);
+            assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(info.getNodeClass(), id), id);
+        }
+    }
+
+    @Test
+    void surfaceStripToBlocksIsPureNotWorldWrite() {
+        NodeInfo info = registry.getNodeInfo("geometry.voxel.surface_strip_to_blocks");
         assertNotNull(info);
-        assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(info.getNodeClass(), ids.getFirst()));
+        assertEquals(NodeEffect.PURE, NodeEffectResolver.resolve(info.getNodeClass(), info.getId()));
+        assertEquals(
+            "geometry.voxel.surface_strip_to_blocks",
+            registry.resolveCanonicalNodeId("output.execute.bake_surface_strip_to_blocks")
+        );
+        assertNotNull(registry.createNodeInstance("output.execute.bake_surface_strip_to_blocks"));
     }
 
     @Test

@@ -72,15 +72,26 @@ class AiMockPlanServiceTest {
         Set<String> archTypes = typeIds(arch);
         assertTrue(archTypes.contains("geometry.curves.arc"));
         assertTrue(archTypes.contains("geometry.solids.sweep"));
-        assertTrue(archTypes.contains("output.execute.bake_surface_strip_to_blocks"));
+        assertTrue(archTypes.contains("geometry.voxel.surface_strip_to_blocks"));
         assertFalse(archTypes.contains("pattern.linear.curve_array"));
+        assertFalse(archTypes.contains("output.execute.bake_surface_strip_to_blocks"));
+        assertFalse(archTypes.contains("output.execute.apply_changes"));
+        assertFalse(archTypes.stream().anyMatch(id -> id.startsWith("output.execute.")), archTypes.toString());
 
         AiMockPlanService.MockPlan helix = AiMockPlanService.buildMockPlan("helix");
         assertFalse(helix.abstained(), helix.summary());
         Set<String> helixTypes = typeIds(helix);
         assertTrue(helixTypes.contains("geometry.curves.helix"));
         assertTrue(helixTypes.contains("geometry.solids.sweep"));
+        assertTrue(helixTypes.contains("geometry.voxel.surface_strip_to_blocks"));
         assertFalse(helixTypes.contains("pattern.linear.curve_array"));
+        assertFalse(helixTypes.contains("output.execute.apply_changes"));
+        assertFalse(helixTypes.stream().anyMatch(id -> id.startsWith("output.execute.")), helixTypes.toString());
+
+        AiMockPlanService.MockPlan archApply = AiMockPlanService.buildMockPlan("arch apply to world");
+        assertFalse(archApply.abstained(), archApply.summary());
+        assertTrue(typeIds(archApply).contains("output.execute.apply_changes"));
+        assertTrue(typeIds(archApply).contains("geometry.voxel.surface_strip_to_blocks"));
     }
 
     @Test

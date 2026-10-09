@@ -43,7 +43,6 @@ class OutputExecuteLanguageContractTest {
             "output.execute.redo_last_bake",
             "output.execute.merge_block_placements",
             "output.execute.sdf_to_blocks",
-            "output.execute.bake_surface_strip_to_blocks",
             "output.execute.clear_preview",
             "output.execute.cancel_bake"
     );
@@ -68,12 +67,13 @@ class OutputExecuteLanguageContractTest {
     }
 
     @Test
-    void exactlyNineOutputExecuteNodesRegistered() {
+    void exactlyEightOutputExecuteNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("output.execute."))
                 .sorted()
                 .toList();
         assertEquals(CANONICAL_IDS, Set.copyOf(ids), ids.toString());
+        assertEquals(8, ids.size());
     }
 
     @Test

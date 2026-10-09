@@ -392,7 +392,8 @@ Deferred analysis nodes should not receive v1.0 canonical aliases until they are
 Required aliases:
 
 - `spatial.voxel.geometry_to_blocks` -> `output.execute.bake_geometry_to_blocks`
-- `spatial.voxel.surface_strip_to_blocks` -> `output.execute.bake_surface_strip_to_blocks`
+- `spatial.voxel.surface_strip_to_blocks` -> `geometry.voxel.surface_strip_to_blocks`
+- `output.execute.bake_surface_strip_to_blocks` -> `geometry.voxel.surface_strip_to_blocks` (PURE voxel conversion; legacy execute id kept as registry alias)
 - `spatial.voxel.box_geometry_voxelizer` -> `output.execute.bake_box_to_blocks`
 - `spatial.voxel.sphere_geometry_voxelizer` -> `output.execute.bake_sphere_to_blocks`
 - `spatial.voxel.cylinder_geometry_voxelizer` -> `output.execute.bake_cylinder_to_blocks`

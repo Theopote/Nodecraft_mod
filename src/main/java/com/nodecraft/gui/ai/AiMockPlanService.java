@@ -511,10 +511,10 @@ public final class AiMockPlanService {
             String sweepRef,
             String prompt
     ) {
-        nodes.add(new MockNode("strip_bake", "output.execute.bake_surface_strip_to_blocks", 200.0f, 80.0f,
+        nodes.add(new MockNode("strip_blocks", "geometry.voxel.surface_strip_to_blocks", 200.0f, 80.0f,
                 createNodeState("mode", "LATTICE")));
-        connections.add(new MockConnection(sweepRef, "output_surface_strip", "strip_bake", "input_surface_strip"));
-        appendBlocksMaterialPreviewChain(nodes, connections, "strip_bake", "output_blocks", prompt);
+        connections.add(new MockConnection(sweepRef, "output_surface_strip", "strip_blocks", "input_surface_strip"));
+        appendBlocksMaterialPreviewChain(nodes, connections, "strip_blocks", "output_blocks", prompt);
     }
 
     private static void appendBlocksMaterialPreviewChain(

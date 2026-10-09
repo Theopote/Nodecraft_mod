@@ -1,4 +1,4 @@
-package com.nodecraft.nodesystem.nodes.output.execute;
+package com.nodecraft.nodesystem.nodes.geometry.voxel;
 
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -21,13 +21,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Pure SurfaceStrip → BLOCK_LIST voxelization. Does not write the Minecraft world.
+ * World writes go through Apply Changes after Material / Block State.
+ */
 @NodeInfo(
-    effect = NodeEffect.WORLD_WRITE,
-    id = "output.execute.bake_surface_strip_to_blocks",
-    displayName = "Bake Surface Strip To Blocks",
-    description = "Bakes a surface strip into block coordinates for final execution",
-    category = "output.execute",
-    order = 3
+    effect = NodeEffect.PURE,
+    id = "geometry.voxel.surface_strip_to_blocks",
+    displayName = "Surface Strip To Blocks",
+    description = "Converts a surface strip into Minecraft block coordinates (BLOCK_LIST). Pure conversion — does not write the world. Use Apply Changes to place.",
+    category = "geometry.voxel",
+    order = 1
 )
 public class SurfaceStripToBlocksNode extends BaseNode {
 
@@ -47,16 +51,22 @@ public class SurfaceStripToBlocksNode extends BaseNode {
     private static final String OUTPUT_VALID_ID = "output_valid";
 
     public SurfaceStripToBlocksNode() {
-        super(UUID.randomUUID(), "output.execute.bake_surface_strip_to_blocks");
+        super(UUID.randomUUID(), "geometry.voxel.surface_strip_to_blocks");
 
-        addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to approximate on the block grid", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree", "Optional tree of surface strips to bake per branch", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip",
+                "Surface strip to approximate on the block grid", NodeDataType.SURFACE_STRIP, this));
+        addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree",
+                "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this));
 
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Approximated block lattice for the surface strip", NodeDataType.BLOCK_LIST, this));
-        addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Approximated blocks grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
-        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the surface strip", NodeDataType.REGION, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks",
+                "Approximated block lattice for the surface strip", NodeDataType.BLOCK_LIST, this));
+        addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree",
+                "Approximated blocks grouped by source surface strip tree branch", NodeDataType.DATA_TREE, this));
+        addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
+                "Bounding region of the surface strip", NodeDataType.REGION, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Generated block count", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when a surface strip was resolved", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
+                "True when a surface strip was resolved", NodeDataType.BOOLEAN, this));
     }
 
     @Override

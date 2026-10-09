@@ -45,6 +45,11 @@ public class DefaultNodeProvider implements INodeProvider {
             // Re-apply explicit palette labels after catalog/scanner auto-categories.
             registry.registerCategory(new NodeRegistry.NodeCategory("geometry.solids", "Solids & Surfaces"));
 
+            // Legacy typeIds from earlier category mistakes (kept for saved graphs).
+            registry.addAlias(
+                    "output.execute.bake_surface_strip_to_blocks",
+                    "geometry.voxel.surface_strip_to_blocks");
+
             NodeCraft.LOGGER.info("Built-in node registration completed. Total nodes: {}", registry.getNodeCount());
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Built-in node registration failed: {}", e.getMessage(), e);

@@ -273,7 +273,7 @@ output.debug.print_to_chat|output.debug|Print To Chat
 output.debug.value_monitor|output.debug|Value Monitor
 output.execute.apply_changes|output.execute|Apply Changes
 geometry.voxel.voxelize_geometry|geometry.voxel|Voxelize Geometry
-output.execute.bake_surface_strip_to_blocks|output.execute|Bake Surface Strip To Blocks
+geometry.voxel.surface_strip_to_blocks|geometry.voxel|Surface Strip To Blocks
 output.execute.clear_preview|output.execute|Clear Preview
 output.execute.merge_block_placements|output.execute|Merge Block Placements
 output.execute.undo_last_bake|output.execute|Undo Last Bake
