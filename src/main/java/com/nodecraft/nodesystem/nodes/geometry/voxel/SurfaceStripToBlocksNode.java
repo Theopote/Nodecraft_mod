@@ -56,7 +56,7 @@ public class SurfaceStripToBlocksNode extends BaseNode {
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip",
                 "Surface strip to approximate on the block grid", NodeDataType.SURFACE_STRIP, this));
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_TREE_ID, "Surface Strip Tree",
-                "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this));
+                "Optional tree of surface strips to convert per branch", NodeDataType.DATA_TREE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks",
                 "Approximated block lattice for the surface strip", NodeDataType.BLOCK_LIST, this));

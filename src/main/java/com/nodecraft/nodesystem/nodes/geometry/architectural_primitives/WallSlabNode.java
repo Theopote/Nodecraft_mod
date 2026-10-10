@@ -46,7 +46,7 @@ public class WallSlabNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.architectural_primitives.wall_slab");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the wall footprint", NodeDataType.BOX_FACE, this));
-        addInputPort(new BasePort(INPUT_WALL_THICKNESS_ID, "Wall Thickness", "Thickness of the wall slab", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_WALL_THICKNESS_ID, "Wall Thickness", "Thickness of the wall slab", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Wall Geometry", "Solid wall slab", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_TOP_EDGE_ID, "Top Edge", "Top edge path of the wall face", NodeDataType.PATH, this));

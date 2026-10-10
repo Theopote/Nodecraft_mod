@@ -59,7 +59,7 @@ public class VoxelizeGeometryNode extends BaseNode {
         super(UUID.randomUUID(), "geometry.voxel.voxelize_geometry");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified geometry input", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_GEOMETRY_TREE_ID, "Geometry Tree", "Optional tree of geometry values to voxelize per branch", NodeDataType.DATA_TREE, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_TREE_ID, "Geometry Tree", "Optional tree of geometry values to voxelize per branch", NodeDataType.DATA_TREE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped by source geometry tree branch", NodeDataType.DATA_TREE, this));

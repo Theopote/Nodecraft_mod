@@ -2,6 +2,7 @@ package com.nodecraft.gui.ai.compose;
 
 import com.nodecraft.gui.ai.AiGraphDslSupport;
 import com.nodecraft.gui.ai.AiPlanCapabilityCoverage;
+import com.nodecraft.gui.ai.AiPlanValidator;
 import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.ai.model.AiPlanConnection;
 import com.nodecraft.gui.ai.model.AiPlanNode;
@@ -16,6 +17,7 @@ import com.nodecraft.nodesystem.semantic.NodeDomain;
 import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 import com.nodecraft.nodesystem.semantic.NodeSemanticEdge;
 import com.nodecraft.nodesystem.semantic.NodeSemanticEdgeKind;
+import com.nodecraft.nodesystem.semantic.NodeSemanticPortKeys;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -248,14 +250,15 @@ public final class AiSemanticComposer {
     ) {
         PriorityQueue<AiComposeSearchState> queue = new PriorityQueue<>();
         Set<NodeCapability> seedCaps = new HashSet<>(catalog.capabilities(seedTypeId));
-        // Path-local visited set only — do not pre-load sibling seeds (blocks join exploration).
+        // Path-local cycle guard only — global exploration uses bestCost UCS (not enqueue-time visited).
         LinkedHashSet<String> startPath = new LinkedHashSet<>();
         startPath.add(seedTypeId);
         queue.add(new AiComposeSearchState(
                 startPath, seedTypeId, seedPort, seedCaps, Set.of(), 0, List.of()));
 
-        Set<String> visited = new HashSet<>();
-        visited.add(visitKey(seedTypeId, seedPort));
+        // Key includes continuePort so a cheaper EXACT entry can reopen after an earlier TYPE discovery.
+        Map<String, Double> bestCost = new HashMap<>();
+        bestCost.put(visitKey(seedTypeId, seedPort, seedPort), 0.0);
 
         PathResult bestBlocks = null;
         PathResult bestOtherPreview = null;
@@ -312,10 +315,6 @@ public final class AiSemanticComposer {
                 if (state.typePath().contains(nextType) && !isPreviewTerminal(nextType)) {
                     continue;
                 }
-                String key = visitKey(nextType, edge.sourcePortId());
-                if (visited.contains(key)) {
-                    continue;
-                }
 
                 Set<NodeCapability> nextCovered = EnumSet.noneOf(NodeCapability.class);
                 nextCovered.addAll(state.covered());
@@ -366,6 +365,15 @@ public final class AiSemanticComposer {
                         && state.typePath().stream().noneMatch(t -> t.contains("extrude"))) {
                     stepCost += 30;
                 }
+                double newCost = state.cost() + stepCost;
+                String continuePort = primaryOutputPort(nextType);
+                String key = visitKey(nextType, continuePort, edge.sourcePortId());
+                Double prevBest = bestCost.get(key);
+                if (prevBest != null && prevBest <= newCost) {
+                    continue;
+                }
+                bestCost.put(key, newCost);
+
                 AiComposeSearchState.Step step = new AiComposeSearchState.Step(
                         state.frontierTypeId(),
                         edge.sourcePortId() != null ? edge.sourcePortId() : state.frontierPortKey(),
@@ -376,10 +384,8 @@ public final class AiSemanticComposer {
                 );
                 List<AiComposeSearchState.Step> nextSteps = new ArrayList<>(state.steps());
                 nextSteps.add(step);
-                String continuePort = primaryOutputPort(nextType);
                 AiComposeSearchState next = state.withFrontier(
-                        nextType, continuePort, nextCovered, Set.of(), state.cost() + stepCost, nextSteps);
-                visited.add(key);
+                        nextType, continuePort, nextCovered, Set.of(), newCost, nextSteps);
                 queue.add(next);
             }
             // Early exit once a cheap blocks path is found and queue costs cannot beat it.
@@ -497,7 +503,9 @@ public final class AiSemanticComposer {
                 if (out == null || out.getDataType() == NodeDataType.EXEC) {
                     continue;
                 }
-                if (!hasSemanticLink(catalog, typeId, out.getId(), targetType, targetPort)) {
+                boolean linked = hasSemanticLink(catalog, typeId, out.getId(), targetType, targetPort)
+                        || isCatalogUpstreamProducer(catalog, typeId, out.getId(), targetType, targetPort, want);
+                if (!linked) {
                     continue;
                 }
                 TypeConversionRegistry.ConversionPolicy policy =
@@ -509,6 +517,10 @@ public final class AiSemanticComposer {
                 int cost = out.getDataType() == want ? 0
                         : policy == TypeConversionRegistry.ConversionPolicy.IMPLICIT_SAFE ? 1
                         : AiComposeCostPolicy.COST_CONVERSION;
+                // Prefer exact data-type match on the physical port (e.g. output_box_geometry).
+                if (out.getDataType() == want) {
+                    cost = Math.max(0, cost - 1);
+                }
                 if (cost < bestCost) {
                     bestCost = cost;
                     best = new ProducerMatch(builder.refForType(typeId), typeId, out.getId());
@@ -562,15 +574,16 @@ public final class AiSemanticComposer {
 
     // --- Upstream / join fill ---
 
+    private static final int UPSTREAM_SPAWN_DEPTH = 3;
+
     private static String fillOpenRequiredInputs(
             PlanBuilder builder,
             NodeSemanticCatalog catalog,
             AiComposeRequest request,
             List<String> reasons
     ) {
-        // v1: plan-local joins only (multi-seed Wall+Window, Path+Profile). Do not spawn
-        // new upstream producers — that recreates Mock recipes and easily forms cycles.
-        for (int pass = 0; pass < 4; pass++) {
+        // Plan-local Catalog joins first, then Catalog upstream spawn (incl. BOX_FACE chain).
+        for (int pass = 0; pass < 8; pass++) {
             boolean progressed = false;
             for (String typeId : List.copyOf(builder.typeIds())) {
                 String ref = builder.refForType(typeId);
@@ -582,10 +595,10 @@ public final class AiSemanticComposer {
                     if (port == null || port.getDataType() == NodeDataType.EXEC) {
                         continue;
                     }
-                    if (builder.isConnected(ref, port.getId())) {
+                    if (!port.isRequired()) {
                         continue;
                     }
-                    if (!isJoinCriticalPort(port.getDataType())) {
+                    if (builder.isConnected(ref, port.getId())) {
                         continue;
                     }
                     if (hasSiblingStructuralConnection(builder, ref, typeId, port)) {
@@ -593,18 +606,21 @@ public final class AiSemanticComposer {
                     }
                     ProducerMatch planMatch = findSemanticPlanProducer(
                             builder, port.getDataType(), typeId, port.getId(), catalog);
-                    if (planMatch == null) {
-                        continue;
+                    if (planMatch != null) {
+                        WireResult wire = wireWithConversion(
+                                builder, planMatch.ref(), planMatch.portId(), ref, port.getId(),
+                                catalog, request, reasons);
+                        if (!wire.failed()) {
+                            reasons.add("Joined " + planMatch.typeId() + "." + planMatch.portId()
+                                    + " → " + typeId + "." + port.getId());
+                            progressed = true;
+                            continue;
+                        }
                     }
-                    WireResult wire = wireWithConversion(
-                            builder, planMatch.ref(), planMatch.portId(), ref, port.getId(),
-                            catalog, request, reasons);
-                    if (wire.failed()) {
-                        continue;
+                    if (spawnCatalogUpstream(
+                            builder, typeId, port, catalog, request, reasons, UPSTREAM_SPAWN_DEPTH)) {
+                        progressed = true;
                     }
-                    reasons.add("Joined " + planMatch.typeId() + "." + planMatch.portId()
-                            + " → " + typeId + "." + port.getId());
-                    progressed = true;
                 }
             }
             if (!progressed) {
@@ -618,7 +634,7 @@ public final class AiSemanticComposer {
                 continue;
             }
             for (IPort port : node.getInputPorts()) {
-                if (port == null || !isJoinCriticalPort(port.getDataType())) {
+                if (port == null || port.getDataType() == NodeDataType.EXEC || !port.isRequired()) {
                     continue;
                 }
                 if (builder.isConnected(ref, port.getId())) {
@@ -627,31 +643,155 @@ public final class AiSemanticComposer {
                 if (hasSiblingStructuralConnection(builder, ref, typeId, port)) {
                     continue;
                 }
-                if (isMultiInputHub(typeId)) {
-                    return "Required join input unsatisfied: " + typeId + "." + port.getId();
-                }
+                return "Required input unsatisfied: " + typeId + "." + port.getId();
             }
         }
         return null;
     }
 
-    private static boolean isJoinCriticalPort(NodeDataType dt) {
-        return dt == NodeDataType.GEOMETRY
-                || dt == NodeDataType.PATH
-                || dt == NodeDataType.POLYGON_PROFILE
-                || dt == NodeDataType.PLANAR_REGION
-                || dt == NodeDataType.SURFACE_STRIP
-                || dt == NodeDataType.BLOCK_LIST
-                || dt == NodeDataType.BLOCK_PLACEMENT_LIST;
+    /**
+     * Spawn cheapest effect-gated Catalog upstream producer for an open required port,
+     * then lightly recurse so chains like Box → GetBoxFace → Wall.input_face can complete.
+     */
+    private static boolean spawnCatalogUpstream(
+            PlanBuilder builder,
+            String consumerType,
+            IPort port,
+            NodeSemanticCatalog catalog,
+            AiComposeRequest request,
+            List<String> reasons,
+            int depthLeft
+    ) {
+        if (depthLeft < 0 || port == null || consumerType == null) {
+            return false;
+        }
+        String consumerRef = builder.refForType(consumerType);
+        if (consumerRef == null || builder.isConnected(consumerRef, port.getId())) {
+            return false;
+        }
+        NodeSemanticEdge best = pickCheapestUpstream(
+                catalog.effectiveUpstream(consumerType, port.getId(), port.getDataType()),
+                catalog,
+                request);
+        if (best == null) {
+            // Prefer EXACT/CATEGORY; allow TYPE-only when nothing better exists.
+            best = pickCheapestUpstream(
+                    catalog.effectiveUpstream(consumerType, null, port.getDataType()),
+                    catalog,
+                    request);
+        }
+        if (best == null || best.targetNodeId() == null) {
+            return false;
+        }
+        String producerType = best.targetNodeId();
+        if (producerType.equalsIgnoreCase(consumerType) || builder.typeIds().stream()
+                .anyMatch(t -> t.equalsIgnoreCase(producerType) && wouldCreateCycle(builder, producerType, consumerType))) {
+            // Already in plan is fine; only reject self-target.
+            if (producerType.equalsIgnoreCase(consumerType)) {
+                return false;
+            }
+        }
+        if (isPreviewTerminal(producerType) || isApplyTerminal(producerType)) {
+            return false;
+        }
+        if (!isEffectAllowed(catalog.effect(producerType), request.allowWorldWrite())) {
+            return false;
+        }
+        boolean newlyAdded = !builder.hasType(producerType);
+        if (newlyAdded && !builder.addNode(producerType, Math.max(0, builder.depth() - 1), -120f)) {
+            return false;
+        }
+        String producerRef = builder.refForType(producerType);
+        String producerOut = NodeSemanticPortKeys.physicalBase(
+                best.sourcePortId() != null ? best.sourcePortId() : primaryOutputPort(producerType));
+        if (producerOut == null || producerOut.isBlank()) {
+            producerOut = primaryOutputPort(producerType);
+        }
+        // Prefer a type-compatible output when Catalog connect port is missing / synthetic-only.
+        if (portDataType(producerType, producerOut, true) != port.getDataType()) {
+            String typed = findCompatibleOutput(producerType, port.getDataType());
+            if (typed != null) {
+                producerOut = typed;
+            }
+        }
+        String consumerIn = best.targetPortId() != null ? best.targetPortId() : port.getId();
+        WireResult wire = wireWithConversion(
+                builder, producerRef, producerOut, consumerRef, consumerIn, catalog, request, reasons);
+        if (wire.failed()) {
+            return false;
+        }
+        reasons.add((newlyAdded ? "Spawned upstream " : "Linked upstream ")
+                + producerType + "." + producerOut + " → " + consumerType + "." + consumerIn);
+        // Recurse lightly on the producer's remaining required inputs.
+        INode producer = tryCreate(producerType);
+        if (producer != null && producer.getInputPorts() != null && depthLeft > 0) {
+            for (IPort upPort : producer.getInputPorts()) {
+                if (upPort == null || upPort.getDataType() == NodeDataType.EXEC || !upPort.isRequired()) {
+                    continue;
+                }
+                if (builder.isConnected(producerRef, upPort.getId())) {
+                    continue;
+                }
+                if (hasSiblingStructuralConnection(builder, producerRef, producerType, upPort)) {
+                    continue;
+                }
+                ProducerMatch planMatch = findSemanticPlanProducer(
+                        builder, upPort.getDataType(), producerType, upPort.getId(), catalog);
+                if (planMatch != null) {
+                    WireResult join = wireWithConversion(
+                            builder, planMatch.ref(), planMatch.portId(), producerRef, upPort.getId(),
+                            catalog, request, reasons);
+                    if (!join.failed()) {
+                        reasons.add("Joined " + planMatch.typeId() + "." + planMatch.portId()
+                                + " → " + producerType + "." + upPort.getId());
+                        continue;
+                    }
+                }
+                spawnCatalogUpstream(
+                        builder, producerType, upPort, catalog, request, reasons, depthLeft - 1);
+            }
+        }
+        return builder.isConnected(consumerRef, port.getId());
     }
 
-    private static boolean isMultiInputHub(String typeId) {
-        return typeId != null && (
-                typeId.contains("difference")
-                        || typeId.contains(".sweep")
-                        || typeId.endsWith(".sweep")
-                        || typeId.contains("boolean")
-        );
+    private static boolean wouldCreateCycle(PlanBuilder builder, String fromType, String toType) {
+        // v1 one-instance-per-type: reject only when wiring would connect a node to itself.
+        return fromType != null && fromType.equalsIgnoreCase(toType);
+    }
+
+    private static NodeSemanticEdge pickCheapestUpstream(
+            List<NodeSemanticEdge> edges,
+            NodeSemanticCatalog catalog,
+            AiComposeRequest request
+    ) {
+        if (edges == null || edges.isEmpty()) {
+            return null;
+        }
+        NodeSemanticEdge best = null;
+        int bestScore = Integer.MAX_VALUE;
+        for (NodeSemanticEdge edge : edges) {
+            if (edge == null || edge.targetNodeId() == null) {
+                continue;
+            }
+            if (!isEffectAllowed(catalog.effect(edge.targetNodeId()), request.allowWorldWrite())) {
+                continue;
+            }
+            if (isPreviewTerminal(edge.targetNodeId()) || isApplyTerminal(edge.targetNodeId())) {
+                continue;
+            }
+            int score = AiComposeCostPolicy.edgeCost(edge.kind()) * 100
+                    + Math.max(0, edge.priority())
+                    + AiComposeCostPolicy.nodePenalty(catalog.effect(edge.targetNodeId()));
+            // Prefer EXACT/CATEGORY over TYPE when both exist.
+            if (edge.kind() == NodeSemanticEdgeKind.TYPE) {
+                score += 50;
+            }
+            if (score < bestScore) {
+                bestScore = score;
+                best = edge;
+            }
+        }
+        return best;
     }
 
     private static boolean hasSiblingStructuralConnection(
@@ -705,6 +845,44 @@ public final class AiSemanticComposer {
             }
             // Plan-local joins may use TYPE edges (e.g. polygon_profile → sweep); UCS still costs them higher.
             if (toPort == null || edge.targetPortId() == null || toPort.equals(edge.targetPortId())) {
+                return true;
+            }
+        }
+        // Physical port queries miss synthetic keys (output_face:vertical) — fall back to full downstream.
+        if (fromPort != null) {
+            for (NodeSemanticEdge edge : catalog.effectiveDownstream(fromType)) {
+                if (edge == null || !toType.equalsIgnoreCase(edge.targetNodeId())) {
+                    continue;
+                }
+                String edgeSrc = NodeSemanticPortKeys.physicalBase(edge.sourcePortId());
+                if (fromPort.equals(edgeSrc) || fromPort.equals(edge.sourcePortId())) {
+                    if (toPort == null || edge.targetPortId() == null || toPort.equals(edge.targetPortId())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** True when Catalog upstream of the consumer lists this producer (EXACT/CATEGORY/TYPE). */
+    private static boolean isCatalogUpstreamProducer(
+            NodeSemanticCatalog catalog,
+            String producerType,
+            String producerPort,
+            String consumerType,
+            String consumerPort,
+            NodeDataType want
+    ) {
+        for (NodeSemanticEdge edge : catalog.effectiveUpstream(consumerType, consumerPort, want)) {
+            if (edge == null || !producerType.equalsIgnoreCase(edge.targetNodeId())) {
+                continue;
+            }
+            String edgeOut = NodeSemanticPortKeys.physicalBase(edge.sourcePortId());
+            if (producerPort == null
+                    || edge.sourcePortId() == null
+                    || producerPort.equals(edge.sourcePortId())
+                    || producerPort.equals(edgeOut)) {
                 return true;
             }
         }
@@ -808,18 +986,14 @@ public final class AiSemanticComposer {
         AiGraphPlan plan = builder.toPlan(String.join(" ", reasons));
         AiGraphDslSupport.PlanValidationResult validation =
                 AiGraphDslSupport.validatePlan(plan, NodeRegistry.getInstance());
+        // Composer success ⟺ full validatePlan (no Required-input soft filter).
         if (validation.errors() != null && !validation.errors().isEmpty() && registryHasAny(builder)) {
-            List<String> hard = validation.errors().stream()
-                    .filter(e -> e != null && !e.startsWith("Required input not connected:"))
-                    .toList();
-            if (!hard.isEmpty()) {
-                return AiComposeResult.abstain(
-                        AiComposeResult.ABSTAIN_CODE,
-                        "Plan validation failed: " + hard,
-                        Set.of(),
-                        Set.of()
-                );
-            }
+            return AiComposeResult.abstain(
+                    AiComposeResult.ABSTAIN_CODE,
+                    "Plan validation failed: " + validation.errors(),
+                    Set.of(),
+                    Set.of()
+            );
         }
 
         AiPlanCapabilityCoverage.CoverageResult coverage =
@@ -865,6 +1039,16 @@ public final class AiSemanticComposer {
                     "Missing capabilities: " + missing,
                     present,
                     missing
+            );
+        }
+
+        AiPlanValidator.GateResult applyGate = new AiPlanValidator().checkBeforeApply(plan);
+        if (!applyGate.allowed()) {
+            return AiComposeResult.abstain(
+                    AiComposeResult.ABSTAIN_CODE,
+                    "Apply gate rejected: " + applyGate.rejectionMessage(),
+                    present,
+                    Set.of()
             );
         }
         return AiComposeResult.success(plan, present, reasons, cost);
@@ -986,8 +1170,56 @@ public final class AiSemanticComposer {
                 || caps.contains(NodeCapability.CURVE);
     }
 
-    private static String visitKey(String typeId, String port) {
-        return Objects.toString(typeId, "") + "|" + Objects.toString(port, "");
+    private static String visitKey(String typeId, String continuePort, String sourcePort) {
+        return Objects.toString(typeId, "")
+                + "|" + Objects.toString(continuePort, "")
+                + "|" + Objects.toString(sourcePort, "");
+    }
+
+    /**
+     * Package-visible test helper: force a conversion wire between two node types.
+     * Returns the resulting plan, or {@code null} with failure reason in {@code failOut[0]}.
+     */
+    static AiGraphPlan wireConversionFixture(
+            String sourceTypeId,
+            String sourcePortId,
+            String targetTypeId,
+            String targetPortId,
+            String[] failOut
+    ) {
+        PlanBuilder builder = new PlanBuilder(8);
+        if (!builder.addNode(sourceTypeId, 0, 0) || !builder.addNode(targetTypeId, 1, 0)) {
+            if (failOut != null && failOut.length > 0) {
+                failOut[0] = "Failed to place fixture nodes";
+            }
+            return null;
+        }
+        List<String> reasons = new ArrayList<>();
+        AiComposeRequest request = new AiComposeRequest(
+                "conversion fixture",
+                Set.of(),
+                EnumSet.noneOf(NodeDomain.class),
+                List.of(),
+                AiComposeGoal.PREVIEW,
+                8
+        );
+        WireResult wire = wireWithConversion(
+                builder,
+                builder.refForType(sourceTypeId),
+                sourcePortId,
+                builder.refForType(targetTypeId),
+                targetPortId,
+                NodeSemanticCatalog.get(),
+                request,
+                reasons
+        );
+        if (wire.failed()) {
+            if (failOut != null && failOut.length > 0) {
+                failOut[0] = wire.message();
+            }
+            return null;
+        }
+        return builder.toPlan(String.join(" ", reasons));
     }
 
     private static boolean containsAny(String text, String... keys) {

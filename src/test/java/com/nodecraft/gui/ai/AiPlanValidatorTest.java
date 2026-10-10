@@ -64,9 +64,10 @@ class AiPlanValidatorTest {
         assertFalse(validator.checkBeforeApply(unknownType).allowed());
         assertTrue(validator.checkBeforeApply(unknownType).rejectionMessage().contains("Unknown node type"));
 
+        // Box defaults are optional; use a node that still has a required structural port.
         AiGraphPlan missingRequired = new AiGraphPlan(
                 "bad",
-                List.of(new AiPlanNode("n1", "geometry.primitives.box", 0, 0, null)),
+                List.of(new AiPlanNode("n1", "reference.points.get_box_face", 0, 0, null)),
                 List.of(),
                 List.of()
         );

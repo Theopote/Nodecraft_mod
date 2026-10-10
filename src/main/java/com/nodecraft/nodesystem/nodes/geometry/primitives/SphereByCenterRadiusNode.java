@@ -53,8 +53,8 @@ public class SphereByCenterRadiusNode extends AbstractPrimitiveNode {
     public SphereByCenterRadiusNode() {
         super("geometry.primitives.sphere");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center (overrides property)", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius (overrides property)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center (overrides property)", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius (overrides property)", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SPHERE_ID, "Sphere", "Constructed sphere geometry", NodeDataType.SPHERE, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

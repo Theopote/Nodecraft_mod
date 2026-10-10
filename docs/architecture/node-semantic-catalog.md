@@ -92,7 +92,13 @@ Composer is a **deterministic workflow completion engine** over Catalog edges �
 
 **No hardcoded workflow table.** Paths such as Sphere→Voxelize→Assign→Preview or Wall+Window→Difference must emerge from Catalog EXACT/CATEGORY/TYPE edges + upstream fill + explicit converters. Seed resolution may map capabilities to type ids; it must not encode recipe chains.
 
-Algorithm sketch: multi-seed → downstream UCS → required-input upstream fill (plan-local join first) → converter insert → `validatePlan` + `AiPlanCapabilityCoverage.analyze` → plan or `semantic_composer_no_confident_plan`.
+Algorithm sketch: multi-seed → downstream UCS (`bestCost` map) → required-input upstream fill (plan-local join, then Catalog upstream spawn) → converter insert → **`validatePlan` + `AiPlanValidator.checkBeforeApply`** + capability coverage → plan or `semantic_composer_no_confident_plan`.
+
+**Success contract:** Composer success ⟺ full `validatePlan` (no Required-input soft filter) **and** `checkBeforeApply` allows. Default-backed / alternate-source ports use `required=false` so Validator matches runtime.
+
+**v1 limit:** at most one instance per node type (`PlanBuilder.typeToRef`) — e.g. Wall and Window may share one `GetBoxFace`.
+
+**P2 note:** remove `guessOutput` — introspect fail → abstain (no change required for P1 freeze).
 
 Hard constraints (search-time):
 
@@ -103,7 +109,10 @@ Hard constraints (search-time):
 - Deterministic refs (`sphere_1`); layout `x=depth*280`, `y=branch*180`
 - Output **`AiGraphPlan` only** (no second graph model)
 
-Catalog gap closed for Sweep Preview: `surface_strip` / `geometry.solids.sweep.output_surface_strip` → `geometry.voxel.surface_strip_to_blocks`.
+Catalog gaps closed for Preview chains:
+
+- Sweep: `surface_strip` / `geometry.solids.sweep.output_surface_strip` → `geometry.voxel.surface_strip_to_blocks`
+- Architecture faces: `box_geometry` / `geometry.primitives.box.output_box_geometry` → `reference.points.get_box_face` → `box_face` consumers
 
 ## Local Planner path
 

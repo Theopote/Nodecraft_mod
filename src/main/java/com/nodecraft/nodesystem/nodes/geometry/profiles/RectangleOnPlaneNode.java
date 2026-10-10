@@ -53,11 +53,11 @@ public class RectangleOnPlaneNode extends AbstractProfileNode {
     public RectangleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.rectangle_profile");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Rectangle width along local X axis", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Rectangle height along local Y axis", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to control rectangle rotation", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Rectangle width along local X axis", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Rectangle height along local Y axis", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to control rectangle rotation", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Rectangle corner points in closed order", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rectangle polygon profile", NodeDataType.POLYGON_PROFILE, this));

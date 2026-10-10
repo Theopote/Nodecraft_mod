@@ -56,9 +56,9 @@ public class VectorInputNode extends BaseCustomUINode {
 
     public VectorInputNode() {
         super(UUID.randomUUID(), "reference.vectors.vector");
-        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X component override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y component override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z component override", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X component override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y component override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z component override", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_VECTOR_ID, "Vector", "3D vector", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid",
             "True when all components resolved to finite numbers", NodeDataType.BOOLEAN, this));

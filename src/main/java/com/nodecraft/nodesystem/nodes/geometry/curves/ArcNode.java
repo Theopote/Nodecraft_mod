@@ -73,14 +73,14 @@ public class ArcNode extends AbstractCurveNode {
     public ArcNode() {
         super(UUID.randomUUID(), "geometry.curves.arc");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Arc center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Plane defining the arc orientation", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Fallback normal vector when no plane is connected", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Arc radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Arc center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Plane defining the arc orientation", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_NORMAL_ID, "Normal", "Fallback normal vector when no plane is connected", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Arc radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle",
-            "End angle in degrees. Sweep is directed (end − start) and may exceed ±360°", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the arc", NodeDataType.INTEGER, this));
+            "End angle in degrees. Sweep is directed (end − start) and may exceed ±360°", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the arc", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary arc path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled arc points", NodeDataType.POINT_LIST, this));

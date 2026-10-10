@@ -73,6 +73,16 @@
               "connectPortId": "input_geometry"
             }
           ]
+        },
+        "output_box_geometry": {
+          "downstream": [
+            {
+              "nodeId": "reference.points.get_box_face",
+              "order": 0,
+              "reason": "从盒子取立面/顶底面",
+              "connectPortId": "input_box_geometry"
+            }
+          ]
         }
       }
     },
@@ -596,6 +606,18 @@
       }
     },
     "reference.points.get_box_face": {
+      "inputs": {
+        "input_box_geometry": {
+          "upstream": [
+            {
+              "nodeId": "geometry.primitives.box",
+              "order": 0,
+              "reason": "盒子几何作为取面输入",
+              "connectPortId": "output_box_geometry"
+            }
+          ]
+        }
+      },
       "outputs": {
         "output_face:horizontal": {
           "downstream": [
@@ -727,6 +749,18 @@
       }
     },
     "material.basic_assignment.assign_block_type": {
+      "inputs": {
+        "input_block_type": {
+          "upstream": [
+            {
+              "nodeId": "input.type_selectors.block_type_selector",
+              "order": 0,
+              "reason": "选择方块类型",
+              "connectPortId": "output_block_id"
+            }
+          ]
+        }
+      },
       "outputs": {
         "output_placements": {
           "downstream": [
@@ -1123,6 +1157,18 @@
       }
     },
     "geometry.solids.extrude_region": {
+      "inputs": {
+        "input_direction": {
+          "upstream": [
+            {
+              "nodeId": "reference.vectors.vector",
+              "order": 0,
+              "reason": "拉伸方向向量",
+              "connectPortId": "output_vector"
+            }
+          ]
+        }
+      },
       "outputs": {
         "output_top_region": {
           "downstream": [
@@ -1137,6 +1183,34 @@
               "order": 10,
               "reason": "顶面偏移后再塑",
               "connectPortId": "input_region"
+            }
+          ]
+        }
+      }
+    },
+    "input.type_selectors.block_type_selector": {
+      "outputs": {
+        "output_block_id": {
+          "downstream": [
+            {
+              "nodeId": "material.basic_assignment.assign_block_type",
+              "order": 0,
+              "reason": "赋材质方块类型",
+              "connectPortId": "input_block_type"
+            }
+          ]
+        }
+      }
+    },
+    "reference.vectors.vector": {
+      "outputs": {
+        "output_vector": {
+          "downstream": [
+            {
+              "nodeId": "geometry.solids.extrude_region",
+              "order": 0,
+              "reason": "拉伸方向",
+              "connectPortId": "input_direction"
             }
           ]
         }
@@ -2924,6 +2998,60 @@
           "nodeId": "geometry.architectural_primitives.floor_slab",
           "order": 20,
           "connectPortId": "output_bottom_face"
+        }
+      ]
+    },
+    "box_geometry": {
+      "downstream": [
+        {
+          "nodeId": "reference.points.get_box_face",
+          "order": 0,
+          "reason": "从盒子几何取面",
+          "connectPortId": "input_box_geometry"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "geometry.primitives.box",
+          "order": 0,
+          "reason": "盒子原语输出 BOX_GEOMETRY",
+          "connectPortId": "output_box_geometry"
+        }
+      ]
+    },
+    "block_type": {
+      "downstream": [
+        {
+          "nodeId": "material.basic_assignment.assign_block_type",
+          "order": 0,
+          "reason": "赋材质",
+          "connectPortId": "input_block_type"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "input.type_selectors.block_type_selector",
+          "order": 0,
+          "reason": "方块类型选择器",
+          "connectPortId": "output_block_id"
+        }
+      ]
+    },
+    "vector": {
+      "downstream": [
+        {
+          "nodeId": "geometry.solids.extrude_region",
+          "order": 0,
+          "reason": "拉伸方向",
+          "connectPortId": "input_direction"
+        }
+      ],
+      "upstream": [
+        {
+          "nodeId": "reference.vectors.vector",
+          "order": 0,
+          "reason": "向量常量",
+          "connectPortId": "output_vector"
         }
       ]
     },

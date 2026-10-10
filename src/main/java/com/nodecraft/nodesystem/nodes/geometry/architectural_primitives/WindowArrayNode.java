@@ -68,22 +68,22 @@ public class WindowArrayNode extends AbstractFaceArrayNode {
         super(UUID.randomUUID(), "geometry.architectural_primitives.window_array");
 
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Box face used as the facade surface", NodeDataType.BOX_FACE, this));
-        addInputPort(new BasePort(INPUT_COLUMNS_ID, "Columns", "Number of windows across the face width", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_ROWS_ID, "Rows", "Number of windows across the face height", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_WINDOW_WIDTH_ID, "Window Width", "Window opening width in blocks/meters", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_WINDOW_HEIGHT_ID, "Window Height", "Window opening height in blocks/meters", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Outer margin from the face edge to the first opening", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COLUMNS_ID, "Columns", "Number of windows across the face width", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_ROWS_ID, "Rows", "Number of windows across the face height", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_WINDOW_WIDTH_ID, "Window Width", "Window opening width in blocks/meters", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_WINDOW_HEIGHT_ID, "Window Height", "Window opening height in blocks/meters", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MARGIN_ID, "Margin", "Outer margin from the face edge to the first opening", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_DEPTH_ID, "Depth",
-            "Cutter thickness across the face plane (centered; ±Depth/2 along the outward normal)", NodeDataType.DOUBLE, this));
+            "Cutter thickness across the face plane (centered; ±Depth/2 along the outward normal)", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_LAYOUT_MODE_ID, "Layout Mode",
-            "Spacing mode: distribute, fixed_gap, or bay", NodeDataType.STRING, this));
+            "Spacing mode: distribute, fixed_gap, or bay", NodeDataType.STRING, this, false, false));
         addInputPort(new BasePort(INPUT_HORIZONTAL_GAP_ID, "Horizontal Gap",
-            "Fixed pier width between columns when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this));
+            "Fixed pier width between columns when Layout Mode is fixed_gap", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_VERTICAL_GAP_ID, "Vertical Gap",
             "Fixed pier height between rows when Layout Mode is fixed_gap (also used for BAY vertical spacing)",
-            NodeDataType.DOUBLE, this));
+            NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_BAY_WIDTH_ID, "Bay Width",
-            "Horizontal center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this));
+            "Horizontal center-to-center bay width when Layout Mode is bay", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_OPENINGS_ID, "Openings",
             "Opening boxes for Difference (centered on the face; thickness = Depth)", NodeDataType.GEOMETRY, this));

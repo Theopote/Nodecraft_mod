@@ -56,8 +56,8 @@ public class GetBoxFaceNode extends BaseNode {
         super(UUID.randomUUID(), "reference.points.get_box_face");
 
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry to query", NodeDataType.BOX_GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_FACE_NAME_ID, "Face Name", "Semantic face name such as top, bottom, left, right, front, or back", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_INDEX_ID, "Face Index", "Face index from 0 to 5", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_FACE_NAME_ID, "Face Name", "Semantic face name such as top, bottom, left, right, front, or back", NodeDataType.STRING, this, false, false));
+        addInputPort(new BasePort(INPUT_INDEX_ID, "Face Index", "Face index from 0 to 5", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_FACE_ID, "Face", "Resolved box face", NodeDataType.BOX_FACE, this));
         addOutputPort(new BasePort(OUTPUT_FOUND_ID, "Found", "Whether the face index resolved successfully", NodeDataType.BOOLEAN, this));

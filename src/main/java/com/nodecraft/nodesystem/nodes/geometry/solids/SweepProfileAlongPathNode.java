@@ -76,8 +76,8 @@ public class SweepProfileAlongPathNode extends AbstractSolidNode {
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to sweep", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_PATH_ID, "Path", "Spine path (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.DOUBLE_LIST, this));
-        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.DOUBLE_LIST, this));
+        addInputPort(new BasePort(INPUT_SCALE_VALUES_ID, "Scale Values", "Optional scale list sampled along the path", NodeDataType.DOUBLE_LIST, this, false, false));
+        addInputPort(new BasePort(INPUT_ROTATION_VALUES_ID, "Rotation Values", "Optional rotation degrees list sampled along the path", NodeDataType.DOUBLE_LIST, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SPINE_POINTS_ID, "Spine Points", "Resolved spine point list", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the path", NodeDataType.POLYGON_PROFILE_LIST, this));

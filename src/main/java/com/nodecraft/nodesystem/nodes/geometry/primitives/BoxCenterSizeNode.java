@@ -47,14 +47,14 @@ public class BoxCenterSizeNode extends AbstractBoxGeneratorNode {
     public BoxCenterSizeNode() {
         super("geometry.primitives.box");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Box size along local X (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Box size along local Y (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Box size along local Z (continuous). Must be > 0.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Center point of the box", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Box size along local X (continuous). Must be > 0.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Box size along local Y (continuous). Must be > 0.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Box size along local Z (continuous). Must be > 0.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this, false, false));
     }
 
     @Override
