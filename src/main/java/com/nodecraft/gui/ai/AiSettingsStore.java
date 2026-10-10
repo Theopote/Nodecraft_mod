@@ -218,15 +218,12 @@ public final class AiSettingsStore {
 
     public static String buildSummary(AiSettingsData data) {
         if (data == null) {
-            return "Planner: Unknown";
+            return "AI: not configured";
         }
-        String plannerMode = data.enableRemotePlanner() ? "Planner: Remote" : "Planner: Local";
         String modelName = isBlank(data.model()) ? "(no model)" : data.model();
-        String provider = sanitizeProviderStrategy(data.providerStrategy());
         String keyStatus = AiCredentialPolicy.keyStatusLabel(data);
-        String layoutMode = data.autoLayoutBeforeApply() ? "Layout: Auto" : "Layout: Plan";
-        return plannerMode + " | Provider: " + provider + " | Model: " + modelName + " | MaxTokens: "
-            + clampMaxOutputTokens(data.maxOutputTokens()) + " | " + keyStatus + " | " + layoutMode;
+        // Keep header quiet for end users — planner mode lives in Settings / offline fallback tips.
+        return "Model: " + modelName + " · " + keyStatus;
     }
 
     public static String resolveApiKey(AiSettingsData data) {

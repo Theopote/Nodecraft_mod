@@ -33,6 +33,7 @@ final class AiAssistantSettingsPopupRenderer {
             ImBoolean showApiKey,
             ImBoolean rememberApiKey,
             ImBoolean autoLayoutBeforeApply,
+            ImBoolean enterToSend,
             ImBoolean debugLoggingEnabled,
             ImBoolean includePromptPreviewInDebug,
             Path settingsPath
@@ -90,7 +91,6 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.inputText("##ai_api_key", state.apiKey(), keyFlags);
         ImGui.popItemWidth();
         ImGui.checkbox("Show API key", state.showApiKey());
-        ImGui.checkbox("Remember API key on disk (dev only)", state.rememberApiKey());
         ImGui.textDisabled("1.0: point Base URL at a local proxy and leave the key empty. Else env: "
                 + AiSettingsStore.API_KEY_ENV + ", "
                 + AiSettingsStore.OPENAI_API_KEY_ENV + ", or "
@@ -134,6 +134,7 @@ final class AiAssistantSettingsPopupRenderer {
         ImGui.popItemWidth();
 
         ImGui.checkbox("Auto layout before apply", state.autoLayoutBeforeApply());
+        ImGui.checkbox("Enter sends message", state.enterToSend());
 
         if (ImGui.treeNode("Advanced request options")) {
             ImGui.text("Provider Strategy");
@@ -160,6 +161,7 @@ final class AiAssistantSettingsPopupRenderer {
             ImGui.inputTextMultiline("##ai_system_prompt", state.systemPrompt(), wideFieldWidth, 100.0f);
             ImGui.popItemWidth();
 
+            ImGui.checkbox("Remember API key on disk (dev only)", state.rememberApiKey());
             ImGui.checkbox("Enable AI debug logging", state.debugLoggingEnabled());
             if (!state.debugLoggingEnabled().get()) {
                 ImGui.beginDisabled();
@@ -172,7 +174,7 @@ final class AiAssistantSettingsPopupRenderer {
         }
 
         ImGui.separator();
-        if (ImGui.button("Validate (Local)")) {
+        if (ImGui.button("Check Settings")) {
             actions.onValidateLocal();
         }
         if (!compactActions) ImGui.sameLine();

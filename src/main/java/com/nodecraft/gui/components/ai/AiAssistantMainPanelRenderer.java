@@ -7,6 +7,7 @@ import imgui.flag.ImGuiInputTextFlags;
 import imgui.type.ImBoolean;
 import imgui.type.ImString;
 
+import java.util.ArrayList;
 import java.util.List;
 
 final class AiAssistantMainPanelRenderer {
@@ -24,14 +25,11 @@ final class AiAssistantMainPanelRenderer {
             ImBoolean includePlayerWorldContext,
             ImBoolean includeSelectedWorldRegionContext,
             ImBoolean enterToSend,
-            String streamingPreview,
             String runtimeStage,
             String runtimeDetail,
             String selectedNodeDisplayName,
-            String selectedNodeTypeId,
             List<AiChatMessage> chatMessages,
             ImString promptInput,
-            boolean remotePlannerEnabled,
             int lastRenderedChatCount
     ) {
     }
@@ -54,17 +52,14 @@ final class AiAssistantMainPanelRenderer {
 
     static int renderMainPanel(State state, Actions actions) {
         renderHeader(state, actions);
-        renderRuntimeStatus(state);
-        renderBusyStatus(state, actions);
-        renderModeOptions(state);
-        renderSelectionContext(state);
+        renderStatusLine(state, actions);
+        renderContextSelector(state);
         renderQuickPrompts(state, actions);
 
         actions.renderPlanPreviewSection();
 
         int chatCount = renderChatHistory(state, actions);
         renderPromptInput(state, actions);
-        renderModeHint(state);
         return chatCount;
     }
 
@@ -73,8 +68,11 @@ final class AiAssistantMainPanelRenderer {
         if (ImGui.smallButton("Settings")) {
             actions.openSettingsPopup();
         }
-        ImGui.sameLine();
-        ImGui.textDisabled(state.settingsSummary());
+        String summary = state.settingsSummary();
+        if (summary != null && !summary.isBlank()) {
+            ImGui.sameLine();
+            ImGui.textDisabled(summary);
+        }
 
         if (state.settingsStatusMessage() != null && !state.settingsStatusMessage().isBlank()) {
             AiUiHelper.renderStatusMessage(state.settingsStatusMessage());
@@ -85,89 +83,78 @@ final class AiAssistantMainPanelRenderer {
         }
     }
 
-    private static void renderBusyStatus(State state, Actions actions) {
-        if (!state.busy()) {
+    /** Single busy/failed status row — no raw streaming dump on the main panel. */
+    private static void renderStatusLine(State state, Actions actions) {
+        if (state.busy()) {
+            ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "Generating plan…");
+            ImGui.sameLine();
+            if (ImGui.smallButton("Cancel")) {
+                actions.cancelRequest();
+            }
             return;
         }
-        ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "AI is generating plan...");
-        ImGui.sameLine();
-        if (ImGui.smallButton("Cancel")) {
-            actions.cancelRequest();
-        }
 
-        String preview = state.streamingPreview();
-        if (preview != null && !preview.isBlank()) {
-            ImGui.textDisabled("Streaming preview:");
-            ImGui.textWrapped(preview);
-        }
-    }
-
-    private static void renderRuntimeStatus(State state) {
         String stage = state.runtimeStage();
-        if (stage == null || stage.isBlank()) {
+        if (stage == null || !"Failed".equals(stage)) {
             return;
         }
-
-        float r = 0.70f;
-        float g = 0.70f;
-        float b = 0.70f;
-        switch (stage) {
-            case "Streaming" -> {
-                r = 0.50f;
-                g = 0.85f;
-                b = 0.95f;
-            }
-            case "Preparing" -> {
-                r = 0.95f;
-                g = 0.78f;
-                b = 0.30f;
-            }
-            case "Parsed" -> {
-                r = 0.45f;
-                g = 0.85f;
-                b = 0.55f;
-            }
-            case "Failed" -> {
-                r = 0.95f;
-                g = 0.42f;
-                b = 0.42f;
-            }
-            default -> {
-                // Keep neutral color for Idle/unknown stages.
-            }
-        }
-
-        ImGui.textColored(r, g, b, 1.0f, "Status: " + stage);
         String detail = state.runtimeDetail();
-        if (detail != null && !detail.isBlank()) {
-            ImGui.textDisabled(detail);
-        }
+        String message = (detail != null && !detail.isBlank())
+                ? "Failed — " + shortReason(detail)
+                : "Failed";
+        ImGui.textColored(0.95f, 0.42f, 0.42f, 1.0f, message);
     }
 
-    private static void renderModeOptions(State state) {
-        ImGui.checkbox("Use selected node as context", state.useSelectionContext());
-        ImGui.checkbox("Include current graph", state.includeGraphContext());
-        ImGui.checkbox("Include player position and view", state.includePlayerWorldContext());
-        ImGui.checkbox("Include selected world region", state.includeSelectedWorldRegionContext());
-        if (state.includePlayerWorldContext().get() || state.includeSelectedWorldRegionContext().get()) {
-            ImGui.textDisabled("Enabled world context is sent to the configured remote planner.");
+    private static String shortReason(String detail) {
+        String trimmed = detail.trim();
+        int cut = trimmed.indexOf('\n');
+        if (cut > 0) {
+            trimmed = trimmed.substring(0, cut).trim();
         }
-        ImGui.checkbox("Press Enter to send", state.enterToSend());
+        if (trimmed.length() > 96) {
+            return trimmed.substring(0, 93) + "…";
+        }
+        return trimmed;
     }
 
-    private static void renderSelectionContext(State state) {
-        if (!state.useSelectionContext().get()) {
-            return;
-        }
-
+    private static void renderContextSelector(State state) {
         ImGui.separator();
-        if (state.selectedNodeDisplayName() != null && !state.selectedNodeDisplayName().isBlank()) {
-            ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f,
-                    "Context: Selected node = " + state.selectedNodeDisplayName());
-            ImGui.textDisabled("Type ID: " + state.selectedNodeTypeId());
-            return;
+        ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f, buildContextSummary(state));
+        if (ImGui.treeNode("Change##ai_context_change")) {
+            ImGui.checkbox("Selected node", state.useSelectionContext());
+            ImGui.checkbox("Nearby graph", state.includeGraphContext());
+            ImGui.checkbox("World position and view", state.includePlayerWorldContext());
+            ImGui.checkbox("Selected world region", state.includeSelectedWorldRegionContext());
+            if (state.includePlayerWorldContext().get() || state.includeSelectedWorldRegionContext().get()) {
+                ImGui.textDisabled("World context is sent to the configured remote planner.");
+            }
+            ImGui.treePop();
         }
-        ImGui.textDisabled("Context: No node selected");
+    }
+
+    private static String buildContextSummary(State state) {
+        List<String> parts = new ArrayList<>(4);
+        if (state.useSelectionContext().get()) {
+            String name = state.selectedNodeDisplayName();
+            if (name != null && !name.isBlank()) {
+                parts.add(name);
+            } else {
+                parts.add("no selection");
+            }
+        }
+        if (state.includeGraphContext().get()) {
+            parts.add("nearby graph");
+        }
+        if (state.includePlayerWorldContext().get()) {
+            parts.add("world position");
+        }
+        if (state.includeSelectedWorldRegionContext().get()) {
+            parts.add("selected region");
+        }
+        if (parts.isEmpty()) {
+            return "Context: none";
+        }
+        return "Context: " + String.join(" + ", parts);
     }
 
     private static void renderQuickPrompts(State state, Actions actions) {
@@ -182,16 +169,15 @@ final class AiAssistantMainPanelRenderer {
         if (ImGui.smallButton("Generate from selection")) {
             actions.onQuickPrompt("Generate a node graph based on current selection and keep existing style.");
         }
-        if (!compact) ImGui.sameLine();
-        if (ImGui.smallButton("Optimize selected graph")) {
-            actions.onQuickPrompt("Optimize selected node graph for readability and performance.");
+        if (!compact) {
+            ImGui.sameLine();
         }
-        if (ImGui.smallButton("Explain current node")) {
+        if (ImGui.smallButton("Suggest improvements")) {
+            actions.onQuickPrompt(
+                    "Suggest readability and structure improvements for the selected node graph.");
+        }
+        if (ImGui.smallButton("Explain selected node")) {
             actions.onQuickPrompt("Explain what the selected node does and how to connect it.");
-        }
-        if (!compact) ImGui.sameLine();
-        if (ImGui.smallButton("Mobius ring example")) {
-            actions.onQuickPrompt("Build a parametrized Mobius ring above selected position with radius/width/thickness controls.");
         }
 
         if (state.busy()) {
@@ -269,7 +255,7 @@ final class AiAssistantMainPanelRenderer {
         boolean submitted = ImGui.inputTextMultiline("##ai_input_multiline", state.promptInput(),
                 inputWidth,
                 dynamicHeight,
-            inputFlags);
+                inputFlags);
         ImGui.popItemWidth();
 
         if (busy) {
@@ -277,16 +263,11 @@ final class AiAssistantMainPanelRenderer {
         }
 
         ImGui.sameLine();
-        if (ImGui.button("Send##ai_prompt_send", 80.0f, dynamicHeight) || (state.enterToSend().get() && submitted)) {
+        if (ImGui.button("Send##ai_prompt_send", 80.0f, dynamicHeight)
+                || (state.enterToSend().get() && submitted)) {
             actions.onSubmitPrompt();
         }
 
         ImGui.popID();
-    }
-
-    private static void renderModeHint(State state) {
-        ImGui.textDisabled(state.remotePlannerEnabled()
-                ? "Planner: remote"
-                : "Planner: local draft");
     }
 }

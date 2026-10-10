@@ -56,7 +56,6 @@ public final class AiAssistantPanel {
 
         INode selectedNode = resolveSelectedNodeForRender();
         String selectedNodeDisplayName = selectedNode == null ? "" : selectedNode.getDisplayName();
-        String selectedNodeTypeId = selectedNode == null ? "" : selectedNode.getTypeId();
         String inputLanguageDetected = AiIntentAnalysisService.detectInputLanguage(ui.aiPromptInput.get());
         String normalizedIntentPreview = AiIntentAnalysisService.buildNormalizedIntentPreview(ui.aiPromptInput.get());
         boolean plannerBusy = controller.isRemotePlannerBusy();
@@ -78,14 +77,11 @@ public final class AiAssistantPanel {
                         ui.aiIncludePlayerWorldContext,
                         ui.aiIncludeSelectedWorldRegionContext,
                         ui.aiEnterToSend,
-                        streamingPreview,
                         controller.resolveAiRuntimeStageLabel(plannerBusy, streamingPreview),
                         controller.planStatusMessage(),
                         selectedNodeDisplayName,
-                        selectedNodeTypeId,
                         ui.aiChatMessages,
                         ui.aiPromptInput,
-                        ui.aiEnableRemotePlanner.get(),
                         lastRenderedChatCount
                 ),
                 new AiAssistantMainPanelRenderer.Actions() {
@@ -156,6 +152,7 @@ public final class AiAssistantPanel {
                         ui.aiShowApiKey,
                         ui.aiRememberApiKey,
                         ui.aiAutoLayoutBeforeApply,
+                        ui.aiEnterToSend,
                         ui.aiDebugLoggingEnabled,
                         ui.aiIncludePromptPreviewInDebug,
                         controller.settingsPath()

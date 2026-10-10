@@ -79,7 +79,6 @@ final class AiAssistantPlanPreviewRenderer {
         if (state.applyModeHint() != null && !state.applyModeHint().isBlank()) {
             ImGui.textDisabled(state.applyModeHint());
         }
-        ImGui.text("Nodes: " + state.nodeCount() + "  Connections: " + state.connectionCount());
 
         if (state.validationErrors() != null && !state.validationErrors().isEmpty()) {
             ImGui.textColored(1.0f, 0.45f, 0.35f, 1.0f, "Validation errors:");
@@ -133,19 +132,14 @@ final class AiAssistantPlanPreviewRenderer {
     }
 
     private static void renderPlanActions(State state, Actions actions) {
-        if (state.reviewOnlyMode() != null) {
-            ImGui.checkbox("Review only", state.reviewOnlyMode());
-        }
-
-        boolean reviewOnly = state.reviewOnlyMode() != null && state.reviewOnlyMode().get();
         if (!state.canApply()) {
             ImGui.beginDisabled();
         }
-        if (reviewOnly) {
-            if (ImGui.button("Review Changes")) {
-                actions.reviewChanges();
-            }
-        } else if (ImGui.button("Apply Changes")) {
+        if (ImGui.button("Review Changes")) {
+            actions.reviewChanges();
+        }
+        ImGui.sameLine();
+        if (ImGui.button("Apply Changes")) {
             actions.applyChanges();
         }
         if (!state.canApply()) {
@@ -163,19 +157,12 @@ final class AiAssistantPlanPreviewRenderer {
                 ImGui.endDisabled();
             }
 
-            if (!state.canUndo()) {
-                ImGui.beginDisabled();
-            }
-            if (ImGui.smallButton("Undo Last AI Apply")) {
-                actions.undoLastApply();
-            }
-            if (!state.canUndo()) {
-                ImGui.endDisabled();
+            if (state.canUndo()) {
+                if (ImGui.smallButton("Undo Last AI Apply")) {
+                    actions.undoLastApply();
+                }
             }
 
-            if (!state.canUndo() && state.undoDisabledReason() != null && !state.undoDisabledReason().isBlank()) {
-                ImGui.textDisabled(state.undoDisabledReason());
-            }
             ImGui.treePop();
         }
     }
@@ -184,6 +171,8 @@ final class AiAssistantPlanPreviewRenderer {
         if (!ImGui.treeNode("Technical plan details")) {
             return;
         }
+
+        ImGui.textDisabled("Nodes: " + state.nodeCount() + "  Connections: " + state.connectionCount());
 
         if (ImGui.treeNode("Planned Nodes")) {
             if (state.planNodes() != null && !state.planNodes().isEmpty()) {
