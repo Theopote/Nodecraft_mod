@@ -1,6 +1,6 @@
 # NodeSemanticCatalog & Semantic Composer
 
-Status: **Catalog locked for Composer** (S1–S3 + semantic port keys). AiSemanticComposer is next.
+Status: **Catalog locked for Composer** (S1–S3 + semantic port keys). **AiSemanticComposer v1** consumes Catalog as a frozen read-only facade.
 
 ## Principle (locked)
 
@@ -19,8 +19,8 @@ TypeConversionRegistry
 NodeSemanticCatalog   (read-only facade)
         ↓
 AiPlanCapabilityCoverage / AiNodeSchemaCatalog / AiSchemaRetrievalService
-        ⇣ (P2)
-AiSemanticComposer
+        ↓
+AiSemanticComposer (`com.nodecraft.gui.ai.compose`) → `AiGraphPlan` only
 ```
 
 ## Packages
@@ -30,6 +30,7 @@ AiSemanticComposer
 | `com.nodecraft.nodesystem.semantic` | Catalog, Descriptor, Edge(+Kind), PortKeys, Capability, Domain, Deriver |
 | `com.nodecraft.nodesystem.recommendation` | `NodeRecommendationRules`, `NodeRecommendationRulesLoader` (shared SoT + revision) |
 | `com.nodecraft.gui.recommendation` | Scorer, Connector, Overlay, UI — **consumers**, not rules owners |
+| `com.nodecraft.gui.ai.compose` | **AiSemanticComposer v1** — deterministic Preview-first workflow completer over Catalog |
 
 ## Edge tiers
 
@@ -77,24 +78,40 @@ Helpers: `NodeSemanticPortKeys.physicalBase` / `isVariant` / `matchesEdgePort` (
 - `difference` / subtract → BOOLEAN_CUT; union/intersection → not
 - `WORLD_APPLY` from `effect == WORLD_WRITE` (not `output.execute.*`)
 
-### WORLD_APPLY vs APPLY (P2)
+### WORLD_APPLY vs APPLY
 
-Both enum values still exist and are co-tagged on `WORLD_WRITE`. Converge or document Composer goal semantics before Composer goals API — not a Catalog blocker.
+Both enum values still exist and are co-tagged on `WORLD_WRITE`. Composer v1 uses `AiComposeGoal` (`PREVIEW` / `WORLD_OUTPUT` / `CAPABILITY_SET`) rather than treating those capabilities as search terminals. No APPLY/WORLD_APPLY enum merge in this round.
 
 ## Cache / revision
 
 Cache key: `(NodeRegistry.introspectionEpoch, NodeRecommendationRulesLoader.getRulesRevision())`.
 
-## Local Planner path (P2)
+## AiSemanticComposer v1
+
+Composer is a **deterministic workflow completion engine** over Catalog edges — not a second Mock Planner / NL designer.
+
+Hard constraints (search-time):
+
+- Effect gate via `NodeSemanticCatalog.effect(typeId)`: allow PURE / CONTEXT_READ / WORLD_READ / PREVIEW_WRITE; block WORLD_WRITE / FILE_IO / CONTEXT_WRITE unless world intent
+- Edges only from `effectiveDownstream` / `effectiveUpstream` + explicit `TypeConversionRegistry` converters
+- No generic scalar (DOUBLE/FLOAT/INTEGER/BOOLEAN/STRING) CATEGORY/TYPE flood; no orientation expansion (`output_face:…`) without caller key
+- Cap `maxNodes` (default 12); budget / unsupported conversion / missing hard caps → **abstain**
+- Output **`AiGraphPlan` only** (no second graph model)
+
+## Local Planner path
 
 ```text
-Template match → AiSemanticComposer → abstain
+Template match (confident)
+  → else AiSemanticComposer
+    → else AiMockPlanService
+      → else abstain
 ```
 
 Do not expand `MockTemplateKind`. Do not rewrite Suggested Connections to consume Catalog yet.
 
 ## Non-goals
 
-- No Composer in this Catalog lock round
-- No Suggested Connections rewrite
+- No Catalog API redesign unless a real Composer gap appears
+- No Suggested Connections → Catalog rewrite
 - No APPLY vs WORLD_APPLY enum merge yet
+- No remote planner wiring / complex param inference

@@ -1,6 +1,8 @@
 package com.nodecraft.gui.ai;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.ai.compose.AiComposeResult;
+import com.nodecraft.gui.ai.compose.AiSemanticComposer;
 import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 
@@ -50,10 +52,20 @@ public final class AiPlanDslWorkflowService {
                 NodeCraft.LOGGER.info("[AI_TEMPLATE] Using local template '{}' (score={}).", match.template().name(), match.score());
                 return LocalGraphBuildResult.ok(AiGraphPlanDslAdapterService.fromDsl(parsed.graph()));
             }
-            NodeCraft.LOGGER.warn("[AI_TEMPLATE] Matched template '{}' failed DSL validation, falling back to mock.", match.template().name());
+            NodeCraft.LOGGER.warn("[AI_TEMPLATE] Matched template '{}' failed DSL validation, falling back to composer.", match.template().name());
         } else {
-            NodeCraft.LOGGER.info("[AI_TEMPLATE] No confident local template match; using dynamic mock planner.");
+            NodeCraft.LOGGER.info("[AI_TEMPLATE] No confident local template match; trying Semantic Composer.");
         }
+
+        AiComposeResult composed = AiSemanticComposer.composeFromPrompt(prompt);
+        if (composed.isSuccess()) {
+            NodeCraft.LOGGER.info("[AI_COMPOSER] Using Semantic Composer plan (cost={}).", composed.totalCost());
+            return LocalGraphBuildResult.ok(composed.plan());
+        }
+        NodeCraft.LOGGER.info(
+                "[AI_COMPOSER] Composer abstained ({}); falling back to mock planner.",
+                composed.abstainMessage() == null ? composed.abstainCode() : composed.abstainMessage()
+        );
 
         AiMockPlanService.MockPlan mockPlan = AiMockPlanService.buildMockPlan(prompt);
         if (mockPlan.abstained()) {
