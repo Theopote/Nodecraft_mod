@@ -95,4 +95,32 @@ class NodeSemanticDeriverHardenTest {
                 NodeEffect.WORLD_WRITE);
         assertTrue(caps.contains(NodeCapability.WORLD_APPLY));
     }
+
+    @Test
+    void booleanUnionIsNotBooleanCut() {
+        Set<NodeCapability> caps = NodeSemanticDeriver.deriveCapabilities(
+                "geometry.boolean.union",
+                "geometry.boolean",
+                NodeEffect.PURE);
+        assertFalse(caps.contains(NodeCapability.BOOLEAN_CUT));
+    }
+
+    @Test
+    void previewNodeHasPreviewCapability() {
+        Set<NodeCapability> caps = NodeSemanticDeriver.deriveCapabilities(
+                "output.preview.preview_geometry",
+                "output.preview",
+                NodeEffect.PREVIEW_WRITE);
+        assertTrue(caps.contains(NodeCapability.PREVIEW));
+    }
+
+    @Test
+    void worldReadDoesNotHaveWorldApply() {
+        Set<NodeCapability> caps = NodeSemanticDeriver.deriveCapabilities(
+                "world.read.get_block",
+                "world.read",
+                NodeEffect.WORLD_READ);
+        assertFalse(caps.contains(NodeCapability.WORLD_APPLY));
+        assertFalse(caps.contains(NodeCapability.APPLY));
+    }
 }

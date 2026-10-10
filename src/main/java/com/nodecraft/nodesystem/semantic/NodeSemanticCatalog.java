@@ -183,35 +183,48 @@ public final class NodeSemanticCatalog {
         return collectEffectiveUpstreamOnDemand(nodeId, null, null);
     }
 
-    public List<NodeSemanticEdge> effectiveDownstream(String nodeId, String portId, NodeDataType dataType) {
+    /**
+     * Port-aware effective edges. {@code portKey} may be a physical port id ({@code output_face})
+     * or a synthetic semantic key ({@code output_face:horizontal}). Catalog does not resolve
+     * runtime orientation — callers supply the key.
+     *
+     * <ul>
+     *   <li>Exact edges match the full key only (physical does not expand to all variants).</li>
+     *   <li>CATEGORY/TYPE resolve against {@link NodeSemanticPortKeys#physicalBase(String)}.</li>
+     * </ul>
+     */
+    public List<NodeSemanticEdge> effectiveDownstream(String nodeId, String portKey, NodeDataType dataType) {
         List<NodeSemanticEdge> all = effectiveDownstream(nodeId);
-        if (portId == null && dataType == null) {
+        if (portKey == null && dataType == null) {
             return all;
         }
-        if (portId != null || dataType != null) {
+        if (portKey != null || dataType != null) {
             // Prefer port-local recompute when registry miss / filtering needed.
             refreshIfNeeded();
-            List<NodeSemanticEdge> local = collectEffectiveDownstreamOnDemand(nodeId, portId, dataType);
+            List<NodeSemanticEdge> local = collectEffectiveDownstreamOnDemand(nodeId, portKey, dataType);
             if (!local.isEmpty() || describe(nodeId) == null) {
                 return local;
             }
         }
-        return filterPort(all, portId);
+        return filterPort(all, portKey);
     }
 
-    public List<NodeSemanticEdge> effectiveUpstream(String nodeId, String portId, NodeDataType dataType) {
+    /**
+     * @see #effectiveDownstream(String, String, NodeDataType)
+     */
+    public List<NodeSemanticEdge> effectiveUpstream(String nodeId, String portKey, NodeDataType dataType) {
         List<NodeSemanticEdge> all = effectiveUpstream(nodeId);
-        if (portId == null && dataType == null) {
+        if (portKey == null && dataType == null) {
             return all;
         }
-        if (portId != null || dataType != null) {
+        if (portKey != null || dataType != null) {
             refreshIfNeeded();
-            List<NodeSemanticEdge> local = collectEffectiveUpstreamOnDemand(nodeId, portId, dataType);
+            List<NodeSemanticEdge> local = collectEffectiveUpstreamOnDemand(nodeId, portKey, dataType);
             if (!local.isEmpty() || describe(nodeId) == null) {
                 return local;
             }
         }
-        return filterPort(all, portId);
+        return filterPort(all, portKey);
     }
 
     public TypeConversionRegistry.ConversionPolicy conversionBetween(NodeDataType from, NodeDataType to) {
@@ -230,7 +243,7 @@ public final class NodeSemanticCatalog {
 
     private List<NodeSemanticEdge> collectEffectiveDownstreamOnDemand(
             String nodeId,
-            String portId,
+            String portKey,
             NodeDataType dataType
     ) {
         NodeRegistry registry = NodeRegistry.getInstance();
@@ -238,12 +251,15 @@ public final class NodeSemanticCatalog {
         String canonical = info != null ? info.getId() : nodeId;
         String category = info != null ? info.getCategoryId() : inferCategory(canonical);
         PortSnapshot ports = resolvePorts(registry, canonical);
-        List<PortRef> outputs = filterPortRefs(ports.outputs(), portId, dataType);
+        // Exact uses full semantic key; CATEGORY/TYPE use physical port base.
+        String physicalPort = NodeSemanticPortKeys.physicalBase(portKey);
+        List<PortRef> outputs = filterPortRefs(ports.outputs(), physicalPort, dataType);
         if (outputs.isEmpty() && dataType != null) {
-            outputs = List.of(new PortRef(portId == null || portId.isBlank() ? "*" : portId, dataType));
+            String synthId = physicalPort == null || physicalPort.isBlank() ? "*" : physicalPort;
+            outputs = List.of(new PortRef(synthId, dataType));
         }
         return mergeEdges(
-                filterPort(collectExactDownstream(canonical, rules), portId),
+                filterPort(collectExactDownstream(canonical, rules), portKey),
                 collectCategoryDownstream(category, outputs, rules),
                 collectTypeDownstream(outputs, rules)
         );
@@ -251,7 +267,7 @@ public final class NodeSemanticCatalog {
 
     private List<NodeSemanticEdge> collectEffectiveUpstreamOnDemand(
             String nodeId,
-            String portId,
+            String portKey,
             NodeDataType dataType
     ) {
         NodeRegistry registry = NodeRegistry.getInstance();
@@ -259,12 +275,14 @@ public final class NodeSemanticCatalog {
         String canonical = info != null ? info.getId() : nodeId;
         String category = info != null ? info.getCategoryId() : inferCategory(canonical);
         PortSnapshot ports = resolvePorts(registry, canonical);
-        List<PortRef> inputs = filterPortRefs(ports.inputs(), portId, dataType);
+        String physicalPort = NodeSemanticPortKeys.physicalBase(portKey);
+        List<PortRef> inputs = filterPortRefs(ports.inputs(), physicalPort, dataType);
         if (inputs.isEmpty() && dataType != null) {
-            inputs = List.of(new PortRef(portId == null || portId.isBlank() ? "*" : portId, dataType));
+            String synthId = physicalPort == null || physicalPort.isBlank() ? "*" : physicalPort;
+            inputs = List.of(new PortRef(synthId, dataType));
         }
         return mergeEdges(
-                filterPort(collectExactUpstream(canonical, rules), portId),
+                filterPort(collectExactUpstream(canonical, rules), portKey),
                 collectCategoryUpstream(category, inputs, rules),
                 collectTypeUpstream(inputs, rules)
         );
@@ -590,7 +608,7 @@ public final class NodeSemanticCatalog {
         merged.sort(Comparator
                 .comparingInt((NodeSemanticEdge e) -> e.kind().ordinal())
                 .thenComparingInt(NodeSemanticEdge::priority)
-                .thenComparing(e -> e.targetNodeId(), String.CASE_INSENSITIVE_ORDER));
+                .thenComparing(NodeSemanticEdge::targetNodeId, String.CASE_INSENSITIVE_ORDER));
         return List.copyOf(merged);
     }
 
@@ -599,15 +617,27 @@ public final class NodeSemanticCatalog {
         if (kindCmp != 0) {
             return kindCmp < 0;
         }
-        return candidate.priority() < existing.priority();
+        int priorityCmp = Integer.compare(candidate.priority(), existing.priority());
+        if (priorityCmp != 0) {
+            return priorityCmp < 0;
+        }
+        // Prefer a filled connect port when kinds/priorities tie (string category rules often omit it).
+        return hasPort(candidate.targetPortId()) && !hasPort(existing.targetPortId());
     }
 
+    /**
+     * Collapse duplicate workflow neighbors from the same source port to the same target.
+     * Different source ports (e.g. openings vs frames) stay distinct. Target connect-port is
+     * not part of the key so CATEGORY rows without {@code connectPortId} still yield to EXACT/TYPE.
+     */
     private static String dedupeKey(NodeSemanticEdge edge) {
         return safe(edge.targetNodeId()).toLowerCase(Locale.ROOT)
                 + '|'
-                + safe(edge.sourcePortId()).toLowerCase(Locale.ROOT)
-                + '|'
-                + safe(edge.targetPortId()).toLowerCase(Locale.ROOT);
+                + safe(edge.sourcePortId()).toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean hasPort(String portId) {
+        return portId != null && !portId.isBlank();
     }
 
     private static String safe(String value) {
@@ -627,11 +657,11 @@ public final class NodeSemanticCatalog {
         return List.copyOf(filtered);
     }
 
-    private static List<NodeSemanticEdge> filterPort(List<NodeSemanticEdge> edges, String portId) {
+    private static List<NodeSemanticEdge> filterPort(List<NodeSemanticEdge> edges, String portKey) {
         if (edges == null || edges.isEmpty()) {
             return List.of();
         }
-        if (portId == null || portId.isBlank()) {
+        if (portKey == null || portKey.isBlank()) {
             return edges;
         }
         List<NodeSemanticEdge> filtered = new ArrayList<>();
@@ -639,8 +669,10 @@ public final class NodeSemanticCatalog {
             if (edge == null) {
                 continue;
             }
-            // Downstream: sourcePortId is this node's port; upstream: targetPortId is this node's port.
-            if (portId.equalsIgnoreCase(edge.sourcePortId()) || portId.equalsIgnoreCase(edge.targetPortId())) {
+            // Downstream: sourcePortId is this node's port key; upstream: targetPortId.
+            // Equality only — physical keys do not expand to synthetic variants.
+            if (NodeSemanticPortKeys.matchesEdgePort(edge.sourcePortId(), portKey)
+                    || NodeSemanticPortKeys.matchesEdgePort(edge.targetPortId(), portKey)) {
                 filtered.add(edge);
             }
         }
