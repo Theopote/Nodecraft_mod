@@ -3,9 +3,8 @@ package com.nodecraft.gui.ai;
 import com.nodecraft.gui.ai.model.AiGraphPlan;
 import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.nodesystem.api.NodeEffect;
-import com.nodecraft.nodesystem.execution.runtime.NodeEffectResolver;
-import com.nodecraft.gui.node.NodeInfo;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +17,8 @@ import java.util.List;
  * {@code NodeExecutor}, bake, or other runtime side effects. Execution policy remains governed by
  * {@link com.nodecraft.nodesystem.execution.runtime.PreviewSideEffectPolicy} at run time.</p>
  *
- * <p>See {@code docs/architecture/ai-assistant-subsystem.md} and
- * {@code docs/contracts/preview-side-effects.md}.</p>
+ * <p>Effect resolution goes through {@link NodeSemanticCatalog} so EffectPolicy, Composer, and
+ * CapabilityCoverage share one semantic facade.</p>
  */
 public final class AiPlanEffectPolicy {
 
@@ -57,14 +56,11 @@ public final class AiPlanEffectPolicy {
     }
 
     public static boolean isPreviewForbiddenType(String typeId, NodeRegistry registry) {
-        if (typeId == null || typeId.isBlank() || registry == null) {
+        if (typeId == null || typeId.isBlank()) {
             return false;
         }
-        NodeInfo info = registry.getNodeInfo(typeId);
-        if (info == null || info.getNodeClass() == null) {
-            return false;
-        }
-        NodeEffect effect = NodeEffectResolver.resolve(info.getNodeClass(), typeId);
-        return !effect.isAllowedInPreview();
+        // Prefer Catalog facade; registry arg kept for call-site compatibility.
+        NodeEffect effect = NodeSemanticCatalog.get().effect(typeId);
+        return effect != null && !effect.isAllowedInPreview();
     }
 }

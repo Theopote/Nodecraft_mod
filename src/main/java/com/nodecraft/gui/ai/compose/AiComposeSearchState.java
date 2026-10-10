@@ -9,6 +9,7 @@ import java.util.Set;
 
 /**
  * Minimal UCS search state for Composer v1.
+ * Tracks covered capabilities and open required structural inputs — not a full CSP.
  */
 public final class AiComposeSearchState implements Comparable<AiComposeSearchState> {
 
@@ -16,6 +17,7 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
     private final String frontierTypeId;
     private final String frontierPortKey;
     private final Set<NodeCapability> covered;
+    private final Set<String> openRequiredInputs;
     private final double cost;
     private final List<Step> steps;
 
@@ -34,6 +36,7 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
             String frontierTypeId,
             String frontierPortKey,
             Set<NodeCapability> covered,
+            Set<String> openRequiredInputs,
             double cost,
             List<Step> steps
     ) {
@@ -41,6 +44,7 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
         this.frontierTypeId = frontierTypeId;
         this.frontierPortKey = frontierPortKey;
         this.covered = covered == null ? Set.of() : Set.copyOf(covered);
+        this.openRequiredInputs = openRequiredInputs == null ? Set.of() : Set.copyOf(openRequiredInputs);
         this.cost = cost;
         this.steps = steps == null ? List.of() : List.copyOf(steps);
     }
@@ -61,6 +65,10 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
         return covered;
     }
 
+    public Set<String> openRequiredInputs() {
+        return openRequiredInputs;
+    }
+
     public double cost() {
         return cost;
     }
@@ -69,19 +77,11 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
         return steps;
     }
 
-    public AiComposeSearchState extend(Step step, Set<NodeCapability> nextCovered, double addedCost) {
+    public AiComposeSearchState withFrontier(String typeId, String portKey, Set<NodeCapability> nextCovered,
+                                             Set<String> openInputs, double nextCost, List<Step> nextSteps) {
         LinkedHashSet<String> nextPath = new LinkedHashSet<>(typePath);
-        nextPath.add(step.toTypeId());
-        List<Step> nextSteps = new ArrayList<>(steps);
-        nextSteps.add(step);
-        return new AiComposeSearchState(
-                nextPath,
-                step.toTypeId(),
-                step.toPortId(),
-                nextCovered,
-                cost + addedCost,
-                nextSteps
-        );
+        nextPath.add(typeId);
+        return new AiComposeSearchState(nextPath, typeId, portKey, nextCovered, openInputs, nextCost, nextSteps);
     }
 
     @Override
@@ -89,6 +89,10 @@ public final class AiComposeSearchState implements Comparable<AiComposeSearchSta
         int c = Double.compare(this.cost, other.cost);
         if (c != 0) {
             return c;
+        }
+        int open = Integer.compare(this.openRequiredInputs.size(), other.openRequiredInputs.size());
+        if (open != 0) {
+            return open;
         }
         return String.valueOf(this.frontierTypeId).compareToIgnoreCase(String.valueOf(other.frontierTypeId));
     }

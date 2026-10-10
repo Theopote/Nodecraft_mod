@@ -1147,20 +1147,26 @@
         "output_surface_strip": {
           "downstream": [
             {
-              "nodeId": "geometry.solids.surface_strip_to_lattice",
+              "nodeId": "geometry.voxel.surface_strip_to_blocks",
               "order": 0,
+              "reason": "扫掠条带体素化为方块坐标",
+              "connectPortId": "input_surface_strip"
+            },
+            {
+              "nodeId": "geometry.solids.surface_strip_to_lattice",
+              "order": 10,
               "reason": "生成扫掠条带线框格架",
               "connectPortId": "input_surface_strip"
             },
             {
               "nodeId": "geometry.solids.offset_surface_strip",
-              "order": 10,
+              "order": 20,
               "reason": "偏移扫掠条带",
               "connectPortId": "input_surface_strip"
             },
             {
               "nodeId": "geometry.solids.deconstruct_surface_strip",
-              "order": 20,
+              "order": 30,
               "reason": "拆解扫掠条带",
               "connectPortId": "input_surface_strip"
             }
@@ -2775,26 +2781,32 @@
     "surface_strip": {
       "downstream": [
         {
-          "nodeId": "geometry.solids.surface_strip_to_lattice",
+          "nodeId": "geometry.voxel.surface_strip_to_blocks",
           "order": 0,
+          "reason": "条带体素化为方块坐标（Preview 链）",
+          "connectPortId": "input_surface_strip"
+        },
+        {
+          "nodeId": "geometry.solids.surface_strip_to_lattice",
+          "order": 10,
           "reason": "生成条带线框格架",
           "connectPortId": "input_surface_strip"
         },
         {
           "nodeId": "geometry.solids.offset_surface_strip",
-          "order": 10,
+          "order": 20,
           "reason": "偏移曲面条带",
           "connectPortId": "input_surface_strip"
         },
         {
           "nodeId": "geometry.solids.extract_surface_strip_range",
-          "order": 20,
+          "order": 30,
           "reason": "提取条带区间",
           "connectPortId": "input_surface_strip"
         },
         {
           "nodeId": "geometry.solids.deconstruct_surface_strip",
-          "order": 30,
+          "order": 40,
           "reason": "拆解条带",
           "connectPortId": "input_surface_strip"
         }

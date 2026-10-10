@@ -90,13 +90,20 @@ Cache key: `(NodeRegistry.introspectionEpoch, NodeRecommendationRulesLoader.getR
 
 Composer is a **deterministic workflow completion engine** over Catalog edges — not a second Mock Planner / NL designer.
 
+**No hardcoded workflow table.** Paths such as Sphere→Voxelize→Assign→Preview or Wall+Window→Difference must emerge from Catalog EXACT/CATEGORY/TYPE edges + upstream fill + explicit converters. Seed resolution may map capabilities to type ids; it must not encode recipe chains.
+
+Algorithm sketch: multi-seed → downstream UCS → required-input upstream fill (plan-local join first) → converter insert → `validatePlan` + `AiPlanCapabilityCoverage.analyze` → plan or `semantic_composer_no_confident_plan`.
+
 Hard constraints (search-time):
 
-- Effect gate via `NodeSemanticCatalog.effect(typeId)`: allow PURE / CONTEXT_READ / WORLD_READ / PREVIEW_WRITE; block WORLD_WRITE / FILE_IO / CONTEXT_WRITE unless world intent
+- Effect gate via `NodeSemanticCatalog.effect(typeId)` **before enqueue**: allow PURE / CONTEXT_READ / WORLD_READ / PREVIEW_WRITE; block WORLD_WRITE / FILE_IO / CONTEXT_WRITE (WORLD_WRITE only under `AiComposeGoal.WORLD_OUTPUT`)
 - Edges only from `effectiveDownstream` / `effectiveUpstream` + explicit `TypeConversionRegistry` converters
 - No generic scalar (DOUBLE/FLOAT/INTEGER/BOOLEAN/STRING) CATEGORY/TYPE flood; no orientation expansion (`output_face:…`) without caller key
 - Cap `maxNodes` (default 12); budget / unsupported conversion / missing hard caps → **abstain**
+- Deterministic refs (`sphere_1`); layout `x=depth*280`, `y=branch*180`
 - Output **`AiGraphPlan` only** (no second graph model)
+
+Catalog gap closed for Sweep Preview: `surface_strip` / `geometry.solids.sweep.output_surface_strip` → `geometry.voxel.surface_strip_to_blocks`.
 
 ## Local Planner path
 

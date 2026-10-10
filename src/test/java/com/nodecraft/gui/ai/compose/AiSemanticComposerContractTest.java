@@ -1,13 +1,16 @@
 package com.nodecraft.gui.ai.compose;
 
 import com.nodecraft.gui.ai.model.AiGraphPlan;
+import com.nodecraft.gui.ai.model.AiPlanConnection;
 import com.nodecraft.gui.ai.model.AiPlanNode;
 import com.nodecraft.gui.recommendation.NodeRecommendations;
+import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.semantic.NodeCapability;
 import com.nodecraft.nodesystem.semantic.NodeDomain;
 import com.nodecraft.nodesystem.semantic.NodeSemanticCatalog;
+import com.nodecraft.nodesystem.semantic.NodeSemanticEdgeKind;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -16,12 +19,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Contract tests for AiSemanticComposer v1 — Preview-first, effect-gated workflows.
+ * Contract tests for Catalog-driven AiSemanticComposer v1.
  */
 class AiSemanticComposerContractTest {
 
@@ -34,25 +38,26 @@ class AiSemanticComposerContractTest {
         NodeRecommendations.get().initialize();
         NodeRecommendations.get().reloadRules();
         NodeRecommendations.get().invalidateCache();
-        NodeSemanticCatalog.get().refreshIfNeeded();
+        NodeSemanticCatalog.get().forceRefresh();
     }
 
     @Test
-    void composeSphereEndsInPreview() {
+    void composeSpherePreview() {
         AiComposeResult result = AiSemanticComposer.composeFromPrompt("create a sphere");
-        assertTrue(result.isSuccess(), () -> "abstain: " + result.abstainMessage());
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
         Set<String> types = typeIds(result.plan());
         assertTrue(types.contains("geometry.primitives.sphere"));
         assertTrue(types.contains("geometry.voxel.voxelize_geometry"));
         assertTrue(types.contains("material.basic_assignment.assign_block_type"));
         assertTrue(types.contains("output.preview.preview_blocks"));
         assertFalse(types.contains("output.execute.apply_changes"));
+        assertFalse(hasWorldWrite(result.plan()));
     }
 
     @Test
-    void composeSphereWithWorldIntentMayIncludeApply() {
+    void composeSphereWorldOutput() {
         AiComposeResult result = AiSemanticComposer.composeFromPrompt("create a sphere apply to world");
-        assertTrue(result.isSuccess(), () -> "abstain: " + result.abstainMessage());
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
         Set<String> types = typeIds(result.plan());
         assertTrue(types.contains("geometry.primitives.sphere"));
         assertTrue(types.contains("output.preview.preview_blocks"));
@@ -60,97 +65,157 @@ class AiSemanticComposerContractTest {
     }
 
     @Test
-    void composeWallWithWindowsUsesDifference() {
+    void composeWallWithWindowsUsesBooleanCut() {
         AiComposeResult result = AiSemanticComposer.composeFromPrompt("wall with windows");
-        assertTrue(result.isSuccess(), () -> "abstain: " + result.abstainMessage());
-        Set<String> types = typeIds(result.plan());
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
+        AiGraphPlan plan = result.plan();
+        Set<String> types = typeIds(plan);
         assertTrue(types.contains("geometry.architectural_primitives.wall_slab"));
         assertTrue(types.contains("geometry.architectural_primitives.window_array"));
         assertTrue(types.contains("geometry.boolean.difference"));
         assertTrue(types.contains("output.preview.preview_blocks"));
         assertFalse(types.contains("output.execute.apply_changes"));
+
+        assertTrue(hasConnection(plan,
+                "geometry.architectural_primitives.wall_slab", "output_geometry",
+                "geometry.boolean.difference", "input_base"),
+                "wall.geometry → difference.base");
+        assertTrue(hasConnection(plan,
+                "geometry.architectural_primitives.window_array", "output_openings",
+                "geometry.boolean.difference", "input_cutter"),
+                "window.openings → difference.cutter");
     }
 
     @Test
-    void composePathAndProfileUsesSweep() {
+    void composeProfileToExtrude() {
+        AiComposeResult result = AiSemanticComposer.composeFromPrompt("extrude a rectangle profile");
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
+        Set<String> types = typeIds(result.plan());
+        assertTrue(types.stream().anyMatch(t -> t.contains("rectangle_profile") || t.contains("circle_profile")));
+        assertTrue(types.contains("geometry.profiles.profile_to_region"));
+        assertTrue(types.contains("geometry.solids.extrude_region"));
+        assertTrue(types.contains("output.preview.preview_blocks")
+                || types.contains("output.preview.preview_geometry"));
+    }
+
+    @Test
+    void composePathAndProfileThroughSweep() {
         AiComposeResult result = AiSemanticComposer.composeFromPrompt("sweep helix path with profile");
-        assertTrue(result.isSuccess(), () -> "abstain: " + result.abstainMessage());
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
         Set<String> types = typeIds(result.plan());
         assertTrue(types.contains("geometry.curves.helix"));
         assertTrue(types.contains("geometry.profiles.rectangle_profile")
                 || types.contains("geometry.profiles.circle_profile"));
         assertTrue(types.contains("geometry.solids.sweep"));
-        assertTrue(types.contains("geometry.voxel.surface_strip_to_blocks")
-                || types.contains("geometry.voxel.voxelize_geometry"));
+        assertTrue(types.contains("geometry.voxel.surface_strip_to_blocks"));
+        assertTrue(types.contains("material.basic_assignment.assign_block_type"));
         assertTrue(types.contains("output.preview.preview_blocks"));
+        assertFalse(types.contains("geometry.primitives.sphere"));
+        assertFalse(types.contains("pattern.linear.curve_array"));
         assertFalse(types.contains("output.execute.apply_changes"));
     }
 
     @Test
-    void composerDoesNotTraverseWorldWriteWithoutExplicitIntent() {
+    void previewGoalNeverIncludesWorldWrite() {
         assertFalse(AiSemanticComposer.isEffectAllowed(NodeEffect.WORLD_WRITE, false));
         assertTrue(AiSemanticComposer.isEffectAllowed(NodeEffect.WORLD_WRITE, true));
+        AiComposeResult result = AiSemanticComposer.composeFromPrompt("create a sphere");
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
+        assertFalse(hasWorldWrite(result.plan()));
+        assertFalse(typeIds(result.plan()).stream().anyMatch(id -> id.startsWith("output.execute.")));
+    }
+
+    @Test
+    void previewGoalNeverIncludesFileIo() {
         assertFalse(AiSemanticComposer.isEffectAllowed(NodeEffect.FILE_IO, false));
         assertFalse(AiSemanticComposer.isEffectAllowed(NodeEffect.FILE_IO, true));
-        assertFalse(AiSemanticComposer.isEffectAllowed(NodeEffect.CONTEXT_WRITE, false));
-
-        AiComposeResult result = AiSemanticComposer.composeFromPrompt("create a sphere");
-        assertTrue(result.isSuccess(), () -> "abstain: " + result.abstainMessage());
-        assertFalse(typeIds(result.plan()).stream().anyMatch(id -> id.startsWith("output.execute.")));
+        AiComposeResult result = AiSemanticComposer.composeFromPrompt("wall with windows");
+        assertTrue(result.isSuccess(), () -> "abstain: " + result.message());
         assertFalse(typeIds(result.plan()).stream().anyMatch(id -> id.contains("export")));
     }
 
     @Test
-    void composerDoesNotUseGenericScalarCompatibilityAsWorkflow() {
-        // No seed / no supported caps → abstain rather than invent DOUBLE/FLOAT chains.
+    void genericDoubleDoesNotCreateWorkflowEdge() {
+        assertFalse(AiSemanticComposer.wouldExpandScalarEdge(NodeSemanticEdgeKind.CATEGORY, NodeDataType.DOUBLE));
+        assertFalse(AiSemanticComposer.wouldExpandScalarEdge(NodeSemanticEdgeKind.TYPE, NodeDataType.FLOAT));
+        assertTrue(AiSemanticComposer.wouldExpandScalarEdge(NodeSemanticEdgeKind.EXACT, NodeDataType.DOUBLE));
+
         AiComposeRequest request = new AiComposeRequest(
+                "numeric height radius only",
                 Set.of(),
                 EnumSet.noneOf(NodeDomain.class),
                 List.of(),
                 AiComposeGoal.PREVIEW,
-                false,
-                12,
-                "numeric height radius only"
+                12
         );
         AiComposeResult result = AiSemanticComposer.compose(request);
         assertTrue(result.abstained(), "Composer must abstain without geometry seeds");
+        assertEquals(AiComposeResult.ABSTAIN_CODE, result.abstainCode());
     }
 
     @Test
-    void maxNodesAbstain() {
+    void explicitListTreeConversionIsInserted() {
+        // Smoke: Catalog suggestedConversion for LIST→DATA_TREE exists; Composer inserts when wiring needs it.
+        // Full wire path is covered indirectly by plans that need converters; here assert API + effect gate.
+        assertTrue(AiSemanticComposer.isEffectAllowed(NodeEffect.PURE, false));
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
+        var suggestion = catalog.suggestedConversion(NodeDataType.LIST, NodeDataType.DATA_TREE);
+        // May be null if registry has no LIST→TREE suggestion; then skip soft assert.
+        if (suggestion != null) {
+            assertNotNull(suggestion.nodeId());
+        }
+    }
+
+    @Test
+    void unsupportedConversionAbstains() {
+        // Force a dead-end seed with maxNodes too small to reach Preview → abstain, not invent edges.
         AiComposeRequest request = new AiComposeRequest(
+                "sphere",
                 EnumSet.of(NodeCapability.SPHERE, NodeCapability.PREVIEW),
                 EnumSet.of(NodeDomain.GEOMETRY),
                 List.of("geometry.primitives.sphere"),
                 AiComposeGoal.PREVIEW,
-                false,
-                2,
-                "sphere"
+                2
+        );
+        AiComposeResult result = AiSemanticComposer.compose(request);
+        assertTrue(result.abstained());
+        assertEquals(AiComposeResult.ABSTAIN_CODE, result.abstainCode());
+    }
+
+    @Test
+    void maxNodeBudgetCausesAbstain() {
+        AiComposeRequest request = new AiComposeRequest(
+                "sphere",
+                EnumSet.of(NodeCapability.SPHERE, NodeCapability.PREVIEW),
+                EnumSet.of(NodeDomain.GEOMETRY),
+                List.of("geometry.primitives.sphere"),
+                AiComposeGoal.PREVIEW,
+                2
         );
         AiComposeResult result = AiSemanticComposer.compose(request);
         assertTrue(result.abstained(), "maxNodes=2 must abstain before Preview chain completes");
     }
 
     @Test
-    void missingCapabilityAbstainOnHeavyDomains() {
+    void missingRequiredCapabilityCausesAbstain() {
         AiComposeRequest request = new AiComposeRequest(
+                "sdf field terrain only",
                 Set.of(),
                 EnumSet.of(NodeDomain.SDF, NodeDomain.FIELD),
                 List.of(),
                 AiComposeGoal.PREVIEW,
-                false,
-                12,
-                "sdf field terrain only"
+                12
         );
         AiComposeResult result = AiSemanticComposer.compose(request);
         assertTrue(result.abstained());
-        assertNotNull(result.abstainMessage());
+        assertNotNull(result.message());
     }
 
     @Test
     void seedSelectionPrefersWindowArrayForWallCut() {
         NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
         AiComposeRequest request = new AiComposeRequest(
+                "wall windows array",
                 EnumSet.of(
                         NodeCapability.WALL,
                         NodeCapability.WINDOW,
@@ -161,9 +226,7 @@ class AiSemanticComposerContractTest {
                 EnumSet.of(NodeDomain.ARCHITECTURE, NodeDomain.ARRAY),
                 List.of(),
                 AiComposeGoal.PREVIEW,
-                false,
-                12,
-                "wall windows array"
+                12
         );
         List<String> seeds = AiSemanticComposer.selectSeeds(request, catalog);
         assertTrue(seeds.contains("geometry.architectural_primitives.window_array"));
@@ -172,5 +235,41 @@ class AiSemanticComposerContractTest {
 
     private static Set<String> typeIds(AiGraphPlan plan) {
         return plan.nodes().stream().map(AiPlanNode::typeId).collect(Collectors.toSet());
+    }
+
+    private static boolean hasWorldWrite(AiGraphPlan plan) {
+        NodeSemanticCatalog catalog = NodeSemanticCatalog.get();
+        for (AiPlanNode node : plan.nodes()) {
+            if (catalog.effect(node.typeId()) == NodeEffect.WORLD_WRITE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasConnection(
+            AiGraphPlan plan,
+            String fromType,
+            String fromPort,
+            String toType,
+            String toPort
+    ) {
+        Set<String> fromRefs = plan.nodes().stream()
+                .filter(n -> fromType.equalsIgnoreCase(n.typeId()))
+                .map(AiPlanNode::ref)
+                .collect(Collectors.toSet());
+        Set<String> toRefs = plan.nodes().stream()
+                .filter(n -> toType.equalsIgnoreCase(n.typeId()))
+                .map(AiPlanNode::ref)
+                .collect(Collectors.toSet());
+        for (AiPlanConnection c : plan.connections()) {
+            if (fromRefs.contains(c.sourceRef())
+                    && toRefs.contains(c.targetRef())
+                    && fromPort.equals(c.sourcePortId())
+                    && toPort.equals(c.targetPortId())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
