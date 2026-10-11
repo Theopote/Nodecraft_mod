@@ -103,6 +103,44 @@ class AutoPreviewControllerTest {
     }
 
     @Test
+    void staleFailedSessionDoesNotOverwriteNewerSuccessState() {
+        AtomicLong clock = new AtomicLong(4_000L);
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        DeferredPreviewScheduler scheduler = new DeferredPreviewScheduler();
+
+        NodeGraph graph = new NodeGraph("auto-preview-stale-fail");
+        PassThroughNode source = new PassThroughNode("source", "ok");
+        graph.addNode(source);
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null),
+                clock::get,
+                scheduler
+        );
+
+        controller.notifyNodeDirty(source, 1L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+        CompletableFuture<Boolean> older = scheduler.lastFuture();
+        assertNotNull(older);
+
+        controller.notifyNodeDirty(source, 2L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+        CompletableFuture<Boolean> newer = scheduler.lastFuture();
+        assertNotNull(newer);
+        assertTrue(older != newer);
+
+        newer.complete(true);
+        assertEquals(-1L, controller.lastFailedPreviewVersion());
+
+        older.completeExceptionally(new IllegalStateException("late fail from older generation"));
+        assertEquals(-1L, controller.lastFailedPreviewVersion(), "stale failure must not overwrite newer success");
+    }
+
+    @Test
     void failedPreviewSuppressesPollUntilDirtyAdvances() throws Exception {
         AtomicLong clock = new AtomicLong(3_000L);
         AtomicLong dirtyVersion = new AtomicLong(0L);
@@ -181,6 +219,81 @@ class AutoPreviewControllerTest {
         };
     }
 
+    private static ExecutionSession sessionOf(long generation, CompletableFuture<Boolean> result) {
+        return new ExecutionSession() {
+            private final UUID id = UUID.randomUUID();
+
+            @Override
+            public UUID sessionId() {
+                return id;
+            }
+
+            @Override
+            public long generation() {
+                return generation;
+            }
+
+            @Override
+            public ExecutionMode mode() {
+                return ExecutionMode.PREVIEW;
+            }
+
+            @Override
+            public CancellationToken cancellation() {
+                return CancellationToken.none();
+            }
+
+            @Override
+            public CompletableFuture<Boolean> result() {
+                return result;
+            }
+
+            @Override
+            @Nullable
+            public ExecutionProfiler.Profile lastProfile() {
+                return null;
+            }
+        };
+    }
+
+    private static final class DeferredPreviewScheduler implements NodeExecutionScheduler {
+        private volatile CompletableFuture<Boolean> lastFuture;
+
+        CompletableFuture<Boolean> lastFuture() {
+            return lastFuture;
+        }
+
+        @Override
+        public ExecutionSession submit(
+                NodeGraph graph,
+                @Nullable ExecutionContext context,
+                ExecutionPlan plan,
+                long generation
+        ) {
+            CompletableFuture<Boolean> result = new CompletableFuture<>();
+            lastFuture = result;
+            return sessionOf(generation, result);
+        }
+
+        @Override
+        public void cancelPreview() {
+        }
+
+        @Override
+        public void cancelManual() {
+        }
+
+        @Override
+        public Optional<ExecutionSession> activePreview() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<ExecutionSession> activeManual() {
+            return Optional.empty();
+        }
+    }
+
     private static final class FailingPreviewScheduler implements NodeExecutionScheduler {
         private final AtomicInteger submitCount;
 
@@ -198,40 +311,7 @@ class AutoPreviewControllerTest {
             submitCount.incrementAndGet();
             CompletableFuture<Boolean> result = new CompletableFuture<>();
             result.completeExceptionally(new IllegalStateException("preview boom"));
-            return new ExecutionSession() {
-                private final UUID id = UUID.randomUUID();
-
-                @Override
-                public UUID sessionId() {
-                    return id;
-                }
-
-                @Override
-                public long generation() {
-                    return generation;
-                }
-
-                @Override
-                public ExecutionMode mode() {
-                    return ExecutionMode.PREVIEW;
-                }
-
-                @Override
-                public CancellationToken cancellation() {
-                    return CancellationToken.none();
-                }
-
-                @Override
-                public CompletableFuture<Boolean> result() {
-                    return result;
-                }
-
-                @Override
-                @Nullable
-                public ExecutionProfiler.Profile lastProfile() {
-                    return null;
-                }
-            };
+            return sessionOf(generation, result);
         }
 
         @Override

@@ -199,21 +199,36 @@ public final class AutoPreviewController {
             if (autoPreviewSession == session) {
                 autoPreviewSession = null;
             }
+            // Stale completions must not overwrite the current session's fail/success ownership.
+            boolean ownsFailureState = lastSubmittedSession == session;
             if (throwable != null) {
                 if (session.cancellation().isCancelled()) {
                     NodeCraft.LOGGER.debug(
-                            "Auto-preview cancelled: reason={}, dirtyVersion={}",
+                            "Auto-preview cancelled: reason={}, dirtyVersion={}, stale={}",
                             triggerReason,
-                            executingVersion
+                            executingVersion,
+                            !ownsFailureState
                     );
                     return;
                 }
-                lastFailedPreviewVersion = executingVersion;
+                if (ownsFailureState) {
+                    lastFailedPreviewVersion = executingVersion;
+                }
                 NodeCraft.LOGGER.error(
-                        "Auto-preview failed: reason={}, dirtyVersion={}",
+                        "Auto-preview failed: reason={}, dirtyVersion={}, appliedFailState={}",
                         triggerReason,
                         executingVersion,
+                        ownsFailureState,
                         throwable
+                );
+                return;
+            }
+            if (!ownsFailureState) {
+                NodeCraft.LOGGER.debug(
+                        "Auto-preview stale completion ignored: reason={}, dirtyVersion={}, success={}",
+                        triggerReason,
+                        executingVersion,
+                        Boolean.TRUE.equals(result)
                 );
                 return;
             }

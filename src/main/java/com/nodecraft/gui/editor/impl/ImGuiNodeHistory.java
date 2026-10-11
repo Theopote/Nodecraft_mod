@@ -91,8 +91,6 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         scopeStack.push(new HistoryScope(copyStack(undoStack), copyStack(redoStack), isRecording));
         undoStack.clear();
         redoStack.clear();
-        scopeStack.clear();
-        isRecording = true;
         isRecording = true;
         NodeCraft.LOGGER.debug("Entered nested graph history scope. depth={}", scopeStack.size());
     }
@@ -108,6 +106,23 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         redoStack.addAll(scope.redoStack());
         isRecording = scope.recording();
         NodeCraft.LOGGER.debug("Exited nested graph history scope. depth={}", scopeStack.size());
+        return true;
+    }
+
+    /** Nested history scope depth (subgraph edit isolation). */
+    public int scopeDepth() {
+        return scopeStack.size();
+    }
+
+    /**
+     * Drops the top undo entry without applying it. Used when a commit aborts after the entry
+     * was already pushed so graph rollback and history stay consistent.
+     */
+    public boolean discardLastUndo() {
+        if (undoStack.isEmpty()) {
+            return false;
+        }
+        undoStack.pop();
         return true;
     }
 

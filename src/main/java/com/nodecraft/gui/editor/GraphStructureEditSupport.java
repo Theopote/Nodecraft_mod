@@ -142,7 +142,15 @@ public final class GraphStructureEditSupport {
         host.notifyStructureDirty();
         if (wasRecording && history != null) {
             history.setRecording(true);
-            history.recordGraphTransaction(label, before, after);
+            int undoSizeBefore = history.undoStackSize();
+            try {
+                history.recordGraphTransaction(label, before, after);
+            } catch (RuntimeException recordError) {
+                while (history.undoStackSize() > undoSizeBefore) {
+                    history.discardLastUndo();
+                }
+                throw recordError;
+            }
         }
     }
 

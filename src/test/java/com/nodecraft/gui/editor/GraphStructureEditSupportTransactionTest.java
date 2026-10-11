@@ -294,7 +294,8 @@ class GraphStructureEditSupportTransactionTest {
         assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
         assertEquals(nodesBefore, fixture.document.getGraph().getNodes().size());
         assertNull(findRelayByTag(fixture.document.getGraph(), "history-fail"));
-        assertEquals(0, fixture.history.undoStackSize());
+        assertEquals(0, fixture.history.undoStackSize(), "orphan undo pushed before throw must be discarded");
+        assertEquals(0, fixture.history.redoStackSize());
         assertTrue(fixture.history.isRecording());
     }
 
@@ -771,7 +772,9 @@ class GraphStructureEditSupportTransactionTest {
 
         @Override
         public void recordGraphTransaction(String label, SavedGraph before, SavedGraph after) {
-            throw new IllegalStateException("history commit boom");
+            // Write first, then fail — exercises discard of the orphan undo entry on commit abort.
+            super.recordGraphTransaction(label, before, after);
+            throw new IllegalStateException("history commit boom after write");
         }
     }
 }
