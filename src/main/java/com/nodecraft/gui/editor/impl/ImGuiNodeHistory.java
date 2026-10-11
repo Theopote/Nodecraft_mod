@@ -523,10 +523,20 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
     }
 
     /**
-     * Records a single property edit. Consecutive edits to the same node property coalesce into one undo step
-     * (for example while dragging a numeric control).
+     * Records a single property edit. Consecutive edits to the same node property within the same edit session
+     * coalesce into one undo step (for example while dragging a numeric control).
      */
     public void recordPropertyChange(UUID nodeId, String propertyName, Object oldValue, Object newValue) {
+        recordPropertyChange(nodeId, propertyName, oldValue, newValue, 0L);
+    }
+
+    public void recordPropertyChange(
+            UUID nodeId,
+            String propertyName,
+            Object oldValue,
+            Object newValue,
+            long editSessionId
+    ) {
         if (!isRecording || nodeId == null || propertyName == null || propertyName.isBlank()) {
             return;
         }
@@ -539,14 +549,14 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         if (!undoStack.isEmpty()) {
             HistoryAction top = undoStack.peek();
             if (top instanceof PropertyChangeAction existing
-                    && existing.canCoalesce(nodeId, propertyName)) {
+                    && existing.canCoalesce(nodeId, propertyName, editSessionId)) {
                 existing.setAfterValue(afterSnapshot);
                 NodeCraft.LOGGER.trace("Coalesced property change for {}.{}", nodeId, propertyName);
                 return;
             }
         }
 
-        addAction(new PropertyChangeAction(nodeId, propertyName, beforeSnapshot, afterSnapshot));
+        addAction(new PropertyChangeAction(nodeId, propertyName, beforeSnapshot, afterSnapshot, editSessionId));
     }
 
     public void recordPropertyChange(PropertyChangeCommand command) {
@@ -658,18 +668,29 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
     private static final class PropertyChangeAction extends HistoryAction {
         private final UUID nodeId;
         private final String propertyName;
+        private final long editSessionId;
         private final Object beforeValue;
         private Object afterValue;
 
-        private PropertyChangeAction(UUID nodeId, String propertyName, Object beforeValue, Object afterValue) {
+        private PropertyChangeAction(
+                UUID nodeId,
+                String propertyName,
+                Object beforeValue,
+                Object afterValue,
+                long editSessionId
+        ) {
             this.nodeId = nodeId;
             this.propertyName = propertyName;
+            this.editSessionId = editSessionId;
             this.beforeValue = PropertyValueSnapshots.copy(beforeValue);
             this.afterValue = PropertyValueSnapshots.copy(afterValue);
         }
 
-        boolean canCoalesce(UUID otherNodeId, String otherPropertyName) {
-            return nodeId.equals(otherNodeId) && propertyName.equals(otherPropertyName);
+        boolean canCoalesce(UUID otherNodeId, String otherPropertyName, long otherEditSessionId) {
+            return editSessionId != 0L
+                    && editSessionId == otherEditSessionId
+                    && nodeId.equals(otherNodeId)
+                    && propertyName.equals(otherPropertyName);
         }
 
         void setAfterValue(Object value) {

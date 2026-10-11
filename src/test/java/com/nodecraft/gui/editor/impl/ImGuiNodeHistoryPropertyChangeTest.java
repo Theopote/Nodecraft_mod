@@ -53,14 +53,64 @@ class ImGuiNodeHistoryPropertyChangeTest {
         StubHistoryEditor editor = new StubHistoryEditor(graph);
         ImGuiNodeHistory history = editor.history();
 
-        history.recordPropertyChange(node.getId(), "size", 1.0d, 1.5d);
-        history.recordPropertyChange(node.getId(), "size", 1.0d, 2.0d);
-        history.recordPropertyChange(node.getId(), "size", 1.0d, 2.5d);
+        long dragSession = 1L;
+        history.recordPropertyChange(node.getId(), "size", 1.0d, 1.5d, dragSession);
+        history.recordPropertyChange(node.getId(), "size", 1.0d, 2.0d, dragSession);
+        history.recordPropertyChange(node.getId(), "size", 1.0d, 2.5d, dragSession);
 
         assertEquals(1, history.undoStackSize());
         NodePropertyBindings.writeProperty(node, "size", 2.5d);
         assertTrue(history.undo());
         assertEquals(1.0d, node.size, 0.0d);
+    }
+
+    @Test
+    void independentEditsDoNotCoalesce() throws Throwable {
+        NodeGraph graph = new NodeGraph("independent-edits");
+        WritableNode node = new WritableNode();
+        graph.addNode(node);
+
+        StubHistoryEditor editor = new StubHistoryEditor(graph);
+        ImGuiNodeHistory history = editor.history();
+
+        history.recordPropertyChange(node.getId(), "size", 5.0d, 10.0d, 1L);
+        history.recordPropertyChange(node.getId(), "size", 10.0d, 15.0d, 2L);
+
+        assertEquals(2, history.undoStackSize());
+        NodePropertyBindings.writeProperty(node, "size", 15.0d);
+        assertTrue(history.undo());
+        assertEquals(10.0d, node.size, 0.0d);
+    }
+
+    @Test
+    void editingAnotherPropertyBreaksCoalesce() throws Throwable {
+        NodeGraph graph = new NodeGraph("other-property");
+        WritableNode node = new WritableNode();
+        graph.addNode(node);
+
+        StubHistoryEditor editor = new StubHistoryEditor(graph);
+        ImGuiNodeHistory history = editor.history();
+
+        history.recordPropertyChange(node.getId(), "size", 5.0d, 10.0d, 1L);
+        history.recordPropertyChange(node.getId(), "label", "a", "b", 2L);
+        history.recordPropertyChange(node.getId(), "size", 10.0d, 15.0d, 3L);
+
+        assertEquals(3, history.undoStackSize());
+    }
+
+    @Test
+    void zeroSessionIdNeverCoalescesWithPriorEdit() throws Throwable {
+        NodeGraph graph = new NodeGraph("instant-commit");
+        WritableNode node = new WritableNode();
+        graph.addNode(node);
+
+        StubHistoryEditor editor = new StubHistoryEditor(graph);
+        ImGuiNodeHistory history = editor.history();
+
+        history.recordPropertyChange(node.getId(), "size", 5.0d, 10.0d, 1L);
+        history.recordPropertyChange(node.getId(), "size", 10.0d, 15.0d, 0L);
+
+        assertEquals(2, history.undoStackSize());
     }
 
     @Test

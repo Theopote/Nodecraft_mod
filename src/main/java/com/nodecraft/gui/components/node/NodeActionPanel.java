@@ -28,7 +28,7 @@ public final class NodeActionPanel {
     public static void renderQuickActions(
             INode selectedNode,
             Runnable clearCurrentNodeTempValues,
-            Consumer<INode> onResetSuccess,
+            Consumer<ResettableNode> onReset,
             ResetFeedback resetFeedback
     ) {
         if (!ResettableNode.supportsReset(selectedNode)) {
@@ -37,13 +37,26 @@ public final class NodeActionPanel {
         ResettableNode resettable = (ResettableNode) selectedNode;
         if (ImGui.smallButton("Reset")) {
             try {
-                resettable.resetProperties();
+                onReset.accept(resettable);
                 clearCurrentNodeTempValues.run();
-                onResetSuccess.accept(selectedNode);
                 resetFeedback.setSuccess("Properties reset.");
                 NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
+            } catch (ResetRollbackException e) {
+                resetFeedback.setFailure("Reset failed. Previous values restored.");
+                NodeCraft.LOGGER.error(
+                        "Failed to reset node properties for {}: {}",
+                        selectedNode.getDisplayName(),
+                        e.getMessage(),
+                        e);
+            } catch (ResetInconsistentException e) {
+                resetFeedback.setFailure("Reset failed. Parameters may be inconsistent.");
+                NodeCraft.LOGGER.error(
+                        "Reset rollback failed for {}: {}",
+                        selectedNode.getDisplayName(),
+                        e.getMessage(),
+                        e);
             } catch (Exception e) {
-                resetFeedback.setFailure("Reset failed. Parameters unchanged.");
+                resetFeedback.setFailure("Reset failed. Parameters may be inconsistent.");
                 NodeCraft.LOGGER.error(
                         "Failed to reset node properties for {}: {}",
                         selectedNode.getDisplayName(),
@@ -52,6 +65,18 @@ public final class NodeActionPanel {
             }
         }
         resetFeedback.renderIfPresent();
+    }
+
+    public static final class ResetRollbackException extends RuntimeException {
+        public ResetRollbackException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    public static final class ResetInconsistentException extends RuntimeException {
+        public ResetInconsistentException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     public static void renderProviderActions(INode selectedNode, Supplier<NodeGraph> graphSupplier) {
@@ -99,7 +124,10 @@ public final class NodeActionPanel {
     ) {
         ImGui.separator();
         renderProviderActions(selectedNode, graphSupplier);
-        renderQuickActions(selectedNode, clearCurrentNodeTempValues, onResetSuccess, resetFeedback);
+        renderQuickActions(selectedNode, clearCurrentNodeTempValues, resettable -> {
+            resettable.resetProperties();
+            onResetSuccess.accept(selectedNode);
+        }, resetFeedback);
         ImGui.sameLine();
         renderDangerActions(selectedNode, graphSupplier, setSelectedNode);
     }

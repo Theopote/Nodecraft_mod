@@ -70,6 +70,13 @@ primitive renderers call support classes directly.
 4. Unified scalar/enum/vector editors (Phase 4 — `ScalarPropertyEditor`, semantic percent/angle/count modes, segmented enums, full-precision vector rows)
 5. Per-node property metadata (Phase 5 — `@NodeProperty` min/max/step, `PropertyConstraints`, `PropertyVisibilitySupport`, audited GeometryViewer + attractor fields)
 
+## Acceptance fix round (post-d5ce633)
+
+- Property undo coalescing is scoped by `PropertyEditSession` edit-session id (drag coalesces; independent edits do not)
+- Reset uses `NodeStateChangeAction` with before/after node-state snapshots and rollback on failure
+- `PropertyConstraints` validates finite bounds and rejects contradictory min/max merges
+- `PropertyValueSnapshots` adds typed copies for common mutable property values
+
 ## Exit gates — Phase 1
 
 1. Panel no longer holds `tempValues` / edit-lock / `errorCounts` maps

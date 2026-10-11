@@ -58,4 +58,18 @@ class PropertyConstraintsTest {
     void unboundedAnnotationReturnsSharedInstance() {
         assertSame(PropertyConstraints.UNBOUNDED, PropertyConstraints.fromAnnotation(null));
     }
+
+    @Test
+    void contradictoryMergeThrows() {
+        PropertyConstraints maxOne = new PropertyConstraints(null, 1.0d, null);
+        PropertyConstraints minFive = new PropertyConstraints(5.0d, null, null);
+        assertThrows(IllegalArgumentException.class, () -> maxOne.merge(minFive));
+    }
+
+    @Test
+    void nonFiniteBoundsAreIgnored() {
+        PropertyConstraints constraints = new PropertyConstraints(Double.NaN, Double.POSITIVE_INFINITY, null);
+        assertFalse(constraints.hasMin());
+        assertFalse(constraints.hasMax());
+    }
 }

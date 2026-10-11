@@ -9,12 +9,21 @@ public record PropertyConstraints(Double min, Double max, Double step) {
 
     public static final PropertyConstraints UNBOUNDED = new PropertyConstraints(null, null, null);
 
+    public PropertyConstraints {
+        min = sanitizeBound(min);
+        max = sanitizeBound(max);
+        if (step != null && (!Double.isFinite(step) || step <= 0.0d)) {
+            step = null;
+        }
+        validateRange(min, max);
+    }
+
     public static PropertyConstraints fromAnnotation(NodeProperty annotation) {
         if (annotation == null) {
             return UNBOUNDED;
         }
-        Double min = annotation.min() == Double.NEGATIVE_INFINITY ? null : annotation.min();
-        Double max = annotation.max() == Double.POSITIVE_INFINITY ? null : annotation.max();
+        Double min = sanitizeBound(annotation.min() == Double.NEGATIVE_INFINITY ? null : annotation.min());
+        Double max = sanitizeBound(annotation.max() == Double.POSITIVE_INFINITY ? null : annotation.max());
         Double step = annotation.step() == 0.0d ? null : annotation.step();
         if (min == null && max == null && step == null) {
             return UNBOUNDED;
@@ -92,6 +101,20 @@ public record PropertyConstraints(Double min, Double max, Double step) {
             return step.floatValue();
         }
         return 1.0f;
+    }
+
+    private static Double sanitizeBound(Double value) {
+        if (value == null || !Double.isFinite(value)) {
+            return null;
+        }
+        return value;
+    }
+
+    private static void validateRange(Double min, Double max) {
+        if (min != null && max != null && min > max) {
+            throw new IllegalArgumentException(
+                    "Property constraints are contradictory: min=" + min + " > max=" + max);
+        }
     }
 
     private static Double mergeMin(Double left, Double right) {

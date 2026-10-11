@@ -55,6 +55,7 @@ import com.nodecraft.gui.components.port.PortDataRenderer;
 import com.nodecraft.gui.components.port.PortHighlightSupport;
 import com.nodecraft.gui.components.port.PortTableRenderer;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
+import com.nodecraft.nodesystem.api.ResettableNode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.util.Coordinate;
@@ -166,8 +167,9 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private void recordPropertyChangeForHistory(INode node, String propertyName, Object oldValue, Object newValue) {
         try {
+            long editSessionId = editSession.getEditSessionId(node, propertyName);
             ImGuiNodeEditor.getInstance().getHistory()
-                    .recordPropertyChange(node.getId(), propertyName, oldValue, newValue);
+                    .recordPropertyChange(node.getId(), propertyName, oldValue, newValue, editSessionId);
         } catch (Exception e) {
             NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
                     node.getId(), propertyName, e.getMessage());
@@ -177,6 +179,29 @@ public class PropertyPanelComponent implements EditorComponent {
     public void markNodeDirtyAfterPropertyChange(INode node) {
         if (node instanceof BaseNode baseNode) {
             baseNode.markDirty();
+        }
+    }
+
+    public void performResetWithHistory(ResettableNode resettable) {
+        if (!(resettable instanceof BaseNode baseNode)) {
+            throw new IllegalArgumentException("Resettable node must be a BaseNode");
+        }
+        Object beforeState = baseNode.getNodeState();
+        try {
+            resettable.resetProperties();
+            Object afterState = baseNode.getNodeState();
+            markNodeDirtyAfterPropertyChange(baseNode);
+            ImGuiNodeEditor.getInstance().getHistory()
+                    .recordNodeStateChange(baseNode.getId(), beforeState, afterState, "Reset Properties");
+        } catch (Exception e) {
+            try {
+                baseNode.setNodeState(beforeState);
+            } catch (Exception rollbackError) {
+                throw new NodeActionPanel.ResetInconsistentException(
+                        "Reset failed and rollback failed",
+                        rollbackError);
+            }
+            throw new NodeActionPanel.ResetRollbackException("Reset failed", e);
         }
     }
 
@@ -415,7 +440,7 @@ public class PropertyPanelComponent implements EditorComponent {
         NodeActionPanel.renderQuickActions(
                 selectedNode,
                 this::clearCurrentNodeTempValues,
-                this::markNodeDirtyAfterPropertyChange,
+                this::performResetWithHistory,
                 resetFeedback
         );
         NodeActionPanel.renderProviderActions(selectedNode, this::getNodeGraph);

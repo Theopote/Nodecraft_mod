@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 
 /**
  * Combines {@link NodeProperty} bounds with semantic UI hints (percent sliders, integer counts, etc.).
+ * Contradictory merged ranges throw {@link IllegalArgumentException} from {@link PropertyConstraints#merge}.
  */
 public final class PropertyConstraintResolver {
 

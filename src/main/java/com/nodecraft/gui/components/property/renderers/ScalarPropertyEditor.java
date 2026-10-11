@@ -66,12 +66,18 @@ final class ScalarPropertyEditor {
         int min = constraints.hasMin() ? (int) Math.ceil(constraints.min()) : Integer.MIN_VALUE;
         int max = constraints.hasMax() ? (int) Math.floor(constraints.max()) : Integer.MAX_VALUE;
         float speed = constraints.dragSpeedForInt();
-        if (ImGui.dragInt("##" + prop.name, valArr, speed, min, max) && valArr[0] != currentValue) {
+        ImGui.dragInt("##" + prop.name, valArr, speed, min, max);
+        if (ImGui.isItemActive()) {
+            panel.refreshPropertyBeingEdited(node, prop.name);
+        }
+        if (valArr[0] != currentValue && ImGui.isItemActive()) {
             int clamped = constraints.clampInt(valArr[0]);
             panel.applyPropertyValue(node, prop, clamped);
             NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), clamped);
         }
-        trackEditSession(panel, node, prop.name);
+        if (ImGui.isItemDeactivated()) {
+            panel.markPropertyEditingFinished(node, prop.name);
+        }
     }
 
     private static void renderFloat(
@@ -100,18 +106,23 @@ final class ScalarPropertyEditor {
         float min = constraints.hasMin() ? constraints.min().floatValue() : Float.NEGATIVE_INFINITY;
         float max = constraints.hasMax() ? constraints.max().floatValue() : Float.POSITIVE_INFINITY;
         float speed = constraints.dragSpeedForFloat();
-        boolean changed = switch (mode) {
+        switch (mode) {
             case PERCENT -> ImGui.sliderFloat("##" + prop.name, valArr, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
             case ANGLE -> ImGui.dragFloat("##" + prop.name, valArr, speed, min, max, "%.1f°");
             default -> ImGui.dragFloat("##" + prop.name, valArr, speed, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-        };
+        }
 
-        if (changed && valArr[0] != currentValue) {
+        if (ImGui.isItemActive()) {
+            panel.refreshPropertyBeingEdited(node, prop.name);
+        }
+        if (valArr[0] != currentValue && ImGui.isItemActive()) {
             float clamped = constraints.clampFloat(valArr[0]);
             panel.applyPropertyValue(node, prop, clamped);
             NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), clamped);
         }
-        trackEditSession(panel, node, prop.name);
+        if (ImGui.isItemDeactivated()) {
+            panel.markPropertyEditingFinished(node, prop.name);
+        }
 
         if (mode == PropertySemanticHints.ScalarMode.PERCENT) {
             ImGui.sameLine();
@@ -141,14 +152,19 @@ final class ScalarPropertyEditor {
             float min = constraints.hasMin() ? constraints.min().floatValue() : 0.0f;
             float max = constraints.hasMax() ? constraints.max().floatValue() : 1.0f;
             float[] percentValue = {(float) currentValue};
-            if (ImGui.sliderFloat("##" + prop.name, percentValue, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT)
-                    && PropertyValueFormatters.doubleValueChanged(percentValue[0], currentValue)) {
+            ImGui.sliderFloat("##" + prop.name, percentValue, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
+            if (ImGui.isItemActive()) {
+                panel.refreshPropertyBeingEdited(node, prop.name);
+            }
+            if (PropertyValueFormatters.doubleValueChanged(percentValue[0], currentValue) && ImGui.isItemActive()) {
                 double clamped = constraints.clampDouble(percentValue[0]);
                 panel.applyPropertyValue(node, prop, clamped);
             }
             ImGui.sameLine();
             ImGui.text(String.format(Locale.ROOT, "%d%%", Math.round(percentValue[0] * 100.0f)));
-            trackEditSession(panel, node, prop.name);
+            if (ImGui.isItemDeactivated()) {
+                panel.markPropertyEditingFinished(node, prop.name);
+            }
             return;
         }
 
@@ -156,12 +172,17 @@ final class ScalarPropertyEditor {
             float min = constraints.hasMin() ? constraints.min().floatValue() : Float.NEGATIVE_INFINITY;
             float max = constraints.hasMax() ? constraints.max().floatValue() : Float.POSITIVE_INFINITY;
             float[] angleValue = {(float) currentValue};
-            if (ImGui.dragFloat("##" + prop.name, angleValue, constraints.dragSpeedForFloat(), min, max, "%.1f°")
-                    && PropertyValueFormatters.doubleValueChanged(angleValue[0], currentValue)) {
+            ImGui.dragFloat("##" + prop.name, angleValue, constraints.dragSpeedForFloat(), min, max, "%.1f°");
+            if (ImGui.isItemActive()) {
+                panel.refreshPropertyBeingEdited(node, prop.name);
+            }
+            if (PropertyValueFormatters.doubleValueChanged(angleValue[0], currentValue) && ImGui.isItemActive()) {
                 double clamped = constraints.clampDouble(angleValue[0]);
                 panel.applyPropertyValue(node, prop, clamped);
             }
-            trackEditSession(panel, node, prop.name);
+            if (ImGui.isItemDeactivated()) {
+                panel.markPropertyEditingFinished(node, prop.name);
+            }
             return;
         }
 
@@ -192,7 +213,7 @@ final class ScalarPropertyEditor {
             }
         }
 
-        boolean changed = ImGui.inputText(
+        ImGui.inputText(
                 "##" + prop.name,
                 textValue,
                 ImGuiInputTextFlags.CharsDecimal | ImGuiInputTextFlags.EnterReturnsTrue);
@@ -202,7 +223,7 @@ final class ScalarPropertyEditor {
             panel.refreshPropertyBeingEdited(node, prop.name);
         }
 
-        boolean shouldSave = changed;
+        boolean shouldSave = ImGui.isItemDeactivatedAfterEdit();
         if (!shouldSave && wasDeactivated && wasBeingEdited) {
             try {
                 double newValue = Double.parseDouble(textValue.get());
@@ -234,14 +255,16 @@ final class ScalarPropertyEditor {
         ImGui.sameLine();
         ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
         float[] dragValue = new float[]{0.0f};
-        if (ImGui.dragFloat(
+        ImGui.dragFloat(
                 "##drag_" + prop.name,
                 dragValue,
                 constraints.dragSpeedForFloat(),
                 0.0f,
                 0.0f,
                 PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
-        )) {
+        );
+        if (ImGui.isItemActive()) {
+            panel.refreshPropertyBeingEdited(node, prop.name);
             double liveValue = (double) prop.getter.invoke(node);
             double newValue = constraints.clampDouble(liveValue + dragValue[0]);
             if (PropertyValueFormatters.doubleValueChanged(newValue, liveValue)) {
@@ -250,21 +273,9 @@ final class ScalarPropertyEditor {
             }
             dragValue[0] = 0.0f;
         }
-        if (ImGui.isItemActive()) {
-            panel.refreshPropertyBeingEdited(node, prop.name);
-        }
         if (ImGui.isItemDeactivated()) {
             panel.markPropertyEditingFinished(node, prop.name);
         }
         ImGui.popItemWidth();
-    }
-
-    private static void trackEditSession(PropertyPanelComponent panel, INode node, String propName) {
-        if (ImGui.isItemActive()) {
-            panel.refreshPropertyBeingEdited(node, propName);
-        }
-        if (ImGui.isItemDeactivated()) {
-            panel.markPropertyEditingFinished(node, propName);
-        }
     }
 }

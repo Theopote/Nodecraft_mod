@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 /**
@@ -21,7 +22,9 @@ public final class PropertyEditSession {
 
     private final Map<String, Object> tempValues = new ConcurrentHashMap<>();
     private final Map<String, Long> propertiesBeingEdited = new ConcurrentHashMap<>();
+    private final Map<String, Long> editSessionIds = new ConcurrentHashMap<>();
     private final Map<String, Integer> errorCounts = new ConcurrentHashMap<>();
+    private final AtomicLong editSessionCounter = new AtomicLong();
 
     public String getTempValueKey(INode node, String propName) {
         return node.getId() + "_" + propName;
@@ -94,12 +97,24 @@ public final class PropertyEditSession {
     public void refreshPropertyBeingEdited(INode node, String propName) {
         String key = getTempValueKey(node, propName);
         propertiesBeingEdited.put(key, System.currentTimeMillis());
+        editSessionIds.computeIfAbsent(key, ignored -> editSessionCounter.incrementAndGet());
         NodeCraft.LOGGER.trace("属性 {} 标记为正在编辑", key);
+    }
+
+    /**
+     * @return active edit-session id for undo coalescing, or {@code 0} when no session is open
+     */
+    public long getEditSessionId(INode node, String propName) {
+        if (node == null || propName == null) {
+            return 0L;
+        }
+        return editSessionIds.getOrDefault(getTempValueKey(node, propName), 0L);
     }
 
     public void markPropertyEditingFinished(INode node, String propName) {
         String key = getTempValueKey(node, propName);
         propertiesBeingEdited.remove(key);
+        editSessionIds.remove(key);
         NodeCraft.LOGGER.trace("属性 {} 标记为编辑完成", key);
     }
 
@@ -111,6 +126,7 @@ public final class PropertyEditSession {
         }
         if (System.currentTimeMillis() - timestamp > EDIT_LOCK_TIMEOUT_MS) {
             propertiesBeingEdited.remove(key);
+            editSessionIds.remove(key);
             NodeCraft.LOGGER.debug("属性 {} 的编辑锁已过期并移除", key);
             return false;
         }
@@ -126,6 +142,7 @@ public final class PropertyEditSession {
             boolean expired = (currentTime - entry.getValue()) > EDIT_LOCK_TIMEOUT_MS;
             if (expired) {
                 NodeCraft.LOGGER.debug("清理过期编辑锁 {}", entry.getKey());
+                editSessionIds.remove(entry.getKey());
             }
             return expired;
         });
@@ -138,12 +155,14 @@ public final class PropertyEditSession {
         String nodeIdPrefix = node.getId() + "_";
         tempValues.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
         propertiesBeingEdited.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
+        editSessionIds.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
         errorCounts.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
     }
 
     public void clearAll() {
         tempValues.clear();
         propertiesBeingEdited.clear();
+        editSessionIds.clear();
         errorCounts.clear();
     }
 }

@@ -37,23 +37,32 @@ final class VectorComponentEditor {
         ImString yStr = panel.getOrCreateTempValue(tempKey + "_y", () -> new ImString(PropertyValueFormatters.formatEditNumber(y), 64));
         ImString zStr = panel.getOrCreateTempValue(tempKey + "_z", () -> new ImString(PropertyValueFormatters.formatEditNumber(z), 64));
 
-        syncAxisText(panel, node, prop.name + "_x", xStr, x);
-        syncAxisText(panel, node, prop.name + "_y", yStr, y);
-        syncAxisText(panel, node, prop.name + "_z", zStr, z);
+        syncAxisText(panel, node, prop.name, xStr, x);
+        syncAxisText(panel, node, prop.name, yStr, y);
+        syncAxisText(panel, node, prop.name, zStr, z);
 
         int flags = ImGuiInputTextFlags.CharsDecimal | ImGuiInputTextFlags.EnterReturnsTrue;
         float width = ImGui.getContentRegionAvailX() / 3.0f - ImGui.getStyle().getItemSpacingX();
-        boolean changed = false;
+        boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
 
         ImGui.pushID("vec3_" + prop.name);
-        changed |= renderAxis(panel, node, prop.name + "_x", "X", xStr, width, flags);
+        AxisResult xResult = renderAxis("X", xStr, width, flags);
         ImGui.sameLine();
-        changed |= renderAxis(panel, node, prop.name + "_y", "Y", yStr, width, flags);
+        AxisResult yResult = renderAxis("Y", yStr, width, flags);
         ImGui.sameLine();
-        changed |= renderAxis(panel, node, prop.name + "_z", "Z", zStr, width, flags);
+        AxisResult zResult = renderAxis("Z", zStr, width, flags);
         ImGui.popID();
 
-        if (changed) {
+        if (xResult.active || yResult.active || zResult.active) {
+            panel.refreshPropertyBeingEdited(node, prop.name);
+        }
+
+        boolean shouldSave = xResult.changed || yResult.changed || zResult.changed;
+        if (!shouldSave && wasBeingEdited && (xResult.deactivated || yResult.deactivated || zResult.deactivated)) {
+            shouldSave = true;
+        }
+
+        if (shouldSave) {
             try {
                 double newX = Double.parseDouble(xStr.get());
                 double newY = Double.parseDouble(yStr.get());
@@ -68,6 +77,10 @@ final class VectorComponentEditor {
                 ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Invalid coordinate");
             }
         }
+
+        if (wasBeingEdited && (xResult.deactivated || yResult.deactivated || zResult.deactivated)) {
+            panel.markPropertyEditingFinished(node, prop.name);
+        }
     }
 
     @FunctionalInterface
@@ -75,14 +88,17 @@ final class VectorComponentEditor {
         void write(double x, double y, double z) throws Throwable;
     }
 
+    private record AxisResult(boolean changed, boolean active, boolean deactivated) {
+    }
+
     private static void syncAxisText(
             PropertyPanelComponent panel,
             INode node,
-            String axisKey,
+            String sessionKey,
             ImString text,
             double liveValue
     ) {
-        if (panel.isPropertyBeingEdited(node, axisKey)) {
+        if (panel.isPropertyBeingEdited(node, sessionKey)) {
             return;
         }
         try {
@@ -95,10 +111,7 @@ final class VectorComponentEditor {
         }
     }
 
-    private static boolean renderAxis(
-            PropertyPanelComponent panel,
-            INode node,
-            String axisKey,
+    private static AxisResult renderAxis(
             String label,
             ImString text,
             float width,
@@ -106,13 +119,9 @@ final class VectorComponentEditor {
     ) {
         ImGui.pushItemWidth(width);
         boolean changed = ImGui.inputText(label, text, flags);
-        if (ImGui.isItemActive()) {
-            panel.refreshPropertyBeingEdited(node, axisKey);
-        }
-        if (ImGui.isItemDeactivated()) {
-            panel.markPropertyEditingFinished(node, axisKey);
-        }
+        boolean active = ImGui.isItemActive();
+        boolean deactivated = ImGui.isItemDeactivated();
         ImGui.popItemWidth();
-        return changed;
+        return new AxisResult(changed, active, deactivated);
     }
 }

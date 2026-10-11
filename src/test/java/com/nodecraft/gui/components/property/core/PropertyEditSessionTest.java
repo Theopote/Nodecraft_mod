@@ -101,6 +101,38 @@ class PropertyEditSessionTest {
     }
 
     @Test
+    void editSessionIdIsAssignedOnRefreshAndClearedOnFinish() {
+        PropertyEditSession session = new PropertyEditSession();
+        StubNode node = new StubNode();
+
+        assertEquals(0L, session.getEditSessionId(node, "size"));
+        session.refreshPropertyBeingEdited(node, "size");
+        long firstSession = session.getEditSessionId(node, "size");
+        assertTrue(firstSession > 0L);
+
+        session.refreshPropertyBeingEdited(node, "size");
+        assertEquals(firstSession, session.getEditSessionId(node, "size"));
+
+        session.markPropertyEditingFinished(node, "size");
+        assertEquals(0L, session.getEditSessionId(node, "size"));
+
+        session.refreshPropertyBeingEdited(node, "size");
+        assertTrue(session.getEditSessionId(node, "size") > firstSession);
+    }
+
+    @Test
+    void clearForNodeClearsEditSessionId() {
+        PropertyEditSession session = new PropertyEditSession();
+        StubNode node = new StubNode();
+
+        session.refreshPropertyBeingEdited(node, "size");
+        assertTrue(session.getEditSessionId(node, "size") > 0L);
+
+        session.clearForNode(node);
+        assertEquals(0L, session.getEditSessionId(node, "size"));
+    }
+
+    @Test
     void orphanEditLockExpiresWithoutRefresh() throws InterruptedException {
         PropertyEditSession session = new PropertyEditSession();
         StubNode node = new StubNode();
