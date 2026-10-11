@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -91,9 +92,8 @@ public final class AutoPreviewController {
         invalidatedNodeIds.addAll(scope);
         // Drop stale GHOST immediately for impacted nodes; debounce will rebuild after recompute.
         PreviewManager.clearEmptyInputGrace();
-        for (UUID impactedId : scope) {
-            PreviewManager.hideNodePreviews(impactedId.toString());
-        }
+        hideImpactedPreviews(scope);
+        cancelInFlightPreview();
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
         stampPendingDirty(dirtyVersionSource.getDirtyVersion());
@@ -106,22 +106,70 @@ public final class AutoPreviewController {
         );
     }
 
+    /**
+     * Graph topology changed. Hides previews whose owners are no longer in the graph (deleted /
+     * replaced nodes) without flashing unrelated live GHOST. Pass extra ids to hide remaining
+     * downstream of a connection or delete.
+     */
     public void notifyStructureDirty() {
-        invalidatedNodeIds.clear();
+        notifyStructureDirty(Set.of());
+    }
+
+    public void notifyStructureDirty(@Nullable Collection<UUID> extraHideNodeIds) {
         NodeGraph graph = graphSupplier.get();
+        Set<String> liveIds = livePreviewOwnerIds(graph);
+        PreviewManager.hidePreviewsNotOwnedBy(liveIds);
+        if (extraHideNodeIds != null && !extraHideNodeIds.isEmpty()) {
+            invalidatedNodeIds.addAll(extraHideNodeIds);
+            hideImpactedPreviews(extraHideNodeIds);
+        } else {
+            invalidatedNodeIds.clear();
+        }
         if (graph != null) {
             graph.getExecutionCache().clear();
-            for (var graphNode : graph.getNodes()) {
-                if (graphNode != null && graphNode.getId() != null) {
-                    PreviewManager.hideNodePreviews(graphNode.getId().toString());
-                }
-            }
         }
         PreviewManager.clearEmptyInputGrace();
+        cancelInFlightPreview();
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
         stampPendingDirty(dirtyVersionSource.getDirtyVersion());
-        NodeCraft.LOGGER.debug("Auto-preview structure dirty. graphDirtyEpoch={}", graphDirtyEpoch);
+        NodeCraft.LOGGER.debug(
+                "Auto-preview structure dirty. extraHide={}, graphDirtyEpoch={}",
+                extraHideNodeIds == null ? 0 : extraHideNodeIds.size(),
+                graphDirtyEpoch
+        );
+    }
+
+    /** Full document replace / load: drop every preview not owned by the new graph. */
+    public void notifyGraphReplaced() {
+        invalidatedNodeIds.clear();
+        notifyStructureDirty(Set.of());
+    }
+
+    private void hideImpactedPreviews(Collection<UUID> nodeIds) {
+        for (UUID nodeId : nodeIds) {
+            if (nodeId != null) {
+                PreviewManager.hideNodePreviews(nodeId.toString());
+            }
+        }
+    }
+
+    private void cancelInFlightPreview() {
+        scheduler.cancelPreview();
+        autoPreviewSession = null;
+    }
+
+    private static Set<String> livePreviewOwnerIds(@Nullable NodeGraph graph) {
+        if (graph == null) {
+            return Set.of();
+        }
+        Set<String> live = new HashSet<>();
+        for (var graphNode : graph.getNodes()) {
+            if (graphNode != null && graphNode.getId() != null) {
+                live.add(graphNode.getId().toString());
+            }
+        }
+        return live;
     }
 
     /**

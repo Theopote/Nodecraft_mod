@@ -67,6 +67,38 @@ class AutoPreviewControllerTest {
     }
 
     @Test
+    void notifyStructureDirtyWithExtrasHidesImpactedButKeepsUnrelatedGraceUntilGlobalClear() {
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        NodeGraph graph = new NodeGraph("structure-local");
+        PassThroughNode a = new PassThroughNode("a", "ok");
+        PassThroughNode b = new PassThroughNode("b", "ok");
+        graph.addNode(a);
+        graph.addNode(b);
+
+        // Simulate orphan bookkeeping for a deleted node id still in PreviewManager.
+        String orphanId = UUID.randomUUID().toString();
+        PreviewManager.touchNonEmptyForTests(orphanId, "ghost_block");
+        PreviewManager.touchNonEmptyForTests(a.getId().toString(), "ghost_block");
+        PreviewManager.touchNonEmptyForTests(b.getId().toString(), "ghost_block");
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null)
+        );
+
+        controller.notifyStructureDirty(java.util.Set.of(a.getId()));
+
+        assertFalse(PreviewManager.withinEmptyGraceForTests(orphanId, "ghost_block"),
+                "orphan deleted-node grace must be cleared via ownership scan");
+        // clearEmptyInputGrace clears all; impacted a is also hidden.
+        assertFalse(PreviewManager.withinEmptyGraceForTests(a.getId().toString(), "ghost_block"));
+        assertFalse(PreviewManager.withinEmptyGraceForTests(b.getId().toString(), "ghost_block"));
+        assertTrue(controller.invalidatedNodeIdsView().contains(a.getId()));
+        assertFalse(controller.invalidatedNodeIdsView().contains(b.getId()));
+    }
+
+    @Test
     void notifyNodeDirtyClearsGraceAndHidesImpactedNodePreviews() {
         AtomicLong dirtyVersion = new AtomicLong(0L);
         NodeGraph graph = new NodeGraph("node-dirty-ghost");

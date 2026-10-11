@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +37,10 @@ public final class NodeCommandService {
         ImGuiNodeHistory history();
 
         void notifyStructureDirty();
+
+        default void notifyStructureDirty(java.util.Set<UUID> impactedNodeIds) {
+            notifyStructureDirty();
+        }
 
         void notifyNodeAdded(Map<String, Object> eventData);
 
@@ -148,9 +153,11 @@ public final class NodeCommandService {
                 }
             }
 
+            Set<UUID> impact = new HashSet<>();
             for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
                 INode node = graph.getNode(nodeId);
                 if (node != null) {
+                    impact.addAll(graph.getDirtyImpactNodeIds(nodeId));
                     graph.removeNode(nodeId);
                     host.removeNodePosition(nodeId);
                     host.removeSelectedNode(nodeId);
@@ -158,7 +165,7 @@ public final class NodeCommandService {
             }
 
             NodeCraft.LOGGER.info("已删除选中的节点");
-            host.notifyStructureDirty();
+            host.notifyStructureDirty(impact);
             return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.error("删除节点时出错: {}", e.getMessage(), e);

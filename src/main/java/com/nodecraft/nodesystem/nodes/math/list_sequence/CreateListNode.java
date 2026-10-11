@@ -181,13 +181,23 @@ public class CreateListNode extends BaseCustomUINode {
             return false;
         }
         final int target = clamped;
+
+        ImGuiNodeEditor editor;
         try {
-            ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
-            // Only use the structure transaction when this node is in the active editor graph.
-            if (editor.getCurrentGraph() == null || editor.getCurrentGraph().getNode(getId()) == null) {
-                setInputCount(target);
-                return getInputCount() == target;
-            }
+            editor = ImGuiNodeEditor.getInstance();
+        } catch (Throwable t) {
+            // Editor class/native unavailable: explicit headless path.
+            setInputCount(target);
+            return getInputCount() == target;
+        }
+
+        // Headless / node not on the active canvas: mutate without history (checked before any tx).
+        if (editor.getCurrentGraph() == null || editor.getCurrentGraph().getNode(getId()) == null) {
+            setInputCount(target);
+            return getInputCount() == target;
+        }
+
+        try {
             GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
                     editor.structureEditHost(),
                     "Change inputCount",
@@ -201,10 +211,10 @@ public class CreateListNode extends BaseCustomUINode {
         } catch (StructureEditRollbackException e) {
             LOGGER.error("CreateList inputCount structure edit rollback failed: {}", e.getMessage(), e);
             return false;
-        } catch (Exception e) {
-            // Editor unavailable (tests / headless): mutate without history.
-            setInputCount(target);
-            return getInputCount() == target;
+        } catch (RuntimeException e) {
+            // Transaction/snapshot/history failure must NOT silently apply the mutation.
+            LOGGER.error("CreateList inputCount structure edit failed without applying: {}", e.getMessage(), e);
+            return false;
         }
     }
 

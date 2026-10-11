@@ -15,9 +15,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -34,6 +36,10 @@ public final class ConnectionEditService {
         ImGuiNodeHistory history();
 
         void notifyStructureDirty();
+
+        default void notifyStructureDirty(java.util.Set<UUID> impactedNodeIds) {
+            notifyStructureDirty();
+        }
 
         void notifyConnectionAdded(Map<String, Object> eventData);
 
@@ -92,7 +98,7 @@ public final class ConnectionEditService {
 
             // Duplicate connect is an idempotent no-op: no history, no structure event.
             if (success && !alreadyConnected) {
-                host.notifyStructureDirty();
+                host.notifyStructureDirty(impactOf(graph, sourceNodeId, targetNodeId));
                 ImGuiNodeHistory history = host.history();
                 if (history != null && history.isRecording()) {
                     history.recordAddConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
@@ -140,7 +146,7 @@ public final class ConnectionEditService {
             if (history != null && history.isRecording()) {
                 history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
             }
-            host.notifyStructureDirty();
+            host.notifyStructureDirty(impactOf(graph, sourceNodeId, targetNodeId));
             NodeCraft.LOGGER.info(
                     "成功断开连接: {}({}) -> {}({})",
                     sourceNode.getDisplayName(),
@@ -183,7 +189,16 @@ public final class ConnectionEditService {
         }
 
         if (!toRemove.isEmpty()) {
-            host.notifyStructureDirty();
+            Set<UUID> impact = new HashSet<>();
+            for (NodeGraph.Connection connection : toRemove) {
+                if (connection.sourceNode() != null) {
+                    impact.addAll(graph.getDirtyImpactNodeIds(connection.sourceNode().getId()));
+                }
+                if (connection.targetNode() != null) {
+                    impact.addAll(graph.getDirtyImpactNodeIds(connection.targetNode().getId()));
+                }
+            }
+            host.notifyStructureDirty(impact);
             NodeCraft.LOGGER.info("已清理 {} 条悬挂连线（端口已被动态移除）", toRemove.size());
         }
     }
@@ -252,7 +267,15 @@ public final class ConnectionEditService {
         if (rerouteNodeId != null) {
             host.setSelectedNodeId(rerouteNodeId);
         }
-        host.notifyStructureDirty();
+        NodeGraph graph = document.getGraph();
+        Set<UUID> impact = new HashSet<>();
+        if (graph != null) {
+            impact.addAll(impactOf(graph, sourceNodeId, targetNodeId));
+            if (rerouteNodeId != null) {
+                impact.addAll(graph.getDirtyImpactNodeIds(rerouteNodeId));
+            }
+        }
+        host.notifyStructureDirty(impact);
 
         NodeCraft.LOGGER.info(
                 "已在连接线上插入中继节点: {}({}) -> {} -> {}({})",
@@ -262,6 +285,20 @@ public final class ConnectionEditService {
                 targetNodeId,
                 targetPortId
         );
+    }
+
+    private static Set<UUID> impactOf(NodeGraph graph, UUID sourceNodeId, UUID targetNodeId) {
+        Set<UUID> impact = new HashSet<>();
+        if (graph == null) {
+            return impact;
+        }
+        if (sourceNodeId != null) {
+            impact.addAll(graph.getDirtyImpactNodeIds(sourceNodeId));
+        }
+        if (targetNodeId != null) {
+            impact.addAll(graph.getDirtyImpactNodeIds(targetNodeId));
+        }
+        return impact;
     }
 
     private GraphStructureEditSupport.Host structureEditHost() {

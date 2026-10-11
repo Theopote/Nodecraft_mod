@@ -27,8 +27,11 @@ import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -620,6 +623,42 @@ public final class PreviewManager {
         }
     }
 
+    /**
+     * Hides GHOST (and per-node TRACKED_WORLD) previews whose owner is not in {@code liveNodeIds}.
+     * Does not hide remaining live nodes — used after delete / graph replace so cleanup does not
+     * depend on the removed node still being in the graph.
+     */
+    public static void hidePreviewsNotOwnedBy(@Nullable Collection<String> liveNodeIds) {
+        Set<String> live = liveNodeIds == null ? Set.of() : new HashSet<>(liveNodeIds);
+        Set<String> owners = new HashSet<>(RENDERER.ownerNodeIds());
+        owners.addAll(bookkeepingOwnerNodeIds());
+        owners.addAll(TrackedPreviewPlacementService.getInstance().snapshotOwnerNodeIds());
+        for (String owner : owners) {
+            if (owner != null && !live.contains(owner)) {
+                hideNodePreviews(owner);
+            }
+        }
+    }
+
+    private static Set<String> bookkeepingOwnerNodeIds() {
+        Set<String> ids = new HashSet<>();
+        collectOwnerPrefix(LAST_NON_EMPTY_BY_NODE_TYPE.keySet(), ids);
+        collectOwnerPrefix(LAST_COALESCE_BY_NODE_TYPE.keySet(), ids);
+        ids.addAll(LAST_BLOCKS_BACKEND_BY_NODE.keySet());
+        ids.addAll(LAST_TRACKED_WORLD_REQUEST_BY_NODE.keySet());
+        return ids;
+    }
+
+    private static void collectOwnerPrefix(Set<String> keys, Set<String> into) {
+        for (String key : keys) {
+            if (key == null) {
+                continue;
+            }
+            int pipe = key.indexOf('|');
+            into.add(pipe < 0 ? key : key.substring(0, pipe));
+        }
+    }
+
     public static void hideNodePreviewType(String nodeId, String previewType) {
         if (nodeId == null || previewType == null || previewType.isBlank()) {
             return;
@@ -627,7 +666,17 @@ public final class PreviewManager {
         clearTypePreviewState(nodeId, previewType);
     }
 
+    /**
+     * Clears GHOST renderer state and PreviewManager bookkeeping.
+     * Does <em>not</em> restore TRACKED_WORLD blocks — that would mutate the real world;
+     * callers that own editor close / world teardown must call
+     * {@link TrackedPreviewPlacementService#clearAllTrackedPreviews} separately.
+     */
     public static void clearAllPreviews() {
+        LAST_NON_EMPTY_BY_NODE_TYPE.clear();
+        LAST_COALESCE_BY_NODE_TYPE.clear();
+        LAST_BLOCKS_BACKEND_BY_NODE.clear();
+        LAST_TRACKED_WORLD_REQUEST_BY_NODE.clear();
         RENDERER.clearAllPreviews();
     }
 

@@ -161,6 +161,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         @Override public EditorDocumentState document() { return document; }
         @Override public ImGuiNodeHistory history() { return history; }
         @Override public void notifyStructureDirty() { markGraphStructureDirty(); }
+        @Override public void notifyStructureDirty(java.util.Set<UUID> impactedNodeIds) {
+            markGraphStructureDirty(impactedNodeIds);
+        }
         @Override public void notifyConnectionAdded(Map<String, Object> eventData) { notifyEditorComponents("connection_added", eventData); }
         @Override public INode addNode(String nodeTypeId, float x, float y) { return ImGuiNodeEditor.this.addNode(nodeTypeId, x, y); }
         @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
@@ -179,6 +182,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         @Override public EditorInteractionState interaction() { return interactionState; }
         @Override public ImGuiNodeHistory history() { return history; }
         @Override public void notifyStructureDirty() { markGraphStructureDirty(); }
+        @Override public void notifyStructureDirty(java.util.Set<UUID> impactedNodeIds) {
+            markGraphStructureDirty(impactedNodeIds);
+        }
         @Override public void notifyNodeAdded(Map<String, Object> eventData) { notifyEditorComponents("node_added", eventData); }
         @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
         @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
@@ -192,6 +198,10 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
 
     private void markGraphStructureDirty() {
         autoPreviewController.notifyStructureDirty();
+    }
+
+    private void markGraphStructureDirty(java.util.Collection<UUID> extraHideNodeIds) {
+        autoPreviewController.notifyStructureDirty(extraHideNodeIds);
     }
 
     public void notifyGraphStructureChanged() {
@@ -983,6 +993,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         if (history != null) {
             history.clear();
         }
+        autoPreviewController.notifyGraphReplaced();
     }
 
     @Override
@@ -1260,7 +1271,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             document.replaceNodePositions(loadedGraph.positions());
             document.applySavedGraphMetadata(snapshot);
             clearSelectedNodes();
-            markGraphStructureDirty();
+            // Snapshot restore may remap UUIDs; drop orphan previews then rebuild.
+            autoPreviewController.notifyGraphReplaced();
             return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.error("Failed to restore graph history snapshot: {}", e.getMessage(), e);

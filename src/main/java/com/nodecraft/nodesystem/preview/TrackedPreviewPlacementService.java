@@ -187,6 +187,17 @@ public final class TrackedPreviewPlacementService {
         return false;
     }
 
+    /** Node ids that currently own TRACKED_WORLD preview blocks (not GHOST renderer entries). */
+    public Set<String> snapshotOwnerNodeIds() {
+        Set<String> owners = new LinkedHashSet<>();
+        synchronized (this) {
+            for (Map<String, TrackedPreviewState> byNode : trackedPreviews.values()) {
+                owners.addAll(byNode.keySet());
+            }
+        }
+        return Set.copyOf(owners);
+    }
+
     public int clearTrackedPreviewAcrossWorlds(String nodeId) {
         return clearTrackedPreviewAcrossWorlds(nodeId, null);
     }

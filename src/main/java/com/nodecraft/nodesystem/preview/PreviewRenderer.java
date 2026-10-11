@@ -362,6 +362,11 @@ public class PreviewRenderer {
         prioritizedElements.clear();
         listDirty.set(false); // 已经清空了，不需要重建
     }
+
+    /** Owner node ids that currently have at least one GHOST/renderer preview. */
+    public Set<String> ownerNodeIds() {
+        return Set.copyOf(nodeToPreviewsMap.keySet());
+    }
     
     /**
      * 检查某个节点是否有活跃预览

@@ -32,4 +32,12 @@ class CreateListNodeChangeInputCountTest {
         assertTrue(list.changeInputCountWithHistory(0));
         assertEquals(1, list.getInputCount());
     }
+
+    @Test
+    void noOpWhenCountUnchanged() {
+        CreateListNode list = new CreateListNode();
+        assertEquals(3, list.getInputCount());
+        assertFalse(list.changeInputCountWithHistory(3));
+        assertEquals(3, list.getInputPorts().size());
+    }
 }

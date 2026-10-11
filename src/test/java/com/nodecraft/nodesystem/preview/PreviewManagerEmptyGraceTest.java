@@ -36,4 +36,17 @@ class PreviewManagerEmptyGraceTest {
         assertFalse(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
         assertTrue(PreviewManager.withinEmptyGraceForTests(otherId, "ghost_block"));
     }
+
+    @Test
+    void hidePreviewsNotOwnedByClearsDeletedOwnersWithoutTouchingLive() {
+        String deleted = "deleted-owner";
+        String live = "live-owner";
+        PreviewManager.touchNonEmptyForTests(deleted, "ghost_block");
+        PreviewManager.touchNonEmptyForTests(live, "ghost_block");
+
+        PreviewManager.hidePreviewsNotOwnedBy(java.util.Set.of(live));
+
+        assertFalse(PreviewManager.withinEmptyGraceForTests(deleted, "ghost_block"));
+        assertTrue(PreviewManager.withinEmptyGraceForTests(live, "ghost_block"));
+    }
 }
