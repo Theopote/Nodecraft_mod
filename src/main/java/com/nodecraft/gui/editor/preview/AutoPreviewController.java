@@ -46,6 +46,11 @@ public final class AutoPreviewController {
     private long pendingAutoPreviewVersion = -1L;
     private long lastAutoPreviewDirtyChangeAt = 0L;
     private long lastAutoPreviewExecutionAt = 0L;
+    /**
+     * Dirty version of the last non-cancelled preview failure. Poll retries are suppressed
+     * until {@link DirtyVersionSource#getDirtyVersion()} advances past this value.
+     */
+    private long lastFailedPreviewVersion = -1L;
     private volatile ExecutionSession autoPreviewSession;
     /** Most recent successfully submitted preview session (may already be finished). */
     private volatile ExecutionSession lastSubmittedSession;
@@ -140,6 +145,13 @@ public final class AutoPreviewController {
             return;
         }
 
+        // Deterministic failure: do not poll-retry the same dirty version until the graph changes.
+        if (!hasPendingDirtyExecution
+                && lastFailedPreviewVersion >= 0
+                && currentDirtyVersion == lastFailedPreviewVersion) {
+            return;
+        }
+
         if (scheduler.activeManual().map(ExecutionSession::isExecuting).orElse(false)) {
             return;
         }
@@ -196,6 +208,7 @@ public final class AutoPreviewController {
                     );
                     return;
                 }
+                lastFailedPreviewVersion = executingVersion;
                 NodeCraft.LOGGER.error(
                         "Auto-preview failed: reason={}, dirtyVersion={}",
                         triggerReason,
@@ -205,11 +218,19 @@ public final class AutoPreviewController {
                 return;
             }
             if (Boolean.TRUE.equals(result)) {
+                lastFailedPreviewVersion = -1L;
                 NodeCraft.LOGGER.debug("Auto-preview completed: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             } else {
+                // Soft failure (no success flag): suppress poll until dirty advances.
+                lastFailedPreviewVersion = executingVersion;
                 NodeCraft.LOGGER.debug("Auto-preview ended without success: reason={}, dirtyVersion={}", triggerReason, executingVersion);
             }
         });
+    }
+
+    /** Test access: dirty version blocked from poll retry after a non-cancelled failure. */
+    public long lastFailedPreviewVersion() {
+        return lastFailedPreviewVersion;
     }
 
     public void cancel() {

@@ -1251,7 +1251,8 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         }
         try {
             GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(snapshot);
-            if (!loadResult.hasLoadedNodes()) {
+            // Legitimate empty graphs must restore; non-empty snapshots that load zero nodes fail.
+            if (!loadResult.hasLoadedNodes() && !GraphSerializer.isEmptyNodeList(snapshot)) {
                 return false;
             }
             SubgraphEditService.LoadedGraph loadedGraph = SubgraphEditService.toLoadedGraph(snapshot, loadResult);

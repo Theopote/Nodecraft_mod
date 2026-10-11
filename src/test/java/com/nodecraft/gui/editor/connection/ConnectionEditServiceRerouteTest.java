@@ -222,7 +222,7 @@ class ConnectionEditServiceRerouteTest {
                 return false;
             }
             GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(snapshot);
-            if (!loadResult.hasLoadedNodes()) {
+            if (!loadResult.hasLoadedNodes() && !GraphSerializer.isEmptyNodeList(snapshot)) {
                 return false;
             }
             SubgraphEditService.LoadedGraph loaded = SubgraphEditService.toLoadedGraph(snapshot, loadResult);

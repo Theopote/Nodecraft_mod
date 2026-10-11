@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -197,6 +198,107 @@ class GraphStructureEditSupportTransactionTest {
     }
 
     @Test
+    void emptyGraphMutationFailureRestoresEmptyGraph() {
+        Fixture fixture = Fixture.create();
+        assertEquals(0, fixture.document.getGraph().getNodes().size());
+        fixture.history.clear();
+
+        GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
+                fixture.structureHost(),
+                "Empty Fail",
+                () -> {
+                    RelayNode orphan = new RelayNode();
+                    fixture.document.getGraph().addNode(orphan);
+                    fixture.document.setNodePosition(orphan.getId(), new NodePosition(0, 0));
+                    return false;
+                }
+        );
+
+        assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
+        assertEquals(0, fixture.document.getGraph().getNodes().size());
+        assertTrue(fixture.document.getNodePositions().isEmpty());
+        assertEquals(0, fixture.history.undoStackSize());
+        assertTrue(fixture.history.isRecording());
+    }
+
+    @Test
+    void afterSnapshotFailureRollsBackMutation() {
+        Fixture fixture = Fixture.create();
+        RelayNode node = new RelayNode();
+        fixture.document.getGraph().addNode(node);
+        fixture.document.setNodePosition(node.getId(), new NodePosition(0, 0));
+        fixture.history.clear();
+        int nodesBefore = fixture.document.getGraph().getNodes().size();
+        fixture.failAfterSnapshotOnNthCapture = 2;
+
+        GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
+                fixture.structureHost(),
+                "After Snapshot Fail",
+                () -> {
+                    fixture.document.getGraph().addNode(new RelayNode());
+                    return true;
+                }
+        );
+
+        assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
+        assertEquals(nodesBefore, fixture.document.getGraph().getNodes().size());
+        assertEquals(0, fixture.history.undoStackSize());
+        assertEquals(0, fixture.structureDirtyCount.get());
+        assertTrue(fixture.history.isRecording());
+    }
+
+    @Test
+    void notifyFailureRollsBackWithoutHistory() {
+        Fixture fixture = Fixture.create();
+        RelayNode node = new RelayNode();
+        fixture.document.getGraph().addNode(node);
+        fixture.document.setNodePosition(node.getId(), new NodePosition(0, 0));
+        fixture.history.clear();
+        int nodesBefore = fixture.document.getGraph().getNodes().size();
+        fixture.throwOnNotify = true;
+
+        GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
+                fixture.structureHost(),
+                "Notify Fail",
+                () -> {
+                    node.setTag("notify-fail");
+                    return true;
+                }
+        );
+
+        assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
+        assertEquals(nodesBefore, fixture.document.getGraph().getNodes().size());
+        assertNull(findRelayByTag(fixture.document.getGraph(), "notify-fail"));
+        assertEquals(0, fixture.history.undoStackSize());
+        assertTrue(fixture.history.isRecording());
+    }
+
+    @Test
+    void historyCommitFailureRollsBackMutation() {
+        Fixture fixture = Fixture.createWithThrowingHistory();
+        RelayNode node = new RelayNode();
+        fixture.document.getGraph().addNode(node);
+        fixture.document.setNodePosition(node.getId(), new NodePosition(0, 0));
+        fixture.history.clear();
+        int nodesBefore = fixture.document.getGraph().getNodes().size();
+
+        GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
+                fixture.structureHost(),
+                "History Commit Fail",
+                () -> {
+                    node.setTag("history-fail");
+                    return true;
+                }
+        );
+
+        assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
+        assertEquals(nodesBefore, fixture.document.getGraph().getNodes().size());
+        assertNull(findRelayByTag(fixture.document.getGraph(), "history-fail"));
+        assertEquals(0, fixture.history.undoStackSize());
+        assertTrue(fixture.history.isRecording());
+    }
+
+    @Test
     void nestedSuccessKeepsOuterPausedRecordingState() {
         Fixture fixture = Fixture.create();
         RelayNode node = new RelayNode();
@@ -271,11 +373,24 @@ class GraphStructureEditSupportTransactionTest {
         assertTrue(elapsedMs < 5_000L, "snapshot took " + elapsedMs + "ms");
     }
 
+    @Nullable
+    private static RelayNode findRelayByTag(NodeGraph graph, String tag) {
+        return graph.getNodes().stream()
+                .filter(RelayNode.class::isInstance)
+                .map(RelayNode.class::cast)
+                .filter(n -> tag.equals(n.getTag()))
+                .findFirst()
+                .orElse(null);
+    }
+
     private static final class Fixture {
         final EditorDocumentState document;
         final ImGuiNodeHistory history;
         final DocumentEditor editor;
         final AtomicInteger structureDirtyCount = new AtomicInteger();
+        final AtomicInteger captureCount = new AtomicInteger();
+        int failAfterSnapshotOnNthCapture = -1;
+        boolean throwOnNotify;
 
         private Fixture(EditorDocumentState document, ImGuiNodeHistory history, DocumentEditor editor) {
             this.document = document;
@@ -287,6 +402,13 @@ class GraphStructureEditSupportTransactionTest {
             EditorDocumentState document = new EditorDocumentState();
             document.setGraph(new NodeGraph("tx"));
             DocumentEditor editor = new DocumentEditor(document);
+            return new Fixture(document, editor.history(), editor);
+        }
+
+        static Fixture createWithThrowingHistory() {
+            EditorDocumentState document = new EditorDocumentState();
+            document.setGraph(new NodeGraph("tx"));
+            DocumentEditor editor = new DocumentEditor(document, true);
             return new Fixture(document, editor.history(), editor);
         }
 
@@ -323,7 +445,19 @@ class GraphStructureEditSupportTransactionTest {
                 }
 
                 @Override
+                public SavedGraph captureSnapshot() {
+                    int n = captureCount.incrementAndGet();
+                    if (failAfterSnapshotOnNthCapture > 0 && n == failAfterSnapshotOnNthCapture) {
+                        throw new IllegalStateException("after snapshot boom");
+                    }
+                    return GraphStructureEditSupport.Host.super.captureSnapshot();
+                }
+
+                @Override
                 public void notifyStructureDirty() {
+                    if (throwOnNotify) {
+                        throw new IllegalStateException("notify boom");
+                    }
                     structureDirtyCount.incrementAndGet();
                 }
             };
@@ -335,8 +469,12 @@ class GraphStructureEditSupportTransactionTest {
         private final ImGuiNodeHistory history;
 
         private DocumentEditor(EditorDocumentState document) {
+            this(document, false);
+        }
+
+        private DocumentEditor(EditorDocumentState document, boolean throwingHistory) {
             this.document = document;
-            this.history = new ImGuiNodeHistory(this);
+            this.history = throwingHistory ? new ThrowingRecordHistory(this) : new ImGuiNodeHistory(this);
         }
 
         ImGuiNodeHistory history() {
@@ -354,13 +492,7 @@ class GraphStructureEditSupportTransactionTest {
                 return false;
             }
             GraphLoadResult loadResult = GraphSerializer.loadFromSavedGraph(snapshot);
-            if (!loadResult.hasLoadedNodes() && (snapshot.nodes == null || snapshot.nodes.isEmpty())) {
-                document.setGraph(new NodeGraph(snapshot.graphName != null ? snapshot.graphName : "empty"));
-                document.replaceNodePositions(Map.of());
-                document.applySavedGraphMetadata(snapshot);
-                return true;
-            }
-            if (!loadResult.hasLoadedNodes()) {
+            if (!loadResult.hasLoadedNodes() && !GraphSerializer.isEmptyNodeList(snapshot)) {
                 return false;
             }
             SubgraphEditService.LoadedGraph loaded = SubgraphEditService.toLoadedGraph(snapshot, loadResult);
@@ -629,6 +761,17 @@ class GraphStructureEditSupportTransactionTest {
         @Override
         public boolean isNodeVisible(UUID nodeId) {
             return true;
+        }
+    }
+
+    private static final class ThrowingRecordHistory extends ImGuiNodeHistory {
+        private ThrowingRecordHistory(ICanvasEditor editor) {
+            super(editor);
+        }
+
+        @Override
+        public void recordGraphTransaction(String label, SavedGraph before, SavedGraph after) {
+            throw new IllegalStateException("history commit boom");
         }
     }
 }

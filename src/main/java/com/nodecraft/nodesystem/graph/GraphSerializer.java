@@ -126,6 +126,14 @@ public class GraphSerializer {
     /**
      * Rebuilds a graph from saved data, skipping unknown node types instead of aborting the whole load.
      */
+    /**
+     * True when the snapshot intentionally lists no nodes (a legitimate empty graph).
+     * Distinct from a non-empty snapshot that failed to restore any nodes.
+     */
+    public static boolean isEmptyNodeList(@Nullable SavedGraph savedGraph) {
+        return savedGraph != null && (savedGraph.nodes == null || savedGraph.nodes.isEmpty());
+    }
+
     public static GraphLoadResult loadFromSavedGraph(@Nullable SavedGraph savedGraph) {
         if (savedGraph == null) {
             return GraphLoadResult.empty("Loaded Graph");

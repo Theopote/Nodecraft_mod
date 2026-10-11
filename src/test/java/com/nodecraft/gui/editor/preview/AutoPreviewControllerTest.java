@@ -4,6 +4,10 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.ExecutionProfiler;
+import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionMode;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
 import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -12,7 +16,9 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -97,6 +103,45 @@ class AutoPreviewControllerTest {
     }
 
     @Test
+    void failedPreviewSuppressesPollUntilDirtyAdvances() throws Exception {
+        AtomicLong clock = new AtomicLong(3_000L);
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        AtomicInteger submitCount = new AtomicInteger();
+        FailingPreviewScheduler scheduler = new FailingPreviewScheduler(submitCount);
+
+        NodeGraph graph = new NodeGraph("auto-preview-fail-poll");
+        PassThroughNode source = new PassThroughNode("source", "ok");
+        graph.addNode(source);
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null),
+                clock::get,
+                scheduler
+        );
+
+        controller.notifyNodeDirty(source, 1L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+
+        ExecutionSession failed = controller.lastSubmittedSession();
+        assertNotNull(failed);
+        assertTrue(failed.result().isCompletedExceptionally());
+        assertEquals(1, submitCount.get());
+        assertEquals(dirtyVersion.get(), controller.lastFailedPreviewVersion());
+
+        clock.addAndGet(AutoPreviewController.POLL_INTERVAL_MS + 1L);
+        controller.tick();
+        assertEquals(1, submitCount.get(), "poll must not retry the same failed dirty version");
+
+        controller.notifyNodeDirty(source, 2L);
+        clock.addAndGet(AutoPreviewController.DEBOUNCE_MS + 1L);
+        controller.tick();
+        assertEquals(2, submitCount.get(), "new dirty version must allow another preview submit");
+    }
+
+    @Test
     void debounceClockAdvanceAfterNotifyAllowsImmediateSubmitOnNextTick() throws Exception {
         AtomicLong clock = new AtomicLong(2_000L);
         AtomicLong dirtyVersion = new AtomicLong(0L);
@@ -134,6 +179,78 @@ class AutoPreviewControllerTest {
                 dirtyVersion.incrementAndGet();
             }
         };
+    }
+
+    private static final class FailingPreviewScheduler implements NodeExecutionScheduler {
+        private final AtomicInteger submitCount;
+
+        private FailingPreviewScheduler(AtomicInteger submitCount) {
+            this.submitCount = submitCount;
+        }
+
+        @Override
+        public ExecutionSession submit(
+                NodeGraph graph,
+                @Nullable ExecutionContext context,
+                ExecutionPlan plan,
+                long generation
+        ) {
+            submitCount.incrementAndGet();
+            CompletableFuture<Boolean> result = new CompletableFuture<>();
+            result.completeExceptionally(new IllegalStateException("preview boom"));
+            return new ExecutionSession() {
+                private final UUID id = UUID.randomUUID();
+
+                @Override
+                public UUID sessionId() {
+                    return id;
+                }
+
+                @Override
+                public long generation() {
+                    return generation;
+                }
+
+                @Override
+                public ExecutionMode mode() {
+                    return ExecutionMode.PREVIEW;
+                }
+
+                @Override
+                public CancellationToken cancellation() {
+                    return CancellationToken.none();
+                }
+
+                @Override
+                public CompletableFuture<Boolean> result() {
+                    return result;
+                }
+
+                @Override
+                @Nullable
+                public ExecutionProfiler.Profile lastProfile() {
+                    return null;
+                }
+            };
+        }
+
+        @Override
+        public void cancelPreview() {
+        }
+
+        @Override
+        public void cancelManual() {
+        }
+
+        @Override
+        public Optional<ExecutionSession> activePreview() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<ExecutionSession> activeManual() {
+            return Optional.empty();
+        }
     }
 
     private static final class PassThroughNode extends BaseNode {

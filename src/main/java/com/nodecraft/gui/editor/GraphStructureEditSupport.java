@@ -14,6 +14,8 @@ import java.util.Objects;
  * <p>
  * Always snapshots before mutating and restores on failure. Records a single
  * {@link ImGuiNodeHistory#recordGraphTransaction} only when history was recording at entry.
+ * Commit-phase failures (after-snapshot, dirty notify, history record) also restore the before snapshot
+ * so the graph is never left modified without a recorded Undo when recording was expected.
  */
 public final class GraphStructureEditSupport {
 
@@ -36,6 +38,13 @@ public final class GraphStructureEditSupport {
 
         /** Invoked once after a successful mutation so auto-preview can invalidate. */
         void notifyStructureDirty();
+
+        /**
+         * Captures the current document for rollback / Undo. Override in tests to inject commit failures.
+         */
+        default SavedGraph captureSnapshot() {
+            return GraphStructureEditSupport.snapshotDocument(document());
+        }
     }
 
     private GraphStructureEditSupport() {
@@ -75,7 +84,7 @@ public final class GraphStructureEditSupport {
 
         ImGuiNodeHistory history = host.history();
         boolean wasRecording = history != null && history.isRecording();
-        SavedGraph before = snapshotDocument(document);
+        SavedGraph before = host.captureSnapshot();
 
         if (wasRecording) {
             history.pauseRecording();
@@ -96,17 +105,44 @@ public final class GraphStructureEditSupport {
                 return Outcome.ABORTED_ROLLED_BACK;
             }
 
-            if (wasRecording && history != null) {
-                SavedGraph after = snapshotDocument(document);
-                history.setRecording(true);
-                history.recordGraphTransaction(label, before, after);
+            try {
+                commitAfterMutation(host, history, wasRecording, before, label);
+            } catch (RuntimeException commitError) {
+                NodeCraft.LOGGER.error(
+                        "Graph structure edit '{}' commit failed: {}",
+                        label,
+                        commitError.getMessage(),
+                        commitError);
+                restoreOrThrow(host, before, label, commitError);
+                return Outcome.ABORTED_ROLLED_BACK;
             }
-            host.notifyStructureDirty();
             return Outcome.SUCCESS;
         } finally {
             if (history != null) {
                 history.setRecording(wasRecording);
             }
+        }
+    }
+
+    /**
+     * After-snapshot → dirty notify → history record.
+     * Notify runs before history so a notify failure cannot leave an Undo for a rolled-back graph.
+     */
+    private static void commitAfterMutation(
+            Host host,
+            @Nullable ImGuiNodeHistory history,
+            boolean wasRecording,
+            SavedGraph before,
+            String label
+    ) {
+        SavedGraph after = null;
+        if (wasRecording && history != null) {
+            after = host.captureSnapshot();
+        }
+        host.notifyStructureDirty();
+        if (wasRecording && history != null) {
+            history.setRecording(true);
+            history.recordGraphTransaction(label, before, after);
         }
     }
 
