@@ -524,7 +524,30 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderDangerActions() {
-        NodeActionPanel.renderDangerActions(selectedNode, this::getNodeGraph, this::setSelectedNode);
+        NodeActionPanel.renderDangerActions(selectedNode, this::setSelectedNode, this::deleteSelectedNodeWithHistory);
+    }
+
+    /**
+     * Deletes the property-panel node via the canvas editor command path so Ctrl+Z can restore it.
+     */
+    boolean deleteSelectedNodeWithHistory() {
+        if (selectedNode == null) {
+            return false;
+        }
+        try {
+            ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+            UUID nodeId = selectedNode.getId();
+            editor.clearSelectedNodes();
+            editor.setSelectedNodeId(nodeId);
+            return editor.deleteSelectedNodes();
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error(
+                    "History-aware delete failed for {}: {}",
+                    selectedNode.getDisplayName(),
+                    e.getMessage(),
+                    e);
+            return false;
+        }
     }
     private void renderNodeProperties() {
         if (selectedNode == null) return;

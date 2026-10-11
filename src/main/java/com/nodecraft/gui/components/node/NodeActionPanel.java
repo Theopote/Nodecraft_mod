@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.api.ResettableNode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -98,26 +99,25 @@ public final class NodeActionPanel {
 
     /**
      * Destructive actions pinned to the bottom of the property panel.
+     * {@code deleteWithHistory} must remove the node through the editor command path
+     * (history + position + selection), not a raw {@link NodeGraph#removeNode}.
      */
     public static void renderDangerActions(
             INode selectedNode,
-            Supplier<NodeGraph> graphSupplier,
-            Consumer<INode> setSelectedNode
+            Consumer<INode> setSelectedNode,
+            BooleanSupplier deleteWithHistory
     ) {
         ImGui.separator();
         ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 0.6f);
         ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 0.8f);
         ImGui.pushStyleColor(ImGuiCol.ButtonActive, 1.0f, 0.4f, 0.4f, 1.0f);
         if (ImGui.button("Delete Node")) {
-            NodeGraph graph = graphSupplier.get();
-            if (graph != null) {
-                boolean success = graph.removeNode(selectedNode.getId());
-                if (success) {
-                    NodeCraft.LOGGER.info("Removed node from graph: {}", selectedNode.getDisplayName());
-                    setSelectedNode.accept(null);
-                } else {
-                    NodeCraft.LOGGER.warn("Failed to remove node from graph: {}", selectedNode.getDisplayName());
-                }
+            boolean success = deleteWithHistory.getAsBoolean();
+            if (success) {
+                NodeCraft.LOGGER.info("Removed node from graph: {}", selectedNode.getDisplayName());
+                setSelectedNode.accept(null);
+            } else {
+                NodeCraft.LOGGER.warn("Failed to remove node from graph: {}", selectedNode.getDisplayName());
             }
         }
         ImGui.popStyleColor(3);
@@ -142,7 +142,10 @@ public final class NodeActionPanel {
             onResetSuccess.accept(selectedNode);
         }, resetFeedback);
         ImGui.sameLine();
-        renderDangerActions(selectedNode, graphSupplier, setSelectedNode);
+        renderDangerActions(selectedNode, setSelectedNode, () -> {
+            NodeGraph graph = graphSupplier.get();
+            return graph != null && graph.removeNode(selectedNode.getId());
+        });
     }
 
     /**
