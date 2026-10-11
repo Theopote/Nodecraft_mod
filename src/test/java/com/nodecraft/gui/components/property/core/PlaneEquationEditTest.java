@@ -22,34 +22,66 @@ class PlaneEquationEditTest {
     }
 
     @Test
-    void unitNormalAndOffsetRoundTripPreservesPlane() {
-        PlaneData original = PlaneData.canonical(new Vector3d(0, 64, 0), new Vector3d(0, 1, 0));
+    void resubmittingSameValuesPreservesConstructionOrigin() {
+        PlaneData original = PlaneData.canonical(new Vector3d(10, 64, 20), new Vector3d(0, 1, 0));
         assertNotNull(original);
         float d = (float) PlaneEquationEdit.displayOffset(original);
-        PlaneData committed = PlaneEquationEdit.commit(0f, 1f, 0f, d);
+
+        PlaneData committed = PlaneEquationEdit.commit(original, 0f, 1f, 0f, d);
         assertNotNull(committed);
-        assertEquals(0.0, committed.getNormal().x, EPS);
-        assertEquals(1.0, committed.getNormal().y, EPS);
-        assertEquals(0.0, committed.getNormal().z, EPS);
+        assertEquals(10.0, committed.getPoint().x, EPS);
+        assertEquals(64.0, committed.getPoint().y, EPS);
+        assertEquals(20.0, committed.getPoint().z, EPS);
+        assertEquals(0.0, committed.signedDistanceTo(new Vector3d(10, 64, 20)), 1.0e-4);
+    }
+
+    @Test
+    void changingNormalKeepsConstructionOrigin() {
+        PlaneData original = PlaneData.canonical(new Vector3d(10, 64, 20), new Vector3d(0, 1, 0));
+        assertNotNull(original);
+        float oldD = (float) PlaneEquationEdit.displayOffset(original);
+
+        PlaneData committed = PlaneEquationEdit.commit(original, 1f, 0f, 0f, oldD);
+        assertNotNull(committed);
+        assertEquals(10.0, committed.getPoint().x, EPS);
+        assertEquals(64.0, committed.getPoint().y, EPS);
+        assertEquals(20.0, committed.getPoint().z, EPS);
+        assertEquals(1.0, committed.getNormal().x, EPS);
+        // D is recomputed from origin · normal
+        assertEquals(-10.0, PlaneEquationEdit.displayOffset(committed), 1.0e-4);
+    }
+
+    @Test
+    void changingOffsetMovesOriginAlongNormal() {
+        PlaneData original = PlaneData.canonical(new Vector3d(10, 64, 20), new Vector3d(0, 1, 0));
+        assertNotNull(original);
+
+        PlaneData committed = PlaneEquationEdit.commit(original, 0f, 1f, 0f, -70f);
+        assertNotNull(committed);
+        assertEquals(10.0, committed.getPoint().x, EPS);
+        assertEquals(70.0, committed.getPoint().y, EPS);
+        assertEquals(20.0, committed.getPoint().z, EPS);
+        assertEquals(-70.0, PlaneEquationEdit.displayOffset(committed), 1.0e-4);
+    }
+
+    @Test
+    void nonUnitNormalLengthDoesNotScaleUnitOffset() {
+        // D is unit-normal offset: length of UI normal is ignored for D.
+        PlaneData original = PlaneData.canonical(new Vector3d(10, 64, 20), new Vector3d(0, 1, 0));
+        assertNotNull(original);
+        float d = (float) PlaneEquationEdit.displayOffset(original);
+
+        PlaneData committed = PlaneEquationEdit.commit(original, 0f, 2f, 0f, d);
+        assertNotNull(committed);
+        assertEquals(10.0, committed.getPoint().x, EPS);
+        assertEquals(64.0, committed.getPoint().y, EPS);
+        assertEquals(20.0, committed.getPoint().z, EPS);
         assertEquals(d, PlaneEquationEdit.displayOffset(committed), 1.0e-4);
-        assertEquals(0.0, committed.signedDistanceTo(new Vector3d(0, 64, 0)), 1.0e-4);
     }
 
     @Test
-    void nonUnitNormalScalesOffsetSoEquationIsPreserved() {
-        // Equation 0*x + 2*y + 0*z - 128 = 0  <=>  y = 64 with unit normal
-        PlaneData committed = PlaneEquationEdit.commit(0f, 2f, 0f, -128f);
-        assertNotNull(committed);
-        assertEquals(0.0, committed.getNormal().x, EPS);
-        assertEquals(1.0, committed.getNormal().y, EPS);
-        assertEquals(0.0, committed.getNormal().z, EPS);
-        assertEquals(-64.0, PlaneEquationEdit.displayOffset(committed), 1.0e-4);
-        assertEquals(0.0, committed.signedDistanceTo(new Vector3d(10, 64, -3)), 1.0e-4);
-    }
-
-    @Test
-    void negativeOffsetIsPreservedForUnitNormal() {
-        PlaneData committed = PlaneEquationEdit.commit(1f, 0f, 0f, 5f);
+    void negativeOffsetWithoutPreviousPlacesOriginOnPlane() {
+        PlaneData committed = PlaneEquationEdit.commit(null, 1f, 0f, 0f, 5f);
         assertNotNull(committed);
         assertEquals(5.0, PlaneEquationEdit.displayOffset(committed), EPS);
         assertEquals(0.0, committed.signedDistanceTo(new Vector3d(-5, 0, 0)), 1.0e-4);
@@ -57,15 +89,18 @@ class PlaneEquationEditTest {
 
     @Test
     void zeroNormalReturnsNull() {
-        assertNull(PlaneEquationEdit.commit(0f, 0f, 0f, 1f));
+        PlaneData original = PlaneData.canonical(new Vector3d(0, 1, 0), new Vector3d(0, 1, 0));
+        assertNull(PlaneEquationEdit.commit(original, 0f, 0f, 0f, 1f));
+        assertNull(PlaneEquationEdit.commit(null, 0f, 0f, 0f, 1f));
     }
 
     @Test
-    void formatReadOnlyIncludesNormalAndOffset() {
+    void formatReadOnlyIncludesOrigin() {
         PlaneData plane = PlaneData.canonical(new Vector3d(0, 1, 0), new Vector3d(0, 1, 0));
         assertNotNull(plane);
         String text = PlaneEquationEdit.formatReadOnly(plane);
         assertTrue(text.contains("N ("));
         assertTrue(text.contains("D "));
+        assertTrue(text.contains("O ("));
     }
 }

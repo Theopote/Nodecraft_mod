@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PropertyValueSnapshotsTest {
 
@@ -89,5 +90,14 @@ class PropertyValueSnapshotsTest {
 
         assertNotSame(original, snapshot);
         assertEquals(original.corner1(), snapshot.corner1());
+    }
+
+    @Test
+    void unsupportedMutableTypeFailsInsteadOfAliasing() {
+        Object unsupported = new Object() {
+            @SuppressWarnings("unused")
+            final byte[] payload = new byte[]{1, 2, 3};
+        };
+        assertThrows(SnapshotIsolationException.class, () -> PropertyValueSnapshots.copy(unsupported));
     }
 }

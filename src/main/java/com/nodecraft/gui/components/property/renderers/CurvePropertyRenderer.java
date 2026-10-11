@@ -32,8 +32,21 @@ public final class CurvePropertyRenderer {
                 ImGui.text("Type: " + curve.getCurveType());
                 ImGui.text("Control Points: " + curve.size());
                 ImGui.text("Resolution: " + curve.getResolution());
-                // Sample points are expensive (recomputed each call) — only when expanded.
-                ImGui.text("Sample Points: " + curve.getSamplePoints().size());
+
+                // Sampling is expensive and not cached on Curve — compute only on demand.
+                String sampleKey = panel.getTempValueKey(node, prop.name + "_sample_count");
+                Integer[] sampleCount = panel.getOrCreateTempValue(sampleKey, () -> new Integer[]{null});
+                if (sampleCount[0] != null) {
+                    ImGui.text("Sample Points: " + sampleCount[0]);
+                    if (ImGui.smallButton("Refresh##curve_samples_" + prop.name)) {
+                        sampleCount[0] = curve.getSamplePoints().size();
+                    }
+                } else if (ImGui.smallButton("Compute sample count##curve_samples_" + prop.name)) {
+                    sampleCount[0] = curve.getSamplePoints().size();
+                } else {
+                    ImGui.sameLine();
+                    ImGui.textDisabled("(not computed)");
+                }
                 ImGui.treePop();
             }
         } catch (Throwable e) {

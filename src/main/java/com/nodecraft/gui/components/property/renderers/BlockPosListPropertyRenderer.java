@@ -14,8 +14,6 @@ import java.util.List;
 public final class BlockPosListPropertyRenderer {
     public static final PropertyRenderer RENDERER = BlockPosListPropertyRenderer::render;
 
-    private static final int PREVIEW_LIMIT = ListPropertyRenderer.DEFAULT_LIST_PREVIEW_LIMIT;
-
     private BlockPosListPropertyRenderer() {
     }
 
@@ -44,13 +42,17 @@ public final class BlockPosListPropertyRenderer {
             }
 
             if (ImGui.treeNode("Details##blockposlist_" + prop.name)) {
-                int limit = Math.min(preview.size(), PREVIEW_LIMIT);
-                for (int i = 0; i < limit; i++) {
-                    ImGui.text(String.format("[%d] %s", i, PropertyValueFormatters.formatBlockPos(preview.get(i))));
-                }
-                if (preview.size() > limit) {
-                    ImGui.textDisabled("… and " + (preview.size() - limit) + " more");
-                }
+                ListPropertyRenderer.renderPagedItems(
+                        panel,
+                        node,
+                        prop.name,
+                        preview.size(),
+                        index -> ImGui.text(String.format(
+                                "[%d] %s",
+                                index,
+                                PropertyValueFormatters.formatBlockPos(preview.get(index))
+                        ))
+                );
                 ImGui.treePop();
             }
         } catch (Throwable e) {

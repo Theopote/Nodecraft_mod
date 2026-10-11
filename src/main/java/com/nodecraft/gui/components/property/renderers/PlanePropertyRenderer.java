@@ -81,7 +81,7 @@ public final class PlanePropertyRenderer {
             }
 
             if (changed) {
-                PlaneData committed = PlaneEquationEdit.commit(nx[0], ny[0], nz[0], d[0]);
+                PlaneData committed = PlaneEquationEdit.commit(plane, nx[0], ny[0], nz[0], d[0]);
                 if (committed == null) {
                     ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Normal cannot be zero");
                 } else {

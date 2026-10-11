@@ -86,10 +86,17 @@ primitive renderers call support classes directly.
 
 ## Phase 2B — Plane / Curve / Color / List
 
-- Plane edits use unit-normal + offset D via `PlaneEquationEdit` / `PlaneData.fromEquation` (non-unit normals scale D); four-axis session finish uses `VectorEditSessionLogic`
+- Plane edits use unit-normal + offset D via `PlaneEquationEdit`; four-axis session finish uses `VectorEditSessionLogic`
 - Curve default summary avoids `getSamplePoints()`; sample count only inside Details
 - Color read-only shows swatch + hex/RGBA text (no disabled `colorEdit4`)
 - List / BlockPosList: disabled state, count summary, Details fold with 32-item preview cap
+
+## Phase 2C — Plane origin + snapshot / list follow-ups
+
+- `PlaneEquationEdit.commit(previous, …)` preserves construction origin: rotate around `getPoint()`, move origin along normal when D changes (no `fromEquation` origin rewrite)
+- Curve sample count is on-demand (`Compute sample count` / `Refresh`), not every frame while Details is open
+- List / BlockPosList Details support start-index paging (page size 32)
+- `PropertyValueSnapshots` throws `SnapshotIsolationException` instead of aliasing unsupported mutable values
 
 ## Exit gates — Phase 1
 

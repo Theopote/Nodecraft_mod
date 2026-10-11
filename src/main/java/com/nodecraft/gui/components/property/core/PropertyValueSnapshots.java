@@ -2,6 +2,7 @@ package com.nodecraft.gui.components.property.core;
 
 import com.google.gson.Gson;
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.util.Curve;
@@ -16,6 +17,7 @@ import java.util.Map;
 
 /**
  * Deep copies property values for undo/redo snapshots.
+ * Unsupported mutable types fail with {@link SnapshotIsolationException} instead of aliasing live data.
  */
 public final class PropertyValueSnapshots {
 
@@ -42,10 +44,17 @@ public final class PropertyValueSnapshots {
             return copied;
         }
         try {
-            return GSON.fromJson(GSON.toJson(state), state.getClass());
+            Object copied = GSON.fromJson(GSON.toJson(state), state.getClass());
+            if (copied == null) {
+                throw new SnapshotIsolationException(
+                        "Unable to isolate node state snapshot of type " + state.getClass().getName());
+            }
+            return copied;
+        } catch (SnapshotIsolationException e) {
+            throw e;
         } catch (Exception e) {
-            NodeCraft.LOGGER.warn("Unable to isolate node state snapshot of type {}", state.getClass().getName(), e);
-            return state;
+            throw new SnapshotIsolationException(
+                    "Unable to isolate node state snapshot of type " + state.getClass().getName(), e);
         }
     }
 
@@ -68,6 +77,13 @@ public final class PropertyValueSnapshots {
         if (value instanceof BlockPos blockPos) {
             return new BlockPos(blockPos.getX(), blockPos.getY(), blockPos.getZ());
         }
+        if (value instanceof PlaneData plane) {
+            PlaneData copied = PlaneData.canonical(plane.getPoint(), plane.getNormal());
+            if (copied == null) {
+                throw new SnapshotIsolationException("Unable to isolate PlaneData snapshot");
+            }
+            return copied;
+        }
         if (value instanceof PolylineData polyline) {
             return new PolylineData(polyline.points().stream()
                     .map(point -> new net.minecraft.util.math.Vec3d(point.x, point.y, point.z))
@@ -89,7 +105,11 @@ public final class PropertyValueSnapshots {
             return copied;
         }
         try {
-            return GSON.fromJson(GSON.toJson(value), value.getClass());
+            Object copied = GSON.fromJson(GSON.toJson(value), value.getClass());
+            if (copied == null) {
+                return typedFallbackCopy(value);
+            }
+            return copied;
         } catch (Exception e) {
             NodeCraft.LOGGER.warn("Gson snapshot failed for {}, attempting typed fallback", value.getClass().getName(), e);
             return typedFallbackCopy(value);
@@ -99,25 +119,36 @@ public final class PropertyValueSnapshots {
     private static Object typedFallbackCopy(Object value) {
         if (value instanceof Curve curve) {
             try {
-                return GSON.fromJson(GSON.toJson(curve), Curve.class);
+                Object copied = GSON.fromJson(GSON.toJson(curve), Curve.class);
+                if (copied != null) {
+                    return copied;
+                }
             } catch (Exception ignored) {
-                NodeCraft.LOGGER.warn("Unable to isolate Curve snapshot; undo may alias live data");
+                // fall through to failure
             }
         }
         if (value instanceof PolylineData polyline) {
             try {
-                return GSON.fromJson(GSON.toJson(polyline), PolylineData.class);
+                return new PolylineData(polyline.points().stream()
+                        .map(point -> new net.minecraft.util.math.Vec3d(point.x, point.y, point.z))
+                        .toList());
             } catch (Exception ignored) {
-                NodeCraft.LOGGER.warn("Unable to isolate PolylineData snapshot; undo may alias live data");
+                // fall through
             }
         }
         if (value instanceof RegionData region) {
             try {
-                return GSON.fromJson(GSON.toJson(region), RegionData.class);
+                BlockPos corner1 = region.corner1();
+                BlockPos corner2 = region.corner2();
+                return new RegionData(
+                        corner1 == null ? null : new BlockPos(corner1.getX(), corner1.getY(), corner1.getZ()),
+                        corner2 == null ? null : new BlockPos(corner2.getX(), corner2.getY(), corner2.getZ())
+                );
             } catch (Exception ignored) {
-                NodeCraft.LOGGER.warn("Unable to isolate RegionData snapshot; undo may alias live data");
+                // fall through
             }
         }
-        return value;
+        throw new SnapshotIsolationException(
+                "Unable to isolate snapshot for " + value.getClass().getName() + "; refusing to alias live data");
     }
 }
