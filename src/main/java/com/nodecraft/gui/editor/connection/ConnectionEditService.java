@@ -2,6 +2,7 @@ package com.nodecraft.gui.editor.connection;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.nodesystem.api.INode;
@@ -209,34 +210,40 @@ public final class ConnectionEditService {
         }
 
         UUID[] insertedId = new UUID[1];
-        boolean ok = GraphStructureEditSupport.run(
-                structureEditHost(),
-                "Insert Reroute",
-                () -> {
-                    INode rerouteNode = host.addNode("utilities.assist.relay", worldX, worldY);
-                    if (rerouteNode == null) {
-                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
-                        return false;
-                    }
-                    insertedId[0] = rerouteNode.getId();
-                    UUID rerouteNodeId = rerouteNode.getId();
+        GraphStructureEditSupport.Outcome outcome;
+        try {
+            outcome = GraphStructureEditSupport.run(
+                    structureEditHost(),
+                    "Insert Reroute",
+                    () -> {
+                        INode rerouteNode = host.addNode("utilities.assist.relay", worldX, worldY);
+                        if (rerouteNode == null) {
+                            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
+                            return false;
+                        }
+                        insertedId[0] = rerouteNode.getId();
+                        UUID rerouteNodeId = rerouteNode.getId();
 
-                    if (!disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
-                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
-                        return false;
-                    }
+                        if (!disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+                            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
+                            return false;
+                        }
 
-                    boolean firstConnected = connect(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
-                    boolean secondConnected = connect(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-                    if (!firstConnected || !secondConnected) {
-                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
-                        return false;
+                        boolean firstConnected = connect(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
+                        boolean secondConnected = connect(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
+                        if (!firstConnected || !secondConnected) {
+                            NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
+                            return false;
+                        }
+                        return true;
                     }
-                    return true;
-                }
-        );
+            );
+        } catch (StructureEditRollbackException e) {
+            NodeCraft.LOGGER.error("插入中继回滚失败，图可能不一致: {}", e.getMessage(), e);
+            return;
+        }
 
-        if (!ok) {
+        if (!GraphStructureEditSupport.succeeded(outcome)) {
             return;
         }
 
@@ -272,6 +279,11 @@ public final class ConnectionEditService {
             @Override
             public boolean restoreDocument(SavedGraph snapshot) {
                 return host.restoreDocument(snapshot);
+            }
+
+            @Override
+            public void notifyStructureDirty() {
+                host.notifyStructureDirty();
             }
         };
     }

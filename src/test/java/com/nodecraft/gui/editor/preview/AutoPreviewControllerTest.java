@@ -7,6 +7,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.preview.PreviewManager;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,6 +29,35 @@ class AutoPreviewControllerTest {
     void tearDown() {
         NodeExecutionScheduler.client().cancelPreview();
         NodeExecutionScheduler.client().cancelManual();
+        PreviewManager.clearEmptyInputGrace();
+    }
+
+    @Test
+    void notifyStructureDirtyClearsExecutionCacheGraceAndAdvancesEpoch() {
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        NodeGraph graph = new NodeGraph("structure-dirty");
+        PassThroughNode source = new PassThroughNode("source", "ok");
+        graph.addNode(source);
+        graph.getExecutionCache().record(source);
+        assertEquals(1, graph.getExecutionCache().size());
+
+        String previewNodeId = source.getId().toString();
+        PreviewManager.touchNonEmptyForTests(previewNodeId, "ghost_block");
+        assertTrue(PreviewManager.withinEmptyGraceForTests(previewNodeId, "ghost_block"));
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null)
+        );
+
+        long epochBefore = controller.graphDirtyEpoch();
+        controller.notifyStructureDirty();
+
+        assertEquals(0, graph.getExecutionCache().size());
+        assertFalse(PreviewManager.withinEmptyGraceForTests(previewNodeId, "ghost_block"));
+        assertEquals(epochBefore + 1L, controller.graphDirtyEpoch());
+        assertEquals(1L, dirtyVersion.get());
     }
 
     @Test

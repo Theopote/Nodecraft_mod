@@ -58,6 +58,7 @@ import com.nodecraft.gui.components.port.PortDataRenderer;
 import com.nodecraft.gui.components.port.PortHighlightSupport;
 import com.nodecraft.gui.components.port.PortTableRenderer;
 import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.nodesystem.api.ResettableNode;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -216,25 +217,36 @@ public class PropertyPanelComponent implements EditorComponent {
         }
 
         final Throwable[] setterError = new Throwable[1];
-        boolean ok = GraphStructureEditSupport.run(
-                editor.structureEditHost(),
-                "Change inputCount",
-                () -> {
-                    try {
-                        prop.setter.invoke(node, value);
-                        markNodeDirtyAfterPropertyChange(node);
-                        editor.cleanupDanglingConnections();
-                        return true;
-                    } catch (Throwable t) {
-                        setterError[0] = t;
-                        return false;
+        GraphStructureEditSupport.Outcome outcome;
+        try {
+            outcome = GraphStructureEditSupport.run(
+                    editor.structureEditHost(),
+                    "Change inputCount",
+                    () -> {
+                        try {
+                            prop.setter.invoke(node, value);
+                            markNodeDirtyAfterPropertyChange(node);
+                            editor.cleanupDanglingConnections();
+                            return true;
+                        } catch (Throwable t) {
+                            setterError[0] = t;
+                            return false;
+                        }
                     }
-                }
-        );
+            );
+        } catch (StructureEditRollbackException e) {
+            NodeCraft.LOGGER.error(
+                    "Port-structure property '{}' rollback failed for node {}: {}",
+                    prop.name,
+                    node.getId(),
+                    e.getMessage(),
+                    e);
+            throw e;
+        }
         if (setterError[0] != null) {
             throw setterError[0];
         }
-        if (!ok) {
+        if (!GraphStructureEditSupport.succeeded(outcome)) {
             NodeCraft.LOGGER.warn("Port-structure property '{}' transaction aborted for node {}",
                     prop.name, node.getId());
         }

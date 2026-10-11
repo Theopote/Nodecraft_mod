@@ -1,0 +1,25 @@
+package com.nodecraft.nodesystem.preview;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class PreviewManagerEmptyGraceTest {
+
+    @AfterEach
+    void tearDown() {
+        PreviewManager.clearEmptyInputGrace();
+    }
+
+    @Test
+    void clearEmptyInputGraceDropsRetentionWindow() {
+        String nodeId = "preview-grace-node";
+        PreviewManager.touchNonEmptyForTests(nodeId, "ghost_block");
+        assertTrue(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
+
+        PreviewManager.clearEmptyInputGrace();
+        assertFalse(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
+    }
+}

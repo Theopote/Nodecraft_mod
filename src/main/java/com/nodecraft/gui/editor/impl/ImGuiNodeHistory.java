@@ -70,6 +70,14 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         isRecording = true;
         NodeCraft.LOGGER.debug("历史记录恢复");
     }
+
+    /**
+     * Sets recording flag to an explicit value (used to restore nested pause/resume state).
+     */
+    public void setRecording(boolean recording) {
+        this.isRecording = recording;
+        NodeCraft.LOGGER.debug("历史记录状态设为: {}", recording);
+    }
     
     /**
      * 检查是否正在记录历史

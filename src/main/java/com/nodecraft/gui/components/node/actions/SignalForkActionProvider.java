@@ -1,8 +1,10 @@
 package com.nodecraft.gui.components.node.actions;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.node.NodeActionGraphSupport;
 import com.nodecraft.gui.components.node.NodeActionProvider;
 import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -66,6 +68,8 @@ public final class SignalForkActionProvider implements NodeActionProvider {
         try {
             ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
             GraphStructureEditSupport.run(editor.structureEditHost(), label, mutation);
+        } catch (StructureEditRollbackException e) {
+            NodeCraft.LOGGER.error("Fork structure edit '{}' rollback failed: {}", label, e.getMessage(), e);
         } catch (Exception e) {
             // Editor unavailable (tests / headless): mutate without history.
             mutation.run();

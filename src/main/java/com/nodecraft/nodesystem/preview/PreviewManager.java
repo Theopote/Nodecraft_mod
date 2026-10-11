@@ -68,6 +68,24 @@ public final class PreviewManager {
         return last != null && (System.currentTimeMillis() - last) < EMPTY_INPUT_GRACE_MS;
     }
 
+    /**
+     * Drops empty-input retention so the next empty upsert can hide GHOST previews immediately
+     * (e.g. after a graph structure change invalidates prior non-empty output).
+     */
+    public static void clearEmptyInputGrace() {
+        LAST_NON_EMPTY_BY_NODE_TYPE.clear();
+    }
+
+    /** Visible for unit tests of empty-input grace bookkeeping. */
+    public static void touchNonEmptyForTests(String nodeId, String previewType) {
+        touchNonEmpty(nodeId, previewType);
+    }
+
+    /** Visible for unit tests of empty-input grace bookkeeping. */
+    public static boolean withinEmptyGraceForTests(String nodeId, String previewType) {
+        return withinEmptyGrace(nodeId, previewType);
+    }
+
     private static void clearTypePreviewState(String nodeId, String previewType) {
         LAST_NON_EMPTY_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));
         LAST_COALESCE_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));

@@ -50,9 +50,10 @@ class NodeGraphConnectSafetyTest {
         assertFalse(graph.connect(source.getId(), "out", target.getId(), "in"));
         assertTrue(graph.getConnections().isEmpty());
         assertTrue(graph.getOutgoingConnections(source.getId()).isEmpty());
+        assertTrue(graph.getIncomingConnections(target.getId()).isEmpty());
         assertFalse(source.getOutputPorts().getFirst().isConnected());
         assertFalse(target.getInputPorts().getFirst().isConnected());
-        assertEquals(1, graph.getExecutionCache().size());
+        assertEquals(1, graph.getExecutionCache().size(), "exception path must not clear execution cache");
     }
 
     @Test

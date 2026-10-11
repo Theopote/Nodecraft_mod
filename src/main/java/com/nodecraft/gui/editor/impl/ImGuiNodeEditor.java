@@ -1330,6 +1330,11 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             public boolean restoreDocument(com.nodecraft.nodesystem.io.SavedGraph snapshot) {
                 return restoreGraphSnapshot(snapshot);
             }
+
+            @Override
+            public void notifyStructureDirty() {
+                markGraphStructureDirty();
+            }
         };
     }
 

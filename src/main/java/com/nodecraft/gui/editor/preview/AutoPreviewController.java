@@ -9,6 +9,7 @@ import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
 import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.preview.PreviewManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
@@ -100,6 +101,7 @@ public final class AutoPreviewController {
         if (graph != null) {
             graph.getExecutionCache().clear();
         }
+        PreviewManager.clearEmptyInputGrace();
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
         stampPendingDirty(dirtyVersionSource.getDirtyVersion());

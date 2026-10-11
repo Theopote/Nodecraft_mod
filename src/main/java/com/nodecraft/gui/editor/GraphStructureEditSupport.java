@@ -10,12 +10,21 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 
 /**
- * Runs a multi-step graph structure mutation as a single {@link ImGuiNodeHistory} graph transaction.
+ * Runs a multi-step graph structure mutation with snapshot rollback independent of Undo recording.
  * <p>
- * Pattern matches subgraph create: pause recording, mutate, then one before/after snapshot undo step.
- * On failure, restores the before snapshot and records nothing.
+ * Always snapshots before mutating and restores on failure. Records a single
+ * {@link ImGuiNodeHistory#recordGraphTransaction} only when history was recording at entry.
  */
 public final class GraphStructureEditSupport {
+
+    public enum Outcome {
+        /** Mutation completed; Undo recorded when history was recording at entry. */
+        SUCCESS,
+        /** Mutation aborted or threw; before-snapshot restored successfully. */
+        ABORTED_ROLLED_BACK,
+        /** Mutation aborted and restoreDocument returned false (document may be inconsistent). */
+        ABORTED_ROLLBACK_FAILED
+    }
 
     public interface Host {
         EditorDocumentState document();
@@ -24,6 +33,9 @@ public final class GraphStructureEditSupport {
         ImGuiNodeHistory history();
 
         boolean restoreDocument(SavedGraph snapshot);
+
+        /** Invoked once after a successful mutation so auto-preview can invalidate. */
+        void notifyStructureDirty();
     }
 
     private GraphStructureEditSupport() {
@@ -40,60 +52,101 @@ public final class GraphStructureEditSupport {
         );
     }
 
+    public static boolean succeeded(Outcome outcome) {
+        return outcome == Outcome.SUCCESS;
+    }
+
     /**
-     * Executes {@code mutation} under a paused history scope.
+     * Executes {@code mutation} with always-on snapshot rollback.
      *
-     * @return true when mutation completed and (if recording) a transaction was recorded;
-     *         false when mutation reported failure via {@link Mutation#run()} returning false
-     *         or restore-after-failure ran
+     * @return {@link Outcome#SUCCESS} or {@link Outcome#ABORTED_ROLLED_BACK}
+     * @throws StructureEditRollbackException when abort restore fails
      */
-    public static boolean run(Host host, String label, Mutation mutation) {
+    public static Outcome run(Host host, String label, Mutation mutation) {
         Objects.requireNonNull(host, "host");
         Objects.requireNonNull(label, "label");
         Objects.requireNonNull(mutation, "mutation");
 
         EditorDocumentState document = host.document();
+        if (document == null || document.getGraph() == null) {
+            NodeCraft.LOGGER.warn("Graph structure edit '{}': no document graph", label);
+            return Outcome.ABORTED_ROLLED_BACK;
+        }
+
         ImGuiNodeHistory history = host.history();
         boolean wasRecording = history != null && history.isRecording();
-        SavedGraph before = null;
+        SavedGraph before = snapshotDocument(document);
 
         if (wasRecording) {
-            before = snapshotDocument(document);
             history.pauseRecording();
         }
 
         try {
-            boolean ok = mutation.run();
-            if (!ok) {
-                if (wasRecording && before != null) {
-                    host.restoreDocument(before);
-                }
-                return false;
+            boolean ok;
+            try {
+                ok = mutation.run();
+            } catch (RuntimeException e) {
+                NodeCraft.LOGGER.error("Graph structure edit '{}' failed: {}", label, e.getMessage(), e);
+                restoreOrThrow(host, before, label, e);
+                return Outcome.ABORTED_ROLLED_BACK;
             }
 
-            if (wasRecording && history != null && before != null) {
+            if (!ok) {
+                restoreOrThrow(host, before, label, null);
+                return Outcome.ABORTED_ROLLED_BACK;
+            }
+
+            if (wasRecording && history != null) {
                 SavedGraph after = snapshotDocument(document);
-                history.resumeRecording();
+                history.setRecording(true);
                 history.recordGraphTransaction(label, before, after);
             }
-            return true;
-        } catch (RuntimeException e) {
-            if (wasRecording && before != null) {
-                host.restoreDocument(before);
-            }
-            NodeCraft.LOGGER.error("Graph structure edit '{}' failed: {}", label, e.getMessage(), e);
-            return false;
+            host.notifyStructureDirty();
+            return Outcome.SUCCESS;
         } finally {
-            if (wasRecording && history != null && !history.isRecording()) {
-                history.resumeRecording();
+            if (history != null) {
+                history.setRecording(wasRecording);
             }
+        }
+    }
+
+    private static void restoreOrThrow(
+            Host host,
+            SavedGraph before,
+            String label,
+            @Nullable Throwable mutationCause
+    ) {
+        boolean restored;
+        try {
+            restored = host.restoreDocument(before);
+        } catch (RuntimeException restoreError) {
+            NodeCraft.LOGGER.error(
+                    "Graph structure edit '{}': restore threw after abort",
+                    label,
+                    restoreError);
+            throw new StructureEditRollbackException(
+                    label,
+                    "Structure edit '" + label + "' aborted and restore threw; document may be inconsistent",
+                    restoreError);
+        }
+        if (!restored) {
+            NodeCraft.LOGGER.error(
+                    "Graph structure edit '{}': restoreDocument returned false after abort",
+                    label);
+            StructureEditRollbackException ex = new StructureEditRollbackException(
+                    label,
+                    "Structure edit '" + label + "' aborted and restore failed; document may be inconsistent");
+            if (mutationCause != null) {
+                ex.addSuppressed(mutationCause);
+            }
+            throw ex;
         }
     }
 
     @FunctionalInterface
     public interface Mutation {
         /**
-         * @return false to abort and restore the before snapshot (when recording)
+         * @return false to abort and restore the before snapshot
          */
         boolean run();
     }

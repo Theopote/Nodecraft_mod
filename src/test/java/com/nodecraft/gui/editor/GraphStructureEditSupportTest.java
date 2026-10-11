@@ -56,25 +56,27 @@ class GraphStructureEditSupportTest {
         assertTrue(fixture.document.getGraph().connect(sourceId, "output_signal", listId, "input_2"));
         fixture.history.clear();
 
-        assertTrue(GraphStructureEditSupport.run(
-                fixture.structureHost(),
-                "Change inputCount",
-                () -> {
-                    list.setInputCount(2);
-                    // Drop edges whose ports vanished (same as editor cleanupDangling).
-                    NodeGraph graph = fixture.document.getGraph();
-                    for (NodeGraph.Connection connection : List.copyOf(graph.getConnections())) {
-                        boolean sourceOk = connection.sourceNode().getOutputPorts().stream()
-                                .anyMatch(p -> p.getId().equals(connection.sourcePort().getId()));
-                        boolean targetOk = connection.targetNode().getInputPorts().stream()
-                                .anyMatch(p -> p.getId().equals(connection.targetPort().getId()));
-                        if (!sourceOk || !targetOk) {
-                            graph.removeConnection(connection);
+        assertEquals(
+                GraphStructureEditSupport.Outcome.SUCCESS,
+                GraphStructureEditSupport.run(
+                        fixture.structureHost(),
+                        "Change inputCount",
+                        () -> {
+                            list.setInputCount(2);
+                            // Drop edges whose ports vanished (same as editor cleanupDangling).
+                            NodeGraph graph = fixture.document.getGraph();
+                            for (NodeGraph.Connection connection : List.copyOf(graph.getConnections())) {
+                                boolean sourceOk = connection.sourceNode().getOutputPorts().stream()
+                                        .anyMatch(p -> p.getId().equals(connection.sourcePort().getId()));
+                                boolean targetOk = connection.targetNode().getInputPorts().stream()
+                                        .anyMatch(p -> p.getId().equals(connection.targetPort().getId()));
+                                if (!sourceOk || !targetOk) {
+                                    graph.removeConnection(connection);
+                                }
+                            }
+                            return true;
                         }
-                    }
-                    return true;
-                }
-        ));
+                ));
 
         assertEquals(1, fixture.history.undoStackSize());
         assertEquals(2, list.getInputCount());
@@ -110,18 +112,20 @@ class GraphStructureEditSupportTest {
         assertTrue(fixture.document.getGraph().connect(forkId, "output_b", sinkId, "input_signal"));
         fixture.history.clear();
 
-        assertTrue(GraphStructureEditSupport.run(
-                fixture.structureHost(),
-                "Remove Fork Branch",
-                () -> {
-                    String removed = fork.removeLastOutputBranch();
-                    if (removed != null) {
-                        NodeActionGraphSupport.removeConnectionsForPort(
-                                () -> fixture.document.getGraph(), forkId, removed, false);
-                    }
-                    return true;
-                }
-        ));
+        assertEquals(
+                GraphStructureEditSupport.Outcome.SUCCESS,
+                GraphStructureEditSupport.run(
+                        fixture.structureHost(),
+                        "Remove Fork Branch",
+                        () -> {
+                            String removed = fork.removeLastOutputBranch();
+                            if (removed != null) {
+                                NodeActionGraphSupport.removeConnectionsForPort(
+                                        () -> fixture.document.getGraph(), forkId, removed, false);
+                            }
+                            return true;
+                        }
+                ));
 
         assertEquals(1, fixture.history.undoStackSize());
         assertTrue(fixture.document.getGraph().getConnections().isEmpty());
@@ -172,6 +176,10 @@ class GraphStructureEditSupportTest {
                 @Override
                 public boolean restoreDocument(SavedGraph snapshot) {
                     return editor.restoreGraphSnapshot(snapshot);
+                }
+
+                @Override
+                public void notifyStructureDirty() {
                 }
             };
         }
