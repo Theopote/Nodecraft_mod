@@ -91,6 +91,16 @@ class ConnectionEditServicePreviewTest {
             @Override
             public void setSelectedNodeId(UUID nodeId) {
             }
+
+            @Override
+            public com.nodecraft.nodesystem.io.SavedGraph snapshotDocument() {
+                return null;
+            }
+
+            @Override
+            public boolean restoreDocument(com.nodecraft.nodesystem.io.SavedGraph snapshot) {
+                return false;
+            }
         };
     }
 

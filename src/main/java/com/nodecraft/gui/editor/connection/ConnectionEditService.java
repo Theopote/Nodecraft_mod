@@ -1,6 +1,7 @@
 package com.nodecraft.gui.editor.connection;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
 import com.nodecraft.nodesystem.api.INode;
@@ -8,6 +9,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.io.SavedGraph;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -42,6 +44,10 @@ public final class ConnectionEditService {
         void clearSelectedNodes();
 
         void setSelectedNodeId(UUID nodeId);
+
+        SavedGraph snapshotDocument();
+
+        boolean restoreDocument(SavedGraph snapshot);
     }
 
     /**
@@ -183,6 +189,7 @@ public final class ConnectionEditService {
 
     /**
      * Inserts a reroute node at world coordinates on an existing connection.
+     * Success records a single graph transaction; failure restores the before snapshot with no history.
      */
     public void insertReroute(
             float worldX,
@@ -201,36 +208,43 @@ public final class ConnectionEditService {
             return;
         }
 
-        INode rerouteNode = host.addNode("utilities.assist.relay", worldX, worldY);
-        if (rerouteNode == null) {
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
+        UUID[] insertedId = new UUID[1];
+        boolean ok = GraphStructureEditSupport.run(
+                structureEditHost(),
+                "Insert Reroute",
+                () -> {
+                    INode rerouteNode = host.addNode("utilities.assist.relay", worldX, worldY);
+                    if (rerouteNode == null) {
+                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法创建中继节点");
+                        return false;
+                    }
+                    insertedId[0] = rerouteNode.getId();
+                    UUID rerouteNodeId = rerouteNode.getId();
+
+                    if (!disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
+                        return false;
+                    }
+
+                    boolean firstConnected = connect(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
+                    boolean secondConnected = connect(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
+                    if (!firstConnected || !secondConnected) {
+                        NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
+                        return false;
+                    }
+                    return true;
+                }
+        );
+
+        if (!ok) {
             return;
         }
 
-        UUID rerouteNodeId = rerouteNode.getId();
-        boolean oldDisconnected = disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-        if (!oldDisconnected) {
-            document.getGraph().removeNode(rerouteNodeId);
-            host.removeNodePosition(rerouteNodeId);
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：无法断开原连接");
-            return;
-        }
-
-        boolean firstConnected = connect(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
-        boolean secondConnected = connect(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-
-        if (!firstConnected || !secondConnected) {
-            disconnect(sourceNodeId, sourcePortId, rerouteNodeId, "input_signal");
-            disconnect(rerouteNodeId, "output_signal", targetNodeId, targetPortId);
-            document.getGraph().removeNode(rerouteNodeId);
-            host.removeNodePosition(rerouteNodeId);
-            connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-            NodeCraft.LOGGER.warn("双击连接线插入中继失败：连接重建失败，已回滚");
-            return;
-        }
-
+        UUID rerouteNodeId = insertedId[0];
         host.clearSelectedNodes();
-        host.setSelectedNodeId(rerouteNodeId);
+        if (rerouteNodeId != null) {
+            host.setSelectedNodeId(rerouteNodeId);
+        }
         host.notifyStructureDirty();
 
         NodeCraft.LOGGER.info(
@@ -241,6 +255,25 @@ public final class ConnectionEditService {
                 targetNodeId,
                 targetPortId
         );
+    }
+
+    private GraphStructureEditSupport.Host structureEditHost() {
+        return new GraphStructureEditSupport.Host() {
+            @Override
+            public EditorDocumentState document() {
+                return host.document();
+            }
+
+            @Override
+            public ImGuiNodeHistory history() {
+                return host.history();
+            }
+
+            @Override
+            public boolean restoreDocument(SavedGraph snapshot) {
+                return host.restoreDocument(snapshot);
+            }
+        };
     }
 
     public boolean isPreviewTypeMismatch(@Nullable NodeGraph graph, @Nullable DragPreview preview) {

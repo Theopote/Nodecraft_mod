@@ -57,6 +57,7 @@ import com.nodecraft.gui.components.property.support.PropertyVisibilitySupport;
 import com.nodecraft.gui.components.port.PortDataRenderer;
 import com.nodecraft.gui.components.port.PortHighlightSupport;
 import com.nodecraft.gui.components.port.PortTableRenderer;
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.nodesystem.api.ResettableNode;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -149,6 +150,9 @@ public class PropertyPanelComponent implements EditorComponent {
      * Applies a property write, marks the node dirty, and records undo history when recording is enabled.
      * Snapshots are taken before the setter; isolation failure refuses the write.
      * If history recording fails after a successful setter due to isolation, the setter is rolled back.
+     * <p>
+     * Port-structure properties ({@code inputCount}) use a full-document graph transaction so undo
+     * restores ports and connections together; dangling edges are cleaned inside that transaction.
      */
     public void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
         if (prop.setter == null) {
@@ -156,6 +160,11 @@ public class PropertyPanelComponent implements EditorComponent {
         }
         Object oldValue = prop.getter.invoke(node);
         if (propertyValuesEqual(oldValue, value)) {
+            return;
+        }
+
+        if ("inputCount".equals(prop.name)) {
+            applyPortStructureProperty(node, prop, value);
             return;
         }
 
@@ -192,6 +201,42 @@ public class PropertyPanelComponent implements EditorComponent {
             // Editor unavailable / not recording path — do not pretend undo exists.
             NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
                     node.getId(), prop.name, e.getMessage());
+        }
+    }
+
+    private void applyPortStructureProperty(INode node, PropertyDescriptor prop, Object value) throws Throwable {
+        ImGuiNodeEditor editor;
+        try {
+            editor = ImGuiNodeEditor.getInstance();
+        } catch (Exception e) {
+            prop.setter.invoke(node, value);
+            markNodeDirtyAfterPropertyChange(node);
+            NodeCraft.LOGGER.debug("Port-structure property applied without graph transaction: {}", e.getMessage());
+            return;
+        }
+
+        final Throwable[] setterError = new Throwable[1];
+        boolean ok = GraphStructureEditSupport.run(
+                editor.structureEditHost(),
+                "Change inputCount",
+                () -> {
+                    try {
+                        prop.setter.invoke(node, value);
+                        markNodeDirtyAfterPropertyChange(node);
+                        editor.cleanupDanglingConnections();
+                        return true;
+                    } catch (Throwable t) {
+                        setterError[0] = t;
+                        return false;
+                    }
+                }
+        );
+        if (setterError[0] != null) {
+            throw setterError[0];
+        }
+        if (!ok) {
+            NodeCraft.LOGGER.warn("Port-structure property '{}' transaction aborted for node {}",
+                    prop.name, node.getId());
         }
     }
 

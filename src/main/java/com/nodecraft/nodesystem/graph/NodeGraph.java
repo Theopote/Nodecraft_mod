@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.core.BaseNode;
@@ -205,15 +206,31 @@ public class NodeGraph {
         connections.add(connection);
         indexConnection(connection);
 
-        // 建立端口间连接
-        if (sourcePort != null && !sourcePort.connectTo(targetPort)) {
-            unindexConnection(connection);
-            connections.remove(connection);
+        // 建立端口间连接（异常安全：失败时回滚图索引与端口 link，不清空执行缓存）
+        try {
+            if (sourcePort != null && !sourcePort.connectTo(targetPort)) {
+                rollbackIndexedConnection(connection, sourcePort, targetPort);
+                return false;
+            }
+        } catch (RuntimeException e) {
+            rollbackIndexedConnection(connection, sourcePort, targetPort);
+            // Keep boolean API: failed connect must not leave half-linked state for callers.
+            NodeCraft.LOGGER.error("NodeGraph.connect failed during port link: {}", e.getMessage(), e);
             return false;
         }
 
         executionCache.clear();
         return true;
+    }
+
+    private void rollbackIndexedConnection(Connection connection, IPort sourcePort, IPort targetPort) {
+        unindexConnection(connection);
+        connections.remove(connection);
+        if (sourcePort instanceof BasePort sourceBase && targetPort != null) {
+            sourceBase.disconnectFrom(targetPort);
+        } else if (targetPort instanceof BasePort targetBase && sourcePort != null) {
+            targetBase.disconnectFrom(sourcePort);
+        }
     }
 
     public boolean canConnect(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {

@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.dialogs.MessageDialog;
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
 import com.nodecraft.gui.editor.NodeEditorFactory;
 import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
 import com.nodecraft.gui.editor.base.GraphApplyTarget;
@@ -165,6 +166,12 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
         @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
         @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
+        @Override public com.nodecraft.nodesystem.io.SavedGraph snapshotDocument() {
+            return com.nodecraft.gui.editor.GraphStructureEditSupport.snapshotDocument(document);
+        }
+        @Override public boolean restoreDocument(com.nodecraft.nodesystem.io.SavedGraph snapshot) {
+            return restoreGraphSnapshot(snapshot);
+        }
     }
 
     private final class NodeCommandHost implements NodeCommandService.Host {
@@ -1293,6 +1300,37 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
     @Override
     public boolean disconnectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
         return connectionEdits.disconnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+    }
+
+    /**
+     * Removes connections whose ports no longer exist (history-free safety net).
+     * Call from inside a {@link com.nodecraft.gui.editor.GraphStructureEditSupport} transaction
+     * when port structure changes so undo restores edges via the before snapshot.
+     */
+    public void cleanupDanglingConnections() {
+        connectionEdits.cleanupDangling();
+    }
+
+    /**
+     * Host bridge for multi-step graph structure edits (port count, fork/coalesce, etc.).
+     */
+    public GraphStructureEditSupport.Host structureEditHost() {
+        return new GraphStructureEditSupport.Host() {
+            @Override
+            public EditorDocumentState document() {
+                return document;
+            }
+
+            @Override
+            public ImGuiNodeHistory history() {
+                return history;
+            }
+
+            @Override
+            public boolean restoreDocument(com.nodecraft.nodesystem.io.SavedGraph snapshot) {
+                return restoreGraphSnapshot(snapshot);
+            }
+        };
     }
 
     @Override

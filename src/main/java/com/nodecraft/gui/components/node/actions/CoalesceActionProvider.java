@@ -2,6 +2,8 @@ package com.nodecraft.gui.components.node.actions;
 
 import com.nodecraft.gui.components.node.NodeActionGraphSupport;
 import com.nodecraft.gui.components.node.NodeActionProvider;
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.utilities.assist.CoalesceNode;
@@ -30,11 +32,14 @@ public final class CoalesceActionProvider implements NodeActionProvider {
             ImGui.beginDisabled();
         }
         if (ImGui.button("- Input")) {
-            String removedPortId = coalesceNode.removeLastInputBranch();
-            if (removedPortId != null) {
-                NodeActionGraphSupport.removeConnectionsForPort(
-                        graphSupplier, coalesceNode.getId(), removedPortId, true);
-            }
+            runStructureEdit("Remove Coalesce Branch", () -> {
+                String removedPortId = coalesceNode.removeLastInputBranch();
+                if (removedPortId != null) {
+                    NodeActionGraphSupport.removeConnectionsForPort(
+                            graphSupplier, coalesceNode.getId(), removedPortId, true);
+                }
+                return true;
+            });
         }
         if (!canRemove) {
             ImGui.endDisabled();
@@ -46,11 +51,23 @@ public final class CoalesceActionProvider implements NodeActionProvider {
             ImGui.beginDisabled();
         }
         if (ImGui.button("+ Input")) {
-            coalesceNode.addInputBranch();
+            runStructureEdit("Add Coalesce Branch", () -> {
+                coalesceNode.addInputBranch();
+                return true;
+            });
         }
         if (!canAdd) {
             ImGui.endDisabled();
         }
         return true;
+    }
+
+    private static void runStructureEdit(String label, GraphStructureEditSupport.Mutation mutation) {
+        try {
+            ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+            GraphStructureEditSupport.run(editor.structureEditHost(), label, mutation);
+        } catch (Exception e) {
+            mutation.run();
+        }
     }
 }
