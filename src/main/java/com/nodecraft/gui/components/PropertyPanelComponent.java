@@ -43,6 +43,7 @@ import com.nodecraft.gui.components.node.NodeGraphAccess;
 import com.nodecraft.gui.components.node.NodeStatusPresenter;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyEditSession;
+import com.nodecraft.gui.components.property.core.PropertyApplyException;
 import com.nodecraft.gui.components.property.core.PropertyValueSnapshots;
 import com.nodecraft.gui.components.property.core.SnapshotIsolationException;
 import com.nodecraft.gui.components.property.core.PropertyEditorRegistry;
@@ -145,7 +146,9 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     /**
-     * Applies a property write, marks the node dirty, and records undo history when the editor is available.
+     * Applies a property write, marks the node dirty, and records undo history when recording is enabled.
+     * Snapshots are taken before the setter; isolation failure refuses the write.
+     * If history recording fails after a successful setter due to isolation, the setter is rolled back.
      */
     public void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
         if (prop.setter == null) {
@@ -155,9 +158,41 @@ public class PropertyPanelComponent implements EditorComponent {
         if (propertyValuesEqual(oldValue, value)) {
             return;
         }
+
+        final Object beforeSnap;
+        final Object afterSnap;
+        try {
+            beforeSnap = PropertyValueSnapshots.copy(oldValue);
+            afterSnap = PropertyValueSnapshots.copy(value);
+        } catch (SnapshotIsolationException e) {
+            throw new PropertyApplyException(
+                    "Refusing property write: cannot isolate undo snapshot for '" + prop.name + "'", e);
+        }
+
         prop.setter.invoke(node, value);
         markNodeDirtyAfterPropertyChange(node);
-        recordPropertyChangeForHistory(node, prop.name, oldValue, value);
+
+        try {
+            long editSessionId = editSession.getEditSessionId(node, prop.name);
+            ImGuiNodeEditor.getInstance().getHistory()
+                    .recordPropertyChange(node.getId(), prop.name, beforeSnap, afterSnap, editSessionId);
+        } catch (SnapshotIsolationException e) {
+            try {
+                prop.setter.invoke(node, beforeSnap);
+                markNodeDirtyAfterPropertyChange(node);
+            } catch (Throwable rollbackError) {
+                throw new PropertyApplyException(
+                        "Property write succeeded but undo snapshot failed and rollback failed for '"
+                                + prop.name + "'",
+                        rollbackError);
+            }
+            throw new PropertyApplyException(
+                    "Property write rolled back: cannot isolate undo snapshot for '" + prop.name + "'", e);
+        } catch (Exception e) {
+            // Editor unavailable / not recording path — do not pretend undo exists.
+            NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
+                    node.getId(), prop.name, e.getMessage());
+        }
     }
 
     private static boolean propertyValuesEqual(Object oldValue, Object newValue) {
@@ -165,20 +200,6 @@ public class PropertyPanelComponent implements EditorComponent {
             return Double.compare(oldNumber.doubleValue(), newNumber.doubleValue()) == 0;
         }
         return Objects.equals(oldValue, newValue);
-    }
-
-    private void recordPropertyChangeForHistory(INode node, String propertyName, Object oldValue, Object newValue) {
-        try {
-            long editSessionId = editSession.getEditSessionId(node, propertyName);
-            ImGuiNodeEditor.getInstance().getHistory()
-                    .recordPropertyChange(node.getId(), propertyName, oldValue, newValue, editSessionId);
-        } catch (SnapshotIsolationException e) {
-            NodeCraft.LOGGER.warn("Property history skipped for {}.{}: snapshot isolation failed: {}",
-                    node.getId(), propertyName, e.getMessage());
-        } catch (Exception e) {
-            NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
-                    node.getId(), propertyName, e.getMessage());
-        }
     }
 
     public void markNodeDirtyAfterPropertyChange(INode node) {
@@ -195,8 +216,8 @@ public class PropertyPanelComponent implements EditorComponent {
         try {
             beforeState = PropertyValueSnapshots.copyNodeState(baseNode.getNodeState());
         } catch (SnapshotIsolationException e) {
-            throw new NodeActionPanel.ResetInconsistentException(
-                    "Reset aborted: could not isolate previous node state", e);
+            throw new NodeActionPanel.ResetAbortedException(
+                    "Reset cancelled. Could not safely snapshot node state.", e);
         }
         try {
             resettable.resetProperties();

@@ -41,6 +41,13 @@ public final class NodeActionPanel {
                 clearCurrentNodeTempValues.run();
                 resetFeedback.setSuccess("Properties reset.");
                 NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
+            } catch (ResetAbortedException e) {
+                resetFeedback.setFailure("Reset cancelled. Could not safely snapshot node state.");
+                NodeCraft.LOGGER.error(
+                        "Reset aborted for {}: {}",
+                        selectedNode.getDisplayName(),
+                        e.getMessage(),
+                        e);
             } catch (ResetRollbackException e) {
                 resetFeedback.setFailure("Reset failed. Previous values restored.");
                 NodeCraft.LOGGER.error(
@@ -65,6 +72,12 @@ public final class NodeActionPanel {
             }
         }
         resetFeedback.renderIfPresent();
+    }
+
+    public static final class ResetAbortedException extends RuntimeException {
+        public ResetAbortedException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     public static final class ResetRollbackException extends RuntimeException {

@@ -98,6 +98,13 @@ primitive renderers call support classes directly.
 - List / BlockPosList Details support start-index paging (page size 32)
 - `PropertyValueSnapshots` throws `SnapshotIsolationException` instead of aliasing unsupported mutable values
 
+## Phase 2C — final stability
+
+- `applyPropertyValue` snapshots old/new before setter; isolation failure refuses the write (`PropertyApplyException`); post-setter isolation failure rolls back
+- Reset snapshot failure uses `ResetAbortedException` (UI: reset cancelled — state unchanged); rollback vs inconsistent remain distinct
+- Curve sample cache invalidated by fingerprint (type/resolution/size/identity); stale label until recompute
+- `ListPaging.clampStart` page-aligns start index when list length changes
+
 ## Exit gates — Phase 1
 
 1. Panel no longer holds `tempValues` / edit-lock / `errorCounts` maps

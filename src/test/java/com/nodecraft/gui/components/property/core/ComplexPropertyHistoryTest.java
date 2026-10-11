@@ -16,7 +16,10 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ComplexPropertyHistoryTest {
@@ -82,6 +85,40 @@ class ComplexPropertyHistoryTest {
         assertEquals(0.6f, node.tint.b(), 1.0e-5f);
     }
 
+    @Test
+    void unisolatablePropertyWriteIsRefusedWithoutMutation() throws Throwable {
+        NodeGraph graph = new NodeGraph("unisolatable-history");
+        UnisolatableNode node = new UnisolatableNode();
+        Object original = node.payload;
+        Object next = unisolatableValue();
+        graph.addNode(node);
+
+        ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+        editor.setCurrentGraph(graph);
+        editor.getHistory().clear();
+
+        PropertyInspector inspector = new PropertyInspector();
+        PropertyDescriptor prop = inspector.getPropertiesForNode(UnisolatableNode.class).stream()
+                .filter(candidate -> "payload".equals(candidate.name))
+                .findFirst()
+                .orElseThrow();
+
+        PropertyPanelComponent panel = new PropertyPanelComponent();
+        assertThrows(
+                PropertyApplyException.class,
+                () -> panel.applyPropertyValue(node, prop, next)
+        );
+        assertSame(original, node.payload);
+        assertFalse(editor.getHistory().canUndo());
+    }
+
+    private static Object unisolatableValue() {
+        return new Object() {
+            @SuppressWarnings("unused")
+            final byte[] payload = new byte[]{1, 2, 3};
+        };
+    }
+
     private static final class PlaneNode extends BaseNode {
         @NodeProperty(displayName = "Plane")
         PlaneData plane = PlaneData.XY_PLANE;
@@ -116,6 +153,29 @@ class ComplexPropertyHistoryTest {
         @Override
         public String getDisplayName() {
             return "ColorNode";
+        }
+
+        @Override
+        public String getDescription() {
+            return "";
+        }
+
+        @Override
+        public void processNode(@Nullable ExecutionContext context) {
+        }
+    }
+
+    private static final class UnisolatableNode extends BaseNode {
+        @NodeProperty(displayName = "Payload")
+        Object payload = unisolatableValue();
+
+        UnisolatableNode() {
+            super(UUID.randomUUID(), "test.stub.unisolatable_prop");
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "UnisolatableNode";
         }
 
         @Override

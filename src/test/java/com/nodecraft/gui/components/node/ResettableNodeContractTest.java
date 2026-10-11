@@ -81,6 +81,20 @@ class ResettableNodeContractTest {
     }
 
     @Test
+    void performResetWithHistoryAbortsWhenSnapshotCannotBeIsolated() {
+        UnisolatableStateResettableNode node = new UnisolatableStateResettableNode();
+        node.value = 9;
+
+        PropertyPanelComponent panel = new PropertyPanelComponent();
+        assertThrows(
+                NodeActionPanel.ResetAbortedException.class,
+                () -> panel.performResetWithHistory(node)
+        );
+        assertEquals(9, node.value);
+        assertFalse(node.resetCalled);
+    }
+
+    @Test
     void performResetWithHistoryRollsBackInPlaceMutablePropertyMutation() {
         Vec3FailingResettableNode node = new Vec3FailingResettableNode();
         node.center.setX(4.0d);
@@ -158,6 +172,47 @@ class ResettableNodeContractTest {
         public void resetProperties() {
             value = 1;
             throw new IllegalStateException("boom");
+        }
+    }
+
+    private static final class UnisolatableStateResettableNode extends BaseNode implements ResettableNode {
+        @NodeProperty(displayName = "Value")
+        int value;
+        boolean resetCalled;
+
+        UnisolatableStateResettableNode() {
+            super(UUID.randomUUID(), "test.stub.resettable_unisolatable_state");
+        }
+
+        @Override
+        public Object getNodeState() {
+            java.util.Map<String, Object> state = new java.util.HashMap<>();
+            state.put("value", value);
+            state.put("bad", new Object() {
+                @SuppressWarnings("unused")
+                final byte[] payload = new byte[]{1, 2, 3};
+            });
+            return state;
+        }
+
+        @Override
+        public void resetProperties() {
+            resetCalled = true;
+            value = 0;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "UnisolatableStateResettable";
+        }
+
+        @Override
+        public String getDescription() {
+            return "";
+        }
+
+        @Override
+        public void processNode(@Nullable ExecutionContext context) {
         }
     }
 

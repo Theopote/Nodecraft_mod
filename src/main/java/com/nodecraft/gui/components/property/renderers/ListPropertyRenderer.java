@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.property.renderers;
 
 import com.nodecraft.gui.components.PropertyPanelComponent;
+import com.nodecraft.gui.components.property.core.ListPaging;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
@@ -69,21 +70,16 @@ public final class ListPropertyRenderer {
         String pageKey = panel.getTempValueKey(node, propName + "_list_page");
         int[] pageState = panel.getOrCreateTempValue(pageKey, () -> new int[]{0});
         int pageSize = DEFAULT_LIST_PREVIEW_LIMIT;
-        int maxStart = Math.max(0, size - 1);
-        if (pageState[0] < 0) {
-            pageState[0] = 0;
-        }
-        if (pageState[0] > maxStart) {
-            pageState[0] = maxStart;
-        }
+        pageState[0] = ListPaging.clampStart(size, pageSize, pageState[0]);
+        int maxStart = ListPaging.maxStart(size, pageSize);
 
         if (ImGui.smallButton("Prev##list_prev_" + propName)) {
-            pageState[0] = Math.max(0, pageState[0] - pageSize);
+            pageState[0] = ListPaging.clampStart(size, pageSize, pageState[0] - pageSize);
         }
         ImGui.sameLine();
         if (ImGui.smallButton("Next##list_next_" + propName)) {
             if (pageState[0] + pageSize < size) {
-                pageState[0] = pageState[0] + pageSize;
+                pageState[0] = ListPaging.clampStart(size, pageSize, pageState[0] + pageSize);
             }
         }
         ImGui.sameLine();
@@ -94,7 +90,7 @@ public final class ListPropertyRenderer {
         );
         startEdit[0] = pageState[0];
         if (ImGui.dragInt("Start##list_start_" + propName, startEdit, 1.0f, 0, maxStart)) {
-            pageState[0] = Math.max(0, Math.min(maxStart, startEdit[0]));
+            pageState[0] = ListPaging.clampStart(size, pageSize, startEdit[0]);
         }
 
         int start = pageState[0];

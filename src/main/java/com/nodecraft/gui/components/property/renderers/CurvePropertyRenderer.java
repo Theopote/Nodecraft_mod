@@ -8,6 +8,8 @@ import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.util.Curve;
 import imgui.ImGui;
 
+import java.util.Objects;
+
 public final class CurvePropertyRenderer {
     public static final PropertyRenderer RENDERER = CurvePropertyRenderer::render;
 
@@ -33,24 +35,44 @@ public final class CurvePropertyRenderer {
                 ImGui.text("Control Points: " + curve.size());
                 ImGui.text("Resolution: " + curve.getResolution());
 
-                // Sampling is expensive and not cached on Curve — compute only on demand.
-                String sampleKey = panel.getTempValueKey(node, prop.name + "_sample_count");
-                Integer[] sampleCount = panel.getOrCreateTempValue(sampleKey, () -> new Integer[]{null});
-                if (sampleCount[0] != null) {
-                    ImGui.text("Sample Points: " + sampleCount[0]);
+                String sampleKey = panel.getTempValueKey(node, prop.name + "_sample_cache");
+                SampleCache cache = panel.getOrCreateTempValue(sampleKey, SampleCache::new);
+                int fingerprint = fingerprint(curve);
+                if (cache.count != null && cache.fingerprint != fingerprint) {
+                    cache.count = null;
+                }
+
+                if (cache.count != null) {
+                    ImGui.text("Sample Points: " + cache.count);
                     if (ImGui.smallButton("Refresh##curve_samples_" + prop.name)) {
-                        sampleCount[0] = curve.getSamplePoints().size();
+                        cache.count = curve.getSamplePoints().size();
+                        cache.fingerprint = fingerprint;
                     }
-                } else if (ImGui.smallButton("Compute sample count##curve_samples_" + prop.name)) {
-                    sampleCount[0] = curve.getSamplePoints().size();
                 } else {
-                    ImGui.sameLine();
-                    ImGui.textDisabled("(not computed)");
+                    ImGui.textDisabled("Sample Points: (stale — recompute)");
+                    if (ImGui.smallButton("Compute sample count##curve_samples_" + prop.name)) {
+                        cache.count = curve.getSamplePoints().size();
+                        cache.fingerprint = fingerprint;
+                    }
                 }
                 ImGui.treePop();
             }
         } catch (Throwable e) {
             panel.handlePropertyError(node, prop, e);
         }
+    }
+
+    static int fingerprint(Curve curve) {
+        return Objects.hash(
+                curve.getCurveType(),
+                curve.getResolution(),
+                curve.size(),
+                System.identityHashCode(curve)
+        );
+    }
+
+    private static final class SampleCache {
+        Integer count;
+        int fingerprint;
     }
 }
