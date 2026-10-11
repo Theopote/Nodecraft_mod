@@ -92,6 +92,35 @@ public final class NodePropertyBindings {
         BINDING_CACHE.clear();
     }
 
+    public static @Nullable Object readProperty(BaseNode node, String propertyName) throws Throwable {
+        NodePropertyBinding binding = bindingFor(node, propertyName);
+        if (binding == null) {
+            return null;
+        }
+        return binding.read(node);
+    }
+
+    public static void writeProperty(BaseNode node, String propertyName, @Nullable Object value) throws Throwable {
+        NodePropertyBinding binding = bindingFor(node, propertyName);
+        if (binding == null || !binding.writable()) {
+            throw new IllegalArgumentException("Property '" + propertyName + "' is not writable on " + node.getClass().getName());
+        }
+        Object coerced = coerceValue(value, binding.type());
+        binding.write(node, coerced);
+    }
+
+    public static @Nullable NodePropertyBinding bindingFor(BaseNode node, String propertyName) {
+        if (node == null || propertyName == null) {
+            return null;
+        }
+        for (NodePropertyBinding binding : bindingsFor(node.getClass())) {
+            if (propertyName.equals(binding.name())) {
+                return binding;
+            }
+        }
+        return null;
+    }
+
     private static List<NodePropertyBinding> discoverBindings(Class<?> nodeClass) {
         List<NodePropertyBinding> bindings = new ArrayList<>();
         Map<String, Method> getters = new HashMap<>();

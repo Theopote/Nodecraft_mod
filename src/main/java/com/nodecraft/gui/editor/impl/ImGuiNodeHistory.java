@@ -13,9 +13,12 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.property.core.PropertyValueSnapshots;
 import com.nodecraft.gui.editor.base.GraphApplyHistoryView;
+import com.nodecraft.gui.editor.history.PropertyChangeCommand;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.core.NodePropertyBindings;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -519,6 +522,47 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         addAction(new NodeStateChangeAction(nodeId, beforeState, afterState, label));
     }
 
+    /**
+     * Records a single property edit. Consecutive edits to the same node property coalesce into one undo step
+     * (for example while dragging a numeric control).
+     */
+    public void recordPropertyChange(UUID nodeId, String propertyName, Object oldValue, Object newValue) {
+        if (!isRecording || nodeId == null || propertyName == null || propertyName.isBlank()) {
+            return;
+        }
+        Object beforeSnapshot = PropertyValueSnapshots.copy(oldValue);
+        Object afterSnapshot = PropertyValueSnapshots.copy(newValue);
+        if (valuesEqual(beforeSnapshot, afterSnapshot)) {
+            return;
+        }
+
+        if (!undoStack.isEmpty()) {
+            HistoryAction top = undoStack.peek();
+            if (top instanceof PropertyChangeAction existing
+                    && existing.canCoalesce(nodeId, propertyName)) {
+                existing.setAfterValue(afterSnapshot);
+                NodeCraft.LOGGER.trace("Coalesced property change for {}.{}", nodeId, propertyName);
+                return;
+            }
+        }
+
+        addAction(new PropertyChangeAction(nodeId, propertyName, beforeSnapshot, afterSnapshot));
+    }
+
+    public void recordPropertyChange(PropertyChangeCommand command) {
+        if (command == null) {
+            return;
+        }
+        recordPropertyChange(command.nodeId(), command.propertyName(), command.oldValue(), command.newValue());
+    }
+
+    private static boolean valuesEqual(Object left, Object right) {
+        if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
+            return Double.compare(leftNumber.doubleValue(), rightNumber.doubleValue()) == 0;
+        }
+        return java.util.Objects.equals(left, right);
+    }
+
     private static class AiPatchAction extends HistoryAction {
         private final String summary;
         private final Map<UUID, Object> previousStates;
@@ -607,6 +651,63 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
                 return gson.fromJson(gson.toJson(state), Object.class);
             } catch (Exception e) {
                 return state;
+            }
+        }
+    }
+
+    private static final class PropertyChangeAction extends HistoryAction {
+        private final UUID nodeId;
+        private final String propertyName;
+        private final Object beforeValue;
+        private Object afterValue;
+
+        private PropertyChangeAction(UUID nodeId, String propertyName, Object beforeValue, Object afterValue) {
+            this.nodeId = nodeId;
+            this.propertyName = propertyName;
+            this.beforeValue = PropertyValueSnapshots.copy(beforeValue);
+            this.afterValue = PropertyValueSnapshots.copy(afterValue);
+        }
+
+        boolean canCoalesce(UUID otherNodeId, String otherPropertyName) {
+            return nodeId.equals(otherNodeId) && propertyName.equals(otherPropertyName);
+        }
+
+        void setAfterValue(Object value) {
+            this.afterValue = PropertyValueSnapshots.copy(value);
+        }
+
+        @Override
+        public ActionType getType() {
+            return ActionType.PROPERTY_CHANGE;
+        }
+
+        @Override
+        public boolean undo(ICanvasEditor editor) {
+            return applyValue(editor, beforeValue);
+        }
+
+        @Override
+        public boolean redo(ICanvasEditor editor) {
+            return applyValue(editor, afterValue);
+        }
+
+        private boolean applyValue(ICanvasEditor editor, Object value) {
+            NodeGraph graph = editor.getCurrentGraph();
+            if (graph == null) {
+                return false;
+            }
+            INode node = graph.getNode(nodeId);
+            if (!(node instanceof BaseNode baseNode)) {
+                return false;
+            }
+            try {
+                NodePropertyBindings.writeProperty(baseNode, propertyName, value);
+                baseNode.markDirty();
+                NodeCraft.LOGGER.debug("Applied property {} on node {} via history", propertyName, nodeId);
+                return true;
+            } catch (Throwable e) {
+                NodeCraft.LOGGER.error("Failed to apply property {} on node {} via history", propertyName, nodeId, e);
+                return false;
             }
         }
     }
@@ -1058,7 +1159,8 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         REMOVE_CONNECTION,
         GRAPH_TRANSACTION,
         AI_PATCH,
-        NODE_STATE_CHANGE
+        NODE_STATE_CHANGE,
+        PROPERTY_CHANGE
     }
     
     /**

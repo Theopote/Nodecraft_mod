@@ -19,11 +19,6 @@ public final class PropertyRendererRegistry {
                 return;
             }
 
-            boolean isReadOnly = prop.setter == null || isDisabled;
-            if (isReadOnly) {
-                ImGui.beginDisabled();
-            }
-
             ImGui.text(value.toString());
 
             if (value instanceof Collection<?> collection) {
@@ -32,10 +27,6 @@ public final class PropertyRendererRegistry {
             } else if (value instanceof Map<?, ?> map) {
                 ImGui.sameLine();
                 ImGui.textDisabled("(" + map.size() + " entries)");
-            }
-
-            if (isReadOnly) {
-                ImGui.endDisabled();
             }
         } catch (Throwable e) {
             NodeCraft.LOGGER.error("Failed to render property '{}'", prop.name, e);

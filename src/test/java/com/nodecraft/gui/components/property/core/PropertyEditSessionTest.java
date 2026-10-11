@@ -8,10 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PropertyEditSessionTest {
 
@@ -37,7 +34,7 @@ class PropertyEditSessionTest {
     @Test
     void getOrReplaceTempValueReplacesWrongType() {
         PropertyEditSession session = new PropertyEditSession();
-        session.putTempValue("k", Integer.valueOf(1));
+        session.putTempValue("k", 1);
         String replaced = session.getOrReplaceTempValue("k", String.class, () -> "ok");
         assertEquals("ok", replaced);
         assertEquals("ok", session.getTempValue("k"));
@@ -85,7 +82,7 @@ class PropertyEditSessionTest {
         session.clearForNode(drop);
 
         assertEquals("keep", session.getTempValue(session.getTempValueKey(keep, "a")));
-        assertEquals(null, session.getTempValue(session.getTempValueKey(drop, "a")));
+        assertNull(session.getTempValue(session.getTempValueKey(drop, "a")));
         assertFalse(session.isPropertyBeingEdited(drop, "a"));
         assertEquals(1, session.getPropertyErrorCount(keep, "a"));
         assertEquals(0, session.getPropertyErrorCount(drop, "a"));

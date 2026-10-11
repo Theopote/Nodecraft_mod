@@ -22,40 +22,51 @@ public final class NodeActionPanel {
         NodeActionProviderRegistry.renderAssistChrome(selectedNode, graphSupplier);
     }
 
-    public static void renderActionButtons(
+    /**
+     * Common actions shown near the node title (reset when supported).
+     */
+    public static void renderQuickActions(
             INode selectedNode,
-            Supplier<NodeGraph> graphSupplier,
             Runnable clearCurrentNodeTempValues,
-            Consumer<INode> setSelectedNode,
             Consumer<INode> onResetSuccess,
             ResetFeedback resetFeedback
     ) {
-        ImGui.separator();
-
-        NodeActionProviderRegistry.renderActionChrome(selectedNode, graphSupplier);
-
-        if (ResettableNode.supportsReset(selectedNode)) {
-            ResettableNode resettable = (ResettableNode) selectedNode;
-            if (ImGui.button("Reset Properties")) {
-                try {
-                    resettable.resetProperties();
-                    clearCurrentNodeTempValues.run();
-                    onResetSuccess.accept(selectedNode);
-                    resetFeedback.setSuccess("Properties reset.");
-                    NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
-                } catch (Exception e) {
-                    resetFeedback.setFailure("Reset failed. Parameters unchanged.");
-                    NodeCraft.LOGGER.error(
-                            "Failed to reset node properties for {}: {}",
-                            selectedNode.getDisplayName(),
-                            e.getMessage(),
-                            e);
-                }
-            }
-            resetFeedback.renderIfPresent();
-            ImGui.sameLine();
+        if (!ResettableNode.supportsReset(selectedNode)) {
+            return;
         }
+        ResettableNode resettable = (ResettableNode) selectedNode;
+        if (ImGui.smallButton("Reset")) {
+            try {
+                resettable.resetProperties();
+                clearCurrentNodeTempValues.run();
+                onResetSuccess.accept(selectedNode);
+                resetFeedback.setSuccess("Properties reset.");
+                NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
+            } catch (Exception e) {
+                resetFeedback.setFailure("Reset failed. Parameters unchanged.");
+                NodeCraft.LOGGER.error(
+                        "Failed to reset node properties for {}: {}",
+                        selectedNode.getDisplayName(),
+                        e.getMessage(),
+                        e);
+            }
+        }
+        resetFeedback.renderIfPresent();
+    }
 
+    public static void renderProviderActions(INode selectedNode, Supplier<NodeGraph> graphSupplier) {
+        NodeActionProviderRegistry.renderActionChrome(selectedNode, graphSupplier);
+    }
+
+    /**
+     * Destructive actions pinned to the bottom of the property panel.
+     */
+    public static void renderDangerActions(
+            INode selectedNode,
+            Supplier<NodeGraph> graphSupplier,
+            Consumer<INode> setSelectedNode
+    ) {
+        ImGui.separator();
         ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 0.6f);
         ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 0.8f);
         ImGui.pushStyleColor(ImGuiCol.ButtonActive, 1.0f, 0.4f, 0.4f, 1.0f);
@@ -72,6 +83,25 @@ public final class NodeActionPanel {
             }
         }
         ImGui.popStyleColor(3);
+    }
+
+    /**
+     * @deprecated Use {@link #renderQuickActions}, {@link #renderProviderActions}, and {@link #renderDangerActions}.
+     */
+    @Deprecated
+    public static void renderActionButtons(
+            INode selectedNode,
+            Supplier<NodeGraph> graphSupplier,
+            Runnable clearCurrentNodeTempValues,
+            Consumer<INode> setSelectedNode,
+            Consumer<INode> onResetSuccess,
+            ResetFeedback resetFeedback
+    ) {
+        ImGui.separator();
+        renderProviderActions(selectedNode, graphSupplier);
+        renderQuickActions(selectedNode, clearCurrentNodeTempValues, onResetSuccess, resetFeedback);
+        ImGui.sameLine();
+        renderDangerActions(selectedNode, graphSupplier, setSelectedNode);
     }
 
     /**

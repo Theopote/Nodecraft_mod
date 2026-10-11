@@ -22,20 +22,16 @@ public final class BooleanPropertyRenderer {
 
         try {
             boolean currentValue = (boolean) prop.getter.invoke(node);
-            ImBoolean imVal = new ImBoolean(currentValue);
             boolean isReadOnly = prop.setter == null;
 
             if (isReadOnly) {
-                ImGui.beginDisabled();
-            }
-            if (ImGui.checkbox("##" + prop.name, imVal)) {
-                if (!isReadOnly) {
+                PropertyEditorUi.renderReadOnlyBoolean(currentValue);
+            } else {
+                ImBoolean imVal = new ImBoolean(currentValue);
+                if (ImGui.checkbox("##" + prop.name, imVal)) {
                     panel.applyPropertyValue(node, prop, imVal.get());
-                    NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imVal.get());
+                    NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), imVal.get());
                 }
-            }
-            if (isReadOnly) {
-                ImGui.endDisabled();
             }
 
             panel.clearPropertyError(node, prop.name);

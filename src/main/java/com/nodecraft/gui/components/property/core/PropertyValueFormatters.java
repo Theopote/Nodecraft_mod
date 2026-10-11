@@ -23,6 +23,11 @@ public final class PropertyValueFormatters {
         return String.format(Locale.ROOT, DECIMAL_DISPLAY_FORMAT, value);
     }
 
+    /** Full-precision text for editable numeric fields. */
+    public static String formatEditNumber(double value) {
+        return Double.toString(value);
+    }
+
     /** True when a displayed 2-decimal text no longer matches the live value. */
     public static boolean decimalDisplayDrifted(double displayed, double live) {
         return Math.abs(displayed - live) > DECIMAL_DISPLAY_EPSILON;

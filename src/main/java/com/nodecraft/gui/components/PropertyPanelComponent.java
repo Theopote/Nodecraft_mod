@@ -48,6 +48,7 @@ import com.nodecraft.gui.components.property.core.PropertyInspector;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyRendererRegistry;
 import com.nodecraft.gui.components.property.core.PropertySectionOrganizer;
+import com.nodecraft.gui.components.property.layout.PropertyGroupRenderer;
 import com.nodecraft.gui.components.property.renderers.*;
 import com.nodecraft.gui.components.property.support.AttractorFieldPropertySupport;
 import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
@@ -61,8 +62,6 @@ import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.ImVec4;
-import imgui.flag.ImGuiTableFlags;
-import imgui.flag.ImGuiTableColumnFlags; // 添加 ImGuiTableColumnFlags 导入
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiTreeNodeFlags;
 import imgui.flag.ImGuiWindowFlags;
@@ -144,12 +143,36 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     /**
-     * Applies a property write and marks the node dirty so graph execution / preview can react.
-     * Property undo/redo is not wired here yet — see Phase 2 (PropertyChangeCommand).
+     * Applies a property write, marks the node dirty, and records undo history when the editor is available.
      */
     public void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
+        if (prop.setter == null) {
+            return;
+        }
+        Object oldValue = prop.getter.invoke(node);
+        if (propertyValuesEqual(oldValue, value)) {
+            return;
+        }
         prop.setter.invoke(node, value);
         markNodeDirtyAfterPropertyChange(node);
+        recordPropertyChangeForHistory(node, prop.name, oldValue, value);
+    }
+
+    private static boolean propertyValuesEqual(Object oldValue, Object newValue) {
+        if (oldValue instanceof Number oldNumber && newValue instanceof Number newNumber) {
+            return Double.compare(oldNumber.doubleValue(), newNumber.doubleValue()) == 0;
+        }
+        return Objects.equals(oldValue, newValue);
+    }
+
+    private void recordPropertyChangeForHistory(INode node, String propertyName, Object oldValue, Object newValue) {
+        try {
+            ImGuiNodeEditor.getInstance().getHistory()
+                    .recordPropertyChange(node.getId(), propertyName, oldValue, newValue);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
+                    node.getId(), propertyName, e.getMessage());
+        }
     }
 
     public void markNodeDirtyAfterPropertyChange(INode node) {
@@ -324,25 +347,20 @@ public class PropertyPanelComponent implements EditorComponent {
                 return;
             }
             if (selectedNode != null) {
-                if (ImGui.collapsingHeader("Basic Info")) {
-                    renderNodeInfo();
-                }
+                renderCompactNodeHeader();
+                renderHeaderActions();
+                ImGui.separator();
+                renderNodeProperties();
 
-                if (ImGui.collapsingHeader("Node Properties", ImGuiTreeNodeFlags.DefaultOpen)) {
-                    renderNodeProperties();
-                }
-
-                if (ImGui.collapsingHeader("Input Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
+                if (ImGui.collapsingHeader("Input Ports")) {
                     renderInputPorts();
                 }
 
-                if (ImGui.collapsingHeader("Output Ports", ImGuiTreeNodeFlags.DefaultOpen)) {
+                if (ImGui.collapsingHeader("Output Ports")) {
                     renderOutputPorts();
                 }
 
-                if (ImGui.collapsingHeader("Actions", ImGuiTreeNodeFlags.DefaultOpen)) {
-                    renderActionButtons();
-                }
+                renderDangerActions();
             } else {
                 ImGui.text("No node selected");
             }
@@ -358,26 +376,14 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    private void renderNodeInfo() {
-        String typeId = selectedNode.getTypeId();
-        String categoryName = NodeStatusPresenter.getCategoryNameForNode(typeId);
-
-        ImGui.text("Name: " + selectedNode.getDisplayName());
-        ImGui.text("Category: " + categoryName);
-
-        String description = selectedNode.getDescription();
-        if (description != null && !description.isEmpty()) {
-            ImGui.separator();
-            ImGui.textWrapped("Description: " + description);
-        }
-
-        ImGui.separator();
-        ImGui.text("Status: ");
-        ImGui.sameLine();
+    private void renderCompactNodeHeader() {
+        ImGui.pushStyleColor(ImGuiCol.Text, 0.92f, 0.94f, 0.98f, 1.0f);
+        ImGui.text(selectedNode.getDisplayName());
+        ImGui.popStyleColor();
 
         String nodeStatus = NodeStatusPresenter.getNodeStatus(selectedNode);
         ImVec4 statusColor = NodeStatusPresenter.getStatusColor(nodeStatus);
-
+        ImGui.sameLine();
         ImGui.textColored(statusColor.x, statusColor.y, statusColor.z, statusColor.w, nodeStatus);
 
         if (nodeStatus.equals("Error") || nodeStatus.equals("Warning")) {
@@ -391,6 +397,33 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.endTooltip();
             }
         }
+
+        String categoryName = NodeStatusPresenter.getCategoryNameForNode(selectedNode.getTypeId());
+        ImGui.textDisabled(categoryName);
+
+        String description = selectedNode.getDescription();
+        if (description != null && !description.isEmpty()) {
+            if (ImGui.collapsingHeader("Help")) {
+                ImGui.pushTextWrapPos(0.0f);
+                ImGui.textWrapped(description);
+                ImGui.popTextWrapPos();
+            }
+        }
+    }
+
+    private void renderHeaderActions() {
+        resetFeedback.clear();
+        NodeActionPanel.renderQuickActions(
+                selectedNode,
+                this::clearCurrentNodeTempValues,
+                this::markNodeDirtyAfterPropertyChange,
+                resetFeedback
+        );
+        NodeActionPanel.renderProviderActions(selectedNode, this::getNodeGraph);
+    }
+
+    private void renderDangerActions() {
+        NodeActionPanel.renderDangerActions(selectedNode, this::getNodeGraph, this::setSelectedNode);
     }
     private void renderNodeProperties() {
         if (selectedNode == null) return;
@@ -429,71 +462,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
 
     private void renderPropertyGroup(List<PropertyDescriptor> props, String categoryInternalName) {
-        if (ImGui.beginTable("propertiesTable_" + categoryInternalName, 2,
-                ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter)) {
-            try {
-                ImGui.tableSetupColumn("Property", ImGuiTableColumnFlags.WidthFixed, ImGui.getContentRegionAvailX() * 0.42f);
-                ImGui.tableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.tableHeadersRow();
-
-                for (PropertyDescriptor prop : props) {
-                    boolean isDisabled = editSession.isPropertyDisabled(
-                            selectedNode, prop.name, NodeConstants.ERROR_THRESHOLD);
-
-                    ImGui.tableNextRow();
-                    ImGui.tableSetColumnIndex(0);
-                    ImGui.text(prop.displayName);
-                    if (ImGui.isItemHovered()) {
-                        StringBuilder tooltip = new StringBuilder();
-                        if (prop.description != null && !prop.description.isEmpty()) {
-                            tooltip.append(prop.description);
-                        }
-                        if (prop.setter == null) {
-                            if (!tooltip.isEmpty()) {
-                                tooltip.append("\n");
-                            }
-                            tooltip.append("Read-only property");
-                        }
-                        if (isDisabled) {
-                            if (!tooltip.isEmpty()) {
-                                tooltip.append("\n");
-                            }
-                            tooltip.append("Temporarily disabled after repeated errors. Reselect the node to reset it.");
-                        }
-                        if (!tooltip.isEmpty()) {
-                            ImGui.setTooltip(tooltip.toString());
-                        }
-                    }
-
-                    ImGui.tableSetColumnIndex(1);
-                    String uniqueId = selectedNode.getId().toString() + "_" + prop.name;
-                    ImGui.pushID(uniqueId);
-                    ImGui.pushItemWidth(-1.0f);
-                    try {
-                        PropertyRenderer renderer = prop.renderer != null ? prop.renderer : getRendererForType(prop.type);
-                        renderer.render(this, selectedNode, prop, isDisabled);
-                    } catch (Throwable e) {
-                        handlePropertyError(selectedNode, prop, e);
-                    } finally {
-                        ImGui.popItemWidth();
-                        ImGui.popID();
-                    }
-                }
-            } finally {
-                ImGui.endTable();
-            }
-        }
-    }
-    private void renderActionButtons() {
-        resetFeedback.clear();
-        NodeActionPanel.renderActionButtons(
-                selectedNode,
-                this::getNodeGraph,
-                this::clearCurrentNodeTempValues,
-                this::setSelectedNode,
-                this::markNodeDirtyAfterPropertyChange,
-                resetFeedback
-        );
+        PropertyGroupRenderer.renderGroup(this, selectedNode, props, categoryInternalName, editSession);
     }
 
     /**

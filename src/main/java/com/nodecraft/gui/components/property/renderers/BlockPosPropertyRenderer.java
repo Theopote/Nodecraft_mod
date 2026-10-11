@@ -3,7 +3,6 @@ package com.nodecraft.gui.components.property.renderers;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
-import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
 import net.minecraft.util.math.BlockPos;

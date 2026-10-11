@@ -1,14 +1,9 @@
 package com.nodecraft.gui.components.property.renderers;
 
-import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
-import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
 import com.nodecraft.nodesystem.api.INode;
-import imgui.ImGui;
-import imgui.flag.ImGuiInputTextFlags;
-import imgui.type.ImString;
 
 public final class DoublePropertyRenderer {
     public static final PropertyRenderer RENDERER = DoublePropertyRenderer::render;
@@ -17,108 +12,8 @@ public final class DoublePropertyRenderer {
     }
 
     private static void render(PropertyPanelComponent panel, INode node, PropertyDescriptor prop, boolean isDisabled) {
-        if (isDisabled) {
-            PropertyEditorUi.renderDisabled(prop.displayName);
-            return;
-        }
-
         try {
-            double currentValue = (double) prop.getter.invoke(node);
-
-            String tempKey = panel.getTempValueKey(node, prop.name);
-            ImString textValue = panel.getOrReplaceTempValue(
-                    tempKey,
-                    ImString.class,
-                    () -> new ImString(PropertyValueFormatters.formatDecimal(currentValue), 64));
-
-            if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                try {
-                    double currentTextValue = Double.parseDouble(textValue.get());
-                    if (PropertyValueFormatters.decimalDisplayDrifted(currentTextValue, currentValue)) {
-                        textValue.set(PropertyValueFormatters.formatDecimal(currentValue));
-                    }
-                } catch (NumberFormatException e) {
-                    textValue.set(PropertyValueFormatters.formatDecimal(currentValue));
-                }
-            }
-
-            int flags = ImGuiInputTextFlags.CharsDecimal;
-            boolean isReadOnly = prop.setter == null;
-            if (isReadOnly) {
-                flags |= ImGuiInputTextFlags.ReadOnly;
-            }
-
-            boolean changed = ImGui.inputText("##" + prop.name, textValue, flags | ImGuiInputTextFlags.EnterReturnsTrue);
-            boolean isActive = ImGui.isItemActive();
-            boolean wasDeactivated = ImGui.isItemDeactivated();
-            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
-
-            if (isActive) {
-                panel.refreshPropertyBeingEdited(node, prop.name);
-            }
-
-            boolean shouldSave = false;
-            if (changed) {
-                shouldSave = true;
-            } else if (wasDeactivated && wasBeingEdited) {
-                try {
-                    double newValue = Double.parseDouble(textValue.get());
-                    shouldSave = PropertyValueFormatters.doubleValueChanged(newValue, currentValue);
-                } catch (NumberFormatException ignored) {
-                    shouldSave = false;
-                }
-            }
-
-            if (shouldSave && !isReadOnly) {
-                try {
-                    double newValue = Double.parseDouble(textValue.get());
-                    if (PropertyValueFormatters.doubleValueChanged(newValue, currentValue)) {
-                        panel.applyPropertyValue(node, prop, newValue);
-                        textValue.set(PropertyValueFormatters.formatDecimal(newValue));
-                        NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), newValue);
-                    }
-                } catch (NumberFormatException e) {
-                    ImGui.sameLine();
-                    ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Invalid number");
-                }
-            }
-
-            if (wasDeactivated && wasBeingEdited) {
-                panel.markPropertyEditingFinished(node, prop.name);
-                textValue.set(PropertyValueFormatters.formatDecimal(
-                        (double) prop.getter.invoke(node)));
-            }
-
-            if (!isReadOnly) {
-                ImGui.sameLine();
-                ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
-                float[] dragValue = new float[]{0.0f};
-                if (ImGui.dragFloat(
-                        "##drag_" + prop.name,
-                        dragValue,
-                        0.01f,
-                        0.0f,
-                        0.0f,
-                        PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
-                )) {
-                    double liveValue = (double) prop.getter.invoke(node);
-                    double newValue = liveValue + dragValue[0];
-                    if (PropertyValueFormatters.doubleValueChanged(newValue, liveValue)) {
-                        textValue.set(PropertyValueFormatters.formatDecimal(newValue));
-                        panel.applyPropertyValue(node, prop, newValue);
-                        NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), newValue);
-                    }
-                    dragValue[0] = 0.0f;
-                }
-                if (ImGui.isItemActive()) {
-                    panel.refreshPropertyBeingEdited(node, prop.name);
-                }
-                if (ImGui.isItemDeactivated()) {
-                    panel.markPropertyEditingFinished(node, prop.name);
-                }
-                ImGui.popItemWidth();
-            }
-
+            ScalarPropertyEditor.render(panel, node, prop, isDisabled, ScalarPropertyEditor.ValueKind.DOUBLE);
             panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
             panel.handlePropertyError(node, prop, e);

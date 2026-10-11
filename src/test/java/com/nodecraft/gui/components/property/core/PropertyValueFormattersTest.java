@@ -34,4 +34,9 @@ class PropertyValueFormattersTest {
         assertEquals("1.23", PropertyValueFormatters.formatDecimal(1.234567d));
         assertEquals("-2.50", PropertyValueFormatters.formatDecimal(-2.5d));
     }
+
+    @Test
+    void formatEditNumberPreservesPrecision() {
+        assertEquals("1.234567", PropertyValueFormatters.formatEditNumber(1.234567d));
+    }
 }
