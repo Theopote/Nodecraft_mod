@@ -25,7 +25,7 @@ public final class SpherePropertyRenderer {
             ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(sphere.center()));
             ImGui.text(String.format("Radius: %.2f", sphere.radius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

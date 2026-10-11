@@ -27,7 +27,7 @@ public final class PlantBlockPropertyRenderer {
             ImGui.text(String.format("Thickness: %.2f", block.getThickness()));
             ImGui.text("Properties: " + block.getProperties().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

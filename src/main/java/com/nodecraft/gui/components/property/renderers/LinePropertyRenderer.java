@@ -27,7 +27,7 @@ public final class LinePropertyRenderer {
             ImGui.text("Direction: " + PropertyValueFormatters.formatVec3d(line.getDirection()));
             ImGui.text(String.format("Length: %.2f", line.getLength()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

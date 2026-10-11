@@ -27,7 +27,7 @@ public final class CurvePropertyRenderer {
             ImGui.text("Resolution: " + curve.getResolution());
             ImGui.text("Sample Points: " + curve.getSamplePoints().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

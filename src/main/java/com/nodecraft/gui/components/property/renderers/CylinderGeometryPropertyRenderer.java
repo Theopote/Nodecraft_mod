@@ -30,7 +30,7 @@ public final class CylinderGeometryPropertyRenderer {
             ImGui.text(String.format("Length: %.2f", axis.length()));
             ImGui.text(String.format("Radius: %.2f", cylinder.getRadius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

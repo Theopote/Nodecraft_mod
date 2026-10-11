@@ -27,7 +27,7 @@ public final class DodecahedronGeometryPropertyRenderer {
             ImGui.text(String.format("Circumradius: %.2f", dod.getCircumradius()));
             ImGui.text("Vertices: " + dod.getVertices().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

@@ -34,7 +34,7 @@ public final class BlockPosListPropertyRenderer {
                 ImGui.text("Last: " + PropertyValueFormatters.formatBlockPos(preview.getLast()));
             }
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

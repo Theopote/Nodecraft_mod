@@ -16,6 +16,7 @@ import java.util.function.Supplier;
  */
 public final class PropertyEditSession {
 
+    /** Orphan cleanup only — active controls refresh their lock each frame. */
     private static final long EDIT_LOCK_TIMEOUT_MS = 2000;
 
     private final Map<String, Object> tempValues = new ConcurrentHashMap<>();
@@ -59,30 +60,38 @@ public final class PropertyEditSession {
         return tempValues.get(key);
     }
 
-    public void clearPropertyError(String propName) {
-        if (propName != null) {
-            errorCounts.remove(propName);
+    public void clearPropertyError(INode node, String propName) {
+        if (node != null && propName != null) {
+            errorCounts.remove(getTempValueKey(node, propName));
         }
     }
 
     /**
-     * Increments and returns the new error count for {@code propName}.
+     * Increments and returns the new error count for the node property.
      */
-    public int recordPropertyError(String propName) {
-        int next = errorCounts.getOrDefault(propName, 0) + 1;
-        errorCounts.put(propName, next);
+    public int recordPropertyError(INode node, String propName) {
+        String key = getTempValueKey(node, propName);
+        int next = errorCounts.getOrDefault(key, 0) + 1;
+        errorCounts.put(key, next);
         return next;
     }
 
-    public int getPropertyErrorCount(String propName) {
-        return errorCounts.getOrDefault(propName, 0);
+    public int getPropertyErrorCount(INode node, String propName) {
+        return errorCounts.getOrDefault(getTempValueKey(node, propName), 0);
     }
 
-    public boolean isPropertyDisabled(String propName, int threshold) {
-        return getPropertyErrorCount(propName) >= threshold;
+    public boolean isPropertyDisabled(INode node, String propName, int threshold) {
+        return getPropertyErrorCount(node, propName) >= threshold;
     }
 
     public void markPropertyBeingEdited(INode node, String propName) {
+        refreshPropertyBeingEdited(node, propName);
+    }
+
+    /**
+     * Refreshes the edit lock timestamp while an ImGui control stays active.
+     */
+    public void refreshPropertyBeingEdited(INode node, String propName) {
         String key = getTempValueKey(node, propName);
         propertiesBeingEdited.put(key, System.currentTimeMillis());
         NodeCraft.LOGGER.trace("属性 {} 标记为正在编辑", key);
@@ -108,6 +117,9 @@ public final class PropertyEditSession {
         return true;
     }
 
+    /**
+     * Removes edit locks that were never cleared after focus loss (orphan cleanup).
+     */
     public void checkAndCleanExpiredEditLocks() {
         long currentTime = System.currentTimeMillis();
         propertiesBeingEdited.entrySet().removeIf(entry -> {
@@ -126,7 +138,7 @@ public final class PropertyEditSession {
         String nodeIdPrefix = node.getId() + "_";
         tempValues.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
         propertiesBeingEdited.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
-        errorCounts.clear();
+        errorCounts.entrySet().removeIf(entry -> entry.getKey().startsWith(nodeIdPrefix));
     }
 
     public void clearAll() {

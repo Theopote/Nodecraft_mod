@@ -30,7 +30,7 @@ public final class RegionPropertyRenderer {
                 ImGui.text("Max: " + PropertyValueFormatters.formatBlockPos(region.getMaxCorner()));
             }
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

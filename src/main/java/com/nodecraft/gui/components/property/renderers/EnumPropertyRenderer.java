@@ -67,9 +67,9 @@ public final class EnumPropertyRenderer {
                 ImGui.setTooltip(EnumPropertyLabels.buildTooltip(node, prop, values, names, selectedIndex.get()));
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 

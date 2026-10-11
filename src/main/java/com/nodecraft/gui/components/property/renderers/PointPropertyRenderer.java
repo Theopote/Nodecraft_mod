@@ -24,7 +24,7 @@ public final class PointPropertyRenderer {
 
             ImGui.text("Position: " + PropertyValueFormatters.formatVector3d(point.position()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

@@ -121,9 +121,9 @@ public final class Vec3PropertyRenderer {
                 ImGui.setTooltip(String.format("Length: %.2f", length));
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

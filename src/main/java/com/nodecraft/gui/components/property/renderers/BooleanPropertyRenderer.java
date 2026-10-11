@@ -38,9 +38,9 @@ public final class BooleanPropertyRenderer {
                 ImGui.endDisabled();
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

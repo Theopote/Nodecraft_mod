@@ -76,9 +76,9 @@ public final class Vector3dPropertyRenderer {
                 panel.applyPropertyValue(node, prop, new Vector3d(values[0], values[1], values[2]));
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

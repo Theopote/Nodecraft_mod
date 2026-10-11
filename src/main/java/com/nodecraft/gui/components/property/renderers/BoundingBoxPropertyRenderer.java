@@ -25,7 +25,7 @@ public final class BoundingBoxPropertyRenderer {
             ImGui.text("Min: " + PropertyValueFormatters.formatVector3d(box.getMin()));
             ImGui.text("Max: " + PropertyValueFormatters.formatVector3d(box.getMax()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

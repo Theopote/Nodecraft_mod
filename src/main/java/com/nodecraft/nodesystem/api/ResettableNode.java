@@ -11,4 +11,11 @@ public interface ResettableNode {
      * Restores this node's editable properties to a clean baseline.
      */
     void resetProperties();
+
+    /**
+     * @return true when the node supports property reset from the property panel
+     */
+    static boolean supportsReset(INode node) {
+        return node instanceof ResettableNode;
+    }
 }

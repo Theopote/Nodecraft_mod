@@ -29,6 +29,13 @@ class ResettableNodeContractTest {
     void ordinaryNodesAreNotResettable() {
         INode node = new PlainStub();
         assertFalse(node instanceof ResettableNode);
+        assertFalse(ResettableNode.supportsReset(node));
+    }
+
+    @Test
+    void supportsResetMatchesInstanceofCheck() {
+        INode resettable = new ResettableStub(new AtomicBoolean());
+        assertTrue(ResettableNode.supportsReset(resettable));
     }
 
     private static final class ResettableStub extends BaseNode implements ResettableNode {

@@ -27,7 +27,7 @@ public final class PolylinePropertyRenderer {
             ImGui.text(String.format("Length: %.2f", polyline.getLength()));
             ImGui.text("Closed: " + (polyline.isClosed() ? "Yes" : "No"));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

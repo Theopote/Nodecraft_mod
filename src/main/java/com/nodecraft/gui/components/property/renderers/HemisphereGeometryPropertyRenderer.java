@@ -26,7 +26,7 @@ public final class HemisphereGeometryPropertyRenderer {
             ImGui.text("Axis: " + PropertyValueFormatters.formatVector3d(hemisphere.axis()));
             ImGui.text(String.format("Radius: %.2f", hemisphere.radius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

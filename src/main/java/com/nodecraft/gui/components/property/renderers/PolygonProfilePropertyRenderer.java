@@ -27,7 +27,7 @@ public final class PolygonProfilePropertyRenderer {
             ImGui.text("Unique Points: " + profile.getUniquePoints().size());
             ImGui.text("Plane Normal: " + PropertyValueFormatters.formatVector3d(profile.plane().getNormal()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

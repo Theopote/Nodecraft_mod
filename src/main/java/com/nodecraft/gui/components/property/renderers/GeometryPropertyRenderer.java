@@ -34,7 +34,7 @@ public final class GeometryPropertyRenderer {
             ImGui.text("Type: " + value.getClass().getSimpleName());
             ImGui.textWrapped(value.toString());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

@@ -27,7 +27,7 @@ public final class SurfaceStripPropertyRenderer {
             ImGui.text("Flattened Points: " + strip.getFlattenedPoints().size());
             ImGui.text("All Closed: " + (strip.areAllSectionsClosed() ? "Yes" : "No"));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

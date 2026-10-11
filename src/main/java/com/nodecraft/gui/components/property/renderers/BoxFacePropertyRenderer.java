@@ -28,7 +28,7 @@ public final class BoxFacePropertyRenderer {
             ImGui.text("Corners: " + face.getCorners().size());
             ImGui.text("Edges: " + face.getEdgeCount());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

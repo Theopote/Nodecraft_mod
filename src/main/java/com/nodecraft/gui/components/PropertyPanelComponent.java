@@ -52,9 +52,13 @@ import com.nodecraft.gui.components.property.renderers.*;
 import com.nodecraft.gui.components.property.support.AttractorFieldPropertySupport;
 import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
 import com.nodecraft.gui.components.port.PortDataRenderer;
+import com.nodecraft.gui.components.port.PortHighlightSupport;
 import com.nodecraft.gui.components.port.PortTableRenderer;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
+import com.nodecraft.nodesystem.core.BaseNode;
+import com.nodecraft.nodesystem.preview.PreviewManager;
+import com.nodecraft.nodesystem.util.Coordinate;
+import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
 import imgui.ImVec4;
 import imgui.flag.ImGuiTableFlags;
@@ -100,6 +104,7 @@ public class PropertyPanelComponent implements EditorComponent {
     private final NodeGraphAccess nodeGraphAccess;
     private final AiAssistantComponent aiAssistantComponent = new AiAssistantComponent();
     private final AiAssistantPanel aiAssistantPanel;
+    private final NodeActionPanel.ResetFeedback resetFeedback = new NodeActionPanel.ResetFeedback();
 
     public PropertyPanelComponent() {
         this.nodeGraphAccess = new NodeGraphAccess(() -> {
@@ -138,10 +143,18 @@ public class PropertyPanelComponent implements EditorComponent {
         );
     }
 
+    /**
+     * Applies a property write and marks the node dirty so graph execution / preview can react.
+     * Property undo/redo is not wired here yet — see Phase 2 (PropertyChangeCommand).
+     */
     public void applyPropertyValue(INode node, PropertyDescriptor prop, Object value) throws Throwable {
         prop.setter.invoke(node, value);
-        if (node instanceof BaseCustomUINode customUINode) {
-            customUINode.markDirty();
+        markNodeDirtyAfterPropertyChange(node);
+    }
+
+    public void markNodeDirtyAfterPropertyChange(INode node) {
+        if (node instanceof BaseNode baseNode) {
+            baseNode.markDirty();
         }
     }
 
@@ -217,65 +230,39 @@ public class PropertyPanelComponent implements EditorComponent {
 
     private static final PropertyRenderer LIST_RENDERER = ListPropertyRenderer.RENDERER;
 
-    // 改进的异常处理方法
-    public void handlePropertyError(PropertyDescriptor prop, Throwable e) { // 统一捕获 Throwable
-        // 根据错误类型选择日志级别
-        boolean isSevere = false;
+    public void handlePropertyError(INode node, PropertyDescriptor prop, Throwable e) {
         String errorType;
         String errorMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-        Throwable cause = e instanceof InvocationTargetException ? e.getCause() : e; // 获取根原因
+        Throwable cause = e instanceof InvocationTargetException ? e.getCause() : e;
 
         if (cause instanceof IllegalAccessException) {
-            errorType = "访问权限";
-            isSevere = true;
+            errorType = "Access denied";
         } else if (cause instanceof IllegalArgumentException || cause instanceof ClassCastException) {
-            errorType = "类型不匹配/参数";
-            isSevere = true;
+            errorType = "Invalid value or type";
         } else if (cause instanceof NullPointerException) {
-            errorType = "空引用";
-            isSevere = true;
+            errorType = "Missing required data";
         } else {
-            errorType = "未知内部";
+            errorType = "Unexpected error";
         }
 
-        // 累加错误次数
-        int errorCount = editSession.recordPropertyError(prop.name);
+        int errorCount = editSession.recordPropertyError(node, prop.name);
 
-        // 如果错误次数超过阈值，标记为禁用
-        if (errorCount >= NodeConstants.ERROR_THRESHOLD) { // 使用常量
-            NodeCraft.LOGGER.error("属性 '{}' 因连续{}次{}错误已被禁用: {}", prop.name, errorCount, errorType, errorMessage);
-            // 标记为禁用后，不再增加错误计数，且不再尝试渲染（在 PropertyRenderer 处处理）
+        if (errorCount >= NodeConstants.ERROR_THRESHOLD) {
+            NodeCraft.LOGGER.error(
+                    "Property '{}' on node {} disabled after {} errors ({}): {}",
+                    prop.name, node.getId(), errorCount, errorType, errorMessage);
+        } else if (errorCount == 1) {
+            NodeCraft.LOGGER.warn("Property '{}' on node {} failed ({}): {}",
+                    prop.name, node.getId(), errorType, errorMessage, e);
         } else {
-            // 第一次错误记录为WARN，后续为DEBUG以避免日志溢出
-            if (errorCount == 1) {
-                NodeCraft.LOGGER.warn("属性 '{}' {}错误: {}", prop.name, errorType, errorMessage, e);
-            } else {
-                NodeCraft.LOGGER.debug("属性 '{}' 再次发生{}错误 (第{}次): {}",
-                        prop.name, errorType, errorCount, errorMessage);
-            }
+            NodeCraft.LOGGER.debug("Property '{}' on node {} failed again ({}): {}",
+                    prop.name, node.getId(), errorType, errorMessage);
         }
 
-        // 显示友好的错误消息
-        ImGui.textColored(1.0f, 0.4f, 0.4f, 1.0f, "(错误)");
+        ImGui.textColored(1.0f, 0.4f, 0.4f, 1.0f, "Cannot edit this parameter");
 
         if (ImGui.isItemHovered()) {
-            StringBuilder tooltip = new StringBuilder();
-            tooltip.append("属性 '").append(prop.displayName).append("' 处理失败:\n");
-            tooltip.append(cause.getClass().getSimpleName()).append(": ").append(errorMessage).append("\n");
-
-            if (isSevere) {
-                tooltip.append("\n这是严重错误，请联系开发人员。");
-            } else {
-                tooltip.append("\n这是一个运行时错误，可能由节点逻辑问题引起。");
-            }
-            tooltip.append("\n\n继续操作可能不会影响其他属性。");
-            if (errorCount < NodeConstants.ERROR_THRESHOLD) { // 使用常量
-                tooltip.append("\n如果问题持续，此属性将在 ").append(NodeConstants.ERROR_THRESHOLD).append(" 次错误后被自动禁用。");
-            } else {
-                tooltip.append("\n此属性已被禁用，直到节点重新选择。");
-            }
-
-            ImGui.setTooltip(tooltip.toString());
+            ImGui.setTooltip("Property '" + prop.displayName + "' could not be edited.\nReason: " + errorType + ".");
         }
     }
 
@@ -450,7 +437,8 @@ public class PropertyPanelComponent implements EditorComponent {
                 ImGui.tableHeadersRow();
 
                 for (PropertyDescriptor prop : props) {
-                    boolean isDisabled = editSession.isPropertyDisabled(prop.name, NodeConstants.ERROR_THRESHOLD);
+                    boolean isDisabled = editSession.isPropertyDisabled(
+                            selectedNode, prop.name, NodeConstants.ERROR_THRESHOLD);
 
                     ImGui.tableNextRow();
                     ImGui.tableSetColumnIndex(0);
@@ -485,7 +473,7 @@ public class PropertyPanelComponent implements EditorComponent {
                         PropertyRenderer renderer = prop.renderer != null ? prop.renderer : getRendererForType(prop.type);
                         renderer.render(this, selectedNode, prop, isDisabled);
                     } catch (Throwable e) {
-                        handlePropertyError(prop, e);
+                        handlePropertyError(selectedNode, prop, e);
                     } finally {
                         ImGui.popItemWidth();
                         ImGui.popID();
@@ -497,11 +485,14 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
     private void renderActionButtons() {
+        resetFeedback.clear();
         NodeActionPanel.renderActionButtons(
                 selectedNode,
                 this::getNodeGraph,
                 this::clearCurrentNodeTempValues,
-                this::setSelectedNode
+                this::setSelectedNode,
+                this::markNodeDirtyAfterPropertyChange,
+                resetFeedback
         );
     }
 
@@ -547,6 +538,7 @@ public class PropertyPanelComponent implements EditorComponent {
             selectedNodeIdSnapshot.set(nextNodeId);
         }
 
+        clearPropertyPanelPreviews(previousNode);
         clearSelectedNodeData(previousNode);
         if (node != null) {
             NodeCraft.LOGGER.debug("属性面板更新选中节点: {}", node.getId());
@@ -585,22 +577,54 @@ public class PropertyPanelComponent implements EditorComponent {
         }
     }
 
-    // 高亮单个坐标点 (占位符)
+    private void clearPropertyPanelPreviews(INode node) {
+        if (node == null) {
+            return;
+        }
+        String ownerId = PortHighlightSupport.previewOwnerId(node.getId());
+        SelectionVisualFeedback.getInstance().clearFeedback(ownerId);
+        PreviewManager.hideNodePreviews(ownerId);
+    }
+
     private void highlightPoint(Vec3 point) {
-        if (selectedNode == null) return;
-        NodeCraft.LOGGER.info("Preview point: {}", point);
+        if (selectedNode == null || point == null) {
+            return;
+        }
+        String ownerId = PortHighlightSupport.previewOwnerId(selectedNode.getId());
+        Coordinate coordinate = PortHighlightSupport.vec3ToCoordinate(point);
+        SelectionVisualFeedback.getInstance().showBlockSelection(
+                ownerId,
+                coordinate,
+                SelectionVisualFeedback.SelectionState.SELECTED
+        );
     }
 
-    // 高亮坐标点集合 (占位符)
     private void highlightPoints(List<?> points) {
-        if (selectedNode == null || points.isEmpty() || !(points.getFirst() instanceof Vec3)) return;
-        NodeCraft.LOGGER.info("Preview {} points", points.size());
+        if (selectedNode == null || points == null || points.isEmpty()) {
+            return;
+        }
+        List<Coordinate> coordinates = PortHighlightSupport.vec3ListToCoordinates(points);
+        if (coordinates.isEmpty()) {
+            return;
+        }
+        String ownerId = PortHighlightSupport.previewOwnerId(selectedNode.getId());
+        SelectionVisualFeedback.getInstance().showMultiBlockSelection(
+                ownerId,
+                coordinates,
+                SelectionVisualFeedback.SelectionState.SELECTED
+        );
     }
 
-    // 高亮区域 (占位符)
     private void highlightRegion(Object region) {
-        if (selectedNode == null) return;
-        NodeCraft.LOGGER.info("Preview region: {}", region);
+        if (selectedNode == null || region == null) {
+            return;
+        }
+        String ownerId = PortHighlightSupport.previewOwnerId(selectedNode.getId());
+        PortHighlightSupport.extractRegionBounds(region).ifPresentOrElse(
+                bounds -> PreviewManager.showRegionBox(ownerId, bounds.min(), bounds.maxExclusive()),
+                () -> NodeCraft.LOGGER.debug("Could not highlight region for node {}: unsupported type {}",
+                        selectedNode.getId(), region.getClass().getName())
+        );
     }
     // 添加这些方法来管理属性编辑状态
 
@@ -634,6 +658,10 @@ public class PropertyPanelComponent implements EditorComponent {
         return editSession.isPropertyBeingEdited(node, propName);
     }
 
+    public void refreshPropertyBeingEdited(INode node, String propName) {
+        editSession.refreshPropertyBeingEdited(node, propName);
+    }
+
     /**
      * 检查和清理过期的编辑锁
      * 定期调用，移除所有超时的编辑锁
@@ -655,8 +683,8 @@ public class PropertyPanelComponent implements EditorComponent {
         return editSession.getOrReplaceTempValue(key, type, supplier);
     }
 
-    public void clearPropertyError(String propName) {
-        editSession.clearPropertyError(propName);
+    public void clearPropertyError(INode node, String propName) {
+        editSession.clearPropertyError(node, propName);
     }
 
     private List<PropertyDescriptor> getPropertiesForNode(Class<?> nodeClass) {

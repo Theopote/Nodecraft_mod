@@ -27,7 +27,7 @@ public final class TorusGeometryPropertyRenderer {
             ImGui.text(String.format("Major Radius: %.2f", torus.majorRadius()));
             ImGui.text(String.format("Minor Radius: %.2f", torus.minorRadius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

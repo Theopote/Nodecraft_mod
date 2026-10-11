@@ -28,7 +28,7 @@ public final class ConeGeometryPropertyRenderer {
             ImGui.text(String.format("Height: %.2f", cone.getHeight()));
             ImGui.text(String.format("Base Radius: %.2f", cone.getBaseRadius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

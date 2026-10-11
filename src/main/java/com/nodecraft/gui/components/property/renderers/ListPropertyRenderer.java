@@ -29,7 +29,7 @@ public final class ListPropertyRenderer {
 
             panel.renderList(list, prop.displayName);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

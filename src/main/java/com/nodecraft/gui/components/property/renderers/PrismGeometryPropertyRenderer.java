@@ -27,7 +27,7 @@ public final class PrismGeometryPropertyRenderer {
             ImGui.text(String.format("Height: %.2f", prism.getHeight()));
             ImGui.text("Extrusion: " + PropertyValueFormatters.formatVector3d(prism.extrusionVector()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

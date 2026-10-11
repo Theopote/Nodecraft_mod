@@ -65,6 +65,7 @@ primitive renderers call support classes directly.
 ## Later phases (order)
 
 1. Optional `PropertyInspectorModel` for selection + category shell
+2. Property-panel undo/redo via a unified `PropertyChangeCommand` recorded in `ImGuiNodeHistory` (Phase 2 — not wired in Phase 1 logic fixes)
 
 ## Exit gates — Phase 1
 

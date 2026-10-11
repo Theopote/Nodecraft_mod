@@ -46,13 +46,28 @@ class PropertyEditSessionTest {
     @Test
     void errorCountsDisableAfterThreshold() {
         PropertyEditSession session = new PropertyEditSession();
-        assertEquals(1, session.recordPropertyError("alpha"));
-        assertEquals(2, session.recordPropertyError("alpha"));
-        assertFalse(session.isPropertyDisabled("alpha", 3));
-        assertEquals(3, session.recordPropertyError("alpha"));
-        assertTrue(session.isPropertyDisabled("alpha", 3));
-        session.clearPropertyError("alpha");
-        assertFalse(session.isPropertyDisabled("alpha", 3));
+        StubNode node = new StubNode();
+        assertEquals(1, session.recordPropertyError(node, "alpha"));
+        assertEquals(2, session.recordPropertyError(node, "alpha"));
+        assertFalse(session.isPropertyDisabled(node, "alpha", 3));
+        assertEquals(3, session.recordPropertyError(node, "alpha"));
+        assertTrue(session.isPropertyDisabled(node, "alpha", 3));
+        session.clearPropertyError(node, "alpha");
+        assertFalse(session.isPropertyDisabled(node, "alpha", 3));
+    }
+
+    @Test
+    void errorCountsAreScopedPerNode() {
+        PropertyEditSession session = new PropertyEditSession();
+        StubNode nodeA = new StubNode();
+        StubNode nodeB = new StubNode();
+
+        session.recordPropertyError(nodeA, "size");
+        session.recordPropertyError(nodeA, "size");
+        session.recordPropertyError(nodeA, "size");
+
+        assertTrue(session.isPropertyDisabled(nodeA, "size", 3));
+        assertFalse(session.isPropertyDisabled(nodeB, "size", 3));
     }
 
     @Test
@@ -64,14 +79,40 @@ class PropertyEditSessionTest {
         session.getOrCreateTempValue(session.getTempValueKey(keep, "a"), () -> "keep");
         session.getOrCreateTempValue(session.getTempValueKey(drop, "a"), () -> "drop");
         session.markPropertyBeingEdited(drop, "a");
-        session.recordPropertyError("a");
+        session.recordPropertyError(drop, "a");
+        session.recordPropertyError(keep, "a");
 
         session.clearForNode(drop);
 
         assertEquals("keep", session.getTempValue(session.getTempValueKey(keep, "a")));
         assertEquals(null, session.getTempValue(session.getTempValueKey(drop, "a")));
         assertFalse(session.isPropertyBeingEdited(drop, "a"));
-        assertEquals(0, session.getPropertyErrorCount("a"));
+        assertEquals(1, session.getPropertyErrorCount(keep, "a"));
+        assertEquals(0, session.getPropertyErrorCount(drop, "a"));
+    }
+
+    @Test
+    void refreshKeepsEditLockAlivePastTimeout() throws InterruptedException {
+        PropertyEditSession session = new PropertyEditSession();
+        StubNode node = new StubNode();
+
+        session.markPropertyBeingEdited(node, "value");
+        Thread.sleep(2_100L);
+        session.refreshPropertyBeingEdited(node, "value");
+
+        assertTrue(session.isPropertyBeingEdited(node, "value"));
+    }
+
+    @Test
+    void orphanEditLockExpiresWithoutRefresh() throws InterruptedException {
+        PropertyEditSession session = new PropertyEditSession();
+        StubNode node = new StubNode();
+
+        session.markPropertyBeingEdited(node, "value");
+        Thread.sleep(2_100L);
+        session.checkAndCleanExpiredEditLocks();
+
+        assertFalse(session.isPropertyBeingEdited(node, "value"));
     }
 
     private static final class StubNode extends BaseNode {

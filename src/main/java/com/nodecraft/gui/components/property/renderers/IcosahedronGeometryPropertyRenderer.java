@@ -27,7 +27,7 @@ public final class IcosahedronGeometryPropertyRenderer {
             ImGui.text(String.format("Circumradius: %.2f", icosa.getCircumradius()));
             ImGui.text("Vertices: " + icosa.getVertices().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

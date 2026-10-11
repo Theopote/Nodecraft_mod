@@ -25,7 +25,7 @@ public final class EllipsoidGeometryPropertyRenderer {
             ImGui.text("Center: " + PropertyValueFormatters.formatVector3d(ellipsoid.getCenter()));
             ImGui.text("Radii: " + PropertyValueFormatters.formatVector3d(ellipsoid.getRadii()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

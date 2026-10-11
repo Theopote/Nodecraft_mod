@@ -26,32 +26,36 @@ public final class NodeActionPanel {
             INode selectedNode,
             Supplier<NodeGraph> graphSupplier,
             Runnable clearCurrentNodeTempValues,
-            Consumer<INode> setSelectedNode
+            Consumer<INode> setSelectedNode,
+            Consumer<INode> onResetSuccess,
+            ResetFeedback resetFeedback
     ) {
         ImGui.separator();
 
         NodeActionProviderRegistry.renderActionChrome(selectedNode, graphSupplier);
 
-        if (ImGui.button("Reset Properties")) {
-            clearCurrentNodeTempValues.run();
-            if (selectedNode instanceof ResettableNode resettable) {
+        if (ResettableNode.supportsReset(selectedNode)) {
+            ResettableNode resettable = (ResettableNode) selectedNode;
+            if (ImGui.button("Reset Properties")) {
                 try {
                     resettable.resetProperties();
+                    clearCurrentNodeTempValues.run();
+                    onResetSuccess.accept(selectedNode);
+                    resetFeedback.setSuccess("Properties reset.");
                     NodeCraft.LOGGER.info("Reset node properties for {}", selectedNode.getDisplayName());
                 } catch (Exception e) {
+                    resetFeedback.setFailure("Reset failed. Parameters unchanged.");
                     NodeCraft.LOGGER.error(
                             "Failed to reset node properties for {}: {}",
                             selectedNode.getDisplayName(),
-                            e.getMessage());
+                            e.getMessage(),
+                            e);
                 }
-            } else {
-                NodeCraft.LOGGER.debug(
-                        "Node {} does not implement ResettableNode",
-                        selectedNode.getDisplayName());
             }
+            resetFeedback.renderIfPresent();
+            ImGui.sameLine();
         }
 
-        ImGui.sameLine();
         ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 0.6f);
         ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 0.8f);
         ImGui.pushStyleColor(ImGuiCol.ButtonActive, 1.0f, 0.4f, 0.4f, 1.0f);
@@ -68,5 +72,39 @@ public final class NodeActionPanel {
             }
         }
         ImGui.popStyleColor(3);
+    }
+
+    /**
+     * One-frame reset status shown beside the Reset button.
+     */
+    public static final class ResetFeedback {
+        private String message;
+        private boolean success;
+
+        public void setSuccess(String message) {
+            this.message = message;
+            this.success = true;
+        }
+
+        public void setFailure(String message) {
+            this.message = message;
+            this.success = false;
+        }
+
+        public void clear() {
+            message = null;
+        }
+
+        public void renderIfPresent() {
+            if (message == null) {
+                return;
+            }
+            ImGui.sameLine();
+            if (success) {
+                ImGui.textColored(0.4f, 0.9f, 0.4f, 1.0f, message);
+            } else {
+                ImGui.textColored(1.0f, 0.4f, 0.4f, 1.0f, message);
+            }
+        }
     }
 }

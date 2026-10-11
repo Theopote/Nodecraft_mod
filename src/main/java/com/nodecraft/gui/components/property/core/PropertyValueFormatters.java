@@ -28,6 +28,11 @@ public final class PropertyValueFormatters {
         return Math.abs(displayed - live) > DECIMAL_DISPLAY_EPSILON;
     }
 
+    /** True when two stored double values differ (full precision, for commit decisions). */
+    public static boolean doubleValueChanged(double oldValue, double newValue) {
+        return Double.compare(oldValue, newValue) != 0;
+    }
+
     public static String formatBlockPos(BlockPos pos) {
         if (pos == null) {
             return "(null)";

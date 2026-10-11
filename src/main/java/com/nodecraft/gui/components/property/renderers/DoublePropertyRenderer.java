@@ -53,8 +53,8 @@ public final class DoublePropertyRenderer {
             boolean wasDeactivated = ImGui.isItemDeactivated();
             boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
 
-            if (isActive && !wasBeingEdited) {
-                panel.markPropertyBeingEdited(node, prop.name);
+            if (isActive) {
+                panel.refreshPropertyBeingEdited(node, prop.name);
             }
 
             boolean shouldSave = false;
@@ -63,7 +63,7 @@ public final class DoublePropertyRenderer {
             } else if (wasDeactivated && wasBeingEdited) {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
-                    shouldSave = PropertyValueFormatters.decimalDisplayDrifted(newValue, currentValue);
+                    shouldSave = PropertyValueFormatters.doubleValueChanged(newValue, currentValue);
                 } catch (NumberFormatException ignored) {
                     shouldSave = false;
                 }
@@ -72,14 +72,14 @@ public final class DoublePropertyRenderer {
             if (shouldSave && !isReadOnly) {
                 try {
                     double newValue = Double.parseDouble(textValue.get());
-                    if (PropertyValueFormatters.decimalDisplayDrifted(newValue, currentValue)) {
+                    if (PropertyValueFormatters.doubleValueChanged(newValue, currentValue)) {
                         panel.applyPropertyValue(node, prop, newValue);
                         textValue.set(PropertyValueFormatters.formatDecimal(newValue));
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
+                        NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), newValue);
                     }
                 } catch (NumberFormatException e) {
                     ImGui.sameLine();
-                    ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "无效数字");
+                    ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Invalid number");
                 }
             }
 
@@ -101,19 +101,17 @@ public final class DoublePropertyRenderer {
                         0.0f,
                         PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
                 )) {
-                    try {
-                        double baseValue = Double.parseDouble(textValue.get());
-                        double newValue = baseValue + dragValue[0];
+                    double liveValue = (double) prop.getter.invoke(node);
+                    double newValue = liveValue + dragValue[0];
+                    if (PropertyValueFormatters.doubleValueChanged(newValue, liveValue)) {
                         textValue.set(PropertyValueFormatters.formatDecimal(newValue));
                         panel.applyPropertyValue(node, prop, newValue);
-                        NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), newValue);
-                        dragValue[0] = 0.0f;
-                    } catch (NumberFormatException ignored) {
-                        // ignore drag when text is invalid
+                        NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), newValue);
                     }
+                    dragValue[0] = 0.0f;
                 }
                 if (ImGui.isItemActive()) {
-                    panel.markPropertyBeingEdited(node, prop.name);
+                    panel.refreshPropertyBeingEdited(node, prop.name);
                 }
                 if (ImGui.isItemDeactivated()) {
                     panel.markPropertyEditingFinished(node, prop.name);
@@ -121,9 +119,9 @@ public final class DoublePropertyRenderer {
                 ImGui.popItemWidth();
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

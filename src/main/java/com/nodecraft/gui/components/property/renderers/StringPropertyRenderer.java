@@ -33,7 +33,7 @@ public final class StringPropertyRenderer {
 
             if (StringColorPropertyEditor.shouldUseColorPicker(prop, resolvedValue)) {
                 StringColorPropertyEditor.render(panel, node, prop, resolvedValue, isReadOnly);
-                panel.clearPropertyError(prop.name);
+                panel.clearPropertyError(node, prop.name);
                 return;
             }
 
@@ -57,8 +57,8 @@ public final class StringPropertyRenderer {
             boolean wasDeactivated = ImGui.isItemDeactivated();
             boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
 
-            if (isActive && !wasBeingEdited) {
-                panel.markPropertyBeingEdited(node, prop.name);
+            if (isActive) {
+                panel.refreshPropertyBeingEdited(node, prop.name);
             }
 
             boolean shouldSave = false;
@@ -70,7 +70,7 @@ public final class StringPropertyRenderer {
 
             if (shouldSave && !isReadOnly && !imStr.get().equals(resolvedValue)) {
                 panel.applyPropertyValue(node, prop, imStr.get());
-                NodeCraft.LOGGER.debug("自动保存属性 '{}' 到节点 {}: {}", prop.name, node.getId(), imStr.get());
+                NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), imStr.get());
             }
 
             if (wasDeactivated && wasBeingEdited) {
@@ -81,9 +81,9 @@ public final class StringPropertyRenderer {
                 GeometryViewerPropertySupport.renderBlockTypeHint(imStr.get());
             }
 
-            panel.clearPropertyError(prop.name);
+            panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

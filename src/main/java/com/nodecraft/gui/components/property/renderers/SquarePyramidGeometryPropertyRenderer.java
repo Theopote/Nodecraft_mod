@@ -28,7 +28,7 @@ public final class SquarePyramidGeometryPropertyRenderer {
             ImGui.text(String.format("Height: %.2f", pyramid.getHeight()));
             ImGui.text("Normal: " + PropertyValueFormatters.formatVector3d(pyramid.getNormal()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

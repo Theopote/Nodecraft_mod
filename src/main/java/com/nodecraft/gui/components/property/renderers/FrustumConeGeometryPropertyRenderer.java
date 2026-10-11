@@ -29,7 +29,7 @@ public final class FrustumConeGeometryPropertyRenderer {
             ImGui.text(String.format("Base Radius: %.2f", frustum.getBaseRadius()));
             ImGui.text(String.format("Top Radius: %.2f", frustum.getTopRadius()));
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

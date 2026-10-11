@@ -30,7 +30,7 @@ public final class PlantStructurePropertyRenderer {
             ImGui.text("Roots: " + structure.getRootBlockCount());
             ImGui.text("Metadata: " + structure.getMetadata().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

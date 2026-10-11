@@ -27,7 +27,7 @@ public final class TetrahedronGeometryPropertyRenderer {
             ImGui.text(String.format("Circumradius: %.2f", tetrahedron.getCircumradius()));
             ImGui.text("Vertices: " + tetrahedron.getVertices().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

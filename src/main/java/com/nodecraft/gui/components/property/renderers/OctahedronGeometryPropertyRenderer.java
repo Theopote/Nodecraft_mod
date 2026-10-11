@@ -26,7 +26,7 @@ public final class OctahedronGeometryPropertyRenderer {
             ImGui.text(String.format("Vertex Radius: %.2f", octahedron.getVertexRadius()));
             ImGui.text("Vertices: " + octahedron.getVertices().size());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }

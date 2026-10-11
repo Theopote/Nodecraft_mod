@@ -28,7 +28,7 @@ public final class BoxGeometryPropertyRenderer {
             ImGui.text("Corners: " + box.getCornerCount());
             ImGui.text("Faces: " + box.getFaceCount());
         } catch (Throwable e) {
-            panel.handlePropertyError(prop, e);
+            panel.handlePropertyError(node, prop, e);
         }
     }
 }
