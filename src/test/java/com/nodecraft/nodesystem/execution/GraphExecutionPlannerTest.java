@@ -7,7 +7,6 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,14 +56,32 @@ class GraphExecutionPlannerTest {
         TestNode nodeB = new TestNode("b");
         graph.addNode(nodeA);
         graph.addNode(nodeB);
-        graph.connect(nodeA.getId(), "out", nodeB.getId(), "in");
-        graph.connect(nodeB.getId(), "out", nodeA.getId(), "in");
+        // Connect-time allows data cycles; planner rejects them at execute/plan.
+        assertTrue(graph.connect(nodeA.getId(), "out", nodeB.getId(), "in"));
+        assertTrue(graph.connect(nodeB.getId(), "out", nodeA.getId(), "in"));
+        assertEquals(2, graph.getConnections().size());
 
         GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
 
         assertTrue(plan.hasCycle());
         assertTrue(plan.topologicalOrder().isEmpty());
         assertTrue(plan.levels().isEmpty());
+    }
+
+    @Test
+    void execCycleDoesNotCountAsDataCycle() {
+        NodeGraph graph = new NodeGraph("exec-cycle-plan");
+        ExecNode nodeA = new ExecNode("a");
+        ExecNode nodeB = new ExecNode("b");
+        graph.addNode(nodeA);
+        graph.addNode(nodeB);
+        assertTrue(graph.connect(nodeA.getId(), "exec_out", nodeB.getId(), "exec_in"));
+        assertTrue(graph.connect(nodeB.getId(), "exec_out", nodeA.getId(), "exec_in"));
+
+        GraphExecutionPlanner.ExecutionPlan plan = GraphExecutionPlanner.plan(graph);
+
+        assertFalse(plan.hasCycle(), "exec back-edges are ignored by data topo");
+        assertEquals(2, plan.topologicalOrder().size());
     }
 
     private static final class TestNode extends BaseNode {
@@ -77,6 +94,19 @@ class GraphExecutionPlannerTest {
         @Override
         public void processNode(@Nullable com.nodecraft.nodesystem.execution.ExecutionContext context) {
             outputValues.put("out", inputValues.get("in"));
+        }
+    }
+
+    private static final class ExecNode extends BaseNode {
+        private ExecNode(String suffix) {
+            super(UUID.randomUUID(), "test.planner.exec." + suffix);
+            addInputPort(new BasePort("exec_in", "Exec In", "input", NodeDataType.EXEC, this, false, false));
+            addOutputPort(new BasePort("exec_out", "Exec Out", "output", NodeDataType.EXEC, this));
+        }
+
+        @Override
+        public void processNode(@Nullable com.nodecraft.nodesystem.execution.ExecutionContext context) {
+            outputValues.put("exec_out", Boolean.TRUE);
         }
     }
 }

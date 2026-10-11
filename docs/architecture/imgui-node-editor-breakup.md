@@ -50,6 +50,12 @@ ImGuiNodeEditor                    (frame loop + wiring only)
 
 **Stays on editor (chrome):** port hover tooltip; screen→world / `DragPreview` conversion.
 
+**Connection consistency (Phase 3A):**
+- Exact duplicate edges: `NodeGraph.canConnect` returns `false`; `connect` is an idempotent no-op (`true` without mutating). Service skips history / structure notify when already connected.
+- Disconnect: mutate graph first, then record history + `notifyStructureDirty` (no ghost undo on failed remove).
+- Dangling cleanup: collect-then-remove; `notifyStructureDirty` when any edge was removed.
+- **Cycles:** connect-time does **not** reject data cycles. Data cycles fail at plan/execute (`GraphExecutionPlanner.hasCycle`). Exec cycles (e.g. While back-edges) are legal and bounded by `ExecutionRunGuard` — see [`docs/execution-flow-control.md`](../execution-flow-control.md).
+
 ## Phase M — NodeCommandService
 
 **Owns:** add / addWithState / deleteSelected / duplicateSelected / align.

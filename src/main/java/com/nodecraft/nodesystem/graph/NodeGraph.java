@@ -166,6 +166,11 @@ public class NodeGraph {
      * @return 如果连接成功返回true，否则为false
      */
     public boolean connect(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+        // Idempotent no-op: exact edge already present (canConnect returns false for this case).
+        if (findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId) != null) {
+            return true;
+        }
+
         if (!canConnect(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
             return false;
         }
@@ -233,9 +238,9 @@ public class NodeGraph {
             return false;
         }
 
-        Connection existingExactConnection = findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-        if (existingExactConnection != null) {
-            return true;
+        // Exact edge already exists — cannot create another identical connection.
+        if (findConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId) != null) {
+            return false;
         }
 
         if (targetPort.allowsMultipleIncomingConnections()) {

@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.api.PortTypeResolver;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,9 +79,12 @@ public final class ConnectionEditService {
                 return false;
             }
 
-            boolean success = document.getGraph().connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            NodeGraph graph = document.getGraph();
+            boolean alreadyConnected = graph.isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            boolean success = graph.connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
 
-            if (success) {
+            // Duplicate connect is an idempotent no-op: no history, no structure event.
+            if (success && !alreadyConnected) {
                 host.notifyStructureDirty();
                 ImGuiNodeHistory history = host.history();
                 if (history != null && history.isRecording()) {
@@ -113,24 +117,31 @@ public final class ConnectionEditService {
                 NodeCraft.LOGGER.warn("断开连接失败：未找到源节点或目标节点");
                 return false;
             }
-            if (document.getGraph().isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
-                ImGuiNodeHistory history = host.history();
-                if (history != null && history.isRecording()) {
-                    history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                }
-                document.getGraph().disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
-                host.notifyStructureDirty();
-                NodeCraft.LOGGER.info(
-                        "成功断开连接: {}({}) -> {}({})",
-                        sourceNode.getDisplayName(),
-                        sourcePortId,
-                        targetNode.getDisplayName(),
-                        targetPortId
-                );
-                return true;
+            NodeGraph graph = document.getGraph();
+            if (!graph.isConnected(sourceNodeId, sourcePortId, targetNodeId, targetPortId)) {
+                NodeCraft.LOGGER.warn("断开连接失败：端口未连接");
+                return false;
             }
-            NodeCraft.LOGGER.warn("断开连接失败：端口未连接");
-            return false;
+
+            boolean removed = graph.disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            if (!removed) {
+                NodeCraft.LOGGER.warn("断开连接失败：图结构未变更");
+                return false;
+            }
+
+            ImGuiNodeHistory history = host.history();
+            if (history != null && history.isRecording()) {
+                history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+            }
+            host.notifyStructureDirty();
+            NodeCraft.LOGGER.info(
+                    "成功断开连接: {}({}) -> {}({})",
+                    sourceNode.getDisplayName(),
+                    sourcePortId,
+                    targetNode.getDisplayName(),
+                    targetPortId
+            );
+            return true;
         } catch (Exception e) {
             NodeCraft.LOGGER.error("断开端口连接时出错: {}", e.getMessage(), e);
             return false;
@@ -143,25 +154,30 @@ public final class ConnectionEditService {
             return;
         }
 
-        int removedCount = 0;
-        for (NodeGraph.Connection connection : document.getGraph().getConnections()) {
+        NodeGraph graph = document.getGraph();
+        List<NodeGraph.Connection> snapshot = new ArrayList<>(graph.getConnections());
+        List<NodeGraph.Connection> toRemove = new ArrayList<>();
+        for (NodeGraph.Connection connection : snapshot) {
             INode sourceNode = connection.sourceNode();
             INode targetNode = connection.targetNode();
             if (sourceNode == null || targetNode == null) {
-                document.getGraph().removeConnection(connection);
-                removedCount++;
+                toRemove.add(connection);
                 continue;
             }
 
             if (!hasPort(sourceNode.getOutputPorts(), connection.sourcePort().getId())
                     || !hasPort(targetNode.getInputPorts(), connection.targetPort().getId())) {
-                document.getGraph().removeConnection(connection);
-                removedCount++;
+                toRemove.add(connection);
             }
         }
 
-        if (removedCount > 0) {
-            NodeCraft.LOGGER.info("已清理 {} 条悬挂连线（端口已被动态移除）", removedCount);
+        for (NodeGraph.Connection connection : toRemove) {
+            graph.removeConnection(connection);
+        }
+
+        if (!toRemove.isEmpty()) {
+            host.notifyStructureDirty();
+            NodeCraft.LOGGER.info("已清理 {} 条悬挂连线（端口已被动态移除）", toRemove.size());
         }
     }
 

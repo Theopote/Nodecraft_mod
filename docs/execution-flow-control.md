@@ -9,7 +9,7 @@ The comprehensive review is **directionally correct**: NodeCraft is still primar
 | No exec port type | **Fixed (P0-A slice 1)** — `NodeDataType.EXEC` |
 | Static topo only | **Still default** for graphs without exec wires |
 | Branch/While cannot skip branches | **Still true for dataflow nodes**; exec scheduler is the path to fix this |
-| Cycles fail immediately | **Data cycles still fail**; exec cycles are bounded by `ExecutionRunGuard` |
+| Cycles fail immediately | **Data cycles still fail at plan/execute**; exec cycles are bounded by `ExecutionRunGuard`. Connect-time does not reject data cycles (editor may wire them; planner reports `hasCycle`). |
 
 With exec wires, `flow.control.*` / `flow.loop.*` route execution — see Graph **V65** [`node-language-v1-flow-control.md`](./node-language-v1-flow-control.md) and Graph **V66** [`node-language-v1-flow-loop.md`](./node-language-v1-flow-loop.md). Legacy data outputs remain for graphs without exec wires; **Exec In eligibility is owned by `NodeExecutor`**, not re-checked inside each flow node’s `processNode`.
 

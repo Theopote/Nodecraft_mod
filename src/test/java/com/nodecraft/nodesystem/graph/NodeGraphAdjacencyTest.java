@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -84,11 +85,121 @@ class NodeGraphAdjacencyTest {
         assertEquals(Set.of(a.getId(), b.getId()), graph.getDirtyImpactNodeIds(a.getId()));
     }
 
+    @Test
+    void canConnectFalseForExactExistingEdge() {
+        NodeGraph graph = new NodeGraph("exact-edge");
+        TestNode source = new TestNode("source");
+        TestNode target = new TestNode("target");
+        graph.addNode(source);
+        graph.addNode(target);
+        assertTrue(graph.connect(source.getId(), "out", target.getId(), "in"));
+
+        assertFalse(graph.canConnect(source.getId(), "out", target.getId(), "in"));
+    }
+
+    @Test
+    void connectIsIdempotentForExactEdge() {
+        NodeGraph graph = new NodeGraph("idempotent");
+        TestNode source = new TestNode("source");
+        TestNode target = new TestNode("target");
+        graph.addNode(source);
+        graph.addNode(target);
+
+        assertTrue(graph.connect(source.getId(), "out", target.getId(), "in"));
+        assertTrue(graph.connect(source.getId(), "out", target.getId(), "in"));
+        assertEquals(1, graph.getConnections().size());
+    }
+
+    @Test
+    void occupiedSingleInputRejectsSecondSource() {
+        NodeGraph graph = new NodeGraph("occupied-input");
+        TestNode a = new TestNode("a");
+        TestNode b = new TestNode("b");
+        TestNode target = new TestNode("target");
+        graph.addNode(a);
+        graph.addNode(b);
+        graph.addNode(target);
+
+        assertTrue(graph.connect(a.getId(), "out", target.getId(), "in"));
+        assertFalse(graph.canConnect(b.getId(), "out", target.getId(), "in"));
+        assertFalse(graph.connect(b.getId(), "out", target.getId(), "in"));
+        assertEquals(1, graph.getConnections().size());
+    }
+
+    @Test
+    void multiIncomingPortAllowsDistinctSources() {
+        NodeGraph graph = new NodeGraph("multi-in");
+        TestNode a = new TestNode("a");
+        TestNode b = new TestNode("b");
+        MultiInNode target = new MultiInNode("target");
+        graph.addNode(a);
+        graph.addNode(b);
+        graph.addNode(target);
+
+        assertTrue(graph.connect(a.getId(), "out", target.getId(), "in"));
+        assertTrue(graph.canConnect(b.getId(), "out", target.getId(), "in"));
+        assertTrue(graph.connect(b.getId(), "out", target.getId(), "in"));
+        assertEquals(2, graph.getConnections().size());
+    }
+
+    @Test
+    void incompatibleTypesCannotConnect() {
+        NodeGraph graph = new NodeGraph("type-mismatch");
+        TypedNode intOut = new TypedNode("int", NodeDataType.INTEGER, NodeDataType.INTEGER);
+        TypedNode floatIn = new TypedNode("float", NodeDataType.FLOAT, NodeDataType.FLOAT);
+        graph.addNode(intOut);
+        graph.addNode(floatIn);
+
+        assertFalse(graph.canConnect(intOut.getId(), "out", floatIn.getId(), "in"));
+        assertFalse(graph.connect(intOut.getId(), "out", floatIn.getId(), "in"));
+        assertTrue(graph.getConnections().isEmpty());
+    }
+
+    @Test
+    void dataCycleCanBeWired() {
+        NodeGraph graph = new NodeGraph("data-cycle-wire");
+        TestNode a = new TestNode("a");
+        TestNode b = new TestNode("b");
+        graph.addNode(a);
+        graph.addNode(b);
+
+        assertTrue(graph.connect(a.getId(), "out", b.getId(), "in"));
+        assertTrue(graph.canConnect(b.getId(), "out", a.getId(), "in"));
+        assertTrue(graph.connect(b.getId(), "out", a.getId(), "in"));
+        assertEquals(2, graph.getConnections().size());
+    }
+
     private static final class TestNode extends BaseNode {
         private TestNode(String suffix) {
             super(UUID.randomUUID(), "test.adjacency." + suffix);
             addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this));
             addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+        }
+
+        @Override
+        public void processNode(@Nullable com.nodecraft.nodesystem.execution.ExecutionContext context) {
+            outputValues.put("out", inputValues.get("in"));
+        }
+    }
+
+    private static final class MultiInNode extends BaseNode {
+        private MultiInNode(String suffix) {
+            super(UUID.randomUUID(), "test.adjacency.multi." + suffix);
+            addInputPort(new BasePort("in", "In", "input", NodeDataType.ANY, this, true));
+            addOutputPort(new BasePort("out", "Out", "output", NodeDataType.ANY, this));
+        }
+
+        @Override
+        public void processNode(@Nullable com.nodecraft.nodesystem.execution.ExecutionContext context) {
+            outputValues.put("out", inputValues.get("in"));
+        }
+    }
+
+    private static final class TypedNode extends BaseNode {
+        private TypedNode(String suffix, NodeDataType inType, NodeDataType outType) {
+            super(UUID.randomUUID(), "test.adjacency.typed." + suffix);
+            addInputPort(new BasePort("in", "In", "input", inType, this));
+            addOutputPort(new BasePort("out", "Out", "output", outType, this));
         }
 
         @Override
