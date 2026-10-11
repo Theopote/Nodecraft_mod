@@ -254,7 +254,7 @@ final class ScalarPropertyEditor {
 
         ImGui.sameLine();
         ImGui.pushItemWidth(ImGui.getContentRegionAvailX() * 0.25f);
-        float[] dragValue = new float[]{0.0f};
+        float[] dragValue = panel.getOrCreateTempValue(tempKey + ":drag", () -> new float[]{0.0f});
         ImGui.dragFloat(
                 "##drag_" + prop.name,
                 dragValue,
@@ -275,6 +275,7 @@ final class ScalarPropertyEditor {
         }
         if (ImGui.isItemDeactivated()) {
             panel.markPropertyEditingFinished(node, prop.name);
+            dragValue[0] = 0.0f;
         }
         ImGui.popItemWidth();
     }

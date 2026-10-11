@@ -43,6 +43,7 @@ import com.nodecraft.gui.components.node.NodeGraphAccess;
 import com.nodecraft.gui.components.node.NodeStatusPresenter;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyEditSession;
+import com.nodecraft.gui.components.property.core.PropertyValueSnapshots;
 import com.nodecraft.gui.components.property.core.PropertyEditorRegistry;
 import com.nodecraft.gui.components.property.core.PropertyInspector;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
@@ -186,7 +187,7 @@ public class PropertyPanelComponent implements EditorComponent {
         if (!(resettable instanceof BaseNode baseNode)) {
             throw new IllegalArgumentException("Resettable node must be a BaseNode");
         }
-        Object beforeState = baseNode.getNodeState();
+        Object beforeState = PropertyValueSnapshots.copyNodeState(baseNode.getNodeState());
         try {
             resettable.resetProperties();
             Object afterState = baseNode.getNodeState();

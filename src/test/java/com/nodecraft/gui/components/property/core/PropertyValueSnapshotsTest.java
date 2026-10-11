@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -65,6 +66,18 @@ class PropertyValueSnapshotsTest {
         assertNotSame(original.points().get(0), snapshot.points().get(0));
         original.points().get(0).add(new Vec3d(5, 0, 0));
         assertEquals(new Vec3d(0, 0, 0), snapshot.points().get(0));
+    }
+
+    @Test
+    void nodeStateMapIsIsolated() {
+        Vec3 center = new Vec3(1.0d, 2.0d, 3.0d);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> snapshot = (Map<String, Object>) PropertyValueSnapshots.copyNodeState(Map.of("center", center));
+
+        Vec3 copiedCenter = (Vec3) snapshot.get("center");
+        assertNotSame(center, copiedCenter);
+        center.setX(99.0d);
+        assertEquals(1.0d, copiedCenter.getX(), 0.0d);
     }
 
     @Test

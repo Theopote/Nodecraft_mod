@@ -10,7 +10,9 @@ import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Deep copies property values for undo/redo snapshots.
@@ -20,6 +22,31 @@ public final class PropertyValueSnapshots {
     private static final Gson GSON = new Gson();
 
     private PropertyValueSnapshots() {
+    }
+
+    /**
+     * Deep-copies a node state object returned by {@code BaseNode.getNodeState()}.
+     * Map entries are copied individually so mutable geometry values cannot alias live node data.
+     */
+    public static Object copyNodeState(Object state) {
+        if (state == null) {
+            return null;
+        }
+        if (state instanceof Map<?, ?> map) {
+            Map<String, Object> copied = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    copied.put(key, copy(entry.getValue()));
+                }
+            }
+            return copied;
+        }
+        try {
+            return GSON.fromJson(GSON.toJson(state), state.getClass());
+        } catch (Exception e) {
+            NodeCraft.LOGGER.warn("Unable to isolate node state snapshot of type {}", state.getClass().getName(), e);
+            return state;
+        }
     }
 
     public static Object copy(Object value) {
