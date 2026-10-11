@@ -5,6 +5,8 @@ import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.nodesystem.nodes.math.fields.PointAttractorFieldNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
+import com.nodecraft.nodesystem.preview.TrackedWorldCompatGate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -14,6 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PropertySupportHelpersTest {
+
+    @AfterEach
+    void clearCompatGate() {
+        System.clearProperty(TrackedWorldCompatGate.SYSTEM_PROPERTY);
+    }
 
     @Test
     void colorPickerTriggersOnHexOrColorNamedBlank() {
@@ -31,11 +38,12 @@ class PropertySupportHelpersTest {
     }
 
     @Test
-    void geometryViewerHidesGhostOnlyPropsOnNonGhostBackend() throws Exception {
+    void geometryViewerHidesGhostOnlyPropsOnNonGhostBackend() {
+        System.setProperty(TrackedWorldCompatGate.SYSTEM_PROPERTY, "true");
+
         GeometryViewerNode node = new GeometryViewerNode();
-        java.lang.reflect.Field backendField = GeometryViewerNode.class.getDeclaredField("previewBackend");
-        backendField.setAccessible(true);
-        backendField.set(node, PreviewBackend.TRACKED_WORLD);
+        node.setPreviewBackend(PreviewBackend.TRACKED_WORLD);
+        assertEquals(PreviewBackend.TRACKED_WORLD, node.getPreviewBackend());
 
         assertFalse(GeometryViewerPropertySupport.shouldDisplayProperty(
                 node, descriptor("previewColor", "Preview Color", String.class)));

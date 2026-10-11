@@ -3,6 +3,7 @@ package com.nodecraft.gui.components.property.support;
 import com.nodecraft.gui.components.property.core.PropertyConstraints;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.api.NodeProperty;
 
 /**
  * Combines {@link NodeProperty} bounds with semantic UI hints (percent sliders, integer counts, etc.).

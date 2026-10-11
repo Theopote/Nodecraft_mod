@@ -7,9 +7,9 @@ import com.nodecraft.nodesystem.core.NodePropertyBindings;
 import com.nodecraft.nodesystem.nodes.math.fields.PointAttractorFieldNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
+import com.nodecraft.nodesystem.preview.TrackedWorldCompatGate;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -19,6 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NodePropertyMetadataTest {
 
     private final PropertyInspector inspector = new PropertyInspector();
+
+    @AfterEach
+    void clearCompatGate() {
+        System.clearProperty(TrackedWorldCompatGate.SYSTEM_PROPERTY);
+    }
 
     @Test
     void geometryViewerPerformancePropertiesHavePositiveBounds() {
@@ -44,11 +49,12 @@ class NodePropertyMetadataTest {
     }
 
     @Test
-    void geometryViewerGhostOnlyPropertiesHiddenOnTrackedWorldBackend() throws Exception {
+    void geometryViewerGhostOnlyPropertiesHiddenOnTrackedWorldBackend() {
+        System.setProperty(TrackedWorldCompatGate.SYSTEM_PROPERTY, "true");
+
         GeometryViewerNode node = new GeometryViewerNode();
-        Field backendField = GeometryViewerNode.class.getDeclaredField("previewBackend");
-        backendField.setAccessible(true);
-        backendField.set(node, PreviewBackend.TRACKED_WORLD);
+        node.setPreviewBackend(PreviewBackend.TRACKED_WORLD);
+        assertEquals(PreviewBackend.TRACKED_WORLD, node.getPreviewBackend());
 
         PropertyDescriptor previewColor = descriptor("previewColor", String.class);
         PropertyDescriptor transparency = descriptor("transparency", float.class);

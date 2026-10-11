@@ -7,9 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PropertyConstraintsTest {
 
@@ -43,7 +41,7 @@ class PropertyConstraintsTest {
     }
 
     @Test
-    void geometryViewerTransparencyResolvesToPercentRange() throws Exception {
+    void geometryViewerTransparencyResolvesToPercentRange() {
         GeometryViewerNode node = new GeometryViewerNode();
         PropertyInspector inspector = new PropertyInspector();
         PropertyDescriptor transparency = inspector.getPropertiesForNode(GeometryViewerNode.class).stream()
@@ -58,6 +56,6 @@ class PropertyConstraintsTest {
 
     @Test
     void unboundedAnnotationReturnsSharedInstance() {
-        assertTrue(PropertyConstraints.fromAnnotation(null) == PropertyConstraints.UNBOUNDED);
+        assertSame(PropertyConstraints.UNBOUNDED, PropertyConstraints.fromAnnotation(null));
     }
 }
