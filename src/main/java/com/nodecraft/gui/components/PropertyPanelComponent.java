@@ -50,8 +50,7 @@ import com.nodecraft.gui.components.property.core.PropertyRendererRegistry;
 import com.nodecraft.gui.components.property.core.PropertySectionOrganizer;
 import com.nodecraft.gui.components.property.layout.PropertyGroupRenderer;
 import com.nodecraft.gui.components.property.renderers.*;
-import com.nodecraft.gui.components.property.support.AttractorFieldPropertySupport;
-import com.nodecraft.gui.components.property.support.GeometryViewerPropertySupport;
+import com.nodecraft.gui.components.property.support.PropertyVisibilitySupport;
 import com.nodecraft.gui.components.port.PortDataRenderer;
 import com.nodecraft.gui.components.port.PortHighlightSupport;
 import com.nodecraft.gui.components.port.PortTableRenderer;
@@ -432,8 +431,7 @@ public class PropertyPanelComponent implements EditorComponent {
 
         List<PropertyDescriptor> properties = getPropertiesForNode(selectedNode.getClass()).stream()
                 .filter(prop -> !HIDDEN_NODE_PROPERTIES.contains(prop.name))
-                .filter(prop -> GeometryViewerPropertySupport.shouldDisplayProperty(selectedNode, prop))
-                .filter(prop -> AttractorFieldPropertySupport.shouldDisplayProperty(selectedNode, prop))
+                .filter(prop -> PropertyVisibilitySupport.shouldDisplayProperty(selectedNode, prop))
                 .toList();
         if (properties.isEmpty()) {
             ImGui.textDisabled("No editable properties");

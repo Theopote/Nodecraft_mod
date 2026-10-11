@@ -40,13 +40,13 @@ public class VolumeAttractorFieldNode extends BaseNode {
     @NodeProperty(displayName = "Strength", category = "Attractor", order = 3)
     private double strength = 1.0d;
 
-    @NodeProperty(displayName = "Radius", category = "Attractor", order = 4)
+    @NodeProperty(displayName = "Radius", category = "Attractor", order = 4, min = 0.001, step = 0.5)
     private double radius = 8.0d;
 
-    @NodeProperty(displayName = "Exponent", category = "Attractor", order = 5)
+    @NodeProperty(displayName = "Exponent", category = "Attractor", order = 5, min = 0.001, step = 0.1)
     private double exponent = 2.0d;
 
-    @NodeProperty(displayName = "SDF Step", category = "Attractor", order = 6)
+    @NodeProperty(displayName = "SDF Step", category = "Attractor", order = 6, min = 0.001, step = 0.05)
     private double sdfStep = 0.25d;
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";

@@ -31,9 +31,11 @@ class PropertySupportHelpersTest {
     }
 
     @Test
-    void geometryViewerHidesGhostOnlyPropsOnNonGhostBackend() {
+    void geometryViewerHidesGhostOnlyPropsOnNonGhostBackend() throws Exception {
         GeometryViewerNode node = new GeometryViewerNode();
-        node.setPreviewBackend(PreviewBackend.TRACKED_WORLD, true);
+        java.lang.reflect.Field backendField = GeometryViewerNode.class.getDeclaredField("previewBackend");
+        backendField.setAccessible(true);
+        backendField.set(node, PreviewBackend.TRACKED_WORLD);
 
         assertFalse(GeometryViewerPropertySupport.shouldDisplayProperty(
                 node, descriptor("previewColor", "Preview Color", String.class)));

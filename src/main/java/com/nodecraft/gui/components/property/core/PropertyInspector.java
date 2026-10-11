@@ -38,7 +38,8 @@ public final class PropertyInspector {
                 null,
                 binding.description(),
                 binding.category(),
-                binding.order()
+                binding.order(),
+                binding.constraints()
         );
     }
 

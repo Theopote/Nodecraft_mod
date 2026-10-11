@@ -91,7 +91,7 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Outline Color", category = "Display", order = 2)
     private String ghostOutlineColor = "#1A1A1A";
 
-    @NodeProperty(displayName = "Transparency", category = "Display", order = 3)
+    @NodeProperty(displayName = "Transparency", category = "Display", order = 3, min = 0.0, max = 1.0)
     private float transparency = 0.4f;
 
     @NodeProperty(displayName = "Show Outline", category = "Display", order = 4)
@@ -114,13 +114,13 @@ public class GeometryViewerNode extends BaseCustomUINode {
     @NodeProperty(displayName = "Render Mode", category = "Display", order = 8)
     private GhostRenderMode ghostRenderMode = GhostRenderMode.BLOCK_MODEL;
 
-    @NodeProperty(displayName = "Max Preview Blocks", category = "Performance", order = 9)
+    @NodeProperty(displayName = "Max Preview Blocks", category = "Performance", order = 9, min = 1.0, max = 20000.0, step = 100.0)
     private int maxPreviewBlocks = 20000;
 
-    @NodeProperty(displayName = "Draft Preview Blocks", category = "Performance", order = 10)
+    @NodeProperty(displayName = "Draft Preview Blocks", category = "Performance", order = 10, min = 1.0, max = 20000.0, step = 100.0)
     private int draftPreviewBlocks = 5000;
 
-    @NodeProperty(displayName = "Draft Settle Ms", category = "Performance", order = 11)
+    @NodeProperty(displayName = "Draft Settle Ms", category = "Performance", order = 11, min = 0.0, max = 10000.0, step = 50.0)
     private int draftSettleMillis = 250;
 
     @NodeProperty(displayName = "Show Dimension Labels", category = "Guides", order = 12)

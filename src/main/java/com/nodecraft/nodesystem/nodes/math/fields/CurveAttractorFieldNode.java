@@ -33,10 +33,10 @@ public class CurveAttractorFieldNode extends BaseNode {
     @NodeProperty(displayName = "Strength", category = "Attractor", order = 2)
     private double strength = 1.0d;
 
-    @NodeProperty(displayName = "Radius", category = "Attractor", order = 3)
+    @NodeProperty(displayName = "Radius", category = "Attractor", order = 3, min = 0.001, step = 0.5)
     private double radius = 8.0d;
 
-    @NodeProperty(displayName = "Exponent", category = "Attractor", order = 4)
+    @NodeProperty(displayName = "Exponent", category = "Attractor", order = 4, min = 0.001, step = 0.1)
     private double exponent = 2.0d;
 
     private static final String INPUT_PATH_ID = "input_path";

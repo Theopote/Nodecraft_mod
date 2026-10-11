@@ -2,8 +2,10 @@ package com.nodecraft.gui.components.property.renderers;
 
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.PropertyPanelComponent;
+import com.nodecraft.gui.components.property.core.PropertyConstraints;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
+import com.nodecraft.gui.components.property.support.PropertyConstraintResolver;
 import com.nodecraft.gui.components.property.support.PropertySemanticHints;
 import com.nodecraft.nodesystem.api.INode;
 import imgui.ImGui;
@@ -36,12 +38,13 @@ final class ScalarPropertyEditor {
         }
 
         PropertySemanticHints.ScalarMode mode = PropertySemanticHints.scalarMode(node, prop, prop.type);
+        PropertyConstraints constraints = PropertyConstraintResolver.resolve(node, prop);
         boolean isReadOnly = prop.setter == null;
 
         switch (kind) {
-            case INT -> renderInt(panel, node, prop, isReadOnly, mode);
-            case FLOAT -> renderFloat(panel, node, prop, isReadOnly, mode);
-            case DOUBLE -> renderDouble(panel, node, prop, isReadOnly, mode);
+            case INT -> renderInt(panel, node, prop, isReadOnly, constraints);
+            case FLOAT -> renderFloat(panel, node, prop, isReadOnly, mode, constraints);
+            case DOUBLE -> renderDouble(panel, node, prop, isReadOnly, mode, constraints);
             default -> throw new IllegalStateException("Unsupported scalar kind: " + kind);
         }
     }
@@ -51,7 +54,7 @@ final class ScalarPropertyEditor {
             INode node,
             PropertyDescriptor prop,
             boolean isReadOnly,
-            PropertySemanticHints.ScalarMode mode
+            PropertyConstraints constraints
     ) throws Throwable {
         int currentValue = (int) prop.getter.invoke(node);
         if (isReadOnly) {
@@ -60,10 +63,13 @@ final class ScalarPropertyEditor {
         }
 
         int[] valArr = {currentValue};
-        float speed = mode == PropertySemanticHints.ScalarMode.INTEGER_COUNT ? 1f : 1f;
-        if (ImGui.dragInt("##" + prop.name, valArr, speed) && valArr[0] != currentValue) {
-            panel.applyPropertyValue(node, prop, valArr[0]);
-            NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), valArr[0]);
+        int min = constraints.hasMin() ? (int) Math.ceil(constraints.min()) : Integer.MIN_VALUE;
+        int max = constraints.hasMax() ? (int) Math.floor(constraints.max()) : Integer.MAX_VALUE;
+        float speed = constraints.dragSpeedForInt();
+        if (ImGui.dragInt("##" + prop.name, valArr, speed, min, max) && valArr[0] != currentValue) {
+            int clamped = constraints.clampInt(valArr[0]);
+            panel.applyPropertyValue(node, prop, clamped);
+            NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), clamped);
         }
         trackEditSession(panel, node, prop.name);
     }
@@ -73,7 +79,8 @@ final class ScalarPropertyEditor {
             INode node,
             PropertyDescriptor prop,
             boolean isReadOnly,
-            PropertySemanticHints.ScalarMode mode
+            PropertySemanticHints.ScalarMode mode,
+            PropertyConstraints constraints
     ) throws Throwable {
         float currentValue = (float) prop.getter.invoke(node);
         if (isReadOnly) {
@@ -90,15 +97,19 @@ final class ScalarPropertyEditor {
         }
 
         float[] valArr = {currentValue};
+        float min = constraints.hasMin() ? constraints.min().floatValue() : Float.NEGATIVE_INFINITY;
+        float max = constraints.hasMax() ? constraints.max().floatValue() : Float.POSITIVE_INFINITY;
+        float speed = constraints.dragSpeedForFloat();
         boolean changed = switch (mode) {
-            case PERCENT -> ImGui.sliderFloat("##" + prop.name, valArr, 0.0f, 1.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-            case ANGLE -> ImGui.dragFloat("##" + prop.name, valArr, 0.5f, 0.0f, 0.0f, "%.1f°");
-            default -> ImGui.dragFloat("##" + prop.name, valArr, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
+            case PERCENT -> ImGui.sliderFloat("##" + prop.name, valArr, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
+            case ANGLE -> ImGui.dragFloat("##" + prop.name, valArr, speed, min, max, "%.1f°");
+            default -> ImGui.dragFloat("##" + prop.name, valArr, speed, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
         };
 
         if (changed && valArr[0] != currentValue) {
-            panel.applyPropertyValue(node, prop, valArr[0]);
-            NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), valArr[0]);
+            float clamped = constraints.clampFloat(valArr[0]);
+            panel.applyPropertyValue(node, prop, clamped);
+            NodeCraft.LOGGER.debug("Saved property '{}' on node {}: {}", prop.name, node.getId(), clamped);
         }
         trackEditSession(panel, node, prop.name);
 
@@ -113,7 +124,8 @@ final class ScalarPropertyEditor {
             INode node,
             PropertyDescriptor prop,
             boolean isReadOnly,
-            PropertySemanticHints.ScalarMode mode
+            PropertySemanticHints.ScalarMode mode,
+            PropertyConstraints constraints
     ) throws Throwable {
         double currentValue = (double) prop.getter.invoke(node);
         if (isReadOnly) {
@@ -126,10 +138,13 @@ final class ScalarPropertyEditor {
         }
 
         if (mode == PropertySemanticHints.ScalarMode.PERCENT) {
+            float min = constraints.hasMin() ? constraints.min().floatValue() : 0.0f;
+            float max = constraints.hasMax() ? constraints.max().floatValue() : 1.0f;
             float[] percentValue = {(float) currentValue};
-            if (ImGui.sliderFloat("##" + prop.name, percentValue, 0.0f, 1.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT)
+            if (ImGui.sliderFloat("##" + prop.name, percentValue, min, max, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT)
                     && PropertyValueFormatters.doubleValueChanged(percentValue[0], currentValue)) {
-                panel.applyPropertyValue(node, prop, (double) percentValue[0]);
+                double clamped = constraints.clampDouble(percentValue[0]);
+                panel.applyPropertyValue(node, prop, clamped);
             }
             ImGui.sameLine();
             ImGui.text(String.format(Locale.ROOT, "%d%%", Math.round(percentValue[0] * 100.0f)));
@@ -138,23 +153,27 @@ final class ScalarPropertyEditor {
         }
 
         if (mode == PropertySemanticHints.ScalarMode.ANGLE) {
+            float min = constraints.hasMin() ? constraints.min().floatValue() : Float.NEGATIVE_INFINITY;
+            float max = constraints.hasMax() ? constraints.max().floatValue() : Float.POSITIVE_INFINITY;
             float[] angleValue = {(float) currentValue};
-            if (ImGui.dragFloat("##" + prop.name, angleValue, 0.5f, 0.0f, 0.0f, "%.1f°")
+            if (ImGui.dragFloat("##" + prop.name, angleValue, constraints.dragSpeedForFloat(), min, max, "%.1f°")
                     && PropertyValueFormatters.doubleValueChanged(angleValue[0], currentValue)) {
-                panel.applyPropertyValue(node, prop, (double) angleValue[0]);
+                double clamped = constraints.clampDouble(angleValue[0]);
+                panel.applyPropertyValue(node, prop, clamped);
             }
             trackEditSession(panel, node, prop.name);
             return;
         }
 
-        renderPreciseDouble(panel, node, prop, currentValue);
+        renderPreciseDouble(panel, node, prop, currentValue, constraints);
     }
 
     private static void renderPreciseDouble(
             PropertyPanelComponent panel,
             INode node,
             PropertyDescriptor prop,
-            double currentValue
+            double currentValue,
+            PropertyConstraints constraints
     ) throws Throwable {
         String tempKey = panel.getTempValueKey(node, prop.name);
         ImString textValue = panel.getOrReplaceTempValue(
@@ -195,7 +214,7 @@ final class ScalarPropertyEditor {
 
         if (shouldSave) {
             try {
-                double newValue = Double.parseDouble(textValue.get());
+                double newValue = constraints.clampDouble(Double.parseDouble(textValue.get()));
                 if (PropertyValueFormatters.doubleValueChanged(newValue, currentValue)) {
                     panel.applyPropertyValue(node, prop, newValue);
                     textValue.set(PropertyValueFormatters.formatEditNumber(newValue));
@@ -218,13 +237,13 @@ final class ScalarPropertyEditor {
         if (ImGui.dragFloat(
                 "##drag_" + prop.name,
                 dragValue,
-                0.01f,
+                constraints.dragSpeedForFloat(),
                 0.0f,
                 0.0f,
                 PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
         )) {
             double liveValue = (double) prop.getter.invoke(node);
-            double newValue = liveValue + dragValue[0];
+            double newValue = constraints.clampDouble(liveValue + dragValue[0]);
             if (PropertyValueFormatters.doubleValueChanged(newValue, liveValue)) {
                 textValue.set(PropertyValueFormatters.formatEditNumber(newValue));
                 panel.applyPropertyValue(node, prop, newValue);

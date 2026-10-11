@@ -68,6 +68,7 @@ primitive renderers call support classes directly.
 2. Property-panel undo/redo via `PropertyChangeCommand` recorded in `ImGuiNodeHistory.recordPropertyChange` (Phase 2 — wired from `PropertyPanelComponent.applyPropertyValue`, coalesces consecutive edits to the same property)
 3. Property-panel layout pass (Phase 3 — compact header, collapsed ports by default, no repeated Property/Value headers, responsive label width, readonly scalars as text)
 4. Unified scalar/enum/vector editors (Phase 4 — `ScalarPropertyEditor`, semantic percent/angle/count modes, segmented enums, full-precision vector rows)
+5. Per-node property metadata (Phase 5 — `@NodeProperty` min/max/step, `PropertyConstraints`, `PropertyVisibilitySupport`, audited GeometryViewer + attractor fields)
 
 ## Exit gates — Phase 1
 

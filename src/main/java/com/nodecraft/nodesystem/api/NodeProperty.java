@@ -25,4 +25,19 @@ public @interface NodeProperty {
     
     /** 属性的描述，会显示在工具提示中 */
     String description() default "";
+
+    /**
+     * Minimum allowed value for numeric properties.
+     * Unbounded when {@link Double#NEGATIVE_INFINITY}.
+     */
+    double min() default Double.NEGATIVE_INFINITY;
+
+    /**
+     * Maximum allowed value for numeric properties.
+     * Unbounded when {@link Double#POSITIVE_INFINITY}.
+     */
+    double max() default Double.POSITIVE_INFINITY;
+
+    /** Drag/step increment hint. Zero means auto. */
+    double step() default 0.0;
 } 

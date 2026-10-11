@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.core;
 
+import com.nodecraft.gui.components.property.core.PropertyConstraints;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeProperty;
 import org.jetbrains.annotations.Nullable;
@@ -428,6 +429,8 @@ public final class NodePropertyBindings {
 
         int order();
 
+        PropertyConstraints constraints();
+
         Object read(Object target) throws Throwable;
 
         void write(Object target, Object value) throws Throwable;
@@ -439,6 +442,7 @@ public final class NodePropertyBindings {
         private final String description;
         private final String category;
         private final int order;
+        private final PropertyConstraints constraints;
         private final MethodHandle getter;
         private final MethodHandle setter;
         private final Class<?> type;
@@ -454,6 +458,7 @@ public final class NodePropertyBindings {
             this.description = annotation.description();
             this.category = annotation.category();
             this.order = annotation.order();
+            this.constraints = PropertyConstraints.fromAnnotation(annotation);
             try {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 field.setAccessible(true);
@@ -500,6 +505,11 @@ public final class NodePropertyBindings {
         }
 
         @Override
+        public PropertyConstraints constraints() {
+            return constraints;
+        }
+
+        @Override
         public Object read(Object target) throws Throwable {
             return getter.invoke(target);
         }
@@ -518,6 +528,7 @@ public final class NodePropertyBindings {
         private final String description;
         private final String category;
         private final int order;
+        private final PropertyConstraints constraints;
         private final MethodHandle getter;
         private final MethodHandle setter;
         private final Class<?> type;
@@ -534,11 +545,13 @@ public final class NodePropertyBindings {
                 this.description = annotation.description();
                 this.category = annotation.category();
                 this.order = annotation.order();
+                this.constraints = PropertyConstraints.fromAnnotation(annotation);
             } else {
                 this.displayName = formatPropertyName(name);
                 this.description = "";
                 this.category = DEFAULT_CATEGORY;
                 this.order = DEFAULT_ORDER;
+                this.constraints = PropertyConstraints.UNBOUNDED;
             }
             try {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -588,6 +601,11 @@ public final class NodePropertyBindings {
         @Override
         public int order() {
             return order;
+        }
+
+        @Override
+        public PropertyConstraints constraints() {
+            return constraints;
         }
 
         @Override

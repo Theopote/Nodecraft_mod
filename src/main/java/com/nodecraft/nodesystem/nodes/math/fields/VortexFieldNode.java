@@ -33,10 +33,10 @@ public class VortexFieldNode extends BaseNode {
     @NodeProperty(displayName = "Strength", category = "Vortex", order = 3)
     private double strength = 1.0d;
 
-    @NodeProperty(displayName = "Radius", category = "Vortex", order = 4)
+    @NodeProperty(displayName = "Radius", category = "Vortex", order = 4, min = 0.001, step = 0.5)
     private double radius = 8.0d;
 
-    @NodeProperty(displayName = "Exponent", category = "Vortex", order = 5)
+    @NodeProperty(displayName = "Exponent", category = "Vortex", order = 5, min = 0.001, step = 0.1)
     private double exponent = 2.0d;
 
     private static final String INPUT_ORIGIN_ID = "input_origin";
