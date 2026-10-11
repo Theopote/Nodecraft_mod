@@ -1,13 +1,14 @@
 package com.nodecraft.gui.components.property.renderers;
 
 import com.nodecraft.gui.components.PropertyPanelComponent;
+import com.nodecraft.gui.components.property.core.PlaneEquationEdit;
 import com.nodecraft.gui.components.property.core.PropertyDescriptor;
 import com.nodecraft.gui.components.property.core.PropertyRenderer;
 import com.nodecraft.gui.components.property.core.PropertyValueFormatters;
+import com.nodecraft.gui.components.property.core.VectorEditSessionLogic;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import imgui.ImGui;
-import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 
 public final class PlanePropertyRenderer {
@@ -18,7 +19,7 @@ public final class PlanePropertyRenderer {
 
     private static void render(PropertyPanelComponent panel, INode node, PropertyDescriptor prop, boolean isDisabled) {
         if (isDisabled) {
-            ImGui.textDisabled("(disabled)");
+            PropertyEditorUi.renderDisabled(prop.displayName);
             return;
         }
 
@@ -30,72 +31,101 @@ public final class PlanePropertyRenderer {
             }
 
             boolean isReadOnly = prop.setter == null;
+            if (isReadOnly) {
+                PropertyEditorUi.renderReadOnlyText(PlaneEquationEdit.formatReadOnly(plane));
+                panel.clearPropertyError(node, prop.name);
+                return;
+            }
+
             Vector3d normal = plane.getNormal();
-            double d = -normal.dot(plane.getPoint());
+            float offsetD = (float) PlaneEquationEdit.displayOffset(plane);
             String tempKey = panel.getTempValueKey(node, prop.name + "_plane");
-            float[] values = panel.getOrCreateTempValue(
-                    tempKey,
-                    () -> new float[]{(float) normal.x, (float) normal.y, (float) normal.z, (float) d}
-            );
+            float[] nx = panel.getOrCreateTempValue(tempKey + "_nx", () -> new float[]{(float) normal.x});
+            float[] ny = panel.getOrCreateTempValue(tempKey + "_ny", () -> new float[]{(float) normal.y});
+            float[] nz = panel.getOrCreateTempValue(tempKey + "_nz", () -> new float[]{(float) normal.z});
+            float[] d = panel.getOrCreateTempValue(tempKey + "_d", () -> new float[]{offsetD});
+            boolean[] axisEditing = panel.getOrCreateTempValue(tempKey + "_axis_editing", () -> new boolean[4]);
 
-            if (!panel.isPropertyBeingEdited(node, prop.name)) {
-                values[0] = (float) normal.x;
-                values[1] = (float) normal.y;
-                values[2] = (float) normal.z;
-                values[3] = (float) d;
+            if (!axisEditing[0]) {
+                nx[0] = (float) normal.x;
             }
-
-            if (isReadOnly) {
-                ImGui.beginDisabled();
+            if (!axisEditing[1]) {
+                ny[0] = (float) normal.y;
             }
-            boolean changed = false;
-            float[] xValue = {values[0]};
-            float[] yValue = {values[1]};
-            float[] zValue = {values[2]};
-            float[] dValue = {values[3]};
-            changed |= ImGui.dragFloat("Normal X##" + prop.name, xValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-            values[0] = xValue[0];
-            if (ImGui.isItemActive()) {
-                panel.markPropertyBeingEdited(node, prop.name);
+            if (!axisEditing[2]) {
+                nz[0] = (float) normal.z;
             }
-            changed |= ImGui.dragFloat("Normal Y##" + prop.name, yValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-            values[1] = yValue[0];
-            if (ImGui.isItemActive()) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-            changed |= ImGui.dragFloat("Normal Z##" + prop.name, zValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-            values[2] = zValue[0];
-            if (ImGui.isItemActive()) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-            changed |= ImGui.dragFloat("Offset D##" + prop.name, dValue, 0.01f, 0.0f, 0.0f, PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT);
-            values[3] = dValue[0];
-            if (ImGui.isItemActive()) {
-                panel.markPropertyBeingEdited(node, prop.name);
-            }
-            if (ImGui.isItemDeactivated()) {
-                panel.markPropertyEditingFinished(node, prop.name);
-            }
-            if (isReadOnly) {
-                ImGui.endDisabled();
+            if (!axisEditing[3]) {
+                d[0] = offsetD;
             }
 
-            if (!isReadOnly && changed) {
-                Vector3d newNormal = new Vector3d(values[0], values[1], values[2]);
-                if (newNormal.lengthSquared() > 1.0e-8) {
-                    newNormal.normalize();
-                    double newD = values[3];
-                    Vec3d origin = new Vec3d(-newD * newNormal.x, -newD * newNormal.y, -newD * newNormal.z);
-                    Vec3d mcNormal = new Vec3d(newNormal.x, newNormal.y, newNormal.z);
-                    panel.applyPropertyValue(node, prop, new PlaneData(origin, mcNormal));
-                } else {
+            boolean wasBeingEdited = panel.isPropertyBeingEdited(node, prop.name);
+            ImGui.pushID("plane_" + prop.name);
+            AxisResult xResult = renderDragFloat("NX", nx, 0.01f);
+            AxisResult yResult = renderDragFloat("NY", ny, 0.01f);
+            AxisResult zResult = renderDragFloat("NZ", nz, 0.01f);
+            AxisResult dResult = renderDragFloat("D", d, 0.01f);
+            ImGui.popID();
+
+            updateAxisEditing(axisEditing, xResult, 0);
+            updateAxisEditing(axisEditing, yResult, 1);
+            updateAxisEditing(axisEditing, zResult, 2);
+            updateAxisEditing(axisEditing, dResult, 3);
+
+            boolean anyActive = xResult.active || yResult.active || zResult.active || dResult.active;
+            boolean anyDeactivated = xResult.deactivated || yResult.deactivated || zResult.deactivated || dResult.deactivated;
+            boolean changed = xResult.changed || yResult.changed || zResult.changed || dResult.changed;
+
+            if (anyActive) {
+                panel.refreshPropertyBeingEdited(node, prop.name);
+            }
+
+            if (changed) {
+                PlaneData committed = PlaneEquationEdit.commit(nx[0], ny[0], nz[0], d[0]);
+                if (committed == null) {
                     ImGui.textColored(1.0f, 0.3f, 0.3f, 1.0f, "Normal cannot be zero");
+                } else {
+                    panel.applyPropertyValue(node, prop, committed);
                 }
+            }
+
+            if (wasBeingEdited && VectorEditSessionLogic.shouldFinishSession(anyActive, anyDeactivated)) {
+                clearAxisEditing(axisEditing);
+                panel.markPropertyEditingFinished(node, prop.name);
             }
 
             panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {
             panel.handlePropertyError(node, prop, e);
+        }
+    }
+
+    private record AxisResult(boolean changed, boolean active, boolean deactivated) {
+    }
+
+    private static AxisResult renderDragFloat(String label, float[] holder, float speed) {
+        boolean changed = ImGui.dragFloat(
+                label,
+                holder,
+                speed,
+                0.0f,
+                0.0f,
+                PropertyValueFormatters.DECIMAL_DISPLAY_FORMAT
+        );
+        return new AxisResult(changed, ImGui.isItemActive(), ImGui.isItemDeactivated());
+    }
+
+    private static void updateAxisEditing(boolean[] axisEditing, AxisResult result, int index) {
+        if (result.active) {
+            axisEditing[index] = true;
+        } else if (result.deactivated) {
+            axisEditing[index] = false;
+        }
+    }
+
+    private static void clearAxisEditing(boolean[] axisEditing) {
+        for (int i = 0; i < axisEditing.length; i++) {
+            axisEditing[i] = false;
         }
     }
 }

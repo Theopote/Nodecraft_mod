@@ -77,6 +77,20 @@ primitive renderers call support classes directly.
 - `PropertyConstraints` validates finite bounds and rejects contradictory min/max merges
 - `PropertyValueSnapshots` adds typed copies for common mutable property values
 
+## Phase 2A — vector / geometry property editors
+
+- `VectorComponentEditor` finishes the edit session only when an axis deactivates and no axis remains active; per-axis text sync avoids wiping sibling inputs on X→Y focus changes
+- `BlockPosPropertyRenderer` reuses the same session model with integer `dragInt` rows; read-only uses compact text (no disabled drag widgets)
+- Vec3 / Vector3d length tooltip binds to any hovered axis in the row
+- Polyline / Region default to one-line summaries (`PropertyValueFormatters`) with `treeNode` details; both honor `isDisabled`
+
+## Phase 2B — Plane / Curve / Color / List
+
+- Plane edits use unit-normal + offset D via `PlaneEquationEdit` / `PlaneData.fromEquation` (non-unit normals scale D); four-axis session finish uses `VectorEditSessionLogic`
+- Curve default summary avoids `getSamplePoints()`; sample count only inside Details
+- Color read-only shows swatch + hex/RGBA text (no disabled `colorEdit4`)
+- List / BlockPosList: disabled state, count summary, Details fold with 32-item preview cap
+
 ## Exit gates — Phase 1
 
 1. Panel no longer holds `tempValues` / edit-lock / `errorCounts` maps

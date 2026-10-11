@@ -35,7 +35,8 @@ public final class Vector3dPropertyRenderer {
                     vector.y,
                     vector.z,
                     isReadOnly,
-                    (x, y, z) -> panel.applyPropertyValue(node, prop, new Vector3d(x, y, z))
+                    (x, y, z) -> panel.applyPropertyValue(node, prop, new Vector3d(x, y, z)),
+                    vector.length()
             );
 
             panel.clearPropertyError(node, prop.name);

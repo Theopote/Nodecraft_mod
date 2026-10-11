@@ -14,10 +14,17 @@ import java.util.List;
 public final class BlockPosListPropertyRenderer {
     public static final PropertyRenderer RENDERER = BlockPosListPropertyRenderer::render;
 
+    private static final int PREVIEW_LIMIT = ListPropertyRenderer.DEFAULT_LIST_PREVIEW_LIMIT;
+
     private BlockPosListPropertyRenderer() {
     }
 
     private static void render(PropertyPanelComponent panel, INode node, PropertyDescriptor prop, boolean isDisabled) {
+        if (isDisabled) {
+            PropertyEditorUi.renderDisabled(prop.displayName);
+            return;
+        }
+
         try {
             BlockPosList positions = (BlockPosList) prop.getter.invoke(node);
             if (positions == null) {
@@ -25,13 +32,26 @@ public final class BlockPosListPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Count: " + positions.size());
             List<BlockPos> preview = positions.getPositions();
+            ImGui.text(PropertyValueFormatters.formatBlockPosListSummary(positions.size()));
             if (!preview.isEmpty()) {
-                ImGui.text("First: " + PropertyValueFormatters.formatBlockPos(preview.getFirst()));
+                ImGui.textDisabled(
+                        "First " + PropertyValueFormatters.formatBlockPos(preview.getFirst())
+                                + (preview.size() > 1
+                                ? " · Last " + PropertyValueFormatters.formatBlockPos(preview.getLast())
+                                : "")
+                );
             }
-            if (preview.size() > 1) {
-                ImGui.text("Last: " + PropertyValueFormatters.formatBlockPos(preview.getLast()));
+
+            if (ImGui.treeNode("Details##blockposlist_" + prop.name)) {
+                int limit = Math.min(preview.size(), PREVIEW_LIMIT);
+                for (int i = 0; i < limit; i++) {
+                    ImGui.text(String.format("[%d] %s", i, PropertyValueFormatters.formatBlockPos(preview.get(i))));
+                }
+                if (preview.size() > limit) {
+                    ImGui.textDisabled("… and " + (preview.size() - limit) + " more");
+                }
+                ImGui.treePop();
             }
         } catch (Throwable e) {
             panel.handlePropertyError(node, prop, e);

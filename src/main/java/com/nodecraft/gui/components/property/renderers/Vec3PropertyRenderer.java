@@ -35,12 +35,9 @@ public final class Vec3PropertyRenderer {
                     vec.getY(),
                     vec.getZ(),
                     isReadOnly,
-                    (x, y, z) -> panel.applyPropertyValue(node, prop, new Vec3(x, y, z))
+                    (x, y, z) -> panel.applyPropertyValue(node, prop, new Vec3(x, y, z)),
+                    vec.length()
             );
-
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip(String.format("Length: %.2f", vec.length()));
-            }
 
             panel.clearPropertyError(node, prop.name);
         } catch (Throwable e) {

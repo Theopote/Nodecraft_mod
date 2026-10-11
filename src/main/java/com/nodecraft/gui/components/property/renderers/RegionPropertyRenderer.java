@@ -15,6 +15,11 @@ public final class RegionPropertyRenderer {
     }
 
     private static void render(PropertyPanelComponent panel, INode node, PropertyDescriptor prop, boolean isDisabled) {
+        if (isDisabled) {
+            PropertyEditorUi.renderDisabled(prop.displayName);
+            return;
+        }
+
         try {
             RegionData region = (RegionData) prop.getter.invoke(node);
             if (region == null) {
@@ -22,12 +27,16 @@ public final class RegionPropertyRenderer {
                 return;
             }
 
-            ImGui.text("Complete: " + (region.isComplete() ? "Yes" : "No"));
-            ImGui.text("Corner 1: " + PropertyValueFormatters.formatBlockPos(region.corner1()));
-            ImGui.text("Corner 2: " + PropertyValueFormatters.formatBlockPos(region.corner2()));
-            if (region.isComplete()) {
-                ImGui.text("Min: " + PropertyValueFormatters.formatBlockPos(region.getMinCorner()));
-                ImGui.text("Max: " + PropertyValueFormatters.formatBlockPos(region.getMaxCorner()));
+            ImGui.text(PropertyValueFormatters.formatRegionSummary(region));
+            if (ImGui.treeNode("Details##region_" + prop.name)) {
+                ImGui.text("Complete: " + (region.isComplete() ? "Yes" : "No"));
+                ImGui.text("Corner 1: " + PropertyValueFormatters.formatBlockPos(region.corner1()));
+                ImGui.text("Corner 2: " + PropertyValueFormatters.formatBlockPos(region.corner2()));
+                if (region.isComplete()) {
+                    ImGui.text("Min: " + PropertyValueFormatters.formatBlockPos(region.getMinCorner()));
+                    ImGui.text("Max: " + PropertyValueFormatters.formatBlockPos(region.getMaxCorner()));
+                }
+                ImGui.treePop();
             }
         } catch (Throwable e) {
             panel.handlePropertyError(node, prop, e);
