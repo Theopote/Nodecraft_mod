@@ -1,6 +1,9 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -100,10 +103,7 @@ public class CreateListNode extends BaseCustomUINode {
 
                 pushDisabledButtonStyle(!canRemove);
                 if (ImGui.button("-##remove", buttonWidth, 0) && canRemove) {
-                    inputCount--;
-                    rebuildInputPorts();
-                    markDirty();
-                    changed = true;
+                    changed = changeInputCountWithHistory(inputCount - 1) || changed;
                 }
                 popDisabledButtonStyle(!canRemove);
 
@@ -111,10 +111,7 @@ public class CreateListNode extends BaseCustomUINode {
 
                 pushDisabledButtonStyle(!canAdd);
                 if (ImGui.button("+##add", buttonWidth, 0) && canAdd) {
-                    inputCount++;
-                    rebuildInputPorts();
-                    markDirty();
-                    changed = true;
+                    changed = changeInputCountWithHistory(inputCount + 1) || changed;
                 }
                 popDisabledButtonStyle(!canAdd);
 
@@ -169,6 +166,45 @@ public class CreateListNode extends BaseCustomUINode {
             inputCount = clamped;
             rebuildInputPorts();
             markDirty();
+        }
+    }
+
+    /**
+     * Custom-UI +/- path: same full-document transaction as the property-panel {@code inputCount}
+     * setter, so Undo restores ports and dangling edges together.
+     *
+     * @return true when the input count actually changed
+     */
+    public boolean changeInputCountWithHistory(int newCount) {
+        int clamped = Math.max(MIN_INPUT_COUNT, Math.min(MAX_INPUT_COUNT, newCount));
+        if (clamped == inputCount) {
+            return false;
+        }
+        final int target = clamped;
+        try {
+            ImGuiNodeEditor editor = ImGuiNodeEditor.getInstance();
+            // Only use the structure transaction when this node is in the active editor graph.
+            if (editor.getCurrentGraph() == null || editor.getCurrentGraph().getNode(getId()) == null) {
+                setInputCount(target);
+                return getInputCount() == target;
+            }
+            GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
+                    editor.structureEditHost(),
+                    "Change inputCount",
+                    () -> {
+                        setInputCount(target);
+                        editor.cleanupDanglingConnections();
+                        return true;
+                    }
+            );
+            return GraphStructureEditSupport.succeeded(outcome) && getInputCount() == target;
+        } catch (StructureEditRollbackException e) {
+            LOGGER.error("CreateList inputCount structure edit rollback failed: {}", e.getMessage(), e);
+            return false;
+        } catch (Exception e) {
+            // Editor unavailable (tests / headless): mutate without history.
+            setInputCount(target);
+            return getInputCount() == target;
         }
     }
 
