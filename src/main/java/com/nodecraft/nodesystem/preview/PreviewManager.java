@@ -70,7 +70,7 @@ public final class PreviewManager {
 
     /**
      * Drops empty-input retention so the next empty upsert can hide GHOST previews immediately
-     * (e.g. after a graph structure change invalidates prior non-empty output).
+     * (e.g. after a graph structure / upstream change invalidates prior non-empty output).
      */
     public static void clearEmptyInputGrace() {
         LAST_NON_EMPTY_BY_NODE_TYPE.clear();
@@ -84,6 +84,17 @@ public final class PreviewManager {
     /** Visible for unit tests of empty-input grace bookkeeping. */
     public static boolean withinEmptyGraceForTests(String nodeId, String previewType) {
         return withinEmptyGrace(nodeId, previewType);
+    }
+
+    private static void clearNodeBookkeeping(String nodeId) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return;
+        }
+        String prefix = nodeId + "|";
+        LAST_NON_EMPTY_BY_NODE_TYPE.keySet().removeIf(key -> key.startsWith(prefix));
+        LAST_COALESCE_BY_NODE_TYPE.keySet().removeIf(key -> key.startsWith(prefix));
+        LAST_BLOCKS_BACKEND_BY_NODE.remove(nodeId);
+        clearTrackedWorldRequestState(nodeId);
     }
 
     private static void clearTypePreviewState(String nodeId, String previewType) {
@@ -598,12 +609,15 @@ public final class PreviewManager {
     }
 
     public static void hideNodePreviews(String nodeId, @Nullable ExecutionContext context) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return;
+        }
+        clearNodeBookkeeping(nodeId);
         RENDERER.hidePreviewsByNode(nodeId);
         TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
         if (service.hasAnyTrackedPreviews(nodeId)) {
             service.clearTrackedPreviewAcrossWorlds(nodeId, context);
         }
-        clearTrackedWorldRequestState(nodeId);
     }
 
     public static void hideNodePreviewType(String nodeId, String previewType) {

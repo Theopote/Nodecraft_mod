@@ -67,6 +67,34 @@ class AutoPreviewControllerTest {
     }
 
     @Test
+    void notifyNodeDirtyClearsGraceAndHidesImpactedNodePreviews() {
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        NodeGraph graph = new NodeGraph("node-dirty-ghost");
+        PassThroughNode upstream = new PassThroughNode("upstream", "ok");
+        PassThroughNode downstream = new PassThroughNode("downstream", "ok");
+        graph.addNode(upstream);
+        graph.addNode(downstream);
+        assertTrue(graph.connect(upstream.getId(), "out", downstream.getId(), "in"));
+
+        PreviewManager.touchNonEmptyForTests(upstream.getId().toString(), "ghost_block");
+        PreviewManager.touchNonEmptyForTests(downstream.getId().toString(), "ghost_block");
+        assertTrue(PreviewManager.withinEmptyGraceForTests(downstream.getId().toString(), "ghost_block"));
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graph,
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null)
+        );
+
+        controller.notifyNodeDirty(upstream, 1L);
+
+        assertFalse(PreviewManager.withinEmptyGraceForTests(upstream.getId().toString(), "ghost_block"));
+        assertFalse(PreviewManager.withinEmptyGraceForTests(downstream.getId().toString(), "ghost_block"));
+        assertTrue(controller.invalidatedNodeIdsView().contains(downstream.getId()));
+        assertEquals(1L, dirtyVersion.get());
+    }
+
+    @Test
     void debounceThenPreviewSkipsOutputExecuteSideEffects() throws Exception {
         AtomicLong clock = new AtomicLong(1_000L);
         AtomicLong dirtyVersion = new AtomicLong(0L);

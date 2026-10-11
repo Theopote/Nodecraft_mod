@@ -87,7 +87,13 @@ public final class AutoPreviewController {
         if (graph.getNode(node.getId()) == null) {
             return;
         }
-        invalidatedNodeIds.addAll(IncrementalExecutionPlanner.resolveInvalidationScope(graph, node.getId()));
+        Set<UUID> scope = IncrementalExecutionPlanner.resolveInvalidationScope(graph, node.getId());
+        invalidatedNodeIds.addAll(scope);
+        // Drop stale GHOST immediately for impacted nodes; debounce will rebuild after recompute.
+        PreviewManager.clearEmptyInputGrace();
+        for (UUID impactedId : scope) {
+            PreviewManager.hideNodePreviews(impactedId.toString());
+        }
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
         stampPendingDirty(dirtyVersionSource.getDirtyVersion());
@@ -105,6 +111,11 @@ public final class AutoPreviewController {
         NodeGraph graph = graphSupplier.get();
         if (graph != null) {
             graph.getExecutionCache().clear();
+            for (var graphNode : graph.getNodes()) {
+                if (graphNode != null && graphNode.getId() != null) {
+                    PreviewManager.hideNodePreviews(graphNode.getId().toString());
+                }
+            }
         }
         PreviewManager.clearEmptyInputGrace();
         graphDirtyEpoch++;

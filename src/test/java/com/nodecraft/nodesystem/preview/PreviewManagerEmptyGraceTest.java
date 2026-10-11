@@ -22,4 +22,18 @@ class PreviewManagerEmptyGraceTest {
         PreviewManager.clearEmptyInputGrace();
         assertFalse(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
     }
+
+    @Test
+    void hideNodePreviewsClearsNodeEmptyInputGrace() {
+        String nodeId = "preview-hide-grace-node";
+        String otherId = "preview-other-node";
+        PreviewManager.touchNonEmptyForTests(nodeId, "ghost_block");
+        PreviewManager.touchNonEmptyForTests(otherId, "ghost_block");
+        assertTrue(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
+        assertTrue(PreviewManager.withinEmptyGraceForTests(otherId, "ghost_block"));
+
+        PreviewManager.hideNodePreviews(nodeId);
+        assertFalse(PreviewManager.withinEmptyGraceForTests(nodeId, "ghost_block"));
+        assertTrue(PreviewManager.withinEmptyGraceForTests(otherId, "ghost_block"));
+    }
 }
