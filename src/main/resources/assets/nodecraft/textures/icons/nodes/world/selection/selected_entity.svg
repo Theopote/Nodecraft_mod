@@ -1,0 +1,3 @@
+<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="12" r="7" fill="#1d4ed8" stroke="#1e293b" stroke-width="2"/><rect x="16" y="21" width="16" height="14" rx="3" fill="#1d4ed8" stroke="#1e293b" stroke-width="2"/><rect x="16" y="36" width="6" height="9" rx="1" fill="#839eea" stroke="#1e293b" stroke-width="2"/><rect x="26" y="36" width="6" height="9" rx="1" fill="#839eea" stroke="#1e293b" stroke-width="2"/><polygon transform="translate(22 22) scale(.55)" points="10,5 38,24 24,27 18,42" fill="#1d4ed8" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/>
+</svg>

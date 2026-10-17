@@ -1,0 +1,3 @@
+<svg viewBox="0 0 48 48" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
+  <polygon points="24,6 39.66,15 24,24 8.34,15" fill="#839eea" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/><polygon points="8.34,15 24,24 24,42 8.34,33" fill="#1d4ed8" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/><polygon points="24,24 39.66,15 39.66,33 24,42" fill="#143797" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/><polygon transform="translate(22 22) scale(.55)" points="10,5 38,24 24,27 18,42" fill="#1d4ed8" stroke="#1e293b" stroke-width="2" stroke-linejoin="round"/>
+</svg>
