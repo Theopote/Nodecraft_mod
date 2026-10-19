@@ -11,9 +11,9 @@ import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
 import com.nodecraft.nodesystem.util.BlockSpace;
+import com.nodecraft.nodesystem.util.ClientMinecraftAccess;
 import com.nodecraft.nodesystem.visual.SelectionVisualFeedback;
 import imgui.ImGui;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
@@ -162,15 +162,7 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
         }
 
         // Editor sessions may evaluate without a server world; last-resort client world.
-        World clientWorld = null;
-        try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client != null) {
-                clientWorld = client.world;
-            }
-        } catch (Throwable ignored) {
-            // Headless / dedicated paths.
-        }
+        World clientWorld = ClientMinecraftAccess.clientWorldOrNull();
         if (clientWorld != null && clientWorld != contextWorld) {
             Entity fromClient = lookupEntity(clientWorld, uuid);
             if (isAcceptableEntity(fromClient, contextWorld != null ? contextWorld : clientWorld)) {

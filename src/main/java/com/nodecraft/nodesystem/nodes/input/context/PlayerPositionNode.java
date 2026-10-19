@@ -8,8 +8,8 @@ import com.nodecraft.nodesystem.api.NodeProperty;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.util.ClientMinecraftAccess;
 import imgui.ImGui;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import org.jetbrains.annotations.Nullable;
@@ -148,11 +148,10 @@ public class PlayerPositionNode extends BaseCustomUINode {
      * UI capture: samples from the client player only.
      */
     private boolean captureFromClientPlayer() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.player == null) {
+        PlayerEntity player = ClientMinecraftAccess.clientPlayerOrNull();
+        if (player == null) {
             return false;
         }
-        PlayerEntity player = client.player;
         double x = player.getX();
         double y = useEyePosition ? player.getEyeY() : player.getY();
         double z = player.getZ();

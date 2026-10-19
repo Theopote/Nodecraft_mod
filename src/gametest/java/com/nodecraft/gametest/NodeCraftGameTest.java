@@ -9,8 +9,14 @@ import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import com.nodecraft.nodesystem.execution.ExecutionProfiler;
+import com.nodecraft.nodesystem.execution.NodeExecutor;
+import com.nodecraft.nodesystem.execution.runtime.CancellationToken;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionMode;
+import com.nodecraft.nodesystem.execution.runtime.ExecutionPlan;
 import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
+import com.nodecraft.nodesystem.execution.runtime.SimpleCancellationToken;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
@@ -21,13 +27,16 @@ import net.minecraft.test.TestContext;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import net.fabricmc.fabric.api.gametest.v1.CustomTestMethodInvoker;
@@ -42,6 +51,13 @@ import org.jspecify.annotations.NonNull;
  * must use {@link TestContext#getAbsolutePos(BlockPos)}.
  */
 public class NodeCraftGameTest implements CustomTestMethodInvoker {
+
+    /**
+     * BakePlacementService / TrackedPreviewPlacementService are process-wide singletons.
+     * Fabric may run GameTests in the same batch concurrently; serialize this suite so
+     * {@link BakePlacementService#shutdownFlush()} in one test cannot cancel another's queue.
+     */
+    private static final Object SHARED_SERVICE_LOCK = new Object();
 
     @GameTest
     public void trackedPreviewCleanupRestoresBlocks(TestContext ctx) {
@@ -76,7 +92,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
 
     /**
      * Tracked preview must not overwrite external edits made after preview placement.
-     * Original=air → preview=stone → external=oak_planks → clear must leave oak_planks.
+     * Original=air -> preview=stone -> external=oak_planks -> clear must leave oak_planks.
      */
     @GameTest
     public void trackedPreviewClearSkipsExternallyModifiedBlocks(TestContext ctx) {
@@ -147,7 +163,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos rel = new BlockPos(1, 1, 1);
@@ -196,7 +212,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos rel1 = new BlockPos(1, 1, 1);
@@ -257,7 +273,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos rel1 = new BlockPos(1, 1, 1);
@@ -321,7 +337,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos rel1 = new BlockPos(1, 1, 1);
@@ -377,7 +393,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos rel1 = new BlockPos(1, 1, 1);
@@ -438,7 +454,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos relP = new BlockPos(1, 1, 1);
@@ -446,7 +462,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         BlockPos absP = ctx.getAbsolutePos(relP);
         BlockPos absQ = ctx.getAbsolutePos(relQ);
 
-        // Dedupe collapses P:stone+P:gold → P:gold, then Q. blocksPerTick=1 leaves Q pending.
+        // Dedupe collapses P:stone+P:gold -> P:gold, then Q. blocksPerTick=1 leaves Q pending.
         UUID taskId = service.enqueuePlacements(
             world,
             List.of(
@@ -524,7 +540,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         resetBakeService(service);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = service.getHistory(actorId);
+        BakeHistory history = service.getHistory(actorId, world);
         history.clear();
 
         BlockPos relP = new BlockPos(1, 1, 1);
@@ -627,15 +643,18 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     /**
      * Smoke: AutoPreviewController preview path runs on the server GameTest world without
      * committing bake history, and skips {@code output.execute.*} side effects.
+     * <p>
+     * Uses a same-thread scheduler so the dedicated server thread never blocks on
+     * {@code Future.get()} waiting for a background worker (deadlock risk in GameTest).
      */
     @GameTest
-    public void autoPreviewControllerSmokeSkipsExecuteAndLeavesHistoryEmpty(TestContext ctx) throws Exception {
+    public void autoPreviewControllerSmokeSkipsExecuteAndLeavesHistoryEmpty(TestContext ctx) {
         World world = ctx.getWorld();
         BakePlacementService bake = BakePlacementService.getInstance();
         resetBakeService(bake);
 
         UUID actorId = UUID.randomUUID();
-        BakeHistory history = bake.getHistory(actorId);
+        BakeHistory history = bake.getHistory(actorId, world);
         history.clear();
 
         AtomicLong clock = new AtomicLong(5_000L);
@@ -648,6 +667,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         graph.addNode(sideEffect);
         graph.connect(source.getId(), "out", sideEffect.getId(), "in");
 
+        SyncPreviewScheduler scheduler = new SyncPreviewScheduler();
         AutoPreviewController controller = new AutoPreviewController(
                 () -> graph,
                 new AutoPreviewController.DirtyVersionSource() {
@@ -663,7 +683,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
                 },
                 () -> ExecutionContext.createEmpty(world),
                 clock::get,
-                NodeExecutionScheduler.client()
+                scheduler
         );
 
         controller.notifyNodeDirty(source, 1L);
@@ -672,25 +692,39 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         controller.tick();
 
         ExecutionSession session = controller.lastSubmittedSession();
-        if (session == null) {
-            session = NodeExecutionScheduler.client().activePreview().orElse(null);
-        }
         ctx.assertTrue(session != null, "preview session started after debounce");
-        Boolean ok = null;
-        if (session != null) {
-            ok = session.result().get(5, TimeUnit.SECONDS);
-        }
-        ctx.assertTrue(Boolean.TRUE.equals(ok), "preview session completed");
+        ctx.assertTrue(session != null && session.result().isDone(), "sync preview finished on caller thread");
+        ctx.assertTrue(session != null && Boolean.TRUE.equals(session.result().getNow(false)),
+                "preview session completed successfully");
         ctx.assertEquals(0, sideEffect.executionCount(), "output.execute skipped in preview");
         ctx.assertEquals(0, history.size(), "preview must not commit bake history");
 
-        NodeExecutionScheduler.client().cancelPreview();
+        scheduler.cancelPreview();
         ctx.complete();
     }
 
     @Override
     public void invokeTestMethod(@NonNull TestContext context, Method method) throws ReflectiveOperationException {
-        method.invoke(this, context);
+        synchronized (SHARED_SERVICE_LOCK) {
+            try {
+                method.invoke(this, context);
+            } catch (InvocationTargetException e) {
+                Throwable cause = e.getCause() != null ? e.getCause() : e;
+                com.nodecraft.core.NodeCraft.LOGGER.error(
+                        "GameTest {} failed: {}",
+                        method.getName(),
+                        cause.toString(),
+                        cause
+                );
+                if (cause instanceof RuntimeException runtime) {
+                    throw runtime;
+                }
+                if (cause instanceof Error error) {
+                    throw error;
+                }
+                throw new RuntimeException(cause);
+            }
+        }
     }
 
     private static void resetBakeService(BakePlacementService service) {
@@ -701,6 +735,90 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     private static void drainTasks(BakePlacementService service) {
         for (int i = 0; i < 100 && service.getQueueSize() > 0; i++) {
             service.processTick();
+        }
+    }
+
+    /**
+     * Runs preview graphs on the calling thread via {@link NodeExecutor#executeSync()}.
+     */
+    private static final class SyncPreviewScheduler implements NodeExecutionScheduler {
+        private volatile ExecutionSession active;
+
+        @Override
+        public ExecutionSession submit(
+                NodeGraph graph,
+                @Nullable ExecutionContext context,
+                ExecutionPlan plan,
+                long generation
+        ) {
+            SimpleCancellationToken token = new SimpleCancellationToken();
+            NodeExecutor executor = new NodeExecutor(
+                    graph,
+                    context,
+                    plan.scopeNodeIds(),
+                    plan.options(),
+                    null,
+                    token,
+                    plan.skipOutputExecuteSideEffects(),
+                    null,
+                    true
+            );
+            boolean ok = executor.executeSync();
+            CompletableFuture<Boolean> result = CompletableFuture.completedFuture(ok);
+            ExecutionSession session = new ExecutionSession() {
+                private final UUID id = UUID.randomUUID();
+
+                @Override
+                public UUID sessionId() {
+                    return id;
+                }
+
+                @Override
+                public long generation() {
+                    return generation;
+                }
+
+                @Override
+                public ExecutionMode mode() {
+                    return plan.mode();
+                }
+
+                @Override
+                public CancellationToken cancellation() {
+                    return token;
+                }
+
+                @Override
+                public CompletableFuture<Boolean> result() {
+                    return result;
+                }
+
+                @Override
+                public @Nullable ExecutionProfiler.Profile lastProfile() {
+                    return executor.getLastExecutionProfile();
+                }
+            };
+            active = session;
+            return session;
+        }
+
+        @Override
+        public void cancelPreview() {
+            active = null;
+        }
+
+        @Override
+        public void cancelManual() {
+        }
+
+        @Override
+        public Optional<ExecutionSession> activePreview() {
+            return Optional.ofNullable(active);
+        }
+
+        @Override
+        public Optional<ExecutionSession> activeManual() {
+            return Optional.empty();
         }
     }
 

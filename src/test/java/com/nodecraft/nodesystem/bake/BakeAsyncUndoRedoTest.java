@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import net.minecraft.world.World;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -160,6 +161,16 @@ class BakeAsyncUndoRedoTest {
 
         assertEquals(0, history.size());
         assertEquals(0, history.redoSize());
+    }
+
+    @Test
+    void getPreviousNbtAllowsNullEntriesForPlainBlocks() {
+        // syntheticForStackTest stores Cell(null, null) — mirrors air / non-BE originals.
+        BakeHistory.UndoRecord record = BakeHistory.UndoRecord.syntheticForStackTest(UUID.randomUUID());
+
+        List<?> nbts = record.getPreviousNbt();
+        assertEquals(1, nbts.size());
+        assertNull(nbts.getFirst(), "null NBT entries must not throw (List.copyOf rejects nulls)");
     }
 
     private static BakeHistory.UndoRecord record(String label) {

@@ -74,26 +74,47 @@ public class PreviewRenderer {
     }
     
     /**
-     * 初始化预览元素类型注册表
+     * 初始化预览元素类型注册表.
+     * <p>
+     * Each factory is registered in isolation so dedicated-server / GameTest (EnvType.SERVER)
+     * can still construct {@link PreviewRenderer} when client-only element classes (e.g. those
+     * that link {@code ClientWorld}) are unavailable. Hide/clear APIs remain usable as no-ops
+     * against an empty registry.
      */
     private void initializeElementTypes() {
-        registerElementType("block_highlight", BlockHighlightElement::new);
-        registerElementType("wireframe", BlockHighlightElement::new);
-        registerElementType("ghost_block", GhostBlockElement::new);
-        registerElementType("semi_transparent_block", GhostBlockElement::new);
-        registerElementType("region_box", RegionBoxElement::new);
-        registerElementType("spatial_shape", RegionBoxElement::new);
-        registerElementType("plane_grid", PlaneGridElement::new);
-        registerElementType("frame_axes", FrameAxesElement::new);
-        registerElementType("points", PointsElement::new);
-        registerElementType("vectors", VectorsElement::new);
-        registerElementType("arrows", VectorsElement::new);
-        registerElementType("lines", LinesElement::new);
-        registerElementType("paths", LinesElement::new);
-        registerElementType("geometry_surface", GeometrySurfaceElement::new);
-        registerElementType("transformation_gizmo", TransformationGizmoElement::new);
-        registerElementType("field_visualization", FieldVisualizationElement::new);
-        registerElementType("text_labels", TextLabelsElement::new);
+        tryRegister("block_highlight", () -> registerElementType("block_highlight", BlockHighlightElement::new));
+        tryRegister("wireframe", () -> registerElementType("wireframe", BlockHighlightElement::new));
+        tryRegister("ghost_block", () -> registerElementType("ghost_block", GhostBlockElement::new));
+        tryRegister("semi_transparent_block",
+                () -> registerElementType("semi_transparent_block", GhostBlockElement::new));
+        tryRegister("region_box", () -> registerElementType("region_box", RegionBoxElement::new));
+        tryRegister("spatial_shape", () -> registerElementType("spatial_shape", RegionBoxElement::new));
+        tryRegister("plane_grid", () -> registerElementType("plane_grid", PlaneGridElement::new));
+        tryRegister("frame_axes", () -> registerElementType("frame_axes", FrameAxesElement::new));
+        tryRegister("points", () -> registerElementType("points", PointsElement::new));
+        tryRegister("vectors", () -> registerElementType("vectors", VectorsElement::new));
+        tryRegister("arrows", () -> registerElementType("arrows", VectorsElement::new));
+        tryRegister("lines", () -> registerElementType("lines", LinesElement::new));
+        tryRegister("paths", () -> registerElementType("paths", LinesElement::new));
+        tryRegister("geometry_surface",
+                () -> registerElementType("geometry_surface", GeometrySurfaceElement::new));
+        tryRegister("transformation_gizmo",
+                () -> registerElementType("transformation_gizmo", TransformationGizmoElement::new));
+        tryRegister("field_visualization",
+                () -> registerElementType("field_visualization", FieldVisualizationElement::new));
+        tryRegister("text_labels", () -> registerElementType("text_labels", TextLabelsElement::new));
+    }
+
+    private static void tryRegister(String type, Runnable registration) {
+        try {
+            registration.run();
+        } catch (Throwable t) {
+            NodeCraft.LOGGER.debug(
+                    "PreviewRenderer: element type '{}' unavailable in this environment: {}",
+                    type,
+                    t.toString()
+            );
+        }
     }
     
     /**

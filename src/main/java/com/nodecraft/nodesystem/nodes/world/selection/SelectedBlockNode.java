@@ -35,9 +35,10 @@ import java.util.Map;
 import java.util.HashMap;
 
 // Minecraft 相关导入，用于世界状态检查与预览时的瞬时方块 ID 读取
-import net.minecraft.client.MinecraftClient;
+import com.nodecraft.nodesystem.util.ClientMinecraftAccess;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import org.joml.Vector3d;
 
 /**
@@ -468,19 +469,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
      */
     private ValidationResult<Void> validateWorldState() {
         try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null) {
-                return ValidationResult.failure("Minecraft 客户端未初始化");
-            }
-            
-            if (client.player == null) {
+            if (ClientMinecraftAccess.clientPlayerOrNull() == null) {
                 return ValidationResult.failure("玩家未加载");
             }
-            
-            if (client.world == null) {
+            if (ClientMinecraftAccess.clientWorldOrNull() == null) {
                 return ValidationResult.failure("世界未加载");
             }
-            
             return ValidationResult.success();
         } catch (Exception e) {
             return ValidationResult.failure("世界状态检查失败: " + e.getMessage());
@@ -650,12 +644,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
     private @Nullable String resolveLiveBlockId(Coordinate position) {
         try {
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client == null || client.world == null || position == null) {
+            World world = ClientMinecraftAccess.clientWorldOrNull();
+            if (world == null || position == null) {
                 return null;
             }
             BlockPos blockPos = new BlockPos(position.x(), position.y(), position.z());
-            return Registries.BLOCK.getId(client.world.getBlockState(blockPos).getBlock()).toString();
+            return Registries.BLOCK.getId(world.getBlockState(blockPos).getBlock()).toString();
         } catch (Exception e) {
             NodeCraft.LOGGER.debug("节点 {} 瞬时读取预览方块 ID 失败: {}", getId(), e.getMessage());
             return null;

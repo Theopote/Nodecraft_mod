@@ -46,7 +46,18 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class PreviewManager {
 
-    private static final PreviewRenderer RENDERER = PreviewRenderer.getInstance();
+    /**
+     * Lazily resolved so bookkeeping helpers (empty-input grace) can run on dedicated servers
+     * even when client preview element classes fail to link.
+     */
+    private static final class RendererAccess {
+        private static final PreviewRenderer INSTANCE = PreviewRenderer.getInstance();
+    }
+
+    private static PreviewRenderer renderer() {
+        return RendererAccess.INSTANCE;
+    }
+
     private static final long EMPTY_INPUT_GRACE_MS = 750L;
     /** Coalesce rapid identical upserts so nodes can publish outputs every evaluation. */
     private static final long UPSERT_COALESCE_MS = 50L;
@@ -112,7 +123,7 @@ public final class PreviewManager {
     private static void clearTypePreviewState(String nodeId, String previewType) {
         LAST_NON_EMPTY_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));
         LAST_COALESCE_BY_NODE_TYPE.remove(nodeTypeKey(nodeId, previewType));
-        RENDERER.hidePreviewsByNodeAndType(nodeId, previewType);
+        renderer().hidePreviewsByNodeAndType(nodeId, previewType);
     }
 
     /**
@@ -127,7 +138,7 @@ public final class PreviewManager {
             && previous.fingerprint() == contentFingerprint
             && previous.previewId() != null
             && (now - previous.atMillis()) < UPSERT_COALESCE_MS
-            && RENDERER.hasActivePreview(previous.previewId())) {
+            && renderer().hasActivePreview(previous.previewId())) {
             return previous.previewId();
         }
         return null;
@@ -152,7 +163,7 @@ public final class PreviewManager {
 
     public static String highlightBlock(String nodeId, Coordinate position, PreviewOptions options) {
         try {
-            String previewId = RENDERER.showPreview(nodeId, "block_highlight", position, options);
+            String previewId = renderer().showPreview(nodeId, "block_highlight", position, options);
             if (previewId == null) {
                 NodeCraft.LOGGER.error("PreviewManager.highlightBlock failed: renderer.showPreview returned null");
             }
@@ -164,7 +175,7 @@ public final class PreviewManager {
     }
 
     public static String highlightBlocks(String nodeId, List<Coordinate> positions, PreviewOptions options) {
-        return RENDERER.showPreview(nodeId, "block_highlight", positions, options);
+        return renderer().showPreview(nodeId, "block_highlight", positions, options);
     }
 
     /**
@@ -229,7 +240,7 @@ public final class PreviewManager {
         PreviewBackend previousBackend = LAST_BLOCKS_BACKEND_BY_NODE.put(nodeId, request.backend());
         if (previousBackend != null && previousBackend != request.backend()) {
             // Force immediate backend switch visibility update even when transient empty input is present.
-            RENDERER.hidePreviewsByNodeAndType(nodeId, "ghost_block");
+            renderer().hidePreviewsByNodeAndType(nodeId, "ghost_block");
             TrackedPreviewPlacementService.getInstance().clearTrackedPreviewAcrossWorlds(nodeId, ctx);
             clearTrackedWorldRequestState(nodeId);
         }
@@ -252,14 +263,14 @@ public final class PreviewManager {
             if (coalesced != null) {
                 return coalesced;
             }
-            String previewId = RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
+            String previewId = renderer().upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
             rememberCoalesce(nodeId, "ghost_block", fingerprint, previewId);
             return previewId;
         }
 
         if (request.backend() == PreviewBackend.TRACKED_WORLD) {
             // Backend switch safety: entering TRACKED_WORLD should clear ghost overlays immediately.
-            RENDERER.hidePreviewsByNodeAndType(nodeId, "ghost_block");
+            renderer().hidePreviewsByNodeAndType(nodeId, "ghost_block");
             if (ctx == null || ctx.getWorld() == null) {
                 NodeCraft.LOGGER.warn("PreviewManager.showPreview TRACKED_WORLD: missing execution context / world");
                 return null;
@@ -280,7 +291,7 @@ public final class PreviewManager {
                 clearTrackedWorldRequestState(nodeId);
                 LAST_BLOCKS_BACKEND_BY_NODE.put(nodeId, PreviewBackend.GHOST);
                 touchNonEmpty(nodeId, "ghost_block");
-                return RENDERER.upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
+                return renderer().upsertPreview(nodeId, "ghost_block", blocksPayload, opts);
             }
             BlockState state = BlockStateResolver.resolve(cells.getFirst().blockId(), cells.getFirst().stateData());
             if (state == null) {
@@ -324,7 +335,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "points");
-        return RENDERER.upsertPreview(nodeId, "points", pointsPayload, opts);
+        return renderer().upsertPreview(nodeId, "points", pointsPayload, opts);
     }
 
     @Nullable
@@ -339,7 +350,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "vectors");
-        return RENDERER.upsertPreview(nodeId, "vectors", vectorsPayload, opts);
+        return renderer().upsertPreview(nodeId, "vectors", vectorsPayload, opts);
     }
 
     @Nullable
@@ -348,7 +359,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "region_box");
-        return RENDERER.upsertPreview(nodeId, "region_box", regionPayload, opts);
+        return renderer().upsertPreview(nodeId, "region_box", regionPayload, opts);
     }
 
     @Nullable
@@ -363,7 +374,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "paths");
-        return RENDERER.upsertPreview(nodeId, "paths", curvePayload, opts);
+        return renderer().upsertPreview(nodeId, "paths", curvePayload, opts);
     }
 
     /**
@@ -411,11 +422,11 @@ public final class PreviewManager {
         }
         if (replaceNodePreviews) {
             touchNonEmpty(nodeId, "paths");
-            return RENDERER.upsertPreviews(nodeId, "paths", valid, opts);
+            return renderer().upsertPreviews(nodeId, "paths", valid, opts);
         }
         List<String> ids = new ArrayList<>();
         for (PreviewCurvePayload c : valid) {
-            String id = RENDERER.showPreview(nodeId, "paths", c, opts);
+            String id = renderer().showPreview(nodeId, "paths", c, opts);
             if (id != null) {
                 ids.add(id);
             }
@@ -443,7 +454,7 @@ public final class PreviewManager {
             }
             payloads.add(new PreviewGeometryPayload(g));
         }
-        return RENDERER.upsertPreviews(nodeId, "geometry_surface", payloads, withDefaultGeometryLod(opts));
+        return renderer().upsertPreviews(nodeId, "geometry_surface", payloads, withDefaultGeometryLod(opts));
     }
 
     @Nullable
@@ -458,7 +469,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "geometry_surface");
-        return RENDERER.upsertPreview(nodeId, "geometry_surface", geometryPayload, withDefaultGeometryLod(opts));
+        return renderer().upsertPreview(nodeId, "geometry_surface", geometryPayload, withDefaultGeometryLod(opts));
     }
 
     private static PreviewOptions withDefaultGeometryLod(PreviewOptions opts) {
@@ -481,7 +492,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "plane_grid");
-        return RENDERER.upsertPreview(nodeId, "plane_grid", planePayload, opts);
+        return renderer().upsertPreview(nodeId, "plane_grid", planePayload, opts);
     }
 
     @Nullable
@@ -496,7 +507,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "frame_axes");
-        return RENDERER.upsertPreview(nodeId, "frame_axes", framePayload, opts);
+        return renderer().upsertPreview(nodeId, "frame_axes", framePayload, opts);
     }
 
     @Nullable
@@ -511,7 +522,7 @@ public final class PreviewManager {
             return null;
         }
         touchNonEmpty(nodeId, "text_labels");
-        return RENDERER.upsertPreview(nodeId, "text_labels", labelsPayload, opts);
+        return renderer().upsertPreview(nodeId, "text_labels", labelsPayload, opts);
     }
 
     // Region box
@@ -591,13 +602,13 @@ public final class PreviewManager {
             return null;
         }
         PreviewOptions resolved = options != null ? options : PreviewOptions.createTransformGizmo();
-        java.util.List<String> existing = RENDERER.getPreviewIdsByNodeAndType(nodeId, "transformation_gizmo");
+        java.util.List<String> existing = renderer().getPreviewIdsByNodeAndType(nodeId, "transformation_gizmo");
         if (!existing.isEmpty()) {
             String previewId = existing.getFirst();
-            RENDERER.updatePreview(previewId, gizmoData, resolved);
+            renderer().updatePreview(previewId, gizmoData, resolved);
             return previewId;
         }
-        return RENDERER.showPreview(nodeId, "transformation_gizmo", gizmoData, resolved);
+        return renderer().showPreview(nodeId, "transformation_gizmo", gizmoData, resolved);
     }
 
     public static String showTextLabels(String nodeId, Object labelData, PreviewOptions options) {
@@ -613,7 +624,7 @@ public final class PreviewManager {
     // Generic control
 
     public static void hidePreview(String previewId) {
-        RENDERER.hidePreview(previewId);
+        renderer().hidePreview(previewId);
     }
 
     public static void hideNodePreviews(String nodeId) {
@@ -625,7 +636,7 @@ public final class PreviewManager {
             return;
         }
         clearNodeBookkeeping(nodeId);
-        RENDERER.hidePreviewsByNode(nodeId);
+        renderer().hidePreviewsByNode(nodeId);
         TrackedPreviewPlacementService service = TrackedPreviewPlacementService.getInstance();
         if (service.hasAnyTrackedPreviews(nodeId)) {
             service.clearTrackedPreviewAcrossWorlds(nodeId, context);
@@ -639,7 +650,7 @@ public final class PreviewManager {
      */
     public static void hidePreviewsNotOwnedBy(@Nullable Collection<String> liveNodeIds) {
         Set<String> live = liveNodeIds == null ? Set.of() : new HashSet<>(liveNodeIds);
-        Set<String> owners = new HashSet<>(RENDERER.ownerNodeIds());
+        Set<String> owners = new HashSet<>(renderer().ownerNodeIds());
         owners.addAll(bookkeepingOwnerNodeIds());
         owners.addAll(TrackedPreviewPlacementService.getInstance().snapshotOwnerNodeIds());
         for (String owner : owners) {
@@ -686,31 +697,31 @@ public final class PreviewManager {
         LAST_COALESCE_BY_NODE_TYPE.clear();
         LAST_BLOCKS_BACKEND_BY_NODE.clear();
         LAST_TRACKED_WORLD_REQUEST_BY_NODE.clear();
-        RENDERER.clearAllPreviews();
+        renderer().clearAllPreviews();
     }
 
     public static int getActivePreviewCount() {
-        return RENDERER.getActivePreviewCount();
+        return renderer().getActivePreviewCount();
     }
 
     public static boolean hasActivePreview(String previewId) {
-        return RENDERER.hasActivePreview(previewId);
+        return renderer().hasActivePreview(previewId);
     }
 
     public static void updatePreview(String previewId, Object newData) {
-        RENDERER.updatePreview(previewId, newData, null);
+        renderer().updatePreview(previewId, newData, null);
     }
 
     public static void updatePreviewOptions(String previewId, PreviewOptions newOptions) {
-        RENDERER.updatePreview(previewId, null, newOptions);
+        renderer().updatePreview(previewId, null, newOptions);
     }
 
     public static void setGlobalOpacity(float opacity) {
-        RENDERER.setGlobalOpacity(opacity);
+        renderer().setGlobalOpacity(opacity);
     }
 
     public static PreviewRenderer.PreviewRenderSettings getSettings() {
-        return RENDERER.getSettings();
+        return renderer().getSettings();
     }
 
     /**

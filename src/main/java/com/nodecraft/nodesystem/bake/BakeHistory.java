@@ -8,6 +8,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -454,15 +455,21 @@ public class BakeHistory {
             for (Cell cell : originalStates.values()) {
                 states.add(cell.state());
             }
-            return List.copyOf(states);
+            // unmodifiableList (not List.copyOf): Cell.state may be null in synthetic tests.
+            return Collections.unmodifiableList(states);
         }
 
+        /**
+         * Parallel to {@link #getPositions()} / {@link #getPreviousStates()}.
+         * Entries are null when the original cell had no block-entity NBT (typical for air / plain blocks).
+         * Must allow nulls — {@link List#copyOf} rejects them and breaks async undo/redo.
+         */
         public List<NbtCompound> getPreviousNbt() {
             List<NbtCompound> nbts = new ArrayList<>(originalStates.size());
             for (Cell cell : originalStates.values()) {
                 nbts.add(cell.nbt());
             }
-            return List.copyOf(nbts);
+            return Collections.unmodifiableList(nbts);
         }
 
         private record Cell(@Nullable BlockState state, @Nullable NbtCompound nbt) {
