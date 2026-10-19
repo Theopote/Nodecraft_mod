@@ -118,59 +118,80 @@ public final class NodeCommandService {
     }
 
     public boolean deleteSelected() {
-        try {
-            EditorDocumentState document = host.document();
-            NodeGraph graph = document.getGraph();
-            if (graph == null) {
-                return false;
-            }
-
-            Set<UUID> selectedNodeIds = host.interaction().getSelectedNodeIds();
-            if (selectedNodeIds.isEmpty()) {
-                return false;
-            }
-
-            ImGuiNodeHistory history = host.history();
-            List<ImGuiNodeHistory.RemovedNodeSnapshot> snapshots = new ArrayList<>();
-            if (history != null && history.isRecording()) {
-                for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
-                    INode node = graph.getNode(nodeId);
-                    if (node == null) {
-                        continue;
-                    }
-                    NodePosition pos = document.getNodePosition(nodeId);
-                    if (pos == null) {
-                        pos = new NodePosition(0, 0);
-                    }
-                    ImGuiNodeHistory.RemovedNodeSnapshot snapshot =
-                            history.captureRemovedNodeSnapshot(node, pos.x, pos.y);
-                    if (snapshot != null) {
-                        snapshots.add(snapshot);
-                    }
-                }
-                if (!snapshots.isEmpty()) {
-                    history.recordRemoveNodes(snapshots);
-                }
-            }
-
-            Set<UUID> impact = new HashSet<>();
-            for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
-                INode node = graph.getNode(nodeId);
-                if (node != null) {
-                    impact.addAll(graph.getDirtyImpactNodeIds(nodeId));
-                    graph.removeNode(nodeId);
-                    host.removeNodePosition(nodeId);
-                    host.removeSelectedNode(nodeId);
-                }
-            }
-
-            NodeCraft.LOGGER.info("已删除选中的节点");
-            host.notifyStructureDirty(impact);
-            return true;
-        } catch (Exception e) {
-            NodeCraft.LOGGER.error("删除节点时出错: {}", e.getMessage(), e);
+        EditorDocumentState document = host.document();
+        NodeGraph graph = document.getGraph();
+        if (graph == null) {
             return false;
         }
+
+        Set<UUID> selectedNodeIds = host.interaction().getSelectedNodeIds();
+        if (selectedNodeIds.isEmpty()) {
+            return false;
+        }
+
+        ImGuiNodeHistory history = host.history();
+        List<ImGuiNodeHistory.RemovedNodeSnapshot> snapshots = new ArrayList<>();
+        List<UUID> toDelete = new ArrayList<>();
+        for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
+            INode node = graph.getNode(nodeId);
+            if (node == null) {
+                continue;
+            }
+            toDelete.add(nodeId);
+            if (history != null) {
+                NodePosition pos = document.getNodePosition(nodeId);
+                if (pos == null) {
+                    pos = new NodePosition(0, 0);
+                }
+                ImGuiNodeHistory.RemovedNodeSnapshot snapshot =
+                        history.captureRemovedNodeSnapshot(node, pos.x, pos.y);
+                if (snapshot != null) {
+                    snapshots.add(snapshot);
+                }
+            }
+        }
+        if (toDelete.isEmpty()) {
+            return false;
+        }
+
+        Set<UUID> impact = new HashSet<>();
+        List<UUID> removedIds = new ArrayList<>();
+        try {
+            for (UUID nodeId : toDelete) {
+                impact.addAll(graph.getDirtyImpactNodeIds(nodeId));
+                impact.add(nodeId);
+                if (!graph.removeNode(nodeId)) {
+                    throw new IllegalStateException("Failed to remove node " + nodeId);
+                }
+                removedIds.add(nodeId);
+                host.removeNodePosition(nodeId);
+                host.removeSelectedNode(nodeId);
+            }
+        } catch (RuntimeException e) {
+            NodeCraft.LOGGER.error("删除节点中途失败，尝试回滚已删除节点: {}", e.getMessage(), e);
+            if (history != null && !removedIds.isEmpty()) {
+                List<ImGuiNodeHistory.RemovedNodeSnapshot> toRestore = new ArrayList<>();
+                Set<UUID> removedSet = new HashSet<>(removedIds);
+                for (ImGuiNodeHistory.RemovedNodeSnapshot snapshot : snapshots) {
+                    if (removedSet.contains(snapshot.nodeId)) {
+                        toRestore.add(snapshot);
+                    }
+                }
+                if (!history.restoreRemovedNodeSnapshots(toRestore)) {
+                    NodeCraft.LOGGER.error("删除回滚失败，图可能不一致");
+                }
+            }
+            return false;
+        }
+
+        // History is recorded only after the full delete succeeds.
+        if (history != null && history.isRecording() && !snapshots.isEmpty()) {
+            history.recordRemoveNodes(snapshots);
+        }
+
+        NodeCraft.LOGGER.info("已删除选中的节点");
+        host.notifyStructureDirty(impact);
+        return true;
     }
 
     public boolean duplicateSelected() {

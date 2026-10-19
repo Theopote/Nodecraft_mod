@@ -79,6 +79,15 @@ public final class PreviewManager {
         LAST_NON_EMPTY_BY_NODE_TYPE.clear();
     }
 
+    /** Clears empty-input grace for a single owner node without touching unrelated nodes. */
+    public static void clearEmptyInputGraceForNode(String nodeId) {
+        if (nodeId == null || nodeId.isBlank()) {
+            return;
+        }
+        String prefix = nodeId + "|";
+        LAST_NON_EMPTY_BY_NODE_TYPE.keySet().removeIf(key -> key.startsWith(prefix));
+    }
+
     /** Visible for unit tests of empty-input grace bookkeeping. */
     public static void touchNonEmptyForTests(String nodeId, String previewType) {
         touchNonEmpty(nodeId, previewType);

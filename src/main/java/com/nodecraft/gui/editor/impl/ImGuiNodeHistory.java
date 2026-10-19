@@ -22,6 +22,7 @@ import com.nodecraft.nodesystem.core.NodePropertyBindings;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 节点图历史记录管理类，用于实现撤销和重做功能
@@ -427,6 +428,25 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
 
         RemoveNodesAction action = new RemoveNodesAction(snapshots);
         addAction(action);
+    }
+
+    /**
+     * Restores nodes (and their captured connections) without pushing history.
+     * Used to roll back a partially applied delete before any REMOVE_NODES action is recorded.
+     *
+     * @return true when every snapshot node was re-created
+     */
+    public boolean restoreRemovedNodeSnapshots(List<RemovedNodeSnapshot> snapshots) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return true;
+        }
+        boolean wasRecording = isRecording;
+        try {
+            setRecording(false);
+            return RemoveNodesAction.restoreSnapshots(editor, snapshots, null);
+        } finally {
+            setRecording(wasRecording);
+        }
     }
     
     /**
@@ -1113,6 +1133,24 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         @Override
         public boolean undo(ICanvasEditor editor) {
             Map<UUID, UUID> restoredIdMap = new HashMap<>();
+            if (!restoreSnapshots(editor, snapshots, restoredIdMap)) {
+                return false;
+            }
+            currentNodeIdMap.clear();
+            currentNodeIdMap.putAll(restoredIdMap);
+            return true;
+        }
+
+        /**
+         * Recreates snapshot nodes then reconnects edges that involved those nodes.
+         * External endpoint ids stay as captured when they were not part of the restore set.
+         */
+        private static boolean restoreSnapshots(
+                ICanvasEditor editor,
+                List<RemovedNodeSnapshot> snapshots,
+                @Nullable Map<UUID, UUID> outRestoredIdMap
+        ) {
+            Map<UUID, UUID> restoredIdMap = outRestoredIdMap != null ? outRestoredIdMap : new HashMap<>();
             for (RemovedNodeSnapshot snapshot : snapshots) {
                 INode restoredNode = editor.addNodeWithState(
                     snapshot.nodeTypeId,
@@ -1122,7 +1160,7 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
                     snapshot.nodeState
                 );
                 if (restoredNode == null) {
-                    NodeCraft.LOGGER.error("批量撤销删除失败：无法恢复节点类型 {}", snapshot.nodeTypeId);
+                    NodeCraft.LOGGER.error("批量恢复删除节点失败：无法恢复节点类型 {}", snapshot.nodeTypeId);
                     return false;
                 }
                 restoredIdMap.put(snapshot.nodeId, restoredNode.getId());
@@ -1130,23 +1168,19 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
 
             Set<String> restoredConnections = new HashSet<>();
             for (RemovedNodeSnapshot snapshot : snapshots) {
+                if (snapshot.connections == null) {
+                    continue;
+                }
                 for (ConnectionInfo connection : snapshot.connections) {
                     UUID sourceId = restoredIdMap.getOrDefault(connection.sourceNodeId, connection.sourceNodeId);
                     UUID targetId = restoredIdMap.getOrDefault(connection.targetNodeId, connection.targetNodeId);
                     String key = sourceId + "|" + connection.sourcePortId + "|" + targetId + "|" + connection.targetPortId;
-                    if (restoredConnections.contains(key)) {
+                    if (!restoredConnections.add(key)) {
                         continue;
                     }
-
-                    boolean connected = editor.connectPorts(sourceId, connection.sourcePortId, targetId, connection.targetPortId);
-                    if (connected) {
-                        restoredConnections.add(key);
-                    }
+                    editor.connectPorts(sourceId, connection.sourcePortId, targetId, connection.targetPortId);
                 }
             }
-
-            currentNodeIdMap.clear();
-            currentNodeIdMap.putAll(restoredIdMap);
             return true;
         }
 

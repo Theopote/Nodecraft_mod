@@ -15,9 +15,13 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode;
+import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -25,10 +29,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NodeCommandServiceDeleteTest {
+
+    @BeforeAll
+    static void initRegistry() {
+        NodeRegistry registry = NodeRegistry.getInstance();
+        if (!registry.isInitialized()) {
+            registry.initialize();
+        }
+    }
 
     @Test
     void deleteSelectedRemovesNodesPositionsAndSelection() {
@@ -78,7 +91,7 @@ class NodeCommandServiceDeleteTest {
         document.getNodePositions().put(drop.getId(), new NodePosition(10, 20));
         interaction.getSelectedNodeIds().add(drop.getId());
 
-        HistoryCanvasEditor canvas = new HistoryCanvasEditor(graph);
+        HistoryCanvasEditor canvas = new HistoryCanvasEditor(document);
         ImGuiNodeHistory history = canvas.history();
         AtomicInteger dirtyCalls = new AtomicInteger();
         NodeCommandService service = new NodeCommandService(host(document, interaction, dirtyCalls, history));
@@ -87,6 +100,151 @@ class NodeCommandServiceDeleteTest {
         assertEquals(1, history.undoStackSize());
         assertEquals(ImGuiNodeHistory.ActionType.REMOVE_NODES, history.getUndoTopActionType());
         assertNull(graph.getNode(drop.getId()));
+    }
+
+    @Test
+    void deleteSingleConnectedNodeUndoRestoresEdges() {
+        EditorDocumentState document = new EditorDocumentState();
+        EditorInteractionState interaction = new EditorInteractionState();
+        NodeGraph graph = new NodeGraph("delete-edge-undo");
+        RelayNode source = new RelayNode();
+        RelayNode mid = new RelayNode();
+        RelayNode sink = new RelayNode();
+        graph.addNode(source);
+        graph.addNode(mid);
+        graph.addNode(sink);
+        document.setGraph(graph);
+        document.setNodePosition(source.getId(), new NodePosition(0, 0));
+        document.setNodePosition(mid.getId(), new NodePosition(80, 0));
+        document.setNodePosition(sink.getId(), new NodePosition(160, 0));
+        assertTrue(graph.connect(source.getId(), "output_signal", mid.getId(), "input_signal"));
+        assertTrue(graph.connect(mid.getId(), "output_signal", sink.getId(), "input_signal"));
+        interaction.getSelectedNodeIds().add(mid.getId());
+
+        HistoryCanvasEditor canvas = new HistoryCanvasEditor(document);
+        ImGuiNodeHistory history = canvas.history();
+        history.clear();
+        NodeCommandService service = new NodeCommandService(
+                host(document, interaction, new AtomicInteger(), history));
+
+        assertTrue(service.deleteSelected());
+        assertEquals(2, graph.getNodes().size());
+        assertEquals(0, graph.getConnections().size());
+        assertEquals(1, history.undoStackSize());
+
+        assertTrue(history.undo());
+        assertEquals(3, graph.getNodes().size());
+        assertEquals(2, graph.getConnections().size());
+        assertTrue(history.redo());
+        assertEquals(2, graph.getNodes().size());
+        assertEquals(0, graph.getConnections().size());
+    }
+
+    @Test
+    void batchDeleteIsSingleUndoStep() {
+        EditorDocumentState document = new EditorDocumentState();
+        EditorInteractionState interaction = new EditorInteractionState();
+        NodeGraph graph = new NodeGraph("batch-delete");
+        RelayNode a = new RelayNode();
+        RelayNode b = new RelayNode();
+        RelayNode keep = new RelayNode();
+        graph.addNode(a);
+        graph.addNode(b);
+        graph.addNode(keep);
+        document.setGraph(graph);
+        document.setNodePosition(a.getId(), new NodePosition(0, 0));
+        document.setNodePosition(b.getId(), new NodePosition(40, 0));
+        document.setNodePosition(keep.getId(), new NodePosition(80, 0));
+        assertTrue(graph.connect(a.getId(), "output_signal", b.getId(), "input_signal"));
+        interaction.getSelectedNodeIds().add(a.getId());
+        interaction.getSelectedNodeIds().add(b.getId());
+
+        HistoryCanvasEditor canvas = new HistoryCanvasEditor(document);
+        ImGuiNodeHistory history = canvas.history();
+        history.clear();
+        NodeCommandService service = new NodeCommandService(
+                host(document, interaction, new AtomicInteger(), history));
+
+        assertTrue(service.deleteSelected());
+        assertEquals(1, graph.getNodes().size());
+        assertEquals(1, history.undoStackSize());
+        assertTrue(history.undo());
+        assertEquals(3, graph.getNodes().size());
+        assertEquals(1, graph.getConnections().size());
+    }
+
+    @Test
+    void partialDeleteFailureRollsBackWithoutHistory() {
+        EditorDocumentState document = new EditorDocumentState();
+        EditorInteractionState interaction = new EditorInteractionState();
+        NodeGraph graph = new NodeGraph("partial-fail");
+        RelayNode first = new RelayNode();
+        RelayNode second = new RelayNode();
+        graph.addNode(first);
+        graph.addNode(second);
+        document.setGraph(graph);
+        document.setNodePosition(first.getId(), new NodePosition(0, 0));
+        document.setNodePosition(second.getId(), new NodePosition(40, 0));
+        interaction.getSelectedNodeIds().add(first.getId());
+        interaction.getSelectedNodeIds().add(second.getId());
+
+        HistoryCanvasEditor canvas = new HistoryCanvasEditor(document);
+        ImGuiNodeHistory history = canvas.history();
+        history.clear();
+
+        AtomicInteger positionRemovals = new AtomicInteger();
+        NodeCommandService.Host failingHost = new NodeCommandService.Host() {
+            @Override
+            public EditorDocumentState document() {
+                return document;
+            }
+
+            @Override
+            public EditorInteractionState interaction() {
+                return interaction;
+            }
+
+            @Override
+            public ImGuiNodeHistory history() {
+                return history;
+            }
+
+            @Override
+            public void notifyStructureDirty() {
+            }
+
+            @Override
+            public void notifyNodeAdded(Map<String, Object> eventData) {
+            }
+
+            @Override
+            public void clearSelectedNodes() {
+                interaction.clearSelection();
+            }
+
+            @Override
+            public void setSelectedNodeId(UUID nodeId) {
+                interaction.setPrimarySelectedNodeId(nodeId);
+            }
+
+            @Override
+            public void removeNodePosition(UUID nodeId) {
+                if (positionRemovals.incrementAndGet() >= 2) {
+                    throw new IllegalStateException("simulated position cleanup failure");
+                }
+                document.removeNodePosition(nodeId);
+            }
+
+            @Override
+            public void removeSelectedNode(UUID nodeId) {
+                interaction.removeFromSelection(nodeId);
+            }
+        };
+
+        NodeCommandService service = new NodeCommandService(failingHost);
+        assertFalse(service.deleteSelected());
+        assertEquals(0, history.undoStackSize(), "history must not record a failed delete");
+        assertEquals(2, graph.getNodes().size(), "partial delete must roll back removed nodes");
     }
 
     private static NodeCommandService.Host host(
@@ -150,13 +308,13 @@ class NodeCommandServiceDeleteTest {
         };
     }
 
-    /** Minimal canvas so {@link ImGuiNodeHistory#captureRemovedNodeSnapshot} can read the graph. */
+    /** Canvas wired to the same document so undo can restore nodes/edges. */
     private static final class HistoryCanvasEditor implements ICanvasEditor {
-        private final NodeGraph graph;
+        private final EditorDocumentState document;
         private final ImGuiNodeHistory history;
 
-        private HistoryCanvasEditor(NodeGraph graph) {
-            this.graph = graph;
+        private HistoryCanvasEditor(EditorDocumentState document) {
+            this.document = document;
             this.history = new ImGuiNodeHistory(this);
         }
 
@@ -166,7 +324,7 @@ class NodeCommandServiceDeleteTest {
 
         @Override
         public NodeGraph getCurrentGraph() {
-            return graph;
+            return document.getGraph();
         }
 
         @Override
@@ -205,30 +363,34 @@ class NodeCommandServiceDeleteTest {
 
         @Override
         public boolean connectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-            return false;
+            NodeGraph graph = document.getGraph();
+            return graph != null && graph.connect(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
         }
 
         @Override
         public boolean disconnectPorts(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
-            return false;
+            NodeGraph graph = document.getGraph();
+            return graph != null && graph.disconnectPorts(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
         }
 
         @Override
         public Map<UUID, NodePosition> getNodePositions() {
-            return Map.of();
+            return document.getNodePositions();
         }
 
         @Override
         public NodePosition getNodePosition(UUID nodeId) {
-            return null;
+            return document.getNodePosition(nodeId);
         }
 
         @Override
         public void setCurrentGraph(NodeGraph graph) {
+            document.setGraph(graph);
         }
 
         @Override
         public void setNodePositions(Map<UUID, NodePosition> positions) {
+            document.replaceNodePositions(positions != null ? positions : Map.of());
         }
 
         @Override
@@ -262,6 +424,7 @@ class NodeCommandServiceDeleteTest {
 
         @Override
         public void removeNodePosition(UUID nodeId) {
+            document.removeNodePosition(nodeId);
         }
 
         @Override
@@ -275,7 +438,7 @@ class NodeCommandServiceDeleteTest {
 
         @Override
         public INode addNode(String nodeTypeId, float x, float y) {
-            return null;
+            return addNodeWithState(nodeTypeId, null, x, y, null);
         }
 
         @Override
@@ -285,7 +448,22 @@ class NodeCommandServiceDeleteTest {
                 float x,
                 float y,
                 @Nullable Object nodeState) {
-            return null;
+            NodeGraph graph = document.getGraph();
+            if (graph == null) {
+                return null;
+            }
+            INode node = NodeRegistry.getInstance().createNodeInstance(nodeTypeId);
+            if (node == null) {
+                return null;
+            }
+            if (nodeState != null) {
+                node.setNodeState(nodeState);
+            }
+            graph.addNode(node);
+            Map<UUID, NodePosition> positions = new HashMap<>(document.getNodePositions());
+            positions.put(node.getId(), new NodePosition(x, y));
+            document.replaceNodePositions(positions);
+            return node;
         }
 
         @Override

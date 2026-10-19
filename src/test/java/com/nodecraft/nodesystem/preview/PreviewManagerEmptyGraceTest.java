@@ -38,6 +38,19 @@ class PreviewManagerEmptyGraceTest {
     }
 
     @Test
+    void clearEmptyInputGraceForNodeIsScoped() {
+        String a = "grace-a";
+        String b = "grace-b";
+        PreviewManager.touchNonEmptyForTests(a, "ghost_block");
+        PreviewManager.touchNonEmptyForTests(b, "ghost_block");
+
+        PreviewManager.clearEmptyInputGraceForNode(a);
+
+        assertFalse(PreviewManager.withinEmptyGraceForTests(a, "ghost_block"));
+        assertTrue(PreviewManager.withinEmptyGraceForTests(b, "ghost_block"));
+    }
+
+    @Test
     void hidePreviewsNotOwnedByClearsDeletedOwnersWithoutTouchingLive() {
         String deleted = "deleted-owner";
         String live = "live-owner";

@@ -91,7 +91,9 @@ public final class AutoPreviewController {
         Set<UUID> scope = IncrementalExecutionPlanner.resolveInvalidationScope(graph, node.getId());
         invalidatedNodeIds.addAll(scope);
         // Drop stale GHOST immediately for impacted nodes; debounce will rebuild after recompute.
-        PreviewManager.clearEmptyInputGrace();
+        for (UUID impactedId : scope) {
+            PreviewManager.clearEmptyInputGraceForNode(impactedId.toString());
+        }
         hideImpactedPreviews(scope);
         cancelInFlightPreview();
         graphDirtyEpoch++;
@@ -122,13 +124,19 @@ public final class AutoPreviewController {
         if (extraHideNodeIds != null && !extraHideNodeIds.isEmpty()) {
             invalidatedNodeIds.addAll(extraHideNodeIds);
             hideImpactedPreviews(extraHideNodeIds);
+            for (UUID nodeId : extraHideNodeIds) {
+                if (nodeId != null) {
+                    PreviewManager.clearEmptyInputGraceForNode(nodeId.toString());
+                }
+            }
         } else {
             invalidatedNodeIds.clear();
+            // Unknown topology scope: clear all empty-input grace so live preview nodes refresh.
+            PreviewManager.clearEmptyInputGrace();
         }
         if (graph != null) {
             graph.getExecutionCache().clear();
         }
-        PreviewManager.clearEmptyInputGrace();
         cancelInFlightPreview();
         graphDirtyEpoch++;
         dirtyVersionSource.markDirty();
@@ -140,10 +148,24 @@ public final class AutoPreviewController {
         );
     }
 
-    /** Full document replace / load: drop every preview not owned by the new graph. */
+    /**
+     * Full document replace / load: drop <em>all</em> GHOST previews even when node UUIDs collide
+     * with the previous document, then schedule a fresh preview for the new graph.
+     * TRACKED_WORLD world blocks are not restored here — editor/world teardown owns that path.
+     */
     public void notifyGraphReplaced() {
         invalidatedNodeIds.clear();
-        notifyStructureDirty(Set.of());
+        cancelInFlightPreview();
+        PreviewManager.clearAllPreviews();
+        PreviewManager.clearEmptyInputGrace();
+        NodeGraph graph = graphSupplier.get();
+        if (graph != null) {
+            graph.getExecutionCache().clear();
+        }
+        graphDirtyEpoch++;
+        dirtyVersionSource.markDirty();
+        stampPendingDirty(dirtyVersionSource.getDirtyVersion());
+        NodeCraft.LOGGER.debug("Auto-preview graph replaced. graphDirtyEpoch={}", graphDirtyEpoch);
     }
 
     private void hideImpactedPreviews(Collection<UUID> nodeIds) {

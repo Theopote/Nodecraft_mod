@@ -91,11 +91,38 @@ class AutoPreviewControllerTest {
 
         assertFalse(PreviewManager.withinEmptyGraceForTests(orphanId, "ghost_block"),
                 "orphan deleted-node grace must be cleared via ownership scan");
-        // clearEmptyInputGrace clears all; impacted a is also hidden.
         assertFalse(PreviewManager.withinEmptyGraceForTests(a.getId().toString(), "ghost_block"));
-        assertFalse(PreviewManager.withinEmptyGraceForTests(b.getId().toString(), "ghost_block"));
+        assertTrue(PreviewManager.withinEmptyGraceForTests(b.getId().toString(), "ghost_block"),
+                "unrelated live node grace must survive scoped structure dirty");
         assertTrue(controller.invalidatedNodeIdsView().contains(a.getId()));
         assertFalse(controller.invalidatedNodeIdsView().contains(b.getId()));
+    }
+
+    @Test
+    void notifyGraphReplacedClearsGraceEvenWhenUuidStillLive() {
+        AtomicLong dirtyVersion = new AtomicLong(0L);
+        PassThroughNode node = new PassThroughNode("same-id", "ok");
+        NodeGraph oldGraph = new NodeGraph("old");
+        oldGraph.addNode(node);
+        NodeGraph[] graphRef = new NodeGraph[] { oldGraph };
+
+        PreviewManager.touchNonEmptyForTests(node.getId().toString(), "ghost_block");
+        assertTrue(PreviewManager.withinEmptyGraceForTests(node.getId().toString(), "ghost_block"));
+
+        AutoPreviewController controller = new AutoPreviewController(
+                () -> graphRef[0],
+                dirtySource(dirtyVersion),
+                () -> new ExecutionContext(null, null)
+        );
+
+        // New document reuses the same node UUID — ownership scan alone would keep the preview.
+        NodeGraph newGraph = new NodeGraph("new");
+        newGraph.addNode(node);
+        graphRef[0] = newGraph;
+        controller.notifyGraphReplaced();
+
+        assertFalse(PreviewManager.withinEmptyGraceForTests(node.getId().toString(), "ghost_block"));
+        assertEquals(1L, dirtyVersion.get());
     }
 
     @Test
