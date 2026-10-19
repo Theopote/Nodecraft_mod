@@ -74,7 +74,7 @@ class PlacementSubmitPlanTest {
     }
 
     @Test
-    void duplicatePositionsKeepOrderLastWriteWinsInMap() {
+    void duplicatePositionsCollapseToLastWriteWins() {
         assumeBlockRegistryLive();
         BlockPlacementData first = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:stone");
         BlockPlacementData second = new BlockPlacementData(new BlockPos(0, 0, 0), "minecraft:oak_planks");
@@ -83,13 +83,34 @@ class PlacementSubmitPlanTest {
                 List.of(first, second), null, null, null, null, null, null, null, null, true);
 
         assertTrue(plan.valid(), plan.error());
-        assertEquals(2, plan.size(), "queue retains both entries for Bake order");
+        assertEquals(2, plan.rawEntryCount(), "raw source instruction count");
+        assertEquals(1, plan.uniqueCount(), "Bake queue is unique cells only");
+        assertTrue(plan.hadDuplicates());
         Map<BlockPos, net.minecraft.block.BlockState> map = plan.toPositionMap();
         assertEquals(1, map.size());
         assertEquals(
                 Registries.BLOCK.get(net.minecraft.util.Identifier.of("minecraft:oak_planks")).getDefaultState(),
                 map.get(new BlockPos(0, 0, 0))
         );
+    }
+
+    @Test
+    void dedupeLastWriteWinsPreservesFirstSeenOrder() {
+        assumeBlockRegistryLive();
+        net.minecraft.block.BlockState stone =
+                Registries.BLOCK.get(net.minecraft.util.Identifier.of("minecraft:stone")).getDefaultState();
+        net.minecraft.block.BlockState gold =
+                Registries.BLOCK.get(net.minecraft.util.Identifier.of("minecraft:gold_block")).getDefaultState();
+        List<PlacementSubmitPlan.Entry> raw = List.of(
+                new PlacementSubmitPlan.Entry(new BlockPos(1, 0, 0), stone),
+                new PlacementSubmitPlan.Entry(new BlockPos(2, 0, 0), stone),
+                new PlacementSubmitPlan.Entry(new BlockPos(1, 0, 0), gold)
+        );
+        List<PlacementSubmitPlan.Entry> unique = PlacementSubmitPlan.dedupeLastWriteWins(raw);
+        assertEquals(2, unique.size());
+        assertEquals(new BlockPos(1, 0, 0), unique.get(0).pos());
+        assertEquals(gold, unique.get(0).state());
+        assertEquals(new BlockPos(2, 0, 0), unique.get(1).pos());
     }
 
     @Test

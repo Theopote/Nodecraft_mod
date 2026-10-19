@@ -1,7 +1,7 @@
 # NodeCraft Node Library
 
 - Scope: `src/main/java/com/nodecraft/nodesystem/nodes`
-- Total nodes: **538**
+- Total nodes: **539**
 - Total categories: **60**
 - Generated from `node-catalog.json` (`generateNodeCatalog`). Do not edit by hand.
 
@@ -44,7 +44,7 @@
 | `output.debug` | 4 |
 | `output.execute` | 8 |
 | `output.export` | 4 |
-| `output.preview` | 12 |
+| `output.preview` | 13 |
 | `pattern.grid` | 5 |
 | `pattern.linear` | 4 |
 | `pattern.lsystem` | 3 |
@@ -579,12 +579,13 @@
 | Export WorldEdit | `output.export.export_worldedit` | Exports placements to a Sponge schematic file for WorldEdit | `ExportWorldEditNode` |
 | Export CSV / JSON | `output.export.export_data` | Exports list/coordinates data to CSV or JSON file. | `ExportDataNode` |
 
-## output.preview (12)
+## output.preview (13)
 
 | Node Name | Node ID | Description | Class |
 |---|---|---|---|
 | Geometry Viewer | `output.preview.geometry_viewer` | Previews geometry visually without committing changes to the world. | `GeometryViewerNode` |
 | Preview Blocks | `output.preview.preview_blocks` | Previews block coordinates, placements, or placement trees as temporary ghost blocks. | `PreviewBlocksNode` |
+| Preview Placements | `output.preview.preview_placements` | GHOST preview of Apply's PlacementSubmitPlan (placements win over geometry; last-write-wins). | `PreviewPlacementsNode` |
 | Preview Points | `output.preview.preview_points` | Previews one or more reference points before voxelization | `PreviewPointsNode` |
 | Preview Vectors | `output.preview.preview_vectors` | Previews vectors and directions before voxelization | `PreviewVectorsNode` |
 | Preview Plane | `output.preview.preview_plane` | Previews a plane as a square grid with axes and normal direction | `PreviewPlaneNode` |

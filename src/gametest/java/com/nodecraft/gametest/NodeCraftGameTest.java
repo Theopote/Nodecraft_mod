@@ -428,8 +428,8 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
     }
 
     /**
-     * Transaction invariant: repeated writes to the same BlockPos in one BakeTask must
-     * rollback to the pre-transaction state (putIfAbsent), not an intermediate write.
+     * After last-write-wins dedupe, cancel mid-task still restores pre-transaction world
+     * (putIfAbsent), never an intermediate duplicate write.
      */
     @GameTest
     public void bakeDuplicatePosCancelRestoresPreTransactionState(TestContext ctx) {
@@ -446,7 +446,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         BlockPos absP = ctx.getAbsolutePos(relP);
         BlockPos absQ = ctx.getAbsolutePos(relQ);
 
-        // Keep a third placement so the task is still RUNNING after two writes to P.
+        // Dedupe collapses P:stone+P:gold → P:gold, then Q. blocksPerTick=1 leaves Q pending.
         UUID taskId = service.enqueuePlacements(
             world,
             List.of(
@@ -457,7 +457,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
             PlacementMode.OVERWRITE,
             true,
             BakeOperationKind.APPLY,
-            2,
+            1,
             0L,
             actorId,
             null
@@ -468,7 +468,7 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.expectBlock(Blocks.GOLD_BLOCK, relP);
         ctx.checkBlockState(relQ, state -> state.isOf(Blocks.AIR), state -> Text.literal("Q still pending"));
 
-        ctx.assertTrue(service.cancelTask(taskId), "cancel after duplicate writes to P");
+        ctx.assertTrue(service.cancelTask(taskId), "cancel after first unique cell write");
         drainTasks(service);
 
         ctx.checkBlockState(relP, state -> state.isOf(Blocks.AIR),
@@ -476,6 +476,40 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
         ctx.checkBlockState(relQ, state -> state.isOf(Blocks.AIR), state -> Text.literal("Q stays air"));
         ctx.assertEquals(0, history.size(), "cancelled apply must not commit history");
 
+        ctx.complete();
+    }
+
+    /**
+     * INCREMENTAL + duplicates: last-write-wins dedupe so air at P becomes gold, not stone
+     * (pre-dedupe INCREMENTAL would place stone then skip gold).
+     */
+    @GameTest
+    public void bakeDuplicatePosIncrementalUsesLastWriteWins(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        resetBakeService(service);
+
+        UUID actorId = UUID.randomUUID();
+        BlockPos relP = new BlockPos(1, 1, 1);
+        BlockPos absP = ctx.getAbsolutePos(relP);
+
+        service.enqueuePlacements(
+            world,
+            List.of(
+                new BakeTask.Placement(absP, Blocks.STONE.getDefaultState()),
+                new BakeTask.Placement(absP, Blocks.GOLD_BLOCK.getDefaultState())
+            ),
+            PlacementMode.INCREMENTAL,
+            true,
+            BakeOperationKind.APPLY,
+            1000,
+            1_000_000L,
+            actorId,
+            null
+        );
+        drainTasks(service);
+
+        ctx.expectBlock(Blocks.GOLD_BLOCK, relP);
         ctx.complete();
     }
 

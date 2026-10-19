@@ -1,7 +1,7 @@
 # NodeCraft 节点库
 
 - **统计范围**：`src/main/java/com/nodecraft/nodesystem/nodes`
-- **节点总数**：**538**
+- **节点总数**：**539**
 - **分类总数**：**60**
 - **说明**：由 `node-catalog.json`（`generateNodeCatalog`）自动生成；「节点名称」与「说明」取自 `@NodeInfo`（与编辑器一致）。空说明显示为 `-`。
 
@@ -44,7 +44,7 @@
 | `output.debug` | 4 |
 | `output.execute` | 8 |
 | `output.export` | 4 |
-| `output.preview` | 12 |
+| `output.preview` | 13 |
 | `pattern.grid` | 5 |
 | `pattern.linear` | 4 |
 | `pattern.lsystem` | 3 |
@@ -579,12 +579,13 @@
 | Export WorldEdit | `output.export.export_worldedit` | Exports placements to a Sponge schematic file for WorldEdit | `ExportWorldEditNode` |
 | Export CSV / JSON | `output.export.export_data` | Exports list/coordinates data to CSV or JSON file. | `ExportDataNode` |
 
-## output.preview（12）
+## output.preview（13）
 
 | 节点名称 | 节点 ID | 说明 | 类名 |
 |---|---|---|---|
 | Geometry Viewer | `output.preview.geometry_viewer` | Previews geometry visually without committing changes to the world. | `GeometryViewerNode` |
 | Preview Blocks | `output.preview.preview_blocks` | Previews block coordinates, placements, or placement trees as temporary ghost blocks. | `PreviewBlocksNode` |
+| Preview Placements | `output.preview.preview_placements` | GHOST preview of Apply's PlacementSubmitPlan (placements win over geometry; last-write-wins). | `PreviewPlacementsNode` |
 | Preview Points | `output.preview.preview_points` | Previews one or more reference points before voxelization | `PreviewPointsNode` |
 | Preview Vectors | `output.preview.preview_vectors` | Previews vectors and directions before voxelization | `PreviewVectorsNode` |
 | Preview Plane | `output.preview.preview_plane` | Previews a plane as a square grid with axes and normal direction | `PreviewPlaneNode` |

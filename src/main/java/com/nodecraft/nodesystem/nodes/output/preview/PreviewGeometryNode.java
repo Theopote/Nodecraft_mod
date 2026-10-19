@@ -145,15 +145,17 @@ public class PreviewGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered geometry previews", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Forwarded geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_KIND_ID, "Preview Kind",
-            "none | surface | voxel_full | voxel_sampled | mixed — surface is not block-level Apply parity",
+            "none | surface | voxel_full | voxel_sampled | mixed — not the full Apply placement set",
             NodeDataType.STRING, this));
-        addOutputPort(new BasePort(OUTPUT_VOXEL_TOTAL_COUNT_ID, "Voxel Total Count",
-            "Full voxel-boolean block count before preview sampling (0 when no voxel preview)",
+        addOutputPort(new BasePort(OUTPUT_VOXEL_TOTAL_COUNT_ID, "Voxel Boolean Total",
+            "Difference/Intersection voxel count only (not whole-building Apply size); 0 if no boolean branch",
             NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VOXEL_SHOWN_COUNT_ID, "Voxel Shown Count",
-            "Block ghosts actually shown after sampling", NodeDataType.INTEGER, this));
-        addOutputPort(new BasePort(OUTPUT_VOXEL_SAMPLED_ID, "Voxel Sampled",
-            "True when voxel ghost preview is a sampled subset of the Apply set", NodeDataType.BOOLEAN, this));
+        addOutputPort(new BasePort(OUTPUT_VOXEL_SHOWN_COUNT_ID, "Voxel Boolean Shown",
+            "Boolean-branch ghost cells after sampling budget (may be < Voxel Boolean Total)",
+            NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VOXEL_SAMPLED_ID, "Voxel Boolean Sampled",
+            "True when boolean-branch ghosts are a sampled subset — Apply still uses the full boolean voxel set",
+            NodeDataType.BOOLEAN, this));
     }
 
     @Override

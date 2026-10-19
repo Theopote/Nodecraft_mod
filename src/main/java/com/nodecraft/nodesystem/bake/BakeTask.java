@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.bake;
 
 import com.nodecraft.nodesystem.nodes.world.write.WorldWriteNbtUtils;
+import com.nodecraft.nodesystem.util.LastWriteWinsByPos;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -22,9 +23,9 @@ import java.util.UUID;
  * so World and BakeHistory stay consistent (COMPLETED = commit, CANCELLED/TIMED_OUT = rollback).
  * <p>
  * Per-position transaction semantics: only the first successful write to a {@link BlockPos}
- * records the pre-transaction state ({@code putIfAbsent}). Repeated writes to the same
- * coordinate do not create intermediate undo entries, so rollback always restores the
- * world as it was when the task began — independent of upstream position uniqueness.
+ * records the pre-transaction state ({@code putIfAbsent}). Incoming lists are collapsed with
+ * last-write-wins before execution so OVERWRITE and INCREMENTAL see one target state per cell
+ * (INCREMENTAL air checks use the pre-task world, not an earlier write in the same task).
  */
 public class BakeTask {
 
@@ -479,20 +480,19 @@ public class BakeTask {
     }
 
     private static List<Placement> copyPlacements(List<Placement> placements) {
-        List<Placement> out = new ArrayList<>();
-        if (placements == null) {
-            return out;
-        }
-        for (Placement placement : placements) {
-            if (placement != null && placement.pos() != null && placement.state() != null) {
-                out.add(new Placement(
-                    placement.pos(),
-                    placement.state(),
-                    placement.blockEntityNbt(),
-                    placement.mergeNbt()));
-            }
-        }
-        return out;
+        return dedupeLastWriteWins(placements);
+    }
+
+    /**
+     * Collapses duplicate coordinates: later entries replace earlier ones; first-seen key order
+     * is preserved. Package-visible for unit tests.
+     */
+    static List<Placement> dedupeLastWriteWins(@Nullable List<Placement> placements) {
+        return LastWriteWinsByPos.collapse(
+                placements,
+                Placement::pos,
+                p -> p != null && p.state() != null,
+                (key, p) -> new Placement(key, p.state(), p.blockEntityNbt(), p.mergeNbt()));
     }
 
     public record Placement(BlockPos pos, BlockState state, @Nullable NbtCompound blockEntityNbt, boolean mergeNbt) {

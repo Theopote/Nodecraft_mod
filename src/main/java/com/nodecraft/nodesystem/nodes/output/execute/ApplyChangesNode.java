@@ -125,7 +125,9 @@ public class ApplyChangesNode extends BaseCustomUINode {
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify On Complete", "Overrides node notification behavior", NodeDataType.BOOLEAN, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether placement succeeded or was queued", NodeDataType.BOOLEAN, this));
-        addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count", "Number of blocks placed (sync) or queued (async)", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_OPERATION_COUNT_ID, "Operation Count",
+                "Unique cells queued/placed after last-write-wins dedupe (not raw duplicate instructions)",
+                NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_EXECUTION_TIME_ID, "Execution Time", "Execution time in milliseconds (queueing time for async)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_STATUS_ID, "Status", "Execution status message", NodeDataType.STRING, this));
         addOutputPort(new BasePort(OUTPUT_TASK_ID, "Task ID", "Bake task UUID for this Apply Changes submit", NodeDataType.STRING, this));
