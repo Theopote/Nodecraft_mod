@@ -190,6 +190,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
         @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
         @Override public void removeSelectedNode(UUID nodeId) { ImGuiNodeEditor.this.removeSelectedNode(nodeId); }
+        @Override public boolean restoreDocument(com.nodecraft.nodesystem.io.SavedGraph snapshot) {
+            return restoreGraphSnapshot(snapshot);
+        }
     }
 
     private void handleNodeDirty(BaseNode node, long dirtyVersion) {

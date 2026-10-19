@@ -26,6 +26,13 @@ public abstract class BaseNode implements INode {
 
     private static final List<DirtyListener> DIRTY_LISTENERS = new CopyOnWriteArrayList<>();
 
+    /**
+     * When set, the next {@link BaseNode} construction on this thread adopts this id instead of
+     * the constructor argument. Used by graph snapshot restore so Undo / structure-edit rollback
+     * preserve node identity (selection, positions, connections).
+     */
+    private static final ThreadLocal<UUID> FORCED_CONSTRUCTION_ID = new ThreadLocal<>();
+
     private final UUID id;
     private final String typeId;
     private final String displayName;
@@ -42,8 +49,24 @@ public abstract class BaseNode implements INode {
     protected final Map<String, Object> inputValues = new HashMap<>();
     protected final Map<String, Object> outputValues = new HashMap<>();
 
+    /**
+     * Forces the next node constructed on this thread to use {@code id}. Always clear in a finally.
+     */
+    public static void forceNextConstructionId(@Nullable UUID id) {
+        if (id == null) {
+            FORCED_CONSTRUCTION_ID.remove();
+        } else {
+            FORCED_CONSTRUCTION_ID.set(id);
+        }
+    }
+
+    public static void clearForcedConstructionId() {
+        FORCED_CONSTRUCTION_ID.remove();
+    }
+
     public BaseNode(UUID id, String typeId) {
-        this.id = id;
+        UUID forced = FORCED_CONSTRUCTION_ID.get();
+        this.id = forced != null ? forced : id;
         this.typeId = typeId;
 
         NodeInfo nodeInfo = getClass().getAnnotation(NodeInfo.class);

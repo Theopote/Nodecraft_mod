@@ -65,6 +65,23 @@ class GraphSerializerTest {
     }
 
     @Test
+    void roundTripPreservesNodeUuids() {
+        NodeGraph original = new NodeGraph("uuid-preserve");
+        PassNode source = new PassNode();
+        PassNode sink = new PassNode();
+        original.addNode(source);
+        original.addNode(sink);
+        UUID sourceId = source.getId();
+        UUID sinkId = sink.getId();
+        original.connect(sourceId, "out", sinkId, "in");
+
+        NodeGraph loaded = GraphSerializer.fromJsonToGraph(GraphSerializer.toJson(original));
+        assertNotNull(loaded.getNode(sourceId));
+        assertNotNull(loaded.getNode(sinkId));
+        assertTrue(loaded.isConnected(sourceId, "out", sinkId, "in"));
+    }
+
+    @Test
     void roundTripRestoresNodeStateAndExecutionBehavior() {
         NodeGraph original = new NodeGraph("stateful");
         SetVariableNode setter = new SetVariableNode();

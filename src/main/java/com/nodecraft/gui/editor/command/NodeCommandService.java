@@ -1,6 +1,8 @@
 package com.nodecraft.gui.editor.command;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.editor.GraphStructureEditSupport;
+import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.document.EditorDocumentState;
 import com.nodecraft.gui.editor.impl.ICanvasEditor.NodeAlignmentAction;
 import com.nodecraft.gui.editor.impl.ImGuiNodeHistory;
@@ -8,6 +10,7 @@ import com.nodecraft.gui.editor.impl.NodePosition;
 import com.nodecraft.gui.editor.interaction.EditorInteractionState;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
+import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +55,9 @@ public final class NodeCommandService {
         void removeNodePosition(UUID nodeId);
 
         void removeSelectedNode(UUID nodeId);
+
+        /** Restores a document snapshot for structure-edit rollback / Undo. */
+        boolean restoreDocument(SavedGraph snapshot);
     }
 
     private final Host host;
@@ -117,6 +124,14 @@ public final class NodeCommandService {
         }
     }
 
+    /**
+     * Deletes the current selection as a single graph structure transaction.
+     * Rollback restores nodes, edges, and positions via document snapshot and does not depend on
+     * history existing. Selection is restored on abort. History records one Undo step only after
+     * the full delete commits.
+     *
+     * @throws StructureEditRollbackException when abort restore fails (document may be inconsistent)
+     */
     public boolean deleteSelected() {
         EditorDocumentState document = host.document();
         NodeGraph graph = document.getGraph();
@@ -124,74 +139,106 @@ public final class NodeCommandService {
             return false;
         }
 
-        Set<UUID> selectedNodeIds = host.interaction().getSelectedNodeIds();
+        EditorInteractionState interaction = host.interaction();
+        Set<UUID> selectedNodeIds = interaction.getSelectedNodeIds();
         if (selectedNodeIds.isEmpty()) {
             return false;
         }
 
-        ImGuiNodeHistory history = host.history();
-        List<ImGuiNodeHistory.RemovedNodeSnapshot> snapshots = new ArrayList<>();
         List<UUID> toDelete = new ArrayList<>();
         for (UUID nodeId : new ArrayList<>(selectedNodeIds)) {
-            INode node = graph.getNode(nodeId);
-            if (node == null) {
-                continue;
-            }
-            toDelete.add(nodeId);
-            if (history != null) {
-                NodePosition pos = document.getNodePosition(nodeId);
-                if (pos == null) {
-                    pos = new NodePosition(0, 0);
-                }
-                ImGuiNodeHistory.RemovedNodeSnapshot snapshot =
-                        history.captureRemovedNodeSnapshot(node, pos.x, pos.y);
-                if (snapshot != null) {
-                    snapshots.add(snapshot);
-                }
+            if (graph.getNode(nodeId) != null) {
+                toDelete.add(nodeId);
             }
         }
         if (toDelete.isEmpty()) {
             return false;
         }
 
+        Set<UUID> selectionBefore = new LinkedHashSet<>(selectedNodeIds);
+        UUID primaryBefore = interaction.getPrimarySelectedNodeId();
         Set<UUID> impact = new HashSet<>();
-        List<UUID> removedIds = new ArrayList<>();
+
+        GraphStructureEditSupport.Outcome outcome;
         try {
-            for (UUID nodeId : toDelete) {
-                impact.addAll(graph.getDirtyImpactNodeIds(nodeId));
-                impact.add(nodeId);
-                if (!graph.removeNode(nodeId)) {
-                    throw new IllegalStateException("Failed to remove node " + nodeId);
-                }
-                removedIds.add(nodeId);
-                host.removeNodePosition(nodeId);
-                host.removeSelectedNode(nodeId);
-            }
-        } catch (RuntimeException e) {
-            NodeCraft.LOGGER.error("删除节点中途失败，尝试回滚已删除节点: {}", e.getMessage(), e);
-            if (history != null && !removedIds.isEmpty()) {
-                List<ImGuiNodeHistory.RemovedNodeSnapshot> toRestore = new ArrayList<>();
-                Set<UUID> removedSet = new HashSet<>(removedIds);
-                for (ImGuiNodeHistory.RemovedNodeSnapshot snapshot : snapshots) {
-                    if (removedSet.contains(snapshot.nodeId)) {
-                        toRestore.add(snapshot);
+            outcome = GraphStructureEditSupport.run(
+                    structureEditHost(),
+                    "Delete Nodes",
+                    () -> {
+                        NodeGraph liveGraph = document.getGraph();
+                        if (liveGraph == null) {
+                            return false;
+                        }
+                        for (UUID nodeId : toDelete) {
+                            impact.addAll(liveGraph.getDirtyImpactNodeIds(nodeId));
+                            impact.add(nodeId);
+                            if (!liveGraph.removeNode(nodeId)) {
+                                throw new IllegalStateException("Failed to remove node " + nodeId);
+                            }
+                            host.removeNodePosition(nodeId);
+                            host.removeSelectedNode(nodeId);
+                        }
+                        return true;
                     }
-                }
-                if (!history.restoreRemovedNodeSnapshots(toRestore)) {
-                    NodeCraft.LOGGER.error("删除回滚失败，图可能不一致");
-                }
-            }
+            );
+        } catch (StructureEditRollbackException e) {
+            NodeCraft.LOGGER.error("删除节点回滚失败，图可能不一致: {}", e.getMessage(), e);
+            throw e;
+        }
+
+        if (!GraphStructureEditSupport.succeeded(outcome)) {
+            restoreSelection(selectionBefore, primaryBefore);
             return false;
         }
 
-        // History is recorded only after the full delete succeeds.
-        if (history != null && history.isRecording() && !snapshots.isEmpty()) {
-            history.recordRemoveNodes(snapshots);
-        }
-
         NodeCraft.LOGGER.info("已删除选中的节点");
+        // Impact-scoped preview hide (transaction already notified bare structure dirty).
         host.notifyStructureDirty(impact);
         return true;
+    }
+
+    private void restoreSelection(Set<UUID> selectionBefore, @Nullable UUID primaryBefore) {
+        EditorDocumentState document = host.document();
+        NodeGraph graph = document.getGraph();
+        host.clearSelectedNodes();
+        if (graph == null || selectionBefore == null || selectionBefore.isEmpty()) {
+            return;
+        }
+        EditorInteractionState interaction = host.interaction();
+        for (UUID nodeId : selectionBefore) {
+            if (nodeId != null && graph.getNode(nodeId) != null) {
+                interaction.getSelectedNodeIds().add(nodeId);
+            }
+        }
+        if (primaryBefore != null && graph.getNode(primaryBefore) != null) {
+            interaction.setPrimarySelectedNodeId(primaryBefore);
+        } else if (!interaction.getSelectedNodeIds().isEmpty()) {
+            interaction.setPrimarySelectedNodeId(interaction.getSelectedNodeIds().iterator().next());
+        }
+    }
+
+    private GraphStructureEditSupport.Host structureEditHost() {
+        return new GraphStructureEditSupport.Host() {
+            @Override
+            public EditorDocumentState document() {
+                return host.document();
+            }
+
+            @Override
+            public ImGuiNodeHistory history() {
+                return host.history();
+            }
+
+            @Override
+            public boolean restoreDocument(SavedGraph snapshot) {
+                return host.restoreDocument(snapshot);
+            }
+
+            @Override
+            public void notifyStructureDirty() {
+                host.notifyStructureDirty();
+            }
+        };
     }
 
     public boolean duplicateSelected() {

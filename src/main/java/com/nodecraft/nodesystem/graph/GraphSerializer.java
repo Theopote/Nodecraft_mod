@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Outcome of restoring a single node from saved metadata.
@@ -207,7 +208,15 @@ public class GraphSerializer {
         }
 
         NodeRegistry registry = NodeRegistry.getInstance();
+        UUID forcedId = null;
         try {
+            forcedId = UUID.fromString(savedNode.nodeId);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid saved node id '{}'; type={}; assigning a fresh UUID",
+                    savedNode.nodeId, savedNode.typeId);
+        }
+        try {
+            BaseNode.forceNextConstructionId(forcedId);
             INode node = registry.createNodeInstance(savedNode.typeId);
             if (!(node instanceof BaseNode baseNode)) {
                 if (node == null) {
@@ -232,6 +241,8 @@ public class GraphSerializer {
         } catch (NodeValidationException e) {
             LOGGER.warn("Skipping unregistered node type: {} (saved id: {})", savedNode.typeId, savedNode.nodeId);
             return new NodeRestoreResult(null, true);
+        } finally {
+            BaseNode.clearForcedConstructionId();
         }
     }
 
