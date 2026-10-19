@@ -304,13 +304,21 @@
         "output_geometry": {
           "downstream": [
             {
-              "nodeId": "geometry.combine.geometry",
+              "nodeId": "geometry.boolean.difference",
               "order": 0,
+              "reason": "Wall Geometry + Openings → Difference → Cut Wall",
+              "connectPortId": "input_base"
+            },
+            {
+              "nodeId": "geometry.combine.geometry",
+              "order": 10,
+              "reason": "仅当已切洞或确需完整墙体时合并",
               "connectPortId": "input_geometry_0"
             },
             {
               "nodeId": "output.preview.preview_geometry",
-              "order": 10,
+              "order": 20,
+              "reason": "预览完整墙体（开洞需先 Difference）",
               "connectPortId": "input_geometry"
             }
           ]
@@ -320,7 +328,7 @@
             {
               "nodeId": "geometry.boolean.difference",
               "order": 0,
-              "reason": "洞口作为差集刀具",
+              "reason": "Wall Geometry + Openings → Difference → Cut Wall",
               "connectPortId": "input_cutter"
             }
           ]

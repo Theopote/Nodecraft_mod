@@ -107,7 +107,7 @@
 | Roof Generator | `geometry.architectural_primitives.roof_generator` | Advanced roof convenience (specialty shapes); prefer Roof Base for flat/shed/gable | `RoofGeneratorNode` |
 | Facade Panel Array | `geometry.architectural_primitives.facade_panel_array` | Generates a rectangular array of facade panels on a box face | `FacadePanelArrayNode` |
 | Arch Opening | `geometry.architectural_primitives.arch_opening` | Generates a rectangular, round, or pointed arch opening volume | `ArchOpeningNode` |
-| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Wall slab plus opening volumes (prefer Wall Slab + Window Array + Difference when openings are owned elsewhere) | `WallWithOpeningsNode` |
+| Wall With Openings | `geometry.architectural_primitives.wall_with_openings` | Solid wall slab + separate opening volumes — connect Wall Geometry + Openings → Difference for a cut wall | `WallWithOpeningsNode` |
 | Pilaster / Cornice | `geometry.architectural_primitives.pilaster_cornice` | Generates pilasters and a cornice along a box face | `PilasterOrCorniceNode` |
 | Array Along Curve | `geometry.architectural_primitives.array_along_curve` | Places repeated columns, posts, or panels along a curve or polyline path | `ArrayAlongCurveNode` |
 | Floor Slab | `geometry.architectural_primitives.floor_slab` | Generates a floor slab from a box face footprint | `FloorSlabNode` |
@@ -594,7 +594,7 @@
 | Preview Labels | `output.preview.preview_labels` | Displays a text label at a reference position | `PreviewLabelsNode` |
 | Preview Surface Strip | `output.preview.preview_surface_strip` | Previews a surface strip as section contours, rails, or a lattice overlay | `PreviewSurfaceStripNode` |
 | Preview Profiles | `output.preview.preview_profiles` | Previews polygon profile boundaries and optional normal indicators | `PreviewPolygonProfilesNode` |
-| Preview Geometry | `output.preview.preview_geometry` | Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake | `PreviewGeometryNode` |
+| Preview Geometry | `output.preview.preview_geometry` | Surface analytic preview for solids; Difference/Intersection use voxel block ghosts | `PreviewGeometryNode` |
 
 ## pattern.grid (5)
 

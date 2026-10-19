@@ -23,9 +23,9 @@ import java.util.UUID;
  * {@code BoxFace.normal}. Window/Door Array cutters are independent and centered
  * on the face plane.
  * <p>
- * Does <strong>not</strong> boolean-subtract openings into the wall. Connect
- * {@code output_geometry} and {@code output_openings} to a Difference node
- * when a cut wall is required.
+ * Does <strong>not</strong> boolean-subtract openings into the wall. Recommended graph:
+ * <pre>Wall Geometry + Openings → Difference → Cut Wall</pre>
+ * Feeding {@code output_geometry} straight into Apply leaves openings filled.
  * <p>
  * Prefer {@code wall_slab} + Window/Door Array + Difference when openings are
  * owned by a separate array node (avoids a second unused opening layout).
@@ -34,7 +34,8 @@ import java.util.UUID;
     effect = NodeEffect.PURE,
     id = "geometry.architectural_primitives.wall_with_openings",
     displayName = "Wall With Openings",
-    description = "Wall slab plus opening volumes (prefer Wall Slab + Window Array + Difference when openings are owned elsewhere)",
+    description = "Solid wall slab + separate opening volumes — connect Wall Geometry + Openings → Difference for a cut wall "
+        + "(do not Apply the uncut wall alone)",
     category = "geometry.architectural_primitives",
     order = 9
 )
@@ -73,9 +74,9 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
         addInputPort(new BasePort(INPUT_OPENING_DEPTH_ID, "Opening Depth", "Depth of each opening volume", NodeDataType.DOUBLE, this));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Wall Geometry",
-            "Solid wall slab only (openings are not subtracted)", NodeDataType.GEOMETRY, this));
+            "Solid wall slab only — pipe with Openings into Difference for a cut wall", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_OPENINGS_ID, "Openings",
-            "Opening volumes for Difference / window framing", NodeDataType.GEOMETRY, this));
+            "Opening volumes (Difference cutter) — not already subtracted from Wall Geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_TOP_EDGE_ID, "Top Edge",
             "Top edge path of the wall face", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_BOTTOM_EDGE_ID, "Bottom Edge",

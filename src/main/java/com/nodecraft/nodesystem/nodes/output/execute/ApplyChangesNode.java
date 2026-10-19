@@ -11,17 +11,12 @@ import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
-import com.nodecraft.nodesystem.util.BlockPosList;
-import com.nodecraft.nodesystem.util.BlockStateResolver;
-import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
-import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.PlacementPreflight;
+import com.nodecraft.nodesystem.util.PlacementSubmitPlan;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,14 +109,19 @@ public class ApplyChangesNode extends BaseCustomUINode {
             false
         ));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks", "Block coordinates to place", NodeDataType.BLOCK_LIST, this, false, false));
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified abstract geometry input", NodeDataType.GEOMETRY, this, false, false));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+                "Unified geometry to voxelize when Block Placements are empty", NodeDataType.GEOMETRY, this, false, false));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry to voxelize and place", NodeDataType.BOX_GEOMETRY, this, false, false));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry to voxelize and place", NodeDataType.CYLINDER_GEOMETRY, this, false, false));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry to voxelize and place", NodeDataType.SPHERE, this, false, false));
         addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry", "Torus geometry to voxelize and place", NodeDataType.TORUS_GEOMETRY, this, false, false));
-        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Fallback block type for uniform placement", NodeDataType.STRING, this, false, false));
-        addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements", "Per-position block assignments", NodeDataType.BLOCK_PLACEMENT_LIST, this, false, false));
-        addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree", "Tree-grouped per-position block assignments", NodeDataType.DATA_TREE, this, false, false));
+        addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type", "Fallback block type for uniform geometry/block-list placement", NodeDataType.STRING, this, false, false));
+        addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements",
+                "Per-position block assignments (takes priority over Geometry/Blocks; Geometry is not also placed)",
+                NodeDataType.BLOCK_PLACEMENT_LIST, this, false, false));
+        addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree",
+                "Tree-grouped placements (same priority as Block Placements over Geometry)",
+                NodeDataType.DATA_TREE, this, false, false));
         addInputPort(new BasePort(INPUT_NOTIFY_ID, "Notify On Complete", "Overrides node notification behavior", NodeDataType.BOOLEAN, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether placement succeeded or was queued", NodeDataType.BOOLEAN, this));
@@ -174,45 +174,35 @@ public class ApplyChangesNode extends BaseCustomUINode {
                 return;
             }
 
-            PlacementPreflight.Result preflight =
-                    PlacementPreflight.preflightSources(placementsObj, placementsTreeObj);
-            if (!preflight.valid()) {
-                publishOutputs(false, 0, 0, formatPreflightError(preflight.error()), "", false);
+            PlacementSubmitPlan.Plan plan = PlacementSubmitPlan.resolve(
+                    placementsObj,
+                    placementsTreeObj,
+                    blocksObj,
+                    geometryObj,
+                    boxGeometryObj,
+                    cylinderGeometryObj,
+                    sphereGeometryObj,
+                    torusGeometryObj,
+                    blockType,
+                    solidGeometry
+            );
+            if (!plan.valid()) {
+                publishOutputs(false, 0, 0, formatPlanError(plan.error()), "", false);
                 return;
             }
-            if (preflight.hasPlacements()) {
-                long startTime = System.currentTimeMillis();
-                progressPercentage = 0.2f;
-                statusMessage = "Applying material placements...";
-                ApplyResult applyResult = applyPreflightedPlacements(
-                        context, preflight.resolved(), startTime + executionTimeout * 1000L);
-                publishApplyResult(applyResult, notify, startTime, preflight.resolved().size());
-                return;
-            }
-
-            GeometryVoxelizationResult voxelResult = resolveBlocksStrict(
-                    blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj);
-            if (!voxelResult.success()) {
-                publishOutputs(false, 0, 0, formatVoxelError(voxelResult), "", false);
-                return;
-            }
-            BlockPosList blocks = voxelResult.blocks();
-            if (blocks.isEmpty()) {
+            if (plan.entries().isEmpty()) {
                 publishOutputs(false, 0, 0, "No blocks or geometry to apply", "", false);
-                return;
-            }
-
-            BlockState targetState = BlockStateResolver.resolveDefault(blockType);
-            if (targetState == null) {
-                publishOutputs(false, 0, 0, "Invalid block type: " + blockType, "", false);
                 return;
             }
 
             long startTime = System.currentTimeMillis();
             progressPercentage = 0.2f;
-            statusMessage = "Applying blocks...";
-            ApplyResult applyResult = applyUniformBlocks(context, blocks, targetState, startTime + executionTimeout * 1000L);
-            publishApplyResult(applyResult, notify, startTime, blocks.size());
+            statusMessage = plan.source() == PlacementSubmitPlan.Source.PLACEMENTS
+                    ? "Applying material placements..."
+                    : "Applying blocks...";
+            List<BakeTask.Placement> queued = toBakePlacements(plan);
+            ApplyResult applyResult = enqueueAndMaybeAwait(context, queued, startTime + executionTimeout * 1000L);
+            publishApplyResult(applyResult, notify, startTime, plan.size());
         } catch (Exception e) {
             status = "Error: " + e.getMessage();
             statusMessage = status;
@@ -232,37 +222,12 @@ public class ApplyChangesNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_IS_ASYNC, isAsync);
     }
 
-    private GeometryVoxelizationResult resolveBlocksStrict(Object blocksObj,
-                                                           Object geometryObj,
-                                                           Object boxGeometryObj,
-                                                           Object cylinderGeometryObj,
-                                                           Object sphereGeometryObj,
-                                                           Object torusGeometryObj) {
-        return GeometryVoxelizer.resolveBlocksStrict(
-                blocksObj, geometryObj, boxGeometryObj, cylinderGeometryObj, sphereGeometryObj, torusGeometryObj, solidGeometry);
-    }
-
-    private ApplyResult applyPreflightedPlacements(ExecutionContext context,
-                                                   List<PlacementPreflight.ResolvedPlacement> resolved,
-                                                   long deadlineMillis) {
-        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(resolved.size());
-        for (PlacementPreflight.ResolvedPlacement placement : resolved) {
-            queuedPlacements.add(new BakeTask.Placement(placement.pos(), placement.state()));
+    private static List<BakeTask.Placement> toBakePlacements(PlacementSubmitPlan.Plan plan) {
+        List<BakeTask.Placement> queued = new ArrayList<>(plan.size());
+        for (PlacementSubmitPlan.Entry entry : plan.entries()) {
+            queued.add(new BakeTask.Placement(entry.pos(), entry.state()));
         }
-        return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
-    }
-
-    private ApplyResult applyUniformBlocks(ExecutionContext context, BlockPosList blocks, BlockState targetState, long deadlineMillis) {
-        List<BakeTask.Placement> queuedPlacements = new ArrayList<>(blocks.size());
-        for (BlockPos pos : blocks) {
-            if (pos != null) {
-                queuedPlacements.add(new BakeTask.Placement(pos.toImmutable(), targetState));
-            }
-        }
-        if (queuedPlacements.isEmpty()) {
-            return ApplyResult.rejected();
-        }
-        return enqueueAndMaybeAwait(context, queuedPlacements, deadlineMillis);
+        return queued;
     }
 
     /**
@@ -365,7 +330,7 @@ public class ApplyChangesNode extends BaseCustomUINode {
         publishOutputs(applyResult.success(), applyResult.operationCount(), executionTime, status, taskId, isAsync);
     }
 
-    private String formatPreflightError(String error) {
+    private String formatPlanError(String error) {
         if (PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK.equals(error)
                 || (error != null && error.startsWith(PlacementPreflight.ERROR_UNRESOLVABLE_BLOCK))) {
             return "Invalid block placement: " + error;
@@ -376,15 +341,13 @@ public class ApplyChangesNode extends BaseCustomUINode {
         if (PlacementPreflight.ERROR_INVALID_INPUT.equals(error)) {
             return "Invalid block placement input";
         }
-        return error == null || error.isEmpty() ? "Invalid block placements" : error;
-    }
-
-    private String formatVoxelError(GeometryVoxelizationResult result) {
-        String detail = result.error();
-        if (detail == null || detail.isBlank()) {
-            return "Geometry voxelization failed (" + result.status() + ")";
+        if (error != null && error.startsWith("Invalid block type:")) {
+            return error;
         }
-        return "Geometry voxelization failed: " + detail;
+        if (error != null && (error.contains("voxel") || error.contains("Geometry"))) {
+            return error.startsWith("Geometry") ? error : "Geometry voxelization failed: " + error;
+        }
+        return error == null || error.isEmpty() ? "Invalid apply inputs" : error;
     }
 
     private String formatApplyStatus(ApplyResult result, int requestedCount) {

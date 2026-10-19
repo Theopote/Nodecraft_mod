@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.TypeConversionRegistry;
 import com.nodecraft.nodesystem.contract.support.ArchitecturalVoxelAssert;
+import com.nodecraft.nodesystem.contract.support.PreviewApplyPlacementAssert;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
@@ -24,9 +25,14 @@ import com.nodecraft.nodesystem.nodes.geometry.curves.BoxFaceBoundaryPathNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.nodes.reference.points.GetBoxFaceNode;
 import com.nodecraft.nodesystem.nodes.transform.placement.PlaceGeometryOnFramesNode;
+import com.nodecraft.nodesystem.preview.PreviewSampling;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
+import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockPosList;
+import com.nodecraft.nodesystem.util.GeometryVoxelizationResult;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
+import com.nodecraft.nodesystem.util.PlacementSubmitPlan;
+import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -38,12 +44,13 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Batch 13.1 product acceptance: Floor Slab → Wall Along Path → Window Array → Difference →
- * Window Frame → Place On Frames → Roof Base → Voxelize → Preview.
+ * Batch 13.1 / Phase 5A: Floor Slab → Wall Along Path → Window Array → Difference →
+ * Window Frame → Place On Frames → Roof Base → Voxelize → Preview → Apply placement plan.
  */
 class ArchitecturalMiniBuildingWorkflowContractTest {
 
@@ -216,7 +223,85 @@ class ArchitecturalMiniBuildingWorkflowContractTest {
         PreviewGeometryNode preview = (PreviewGeometryNode) registry.createNodeInstance("output.preview.preview_geometry");
         preview.setInput("input_geometry", building);
         preview.processNode(null);
-        assertNotNull(preview.getOutput("output_success"));
+        assertEquals(Boolean.TRUE, preview.getOutput("output_success"));
+        // Composite expands children: solids → surface, Difference → voxel ghosts (mixed).
+        // Voxel counts are NOT the full Apply set for the whole building.
+        assertEquals(PreviewGeometryNode.KIND_MIXED, preview.getOutput("output_preview_kind"));
+        int previewVoxelTotal = (Integer) preview.getOutput("output_voxel_total_count");
+        assertTrue(previewVoxelTotal > 0, "Difference child should contribute voxel ghosts");
+
+        GeometryVoxelizationResult fullVoxel = GeometryVoxelizer.voxelizeStrict(building, true);
+        assertTrue(fullVoxel.success(), fullVoxel.error());
+        Set<BlockPos> fullPositions = PreviewApplyPlacementAssert.positionsOf(fullVoxel.blocks());
+        assertTrue(fullPositions.size() > 40);
+        assertTrue(previewVoxelTotal < fullPositions.size(),
+                "preview voxel count must not be mistaken for full Apply placement set");
+
+        // Apply geometry path uses the same GeometryVoxelizer.resolveBlocksStrict positions.
+        GeometryVoxelizationResult applyVoxels = GeometryVoxelizer.resolveBlocksStrict(
+                null, building, null, null, null, null, true);
+        assertTrue(applyVoxels.success(), applyVoxels.error());
+        PreviewApplyPlacementAssert.assertSamePositions(
+                fullPositions,
+                PreviewApplyPlacementAssert.positionsOf(applyVoxels.blocks()),
+                "Apply resolveBlocksStrict vs voxelizeStrict"
+        );
+
+        // Cut wall Difference: voxel ghost preview ⊆ full Apply set; sampling does not alter Apply.
+        GeometryVoxelizationResult cutVoxel = GeometryVoxelizer.voxelizeStrict(cutFrontWall, true);
+        assertTrue(cutVoxel.success(), cutVoxel.error());
+        Set<BlockPos> cutPositions = PreviewApplyPlacementAssert.positionsOf(cutVoxel.blocks());
+        PreviewSampling.BlockSample cutSample =
+                PreviewSampling.sampleBlocks(cutVoxel.blocks(), PreviewGeometryNode.MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS);
+        PreviewApplyPlacementAssert.assertSampleSubsetOfFull(
+                cutSample, cutPositions, PreviewGeometryNode.MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS);
+
+        PreviewGeometryNode cutPreview = (PreviewGeometryNode) registry.createNodeInstance("output.preview.preview_geometry");
+        cutPreview.setInput("input_geometry", cutFrontWall);
+        cutPreview.processNode(null);
+        assertEquals(Boolean.TRUE, cutPreview.getOutput("output_success"));
+        assertEquals(PreviewGeometryNode.KIND_VOXEL_FULL, cutPreview.getOutput("output_preview_kind"));
+        assertEquals(cutPositions.size(), cutPreview.getOutput("output_voxel_total_count"));
+        assertEquals(Boolean.FALSE, cutPreview.getOutput("output_voxel_sampled"));
+
+        GeometryVoxelizationResult cutApplyVoxels = GeometryVoxelizer.resolveBlocksStrict(
+                null, cutFrontWall, null, null, null, null, true);
+        PreviewApplyPlacementAssert.assertSamePositions(
+                cutPositions,
+                PreviewApplyPlacementAssert.positionsOf(cutApplyVoxels.blocks()),
+                "cut wall Apply resolve vs voxelizer"
+        );
+
+        assumeBlockRegistryLive();
+        PlacementSubmitPlan.Plan applyPlan = PlacementSubmitPlan.resolve(
+                null, null, null, building, null, null, null, null, "minecraft:stone", true);
+        assertTrue(applyPlan.valid(), applyPlan.error());
+        assertEquals(PlacementSubmitPlan.Source.GEOMETRY_VOXELS, applyPlan.source());
+        PreviewApplyPlacementAssert.assertSamePositions(
+                fullPositions,
+                PreviewApplyPlacementAssert.positionsOf(applyPlan),
+                "PlacementSubmitPlan vs GeometryVoxelizer"
+        );
+
+        BlockPlacementData override = new BlockPlacementData(
+                cutPositions.iterator().next(), "minecraft:oak_planks");
+        PlacementSubmitPlan.Plan placementWins = PlacementSubmitPlan.resolve(
+                List.of(override), null, null, building, null, null, null, null, "minecraft:stone", true);
+        assertEquals(PlacementSubmitPlan.Source.PLACEMENTS, placementWins.source());
+        assertTrue(placementWins.geometryIgnoredDueToPlacements());
+        assertEquals(1, placementWins.size());
+        assertNotEquals(fullPositions.size(), placementWins.size());
+    }
+
+    private static void assumeBlockRegistryLive() {
+        boolean registryLive = false;
+        try {
+            registryLive = !net.minecraft.registry.Registries.BLOCK.getIds().isEmpty();
+        } catch (Throwable ignored) {
+            registryLive = false;
+        }
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                registryLive, "Live BLOCK registry required for PlacementSubmitPlan BlockState resolution");
     }
 
     @Test

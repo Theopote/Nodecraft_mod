@@ -7,11 +7,14 @@ import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.bake.BakeTask;
 import com.nodecraft.nodesystem.bake.BakeTaskState;
 import com.nodecraft.nodesystem.bake.PlacementMode;
+import com.nodecraft.nodesystem.datatypes.BoxGeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.execution.runtime.NodeExecutionScheduler;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.preview.TrackedPreviewPlacementService;
+import com.nodecraft.nodesystem.util.BlockPlacementData;
+import com.nodecraft.nodesystem.util.PlacementSubmitPlan;
 import net.minecraft.block.Blocks;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.test.TestContext;
@@ -20,6 +23,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -524,6 +528,64 @@ public class NodeCraftGameTest implements CustomTestMethodInvoker {
             state -> Text.literal("undo must restore pre-txn AIR"));
         ctx.assertEquals(0, history.size(), "undo stack empty");
         ctx.assertEquals(1, history.redoSize(), "redo has inverse");
+
+        ctx.complete();
+    }
+
+    /**
+     * Phase 5A: PlacementSubmitPlan (Apply resolution) matches Bake writes under a live BLOCK registry.
+     * Placement inputs take priority over Geometry; duplicate positions last-write-wins in the world.
+     */
+    @GameTest
+    public void placementSubmitPlanMatchesBakeAndPrefersPlacements(TestContext ctx) {
+        World world = ctx.getWorld();
+        BakePlacementService service = BakePlacementService.getInstance();
+        resetBakeService(service);
+
+        BlockPos relGeom = new BlockPos(1, 1, 1);
+        BlockPos absGeom = ctx.getAbsolutePos(relGeom);
+        BoxGeometryData oneCell = new BoxGeometryData(
+                new org.joml.Vector3d(absGeom.getX() + 0.5, absGeom.getY() + 0.5, absGeom.getZ() + 0.5),
+                new org.joml.Vector3d(0.5, 0.5, 0.5)
+        );
+
+        PlacementSubmitPlan.Plan geomPlan = PlacementSubmitPlan.resolve(
+                null, null, null, oneCell, null, null, null, null, "minecraft:stone", true);
+        ctx.assertTrue(geomPlan.valid(), "geometry plan valid: " + geomPlan.error());
+        ctx.assertEquals(PlacementSubmitPlan.Source.GEOMETRY_VOXELS, geomPlan.source(), "geometry source");
+        ctx.assertTrue(geomPlan.size() >= 1, "geometry plan non-empty");
+
+        UUID actorId = UUID.randomUUID();
+        List<BakeTask.Placement> geomBake = new ArrayList<>(geomPlan.size());
+        for (PlacementSubmitPlan.Entry entry : geomPlan.entries()) {
+            geomBake.add(new BakeTask.Placement(entry.pos(), entry.state()));
+        }
+        service.enqueuePlacements(
+                world, geomBake, PlacementMode.OVERWRITE, true,
+                BakeOperationKind.APPLY, 1000, 1_000_000L, actorId, null);
+        drainTasks(service);
+        ctx.expectBlock(Blocks.STONE, relGeom);
+
+        BlockPos relPlace = new BlockPos(2, 1, 1);
+        BlockPos absPlace = ctx.getAbsolutePos(relPlace);
+        BlockPlacementData placement = new BlockPlacementData(absPlace, "minecraft:oak_planks");
+        PlacementSubmitPlan.Plan priorityPlan = PlacementSubmitPlan.resolve(
+                List.of(placement), null, null, oneCell, null, null, null, null, "minecraft:stone", true);
+        ctx.assertTrue(priorityPlan.valid(), "priority plan valid: " + priorityPlan.error());
+        ctx.assertEquals(PlacementSubmitPlan.Source.PLACEMENTS, priorityPlan.source(), "placement source");
+        ctx.assertTrue(priorityPlan.geometryIgnoredDueToPlacements(), "geometry ignored when placements present");
+        ctx.assertEquals(1, priorityPlan.size(), "only placement entries");
+
+        List<BakeTask.Placement> placeBake = List.of(
+                new BakeTask.Placement(priorityPlan.entries().getFirst().pos(), priorityPlan.entries().getFirst().state())
+        );
+        service.enqueuePlacements(
+                world, placeBake, PlacementMode.OVERWRITE, true,
+                BakeOperationKind.APPLY, 1000, 1_000_000L, actorId, null);
+        drainTasks(service);
+        ctx.expectBlock(Blocks.OAK_PLANKS, relPlace);
+        // Geometry cell from the first bake must not have been re-submitted by the priority plan.
+        ctx.expectBlock(Blocks.STONE, relGeom);
 
         ctx.complete();
     }

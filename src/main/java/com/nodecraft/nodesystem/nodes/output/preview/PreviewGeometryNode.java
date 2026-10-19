@@ -33,13 +33,23 @@ import java.util.UUID;
     effect = NodeEffect.PREVIEW_WRITE,
     id = "output.preview.preview_geometry",
     displayName = "Preview Geometry",
-    description = "Previews analytic geometry as surfaces; voxel boolean (Difference/Intersection) as evaluated block ghosts matching bake",
+    description = "Surface analytic preview for solids; Difference/Intersection use voxel block ghosts "
+        + "(may sample above 12000 blocks — sampling does not change Apply). "
+        + "Surface preview is not block-level Apply parity.",
     category = "output.preview"
 )
 public class PreviewGeometryNode extends BaseNode {
 
-    private static final int MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS = 12_000;
+    /** Cap for GHOST voxel-boolean preview only; Apply / Bake use the full voxel set. */
+    public static final int MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS = 12_000;
     private static final String VOXEL_BOOLEAN_PREVIEW_BLOCK = "minecraft:light_blue_stained_glass";
+
+    /** Preview representation kinds — do not mix with Apply placement sets. */
+    public static final String KIND_NONE = "none";
+    public static final String KIND_SURFACE = "surface";
+    public static final String KIND_VOXEL_FULL = "voxel_full";
+    public static final String KIND_VOXEL_SAMPLED = "voxel_sampled";
+    public static final String KIND_MIXED = "mixed";
 
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
     private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
@@ -62,6 +72,10 @@ public class PreviewGeometryNode extends BaseNode {
     private static final String OUTPUT_PREVIEW_IDS_ID = "output_preview_ids";
     private static final String OUTPUT_PREVIEW_COUNT_ID = "output_preview_count";
     private static final String OUTPUT_GEOMETRY_ID = "output_geometry";
+    private static final String OUTPUT_PREVIEW_KIND_ID = "output_preview_kind";
+    private static final String OUTPUT_VOXEL_TOTAL_COUNT_ID = "output_voxel_total_count";
+    private static final String OUTPUT_VOXEL_SHOWN_COUNT_ID = "output_voxel_shown_count";
+    private static final String OUTPUT_VOXEL_SAMPLED_ID = "output_voxel_sampled";
 
     @NodeProperty(displayName = "Preview Enabled", category = "Preview", order = 1)
     private boolean previewEnabled = true;
@@ -99,11 +113,17 @@ public class PreviewGeometryNode extends BaseNode {
     private volatile int cachedGeometrySignature = 0;
     private volatile int cachedOptionsSignature = 0;
     private volatile List<String> cachedPreviewIds = List.of();
+    private volatile String cachedPreviewKind = KIND_NONE;
+    private volatile int cachedVoxelTotalCount = 0;
+    private volatile int cachedVoxelShownCount = 0;
+    private volatile boolean cachedVoxelSampled = false;
 
     public PreviewGeometryNode() {
         super(UUID.randomUUID(), "output.preview.preview_geometry");
 
-        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Unified analytic geometry input", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
+            "Analytic geometry (surface) or Difference/Intersection (voxel ghosts; may be sampled)",
+            NodeDataType.GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "Box geometry data", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry", "Cylinder geometry data", NodeDataType.CYLINDER_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry", "Sphere geometry data", NodeDataType.SPHERE, this));
@@ -124,6 +144,16 @@ public class PreviewGeometryNode extends BaseNode {
         addOutputPort(new BasePort(OUTPUT_PREVIEW_IDS_ID, "Preview IDs", "Active preview identifiers", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered geometry previews", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Forwarded geometry output", NodeDataType.GEOMETRY, this));
+        addOutputPort(new BasePort(OUTPUT_PREVIEW_KIND_ID, "Preview Kind",
+            "none | surface | voxel_full | voxel_sampled | mixed — surface is not block-level Apply parity",
+            NodeDataType.STRING, this));
+        addOutputPort(new BasePort(OUTPUT_VOXEL_TOTAL_COUNT_ID, "Voxel Total Count",
+            "Full voxel-boolean block count before preview sampling (0 when no voxel preview)",
+            NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VOXEL_SHOWN_COUNT_ID, "Voxel Shown Count",
+            "Block ghosts actually shown after sampling", NodeDataType.INTEGER, this));
+        addOutputPort(new BasePort(OUTPUT_VOXEL_SAMPLED_ID, "Voxel Sampled",
+            "True when voxel ghost preview is a sampled subset of the Apply set", NodeDataType.BOOLEAN, this));
     }
 
     @Override
@@ -182,11 +212,7 @@ public class PreviewGeometryNode extends BaseNode {
                         getId(),
                         voxelOutcome.error()
                     );
-                    outputValues.put(OUTPUT_SUCCESS_ID, false);
-                    outputValues.put(OUTPUT_PREVIEW_ID_ID, null);
-                    outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.of());
-                    outputValues.put(OUTPUT_PREVIEW_COUNT_ID, 0);
-                    outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+                    publishPreviewOutputs(false, List.of(), geometry);
                     return;
                 }
                 if (voxelOutcome.previewId() != null) {
@@ -194,14 +220,32 @@ public class PreviewGeometryNode extends BaseNode {
                 }
                 previewIds = List.copyOf(refreshedIds);
                 cachedPreviewIds = previewIds;
+                cachedPreviewKind = resolvePreviewKind(
+                        !surfaceGeometries.isEmpty(),
+                        voxelOutcome.totalCount() > 0,
+                        voxelOutcome.sampled()
+                );
+                cachedVoxelTotalCount = voxelOutcome.totalCount();
+                cachedVoxelShownCount = voxelOutcome.shownCount();
+                cachedVoxelSampled = voxelOutcome.sampled();
                 cachedGeometrySignature = geometrySignature;
                 cachedOptionsSignature = optionsSignature;
+                if (voxelOutcome.sampled()) {
+                    NodeCraft.LOGGER.info(
+                        "PreviewGeometryNode[{}] voxel sampled preview: shown={}/{} (cap={})",
+                        getId(),
+                        voxelOutcome.shownCount(),
+                        voxelOutcome.totalCount(),
+                        MAX_VOXEL_BOOLEAN_PREVIEW_BLOCKS
+                    );
+                }
                 NodeCraft.LOGGER.info(
-                    "PreviewGeometryNode[{}] refreshed: surfaces={}, voxelBooleans={}, previews={}, geometrySig={}, optionsSig={}",
+                    "PreviewGeometryNode[{}] refreshed: surfaces={}, voxelBooleans={}, previews={}, kind={}, geometrySig={}, optionsSig={}",
                     getId(),
                     surfaceGeometries.size(),
                     voxelBooleanGeometries.size(),
                     previewIds.size(),
+                    cachedPreviewKind,
                     geometrySignature,
                     optionsSignature
                 );
@@ -215,11 +259,32 @@ public class PreviewGeometryNode extends BaseNode {
             }
         }
 
-        outputValues.put(OUTPUT_SUCCESS_ID, !previewIds.isEmpty());
+        publishPreviewOutputs(!previewIds.isEmpty(), previewIds, geometry);
+    }
+
+    private void publishPreviewOutputs(boolean success, List<String> previewIds, @Nullable GeometryData geometry) {
+        outputValues.put(OUTPUT_SUCCESS_ID, success);
         outputValues.put(OUTPUT_PREVIEW_ID_ID, previewIds.isEmpty() ? null : previewIds.getFirst());
         outputValues.put(OUTPUT_PREVIEW_IDS_ID, List.copyOf(previewIds));
         outputValues.put(OUTPUT_PREVIEW_COUNT_ID, previewIds.size());
         outputValues.put(OUTPUT_GEOMETRY_ID, geometry);
+        outputValues.put(OUTPUT_PREVIEW_KIND_ID, cachedPreviewKind);
+        outputValues.put(OUTPUT_VOXEL_TOTAL_COUNT_ID, cachedVoxelTotalCount);
+        outputValues.put(OUTPUT_VOXEL_SHOWN_COUNT_ID, cachedVoxelShownCount);
+        outputValues.put(OUTPUT_VOXEL_SAMPLED_ID, cachedVoxelSampled);
+    }
+
+    private static String resolvePreviewKind(boolean hasSurface, boolean hasVoxel, boolean sampled) {
+        if (hasSurface && hasVoxel) {
+            return KIND_MIXED;
+        }
+        if (hasVoxel) {
+            return sampled ? KIND_VOXEL_SAMPLED : KIND_VOXEL_FULL;
+        }
+        if (hasSurface) {
+            return KIND_SURFACE;
+        }
+        return KIND_NONE;
     }
 
     private static void partitionPreviewGeometries(List<GeometryData> geometries,
@@ -279,16 +344,37 @@ public class PreviewGeometryNode extends BaseNode {
         String previewId = PreviewManager.showPreview(
             new PreviewRequest(getId().toString(), payload, style, PreviewBackend.GHOST, context)
         );
-        return VoxelBooleanPreviewOutcome.ok(previewId);
+        return VoxelBooleanPreviewOutcome.ok(
+            previewId,
+            sample.totalCount(),
+            sample.renderedCount(),
+            sample.sampled()
+        );
     }
 
-    private record VoxelBooleanPreviewOutcome(boolean success, @Nullable String previewId, String error) {
+    private record VoxelBooleanPreviewOutcome(
+            boolean success,
+            @Nullable String previewId,
+            String error,
+            int totalCount,
+            int shownCount,
+            boolean sampled
+    ) {
+        static VoxelBooleanPreviewOutcome ok(
+                @Nullable String previewId,
+                int totalCount,
+                int shownCount,
+                boolean sampled
+        ) {
+            return new VoxelBooleanPreviewOutcome(true, previewId, "", totalCount, shownCount, sampled);
+        }
+
         static VoxelBooleanPreviewOutcome ok(@Nullable String previewId) {
-            return new VoxelBooleanPreviewOutcome(true, previewId, "");
+            return ok(previewId, 0, 0, false);
         }
 
         static VoxelBooleanPreviewOutcome fail(String error) {
-            return new VoxelBooleanPreviewOutcome(false, null, error == null ? "" : error);
+            return new VoxelBooleanPreviewOutcome(false, null, error == null ? "" : error, 0, 0, false);
         }
     }
 
@@ -325,6 +411,10 @@ public class PreviewGeometryNode extends BaseNode {
         cachedGeometrySignature = 0;
         cachedOptionsSignature = 0;
         cachedPreviewIds = List.of();
+        cachedPreviewKind = KIND_NONE;
+        cachedVoxelTotalCount = 0;
+        cachedVoxelShownCount = 0;
+        cachedVoxelSampled = false;
     }
 
     private boolean hasActiveCachedPreviews(List<String> previewIds) {
