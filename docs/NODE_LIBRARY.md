@@ -585,7 +585,7 @@
 |---|---|---|---|
 | Geometry Viewer | `output.preview.geometry_viewer` | Previews geometry visually without committing changes to the world. | `GeometryViewerNode` |
 | Preview Blocks | `output.preview.preview_blocks` | Previews block coordinates, placements, or placement trees as temporary ghost blocks. | `PreviewBlocksNode` |
-| Preview Placements | `output.preview.preview_placements` | GHOST preview of Apply's PlacementSubmitPlan (placements win over geometry; last-write-wins). | `PreviewPlacementsNode` |
+| Preview Placements | `output.preview.preview_placements` | GHOST preview of Apply's PlacementSubmitPlan with full BlockState (placements win over | `PreviewPlacementsNode` |
 | Preview Points | `output.preview.preview_points` | Previews one or more reference points before voxelization | `PreviewPointsNode` |
 | Preview Vectors | `output.preview.preview_vectors` | Previews vectors and directions before voxelization | `PreviewVectorsNode` |
 | Preview Plane | `output.preview.preview_plane` | Previews a plane as a square grid with axes and normal direction | `PreviewPlaneNode` |

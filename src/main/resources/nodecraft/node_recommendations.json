@@ -1091,9 +1091,15 @@
         "output_placements": {
           "downstream": [
             {
-              "nodeId": "output.preview.preview_blocks",
+              "nodeId": "output.preview.preview_placements",
               "order": 0,
-              "reason": "预览状态结果",
+              "reason": "预览完整 BlockState（朝向/半砖等）",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 5,
+              "reason": "预览状态结果（兼容）",
               "connectPortId": "input_block_placements"
             },
             {
@@ -1117,9 +1123,15 @@
         "output_placements": {
           "downstream": [
             {
-              "nodeId": "output.preview.preview_blocks",
+              "nodeId": "output.preview.preview_placements",
               "order": 0,
-              "reason": "预览合并结果",
+              "reason": "预览合并后完整 BlockState",
+              "connectPortId": "input_block_placements"
+            },
+            {
+              "nodeId": "output.preview.preview_blocks",
+              "order": 5,
+              "reason": "预览合并结果（兼容）",
               "connectPortId": "input_block_placements"
             },
             {

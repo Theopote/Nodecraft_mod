@@ -85,6 +85,26 @@ public final class BlockStateResolver {
         return resolved;
     }
 
+    /**
+     * Extracts property overrides from a live {@link BlockState} for Preview / placement payloads.
+     * Empty when {@code state} is null or has no properties (e.g. stone default).
+     */
+    public static BlockStateData toStateData(@Nullable BlockState state) {
+        if (state == null) {
+            return new BlockStateData();
+        }
+        BlockStateData data = new BlockStateData();
+        try {
+            for (Property<?> property : state.getProperties()) {
+                Comparable<?> value = state.get(property);
+                data = data.withProperty(property.getName(), String.valueOf(value));
+            }
+        } catch (RuntimeException ignored) {
+            return new BlockStateData();
+        }
+        return data;
+    }
+
     private static <T extends Comparable<T>> BlockState applyPropertyValue(
         BlockState state,
         Property<T> property,

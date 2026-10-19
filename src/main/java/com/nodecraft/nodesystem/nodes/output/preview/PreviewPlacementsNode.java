@@ -13,8 +13,11 @@ import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlocksPayload;
 import com.nodecraft.nodesystem.preview.protocol.PreviewRequest;
 import com.nodecraft.nodesystem.preview.protocol.PreviewStyle;
+import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.PlacementSubmitPlan;
+import net.minecraft.block.BlockState;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
@@ -28,15 +31,18 @@ import java.util.UUID;
 /**
  * Block-level ghost preview of the same placement set Apply would submit.
  * <p>
- * Uses {@link PlacementSubmitPlan} (Placement priority, last-write-wins dedupe). Display may
- * sample for the render budget; {@code output_unique_count} always reports the full Apply set size.
+ * Uses {@link PlacementSubmitPlan} (Placement priority, last-write-wins dedupe). Each ghost carries
+ * {@code blockId + BlockStateData} so oriented blocks (stairs, slabs, trapdoors) match Apply.
+ * Display may sample for the render budget; {@code output_unique_count} always reports the full
+ * Apply set size.
  */
 @NodeInfo(
     effect = NodeEffect.PREVIEW_WRITE,
     id = "output.preview.preview_placements",
     displayName = "Preview Placements",
-    description = "GHOST preview of Apply's PlacementSubmitPlan (placements win over geometry; last-write-wins). "
-        + "May sample for display; unique count is the full submit set. Does not write the world.",
+    description = "GHOST preview of Apply's PlacementSubmitPlan with full BlockState (placements win over "
+        + "geometry; last-write-wins). May sample for display; unique count is the full submit set. "
+        + "Does not write the world.",
     category = "output.preview",
     order = 2
 )
@@ -44,6 +50,10 @@ public class PreviewPlacementsNode extends BaseNode {
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
+    private static final String INPUT_BOX_GEOMETRY_ID = "input_box_geometry";
+    private static final String INPUT_CYLINDER_GEOMETRY_ID = "input_cylinder_geometry";
+    private static final String INPUT_SPHERE_GEOMETRY_ID = "input_sphere_geometry";
+    private static final String INPUT_TORUS_GEOMETRY_ID = "input_torus_geometry";
     private static final String INPUT_BLOCK_TYPE_ID = "input_block_type";
     private static final String INPUT_BLOCK_PLACEMENTS_ID = "input_block_placements";
     private static final String INPUT_BLOCK_PLACEMENTS_TREE_ID = "input_block_placements_tree";
@@ -79,13 +89,22 @@ public class PreviewPlacementsNode extends BaseNode {
         super(UUID.randomUUID(), "output.preview.preview_placements");
 
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_ID, "Block Placements",
-            "Per-position placements (priority over Geometry)", NodeDataType.BLOCK_PLACEMENT_LIST, this));
+            "Per-position placements (priority over Geometry; Geometry is not also previewed)",
+            NodeDataType.BLOCK_PLACEMENT_LIST, this));
         addInputPort(new BasePort(INPUT_BLOCK_PLACEMENTS_TREE_ID, "Block Placements Tree",
-            "Tree placements (same priority as Block Placements)", NodeDataType.DATA_TREE, this));
+            "Tree placements (same priority as Block Placements over Geometry)", NodeDataType.DATA_TREE, this));
         addInputPort(new BasePort(INPUT_BLOCKS_ID, "Blocks",
             "Block list when placements are empty", NodeDataType.BLOCK_LIST, this));
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry",
-            "Geometry to voxelize when placements are empty", NodeDataType.GEOMETRY, this));
+            "Unified geometry to voxelize when placements are empty", NodeDataType.GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry",
+            "Box geometry to voxelize when placements are empty", NodeDataType.BOX_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_CYLINDER_GEOMETRY_ID, "Cylinder Geometry",
+            "Cylinder geometry to voxelize when placements are empty", NodeDataType.CYLINDER_GEOMETRY, this));
+        addInputPort(new BasePort(INPUT_SPHERE_GEOMETRY_ID, "Sphere Geometry",
+            "Sphere geometry to voxelize when placements are empty", NodeDataType.SPHERE, this));
+        addInputPort(new BasePort(INPUT_TORUS_GEOMETRY_ID, "Torus Geometry",
+            "Torus geometry to voxelize when placements are empty", NodeDataType.TORUS_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_BLOCK_TYPE_ID, "Block Type",
             "Uniform block for geometry/block-list path", NodeDataType.STRING, this));
 
@@ -119,6 +138,10 @@ public class PreviewPlacementsNode extends BaseNode {
         Object placementsTreeObj = inputValues.get(INPUT_BLOCK_PLACEMENTS_TREE_ID);
         Object blocksObj = inputValues.get(INPUT_BLOCKS_ID);
         Object geometryObj = inputValues.get(INPUT_GEOMETRY_ID);
+        Object boxGeometryObj = inputValues.get(INPUT_BOX_GEOMETRY_ID);
+        Object cylinderGeometryObj = inputValues.get(INPUT_CYLINDER_GEOMETRY_ID);
+        Object sphereGeometryObj = inputValues.get(INPUT_SPHERE_GEOMETRY_ID);
+        Object torusGeometryObj = inputValues.get(INPUT_TORUS_GEOMETRY_ID);
         Object blockTypeObj = inputValues.get(INPUT_BLOCK_TYPE_ID);
         String blockType = blockTypeObj instanceof String s && !s.isBlank() ? s : "minecraft:stone";
 
@@ -127,10 +150,10 @@ public class PreviewPlacementsNode extends BaseNode {
                 placementsTreeObj,
                 blocksObj,
                 geometryObj,
-                null,
-                null,
-                null,
-                null,
+                boxGeometryObj,
+                cylinderGeometryObj,
+                sphereGeometryObj,
+                torusGeometryObj,
                 blockType,
                 solidGeometry
         );
@@ -150,19 +173,7 @@ public class PreviewPlacementsNode extends BaseNode {
             return;
         }
 
-        int maxShown = GenerationLimits.MAX_PREVIEW_BLOCKS;
-        List<PlacementSubmitPlan.Entry> uniqueEntries = plan.entries();
-        int uniqueTotal = uniqueEntries.size();
-        boolean sampled = uniqueTotal > maxShown;
-        int stride = sampled ? Math.max(1, (int) Math.ceil(uniqueTotal / (double) maxShown)) : 1;
-        List<PreviewBlock> ghosts = new ArrayList<>(Math.min(uniqueTotal, maxShown));
-        for (int i = 0; i < uniqueTotal && ghosts.size() < maxShown; i += stride) {
-            PlacementSubmitPlan.Entry entry = uniqueEntries.get(i);
-            BlockPos pos = entry.pos();
-            String blockId = Registries.BLOCK.getId(entry.state().getBlock()).toString();
-            ghosts.add(new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), blockId));
-        }
-
+        GhostSample sample = sampleGhosts(plan.entries(), GenerationLimits.MAX_PREVIEW_BLOCKS);
         PreviewStyle style = PreviewStyle.forGhostBlocks(
                 1.0f, 1.0f, 1.0f,
                 Math.max(0.0f, Math.min(1.0f, transparency)),
@@ -173,21 +184,66 @@ public class PreviewPlacementsNode extends BaseNode {
                 Math.max(1, duration) * 20
         );
         String previewId = PreviewManager.showPreview(
-                new PreviewRequest(getId().toString(), new PreviewBlocksPayload(ghosts), style, PreviewBackend.GHOST, context)
+                new PreviewRequest(
+                        getId().toString(),
+                        new PreviewBlocksPayload(sample.ghosts()),
+                        style,
+                        PreviewBackend.GHOST,
+                        context)
         );
         cachedPreviewId = previewId;
-        boolean success = previewId != null && !ghosts.isEmpty();
+        boolean success = previewId != null && !sample.ghosts().isEmpty();
         publish(
                 success,
                 previewId,
                 plan.source(),
                 plan.rawEntryCount(),
                 plan.uniqueCount(),
-                ghosts.size(),
-                sampled,
+                sample.ghosts().size(),
+                sample.sampled(),
                 plan.geometryIgnoredDueToPlacements(),
                 success ? "" : "Preview renderer rejected the payload"
         );
+    }
+
+    /**
+     * Builds GHOST cells from a unique plan entry list. Package-visible for unit tests.
+     * Sampled results are a stride subset; each ghost preserves full BlockState via stateData.
+     */
+    static GhostSample sampleGhosts(List<PlacementSubmitPlan.Entry> uniqueEntries, int maxShown) {
+        if (uniqueEntries == null || uniqueEntries.isEmpty() || maxShown <= 0) {
+            return new GhostSample(List.of(), false);
+        }
+        int uniqueTotal = uniqueEntries.size();
+        boolean sampled = uniqueTotal > maxShown;
+        int stride = sampled ? Math.max(1, (int) Math.ceil(uniqueTotal / (double) maxShown)) : 1;
+        List<PreviewBlock> ghosts = new ArrayList<>(Math.min(uniqueTotal, maxShown));
+        for (int i = 0; i < uniqueTotal && ghosts.size() < maxShown; i += stride) {
+            PreviewBlock ghost = toPreviewBlock(uniqueEntries.get(i));
+            if (ghost != null) {
+                ghosts.add(ghost);
+            }
+        }
+        return new GhostSample(List.copyOf(ghosts), sampled);
+    }
+
+    static @Nullable PreviewBlock toPreviewBlock(@Nullable PlacementSubmitPlan.Entry entry) {
+        if (entry == null || entry.pos() == null || entry.state() == null) {
+            return null;
+        }
+        BlockPos pos = entry.pos();
+        BlockState state = entry.state();
+        String blockId;
+        try {
+            blockId = Registries.BLOCK.getId(state.getBlock()).toString();
+        } catch (Throwable ignored) {
+            return null;
+        }
+        if (blockId == null || blockId.isBlank()) {
+            return null;
+        }
+        BlockStateData stateData = BlockStateResolver.toStateData(state);
+        return new PreviewBlock(pos.getX(), pos.getY(), pos.getZ(), blockId, stateData);
     }
 
     private void publish(
@@ -243,5 +299,8 @@ public class PreviewPlacementsNode extends BaseNode {
         if (map.get("duration") instanceof Number value) {
             duration = Math.max(1, value.intValue());
         }
+    }
+
+    record GhostSample(List<PreviewBlock> ghosts, boolean sampled) {
     }
 }
