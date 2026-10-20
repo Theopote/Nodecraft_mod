@@ -36,6 +36,11 @@ public final class NodeVisualLayout {
             float iconTop,
             float captionTop,
             String caption,
+            /**
+             * Max unscaled width for the ICON_ONLY caption so it stays between
+             * the left/right port-letter columns and does not overlap them.
+             */
+            float captionMaxWidth,
             float portsRegionHeight,
             /** Unscaled Y where the first port row starts (top of text line), relative to node top. */
             float portRegionTop,
@@ -94,6 +99,7 @@ public final class NodeVisualLayout {
                     "",
                     0f,
                     0f,
+                    0f,
                     emptyLabels(inputs.size()),
                     emptyLabels(outputs.size()),
                     true
@@ -149,6 +155,7 @@ public final class NodeVisualLayout {
                 0f,
                 0f,
                 "",
+                0f,
                 portsRegionHeight,
                 portRegionTop,
                 inputLabels,
@@ -170,7 +177,6 @@ public final class NodeVisualLayout {
         float headerHeight = NodeRenderConstants.ICON_ONLY_HEADER_HEIGHT_UNSCALED;
         float iconSize = NodeRenderConstants.ICON_ONLY_ICON_SIZE_UNSCALED;
         String caption = node != null && node.getDisplayName() != null ? node.getDisplayName() : "";
-        float captionW = text.measure(caption);
         float letterColW = maxLabelWidth(inputLabels, outputLabels, text);
 
         float inputCol = 0f;
@@ -193,9 +199,10 @@ public final class NodeVisualLayout {
         }
 
         float portsContentW = inputCol + ((!inputs.isEmpty() && !outputs.isEmpty()) ? NodeRenderConstants.INTER_PORT_COLUMN_PADDING : 0f) + outputCol;
-        // Prefer enough room for the icon between port columns.
+        // Prefer enough room for the icon between port columns. Caption truncates into that band
+        // and must not drive node width (that caused side overlap with port letters).
         float iconAwarePortsW = inputCol + centerGap + outputCol;
-        float contentW = Math.max(Math.max(portsContentW, iconAwarePortsW), Math.max(iconSize, captionW));
+        float contentW = Math.max(Math.max(portsContentW, iconAwarePortsW), iconSize);
         float width = contentW + 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING;
         width = Math.max(NodeRenderConstants.ICON_ONLY_MIN_NODE_WIDTH_UNSCALED, width);
         width = Math.min(NodeRenderConstants.ICON_ONLY_MAX_NODE_WIDTH_UNSCALED, width);
@@ -212,6 +219,9 @@ public final class NodeVisualLayout {
                 + NodeRenderConstants.NODE_VERTICAL_PADDING * 0.5f;
         float captionTop = iconTop + iconSize + NodeRenderConstants.NODE_VERTICAL_PADDING * 0.5f;
         float portRegionTop = headerHeight + NodeRenderConstants.NODE_VERTICAL_PADDING / 2f;
+        // Keep caption strictly between port-letter columns (small gap so it does not touch letters).
+        float captionSideGap = 2f;
+        float captionMaxWidth = Math.max(8f, width - inputCol - outputCol - 2f * captionSideGap);
 
         return new Result(
                 width,
@@ -224,6 +234,7 @@ public final class NodeVisualLayout {
                 iconTop,
                 captionTop,
                 caption,
+                captionMaxWidth,
                 portsRegionHeight,
                 portRegionTop,
                 inputLabels,

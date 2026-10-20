@@ -454,7 +454,8 @@ public class ImGuiNodeRenderer {
 
         String caption = layout.caption();
         if (caption != null && !caption.isEmpty()) {
-            float maxCaptionWidth = Math.max(8f, layout.width() - 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
+            // Cap to the center band between port-letter columns so caption does not overlap letters.
+            float maxCaptionWidth = Math.max(8f, layout.captionMaxWidth());
             String drawnCaption = cache.truncateTextWithEllipsisOptimized(caption, maxCaptionWidth);
             float captionWidthScaled = cache.getCachedTextWidth(drawnCaption) * canvasZoom;
             float captionX = nodeScreenX + (finalNodeWidthScaled - captionWidthScaled) / 2f;

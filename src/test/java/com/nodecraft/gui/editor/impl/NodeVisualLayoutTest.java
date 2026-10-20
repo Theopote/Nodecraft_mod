@@ -74,6 +74,29 @@ class NodeVisualLayoutTest {
     }
 
     @Test
+    void iconOnlyCaptionStaysBetweenPortLetterColumns() {
+        StubNode node = StubNode.named("Very Long Node Display Name That Would Overlap")
+                .inputs("Wall Geometry", "Opening Profiles")
+                .outputs("Geometry", "Top Edges", "Center Lines");
+
+        NodeVisualLayout.Result layout = NodeVisualLayout.compute(
+                node, NodeDisplayMode.ICON_ONLY, node.inputs, node.outputs,
+                CHAR_WIDTH, LINE_H, SPACING_Y);
+
+        float letterW = CHAR_WIDTH.measure("W");
+        float inputCol = NodeRenderConstants.PORT_RADIUS_UNSCALED * 2f
+                + NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING
+                + letterW;
+        float outputCol = letterW
+                + NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING
+                + NodeRenderConstants.PORT_RADIUS_UNSCALED * 2f;
+
+        assertTrue(layout.captionMaxWidth() > 0f);
+        assertTrue(layout.captionMaxWidth() <= layout.width() - inputCol - outputCol + 0.01f);
+        assertTrue(CHAR_WIDTH.measure(layout.caption()) > layout.captionMaxWidth());
+    }
+
+    @Test
     void portCountsAndOrderStableAcrossModes() {
         StubNode node = StubNode.named("Node")
                 .inputs("Alpha", "Beta", "Gamma")
