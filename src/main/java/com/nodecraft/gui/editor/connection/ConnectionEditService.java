@@ -105,7 +105,18 @@ public final class ConnectionEditService {
                 host.notifyStructureDirty(impactOf(graph, sourceNodeId, targetNodeId));
                 ImGuiNodeHistory history = host.history();
                 if (history != null && history.isRecording()) {
-                    history.recordAddConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+                    try {
+                        history.recordAddConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+                    } catch (RuntimeException historyError) {
+                        NodeCraft.LOGGER.error(
+                                "连接已建立但撤销历史录制失败: {}", historyError.getMessage(), historyError);
+                        try {
+                            host.notifyHistoryRecordFailed("Add Connection", historyError);
+                        } catch (RuntimeException notifyError) {
+                            NodeCraft.LOGGER.error(
+                                    "连接历史失败通知抛出: {}", notifyError.getMessage(), notifyError);
+                        }
+                    }
                 }
                 Map<String, Object> eventData = new HashMap<>();
                 eventData.put("sourceNodeId", sourceNodeId);
@@ -148,7 +159,18 @@ public final class ConnectionEditService {
 
             ImGuiNodeHistory history = host.history();
             if (history != null && history.isRecording()) {
-                history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+                try {
+                    history.recordRemoveConnection(sourceNodeId, sourcePortId, targetNodeId, targetPortId);
+                } catch (RuntimeException historyError) {
+                    NodeCraft.LOGGER.error(
+                            "连接已断开但撤销历史录制失败: {}", historyError.getMessage(), historyError);
+                    try {
+                        host.notifyHistoryRecordFailed("Remove Connection", historyError);
+                    } catch (RuntimeException notifyError) {
+                        NodeCraft.LOGGER.error(
+                                "断开连接历史失败通知抛出: {}", notifyError.getMessage(), notifyError);
+                    }
+                }
             }
             host.notifyStructureDirty(impactOf(graph, sourceNodeId, targetNodeId));
             NodeCraft.LOGGER.info(

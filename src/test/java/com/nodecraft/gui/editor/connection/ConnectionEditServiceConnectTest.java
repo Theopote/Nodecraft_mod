@@ -118,12 +118,44 @@ class ConnectionEditServiceConnectTest {
         assertEquals(0, fixture.structureDirtyCount.get());
     }
 
+    @Test
+    void connectHistoryFailureKeepsEdgeAndNotifiesHost() {
+        Fixture fixture = Fixture.create(true);
+        StubNode source = new StubNode("source");
+        StubNode target = new StubNode("target");
+        fixture.graph.addNode(source);
+        fixture.graph.addNode(target);
+
+        assertTrue(fixture.service.connect(source.getId(), "out", target.getId(), "in"));
+        assertEquals(1, fixture.graph.getConnections().size());
+        assertEquals(1, fixture.historyFailedCount.get());
+        assertEquals("Add Connection", fixture.lastHistoryFailedLabel.get());
+    }
+
+    @Test
+    void disconnectHistoryFailureKeepsRemovalAndNotifiesHost() {
+        Fixture failing = Fixture.create(true);
+        StubNode source = new StubNode("source");
+        StubNode target = new StubNode("target");
+        failing.graph.addNode(source);
+        failing.graph.addNode(target);
+        // Bypass service.connect so Add Connection history failure does not fire first.
+        assertTrue(failing.graph.connect(source.getId(), "out", target.getId(), "in"));
+        assertTrue(failing.service.disconnect(source.getId(), "out", target.getId(), "in"));
+        assertTrue(failing.graph.getConnections().isEmpty());
+        assertEquals(1, failing.historyFailedCount.get());
+        assertEquals("Remove Connection", failing.lastHistoryFailedLabel.get());
+    }
+
     private static final class Fixture {
         final NodeGraph graph;
         final ImGuiNodeHistory history;
         final ConnectionEditService service;
         final AtomicInteger structureDirtyCount = new AtomicInteger();
         final AtomicInteger connectionAddedCount = new AtomicInteger();
+        final AtomicInteger historyFailedCount = new AtomicInteger();
+        final java.util.concurrent.atomic.AtomicReference<String> lastHistoryFailedLabel =
+                new java.util.concurrent.atomic.AtomicReference<>();
 
         private Fixture(
                 NodeGraph graph,
@@ -135,12 +167,18 @@ class ConnectionEditServiceConnectTest {
         }
 
         static Fixture create() {
+            return create(false);
+        }
+
+        static Fixture create(boolean failingHistory) {
             NodeGraph graph = new NodeGraph("connection-edit");
             EditorDocumentState document = new EditorDocumentState();
             document.setGraph(graph);
 
             StubCanvasEditor editor = new StubCanvasEditor(graph);
-            ImGuiNodeHistory history = editor.history();
+            ImGuiNodeHistory history = failingHistory
+                    ? new FailingConnectionHistory(editor)
+                    : editor.history();
 
             Fixture[] holder = new Fixture[1];
             ConnectionEditService.Host host = new ConnectionEditService.Host() {
@@ -162,6 +200,12 @@ class ConnectionEditServiceConnectTest {
                 @Override
                 public void notifyConnectionAdded(Map<String, Object> eventData) {
                     holder[0].connectionAddedCount.incrementAndGet();
+                }
+
+                @Override
+                public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+                    holder[0].historyFailedCount.incrementAndGet();
+                    holder[0].lastHistoryFailedLabel.set(label);
                 }
 
                 @Override
@@ -196,6 +240,22 @@ class ConnectionEditServiceConnectTest {
             Fixture fixture = new Fixture(graph, history, service);
             holder[0] = fixture;
             return fixture;
+        }
+    }
+
+    private static final class FailingConnectionHistory extends ImGuiNodeHistory {
+        FailingConnectionHistory(ICanvasEditor editor) {
+            super(editor);
+        }
+
+        @Override
+        public void recordAddConnection(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+            throw new IllegalStateException("synthetic history failure on add");
+        }
+
+        @Override
+        public void recordRemoveConnection(UUID sourceNodeId, String sourcePortId, UUID targetNodeId, String targetPortId) {
+            throw new IllegalStateException("synthetic history failure on remove");
         }
     }
 

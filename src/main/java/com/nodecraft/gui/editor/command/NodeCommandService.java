@@ -111,7 +111,18 @@ public final class NodeCommandService {
 
             ImGuiNodeHistory history = host.history();
             if (history != null && history.isRecording()) {
-                history.recordAddNode(node, x, y);
+                try {
+                    history.recordAddNode(node, x, y);
+                } catch (RuntimeException historyError) {
+                    NodeCraft.LOGGER.error(
+                            "节点已添加但撤销历史录制失败: {}", historyError.getMessage(), historyError);
+                    try {
+                        host.notifyHistoryRecordFailed("Add Node", historyError);
+                    } catch (RuntimeException notifyError) {
+                        NodeCraft.LOGGER.error(
+                                "添加节点历史失败通知抛出: {}", notifyError.getMessage(), notifyError);
+                    }
+                }
             }
 
             Map<String, Object> eventData = new HashMap<>();

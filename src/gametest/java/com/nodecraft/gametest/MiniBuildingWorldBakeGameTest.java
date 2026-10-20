@@ -116,14 +116,12 @@ public class MiniBuildingWorldBakeGameTest implements CustomTestMethodInvoker {
 
         PlacementSubmitPlan.Plan applyPlan = PlacementSubmitPlan.resolve(
                 placementsObj, null, null, null, null, null, null, null, "minecraft:stone_bricks", true);
-        PlacementSubmitPlan.Plan previewPlan = PlacementSubmitPlan.resolve(
-                placementsObj, null, null, null, null, null, null, null, "minecraft:stone_bricks", true);
         ctx.assertTrue(applyPlan.valid(), "apply plan valid: " + applyPlan.error());
-        ctx.assertTrue(previewPlan.valid(), "preview plan valid: " + previewPlan.error());
-        ctx.assertEquals(previewPlan.toPositionMap(), applyPlan.toPositionMap(),
-                "Preview and Apply placement maps must match");
         ctx.assertTrue(applyPlan.size() >= 40, "mini building should produce a substantial placement set");
 
+        // Preview/Apply payload BlockState parity is covered by MiniBuildingPreviewPayloadContractTest
+        // (real PreviewPlacementsNode.sampleGhosts path). Here we keep Bake + world integrity.
+        assertSpatialIntegrity(ctx, applyPlan.toPositionMap().keySet());
         assertPlacementsInsidePad(ctx, applyPlan);
 
         List<BakeTask.Placement> bakePlacements = toBakePlacements(applyPlan);
@@ -179,26 +177,6 @@ public class MiniBuildingWorldBakeGameTest implements CustomTestMethodInvoker {
         }
         ctx.assertTrue(solid.contains(pier), "pier between windows should remain solid at " + pier);
 
-        int minY = Integer.MAX_VALUE;
-        int maxY = Integer.MIN_VALUE;
-        for (BlockPos pos : solid) {
-            minY = Math.min(minY, pos.getY());
-            maxY = Math.max(maxY, pos.getY());
-        }
-        ctx.assertTrue(maxY - minY >= 3, "roof/floor span should cover wall height+");
-        boolean hasFloorBand = false;
-        boolean hasRoofBand = false;
-        for (BlockPos pos : solid) {
-            if (pos.getY() == minY) {
-                hasFloorBand = true;
-            }
-            if (pos.getY() >= minY + 3) {
-                hasRoofBand = true;
-            }
-        }
-        ctx.assertTrue(hasFloorBand, "floor slab band present");
-        ctx.assertTrue(hasRoofBand, "roof band present above walls");
-
         UUID undoTaskId = service.undoLastAsync(actorId, world, 2000, 5_000_000L);
         ctx.assertTrue(undoTaskId != null, "undo task id");
         drainTasks(service);
@@ -236,6 +214,124 @@ public class MiniBuildingWorldBakeGameTest implements CustomTestMethodInvoker {
             ctx.assertTrue(rel.getY() >= 0 && rel.getY() < 12, "y in pad: " + rel);
             ctx.assertTrue(rel.getZ() >= 0 && rel.getZ() < 16, "z in pad: " + rel);
         }
+    }
+
+    /**
+     * Spatial integrity beyond non-empty Y-band presence: floor continuity, roof span,
+     * and four wall faces at mid-height (mirrors MiniBuildingIntegrityAssert for GameTest).
+     */
+    private static void assertSpatialIntegrity(TestContext ctx, Set<BlockPos> solid) {
+        ctx.assertTrue(solid != null && !solid.isEmpty(), "solid set non-empty");
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+        int maxZ = Integer.MIN_VALUE;
+        for (BlockPos pos : solid) {
+            minX = Math.min(minX, pos.getX());
+            minY = Math.min(minY, pos.getY());
+            minZ = Math.min(minZ, pos.getZ());
+            maxX = Math.max(maxX, pos.getX());
+            maxY = Math.max(maxY, pos.getY());
+            maxZ = Math.max(maxZ, pos.getZ());
+        }
+        ctx.assertTrue(maxY - minY >= 3, "building height too short for roof+walls");
+
+        int floorCount = 0;
+        int roofCount = 0;
+        for (BlockPos pos : solid) {
+            if (pos.getY() == minY) {
+                floorCount++;
+            }
+            if (pos.getY() >= maxY - 1) {
+                roofCount++;
+            }
+        }
+        int footprint = (maxX - minX + 1) * (maxZ - minZ + 1);
+        ctx.assertTrue(floorCount >= 20, "floor band too sparse: " + floorCount);
+        ctx.assertTrue(floorCount * 4 >= footprint,
+                "floor coverage too low: cells=" + floorCount + " footprint=" + footprint);
+        ctx.assertTrue(roofCount >= 16, "roof band too sparse: " + roofCount);
+
+        // First storey above the floor (not (min+max)/2) so gable/roof fill is excluded.
+        ctx.assertTrue(maxY - minY >= 2, "need floor + wall height");
+        int midY = minY + 1;
+        int wallMinX = Integer.MAX_VALUE;
+        int wallMaxX = Integer.MIN_VALUE;
+        int wallMinZ = Integer.MAX_VALUE;
+        int wallMaxZ = Integer.MIN_VALUE;
+        java.util.ArrayList<BlockPos> midCells = new java.util.ArrayList<>();
+        for (BlockPos pos : solid) {
+            if (pos.getY() == midY) {
+                midCells.add(pos);
+            }
+        }
+        if (midCells.isEmpty() && midY + 1 < maxY) {
+            midY = midY + 1;
+            for (BlockPos pos : solid) {
+                if (pos.getY() == midY) {
+                    midCells.add(pos);
+                }
+            }
+        }
+        ctx.assertTrue(!midCells.isEmpty(), "mid-wall band empty");
+        for (BlockPos pos : midCells) {
+            wallMinX = Math.min(wallMinX, pos.getX());
+            wallMaxX = Math.max(wallMaxX, pos.getX());
+            wallMinZ = Math.min(wallMinZ, pos.getZ());
+            wallMaxZ = Math.max(wallMaxZ, pos.getZ());
+        }
+        ctx.assertTrue(wallMaxX - wallMinX >= 2, "wall X span too narrow");
+        ctx.assertTrue(wallMaxZ - wallMinZ >= 2, "wall Z span too narrow");
+
+        int edgeMinX = 0;
+        int edgeMaxX = 0;
+        int edgeMinZ = 0;
+        int edgeMaxZ = 0;
+        int interior = 0;
+        for (BlockPos pos : midCells) {
+            boolean onMinX = pos.getX() == wallMinX;
+            boolean onMaxX = pos.getX() == wallMaxX;
+            boolean onMinZ = pos.getZ() == wallMinZ;
+            boolean onMaxZ = pos.getZ() == wallMaxZ;
+            if (onMinX) {
+                edgeMinX++;
+            }
+            if (onMaxX) {
+                edgeMaxX++;
+            }
+            if (onMinZ) {
+                edgeMinZ++;
+            }
+            if (onMaxZ) {
+                edgeMaxZ++;
+            }
+            if (!onMinX && !onMaxX && !onMinZ && !onMaxZ) {
+                interior++;
+            }
+        }
+        ctx.assertTrue(edgeMinX >= 2 && edgeMaxX >= 2 && edgeMinZ >= 2 && edgeMaxZ >= 2,
+                "wall edges too sparse at mid band: minX=" + edgeMinX + " maxX=" + edgeMaxX
+                        + " minZ=" + edgeMinZ + " maxZ=" + edgeMaxZ);
+        int wallFootprint = (wallMaxX - wallMinX + 1) * (wallMaxZ - wallMinZ + 1);
+        ctx.assertTrue(midCells.size() < wallFootprint,
+                "mid-band fully solid (expected wall shell): solids=" + midCells.size()
+                        + " footprint=" + wallFootprint + " interiorSolids=" + interior);
+
+        int cornerHits = 0;
+        BlockPos[] corners = {
+                new BlockPos(wallMinX, midY, wallMinZ),
+                new BlockPos(wallMinX, midY, wallMaxZ),
+                new BlockPos(wallMaxX, midY, wallMinZ),
+                new BlockPos(wallMaxX, midY, wallMaxZ)
+        };
+        for (BlockPos corner : corners) {
+            if (solid.contains(corner) || solid.contains(corner.up()) || solid.contains(corner.down())) {
+                cornerHits++;
+            }
+        }
+        ctx.assertTrue(cornerHits >= 3, "expected ≥3 wall corners connected, got " + cornerHits);
     }
 
     private static void assertWorldMatches(

@@ -199,9 +199,16 @@ public class PropertyPanelComponent implements EditorComponent {
             throw new PropertyApplyException(
                     "Property write rolled back: cannot isolate undo snapshot for '" + prop.name + "'", e);
         } catch (Exception e) {
-            // Editor unavailable / not recording path — do not pretend undo exists.
-            NodeCraft.LOGGER.debug("Property history not recorded for {}.{}: {}",
+            // Editor unavailable / not recording path — keep the write and surface a visible warning
+            // when an editor is present so SUCCESS_WITHOUT_UNDO-style feedback is not log-only.
+            NodeCraft.LOGGER.warn("Property history not recorded for {}.{}: {}",
                     node.getId(), prop.name, e.getMessage());
+            try {
+                ImGuiNodeEditor.getInstance().structureEditHost()
+                        .notifyHistoryRecordFailed("Edit " + prop.name, e);
+            } catch (Exception ignored) {
+                // No editor host available (unit tests / headless).
+            }
         }
     }
 
