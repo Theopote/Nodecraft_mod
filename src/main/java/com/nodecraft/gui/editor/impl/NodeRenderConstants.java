@@ -11,11 +11,17 @@ import java.util.Map;
 public class NodeRenderConstants {
 
     // Node layout constants (unscaled)
-    public static final float NODE_HORIZONTAL_PADDING = 6.0f;
+    public static final float NODE_HORIZONTAL_PADDING = 8.0f;
     public static final float NODE_VERTICAL_PADDING = 5.0f;
     public static final float PORT_CIRCLE_TO_TEXT_PADDING = 4.0f;
     public static final float INTER_PORT_COLUMN_PADDING = 8.0f;
-    public static final float MIN_NODE_WIDTH_UNSCALED = 100.0f;
+    /** Prefer {@link #TEXT_ONLY_MIN_NODE_WIDTH_UNSCALED} / ICON_ONLY bounds for new code. */
+    public static final float MIN_NODE_WIDTH_UNSCALED = 120.0f;
+    public static final float TEXT_ONLY_MIN_NODE_WIDTH_UNSCALED = 120.0f;
+    public static final float ICON_ONLY_MIN_NODE_WIDTH_UNSCALED = 80.0f;
+    public static final float ICON_ONLY_MAX_NODE_WIDTH_UNSCALED = 140.0f;
+    public static final float ICON_ONLY_ICON_SIZE_UNSCALED = 40.0f;
+    public static final float ICON_ONLY_HEADER_HEIGHT_UNSCALED = 10.0f;
     public static final float PORT_RADIUS_UNSCALED = 4.0f;
     public static final float PORT_BORDER_THICKNESS_UNSCALED = 1.5f;
     public static final float NODE_CORNER_RADIUS_UNSCALED = 6.0f;

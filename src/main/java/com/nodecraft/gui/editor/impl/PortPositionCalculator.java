@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import com.nodecraft.gui.editor.session.EditorSession;
+import com.nodecraft.gui.editor.session.NodeDisplayMode;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -19,7 +22,7 @@ import imgui.ImVec2;
  * 负责计算和管理节点端口的屏幕位置
  */
 public class PortPositionCalculator {
-    
+
     private final ICanvasEditor editor;
     private final PortPositionManager portPositionManager;
     private final FlatPortPositionManager flatPortManager;
@@ -51,9 +54,10 @@ public class PortPositionCalculator {
 
         float baseTextLineHeight = ImGui.getTextLineHeight();
         float baseItemSpacingY = ImGui.getStyle().getItemSpacingY();
+        NodeDisplayMode displayMode = resolveDisplayMode();
 
         for (INode node : graph.getNodes()) {
-            updateNodeDimensionsInPosition(node, nodePositions, canvasZoom, baseTextLineHeight, baseItemSpacingY);
+            updateNodeDimensionsInPosition(node, nodePositions, displayMode, baseTextLineHeight, baseItemSpacingY);
         }
 
         for (INode node : graph.getNodes()) {
@@ -73,17 +77,19 @@ public class PortPositionCalculator {
             float scaledTextLineHeight = baseTextLineHeight * canvasZoom;
             float scaledPortVerticalSpacing = baseItemSpacingY * canvasZoom * 0.8f;
 
-            float nodeHeaderHeightScaled = (baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING) * canvasZoom;
-            boolean compactRerouteNode = isCompactRerouteNode(node);
-            float portYOffset;
-            if (compactRerouteNode) {
-                portYOffset = nodeScreenY + (pos.height * canvasZoom - scaledTextLineHeight) / 2.0f;
-            } else {
-                portYOffset = nodeScreenY + nodeHeaderHeightScaled + (NodeRenderConstants.NODE_VERTICAL_PADDING / 2) * canvasZoom;
-            }
-
             List<IPort> visibleInputPorts = getVisibleInputPorts(node);
             List<IPort> visibleOutputPorts = getVisibleOutputPorts(node);
+            NodeVisualLayout.Result layout = NodeVisualLayout.compute(
+                    node, displayMode, visibleInputPorts, visibleOutputPorts,
+                    this::getCachedTextWidth, baseTextLineHeight, baseItemSpacingY);
+
+            float portYOffset;
+            if (layout.compactReroute()) {
+                portYOffset = nodeScreenY + (pos.height * canvasZoom - scaledTextLineHeight) / 2.0f;
+            } else {
+                portYOffset = nodeScreenY + layout.portRegionTop() * canvasZoom;
+            }
+
             boolean hasInputPorts = !visibleInputPorts.isEmpty();
             boolean hasOutputPorts = !visibleOutputPorts.isEmpty();
 
@@ -155,94 +161,21 @@ public class PortPositionCalculator {
     /**
      * 更新节点尺寸在位置信息中
      */
-    private void updateNodeDimensionsInPosition(INode node, Map<UUID, NodePosition> nodePositions, float canvasZoom,
+    private void updateNodeDimensionsInPosition(INode node, Map<UUID, NodePosition> nodePositions,
+                                                NodeDisplayMode displayMode,
                                                 float baseTextLineHeight, float baseItemSpacingY) {
         UUID nodeId = node.getId();
         NodePosition pos = nodePositions.computeIfAbsent(nodeId, id -> new NodePosition(100, 100));
 
-        if (isCompactRerouteNode(node)) {
-            pos.setSize(NodeRenderConstants.REROUTE_NODE_WIDTH_UNSCALED, NodeRenderConstants.REROUTE_NODE_HEIGHT_UNSCALED);
-            return;
-        }
+        NodeVisualLayout.Result layout = NodeVisualLayout.compute(
+                node, displayMode, getVisibleInputPorts(node), getVisibleOutputPorts(node),
+                this::getCachedTextWidth, baseTextLineHeight, baseItemSpacingY);
+        pos.setSize(layout.width(), layout.height());
+    }
 
-        String nodeDisplayName = node.getDisplayName();
-        float unscaledTitleTextWidth = getCachedTextWidth(nodeDisplayName);
-
-        List<IPort> visibleInputPorts = getVisibleInputPorts(node);
-        List<IPort> visibleOutputPorts = getVisibleOutputPorts(node);
-        boolean hasInputPorts = !visibleInputPorts.isEmpty();
-        boolean hasOutputPorts = !visibleOutputPorts.isEmpty();
-        boolean hasAnyPorts = hasInputPorts || hasOutputPorts;
-
-        float maxInputTextWidthUnscaled = 0;
-        float maxOutputTextWidthUnscaled = 0;
-        if (hasAnyPorts) {
-            if (hasInputPorts) {
-                for (IPort p : visibleInputPorts) {
-                    maxInputTextWidthUnscaled = Math.max(maxInputTextWidthUnscaled, getCachedTextWidth(p.getDisplayName()));
-                }
-            }
-            if (hasOutputPorts) {
-                for (IPort p : visibleOutputPorts) {
-                    maxOutputTextWidthUnscaled = Math.max(maxOutputTextWidthUnscaled, getCachedTextWidth(p.getDisplayName()));
-                }
-            }
-        }
-
-        float unscaledPortsContentWidth = 0;
-        if (hasAnyPorts) {
-            if (hasInputPorts) {
-                unscaledPortsContentWidth += NodeRenderConstants.PORT_RADIUS_UNSCALED * 2 + NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING + maxInputTextWidthUnscaled;
-            }
-            if (hasOutputPorts) {
-                if (hasInputPorts) {
-                    unscaledPortsContentWidth += NodeRenderConstants.INTER_PORT_COLUMN_PADDING;
-                }
-                unscaledPortsContentWidth += maxOutputTextWidthUnscaled + NodeRenderConstants.PORT_CIRCLE_TO_TEXT_PADDING + NodeRenderConstants.PORT_RADIUS_UNSCALED * 2;
-            }
-        }
-
-        float unscaledEffectiveContentWidth = Math.max(unscaledTitleTextWidth, unscaledPortsContentWidth);
-
-        float customUIUnscaledHeight = 0;
-        float customUIUnscaledRequiredWidth = 0;
-        boolean hasCustomUI = false;
-
-        if (node instanceof ICustomUINode customUINode) {
-            hasCustomUI = customUINode.hasCustomUI();
-            if (hasCustomUI) {
-                customUIUnscaledHeight = customUINode.getCustomUIHeight();
-                customUIUnscaledRequiredWidth = customUINode.getMinRequiredUIWidth();
-            }
-        }
-
-        float finalUnscaledNodeWidth = Math.max(NodeRenderConstants.MIN_NODE_WIDTH_UNSCALED, 
-                unscaledEffectiveContentWidth + 2 * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
-        if (hasCustomUI && customUIUnscaledRequiredWidth > 0) {
-            finalUnscaledNodeWidth = Math.max(finalUnscaledNodeWidth, 
-                    customUIUnscaledRequiredWidth + 2 * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
-        }
-
-        float unscaledNodeHeaderHeight = baseTextLineHeight + 2 * NodeRenderConstants.NODE_VERTICAL_PADDING;
-
-        float unscaledPortsRegionHeight = 0;
-        if (hasAnyPorts) {
-            int numInputPorts = visibleInputPorts.size();
-            int numOutputPorts = visibleOutputPorts.size();
-            float inputPortsVisualHeight = (numInputPorts > 0) ? (numInputPorts * baseTextLineHeight + Math.max(0, numInputPorts - 1) * baseItemSpacingY * 0.8f) : 0;
-            float outputPortsVisualHeight = (numOutputPorts > 0) ? (numOutputPorts * baseTextLineHeight + Math.max(0, numOutputPorts - 1) * baseItemSpacingY * 0.8f) : 0;
-            unscaledPortsRegionHeight = Math.max(inputPortsVisualHeight, outputPortsVisualHeight);
-        }
-
-        float finalUnscaledNodeHeight = unscaledNodeHeaderHeight;
-        if (unscaledPortsRegionHeight > 0) {
-            finalUnscaledNodeHeight += unscaledPortsRegionHeight + NodeRenderConstants.NODE_VERTICAL_PADDING;
-        }
-        if (hasCustomUI && customUIUnscaledHeight > 0) {
-            finalUnscaledNodeHeight += customUIUnscaledHeight + NodeRenderConstants.NODE_HORIZONTAL_PADDING;
-        }
-
-        pos.setSize(finalUnscaledNodeWidth, finalUnscaledNodeHeight);
+    private NodeDisplayMode resolveDisplayMode() {
+        EditorSession session = editor.getEditorSession();
+        return session != null ? session.getNodeDisplayMode() : NodeDisplayMode.TEXT_ONLY;
     }
 
     private float getCachedTextWidth(String text) {
@@ -250,31 +183,21 @@ public class PortPositionCalculator {
         return ImGui.calcTextSize(text).x;
     }
 
-    private static boolean isCompactRerouteNode(INode node) {
-        if (node == null || !NodeRenderConstants.REROUTE_NODE_TYPE_ID.equalsIgnoreCase(node.getTypeId())) {
-            return false;
-        }
-        if (node instanceof com.nodecraft.nodesystem.nodes.utilities.assist.RelayNode relay) {
-            String label = relay.getShortTagLabel();
-            return label == null || label.isBlank();
-        }
-        return true;
-    }
-
     /**
      * 预计算端口文本大小
      */
     public void precalculatePortTextSizes(INode node) {
+        NodeDisplayMode mode = resolveDisplayMode();
         List<IPort> visibleInputPorts = getVisibleInputPorts(node);
         List<IPort> visibleOutputPorts = getVisibleOutputPorts(node);
         if (visibleInputPorts != null) {
             for (IPort port : visibleInputPorts) {
-                getCachedTextWidth(port.getDisplayName());
+                getCachedTextWidth(NodePortLabelUtil.portLabel(mode, port.getDisplayName()));
             }
         }
         if (visibleOutputPorts != null) {
             for (IPort port : visibleOutputPorts) {
-                getCachedTextWidth(port.getDisplayName());
+                getCachedTextWidth(NodePortLabelUtil.portLabel(mode, port.getDisplayName()));
             }
         }
     }

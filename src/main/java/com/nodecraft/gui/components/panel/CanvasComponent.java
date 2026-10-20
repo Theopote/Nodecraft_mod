@@ -17,6 +17,7 @@ import com.nodecraft.gui.editor.impl.ImGuiNodeInteraction;
 import com.nodecraft.gui.editor.impl.NodePosition;
 import com.nodecraft.gui.editor.interaction.EditorInteractionMode;
 import com.nodecraft.gui.editor.session.EditorSession;
+import com.nodecraft.gui.editor.session.NodeDisplayMode;
 import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import org.jetbrains.annotations.Nullable;
 
@@ -81,14 +82,6 @@ public class CanvasComponent implements EditorComponent {
     // 右键上下文菜单相关
     private float contextMenuPosX = 0;
     private float contextMenuPosY = 0;
-    
-    // 节点显示模式
-    public enum NodeDisplayMode {
-        FULL,        // 完整显示（图标+标题+详情）
-        COMPACT,     // 紧凑显示（图标+标题）
-        ICON_ONLY,   // 仅图标
-        TEXT_ONLY    // 仅文本
-    }
     
     /**
      * 节点添加回调接口
@@ -926,18 +919,11 @@ public class CanvasComponent implements EditorComponent {
      */
     public void toggleNodeDisplayMode() {
         NodeDisplayMode next = switch (getNodeDisplayMode()) {
-            case FULL -> NodeDisplayMode.COMPACT;
-            case COMPACT -> NodeDisplayMode.ICON_ONLY;
+            case TEXT_ONLY -> NodeDisplayMode.ICON_ONLY;
             case ICON_ONLY -> NodeDisplayMode.TEXT_ONLY;
-            case TEXT_ONLY -> NodeDisplayMode.FULL;
         };
         setNodeDisplayMode(next);
-        NodeCraft.LOGGER.info("节点显示模式: {}", switch (next) {
-            case FULL -> "完整模式";
-            case COMPACT -> "紧凑模式";
-            case ICON_ONLY -> "仅图标";
-            case TEXT_ONLY -> "仅文本";
-        });
+        NodeCraft.LOGGER.info("节点显示模式: {}", next == NodeDisplayMode.TEXT_ONLY ? "Text Only" : "Icon Only");
     }
 
     /**
@@ -946,12 +932,7 @@ public class CanvasComponent implements EditorComponent {
      */
     public NodeDisplayMode getNodeDisplayMode() {
         EditorSession session = session();
-        int mode = session != null ? session.getNodeDisplayMode() : EditorSession.DISPLAY_MODE_FULL;
-        NodeDisplayMode[] values = NodeDisplayMode.values();
-        if (mode < 0 || mode >= values.length) {
-            return NodeDisplayMode.FULL;
-        }
-        return values[mode];
+        return session != null ? session.getNodeDisplayMode() : NodeDisplayMode.TEXT_ONLY;
     }
 
     /**
@@ -964,9 +945,9 @@ public class CanvasComponent implements EditorComponent {
         }
         EditorSession session = session();
         if (session != null) {
-            session.setNodeDisplayMode(mode.ordinal());
+            session.setNodeDisplayMode(mode);
         } else if (nodeEditor instanceof ImGuiNodeEditor editor) {
-            editor.setNodeDisplayMode(mode.ordinal());
+            editor.setNodeDisplayMode(mode);
         }
     }
 
@@ -1090,17 +1071,11 @@ public class CanvasComponent implements EditorComponent {
                     // 节点显示模式子菜单
                     NodeDisplayMode nodeDisplayMode = getNodeDisplayMode();
                     if (ImGui.beginMenu("节点显示模式")) {
-                        if (ImGui.menuItem("完整模式", null, nodeDisplayMode == NodeDisplayMode.FULL)) {
-                            setNodeDisplayMode(NodeDisplayMode.FULL);
-                        }
-                        if (ImGui.menuItem("紧凑模式", null, nodeDisplayMode == NodeDisplayMode.COMPACT)) {
-                            setNodeDisplayMode(NodeDisplayMode.COMPACT);
-                        }
-                        if (ImGui.menuItem("仅图标", null, nodeDisplayMode == NodeDisplayMode.ICON_ONLY)) {
-                            setNodeDisplayMode(NodeDisplayMode.ICON_ONLY);
-                        }
-                        if (ImGui.menuItem("仅文本", null, nodeDisplayMode == NodeDisplayMode.TEXT_ONLY)) {
+                        if (ImGui.menuItem("Text Only", null, nodeDisplayMode == NodeDisplayMode.TEXT_ONLY)) {
                             setNodeDisplayMode(NodeDisplayMode.TEXT_ONLY);
+                        }
+                        if (ImGui.menuItem("Icon Only", null, nodeDisplayMode == NodeDisplayMode.ICON_ONLY)) {
+                            setNodeDisplayMode(NodeDisplayMode.ICON_ONLY);
                         }
                         ImGui.endMenu();
                     }

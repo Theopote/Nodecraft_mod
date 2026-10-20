@@ -13,9 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Spatial integrity checks for architectural.residential.mini_building_v1 placement sets.
@@ -237,8 +235,8 @@ public final class MiniBuildingIntegrityAssert {
         assertTrue(centers != null && !centers.isEmpty(), "need window centers");
         assertEquals(centers.size(), expectedFrameCount,
                 "place_frames count must match Window Array openings");
-        assertTrue(frameGeometry != null, "place_frames geometry missing");
-        assertTrue(hostWallGeometry != null, "cut wall geometry missing");
+        assertNotNull(frameGeometry, "place_frames geometry missing");
+        assertNotNull(hostWallGeometry, "cut wall geometry missing");
 
         long frameLeaves = GeometryStructureUtils.countLeaves(frameGeometry);
         // WindowFrame packs 4 bars; Place-on-Frames copies once per opening.
@@ -301,8 +299,8 @@ public final class MiniBuildingIntegrityAssert {
         if (geometry == null || point == null) {
             return false;
         }
-        if (geometry instanceof CompositeGeometryData composite) {
-            for (GeometryData child : composite.geometries()) {
+        if (geometry instanceof CompositeGeometryData(List<GeometryData> geometries)) {
+            for (GeometryData child : geometries) {
                 if (anyLeafContains(child, point)) {
                     return true;
                 }
@@ -341,8 +339,7 @@ public final class MiniBuildingIntegrityAssert {
                 ringHits++;
             }
         }
-        assertTrue(ringHits == centers.size(),
-                "each opening should have solid frame/wall neighbors; hits=" + ringHits);
+        assertEquals(ringHits, centers.size(), "each opening should have solid frame/wall neighbors; hits=" + ringHits);
     }
 
     public static void assertDominantMaterial(

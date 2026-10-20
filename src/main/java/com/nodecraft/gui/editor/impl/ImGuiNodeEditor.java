@@ -21,6 +21,7 @@ import com.nodecraft.gui.editor.preview.AutoPreviewController;
 import com.nodecraft.gui.editor.command.NodeCommandService;
 import com.nodecraft.gui.editor.connection.ConnectionEditService;
 import com.nodecraft.gui.editor.session.EditorSession;
+import com.nodecraft.gui.editor.session.NodeDisplayMode;
 import com.nodecraft.gui.editor.subgraph.SubgraphEditService;
 import com.nodecraft.gui.editor.viewport.EditorViewportState;
 import com.nodecraft.gui.recommendation.NodeRecommendationApplyResult;
@@ -1386,7 +1387,7 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
         return nodeCommands.duplicateSelected();
     }
 
-    public void setNodeDisplayMode(int mode) {
+    public void setNodeDisplayMode(NodeDisplayMode mode) {
         session.setNodeDisplayMode(mode);
     }
 

@@ -9,6 +9,7 @@ import java.util.function.BooleanSupplier;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.components.panel.CanvasComponent;
 import com.nodecraft.gui.components.panel.NodeLibraryComponent;
+import com.nodecraft.gui.editor.session.NodeDisplayMode;
 import com.nodecraft.gui.dialogs.ConfirmationDialog;
 import com.nodecraft.gui.dialogs.FileDialogManager;
 import com.nodecraft.gui.dialogs.MessageDialog;
@@ -305,19 +306,12 @@ public class MenuBarRenderer {
                 // 节点显示模式子菜单
                 if (ImGui.beginMenu("节点显示模式")) {
                     if (canvas != null) {
-                        CanvasComponent.NodeDisplayMode currentMode = canvas.getNodeDisplayMode();
-                        
-                        if (ImGui.menuItem("完整模式", null, currentMode == CanvasComponent.NodeDisplayMode.FULL)) {
-                            canvas.setNodeDisplayMode(CanvasComponent.NodeDisplayMode.FULL);
+                        NodeDisplayMode currentMode = canvas.getNodeDisplayMode();
+                        if (ImGui.menuItem("Text Only", null, currentMode == NodeDisplayMode.TEXT_ONLY)) {
+                            canvas.setNodeDisplayMode(NodeDisplayMode.TEXT_ONLY);
                         }
-                        if (ImGui.menuItem("紧凑模式", null, currentMode == CanvasComponent.NodeDisplayMode.COMPACT)) {
-                            canvas.setNodeDisplayMode(CanvasComponent.NodeDisplayMode.COMPACT);
-                        }
-                        if (ImGui.menuItem("仅图标", null, currentMode == CanvasComponent.NodeDisplayMode.ICON_ONLY)) {
-                            canvas.setNodeDisplayMode(CanvasComponent.NodeDisplayMode.ICON_ONLY);
-                        }
-                        if (ImGui.menuItem("仅文本", null, currentMode == CanvasComponent.NodeDisplayMode.TEXT_ONLY)) {
-                            canvas.setNodeDisplayMode(CanvasComponent.NodeDisplayMode.TEXT_ONLY);
+                        if (ImGui.menuItem("Icon Only", null, currentMode == NodeDisplayMode.ICON_ONLY)) {
+                            canvas.setNodeDisplayMode(NodeDisplayMode.ICON_ONLY);
                         }
                     } else {
                         ImGui.menuItem("无法获取显示模式", null, false, false);

@@ -23,12 +23,13 @@ class EditorSessionTest {
     @Test
     void displayModeAndPreviewFlagsRoundTrip() {
         EditorSession session = new EditorSession();
-        assertEquals(EditorSession.DISPLAY_MODE_FULL, session.getNodeDisplayMode());
+        assertEquals(NodeDisplayMode.TEXT_ONLY, session.getNodeDisplayMode());
+        assertEquals(2, NodeDisplayMode.values().length);
         assertTrue(session.isShowNodePreviews());
 
-        session.setNodeDisplayMode(EditorSession.DISPLAY_MODE_COMPACT);
+        session.setNodeDisplayMode(NodeDisplayMode.ICON_ONLY);
         session.setShowNodePreviews(false);
-        assertEquals(EditorSession.DISPLAY_MODE_COMPACT, session.getNodeDisplayMode());
+        assertEquals(NodeDisplayMode.ICON_ONLY, session.getNodeDisplayMode());
         assertFalse(session.isShowNodePreviews());
     }
 

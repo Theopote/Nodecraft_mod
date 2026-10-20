@@ -17,11 +17,6 @@ import java.util.UUID;
  */
 public final class EditorSession {
 
-    public static final int DISPLAY_MODE_FULL = 0;
-    public static final int DISPLAY_MODE_COMPACT = 1;
-    public static final int DISPLAY_MODE_ICON_ONLY = 2;
-    public static final int DISPLAY_MODE_TEXT_ONLY = 3;
-
     public interface Host {
         void notifyStructureDirty();
 
@@ -39,7 +34,7 @@ public final class EditorSession {
     };
 
     private boolean open = false;
-    private int nodeDisplayMode = DISPLAY_MODE_FULL;
+    private NodeDisplayMode nodeDisplayMode = NodeDisplayMode.TEXT_ONLY;
     private boolean showNodePreviews = true;
     private final Map<UUID, Integer> nodeCustomColors = new HashMap<>();
     private final Set<UUID> disabledNodes = new HashSet<>();
@@ -63,11 +58,14 @@ public final class EditorSession {
         this.open = open;
     }
 
-    public int getNodeDisplayMode() {
+    public NodeDisplayMode getNodeDisplayMode() {
         return nodeDisplayMode;
     }
 
-    public void setNodeDisplayMode(int mode) {
+    public void setNodeDisplayMode(NodeDisplayMode mode) {
+        if (mode == null) {
+            return;
+        }
         this.nodeDisplayMode = mode;
         NodeCraft.LOGGER.debug("设置节点显示模式: {}", mode);
     }
