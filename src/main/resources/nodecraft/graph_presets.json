@@ -2120,7 +2120,7 @@
         {
           "id": "architectural.residential.mini_building_v1",
           "displayName": "Mini Building (Component Chain)",
-          "description": "Floor → Wall Along Path → Window Difference → Frames → Roof → Combine → Move to Player. Preview Geometry is the design preview after Move. Voxelize → Assign Block Type placements feed both Preview Blocks and Apply Changes. Manual Trigger EXEC fires Apply (OVERWRITE, async bake, undo).",
+          "description": "Floor → Wall Along Path → Window Difference → Frames → Roof → Combine → Move to Player. Wall thickness/opening depth are ≥1.2 so 1-block voxelization keeps through-wall cuts. Preview Geometry is the design preview after Move. Voxelize → Assign Block Type placements feed both Preview Blocks and Apply Changes. Manual Trigger EXEC fires Apply (OVERWRITE, async bake, undo).",
           "kind": "composite",
           "nodes": [
             {
@@ -2138,6 +2138,78 @@
                 "sizeX": 10.0,
                 "sizeY": 3.0,
                 "sizeZ": 8.0
+              }
+            },
+            {
+              "ref": "wall_height",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1120.0,
+              "state": {
+                "value": 3.0
+              }
+            },
+            {
+              "ref": "wall_thickness",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1320.0,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
+              "ref": "opening_depth",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1520.0,
+              "state": {
+                "value": 1.2
+              }
+            },
+            {
+              "ref": "win_cols",
+              "typeId": "input.numeric.integer",
+              "x": 0.0,
+              "y": 1720.0,
+              "state": {
+                "value": 2
+              }
+            },
+            {
+              "ref": "win_rows",
+              "typeId": "input.numeric.integer",
+              "x": 0.0,
+              "y": 1920.0,
+              "state": {
+                "value": 1
+              }
+            },
+            {
+              "ref": "win_width",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 2120.0,
+              "state": {
+                "value": 1.5
+              }
+            },
+            {
+              "ref": "win_height",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 2320.0,
+              "state": {
+                "value": 1.0
+              }
+            },
+            {
+              "ref": "win_margin",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 2520.0,
+              "state": {
+                "value": 0.8
               }
             },
             {
@@ -2189,10 +2261,7 @@
               "ref": "windows",
               "typeId": "geometry.architectural_primitives.window_array",
               "x": 640.0,
-              "y": 920.0,
-              "state": {
-                "defaultDepth": 0.5
-              }
+              "y": 920.0
             },
             {
               "ref": "window_frame",
@@ -2222,7 +2291,10 @@
               "ref": "combine",
               "typeId": "geometry.combine.geometry",
               "x": 1600.0,
-              "y": 480.0
+              "y": 480.0,
+              "state": {
+                "inputCount": 4
+              }
             },
             {
               "ref": "move_to_pos",
@@ -2331,10 +2403,58 @@
               "toPort": "input_path"
             },
             {
+              "fromRef": "wall_height",
+              "fromPort": "output_value",
+              "toRef": "walls",
+              "toPort": "input_height"
+            },
+            {
+              "fromRef": "wall_thickness",
+              "fromPort": "output_value",
+              "toRef": "walls",
+              "toPort": "input_thickness"
+            },
+            {
               "fromRef": "front_face",
               "fromPort": "output_face",
               "toRef": "windows",
               "toPort": "input_face"
+            },
+            {
+              "fromRef": "win_cols",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_columns"
+            },
+            {
+              "fromRef": "win_rows",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_rows"
+            },
+            {
+              "fromRef": "win_width",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_window_width"
+            },
+            {
+              "fromRef": "win_height",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_window_height"
+            },
+            {
+              "fromRef": "win_margin",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_margin"
+            },
+            {
+              "fromRef": "opening_depth",
+              "fromPort": "output_value",
+              "toRef": "windows",
+              "toPort": "input_depth"
             },
             {
               "fromRef": "roof_face",
@@ -2353,6 +2473,18 @@
               "fromPort": "output_openings",
               "toRef": "cut_walls",
               "toPort": "input_cutter"
+            },
+            {
+              "fromRef": "win_width",
+              "fromPort": "output_value",
+              "toRef": "window_frame",
+              "toPort": "input_frame_width"
+            },
+            {
+              "fromRef": "win_height",
+              "fromPort": "output_value",
+              "toRef": "window_frame",
+              "toPort": "input_frame_height"
             },
             {
               "fromRef": "windows",

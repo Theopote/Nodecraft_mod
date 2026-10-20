@@ -130,19 +130,19 @@ public class PlaceGeometryOnFramesNode extends AbstractPlacementNode {
      * Frames XOR Frame by connection. Returns null after writing failure.
      */
     private @Nullable List<FrameData> resolveFramesExclusive() {
-        boolean framesConnected = OptionalPortDrive.isConnected(this, INPUT_FRAMES_ID);
-        boolean frameConnected = OptionalPortDrive.isConnected(this, INPUT_FRAME_ID);
+        boolean framesDriven = OptionalPortDrive.isDriven(this, INPUT_FRAMES_ID);
+        boolean frameDriven = OptionalPortDrive.isDriven(this, INPUT_FRAME_ID);
 
-        if (framesConnected && frameConnected) {
+        if (framesDriven && frameDriven) {
             writeFail("Connect either Frame or Frames, not both");
             return null;
         }
-        if (!framesConnected && !frameConnected) {
+        if (!framesDriven && !frameDriven) {
             writeFail("Connect Frame or Frames");
             return null;
         }
 
-        if (framesConnected) {
+        if (framesDriven) {
             List<FrameData> frames = FrameUtils.resolveStrictFrameListBounded(
                 getInput(INPUT_FRAMES_ID),
                 GenerationLimits.MAX_GEOMETRY_INSTANCES

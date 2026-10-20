@@ -9,6 +9,8 @@ import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.ArchitecturalInputUtils;
 import com.nodecraft.nodesystem.util.GeometryOutputUtils;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
@@ -151,7 +153,7 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
         }
 
         final double openingDepth;
-        if (ArchitecturalInputUtils.isConnected(this, INPUT_OPENING_DEPTH_ID)) {
+        if (OptionalPortDrive.isDriven(this, INPUT_OPENING_DEPTH_ID)) {
             Double resolvedDepth = ArchitecturalInputUtils.resolveOptionalPositiveFiniteDouble(
                 this, INPUT_OPENING_DEPTH_ID, wallThickness);
             if (resolvedDepth == null) {
@@ -161,6 +163,11 @@ public class WallWithOpeningsNode extends AbstractFaceArrayNode {
             openingDepth = resolvedDepth;
         } else {
             openingDepth = wallThickness;
+        }
+        // Host-side cutters occupy [0, depth]; shorter than wall thickness leaves an uncut band.
+        if (openingDepth + 1.0e-9d < wallThickness) {
+            writeInvalid("Opening Depth must be >= Wall Thickness to cut through the host slab");
+            return;
         }
 
         if (!GeometryOutputUtils.fitsArchitecturalInstanceBudget(columns, rows)) {

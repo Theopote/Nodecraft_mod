@@ -731,6 +731,39 @@ class PresetSemanticAuditTest {
                     errors.add(preset.id + ": Preview Geometry must combine moved glass + frame");
                 }
             }
+            case "architectural.residential.mini_building_v1" -> {
+                if (!"wall_thickness".equals(incomingFromRef(preset, "walls", "input_thickness"))) {
+                    errors.add(preset.id + ": wall_thickness must drive walls.input_thickness");
+                }
+                if (!"wall_height".equals(incomingFromRef(preset, "walls", "input_height"))) {
+                    errors.add(preset.id + ": wall_height must drive walls.input_height");
+                }
+                if (!"opening_depth".equals(incomingFromRef(preset, "windows", "input_depth"))) {
+                    errors.add(preset.id + ": opening_depth must drive windows.input_depth");
+                }
+                if (!"win_width".equals(incomingFromRef(preset, "window_frame", "input_frame_width"))
+                        || !"win_height".equals(incomingFromRef(preset, "window_frame", "input_frame_height"))) {
+                    errors.add(preset.id + ": window_frame size must follow win_width/win_height");
+                }
+                GraphPresetRules.PresetNode wallHeight = nodeByRef.get("wall_height");
+                GraphPresetRules.PresetNode volume = nodeByRef.get("volume");
+                GraphPresetRules.PresetNode openingDepth = nodeByRef.get("opening_depth");
+                GraphPresetRules.PresetNode wallThickness = nodeByRef.get("wall_thickness");
+                Double height = wallHeight == null ? null : numericStateValue(wallHeight.state, "value");
+                Double sizeY = volume == null ? null : numericStateValue(volume.state, "sizeY");
+                Double depth = openingDepth == null ? null : numericStateValue(openingDepth.state, "value");
+                Double thickness = wallThickness == null ? null : numericStateValue(wallThickness.state, "value");
+                if (height == null || sizeY == null || Math.abs(height - sizeY) > 0.05d) {
+                    errors.add(preset.id + ": wall_height must match volume.sizeY");
+                }
+                if (depth == null || thickness == null || depth + 1.0e-6d < thickness) {
+                    errors.add(preset.id + ": opening_depth must be >= wall_thickness for through-wall cutters");
+                }
+                // 1-block voxel sampling needs walls thick enough to contain cell centers.
+                if (thickness == null || thickness + 1.0e-6d < 1.0d) {
+                    errors.add(preset.id + ": wall_thickness must be >= 1.0 for voxel-visible openings");
+                }
+            }
             case "architectural.residential.medieval_cottage" -> {
                 if (!typeByRef.containsValue("geometry.architectural_primitives.wall_along_path")) {
                     break;
