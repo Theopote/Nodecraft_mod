@@ -21,6 +21,7 @@ import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.NodePropertyBindings;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.io.SavedGraph;
+import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.jetbrains.annotations.Nullable;
 
@@ -141,8 +142,71 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
     }
 
     private static SavedGraph deepCopyGraph(SavedGraph graph) {
-        com.google.gson.Gson gson = new com.google.gson.Gson();
-        return gson.fromJson(gson.toJson(graph), SavedGraph.class);
+        if (graph == null) {
+            return null;
+        }
+        // Sanitize live node-state objects first — raw Gson on BlockState / geometry can throw
+        // or overflow, and GraphStructureEditSupport would then roll back a successful delete.
+        SavedGraph sanitized = sanitizeGraphStateForHistory(graph);
+        try {
+            com.google.gson.Gson gson = new com.google.gson.Gson();
+            SavedGraph copied = gson.fromJson(gson.toJson(sanitized), SavedGraph.class);
+            return copied != null ? copied : sanitized;
+        } catch (Exception e) {
+            NodeCraft.LOGGER.error("History graph deep-copy failed; keeping sanitized snapshot: {}", e.getMessage(), e);
+            return sanitized;
+        }
+    }
+
+    /**
+     * Deep-copies each SavedNode.state with {@link PropertyValueSnapshots} so history commits do not
+     * depend on Gson surviving arbitrary live Minecraft / geometry types.
+     */
+    private static SavedGraph sanitizeGraphStateForHistory(SavedGraph graph) {
+        SavedGraph copy = new SavedGraph();
+        copy.formatVersion = graph.formatVersion;
+        copy.graphName = graph.graphName;
+        if (graph.nodes != null) {
+            copy.nodes = new ArrayList<>(graph.nodes.size());
+            for (SavedNode node : graph.nodes) {
+                if (node == null) {
+                    continue;
+                }
+                SavedNode nodeCopy = new SavedNode();
+                nodeCopy.nodeId = node.nodeId;
+                nodeCopy.typeId = node.typeId;
+                try {
+                    nodeCopy.state = PropertyValueSnapshots.copyNodeState(node.state);
+                } catch (Exception e) {
+                    NodeCraft.LOGGER.warn(
+                            "Unable to isolate state for history node {} ({}); storing null state",
+                            node.nodeId,
+                            node.typeId,
+                            e);
+                    nodeCopy.state = null;
+                }
+                copy.nodes.add(nodeCopy);
+            }
+        }
+        if (graph.connections != null) {
+            copy.connections = new ArrayList<>(graph.connections);
+        }
+        if (graph.nodePositions != null) {
+            copy.nodePositions = new java.util.LinkedHashMap<>(graph.nodePositions);
+        }
+        if (graph.subgraphDefinitions != null) {
+            copy.subgraphDefinitions = new java.util.LinkedHashMap<>();
+            for (var entry : graph.subgraphDefinitions.entrySet()) {
+                copy.subgraphDefinitions.put(entry.getKey(), sanitizeGraphStateForHistory(entry.getValue()));
+            }
+        }
+        if (graph.comments != null) {
+            copy.comments = new ArrayList<>(graph.comments);
+        }
+        if (graph.groups != null) {
+            copy.groups = new ArrayList<>(graph.groups);
+        }
+        return copy;
     }
     
     /**

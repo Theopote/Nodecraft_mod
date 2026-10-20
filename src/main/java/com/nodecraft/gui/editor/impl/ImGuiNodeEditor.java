@@ -524,13 +524,18 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
                 }
             }
 
-            // 14. 处理节点右键菜单 (仅当 ImGui 没有被其他 Item 捕获时)
+            // 14. 处理节点右键菜单。
+            // 节点 invisibleButton 会使 WantCaptureMouse=true；若因此跳过 openPopup，
+            // 菜单只能依赖 CanvasComponent 在 beginPopup 之后补开，ImGui 下一帧可能拿不到目标节点。
+            // 鼠标在节点上时始终打开节点菜单；空白处仍尊重 WantCaptureMouse，避免抢走其它控件右键。
             if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Right)) {
-                // 如果 ImGui 已经捕获了鼠标，则不显示右键菜单（防止与内部控件的右键事件冲突）
-                if (!ImGui.getIO().getWantCaptureMouse()) {
+                UUID rightClickNodeId = getNodeIdUnderMouse(mousePos.x, mousePos.y);
+                if (rightClickNodeId != null) {
+                    handleNodeRightClick(mousePos.x, mousePos.y);
+                } else if (!ImGui.getIO().getWantCaptureMouse()) {
                     handleNodeRightClick(mousePos.x, mousePos.y);
                 } else {
-                    NodeCraft.LOGGER.debug("ImGui已捕获右键，不显示节点右键菜单。");
+                    NodeCraft.LOGGER.debug("ImGui已捕获右键且未命中节点，不显示节点右键菜单。");
                 }
             }
             menus.renderNodeContextMenu(); // 渲染菜单（如果菜单已打开）

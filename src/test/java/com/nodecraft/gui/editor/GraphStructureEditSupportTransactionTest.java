@@ -274,13 +274,12 @@ class GraphStructureEditSupportTransactionTest {
     }
 
     @Test
-    void historyCommitFailureRollsBackMutation() {
+    void historyCommitFailureKeepsMutationWithoutUndo() {
         Fixture fixture = Fixture.createWithThrowingHistory();
         RelayNode node = new RelayNode();
         fixture.document.getGraph().addNode(node);
         fixture.document.setNodePosition(node.getId(), new NodePosition(0, 0));
         fixture.history.clear();
-        int nodesBefore = fixture.document.getGraph().getNodes().size();
 
         GraphStructureEditSupport.Outcome outcome = GraphStructureEditSupport.run(
                 fixture.structureHost(),
@@ -291,9 +290,9 @@ class GraphStructureEditSupportTransactionTest {
                 }
         );
 
-        assertEquals(GraphStructureEditSupport.Outcome.ABORTED_ROLLED_BACK, outcome);
-        assertEquals(nodesBefore, fixture.document.getGraph().getNodes().size());
-        assertNull(findRelayByTag(fixture.document.getGraph(), "history-fail"));
+        // History recording failed, but the graph edit must stick (Delete must not snap back).
+        assertEquals(GraphStructureEditSupport.Outcome.SUCCESS, outcome);
+        assertNotNull(findRelayByTag(fixture.document.getGraph(), "history-fail"));
         assertEquals(0, fixture.history.undoStackSize(), "orphan undo pushed before throw must be discarded");
         assertEquals(0, fixture.history.redoStackSize());
         assertTrue(fixture.history.isRecording());

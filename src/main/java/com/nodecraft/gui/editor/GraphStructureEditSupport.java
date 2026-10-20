@@ -107,6 +107,14 @@ public final class GraphStructureEditSupport {
 
             try {
                 commitAfterMutation(host, history, wasRecording, before, label);
+            } catch (HistoryRecordException historyError) {
+                // Mutation + dirty notify already applied; only Undo recording failed. Keep the edit
+                // so Delete/structure changes do not silently snap back when Gson/history chokes.
+                NodeCraft.LOGGER.error(
+                        "Graph structure edit '{}' history record failed after mutation; keeping edit without Undo: {}",
+                        label,
+                        historyError.getMessage(),
+                        historyError);
             } catch (RuntimeException commitError) {
                 NodeCraft.LOGGER.error(
                         "Graph structure edit '{}' commit failed: {}",
@@ -149,8 +157,15 @@ public final class GraphStructureEditSupport {
                 while (history.undoStackSize() > undoSizeBefore) {
                     history.discardLastUndo();
                 }
-                throw recordError;
+                throw new HistoryRecordException(recordError);
             }
+        }
+    }
+
+    /** History Undo recording failed after the graph mutation and dirty notify already succeeded. */
+    private static final class HistoryRecordException extends RuntimeException {
+        private HistoryRecordException(Throwable cause) {
+            super(cause);
         }
     }
 

@@ -226,10 +226,12 @@ public class NodecraftInputHandler {
         }
 
         if (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
-            if (typingInTextField) {
+            boolean hasSelection = !editor.getSelectedNodeIds().isEmpty();
+            // Backspace while typing must edit text. Delete with a canvas selection deletes nodes
+            // even if WantTextInput stuck true from a property-panel InputText (common after click-select).
+            if (typingInTextField && (keyCode == GLFW.GLFW_KEY_BACKSPACE || !hasSelection)) {
                 return true;
             }
-            boolean hasSelection = !editor.getSelectedNodeIds().isEmpty();
             if (hasSelection) {
                 NodeCraft.LOGGER.info("触发删除快捷键: {}", keyCode == GLFW.GLFW_KEY_DELETE ? "Delete" : "Backspace");
                 editor.deleteSelectedNodes();

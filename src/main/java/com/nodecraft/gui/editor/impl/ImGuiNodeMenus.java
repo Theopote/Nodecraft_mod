@@ -33,6 +33,8 @@ public class ImGuiNodeMenus {
     
     // 节点右键菜单状态
     private UUID rightClickedNodeId = null;
+    /** True after openPopup until beginPopup accepts the menu (avoids clearing the target on the open frame). */
+    private boolean nodeContextMenuOpenRequested = false;
     private UUID cachedMenuRecommendationNodeId = null;
     private NodeRecommendationContext cachedMenuRecommendationContext;
     private List<NodeRecommendation> cachedMenuRecommendations = List.of();
@@ -61,6 +63,7 @@ public class ImGuiNodeMenus {
      */
     public void renderNodeContextMenu() {
         if (ImGui.beginPopup("NodeContextMenu")) {
+            nodeContextMenuOpenRequested = false;
             try {
                 if (rightClickedNodeId != null && editor.getCurrentGraph() != null) {
                     INode node = editor.getCurrentGraph().getNode(rightClickedNodeId);
@@ -212,8 +215,8 @@ public class ImGuiNodeMenus {
             } finally {
                 ImGui.endPopup();
             }
-        } else {
-            // 弹窗已关闭，安全清除引用
+        } else if (!nodeContextMenuOpenRequested) {
+            // 弹窗已关闭，安全清除引用（openPopup 当帧 beginPopup 仍为 false，不能清目标）
             rightClickedNodeId = null;
         }
     }
@@ -393,6 +396,7 @@ public class ImGuiNodeMenus {
         UUID clickedNodeId = editor.getNodeIdUnderMouse(mouseX, mouseY);
         if (clickedNodeId != null) {
             rightClickedNodeId = clickedNodeId;
+            nodeContextMenuOpenRequested = true;
             ImGui.openPopup("NodeContextMenu");
             NodeCraft.LOGGER.debug("节点右键菜单打开, 节点ID: {}", rightClickedNodeId);
         }
