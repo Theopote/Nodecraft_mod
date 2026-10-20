@@ -521,6 +521,9 @@ public final class AiSemanticComposer {
                 if (out.getDataType() == want) {
                     cost = Math.max(0, cost - 1);
                 }
+                // Prefer join-role producers (Wall→Difference.base, Window→cutter) over
+                // incidental BOX_GEOMETRY helpers spawned for face chains.
+                cost += joinRolePenalty(catalog, typeId, targetType, targetPort);
                 if (cost < bestCost) {
                     bestCost = cost;
                     best = new ProducerMatch(builder.refForType(typeId), typeId, out.getId());
@@ -528,6 +531,43 @@ public final class AiSemanticComposer {
             }
         }
         return best;
+    }
+
+    /**
+     * Soft cost so BOOLEAN_CUT joins pick architectural operands, not box helpers.
+     */
+    private static int joinRolePenalty(
+            NodeSemanticCatalog catalog,
+            String producerType,
+            String consumerType,
+            String consumerPort
+    ) {
+        if (consumerType == null || consumerPort == null || producerType == null) {
+            return 0;
+        }
+        if (!consumerType.toLowerCase(Locale.ROOT).contains("difference")) {
+            return 0;
+        }
+        Set<NodeCapability> caps = catalog.capabilities(producerType);
+        if ("input_base".equals(consumerPort)) {
+            if (caps.contains(NodeCapability.WALL)) {
+                return 0;
+            }
+            if (caps.contains(NodeCapability.BOX) && !caps.contains(NodeCapability.BOOLEAN_CUT)) {
+                return 8;
+            }
+            return 2;
+        }
+        if ("input_cutter".equals(consumerPort)) {
+            if (caps.contains(NodeCapability.WINDOW) || caps.contains(NodeCapability.OPENING)) {
+                return 0;
+            }
+            if (caps.contains(NodeCapability.BOX) && !caps.contains(NodeCapability.BOOLEAN_CUT)) {
+                return 8;
+            }
+            return 2;
+        }
+        return 0;
     }
 
     private static ApplyResult applySteps(
@@ -1480,8 +1520,15 @@ public final class AiSemanticComposer {
             return typeToRef.containsKey(typeId.toLowerCase(Locale.ROOT));
         }
 
-        Set<String> typeIds() {
-            return Set.copyOf(refToType.values());
+        /** Insertion-ordered type ids so join fills are deterministic. */
+        List<String> typeIds() {
+            List<String> ids = new ArrayList<>(nodes.size());
+            for (AiPlanNode node : nodes) {
+                if (node != null && node.typeId() != null) {
+                    ids.add(node.typeId());
+                }
+            }
+            return List.copyOf(ids);
         }
 
         void connect(String fromRef, String fromPort, String toRef, String toPort) {

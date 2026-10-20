@@ -127,11 +127,15 @@ public final class ArchitecturalPrimitiveSupport {
         return resolvePathChordFrame(pathValue);
     }
 
+    /**
+     * Builds a local→world rotation whose columns are {@code x/y/zAxis}
+     * (JOML {@link Matrix3d#transform} applies {@code M * v}).
+     */
     public static Matrix3d createOrientation(Vector3d xAxis, Vector3d yAxis, Vector3d zAxis) {
         return new Matrix3d(
-            xAxis.x, yAxis.x, zAxis.x,
-            xAxis.y, yAxis.y, zAxis.y,
-            xAxis.z, yAxis.z, zAxis.z
+            xAxis.x, xAxis.y, xAxis.z,
+            yAxis.x, yAxis.y, yAxis.z,
+            zAxis.x, zAxis.y, zAxis.z
         );
     }
 
