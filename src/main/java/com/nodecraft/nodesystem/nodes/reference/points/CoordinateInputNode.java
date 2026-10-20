@@ -53,9 +53,9 @@ public class CoordinateInputNode extends BaseCustomUINode {
 
     public CoordinateInputNode() {
         super(UUID.randomUUID(), "reference.points.block_position");
-        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_X_ID, "X", "Optional X override", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y", "Optional Y override", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z", "Optional Z override", NodeDataType.INTEGER, this, false, false));
         addOutputPort(new BasePort(OUTPUT_BLOCK_POS_ID, "Block Pos", "Block position", NodeDataType.BLOCK_POS, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when all components resolved to valid integers", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_ERROR_ID, "Error", "Failure reason when Valid is false", NodeDataType.STRING, this));

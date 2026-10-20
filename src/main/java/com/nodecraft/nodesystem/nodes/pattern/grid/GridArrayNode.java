@@ -259,13 +259,24 @@ public class GridArrayNode extends AbstractPatternGridNode {
     }
 
     private void writeSuccess(List<GeometryData> copies, List<Vector3d> offsets, List<List<Integer>> paths) {
+        GeometryData composite;
+        try {
+            if (copies.isEmpty()) {
+                composite = null;
+            } else if (copies.size() == 1) {
+                composite = copies.getFirst();
+            } else {
+                composite = new CompositeGeometryData(copies);
+            }
+        } catch (IllegalArgumentException ex) {
+            writeFail(ex.getMessage() != null ? ex.getMessage() : CompositeGeometryData.LEAF_BUDGET_EXCEEDED);
+            return;
+        }
         markSuccess();
-        if (copies.isEmpty()) {
+        if (composite == null) {
             putNullOutputs(OUTPUT_GEOMETRY_ID);
-        } else if (copies.size() == 1) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
         } else {
-            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+            outputValues.put(OUTPUT_GEOMETRY_ID, composite);
         }
         outputValues.put(OUTPUT_OFFSETS_ID, VectorUtils.toVectorPortList(offsets));
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildTree(copies, paths));

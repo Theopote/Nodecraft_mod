@@ -147,6 +147,14 @@ public final class AiGraphDslSupport {
             } catch (Exception e) {
                 continue;
             }
+            // Apply nodeState so dynamic port counts (e.g. combine inputCount) match the plan.
+            if (node.params() != null && !node.params().isEmpty()) {
+                try {
+                    instance.setNodeState(node.params());
+                } catch (Exception ignored) {
+                    // Keep default instance ports if state restore fails.
+                }
+            }
             for (IPort port : instance.getInputPorts()) {
                 if (!port.isRequired()) {
                     continue;

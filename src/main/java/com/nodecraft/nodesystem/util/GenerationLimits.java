@@ -100,10 +100,10 @@ public final class GenerationLimits {
 
     /**
      * Hard cap on flattened leaf geometries in one {@code CompositeGeometryData}.
-     * Independent of {@link #MAX_GEOMETRY_VOXELS} (block count) and {@link #MAX_GEOMETRY_INSTANCES}
-     * (array/placement copies).
+     * Aligned with {@link #MAX_GEOMETRY_INSTANCES} so array nodes can emit a composite at the
+     * instance budget without a tighter leaf ceiling rejecting a legal result.
      */
-    public static final int MAX_COMPOSITE_GEOMETRY_LEAVES = 4096;
+    public static final int MAX_COMPOSITE_GEOMETRY_LEAVES = MAX_GEOMETRY_INSTANCES;
 
     /**
      * Maximum nesting depth of Geometry expressions (composite, difference, intersection, SDF wrappers).

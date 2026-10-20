@@ -49,7 +49,8 @@ class ListLanguageContractTest {
     }
     @Test
     void typedListRejectsWrongElementsAtRuntime() {
-        assertTrue(NodeDataType.DOUBLE_LIST.isCompatible(List.of(1.0, 2)));
+        assertTrue(NodeDataType.DOUBLE_LIST.isCompatible(List.of(1.0, 2.0)));
+        assertFalse(NodeDataType.DOUBLE_LIST.isCompatible(List.of(1.0, 2))); // Integer element rejected
         assertFalse(NodeDataType.DOUBLE_LIST.isCompatible(List.of("x")));
         assertTrue(NodeDataType.POINT_LIST.isCompatible(List.of(new PointData(0, 0, 0))));
         assertFalse(NodeDataType.POINT_LIST.isCompatible(List.of("abc")));

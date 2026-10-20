@@ -75,11 +75,11 @@ public class PreviewPathsNode extends BaseNode {
     public PreviewPathsNode() {
         super(UUID.randomUUID(), "output.preview.preview_curves");
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
-            "Path to preview (line, polyline, or curve)", NodeDataType.PATH, this));
+            "Path to preview (line, polyline, or curve)", NodeDataType.PATH, this, false, false));
         addInputPort(new BasePort(INPUT_PATHS_ID, "Paths",
-            "Multiple paths to preview (beam centerlines, eaves, etc.)", NodeDataType.PATH_LIST, this));
+            "Multiple paths to preview (beam centerlines, eaves, etc.)", NodeDataType.PATH_LIST, this, false, false));
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points",
-            "Ordered point list converted to a single polyline preview", NodeDataType.POINT_LIST, this));
+            "Ordered point list converted to a single polyline preview", NodeDataType.POINT_LIST, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SUCCESS_ID, "Success", "Whether the preview was shown", NodeDataType.BOOLEAN, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_IDS_ID, "Preview IDs", "Active preview identifiers", NodeDataType.LIST, this));
         addOutputPort(new BasePort(OUTPUT_PREVIEW_COUNT_ID, "Preview Count", "Number of rendered path previews", NodeDataType.INTEGER, this));

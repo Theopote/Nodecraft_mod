@@ -158,15 +158,12 @@ public class ForEachLoopNode extends BaseNode implements ExecLoopNode {
     }
 
     private @Nullable Boolean resolveEnabled() {
-        if (OptionalPortDrive.isConnected(this, INPUT_ENABLED_ID)) {
+        // Present-but-rejected (null marker) must fail closed — do not fall back to property.
+        if (OptionalPortDrive.isConnected(this, INPUT_ENABLED_ID) || isInputPresent(INPUT_ENABLED_ID)) {
             Object value = inputValues.get(INPUT_ENABLED_ID);
             return value instanceof Boolean bool ? bool : null;
         }
-        Object raw = inputValues.get(INPUT_ENABLED_ID);
-        if (raw == null) {
-            return enabled;
-        }
-        return raw instanceof Boolean bool ? bool : null;
+        return enabled;
     }
 
     private void publish(int count, boolean valid, String error) {

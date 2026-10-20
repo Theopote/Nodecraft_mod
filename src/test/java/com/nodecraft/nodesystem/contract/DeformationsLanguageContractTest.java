@@ -104,7 +104,7 @@ class DeformationsLanguageContractTest {
         BaseNode twist = node("transform.deformations.twist");
         twist.setInput("input_points", List.of(new PointData(0, 0, 0), "bad", new PointData(1, 0, 0)));
         twist.setInput("input_axis_origin", new PointData(0, 0, 0));
-        twist.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        twist.setInput("input_axis_direction", new VectorData(0, 1, 0));
         twist.processNode(null);
         assertEquals(Boolean.FALSE, twist.getOutput("output_valid"));
         assertEquals(0, twist.getOutput("output_count"));
@@ -115,7 +115,7 @@ class DeformationsLanguageContractTest {
         TwistProbe twist = new TwistProbe();
         twist.setInput("input_points", List.of(new PointData(1, 0, 0)));
         twist.setInput("input_axis_origin", new PointData(0, 0, 0));
-        twist.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        twist.setInput("input_axis_direction", new VectorData(0, 1, 0));
         twist.connectInput("input_angle_degrees", NodeDataType.DOUBLE);
         twist.putRawInput("input_angle_degrees", null);
         twist.processNode(null);
@@ -127,13 +127,13 @@ class DeformationsLanguageContractTest {
         BaseNode twist = node("transform.deformations.twist");
         twist.setInput("input_points", List.of(new PointData(1, 0, 0)));
         twist.setInput("input_axis_origin", new PointData(0, 0, 0));
-        twist.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        twist.setInput("input_axis_direction", new VectorData(0, 1, 0));
         twist.setNodeState(Map.of("twistLength", 0.0d, "angleDegrees", 90.0d));
         // property 0 is rejected on set; use connected drive of 0
         TwistProbe probe = new TwistProbe();
         probe.setInput("input_points", List.of(new PointData(1, 0, 0)));
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(0, 1, 0));
         probe.connectInput("input_twist_length", NodeDataType.DOUBLE);
         probe.putRawInput("input_twist_length", 0.0d);
         probe.processNode(null);
@@ -147,7 +147,7 @@ class DeformationsLanguageContractTest {
 
         taper.setInput("input_points", List.of(new PointData(1, 0, 0), new PointData(1, 5, 0)));
         taper.setInput("input_axis_origin", new PointData(0, 0, 0));
-        taper.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        taper.setInput("input_axis_direction", new VectorData(0, 1, 0));
         taper.setNodeState(Map.of("startScale", 1.0d, "endScale", 0.0d, "taperLength", 5.0d));
         taper.processNode(null);
         assertEquals(Boolean.TRUE, taper.getOutput("output_valid"));
@@ -155,13 +155,13 @@ class DeformationsLanguageContractTest {
         BaseNode negative = node("transform.deformations.taper");
         negative.setInput("input_points", List.of(new PointData(1, 0, 0)));
         negative.setInput("input_axis_origin", new PointData(0, 0, 0));
-        negative.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        negative.setInput("input_axis_direction", new VectorData(0, 1, 0));
         negative.setNodeState(Map.of("startScale", -1.0d, "endScale", 1.0d, "taperLength", 5.0d));
         // negative startScale rejected by setter â?property stays default 1; drive negative instead
         TaperProbe probe = new TaperProbe();
         probe.setInput("input_points", List.of(new PointData(1, 0, 0)));
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(0, 1, 0));
         probe.connectInput("input_start_scale", NodeDataType.DOUBLE);
         probe.putRawInput("input_start_scale", -1.0d);
         probe.processNode(null);

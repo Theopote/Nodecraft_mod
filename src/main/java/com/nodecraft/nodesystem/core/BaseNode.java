@@ -187,6 +187,10 @@ public abstract class BaseNode implements INode {
                 InputValueNormalizer.Result result = InputValueNormalizer.normalize(port, inputs.get(port.getId()));
                 if (result.accepted()) {
                     inputValues.put(port.getId(), result.value());
+                } else {
+                    // Key was supplied but rejected: keep the port present so optional-drive
+                    // fail-closed paths see an invalid drive instead of falling back to properties.
+                    inputValues.put(port.getId(), null);
                 }
             }
         }
@@ -234,6 +238,9 @@ public abstract class BaseNode implements INode {
             InputValueNormalizer.Result result = InputValueNormalizer.normalize(port, value);
             if (result.accepted()) {
                 inputValues.put(portId, result.value());
+            } else {
+                // Rejected value still marks the port present for fail-closed optional drives.
+                inputValues.put(portId, null);
             }
             return;
         }

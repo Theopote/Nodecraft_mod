@@ -37,6 +37,7 @@ class MaterialPipelineRecommendationContractTest {
     private static final String MOSS = "material.surface_aging.moss_growth";
     private static final String APPLY_BLOCK_STATE = "material.block_state.apply_block_state";
     private static final String PREVIEW_BLOCKS = "output.preview.preview_blocks";
+    private static final String PREVIEW_PLACEMENTS = "output.preview.preview_placements";
     private static final String MERGE = "output.execute.merge_block_placements";
     private static final String APPLY = "output.execute.apply_changes";
 
@@ -98,8 +99,9 @@ class MaterialPipelineRecommendationContractTest {
     void applyBlockStateIsTerminalTowardPreviewMergeApply() {
         List<NodeRecommendation> recs = recommendPort(
             new ApplyBlockStateNode(), "output_placements", NodeDataType.BLOCK_PLACEMENT_LIST);
-        assertRank(recs, PREVIEW_BLOCKS, 0);
-        assertTopContains(recs, PREVIEW_BLOCKS, MERGE, APPLY);
+        // Full BlockState ghost preview ranks ahead of legacy preview_blocks.
+        assertRank(recs, PREVIEW_PLACEMENTS, 0);
+        assertTopContains(recs, PREVIEW_PLACEMENTS, PREVIEW_BLOCKS, MERGE, APPLY);
         assertNotInTopN(recs, GRADIENT, 3);
         assertNotInTopN(recs, WEATHERING, 3);
     }

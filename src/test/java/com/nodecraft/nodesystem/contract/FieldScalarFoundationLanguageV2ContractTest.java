@@ -53,7 +53,8 @@ class FieldScalarFoundationLanguageV2ContractTest {
                 "input_points", points
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
-        assertEquals(FieldSampleUtils.ERROR_INVALID_POINTS, outputs.get("output_error"));
+        // Mixed elements are rejected at POINT_LIST ingress (invalid_input), not after sampling.
+        assertEquals(FieldSampleUtils.ERROR_INVALID_INPUT, outputs.get("output_error"));
         assertEquals(0, outputs.get("output_count"));
         assertTrue(((List<?>) outputs.get("output_values")).isEmpty());
     }
@@ -70,19 +71,20 @@ class FieldScalarFoundationLanguageV2ContractTest {
                 "input_points", points
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
-        assertEquals(FieldSampleUtils.ERROR_INVALID_POINTS, outputs.get("output_error"));
+        assertEquals(FieldSampleUtils.ERROR_INVALID_INPUT, outputs.get("output_error"));
         assertEquals(0, outputs.get("output_count"));
     }
 
     @Test
     void scalarSamplePointsRejectsNaNCoordinate() {
         ScalarFieldData field = point -> 1.0d;
+        // Vector3d is not PointData — POINT_LIST ingress rejects the whole list.
         Map<String, Object> outputs = new ScalarFieldSamplePointsNode().compute(Map.of(
                 "input_field", field,
                 "input_points", List.of(new PointData(0, 0, 0), new Vector3d(1, 1, 1))
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
-        assertEquals(FieldSampleUtils.ERROR_INVALID_POINTS, outputs.get("output_error"));
+        assertEquals(FieldSampleUtils.ERROR_INVALID_INPUT, outputs.get("output_error"));
     }
 
     @Test

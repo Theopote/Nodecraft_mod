@@ -14,6 +14,8 @@ import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.GeometryVoxelizer;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -161,6 +163,7 @@ class BasicAssignmentLanguageV2ContractTest {
 
     @Test
     void assignStairsToStoneWithFacingFailsClosed() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         AssignBlockTypeNode node = new AssignBlockTypeNode();
         BlockStateData state = new BlockStateData().withProperty("facing", "north");
         node.setInput("input_placements", List.of(
@@ -174,6 +177,7 @@ class BasicAssignmentLanguageV2ContractTest {
 
     @Test
     void paletteStairsToStoneWithFacingFailsClosed() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         BlockPaletteNode node = new BlockPaletteNode();
         BlockStateData state = new BlockStateData().withProperty("facing", "north");
         node.setInput("input_placements", List.of(

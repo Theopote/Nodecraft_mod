@@ -281,13 +281,24 @@ public class CurveArrayNode extends AbstractPatternLinearNode {
     }
 
     private void writeSuccess(List<GeometryData> copies, List<Vector3d> origins, List<FrameData> frames) {
+        GeometryData composite;
+        try {
+            if (copies.isEmpty()) {
+                composite = null;
+            } else if (copies.size() == 1) {
+                composite = copies.getFirst();
+            } else {
+                composite = new CompositeGeometryData(copies);
+            }
+        } catch (IllegalArgumentException ex) {
+            writeFail(ex.getMessage() != null ? ex.getMessage() : CompositeGeometryData.LEAF_BUDGET_EXCEEDED);
+            return;
+        }
         markSuccess();
-        if (copies.isEmpty()) {
+        if (composite == null) {
             putNullOutputs(OUTPUT_GEOMETRY_ID);
-        } else if (copies.size() == 1) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
         } else {
-            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+            outputValues.put(OUTPUT_GEOMETRY_ID, composite);
         }
         outputValues.put(OUTPUT_ORIGINS_ID, SpatialValueResolver.toPointDataList(origins));
         outputValues.put(OUTPUT_FRAMES_ID, List.copyOf(frames));

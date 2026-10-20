@@ -132,7 +132,9 @@ public class CombineGeometryNode extends BaseNode {
                 "Geometry " + (i + 1),
                 "Geometry input " + (i + 1),
                 NodeDataType.GEOMETRY,
-                this
+                this,
+                false,
+                false
             ));
         }
     }

@@ -125,7 +125,7 @@ class DeformationsLanguageV2ContractTest {
         BaseNode twist = node("transform.deformations.twist");
         twist.setInput("input_points", oversizedPointList());
         twist.setInput("input_axis_origin", new PointData(0, 0, 0));
-        twist.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        twist.setInput("input_axis_direction", new VectorData(0, 1, 0));
         twist.processNode(null);
         assertEquals(Boolean.FALSE, twist.getOutput("output_valid"));
         assertFalse(String.valueOf(twist.getOutput("output_error")).isBlank());
@@ -138,7 +138,7 @@ class DeformationsLanguageV2ContractTest {
         probe.connectInput("input_sdf", NodeDataType.SDF);
         probe.putRawInput("input_sdf", null);
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(0, 1, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("sdf"));
@@ -152,7 +152,7 @@ class DeformationsLanguageV2ContractTest {
         TwistSdfProbe minOnly = new TwistSdfProbe();
         minOnly.setInput("input_sdf", sdf);
         minOnly.setInput("input_axis_origin", new PointData(0, 0, 0));
-        minOnly.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        minOnly.setInput("input_axis_direction", new VectorData(0, 1, 0));
         minOnly.connectInput("input_bounds_min", NodeDataType.POINT);
         minOnly.putRawInput("input_bounds_min", new PointData(0, 0, 0));
         minOnly.processNode(null);
@@ -208,8 +208,8 @@ class DeformationsLanguageV2ContractTest {
         probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
         probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(0, 1, 0));
-        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(0, 1, 0));
+        probe.setInput("input_bend_normal", new VectorData(0, 1, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
@@ -222,9 +222,9 @@ class DeformationsLanguageV2ContractTest {
         bend.setNodeState(Map.of("bendPlaneMode", "CUSTOM", "bendDegrees", 45.0d, "bendLength", 10.0d));
         bend.setInput("input_points", List.of(new PointData(0, 0, 0), new PointData(0, 5, 0)));
         bend.setInput("input_axis_origin", new PointData(0, 0, 0));
-        bend.setInput("input_axis_direction", new Vector3d(0, 1, 0));
+        bend.setInput("input_axis_direction", new VectorData(0, 1, 0));
         bend.connectInput("input_bend_normal", NodeDataType.VECTOR);
-        bend.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        bend.setInput("input_bend_normal", new VectorData(0, 1, 0));
         bend.processNode(null);
         assertEquals(Boolean.FALSE, bend.getOutput("output_valid"));
         assertTrue(String.valueOf(bend.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));
@@ -243,8 +243,8 @@ class DeformationsLanguageV2ContractTest {
         probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
         probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(1, 0, 0));
-        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(1, 0, 0));
+        probe.setInput("input_bend_normal", new VectorData(0, 1, 0));
         probe.setNodeState(Map.of(
             "bendDegrees", 90.0d,
             "bendLength", 10.0d,
@@ -308,8 +308,8 @@ class DeformationsLanguageV2ContractTest {
         probe.connectInput("input_axis_direction", NodeDataType.VECTOR);
         probe.connectInput("input_bend_normal", NodeDataType.VECTOR);
         probe.setInput("input_axis_origin", new PointData(0, 0, 0));
-        probe.setInput("input_axis_direction", new Vector3d(1, 0, 0));
-        probe.setInput("input_bend_normal", new Vector3d(0, 1, 0));
+        probe.setInput("input_axis_direction", new VectorData(1, 0, 0));
+        probe.setInput("input_bend_normal", new VectorData(0, 1, 0));
         return probe;
     }
 

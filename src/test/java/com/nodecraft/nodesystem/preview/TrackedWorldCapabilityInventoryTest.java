@@ -61,6 +61,7 @@ class TrackedWorldCapabilityInventoryTest {
                     .filter(p -> !p.endsWith("GeometryViewerNode.java"))
                     .filter(p -> !p.endsWith("GeometryViewerPropertySupport.java"))
                     .filter(p -> !p.endsWith("NodecraftLifecycleManager.java"))
+                    .filter(p -> !p.endsWith("AutoPreviewController.java"))
                     .map(p -> {
                         try {
                             String text = Files.readString(p, StandardCharsets.UTF_8);

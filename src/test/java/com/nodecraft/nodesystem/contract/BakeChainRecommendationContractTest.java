@@ -38,6 +38,7 @@ class BakeChainRecommendationContractTest {
     private static final String VOXELIZE = "geometry.voxel.voxelize_geometry";
     private static final String PREVIEW_GEOMETRY = "output.preview.preview_geometry";
     private static final String PREVIEW_BLOCKS = "output.preview.preview_blocks";
+    private static final String PREVIEW_PLACEMENTS = "output.preview.preview_placements";
     private static final String APPLY = "output.execute.apply_changes";
     private static final String MERGE = "output.execute.merge_block_placements";
     private static final String COMBINE = "geometry.combine.geometry";
@@ -96,8 +97,8 @@ class BakeChainRecommendationContractTest {
     void mergePlacementsPreferPreviewThenApply() {
         List<NodeRecommendation> recs = recommendPort(
             new MergeBlockPlacementsNode(), "output_placements", NodeDataType.BLOCK_PLACEMENT_LIST);
-        assertRank(recs, PREVIEW_BLOCKS, 0);
-        assertTopContains(recs, APPLY);
+        assertRank(recs, PREVIEW_PLACEMENTS, 0);
+        assertTopContains(recs, PREVIEW_PLACEMENTS, PREVIEW_BLOCKS, APPLY);
         assertNotInTopN(recs, MERGE, 5);
     }
 

@@ -154,9 +154,12 @@ class PlacementFamilyContractTest {
     void constructFrameOrthonormalizesScaledAxes() {
         BaseNode construct = assertInstanceOf(BaseNode.class,
             NodeRegistry.getInstance().createNodeInstance("reference.frames.construct_frame"));
+        connectInput(construct, "input_origin", NodeDataType.POINT);
+        connectInput(construct, "input_x_axis", NodeDataType.VECTOR);
+        connectInput(construct, "input_y_axis", NodeDataType.VECTOR);
         construct.setInput("input_origin", new PointData(0, 0, 0));
-        construct.setInput("input_x_axis", new Vector3d(2, 0, 0));
-        construct.setInput("input_y_axis", new Vector3d(0, 3, 0));
+        construct.setInput("input_x_axis", new com.nodecraft.nodesystem.datatypes.VectorData(2, 0, 0));
+        construct.setInput("input_y_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0, 3, 0));
         construct.processNode(null);
 
         assertEquals(Boolean.TRUE, construct.getOutput("output_valid"));

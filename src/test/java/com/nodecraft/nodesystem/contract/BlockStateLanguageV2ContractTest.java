@@ -10,6 +10,8 @@ import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -160,6 +162,7 @@ class BlockStateLanguageV2ContractTest {
 
     @Test
     void applyStoneFacingOverrideFailsClosed() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         ApplyBlockStateNode node = new ApplyBlockStateNode();
         BlockStateData facing = new BlockStateData().withProperty("facing", "north");
         node.setInput("input_placements", List.of(
@@ -173,6 +176,7 @@ class BlockStateLanguageV2ContractTest {
 
     @Test
     void applyMixedIdsOneIncompatibleOverrideFailsWholeList() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         ApplyBlockStateNode node = new ApplyBlockStateNode();
         BlockStateData facing = new BlockStateData().withProperty("facing", "north");
         node.setInput("input_placements", List.of(
@@ -199,6 +203,7 @@ class BlockStateLanguageV2ContractTest {
 
     @Test
     void buildBananaFacingEmitsNullState() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         BuildBlockStateNode node = new BuildBlockStateNode();
         node.setInput("input_block_type", "minecraft:oak_stairs");
         node.setInput("input_facing", "banana");

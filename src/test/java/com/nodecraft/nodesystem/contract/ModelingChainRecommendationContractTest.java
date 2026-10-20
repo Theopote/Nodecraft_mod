@@ -37,6 +37,7 @@ class ModelingChainRecommendationContractTest {
     private static final String REGION_OFFSET = "geometry.profiles.region_offset_plane";
     private static final String LOFT_MULTI = "geometry.solids.loft_multi_section";
     private static final String LATTICE = "geometry.solids.surface_strip_to_lattice";
+    private static final String STRIP_TO_BLOCKS = "geometry.voxel.surface_strip_to_blocks";
     private static final String OFFSET_STRIP = "geometry.solids.offset_surface_strip";
     private static final String PREVIEW_CURVES = "output.preview.preview_curves";
     private static final String CURVE_ARRAY = "pattern.linear.curve_array";
@@ -87,8 +88,9 @@ class ModelingChainRecommendationContractTest {
     void sweepSurfaceStripPrefersLatticeNotSolidWording() {
         List<NodeRecommendation> recs = recommend(
             new SweepProfileAlongPathNode(), "output_surface_strip", NodeDataType.SURFACE_STRIP);
-        assertRank(recs, LATTICE, 0);
-        assertTopContains(recs, LATTICE, OFFSET_STRIP);
+        // Voxelize-to-blocks leads Preview/Apply chain; lattice remains the modeling continuation.
+        assertRank(recs, STRIP_TO_BLOCKS, 0);
+        assertTopContains(recs, STRIP_TO_BLOCKS, LATTICE, OFFSET_STRIP);
         String reason = reasonOf(recs, LATTICE);
         assertFalse(reason.contains("实体"), "lattice reason must not say 实体, got: " + reason);
         assertTrue(reason.contains("格架") || reason.contains("线框"),

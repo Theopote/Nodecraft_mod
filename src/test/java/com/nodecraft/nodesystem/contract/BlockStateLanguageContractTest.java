@@ -17,8 +17,10 @@ import com.nodecraft.nodesystem.nodes.material.block_state.StairShapeNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.BlockStateData;
+import com.nodecraft.nodesystem.util.BlockStateResolver;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -140,6 +142,7 @@ class BlockStateLanguageContractTest {
 
     @Test
     void buildBlockStateRejectsUnknownBlock() {
+        Assumptions.assumeTrue(BlockStateResolver.isRegistryReady(), "Live BLOCK registry required");
         BuildBlockStateNode node = new BuildBlockStateNode();
         node.setInput("input_block_type", "minecraft:definitely_not_a_real_block_id_v35");
         node.processNode(null);

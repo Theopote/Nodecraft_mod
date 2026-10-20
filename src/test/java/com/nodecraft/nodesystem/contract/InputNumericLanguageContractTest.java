@@ -239,12 +239,12 @@ class InputNumericLanguageContractTest {
 
 
     @Test
-    void exactlyTenInputNumericNodesRegistered() {
+    void exactlySixteenInputNumericNodesRegistered() {
         List<String> ids = registry.getAllNodeIds().stream()
                 .filter(id -> id.toLowerCase(Locale.ROOT).startsWith("input.numeric."))
                 .sorted()
                 .toList();
-        assertEquals(10, ids.size(), "Expected 10 input.numeric nodes: " + ids);
+        assertEquals(16, ids.size(), "Expected 16 input.numeric nodes: " + ids);
     }
 
     private static SavedNode savedNode(String id, String typeId) {

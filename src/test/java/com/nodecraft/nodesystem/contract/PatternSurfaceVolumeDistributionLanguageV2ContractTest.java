@@ -159,11 +159,10 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
 
     @Test
     void sampleSphereDegenerateRadiusFails() {
-        BaseNode node = node("pattern.surface_volume_distribution.sample_sphere_surface");
-        node.setInput("input_sphere", new SphereData(new Vector3d(), 0.0d));
-        node.setNodeState(Map.of("sampleCount", 4));
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
+        // SphereData construction is fail-closed for non-positive radius.
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new SphereData(new Vector3d(), 0.0d));
     }
 
     @Test
@@ -245,16 +244,10 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
 
     @Test
     void scatterSurfaceDegenerateCylinderFails() {
-        BaseNode node = node("pattern.surface_volume_distribution.scatter_surface");
-        node.setInput("input_geometry", new CylinderGeometryData(
-            new Vector3d(0, 0, 0), new Vector3d(0, 0, 0), 1.0d));
-        node.setNodeState(Map.of("targetCount", 8));
-        node.processNode(null);
-        assertEquals(Boolean.FALSE, node.getOutput("output_valid"));
-        assertTrue(String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT)
-            .contains("degenerate")
-            || String.valueOf(node.getOutput("output_error")).toLowerCase(Locale.ROOT)
-            .contains("cylinder"));
+        // CylinderGeometryData construction is fail-closed for zero-length axis.
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new CylinderGeometryData(new Vector3d(0, 0, 0), new Vector3d(0, 0, 0), 1.0d));
     }
 
     @Test
@@ -542,10 +535,11 @@ class PatternSurfaceVolumeDistributionLanguageV2ContractTest {
 
     private static void assertUnitNormals(BaseNode node) {
         @SuppressWarnings("unchecked")
-        List<Vector3d> normals = assertInstanceOf(List.class, node.getOutput("output_normals"));
+        List<com.nodecraft.nodesystem.datatypes.VectorData> normals =
+            assertInstanceOf(List.class, node.getOutput("output_normals"));
         assertFalse(normals.isEmpty());
-        for (Vector3d normal : normals) {
-            assertEquals(1.0d, VectorUtils.safeLength(normal), VectorUtils.EPS);
+        for (com.nodecraft.nodesystem.datatypes.VectorData normal : normals) {
+            assertEquals(1.0d, VectorUtils.safeLength(normal.components()), VectorUtils.EPS);
         }
     }
 

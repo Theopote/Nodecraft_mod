@@ -184,15 +184,16 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     public SelectedBlockNode() {
         super(UUID.randomUUID(), "world.selection.selected_block");
         
-        // 创建输入端口
-        addInputPort(new BasePort(INPUT_X_ID, "X", 
-                "Block X (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
-        
-        addInputPort(new BasePort(INPUT_Y_ID, "Y", 
-                "Block Y (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
-        
-        addInputPort(new BasePort(INPUT_Z_ID, "Z", 
-                "Block Z (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)", NodeDataType.INTEGER, this));
+        // Optional coordinate overrides (Auto/pick mode works with none connected).
+        addInputPort(new BasePort(INPUT_X_ID, "X",
+                "Block X (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)",
+                NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Y_ID, "Y",
+                "Block Y (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)",
+                NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Z_ID, "Z",
+                "Block Z (used when Source is Coordinates, or Auto when any of X/Y/Z is connected)",
+                NodeDataType.INTEGER, this, false, false));
         
         // Slim selection-source outputs only
         addOutputPort(new BasePort(OUTPUT_POSITION, "Block Position",

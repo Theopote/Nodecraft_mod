@@ -129,29 +129,21 @@ public class WhileLoopNode extends BaseNode implements ExecRoutingNode {
     }
 
     private @Nullable Boolean resolveCondition() {
-        if (!OptionalPortDrive.isConnected(this, INPUT_CONDITION_ID)) {
-            Object raw = inputValues.get(INPUT_CONDITION_ID);
-            // Unconnected with no value → required Condition missing.
-            if (raw == null) {
-                return null;
-            }
-            return raw instanceof Boolean bool ? bool : null;
+        if (OptionalPortDrive.isConnected(this, INPUT_CONDITION_ID) || isInputPresent(INPUT_CONDITION_ID)) {
+            Object value = inputValues.get(INPUT_CONDITION_ID);
+            return value instanceof Boolean bool ? bool : null;
         }
-        Object value = inputValues.get(INPUT_CONDITION_ID);
-        return value instanceof Boolean bool ? bool : null;
+        // Unconnected with no injected value → required Condition missing.
+        return null;
     }
 
     private @Nullable Integer resolveMaxIterations() {
         Integer resolved;
-        if (OptionalPortDrive.isConnected(this, INPUT_MAX_ITERATIONS_ID)) {
+        if (OptionalPortDrive.isConnected(this, INPUT_MAX_ITERATIONS_ID) || isInputPresent(INPUT_MAX_ITERATIONS_ID)) {
+            // Present-but-rejected (null) or wrong type → fail closed (no property fallback).
             resolved = StrictIntegerUtils.requireExactInteger(inputValues.get(INPUT_MAX_ITERATIONS_ID));
         } else {
-            Object raw = inputValues.get(INPUT_MAX_ITERATIONS_ID);
-            if (raw == null) {
-                resolved = maxIterations;
-            } else {
-                resolved = StrictIntegerUtils.requireExactInteger(raw);
-            }
+            resolved = maxIterations;
         }
         if (resolved == null || resolved < 1 || resolved > GenerationLimits.MAX_LOOP_ITERATIONS) {
             return null;

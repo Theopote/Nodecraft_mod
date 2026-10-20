@@ -138,13 +138,24 @@ public class LinearArrayNode extends AbstractPatternLinearNode {
     }
 
     private void writeSuccess(List<GeometryData> copies) {
+        GeometryData composite;
+        try {
+            if (copies.isEmpty()) {
+                composite = null;
+            } else if (copies.size() == 1) {
+                composite = copies.getFirst();
+            } else {
+                composite = new CompositeGeometryData(copies);
+            }
+        } catch (IllegalArgumentException ex) {
+            writeFail(ex.getMessage() != null ? ex.getMessage() : CompositeGeometryData.LEAF_BUDGET_EXCEEDED);
+            return;
+        }
         markSuccess();
-        if (copies.isEmpty()) {
+        if (composite == null) {
             putNullOutputs(OUTPUT_GEOMETRY_ID);
-        } else if (copies.size() == 1) {
-            outputValues.put(OUTPUT_GEOMETRY_ID, copies.getFirst());
         } else {
-            outputValues.put(OUTPUT_GEOMETRY_ID, new CompositeGeometryData(copies));
+            outputValues.put(OUTPUT_GEOMETRY_ID, composite);
         }
         outputValues.put(OUTPUT_GEOMETRY_TREE_ID, buildCopyTree(copies));
         putIntOutputs(copies.size(), OUTPUT_COUNT_ID);

@@ -133,10 +133,14 @@ public final class AiMockPlanService {
             validatePlan(trialNodes, trialConnections, trialErrors);
             if (!trialErrors.isEmpty()) {
                 lastValidationErrors = new ArrayList<>(trialErrors);
+                NodeCraft.LOGGER.warn("[AI_MOCK] structural validation failed for {}: {}",
+                        candidate.kind(), trialErrors);
                 continue;
             }
             if (!passesRegistryValidation(trialNodes, trialConnections, trialErrors)) {
                 lastValidationErrors = new ArrayList<>(trialErrors);
+                NodeCraft.LOGGER.warn("[AI_MOCK] registry validation failed for {}: {}",
+                        candidate.kind(), trialErrors);
                 continue;
             }
             nodes = trialNodes;
@@ -217,19 +221,41 @@ public final class AiMockPlanService {
                 createNodeState("showLabel", true)));
     }
 
+    /**
+     * Block grid → POINT (cell center) chain. Returns the POINT node ref for geometry wiring.
+     */
+    private static String addBlockCenterPoint(
+            List<MockNode> nodes,
+            List<MockConnection> connections,
+            String pointRef,
+            float offsetX,
+            float offsetY,
+            int x,
+            int y,
+            int z,
+            boolean showLabel
+    ) {
+        String blockRef = pointRef + "_block";
+        nodes.add(new MockNode(blockRef, "reference.points.block_position", offsetX, offsetY,
+                createNodeState("x", x, "y", y, "z", z, "showLabel", showLabel)));
+        nodes.add(new MockNode(pointRef, "reference.points.point_from_block", offsetX + 140.0f, offsetY,
+                createNodeState("useBlockCenter", true)));
+        connections.add(new MockConnection(blockRef, "output_block_pos", pointRef, "input_coordinate"));
+        return pointRef;
+    }
+
     private static void buildSphereTemplate(
             ParsedParameters params,
             String prompt,
             List<MockNode> nodes,
             List<MockConnection> connections
     ) {
-        nodes.add(new MockNode("center", "reference.points.block_position", -520.0f, -120.0f,
-                createNodeState("x", 0, "y", 80, "z", 0, "showLabel", true)));
+        addBlockCenterPoint(nodes, connections, "center", -520.0f, -120.0f, 0, 80, 0, true);
         nodes.add(new MockNode("radius", "input.numeric.float", -520.0f, 40.0f,
                 createNodeState("value", (float) params.radius(), "min", 1.0f, "max", 2048.0f, "precision", 2)));
         nodes.add(new MockNode("sphere", "geometry.primitives.sphere", -180.0f, -20.0f, null));
 
-        connections.add(new MockConnection("center", "output_coordinate", "sphere", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "sphere", "input_center"));
         connections.add(new MockConnection("radius", "output_value", "sphere", "input_radius"));
         appendSolidPreviewChain(nodes, connections, "sphere", prompt, params.thickness() >= 1.0d);
     }
@@ -244,17 +270,16 @@ public final class AiMockPlanService {
         int sizeY = clampInt((int) Math.round(params.height()), 4, 256);
         int sizeZ = clampInt((int) Math.round(Math.max(params.radius() * 1.8d, params.width() * 4.0d)), 4, 256);
 
-        nodes.add(new MockNode("center", "reference.points.block_position", -660.0f, -120.0f,
-                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("size_x", "input.numeric.integer", -660.0f, 60.0f,
-                createNodeState("value", sizeX, "min", 1, "max", 1024, "step", 1)));
-        nodes.add(new MockNode("size_y", "input.numeric.integer", -660.0f, 220.0f,
-                createNodeState("value", sizeY, "min", 1, "max", 512, "step", 1)));
-        nodes.add(new MockNode("size_z", "input.numeric.integer", -660.0f, 380.0f,
-                createNodeState("value", sizeZ, "min", 1, "max", 1024, "step", 1)));
+        addBlockCenterPoint(nodes, connections, "center", -660.0f, -120.0f, 0, 72, 0, true);
+        nodes.add(new MockNode("size_x", "input.numeric.float", -660.0f, 60.0f,
+                createNodeState("value", (float) sizeX, "min", 1.0f, "max", 1024.0f, "precision", 0)));
+        nodes.add(new MockNode("size_y", "input.numeric.float", -660.0f, 220.0f,
+                createNodeState("value", (float) sizeY, "min", 1.0f, "max", 512.0f, "precision", 0)));
+        nodes.add(new MockNode("size_z", "input.numeric.float", -660.0f, 380.0f,
+                createNodeState("value", (float) sizeZ, "min", 1.0f, "max", 1024.0f, "precision", 0)));
         nodes.add(new MockNode("box", "geometry.primitives.box", -280.0f, 180.0f, null));
 
-        connections.add(new MockConnection("center", "output_coordinate", "box", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "box", "input_center"));
         connections.add(new MockConnection("size_x", "output_value", "box", "input_size_x"));
         connections.add(new MockConnection("size_y", "output_value", "box", "input_size_y"));
         connections.add(new MockConnection("size_z", "output_value", "box", "input_size_z"));
@@ -270,8 +295,7 @@ public final class AiMockPlanService {
         int segmentsPerTurn = clampInt((int) Math.round(Math.max(12.0d, params.width() * 8.0d)), 12, 96);
         float profileRadius = (float) Math.max(0.6d, Math.min(2.5d, params.thickness()));
 
-        nodes.add(new MockNode("center", "reference.points.block_position", -1000.0f, -180.0f,
-                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+        addBlockCenterPoint(nodes, connections, "center", -1000.0f, -180.0f, 0, 72, 0, true);
         nodes.add(new MockNode("axis", "reference.vectors.vector", -1000.0f, 40.0f,
                 createNodeState("x", 0.0d, "y", 1.0d, "z", 0.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("radius", "input.numeric.float", -1000.0f, 220.0f,
@@ -291,14 +315,14 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("sweep", "geometry.solids.sweep", 40.0f, 160.0f,
                 createNodeState("orientToPath", true, "closeProfile", true)));
 
-        connections.add(new MockConnection("center", "output_coordinate", "helix", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "helix", "input_center"));
         connections.add(new MockConnection("axis", "output_vector", "helix", "input_axis"));
         connections.add(new MockConnection("radius", "output_value", "helix", "input_radius"));
         connections.add(new MockConnection("pitch", "output_value", "helix", "input_pitch"));
         connections.add(new MockConnection("turns", "output_value", "helix", "input_turns"));
         connections.add(new MockConnection("segments", "output_value", "helix", "input_segments_per_turn"));
         connections.add(new MockConnection("helix", "output_path", "path_preview", "input_path"));
-        connections.add(new MockConnection("center", "output_coordinate", "profile", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "profile", "input_center"));
         connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
         connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
         connections.add(new MockConnection("helix", "output_path", "sweep", "input_path"));
@@ -318,35 +342,32 @@ public final class AiMockPlanService {
         int topSize = clampInt(midSize - 2, 3, 48);
         int slab = clampInt((int) Math.round(Math.max(2.0d, params.thickness())), 1, 12);
 
-        nodes.add(new MockNode("base_center", "reference.points.block_position", -900.0f, -160.0f,
-                createNodeState("x", 0, "y", baseY, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("mid_center", "reference.points.block_position", -900.0f, 20.0f,
-                createNodeState("x", 0, "y", baseY + gap, "z", 0, "showLabel", false)));
-        nodes.add(new MockNode("top_center", "reference.points.block_position", -900.0f, 200.0f,
-                createNodeState("x", 0, "y", baseY + gap * 2, "z", 0, "showLabel", false)));
-        nodes.add(new MockNode("sx0", "input.numeric.integer", -700.0f, -200.0f,
-                createNodeState("value", baseSize, "min", 2, "max", 128, "step", 1)));
-        nodes.add(new MockNode("sx1", "input.numeric.integer", -700.0f, 0.0f,
-                createNodeState("value", midSize, "min", 2, "max", 128, "step", 1)));
-        nodes.add(new MockNode("sx2", "input.numeric.integer", -700.0f, 200.0f,
-                createNodeState("value", topSize, "min", 2, "max", 128, "step", 1)));
-        nodes.add(new MockNode("sy", "input.numeric.integer", -700.0f, 360.0f,
-                createNodeState("value", slab, "min", 1, "max", 32, "step", 1)));
+        addBlockCenterPoint(nodes, connections, "base_center", -900.0f, -160.0f, 0, baseY, 0, true);
+        addBlockCenterPoint(nodes, connections, "mid_center", -900.0f, 20.0f, 0, baseY + gap, 0, false);
+        addBlockCenterPoint(nodes, connections, "top_center", -900.0f, 200.0f, 0, baseY + gap * 2, 0, false);
+        nodes.add(new MockNode("sx0", "input.numeric.float", -700.0f, -200.0f,
+                createNodeState("value", (float) baseSize, "min", 2.0f, "max", 128.0f, "precision", 0)));
+        nodes.add(new MockNode("sx1", "input.numeric.float", -700.0f, 0.0f,
+                createNodeState("value", (float) midSize, "min", 2.0f, "max", 128.0f, "precision", 0)));
+        nodes.add(new MockNode("sx2", "input.numeric.float", -700.0f, 200.0f,
+                createNodeState("value", (float) topSize, "min", 2.0f, "max", 128.0f, "precision", 0)));
+        nodes.add(new MockNode("sy", "input.numeric.float", -700.0f, 360.0f,
+                createNodeState("value", (float) slab, "min", 1.0f, "max", 32.0f, "precision", 0)));
         nodes.add(new MockNode("base_box", "geometry.primitives.box", -420.0f, -120.0f, null));
         nodes.add(new MockNode("mid_box", "geometry.primitives.box", -420.0f, 60.0f, null));
         nodes.add(new MockNode("top_box", "geometry.primitives.box", -420.0f, 240.0f, null));
         nodes.add(new MockNode("union", "geometry.combine.geometry", -120.0f, 80.0f,
                 createNodeState("inputCount", 3)));
 
-        connections.add(new MockConnection("base_center", "output_coordinate", "base_box", "input_center"));
+        connections.add(new MockConnection("base_center", "output_point", "base_box", "input_center"));
         connections.add(new MockConnection("sx0", "output_value", "base_box", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "base_box", "input_size_y"));
         connections.add(new MockConnection("sx0", "output_value", "base_box", "input_size_z"));
-        connections.add(new MockConnection("mid_center", "output_coordinate", "mid_box", "input_center"));
+        connections.add(new MockConnection("mid_center", "output_point", "mid_box", "input_center"));
         connections.add(new MockConnection("sx1", "output_value", "mid_box", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "mid_box", "input_size_y"));
         connections.add(new MockConnection("sx1", "output_value", "mid_box", "input_size_z"));
-        connections.add(new MockConnection("top_center", "output_coordinate", "top_box", "input_center"));
+        connections.add(new MockConnection("top_center", "output_point", "top_box", "input_center"));
         connections.add(new MockConnection("sx2", "output_value", "top_box", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "top_box", "input_size_y"));
         connections.add(new MockConnection("sx2", "output_value", "top_box", "input_size_z"));
@@ -365,8 +386,7 @@ public final class AiMockPlanService {
         int segments = clampInt((int) Math.round(Math.max(16.0d, params.width() * 10.0d)), 16, 120);
         float profileRadius = (float) Math.max(0.8d, Math.min(3.0d, params.thickness()));
 
-        nodes.add(new MockNode("arch_center", "reference.points.block_position", -980.0f, -160.0f,
-                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+        addBlockCenterPoint(nodes, connections, "arch_center", -980.0f, -160.0f, 0, 72, 0, true);
         nodes.add(new MockNode("arch_normal", "reference.vectors.vector", -980.0f, 20.0f,
                 createNodeState("x", 0.0d, "y", 0.0d, "z", 1.0d, "showLabel", false, "precision", 2)));
         nodes.add(new MockNode("arch_radius", "input.numeric.float", -980.0f, 200.0f,
@@ -386,14 +406,14 @@ public final class AiMockPlanService {
         nodes.add(new MockNode("sweep", "geometry.solids.sweep", 20.0f, 120.0f,
                 createNodeState("orientToPath", true, "closeProfile", true)));
 
-        connections.add(new MockConnection("arch_center", "output_coordinate", "arch_curve", "input_center"));
+        connections.add(new MockConnection("arch_center", "output_point", "arch_curve", "input_center"));
         connections.add(new MockConnection("arch_normal", "output_vector", "arch_curve", "input_normal"));
         connections.add(new MockConnection("arch_radius", "output_value", "arch_curve", "input_radius"));
         connections.add(new MockConnection("arch_start", "output_value", "arch_curve", "input_start_angle"));
         connections.add(new MockConnection("arch_end", "output_value", "arch_curve", "input_end_angle"));
-        connections.add(new MockConnection("arch_segments", "output_value", "arch_curve", "input_resolution"));
+        connections.add(new MockConnection("arch_segments", "output_value", "arch_curve", "input_samples"));
         connections.add(new MockConnection("arch_curve", "output_path", "path_preview", "input_path"));
-        connections.add(new MockConnection("arch_center", "output_coordinate", "profile", "input_center"));
+        connections.add(new MockConnection("arch_center", "output_point", "profile", "input_center"));
         connections.add(new MockConnection("profile_radius", "output_value", "profile", "input_radius"));
         connections.add(new MockConnection("profile", "output_profile", "sweep", "input_profile"));
         connections.add(new MockConnection("arch_curve", "output_path", "sweep", "input_path"));
@@ -411,8 +431,7 @@ public final class AiMockPlanService {
         float innerRadius = Math.max(1.0f, outerRadius - walkwayWidth);
         float thickness = (float) Math.max(0.8d, Math.min(4.0d, params.thickness()));
 
-        nodes.add(new MockNode("center", "reference.points.block_position", -800.0f, -80.0f,
-                createNodeState("x", 0, "y", 72, "z", 0, "showLabel", true)));
+        addBlockCenterPoint(nodes, connections, "center", -800.0f, -80.0f, 0, 72, 0, true);
         nodes.add(new MockNode("outer_r", "input.numeric.float", -800.0f, 80.0f,
                 createNodeState("value", outerRadius, "min", 2.0f, "max", 1024.0f, "precision", 2)));
         nodes.add(new MockNode("inner_r", "input.numeric.float", -800.0f, 220.0f,
@@ -425,9 +444,9 @@ public final class AiMockPlanService {
                 createNodeState("operation", "DIFFERENCE")));
         nodes.add(new MockNode("extrude", "geometry.solids.extrude_region", 80.0f, 120.0f, null));
 
-        connections.add(new MockConnection("center", "output_coordinate", "outer", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "outer", "input_center"));
         connections.add(new MockConnection("outer_r", "output_value", "outer", "input_radius"));
-        connections.add(new MockConnection("center", "output_coordinate", "inner", "input_center"));
+        connections.add(new MockConnection("center", "output_point", "inner", "input_center"));
         connections.add(new MockConnection("inner_r", "output_value", "inner", "input_radius"));
         connections.add(new MockConnection("outer", "output_profile", "ring_region", "input_profile_a"));
         connections.add(new MockConnection("inner", "output_profile", "ring_region", "input_profile_b"));
@@ -448,41 +467,38 @@ public final class AiMockPlanService {
         int thickness = clampInt((int) Math.round(Math.max(2.0d, params.thickness() * 2.0d)), 1, 16);
         int gap = clampInt((int) Math.round(Math.max(4.0d, params.height() * 0.25d)), 3, 48);
 
-        nodes.add(new MockNode("level0_center", "reference.points.block_position", -1120.0f, -180.0f,
-                createNodeState("x", 0, "y", 70, "z", 0, "showLabel", true)));
-        nodes.add(new MockNode("level1_center", "reference.points.block_position", -1120.0f, 0.0f,
-                createNodeState("x", 0, "y", 70 + gap, "z", 0, "showLabel", false)));
-        nodes.add(new MockNode("level2_center", "reference.points.block_position", -1120.0f, 180.0f,
-                createNodeState("x", 0, "y", 70 + gap * 2, "z", 0, "showLabel", false)));
-        nodes.add(new MockNode("sx0", "input.numeric.integer", -900.0f, -230.0f,
-                createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sz0", "input.numeric.integer", -900.0f, -120.0f,
-                createNodeState("value", baseSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sx1", "input.numeric.integer", -900.0f, -10.0f,
-                createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sz1", "input.numeric.integer", -900.0f, 100.0f,
-                createNodeState("value", middleSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sx2", "input.numeric.integer", -900.0f, 210.0f,
-                createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sz2", "input.numeric.integer", -900.0f, 320.0f,
-                createNodeState("value", topSize, "min", 2, "max", 256, "step", 1, "showLabel", false)));
-        nodes.add(new MockNode("sy", "input.numeric.integer", -900.0f, 430.0f,
-                createNodeState("value", thickness, "min", 1, "max", 32, "step", 1, "showLabel", false)));
+        addBlockCenterPoint(nodes, connections, "level0_center", -1120.0f, -180.0f, 0, 70, 0, true);
+        addBlockCenterPoint(nodes, connections, "level1_center", -1120.0f, 0.0f, 0, 70 + gap, 0, false);
+        addBlockCenterPoint(nodes, connections, "level2_center", -1120.0f, 180.0f, 0, 70 + gap * 2, 0, false);
+        nodes.add(new MockNode("sx0", "input.numeric.float", -900.0f, -230.0f,
+                createNodeState("value", (float) baseSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sz0", "input.numeric.float", -900.0f, -120.0f,
+                createNodeState("value", (float) baseSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sx1", "input.numeric.float", -900.0f, -10.0f,
+                createNodeState("value", (float) middleSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sz1", "input.numeric.float", -900.0f, 100.0f,
+                createNodeState("value", (float) middleSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sx2", "input.numeric.float", -900.0f, 210.0f,
+                createNodeState("value", (float) topSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sz2", "input.numeric.float", -900.0f, 320.0f,
+                createNodeState("value", (float) topSize, "min", 2.0f, "max", 256.0f, "precision", 0, "showLabel", false)));
+        nodes.add(new MockNode("sy", "input.numeric.float", -900.0f, 430.0f,
+                createNodeState("value", (float) thickness, "min", 1.0f, "max", 32.0f, "precision", 0, "showLabel", false)));
         nodes.add(new MockNode("box0", "geometry.primitives.box", -620.0f, -120.0f, null));
         nodes.add(new MockNode("box1", "geometry.primitives.box", -620.0f, 80.0f, null));
         nodes.add(new MockNode("box2", "geometry.primitives.box", -620.0f, 280.0f, null));
         nodes.add(new MockNode("union", "geometry.combine.geometry", -320.0f, 120.0f,
                 createNodeState("inputCount", 3)));
 
-        connections.add(new MockConnection("level0_center", "output_coordinate", "box0", "input_center"));
+        connections.add(new MockConnection("level0_center", "output_point", "box0", "input_center"));
         connections.add(new MockConnection("sx0", "output_value", "box0", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box0", "input_size_y"));
         connections.add(new MockConnection("sz0", "output_value", "box0", "input_size_z"));
-        connections.add(new MockConnection("level1_center", "output_coordinate", "box1", "input_center"));
+        connections.add(new MockConnection("level1_center", "output_point", "box1", "input_center"));
         connections.add(new MockConnection("sx1", "output_value", "box1", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box1", "input_size_y"));
         connections.add(new MockConnection("sz1", "output_value", "box1", "input_size_z"));
-        connections.add(new MockConnection("level2_center", "output_coordinate", "box2", "input_center"));
+        connections.add(new MockConnection("level2_center", "output_point", "box2", "input_center"));
         connections.add(new MockConnection("sx2", "output_value", "box2", "input_size_x"));
         connections.add(new MockConnection("sy", "output_value", "box2", "input_size_y"));
         connections.add(new MockConnection("sz2", "output_value", "box2", "input_size_z"));

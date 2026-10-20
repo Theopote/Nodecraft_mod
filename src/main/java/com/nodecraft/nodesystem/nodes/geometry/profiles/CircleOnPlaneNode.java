@@ -52,11 +52,15 @@ public class CircleOnPlaneNode extends AbstractProfileNode {
 
     public CircleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.circle_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Circle radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count (>= 8 recommended)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_START_DIRECTION_ID, "Start Direction", "Optional in-plane direction to first boundary point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center",
+            "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Circle radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments",
+            "Boundary segment count (>= 8 recommended)", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
+            "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_START_DIRECTION_ID, "Start Direction",
+            "Optional in-plane direction to first boundary point", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed circle points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Circle polygon profile approximation", NodeDataType.POLYGON_PROFILE, this));

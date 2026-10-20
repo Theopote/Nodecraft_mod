@@ -105,7 +105,7 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
         VectorFieldData withCenter = assertInstanceOf(VectorFieldData.class,
                 node.compute(Map.of(
                         "input_sdf", flat,
-                        "input_center", new Vector3d(0.0d, 0.0d, 0.0d)
+                        "input_center", new PointData(0.0d, 0.0d, 0.0d)
                 )).get("output_field"));
         Map<String, Object> sample = new VectorFieldSamplePointNode().compute(Map.of(
                 "input_field", withCenter,
@@ -118,7 +118,7 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
 
     @Test
     void pointAttractorAtCenterYieldsZeroVector() {
-        Vector3d center = new Vector3d(1.0d, 2.0d, 3.0d);
+        PointData center = new PointData(1.0d, 2.0d, 3.0d);
         VectorFieldData field = assertInstanceOf(VectorFieldData.class,
                 new PointAttractorFieldNode().compute(Map.of("input_center", center)).get("output_field"));
 
@@ -136,7 +136,7 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
     @Test
     void vortexZeroAxisFailsConstruction() {
         Map<String, Object> outputs = new VortexFieldNode().compute(Map.of(
-                "input_origin", new Vector3d(0, 0, 0),
+                "input_origin", new PointData(0, 0, 0),
                 "input_axis", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0)
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
@@ -145,8 +145,12 @@ class FieldAttractorRobustnessLanguageV2ContractTest {
 
     @Test
     void vortexInfiniteAxisFailsConstruction() {
+        // Non-finite axis cannot form VectorData; ingress rejects raw Vector3d → fail-closed.
+        org.junit.jupiter.api.Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> new VectorData(Double.POSITIVE_INFINITY, 0, 0));
         Map<String, Object> outputs = new VortexFieldNode().compute(Map.of(
-                "input_origin", new Vector3d(0, 0, 0),
+                "input_origin", new PointData(0, 0, 0),
                 "input_axis", new Vector3d(Double.POSITIVE_INFINITY, 0, 0)
         ));
         assertFalse((Boolean) outputs.get("output_valid"));

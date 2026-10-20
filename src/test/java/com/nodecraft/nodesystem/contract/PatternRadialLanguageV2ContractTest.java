@@ -285,7 +285,7 @@ class PatternRadialLanguageV2ContractTest {
         @SuppressWarnings("unchecked")
         List<PointData> points = assertInstanceOf(List.class, spiral.getOutput("output_points"));
         @SuppressWarnings("unchecked")
-        List<Vector3d> tangents = assertInstanceOf(List.class, spiral.getOutput("output_tangents"));
+        List<com.nodecraft.nodesystem.datatypes.VectorData> tangents = assertInstanceOf(List.class, spiral.getOutput("output_tangents"));
         @SuppressWarnings("unchecked")
         List<FrameData> frames = assertInstanceOf(List.class, spiral.getOutput("output_frames"));
         assertEquals(count, points.size());
@@ -377,9 +377,10 @@ class PatternRadialLanguageV2ContractTest {
         phyllotaxis.processNode(null);
         assertEquals(Boolean.TRUE, phyllotaxis.getOutput("output_valid"));
         @SuppressWarnings("unchecked")
-        List<Vector3d> tangents = assertInstanceOf(List.class, phyllotaxis.getOutput("output_tangents"));
+        List<com.nodecraft.nodesystem.datatypes.VectorData> tangents =
+            assertInstanceOf(List.class, phyllotaxis.getOutput("output_tangents"));
         assertEquals(1, tangents.size());
-        Vector3d tangent = tangents.getFirst();
+        Vector3d tangent = tangents.getFirst().components();
         assertFalse(Math.abs(tangent.x - 1.0d) < 1.0e-6d
             && Math.abs(tangent.y) < 1.0e-6d
             && Math.abs(tangent.z) < 1.0e-6d,

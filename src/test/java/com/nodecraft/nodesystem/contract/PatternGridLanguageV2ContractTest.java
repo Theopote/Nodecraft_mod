@@ -136,7 +136,7 @@ class PatternGridLanguageV2ContractTest {
         assertEquals(15, grid.getOutput("output_count"));
         assertInstanceOf(CompositeGeometryData.class, grid.getOutput("output_geometry"));
         @SuppressWarnings("unchecked")
-        List<Vector3d> offsets = assertInstanceOf(List.class, grid.getOutput("output_offsets"));
+        List<com.nodecraft.nodesystem.datatypes.VectorData> offsets = assertInstanceOf(List.class, grid.getOutput("output_offsets"));
         assertEquals(15, offsets.size());
         assertEquals("", grid.getOutput("output_error"));
     }
@@ -174,9 +174,9 @@ class PatternGridLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("xCount", 2, "yCount", 2, "zCount", 1, "xDistance", 1.0d, "yDistance", 1.0d));
         probe.connectInput("input_x_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_direction", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_x_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.connectInput("input_y_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_y_direction", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_y_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("independent")
@@ -189,9 +189,9 @@ class PatternGridLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("xCount", 2, "yCount", 2, "zCount", 1, "xDistance", 1.0d, "yDistance", 1.0d));
         probe.connectInput("input_x_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_direction", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_x_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.connectInput("input_y_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_y_direction", new Vector3d(1, 1, 0));
+        probe.putRawInput("input_y_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 1, 0));
         probe.processNode(null);
         assertEquals(Boolean.TRUE, probe.getOutput("output_valid"));
         assertEquals(4, probe.getOutput("output_count"));
@@ -203,7 +203,7 @@ class PatternGridLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("xCount", 2, "yCount", 1, "zCount", 1, "xDistance", 1.0d));
         probe.connectInput("input_x_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_direction", new Vector3d(1e308d, 1e308d, 1e308d));
+        probe.putRawInput("input_x_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1e308d, 1e308d, 1e308d));
         probe.processNode(null);
         if (Boolean.TRUE.equals(probe.getOutput("output_valid"))) {
             assertEquals(2, probe.getOutput("output_count"));
@@ -243,7 +243,7 @@ class PatternGridLanguageV2ContractTest {
         probe.setInput("input_geometry", new SphereData(new Vector3d(), 1.0d));
         probe.setNodeState(Map.of("xCount", 2, "yCount", 1, "zCount", 1));
         probe.connectInput("input_x_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_x_direction", new Vector3d(0, 0, 0));
+        probe.putRawInput("input_x_direction", new com.nodecraft.nodesystem.datatypes.VectorData(0, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("direction"));
@@ -367,9 +367,9 @@ class PatternGridLanguageV2ContractTest {
         StaggeredProbe probe = new StaggeredProbe();
         probe.setNodeState(Map.of("stepCount", 2, "rowCount", 2, "stepDistance", 1.0d, "rowDistance", 1.0d));
         probe.connectInput("input_step_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_step_direction", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_step_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.connectInput("input_row_direction", NodeDataType.VECTOR);
-        probe.putRawInput("input_row_direction", new Vector3d(1, 0, 0));
+        probe.putRawInput("input_row_direction", new com.nodecraft.nodesystem.datatypes.VectorData(1, 0, 0));
         probe.processNode(null);
         assertEquals(Boolean.FALSE, probe.getOutput("output_valid"));
         assertTrue(String.valueOf(probe.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("parallel"));

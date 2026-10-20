@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.contract;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.datatypes.PathData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.ScalarFieldData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
@@ -175,7 +176,7 @@ class FieldLanguageContractTest {
         ScalarFieldData field = point -> 3.5d;
         Map<String, Object> outputs = new ScalarFieldSamplePointNode().compute(Map.of(
                 "input_field", field,
-                "input_point", new Vector3d(1.0d, 0.0d, 0.0d)
+                "input_point", new PointData(1.0d, 0.0d, 0.0d)
         ));
         assertTrue((Boolean) outputs.get("output_valid"));
         assertEquals(3.5d, (Double) outputs.get("output_value"), 0.0d);
@@ -187,7 +188,7 @@ class FieldLanguageContractTest {
         ScalarFieldSamplePointNode node = new ScalarFieldSamplePointNode();
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_field", divField,
-                "input_point", new Vector3d(0.0d, 0.0d, 0.0d)
+                "input_point", new PointData(0.0d, 0.0d, 0.0d)
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertTrue(Double.isNaN((Double) outputs.get("output_value")));
@@ -206,7 +207,7 @@ class FieldLanguageContractTest {
         VectorFieldSamplePointNode sample = new VectorFieldSamplePointNode();
         Map<String, Object> badField = sample.compute(Map.of(
                 "input_field", (com.nodecraft.nodesystem.datatypes.VectorFieldData) (point, dest) -> dest.set(Double.NaN, 1.0d, 2.0d),
-                "input_point", new Vector3d()
+                "input_point", new PointData(0, 0, 0)
         ));
         assertFalse((Boolean) badField.get("output_valid"));
         assertNull(badField.get("output_vector"));
@@ -218,7 +219,7 @@ class FieldLanguageContractTest {
                 (point, dest) -> dest.set(point.x > 0.0d ? 1.0d : Double.NaN, 0.0d, 0.0d);
         Map<String, Object> outputs = new VectorFieldSamplePointsNode().compute(Map.of(
                 "input_field", field,
-                "input_points", List.of(new Vector3d(1.0d, 0.0d, 0.0d), new Vector3d(-1.0d, 0.0d, 0.0d))
+                "input_points", List.of(new PointData(1.0d, 0.0d, 0.0d), new PointData(-1.0d, 0.0d, 0.0d))
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertTrue(((List<?>) outputs.get("output_vectors")).isEmpty());
@@ -231,7 +232,7 @@ class FieldLanguageContractTest {
                 (point, dest) -> dest.set(1.0d, 2.0d, 3.0d);
         Map<String, Object> outputs = new VectorFieldSamplePointNode().compute(Map.of(
                 "input_field", field,
-                "input_point", new Vector3d()
+                "input_point", new PointData(0, 0, 0)
         ));
         assertTrue((Boolean) outputs.get("output_valid"));
         VectorData out = assertInstanceOf(VectorData.class, outputs.get("output_vector"));
@@ -246,7 +247,7 @@ class FieldLanguageContractTest {
         ScalarFieldSamplePointsNode node = new ScalarFieldSamplePointsNode();
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_field", field,
-                "input_points", List.of(new Vector3d(1.0d, 0.0d, 0.0d), new Vector3d(-1.0d, 0.0d, 0.0d))
+                "input_points", List.of(new PointData(1.0d, 0.0d, 0.0d), new PointData(-1.0d, 0.0d, 0.0d))
         ));
         assertFalse((Boolean) outputs.get("output_valid"));
         assertTrue(((List<?>) outputs.get("output_values")).isEmpty());
@@ -369,7 +370,7 @@ class FieldLanguageContractTest {
 
     @Test
     void pointAttractorInvalidRadiusFailsClosed() {
-        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        PointData center = new PointData(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
@@ -387,7 +388,7 @@ class FieldLanguageContractTest {
 
     @Test
     void pointAttractorInvalidStrengthFailsClosed() {
-        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        PointData center = new PointData(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
@@ -405,7 +406,7 @@ class FieldLanguageContractTest {
 
     @Test
     void pointAttractorInvalidExponentFailsClosed() {
-        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        PointData center = new PointData(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = samplePointAttractor(Map.of("input_center", center), sampleAt);
@@ -423,8 +424,8 @@ class FieldLanguageContractTest {
 
     @Test
     void vortexInvalidRadiusFailsClosed() {
-        Vector3d origin = new Vector3d(0.0d, 0.0d, 0.0d);
-        Vector3d axis = new Vector3d(0.0d, 1.0d, 0.0d);
+        PointData origin = new PointData(0.0d, 0.0d, 0.0d);
+        VectorData axis = new VectorData(0.0d, 1.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(2.0d, 0.0d, 0.0d);
 
         Vector3d baseline = sampleVortexField(Map.of(
@@ -523,7 +524,7 @@ class FieldLanguageContractTest {
 
         Map<String, Object> sample = new VectorFieldSamplePointNode().compute(Map.of(
                 "input_field", field,
-                "input_point", new Vector3d()
+                "input_point", new PointData(0, 0, 0)
         ));
         assertFalse((Boolean) sample.get("output_valid"));
         assertNull(sample.get("output_vector"));
@@ -534,7 +535,7 @@ class FieldLanguageContractTest {
         VolumeAttractorFieldNode node = new VolumeAttractorFieldNode();
         node.setNodeState(Map.of("pullMode", VolumeAttractorFieldNode.PullMode.CENTER_PULL.name()));
 
-        Vector3d center = new Vector3d(0.0d, 0.0d, 0.0d);
+        PointData center = new PointData(0.0d, 0.0d, 0.0d);
         Vector3d sampleAt = new Vector3d(4.0d, 0.0d, 0.0d);
 
         Vector3d baseline = sampleVolumeAttractor(node, Map.of("input_center", center), sampleAt);

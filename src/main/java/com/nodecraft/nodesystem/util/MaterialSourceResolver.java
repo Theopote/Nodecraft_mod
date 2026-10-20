@@ -95,11 +95,12 @@ public final class MaterialSourceResolver {
     }
 
     /**
-     * Driven when the port is wired, or a non-null value was injected (unit tests / direct setInput).
+     * Driven when the port is wired, or a value was injected (unit tests / direct setInput),
+     * including rejected-null markers from {@link BaseNode#setInput} fail-closed ingress.
      * Connected + null still counts as driven and fails closed in parsers.
      */
     public static boolean isDriven(BaseNode node, String portId) {
-        return OptionalPortDrive.isConnected(node, portId) || node.getInput(portId) != null;
+        return OptionalPortDrive.isDriven(node, portId);
     }
 
     private static @Nullable String firstDrivenGeometryPort(BaseNode node, SourcePorts ports) {

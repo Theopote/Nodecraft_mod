@@ -286,23 +286,25 @@ class WorldSelectionLanguageContractTest {
 
     @Test
     void selectedBlockSequenceClosedPathDoesNotInflateCount() {
+        // Closed polylines require >=3 unique vertices (PathCanonicalizer); count stays unique blocks.
         SelectedBlockSequenceNode sequence = new SelectedBlockSequenceNode();
         sequence.setNodeState(Map.of("closePath", true));
         sequence.onBlockPicked(new Coordinate(0, 0, 0), "minecraft:stone", null);
         sequence.onBlockPicked(new Coordinate(1, 0, 0), "minecraft:stone", null);
+        sequence.onBlockPicked(new Coordinate(1, 0, 1), "minecraft:stone", null);
         sequence.processNode(null);
 
-        assertEquals(2, sequence.getOutput("output_count"));
+        assertEquals(3, sequence.getOutput("output_count"));
         assertEquals(Boolean.TRUE, sequence.getOutput("output_is_closed"));
         PathData path = (PathData) sequence.getOutput("output_path");
         assertNotNull(path);
         assertEquals(PathData.Kind.POLYLINE, path.getKind());
         assertNotNull(path.getPolyline());
-        assertEquals(3, path.getPolyline().getPointCount());
+        assertEquals(4, path.getPolyline().getPointCount());
         assertTrue(path.getPolyline().isClosed());
         @SuppressWarnings("unchecked")
         List<PointData> centers = (List<PointData>) sequence.getOutput("output_centers");
-        assertEquals(2, centers.size());
+        assertEquals(3, centers.size());
     }
 
     @Test

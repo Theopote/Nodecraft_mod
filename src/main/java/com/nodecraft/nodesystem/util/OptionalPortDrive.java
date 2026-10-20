@@ -17,7 +17,8 @@ import java.util.List;
  * <p>
  * Frozen rule:
  * <ul>
- *   <li>unconnected → property fallback</li>
+ *   <li>unconnected → property fallback (injected {@code setInput} values are ignored unless
+ *       a caller uses {@link #isDriven} / {@link MaterialSourceResolver#isDriven})</li>
  *   <li>connected + valid → input override</li>
  *   <li>connected + null/invalid → fail closed (no property fallback)</li>
  * </ul>
@@ -37,6 +38,15 @@ public final class OptionalPortDrive {
             }
         }
         return false;
+    }
+
+    /**
+     * Wired or injected (including rejected-null markers from {@link BaseNode#setInput}).
+     * Prefer this for material / compute-map fail-closed paths; {@link #resolveOptional*} stay
+     * connection-only so unconnected UI property fallbacks remain stable.
+     */
+    public static boolean isDriven(BaseNode node, String portId) {
+        return isConnected(node, portId) || node.isInputPresent(portId);
     }
 
     /**

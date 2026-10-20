@@ -279,7 +279,7 @@ class ReferencePointsLanguageContractTest {
         assertEquals(Boolean.FALSE, translate.getOutput("output_valid"));
         assertNull(translate.getOutput("output_point"));
 
-        translate.setInput("input_offset", new Vector3d(0, 1, 0));
+        translate.setInput("input_offset", new com.nodecraft.nodesystem.datatypes.VectorData(0, 1, 0));
         translate.processNode(null);
         assertEquals(Boolean.TRUE, translate.getOutput("output_valid"));
         assertInstanceOf(PointData.class, translate.getOutput("output_point"));
