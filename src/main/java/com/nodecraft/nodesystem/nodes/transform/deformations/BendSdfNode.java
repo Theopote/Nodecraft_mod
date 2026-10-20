@@ -187,19 +187,19 @@ public class BendSdfNode extends AbstractSdfDeformationNode {
     }
 
     private String resolveSdfFailureReason() {
-        boolean minConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MIN_ID);
-        boolean maxConnected = OptionalPortDrive.isConnected(this, INPUT_BOUNDS_MAX_ID);
-        if (minConnected != maxConnected) {
+        boolean minDriven = OptionalPortDrive.isDriven(this, INPUT_BOUNDS_MIN_ID);
+        boolean maxDriven = OptionalPortDrive.isDriven(this, INPUT_BOUNDS_MAX_ID);
+        if (minDriven != maxDriven) {
             return "Invalid or incomplete bounds";
         }
         Object sdfObj = inputValues.get(INPUT_SDF_ID);
-        if (OptionalPortDrive.isConnected(this, INPUT_SDF_ID) && sdfObj == null) {
+        if (OptionalPortDrive.isDriven(this, INPUT_SDF_ID) && sdfObj == null) {
             return "SDF input required";
         }
         if (!(sdfObj instanceof com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData)) {
             return "SDF input required";
         }
-        if (minConnected) {
+        if (minDriven) {
             return "Invalid or incomplete bounds";
         }
         return "SDF input required";

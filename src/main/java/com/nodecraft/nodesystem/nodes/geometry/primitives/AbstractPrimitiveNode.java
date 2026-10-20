@@ -123,8 +123,9 @@ abstract class AbstractPrimitiveNode extends BaseNode {
             this, orientationPortId, eulerXDeg, eulerYDeg, eulerZDeg);
     }
 
+    /** True when the port is wired or has an explicitly injected input (including reject-null). */
     protected final boolean isPortConnected(String portId) {
-        return PrimitiveInputUtils.isConnected(this, portId);
+        return PrimitiveInputUtils.isDriven(this, portId);
     }
 
     protected static void restoreFiniteDouble(Map<?, ?> map, String key, DoubleConsumer setter) {

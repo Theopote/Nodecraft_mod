@@ -7,39 +7,44 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3d;
 import org.joml.Vector3d;
 
-/**
- * Connection-aware primitive input resolution.
- * <p>
- * POINT ports never accept {@link LineData}. Connected-invalid inputs fail closed
- * (return null) instead of washing out to property defaults.
- */
-public final class PrimitiveInputUtils {
-
-    private PrimitiveInputUtils() {
-    }
-
-    public static boolean isConnected(BaseNode node, String portId) {
-        return OptionalPortDrive.isConnected(node, portId);
-    }
-
     /**
-     * Optional POINT. Rejects {@link LineData} even if present on the wire.
+     * Drive-aware primitive input resolution.
+     * <p>
+     * POINT ports never accept {@link LineData}. Driven-invalid inputs fail closed
+     * (return null) instead of washing out to property defaults. Driven =
+     * wired or explicitly injected via {@code setInput}/{@code compute}.
      */
-    public static @Nullable Vector3d resolveOptionalPoint(
-            BaseNode node,
-            String portId,
-            @Nullable Vector3d propertyFallback
-    ) {
-        if (isConnected(node, portId)) {
-            Object value = node.getInput(portId);
-            if (value instanceof LineData) {
-                return null;
-            }
-            Vector3d resolved = SpatialValueResolver.resolvePoint(value);
-            return FrameUtils.isFinite(resolved) ? resolved : null;
+    public final class PrimitiveInputUtils {
+    
+        private PrimitiveInputUtils() {
         }
-        return propertyFallback == null ? null : new Vector3d(propertyFallback);
-    }
+    
+        public static boolean isConnected(BaseNode node, String portId) {
+            return OptionalPortDrive.isConnected(node, portId);
+        }
+    
+        public static boolean isDriven(BaseNode node, String portId) {
+            return OptionalPortDrive.isDriven(node, portId);
+        }
+    
+        /**
+         * Optional POINT. Rejects {@link LineData} even if present on the wire.
+         */
+        public static @Nullable Vector3d resolveOptionalPoint(
+                BaseNode node,
+                String portId,
+                @Nullable Vector3d propertyFallback
+        ) {
+            if (isDriven(node, portId)) {
+                Object value = node.getInput(portId);
+                if (value instanceof LineData) {
+                    return null;
+                }
+                Vector3d resolved = SpatialValueResolver.resolvePoint(value);
+                return FrameUtils.isFinite(resolved) ? resolved : null;
+            }
+            return propertyFallback == null ? null : new Vector3d(propertyFallback);
+        }
 
     public static @Nullable Vector3d resolveOptionalVector(
             BaseNode node,
@@ -94,11 +99,11 @@ public final class PrimitiveInputUtils {
     }
 
     /**
-     * Optional MATRIX3. Unconnected → null (caller may apply Euler fallback).
-     * Connected non-{@link Matrix3d} or non-finite → null (fail closed).
+     * Optional MATRIX3. Undriven → null (caller may apply Euler fallback).
+     * Driven non-{@link Matrix3d} or non-finite → null (fail closed).
      */
     public static @Nullable Matrix3d resolveOptionalMatrix3(BaseNode node, String portId) {
-        if (!isConnected(node, portId)) {
+        if (!isDriven(node, portId)) {
             return null;
         }
         Object value = node.getInput(portId);
@@ -112,7 +117,7 @@ public final class PrimitiveInputUtils {
     }
 
     /**
-     * Orientation: unconnected → Euler degrees; connected invalid MATRIX3 → null.
+     * Orientation: undriven → Euler degrees; driven invalid MATRIX3 → null.
      */
     public static @Nullable Matrix3d resolveOrientationOrEuler(
             BaseNode node,
@@ -121,7 +126,7 @@ public final class PrimitiveInputUtils {
             double eulerYDeg,
             double eulerZDeg
     ) {
-        if (!isConnected(node, orientationPortId)) {
+        if (!isDriven(node, orientationPortId)) {
             if (!Double.isFinite(eulerXDeg) || !Double.isFinite(eulerYDeg) || !Double.isFinite(eulerZDeg)) {
                 return null;
             }

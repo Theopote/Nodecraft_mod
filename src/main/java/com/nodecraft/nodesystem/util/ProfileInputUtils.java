@@ -33,14 +33,14 @@ public final class ProfileInputUtils {
     }
 
     /**
-     * Optional in-plane axis for profile orientation. Connected invalid axis fails closed.
+     * Optional in-plane axis for profile orientation. Driven invalid axis fails closed.
      */
     public static @Nullable Vector3d resolveOptionalInPlaneAxis(
             BaseNode node,
             String portId,
             PlaneData plane
     ) {
-        if (!OptionalPortDrive.isConnected(node, portId)) {
+        if (!OptionalPortDrive.isDriven(node, portId)) {
             return null;
         }
         Vector3d axis = OptionalPortDrive.resolveOptionalVector(node, portId, null);

@@ -80,13 +80,15 @@ public class DropdownSelectorNode extends BaseNode {
 
         Integer index = OptionalPortDrive.resolveOptionalInteger(this, INPUT_INDEX_ID, selectedIndex);
         if (index == null) {
-            publishInvalid("Index is connected but null or invalid.");
+            publishInvalid(OptionalPortDrive.isDriven(this, INPUT_INDEX_ID)
+                ? "Index is driven but null or invalid."
+                : "Index is connected but null or invalid.");
             return;
         }
 
-        boolean indexConnected = OptionalPortDrive.isConnected(this, INPUT_INDEX_ID);
+        boolean indexDriven = OptionalPortDrive.isDriven(this, INPUT_INDEX_ID);
         int resolvedIndex;
-        if (indexConnected) {
+        if (indexDriven) {
             if (index < 0 || index >= optionList.size()) {
                 publishInvalid("Index (" + index + ") is out of range for " + optionList.size() + " options.");
                 return;

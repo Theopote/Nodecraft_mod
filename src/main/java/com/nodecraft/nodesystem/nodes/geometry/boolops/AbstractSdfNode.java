@@ -4,6 +4,7 @@ import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
+import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import com.nodecraft.nodesystem.util.SdfExpressionLimits;
 import com.nodecraft.nodesystem.util.SdfInputUtils;
 import org.jetbrains.annotations.Nullable;
@@ -68,8 +69,9 @@ abstract class AbstractSdfNode extends BaseNode {
         }
     }
 
+    /** True when the port is wired or has an explicitly injected input (including reject-null). */
     protected final boolean isPortConnected(String portId) {
-        return SdfInputUtils.isConnected(this, portId);
+        return OptionalPortDrive.isDriven(this, portId);
     }
 
     protected final @Nullable Vector3d resolveOptionalPoint(String portId, @Nullable Vector3d fallback) {

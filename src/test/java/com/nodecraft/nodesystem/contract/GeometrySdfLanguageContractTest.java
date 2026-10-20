@@ -377,7 +377,9 @@ class GeometrySdfLanguageContractTest {
 
     @Test
     void gradientHugeComponentsFailAndInvalidDistanceIsNan() {
-        SignedDistanceFieldData steep = point -> 5.0e307d * (point.x + point.y + point.z);
+        // Central difference gx = f(h)-f(-h) with coefficient near MAX so components overflow.
+        // (5e307 still yields finite hypot-normalized results; 1e308 forces non-finite samples.)
+        SignedDistanceFieldData steep = point -> 1.0e308d * (point.x + point.y + point.z);
         SdfGradientPointNode gradient = new SdfGradientPointNode();
         gradient.setInput("input_sdf", steep);
         gradient.setInput("input_point", new PointData(0, 0, 0));

@@ -138,7 +138,7 @@ public final class CurveInputUtils {
         if (allowedLowerCase == null || allowedLowerCase.isEmpty()) {
             return null;
         }
-        if (OptionalPortDrive.isConnected(node, portId)) {
+        if (OptionalPortDrive.isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof String text) || text.isBlank()) {
                 return null;
@@ -245,7 +245,7 @@ public final class CurveInputUtils {
     }
 
     /**
-     * NURBS weights: unconnected → uniform default; connected → strict DOUBLE_LIST aligned to control count.
+     * NURBS weights: undriven → uniform default; driven → strict DOUBLE_LIST aligned to control count.
      */
     public static @Nullable List<Double> resolveOptionalNurbsWeights(
             BaseNode node,
@@ -256,7 +256,7 @@ public final class CurveInputUtils {
         if (controlCount <= 0 || !Double.isFinite(defaultWeight) || !(defaultWeight > 0.0d)) {
             return null;
         }
-        if (!OptionalPortDrive.isConnected(node, portId)) {
+        if (!OptionalPortDrive.isDriven(node, portId)) {
             List<Double> uniform = new ArrayList<>(controlCount);
             for (int i = 0; i < controlCount; i++) {
                 uniform.add(defaultWeight);

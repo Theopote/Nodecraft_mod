@@ -13,15 +13,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Connection-aware optional port resolution for property-backed drives.
+ * Optional port resolution for property-backed drives.
  * <p>
- * Frozen rule:
+ * Unified drive rule (Phase 5G):
  * <ul>
- *   <li>unconnected → property fallback (injected {@code setInput} values are ignored unless
- *       a caller uses {@link #isDriven} / {@link MaterialSourceResolver#isDriven})</li>
- *   <li>connected + valid → input override</li>
- *   <li>connected + null/invalid → fail closed (no property fallback)</li>
+ *   <li>undriven (no wire, no injected key) → property fallback</li>
+ *   <li>driven + valid → input override</li>
+ *   <li>driven + null/invalid → fail closed ({@code null}, no property fallback)</li>
  * </ul>
+ * Driven means {@link #isConnected wired} or {@link BaseNode#isInputPresent injected}
+ * (including rejected-null markers from {@link BaseNode#setInput} / compute ingress).
+ * Callers must treat a {@code null} resolve result as invalid when {@link #isDriven} is true.
  */
 public final class OptionalPortDrive {
 
@@ -41,24 +43,23 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Wired or injected (including rejected-null markers from {@link BaseNode#setInput}).
-     * Prefer this for material / compute-map fail-closed paths; {@link #resolveOptional*} stay
-     * connection-only so unconnected UI property fallbacks remain stable.
+     * Wired or explicitly injected (including rejected-null markers).
+     * Prefer this over {@link #isConnected} when deciding fail-closed vs property fallback.
      */
     public static boolean isDriven(BaseNode node, String portId) {
         return isConnected(node, portId) || node.isInputPresent(portId);
     }
 
     /**
-     * Optional VECTOR drive. Returns {@code null} when connected but invalid (fail closed).
-     * When unconnected, returns a copy of {@code propertyFallback} (may be null).
+     * Optional VECTOR drive. Returns {@code null} when driven but invalid (fail closed).
+     * When undriven, returns a copy of {@code propertyFallback} (may be null).
      */
     public static @Nullable Vector3d resolveOptionalVector(
             BaseNode node,
             String portId,
             @Nullable Vector3d propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Vector3d resolved = SpatialValueResolver.resolveVector(node.getInput(portId));
             return VectorUtils.isFinite(resolved) ? resolved : null;
         }
@@ -80,15 +81,15 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional DOUBLE drive. Connected ports require exact finite {@link Double}.
-     * Returns {@code null} when connected but invalid (fail closed).
+     * Optional DOUBLE drive. Driven ports require exact finite {@link Double}.
+     * Returns {@code null} when driven but invalid (fail closed).
      */
     public static @Nullable Double resolveOptionalDouble(
             BaseNode node,
             String portId,
             double propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             return StrictDoubleUtils.requireExactFiniteDouble(node.getInput(portId));
         }
         return Double.isFinite(propertyFallback) ? propertyFallback : null;
@@ -106,14 +107,14 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional POINT drive. Returns {@code null} when connected but invalid (fail closed).
+     * Optional POINT drive. Returns {@code null} when driven but invalid (fail closed).
      */
     public static @Nullable Vector3d resolveOptionalPoint(
             BaseNode node,
             String portId,
             @Nullable Vector3d propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof PointData point)) {
                 return null;
@@ -124,14 +125,14 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional BLOCK_POS drive. Returns {@code null} when connected but invalid (fail closed).
+     * Optional BLOCK_POS drive. Returns {@code null} when driven but invalid (fail closed).
      */
     public static @Nullable BlockPos resolveOptionalBlockPos(
             BaseNode node,
             String portId,
             @Nullable BlockPos propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             return value instanceof BlockPos blockPos ? blockPos : null;
         }
@@ -139,15 +140,15 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional PLANE drive. Returns {@code null} when connected but invalid (fail closed).
-     * Canonicalizes via {@link PlaneData#normalized()} when connected.
+     * Optional PLANE drive. Returns {@code null} when driven but invalid (fail closed).
+     * Canonicalizes via {@link PlaneData#normalized()} when driven.
      */
     public static @Nullable PlaneData resolveOptionalPlane(
             BaseNode node,
             String portId,
             @Nullable PlaneData propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof PlaneData plane)) {
                 return null;
@@ -158,14 +159,14 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional BOOLEAN drive. Returns {@code null} when connected but invalid (fail closed).
+     * Optional BOOLEAN drive. Returns {@code null} when driven but invalid (fail closed).
      */
     public static @Nullable Boolean resolveOptionalBoolean(
             BaseNode node,
             String portId,
             boolean propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             return value instanceof Boolean bool ? bool : null;
         }
@@ -173,29 +174,29 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional INTEGER drive. Returns {@code null} when connected but invalid (fail closed).
+     * Optional INTEGER drive. Returns {@code null} when driven but invalid (fail closed).
      */
     public static @Nullable Integer resolveOptionalInteger(
             BaseNode node,
             String portId,
             int propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             return StrictIntegerUtils.requireExactInteger(node.getInput(portId));
         }
         return propertyFallback;
     }
 
     /**
-     * Optional STRING drive. Returns {@code null} when connected but invalid (fail closed).
-     * When unconnected, returns trimmed {@code propertyFallback}; blank property → {@code null}.
+     * Optional STRING drive. Returns {@code null} when driven but invalid (fail closed).
+     * When undriven, returns trimmed {@code propertyFallback}; blank property → {@code null}.
      */
     public static @Nullable String resolveOptionalString(
             BaseNode node,
             String portId,
             @Nullable String propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof String text) || text.isBlank()) {
                 return null;
@@ -209,15 +210,15 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional STRING drive that preserves explicit blank strings when connected.
-     * Returns {@code null} when connected but value is not a {@link String} (fail closed).
+     * Optional STRING drive that preserves explicit blank strings when driven.
+     * Returns {@code null} when driven but value is not a {@link String} (fail closed).
      */
     public static @Nullable String resolveOptionalStringAllowBlank(
             BaseNode node,
             String portId,
             @Nullable String propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             return value instanceof String text ? text : null;
         }
@@ -225,9 +226,9 @@ public final class OptionalPortDrive {
     }
 
     /**
-     * Optional STRING_LIST drive. Returns {@code null} when connected but invalid (fail closed).
-     * Connected lists must be homogeneous {@link String} elements (no coercion). Blank entries
-     * are trimmed and skipped. When unconnected, returns {@code propertyFallback} as-is
+     * Optional STRING_LIST drive. Returns {@code null} when driven but invalid (fail closed).
+     * Driven lists must be homogeneous {@link String} elements (no coercion). Blank entries
+     * are trimmed and skipped. When undriven, returns {@code propertyFallback} as-is
      * (may be null or empty).
      */
     public static @Nullable List<String> resolveOptionalStringList(
@@ -235,7 +236,7 @@ public final class OptionalPortDrive {
             String portId,
             @Nullable List<String> propertyFallback
     ) {
-        if (isConnected(node, portId)) {
+        if (isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof List<?> list)) {
                 return null;

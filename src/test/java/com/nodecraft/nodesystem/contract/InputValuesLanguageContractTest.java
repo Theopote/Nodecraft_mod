@@ -119,11 +119,16 @@ class InputValuesLanguageContractTest {
 
         node.setOptions("A, B, C");
         node.setSelectedIndex(1);
-        // Unconnected Index ignores non-Integer slot values and uses selectedIndex.
+        // Explicit setInput of wrong type is driven+invalid — fail closed (no property fallback).
         node.setInput("input_index", 2.0d);
         node.processNode(null);
-        assertEquals(1, node.getOutput("output_index"));
-        assertEquals("B", node.getOutput("output_value"));
+        assertFalse((Boolean) node.getOutput("output_valid"));
+
+        // Valid injected Integer is driven and used without a wire.
+        node.setInput("input_index", 2);
+        node.processNode(null);
+        assertEquals(2, node.getOutput("output_index"));
+        assertEquals("C", node.getOutput("output_value"));
         assertTrue((Boolean) node.getOutput("output_valid"));
 
         ValueListProbe connectedIndex = new ValueListProbe();

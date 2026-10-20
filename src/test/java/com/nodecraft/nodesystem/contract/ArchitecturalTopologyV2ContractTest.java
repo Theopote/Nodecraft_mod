@@ -211,8 +211,9 @@ class ArchitecturalTopologyV2ContractTest {
         List<PathData> ridges = (List<PathData>) generator.getOutput("output_ridges");
         assertEquals(1, ridges.size());
         PathData ridge = ridges.getFirst();
+        // Hip ridge shortens by 2*inset once optional inset is driven (setInput parity).
         double halfRidge = Math.max(20.0d * 0.5d * 0.5d, 20.0d * 0.1d);
-        assertEquals(2.0d * halfRidge, ridge.getLine().getLength(), 0.05d);
+        assertEquals(2.0d * halfRidge - 2.0d * 1.0d, ridge.getLine().getLength(), 0.05d);
         assertPathParallelToAxis(ridge, new Vector3d(1, 0, 0), ridge.getLine().getLength());
     }
 

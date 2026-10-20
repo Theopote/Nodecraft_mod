@@ -5,9 +5,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * Connection-aware SDF input resolution.
+ * Drive-aware SDF input resolution.
  * <p>
- * Unconnected → property/default; connected valid → value; connected invalid → {@code null}
+ * Undriven → property/default; driven valid → value; driven invalid → {@code null}
  * (caller fail-closed). Matches {@link PrimitiveInputUtils} / {@link CurveInputUtils}.
  */
 public final class SdfInputUtils {
@@ -17,6 +17,10 @@ public final class SdfInputUtils {
 
     public static boolean isConnected(BaseNode node, String portId) {
         return OptionalPortDrive.isConnected(node, portId);
+    }
+
+    public static boolean isDriven(BaseNode node, String portId) {
+        return OptionalPortDrive.isDriven(node, portId);
     }
 
     public static @Nullable Vector3d resolveOptionalPoint(

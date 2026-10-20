@@ -119,7 +119,7 @@ public class CreateBlockPaletteNode extends BaseNode {
     }
 
     private boolean isDriven(String portId) {
-        return OptionalPortDrive.isConnected(this, portId) || isInputPresent(portId);
+        return OptionalPortDrive.isDriven(this, portId);
     }
 
     private void emitFail(String message) {

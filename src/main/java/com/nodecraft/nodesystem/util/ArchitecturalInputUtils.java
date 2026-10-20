@@ -12,11 +12,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-/**
- * Connection-aware architectural input resolution (Graph V68).
- * <p>
- * unconnected → property/default; connected valid → override; connected invalid → fail closed.
- */
+    /**
+     * Drive-aware architectural input resolution (Graph V68).
+     * <p>
+     * undriven → property/default; driven valid → override; driven invalid → fail closed.
+     * Driven = wired or explicitly injected via {@code setInput}/{@code compute}.
+     */
 public final class ArchitecturalInputUtils {
 
     private ArchitecturalInputUtils() {
@@ -94,7 +95,7 @@ public final class ArchitecturalInputUtils {
     public static final Set<String> PATH_JOIN_MODES = Set.of("miter", "bevel", "butt");
 
     /**
-     * Known string enum (case-insensitive, trimmed). Connected unknown/null → fail closed.
+     * Known string enum (case-insensitive, trimmed). Driven unknown/null → fail closed.
      */
     public static @Nullable String resolveKnownStringEnum(
             BaseNode node,
@@ -105,7 +106,7 @@ public final class ArchitecturalInputUtils {
         if (allowedLowerCase == null || allowedLowerCase.isEmpty()) {
             return null;
         }
-        if (OptionalPortDrive.isConnected(node, portId)) {
+        if (OptionalPortDrive.isDriven(node, portId)) {
             Object value = node.getInput(portId);
             if (!(value instanceof String text) || text.isBlank()) {
                 return null;

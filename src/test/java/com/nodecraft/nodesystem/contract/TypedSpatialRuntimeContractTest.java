@@ -70,6 +70,14 @@ class TypedSpatialRuntimeContractTest {
     }
 
     @Test
+    void optionalDoubleRejectsIntegerWhenSetInputWithoutWire() {
+        StubNode node = new StubNode(NodeDataType.DOUBLE);
+        node.setInput("input_value", 2);
+        assertTrue(OptionalPortDrive.isDriven(node, "input_value"));
+        assertNull(OptionalPortDrive.resolveOptionalDouble(node, "input_value", 99.0d));
+    }
+
+    @Test
     void optionalDoubleAcceptsExactDoubleWhenConnected() {
         StubNode node = new StubNode(NodeDataType.DOUBLE);
         connectStub(node, "input_value");
@@ -77,6 +85,14 @@ class TypedSpatialRuntimeContractTest {
         Double resolved = OptionalPortDrive.resolveOptionalDouble(node, "input_value", 0.0d);
         assertNotNull(resolved);
         assertEquals(2.0d, resolved, 1e-9);
+    }
+
+    @Test
+    void optionalPointRejectsBareVectorWhenSetInputWithoutWire() {
+        StubNode node = new StubNode(NodeDataType.POINT);
+        node.setInput("input_value", new Vector3d(1, 2, 3));
+        assertTrue(OptionalPortDrive.isDriven(node, "input_value"));
+        assertNull(OptionalPortDrive.resolveOptionalPoint(node, "input_value", new Vector3d(9, 9, 9)));
     }
 
     @Test

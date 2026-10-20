@@ -2,9 +2,11 @@ package com.nodecraft.nodesystem.sdf;
 
 import com.nodecraft.nodesystem.datatypes.BooleanSdfData;
 import com.nodecraft.nodesystem.datatypes.BentSdfData;
+import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.datatypes.SdfGeometryData;
 import com.nodecraft.nodesystem.datatypes.SignedDistanceFieldData;
 import com.nodecraft.nodesystem.datatypes.SphereSdfData;
+import com.nodecraft.nodesystem.datatypes.VectorData;
 import com.nodecraft.nodesystem.nodes.transform.deformations.BendSdfNode;
 import com.nodecraft.nodesystem.nodes.output.execute.SdfToBlocksNode;
 import com.nodecraft.nodesystem.util.BlockPosList;
@@ -82,9 +84,9 @@ class SdfNodeSystemTest {
 
         Map<String, Object> outputs = node.compute(Map.of(
                 "input_sdf", sdf,
-                "input_axis_origin", new Vector3d(0.0d, 0.0d, 0.0d),
-                "input_axis_direction", new Vector3d(1.0d, 0.0d, 0.0d),
-                "input_bend_normal", new Vector3d(0.0d, 1.0d, 0.0d),
+                "input_axis_origin", new PointData(0.0d, 0.0d, 0.0d),
+                "input_axis_direction", new VectorData(1.0d, 0.0d, 0.0d),
+                "input_bend_normal", new VectorData(0.0d, 1.0d, 0.0d),
                 "input_bend_degrees", 90.0d,
                 "input_bend_length", 10.0d
         ));
