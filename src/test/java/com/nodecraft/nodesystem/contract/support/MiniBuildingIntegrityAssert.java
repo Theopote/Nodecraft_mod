@@ -1,6 +1,10 @@
 package com.nodecraft.nodesystem.contract.support;
 
+import com.nodecraft.nodesystem.datatypes.CompositeGeometryData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
+import com.nodecraft.nodesystem.util.GeometryStructureUtils;
+import com.nodecraft.nodesystem.util.PrimitiveVolumeSampler;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 
@@ -9,6 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,16 +47,18 @@ public final class MiniBuildingIntegrityAssert {
 
     /**
      * Floor slab: bottom Y band must cover the building footprint with few gaps
-     * (openings are on walls, not the floor plane).
+     * (openings are on walls, not the floor plane) and form a single 4-connected component.
      */
     public static void assertFloorContinuous(Set<BlockPos> solid, Bounds bounds) {
         Set<BlockPos> floor = filterY(solid, bounds.minY());
         assertTrue(floor.size() >= 20, "floor band too sparse: " + floor.size());
-        int footprint = (bounds.maxX() - bounds.minX() + 1) * (bounds.maxZ() - bounds.minZ() + 1);
-        // Floor need not fill interior courtyard fully, but must cover a large share of the bbox.
+        Bounds floorBounds = boundsOf(floor);
+        int footprint = (floorBounds.maxX() - floorBounds.minX() + 1)
+                * (floorBounds.maxZ() - floorBounds.minZ() + 1);
+        // Floor need not fill interior courtyard fully, but must cover a large share of its own bbox.
         assertTrue(floor.size() * 4 >= footprint,
                 "floor coverage too low: cells=" + floor.size() + " footprint=" + footprint);
-        assertConnectedOrthogonally(floor, "floor");
+        assertStrictlyConnectedOrthogonally(floor, "floor");
     }
 
     /**
@@ -208,8 +215,107 @@ public final class MiniBuildingIntegrityAssert {
     }
 
     /**
-     * Window frames should occupy cells adjacent to openings (not the opening centers themselves).
+     * Window frames must come from the Place-Geometry-On-Frames branch — not host wall solids.
+     * <p>
+     * Thin frame bars often vanish under 1-block voxelization, so this check is geometric:
+     * leaf count, hollow opening centers, and rim samples that hit frame leaves while remaining
+     * empty in the cut host wall (so a plain wall ring cannot pass).
+     *
+     * @param frameGeometry      {@code place_frames} output geometry (pre-move local space)
+     * @param hostWallGeometry   cut wall geometry without frames (pre-move local space)
+     * @param centers            window array opening centers (same local space)
+     * @param faceNormal         host face outward normal
+     * @param expectedFrameCount place_frames {@code output_count} (must match window count)
      */
+    public static void assertFramesFromBranch(
+            GeometryData frameGeometry,
+            GeometryData hostWallGeometry,
+            List<PointData> centers,
+            Vector3d faceNormal,
+            int expectedFrameCount
+    ) {
+        assertTrue(centers != null && !centers.isEmpty(), "need window centers");
+        assertEquals(centers.size(), expectedFrameCount,
+                "place_frames count must match Window Array openings");
+        assertTrue(frameGeometry != null, "place_frames geometry missing");
+        assertTrue(hostWallGeometry != null, "cut wall geometry missing");
+
+        long frameLeaves = GeometryStructureUtils.countLeaves(frameGeometry);
+        // WindowFrame packs 4 bars; Place-on-Frames copies once per opening.
+        assertTrue(frameLeaves >= 4L * centers.size(),
+                "frame leaf count too low for openings: leaves=" + frameLeaves
+                        + " openings=" + centers.size());
+
+        Vector3d across = centers.size() >= 2
+                ? new Vector3d(centers.get(1).position()).sub(centers.get(0).position())
+                : new Vector3d(1.0d, 0.0d, 0.0d);
+        if (across.lengthSquared() < 1.0e-6d) {
+            across.set(1.0d, 0.0d, 0.0d);
+        } else {
+            across.normalize();
+        }
+        Vector3d up = new Vector3d(0.0d, 1.0d, 0.0d);
+        Vector3d normal = faceNormal == null ? new Vector3d(0.0d, 0.0d, 1.0d) : new Vector3d(faceNormal);
+        if (normal.lengthSquared() > 1.0e-6d) {
+            normal.normalize();
+        }
+
+        for (PointData center : centers) {
+            Vector3d opening = new Vector3d(center.position());
+            assertFalse(anyLeafContains(frameGeometry, opening),
+                    "frame must not fill opening center: " + opening);
+            assertFalse(anyLeafContains(hostWallGeometry, opening),
+                    "cut host wall must leave opening center empty: " + opening);
+
+            // Outer frame matches opening size (~1.5×1.0); sample near bar midlines, not hollow core.
+            Vector3d[] rimSamples = {
+                    new Vector3d(opening).fma(0.70d, across),
+                    new Vector3d(opening).fma(-0.70d, across),
+                    new Vector3d(opening).fma(0.45d, up),
+                    new Vector3d(opening).fma(-0.45d, up),
+                    new Vector3d(opening).fma(0.70d, across).fma(0.05d, normal),
+                    new Vector3d(opening).fma(-0.70d, across).fma(0.05d, normal),
+                    new Vector3d(opening).fma(0.45d, up).fma(0.05d, normal),
+                    new Vector3d(opening).fma(-0.45d, up).fma(0.05d, normal)
+            };
+            int frameHits = 0;
+            int hostHits = 0;
+            for (Vector3d sample : rimSamples) {
+                if (anyLeafContains(frameGeometry, sample)) {
+                    frameHits++;
+                }
+                if (anyLeafContains(hostWallGeometry, sample)) {
+                    hostHits++;
+                }
+            }
+            assertTrue(frameHits >= 2,
+                    "opening rim must hit ≥2 place_frames leaves near " + opening
+                            + " (hits=" + frameHits + ")");
+            assertTrue(frameHits > hostHits,
+                    "frame rim hits must exceed host-wall hits (else wall alone could pass): "
+                            + "frame=" + frameHits + " host=" + hostHits + " at " + opening);
+        }
+    }
+
+    private static boolean anyLeafContains(GeometryData geometry, Vector3d point) {
+        if (geometry == null || point == null) {
+            return false;
+        }
+        if (geometry instanceof CompositeGeometryData composite) {
+            for (GeometryData child : composite.geometries()) {
+                if (anyLeafContains(child, point)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return PrimitiveVolumeSampler.containsPoint(geometry, point);
+    }
+
+    /**
+     * @deprecated Prefer {@link #assertFramesFromBranch} — neighbor-of-solid checks can pass on walls alone.
+     */
+    @Deprecated
     public static void assertFramesAroundOpenings(
             Set<BlockPos> solid,
             List<PointData> centers,
@@ -275,8 +381,12 @@ public final class MiniBuildingIntegrityAssert {
         return out;
     }
 
-    private static void assertConnectedOrthogonally(Set<BlockPos> cells, String label) {
-        if (cells.size() <= 1) {
+    /**
+     * Strict 4-connected check: every cell must belong to the same orthogonal component.
+     * Do not use a fractional threshold — two equal-sized islands would otherwise pass.
+     */
+    public static void assertStrictlyConnectedOrthogonally(Set<BlockPos> cells, String label) {
+        if (cells == null || cells.size() <= 1) {
             return;
         }
         BlockPos start = cells.iterator().next();
@@ -292,9 +402,33 @@ public final class MiniBuildingIntegrityAssert {
                 }
             }
         }
-        assertTrue(visited.size() * 2 >= cells.size(),
-                label + " orthogonally connected component too small: " + visited.size()
+        assertEquals(cells.size(), visited.size(),
+                label + " must be a single orthogonal component; visited=" + visited.size()
                         + "/" + cells.size() + " sample=" + summarize(cells));
+    }
+
+    /** Offset a local-space solid set by a world translation (Move-to-Player). */
+    public static Set<BlockPos> offset(Set<BlockPos> local, Vector3d worldOffset) {
+        Set<BlockPos> out = new HashSet<>(local.size());
+        int dx = (int) Math.floor(worldOffset.x);
+        int dy = (int) Math.floor(worldOffset.y);
+        int dz = (int) Math.floor(worldOffset.z);
+        // Prefer ofFloored on continuous offset when fractional.
+        if (Math.abs(worldOffset.x - dx) > 1.0e-9d
+                || Math.abs(worldOffset.y - dy) > 1.0e-9d
+                || Math.abs(worldOffset.z - dz) > 1.0e-9d) {
+            for (BlockPos pos : local) {
+                out.add(BlockPos.ofFloored(
+                        pos.getX() + worldOffset.x,
+                        pos.getY() + worldOffset.y,
+                        pos.getZ() + worldOffset.z));
+            }
+            return out;
+        }
+        for (BlockPos pos : local) {
+            out.add(pos.add(dx, dy, dz));
+        }
+        return out;
     }
 
     private static String summarize(Set<BlockPos> positions) {

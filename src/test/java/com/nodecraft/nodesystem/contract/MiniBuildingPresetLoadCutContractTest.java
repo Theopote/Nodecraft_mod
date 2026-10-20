@@ -5,6 +5,7 @@ import com.nodecraft.gui.preset.GraphPresetRules;
 import com.nodecraft.gui.preset.GraphPresetTestResources;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.contract.support.ArchitecturalVoxelAssert;
+import com.nodecraft.nodesystem.contract.support.MiniBuildingIntegrityAssert;
 import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -125,6 +126,17 @@ class MiniBuildingPresetLoadCutContractTest {
             cutSolid, centers.get(0), centers.get(1), faceNormal);
         ArchitecturalVoxelAssert.assertOpeningCutsThroughThickness(
             cutSolid, centers.get(0).position(), faceNormal, 0.6d);
+
+        GeometryData frameGeom = assertInstanceOf(GeometryData.class, placeFrames.getOutput("output_geometry"));
+        int frameCount = placeFrames.getOutput("output_count") instanceof Number n ? n.intValue() : -1;
+        MiniBuildingIntegrityAssert.assertFramesFromBranch(
+                frameGeom, cutGeom, centers, faceNormal, frameCount);
+        MiniBuildingIntegrityAssert.assertStrictlyConnectedOrthogonally(
+                ArchitecturalVoxelAssert.toSolidSet(
+                        GeometryVoxelizer.voxelize(
+                                assertInstanceOf(GeometryData.class, floor.getOutput("output_geometry")),
+                                true)),
+                "preset floor slab");
 
         Object placements = materialNode.getOutput("output_placements");
         assertNotNull(placements, "Assign Block Type must emit placements");

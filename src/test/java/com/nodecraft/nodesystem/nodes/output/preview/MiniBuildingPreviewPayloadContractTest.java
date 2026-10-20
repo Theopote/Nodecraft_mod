@@ -8,6 +8,7 @@ import com.nodecraft.nodesystem.bake.BakePlacementService;
 import com.nodecraft.nodesystem.contract.support.MiniBuildingIntegrityAssert;
 import com.nodecraft.nodesystem.contract.support.PreviewApplyPlacementAssert;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.ExecutionRunLimits;
@@ -163,8 +164,13 @@ class MiniBuildingPreviewPayloadContractTest {
         List<PointData> centers = (List<PointData>) windows.getOutput("output_centers");
         Vector3d faceNormal = ((BoxFaceData) frontFace.getOutput("output_face")).getNormal();
         MiniBuildingIntegrityAssert.assertOpeningsAndPiers(solid, centers, PLAYER_ORIGIN, faceNormal);
+
+        GeometryData frameGeom = assertInstanceOf(GeometryData.class, placeFrames.getOutput("output_geometry"));
+        GeometryData cutWallGeom = assertInstanceOf(GeometryData.class,
+                material.byRef.get("cut_walls").getOutput("output_geometry"));
         int frameCount = placeFrames.getOutput("output_count") instanceof Number n ? n.intValue() : -1;
-        MiniBuildingIntegrityAssert.assertFramesAroundOpenings(solid, centers, PLAYER_ORIGIN, frameCount);
+        MiniBuildingIntegrityAssert.assertFramesFromBranch(
+                frameGeom, cutWallGeom, centers, faceNormal, frameCount);
     }
 
     @Test

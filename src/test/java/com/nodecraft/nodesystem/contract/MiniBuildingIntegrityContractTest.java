@@ -6,6 +6,7 @@ import com.nodecraft.gui.preset.GraphPresetTestResources;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.contract.support.MiniBuildingIntegrityAssert;
 import com.nodecraft.nodesystem.datatypes.BoxFaceData;
+import com.nodecraft.nodesystem.datatypes.GeometryData;
 import com.nodecraft.nodesystem.datatypes.PointData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.execution.ExecutionRunLimits;
@@ -35,11 +36,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Phase 6D: Mini Building spatial integrity beyond non-empty / Y-band presence checks.
+ * Phase 6D/6E: Mini Building spatial integrity — frames from place_frames branch,
+ * strict floor connectivity, walls/roof/openings.
  */
 class MiniBuildingIntegrityContractTest {
 
@@ -91,9 +94,14 @@ class MiniBuildingIntegrityContractTest {
         Vector3d faceNormal = ((BoxFaceData) material.byRef.get("front_face").getOutput("output_face")).getNormal();
         MiniBuildingIntegrityAssert.assertOpeningsAndPiers(solid, centers, PLAYER_ORIGIN, faceNormal);
 
+        GeometryData frameGeom = assertInstanceOf(GeometryData.class,
+                material.byRef.get("place_frames").getOutput("output_geometry"));
+        GeometryData cutWallGeom = assertInstanceOf(GeometryData.class,
+                material.byRef.get("cut_walls").getOutput("output_geometry"));
         Object frameCountObj = material.byRef.get("place_frames").getOutput("output_count");
         int frameCount = frameCountObj instanceof Number n ? n.intValue() : -1;
-        MiniBuildingIntegrityAssert.assertFramesAroundOpenings(solid, centers, PLAYER_ORIGIN, frameCount);
+        MiniBuildingIntegrityAssert.assertFramesFromBranch(
+                frameGeom, cutWallGeom, centers, faceNormal, frameCount);
     }
 
     private static GraphPresetRules.GraphPresetDefinition requirePreset(String presetId) {
