@@ -80,14 +80,19 @@ class AiSemanticComposerContractTest {
         assertTrue(types.contains("output.preview.preview_blocks"));
         assertFalse(types.contains("output.execute.apply_changes"));
 
+        // P2: assert the live plan wires — not only joinRolePenalty search weights.
         assertTrue(hasConnection(plan,
                 "geometry.architectural_primitives.wall_slab", "output_geometry",
                 "geometry.boolean.difference", "input_base"),
-                "wall.geometry → difference.base");
+                "Wall → Difference.input_base must be wired");
         assertTrue(hasConnection(plan,
                 "geometry.architectural_primitives.window_array", "output_openings",
                 "geometry.boolean.difference", "input_cutter"),
-                "window.openings → difference.cutter");
+                "Window Array → Difference.input_cutter must be wired");
+        assertFalse(hasConnection(plan,
+                "geometry.primitives.box", "output_geometry",
+                "geometry.boolean.difference", "input_base"),
+                "box helper must not win Difference.input_base over wall");
 
         // P1: required BOX_FACE inputs completed via Catalog upstream (Box → GetBoxFace).
         assertTrue(types.contains("reference.points.get_box_face")

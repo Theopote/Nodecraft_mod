@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -291,11 +293,16 @@ class GraphStructureEditSupportTransactionTest {
         );
 
         // History recording failed, but the graph edit must stick (Delete must not snap back).
-        assertEquals(GraphStructureEditSupport.Outcome.SUCCESS, outcome);
+        assertEquals(GraphStructureEditSupport.Outcome.SUCCESS_WITHOUT_UNDO, outcome);
+        assertTrue(GraphStructureEditSupport.succeeded(outcome));
+        assertTrue(GraphStructureEditSupport.appliedWithoutUndo(outcome));
+        assertFalse(GraphStructureEditSupport.fullySucceeded(outcome));
         assertNotNull(findRelayByTag(fixture.document.getGraph(), "history-fail"));
         assertEquals(0, fixture.history.undoStackSize(), "orphan undo pushed before throw must be discarded");
         assertEquals(0, fixture.history.redoStackSize());
         assertTrue(fixture.history.isRecording());
+        assertEquals(1, fixture.historyFailureNotices.size(), "host must be notified of Undo failure");
+        assertEquals("History Commit Fail", fixture.historyFailureNotices.getFirst());
     }
 
     @Test
@@ -389,6 +396,7 @@ class GraphStructureEditSupportTransactionTest {
         final DocumentEditor editor;
         final AtomicInteger structureDirtyCount = new AtomicInteger();
         final AtomicInteger captureCount = new AtomicInteger();
+        final List<String> historyFailureNotices = new ArrayList<>();
         int failAfterSnapshotOnNthCapture = -1;
         boolean throwOnNotify;
 
@@ -459,6 +467,11 @@ class GraphStructureEditSupportTransactionTest {
                         throw new IllegalStateException("notify boom");
                     }
                     structureDirtyCount.incrementAndGet();
+                }
+
+                @Override
+                public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+                    historyFailureNotices.add(label);
                 }
             };
         }

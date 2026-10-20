@@ -58,6 +58,10 @@ public final class NodeCommandService {
 
         /** Restores a document snapshot for structure-edit rollback / Undo. */
         boolean restoreDocument(SavedGraph snapshot);
+
+        /** Visible warning when a structure edit applied but Undo could not be recorded. */
+        default void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+        }
     }
 
     private final Host host;
@@ -237,6 +241,11 @@ public final class NodeCommandService {
             @Override
             public void notifyStructureDirty() {
                 host.notifyStructureDirty();
+            }
+
+            @Override
+            public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+                host.notifyHistoryRecordFailed(label, cause);
             }
         };
     }

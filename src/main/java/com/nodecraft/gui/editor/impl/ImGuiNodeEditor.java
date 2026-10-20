@@ -165,6 +165,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             markGraphStructureDirty(impactedNodeIds);
         }
         @Override public void notifyConnectionAdded(Map<String, Object> eventData) { notifyEditorComponents("connection_added", eventData); }
+        @Override public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+            ImGuiNodeEditor.this.showHistoryRecordFailed(label, cause);
+        }
         @Override public INode addNode(String nodeTypeId, float x, float y) { return ImGuiNodeEditor.this.addNode(nodeTypeId, x, y); }
         @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
         @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
@@ -186,6 +189,9 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             markGraphStructureDirty(impactedNodeIds);
         }
         @Override public void notifyNodeAdded(Map<String, Object> eventData) { notifyEditorComponents("node_added", eventData); }
+        @Override public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+            ImGuiNodeEditor.this.showHistoryRecordFailed(label, cause);
+        }
         @Override public void clearSelectedNodes() { ImGuiNodeEditor.this.clearSelectedNodes(); }
         @Override public void setSelectedNodeId(UUID nodeId) { ImGuiNodeEditor.this.setSelectedNodeId(nodeId); }
         @Override public void removeNodePosition(UUID nodeId) { ImGuiNodeEditor.this.removeNodePosition(nodeId); }
@@ -1356,7 +1362,23 @@ public class ImGuiNodeEditor implements INodeEditor, ICanvasEditor, GraphApplyTa
             public void notifyStructureDirty() {
                 markGraphStructureDirty();
             }
+
+            @Override
+            public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+                showHistoryRecordFailed(label, cause);
+            }
         };
+    }
+
+    private void showHistoryRecordFailed(String label, @Nullable Throwable cause) {
+        String detail = cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()
+                ? cause.getMessage()
+                : "未知原因";
+        String op = label == null || label.isBlank() ? "图结构编辑" : label;
+        new MessageDialog(
+                "无法记录撤销",
+                "操作「" + op + "」已应用到节点图，但撤销历史录制失败，本次修改无法 Undo。\n\n原因: " + detail
+        ).show();
     }
 
     @Override

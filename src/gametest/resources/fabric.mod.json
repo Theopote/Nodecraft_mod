@@ -6,7 +6,8 @@
 	"environment": "*",
 	"entrypoints": {
 		"fabric-gametest": [
-			"com.nodecraft.gametest.NodeCraftGameTest"
+			"com.nodecraft.gametest.NodeCraftGameTest",
+			"com.nodecraft.gametest.MiniBuildingWorldBakeGameTest"
 		]
 	},
 	"depends": {

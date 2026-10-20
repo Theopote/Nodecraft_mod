@@ -7,6 +7,9 @@ import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.Vec3;
+import net.minecraft.block.BlockState;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3d;
 
@@ -76,6 +79,14 @@ public final class PropertyValueSnapshots {
         }
         if (value instanceof BlockPos blockPos) {
             return new BlockPos(blockPos.getX(), blockPos.getY(), blockPos.getZ());
+        }
+        if (value instanceof BlockState blockState) {
+            // BlockState is not Gson-safe; isolate via registry id + default state.
+            Identifier id = Registries.BLOCK.getId(blockState.getBlock());
+            return Registries.BLOCK.get(id).getDefaultState();
+        }
+        if (value instanceof Identifier identifier) {
+            return Identifier.of(identifier.getNamespace(), identifier.getPath());
         }
         if (value instanceof PlaneData plane) {
             PlaneData copied = PlaneData.canonical(plane.getPoint(), plane.getNormal());
@@ -147,6 +158,10 @@ public final class PropertyValueSnapshots {
             } catch (Exception ignored) {
                 // fall through
             }
+        }
+        if (value instanceof BlockState blockState) {
+            Identifier id = Registries.BLOCK.getId(blockState.getBlock());
+            return Registries.BLOCK.get(id).getDefaultState();
         }
         throw new SnapshotIsolationException(
                 "Unable to isolate snapshot for " + value.getClass().getName() + "; refusing to alias live data");

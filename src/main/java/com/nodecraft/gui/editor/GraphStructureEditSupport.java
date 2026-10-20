@@ -12,16 +12,20 @@ import java.util.Objects;
 /**
  * Runs a multi-step graph structure mutation with snapshot rollback independent of Undo recording.
  * <p>
- * Always snapshots before mutating and restores on failure. Records a single
- * {@link ImGuiNodeHistory#recordGraphTransaction} only when history was recording at entry.
- * Commit-phase failures (after-snapshot, dirty notify, history record) also restore the before snapshot
- * so the graph is never left modified without a recorded Undo when recording was expected.
+ * Always snapshots before mutating and restores on mutation/commit failures that leave the graph
+ * inconsistent. When the mutation and dirty notify succeed but Undo recording fails, the edit is
+ * kept and {@link Outcome#SUCCESS_WITHOUT_UNDO} is returned so callers can surface a visible warning.
  */
 public final class GraphStructureEditSupport {
 
     public enum Outcome {
         /** Mutation completed; Undo recorded when history was recording at entry. */
         SUCCESS,
+        /**
+         * Mutation and dirty notify completed, but Undo recording failed while history was expected.
+         * The graph keeps the edit; callers must not treat this as a silent full success.
+         */
+        SUCCESS_WITHOUT_UNDO,
         /** Mutation aborted or threw; before-snapshot restored successfully. */
         ABORTED_ROLLED_BACK,
         /** Mutation aborted and restoreDocument returned false (document may be inconsistent). */
@@ -45,6 +49,13 @@ public final class GraphStructureEditSupport {
         default SavedGraph captureSnapshot() {
             return GraphStructureEditSupport.snapshotDocument(document());
         }
+
+        /**
+         * Visible feedback when a destructive structure edit applied but Undo could not be recorded.
+         * Default is no-op for headless hosts; the editor overrides with a dialog.
+         */
+        default void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+        }
     }
 
     private GraphStructureEditSupport() {
@@ -61,14 +72,24 @@ public final class GraphStructureEditSupport {
         );
     }
 
+    /** True when the graph mutation was applied (with or without an Undo record). */
     public static boolean succeeded(Outcome outcome) {
+        return outcome == Outcome.SUCCESS || outcome == Outcome.SUCCESS_WITHOUT_UNDO;
+    }
+
+    /** True only when mutation applied and Undo was recorded (or recording was not expected). */
+    public static boolean fullySucceeded(Outcome outcome) {
         return outcome == Outcome.SUCCESS;
+    }
+
+    public static boolean appliedWithoutUndo(Outcome outcome) {
+        return outcome == Outcome.SUCCESS_WITHOUT_UNDO;
     }
 
     /**
      * Executes {@code mutation} with always-on snapshot rollback.
      *
-     * @return {@link Outcome#SUCCESS} or {@link Outcome#ABORTED_ROLLED_BACK}
+     * @return {@link Outcome#SUCCESS}, {@link Outcome#SUCCESS_WITHOUT_UNDO}, or {@link Outcome#ABORTED_ROLLED_BACK}
      * @throws StructureEditRollbackException when abort restore fails
      */
     public static Outcome run(Host host, String label, Mutation mutation) {
@@ -115,6 +136,16 @@ public final class GraphStructureEditSupport {
                         label,
                         historyError.getMessage(),
                         historyError);
+                try {
+                    host.notifyHistoryRecordFailed(label, historyError.getCause());
+                } catch (RuntimeException notifyError) {
+                    NodeCraft.LOGGER.error(
+                            "Graph structure edit '{}' history-failure notify threw: {}",
+                            label,
+                            notifyError.getMessage(),
+                            notifyError);
+                }
+                return Outcome.SUCCESS_WITHOUT_UNDO;
             } catch (RuntimeException commitError) {
                 NodeCraft.LOGGER.error(
                         "Graph structure edit '{}' commit failed: {}",

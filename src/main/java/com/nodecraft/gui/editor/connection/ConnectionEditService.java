@@ -55,6 +55,10 @@ public final class ConnectionEditService {
         SavedGraph snapshotDocument();
 
         boolean restoreDocument(SavedGraph snapshot);
+
+        /** Visible warning when a structure edit applied but Undo could not be recorded. */
+        default void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+        }
     }
 
     /**
@@ -321,6 +325,11 @@ public final class ConnectionEditService {
             @Override
             public void notifyStructureDirty() {
                 host.notifyStructureDirty();
+            }
+
+            @Override
+            public void notifyHistoryRecordFailed(String label, @Nullable Throwable cause) {
+                host.notifyHistoryRecordFailed(label, cause);
             }
         };
     }
