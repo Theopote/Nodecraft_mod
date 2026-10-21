@@ -45,14 +45,40 @@ final class AiUiHelper {
         textWrappedColored(0.55f, 0.55f, 0.55f, 1.0f, text);
     }
 
+    /** Estimated width of an ImGui {@code smallButton} for {@code label}. */
+    static float smallButtonWidth(String label) {
+        float padX = ImGui.getStyle().getFramePaddingX();
+        return ImGui.calcTextSize(label == null ? "" : label).x + padX * 2.0f;
+    }
+
     /**
-     * Places {@code widgetWidth} on the current line when it fits; otherwise wraps to the next line.
-     * Prevents buttons from being drawn under the right scrollbar.
+     * Screen-space right edge of the current content row (call at the start of a flow row).
+     */
+    static float contentRowRightEdge() {
+        return ImGui.getCursorScreenPos().x + ImGui.getContentRegionAvailX();
+    }
+
+    /**
+     * Places the next widget on the current line when it fits within {@code rowRightEdge}
+     * (from {@link #contentRowRightEdge()}); otherwise leaves it on the next line.
+     * Uses the previous item's actual rect — not an underestimated text width — so buttons wrap
+     * instead of being clipped.
+     */
+    static void sameLineIfFitsInRow(float rowRightEdge, float nextWidgetWidth) {
+        float spacing = ImGui.getStyle().getItemSpacingX();
+        if (ImGui.getItemRectMax().x + spacing + nextWidgetWidth <= rowRightEdge) {
+            ImGui.sameLine(0.0f, spacing);
+        }
+    }
+
+    /**
+     * Places {@code widgetWidth} on the current line when remaining avail space is enough.
+     * Prefer {@link #sameLineIfFitsInRow} for button flows.
      */
     static void sameLineIfFits(float widgetWidth) {
         float spacing = ImGui.getStyle().getItemSpacingX();
-        if (ImGui.getContentRegionAvailX() >= widgetWidth + spacing + SCROLLBAR_GUTTER) {
-            ImGui.sameLine();
+        if (ImGui.getContentRegionAvailX() >= widgetWidth + spacing) {
+            ImGui.sameLine(0.0f, spacing);
         }
     }
 

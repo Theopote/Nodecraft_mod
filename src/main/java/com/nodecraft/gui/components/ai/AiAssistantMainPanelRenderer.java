@@ -164,18 +164,26 @@ final class AiAssistantMainPanelRenderer {
             ImGui.beginDisabled();
         }
 
-        if (ImGui.smallButton("Generate from selection")) {
-            actions.onQuickPrompt("Generate a node graph based on current selection and keep existing style.");
-        }
-        // Estimate button width from label; wrap to next line when the panel is narrow.
-        AiUiHelper.sameLineIfFits(ImGui.calcTextSize("Suggest improvements").x + 16.0f);
-        if (ImGui.smallButton("Suggest improvements")) {
-            actions.onQuickPrompt(
-                    "Suggest readability and structure improvements for the selected node graph.");
-        }
-        AiUiHelper.sameLineIfFits(ImGui.calcTextSize("Explain selected node").x + 16.0f);
-        if (ImGui.smallButton("Explain selected node")) {
-            actions.onQuickPrompt("Explain what the selected node does and how to connect it.");
+        final String[] labels = {
+                "Generate from selection",
+                "Suggest improvements",
+                "Explain selected node"
+        };
+        final String[] prompts = {
+                "Generate a node graph based on current selection and keep existing style.",
+                "Suggest readability and structure improvements for the selected node graph.",
+                "Explain what the selected node does and how to connect it."
+        };
+
+        // Capture the row's right edge once; wrap using each previous button's real rect.
+        float rowRight = AiUiHelper.contentRowRightEdge();
+        for (int i = 0; i < labels.length; i++) {
+            if (i > 0) {
+                AiUiHelper.sameLineIfFitsInRow(rowRight, AiUiHelper.smallButtonWidth(labels[i]));
+            }
+            if (ImGui.smallButton(labels[i])) {
+                actions.onQuickPrompt(prompts[i]);
+            }
         }
 
         if (state.busy()) {
@@ -199,6 +207,7 @@ final class AiAssistantMainPanelRenderer {
             }
         }
 
+        // Width 0 = full content region — same basis as the prompt row so Send aligns to this edge.
         try (ImGuiChildScope scope = new ImGuiChildScope("aiChatHistory", 0.0f, historyHeight, true, 0)) {
             if (!scope.isOpen()) {
                 return updatedCount;
@@ -215,8 +224,6 @@ final class AiAssistantMainPanelRenderer {
                             isUser ? 1.0f : 0.55f,
                             1.0f,
                             isUser ? "You" : "AI");
-                    // Role on its own line, then wrap body to panel width (sameLine+textWrapped
-                    // previously spilled under the scrollbar on continuations).
                     AiUiHelper.textWrapped(message.content());
                     ImGui.spacing();
                 }
@@ -244,9 +251,12 @@ final class AiAssistantMainPanelRenderer {
         float lineH = ImGui.getFrameHeight();
         float dynamicHeight = activeLineCount * lineH;
 
+        // Match Conversation child width (ContentRegionAvail with child width=0).
+        float rowWidth = ImGui.getContentRegionAvailX();
         float sendWidth = 80.0f;
         float spacing = ImGui.getStyle().getItemSpacingX();
-        float inputWidth = Math.max(80.0f, AiUiHelper.usableContentWidth() - sendWidth - spacing);
+        float inputWidth = Math.max(1.0f, rowWidth - sendWidth - spacing);
+
         ImGui.pushItemWidth(inputWidth);
         int inputFlags = ImGuiInputTextFlags.CtrlEnterForNewLine;
         if (state.enterToSend().get()) {
@@ -263,7 +273,8 @@ final class AiAssistantMainPanelRenderer {
             ImGui.endDisabled();
         }
 
-        AiUiHelper.sameLineIfFits(sendWidth);
+        // Always same line so Send's right edge lines up with the Conversation box.
+        ImGui.sameLine(0.0f, spacing);
         if (ImGui.button("Send##ai_prompt_send", sendWidth, dynamicHeight)
                 || (state.enterToSend().get() && submitted)) {
             actions.onSubmitPrompt();
