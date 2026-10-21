@@ -30,6 +30,7 @@ import com.nodecraft.gui.components.search.NodeSearchMatcher;
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiSelectableFlags;
+import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.flag.ImGuiDragDropFlags;
 import imgui.ImDrawList;
@@ -66,6 +67,10 @@ public class NodeLibraryComponent implements EditorComponent {
         static final float GRID_TILE_SIZE_SCALE = 1.5f;
         static final float GRID_TILE_SIZE_SCALE_MIN = 1.0f;
         static final float GRID_TILE_SIZE_SCALE_MAX = 2.0f;
+        /** Exact pixel gap between adjacent grid tiles (all four directions). */
+        static final float GRID_TILE_GAP = 2.0f;
+        /** Hairline border around each tile background. */
+        static final float GRID_TILE_BORDER_THICKNESS = 1.0f;
         static final String DRAG_DROP_PAYLOAD_TYPE = "DND_NODE_FROM_LIBRARY";
 
         static final Map<String, float[]> CATEGORY_COLORS_FLOAT = buildGradientCategoryColors();
@@ -423,21 +428,24 @@ public class NodeLibraryComponent implements EditorComponent {
         }
 
         ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "Favorites");
+        // Same icon+label path as the category list. The old "★ " text label rendered as
+        // "?" because the default ImGui font does not include that glyph.
         for (NodeInfo node : favorites) {
-            String label = "  ★ " + node.getDisplayName() + "##fav_" + node.getId();
-            if (ImGui.selectable(label)) {
-                if (selectCallback != null) {
-                    selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
-                }
-            }
-            if (ImGui.isItemHovered()) {
-                ImGui.setTooltip(node.getId() + "\nRight-click a library node to toggle favorites");
-            }
-            if (ImGui.beginPopupContextItem("fav_ctx_" + node.getId())) {
-                if (ImGui.menuItem("Remove from Favorites")) {
-                    NodeFavoritesStore.remove(node.getId());
-                }
-                ImGui.endPopup();
+            String nodeCategory = node.getCategoryId();
+            float lineHeight = ImGui.getTextLineHeight();
+            float iconPadding = 4.0f;
+            float availableWidth = ImGui.getContentRegionAvailX();
+
+            boolean selected = ImGui.selectable("##fav_node_" + node.getId(), false,
+                    ImGuiSelectableFlags.AllowItemOverlap, availableWidth, lineHeight);
+
+            ImVec2 rectMin = ImGui.getItemRectMin();
+            ImDrawList drawList = ImGui.getWindowDrawList();
+            renderNode(drawList, rectMin, new ImVec2(lineHeight, lineHeight), node, nodeCategory, lineHeight, iconPadding);
+            handleNodeInteraction(node, nodeCategory, "Favorites", lineHeight);
+
+            if (selected && selectCallback != null) {
+                selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
             }
         }
         ImGui.spacing();
@@ -807,7 +815,7 @@ public class NodeLibraryComponent implements EditorComponent {
             ImDrawList drawList = ImGui.getWindowDrawList();
 
             renderNode(drawList, rectMin, new ImVec2(lineHeight, lineHeight), node, nodeCategory, lineHeight, iconPadding);
-            handleNodeInteraction(node, nodeCategory, displayCategory, lineHeight);
+            handleNodeInteraction(node, nodeCategory, displayCategory.getDisplayName(), lineHeight);
 
             if (selected && selectCallback != null) {
                 selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
@@ -819,42 +827,66 @@ public class NodeLibraryComponent implements EditorComponent {
     }
 
     private void renderNodesAsGrid(List<NodeInfo> nodesToRender, DisplayCategory displayCategory) {
-        float listLikeSpacing = ImGui.getStyle().getItemSpacingY();
         // Use frame height as the 1x baseline for grid tiles.
         float tileSide = ImGui.getFrameHeight() * gridTileSizeScale;
-        float spacingX = listLikeSpacing;
+        float gap = NodeLibraryConstants.GRID_TILE_GAP;
         float availableWidth = Math.max(tileSide, ImGui.getContentRegionAvailX());
-        int columns = Math.max(1, (int) ((availableWidth + spacingX) / (tileSide + spacingX)));
+        int columns = Math.max(1, (int) ((availableWidth + gap) / (tileSide + gap)));
 
-        for (int i = 0; i < nodesToRender.size(); i++) {
-            NodeInfo node = nodesToRender.get(i);
-            String nodeCategory = node.getCategoryId();
+        // Selectable expands its hover rect into ItemSpacing and overlaps neighbors;
+        // InvisibleButton keeps an exact tileSide×tileSide box with a true 2px gap.
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, gap, gap);
+        try {
+            for (int i = 0; i < nodesToRender.size(); i++) {
+                NodeInfo node = nodesToRender.get(i);
+                String nodeCategory = node.getCategoryId();
 
-            // Capture layout cell origin BEFORE selectable. ImGui expands the
-            // selectable hit/highlight rect by ~half ItemSpacing, so drawing at
-            // getItemRectMin() leaves the icon offset toward the top-left of the
-            // highlight; the cursor position is the true tile content origin.
-            ImVec2 tileOrigin = new ImVec2(ImGui.getCursorScreenPos());
+                ImVec2 tileOrigin = new ImVec2(ImGui.getCursorScreenPos());
+                ImGui.invisibleButton("##node_tile_" + node.getId(), tileSide, tileSide);
+                boolean clicked = ImGui.isItemClicked();
+                boolean hovered = ImGui.isItemHovered();
+                boolean active = ImGui.isItemActive();
 
-            boolean selected = ImGui.selectable("##node_tile_" + node.getId(), false,
-                    ImGuiSelectableFlags.AllowItemOverlap, tileSide, tileSide);
+                ImDrawList drawList = ImGui.getWindowDrawList();
+                float x0 = tileOrigin.x;
+                float y0 = tileOrigin.y;
+                float x1 = x0 + tileSide;
+                float y1 = y0 + tileSide;
 
-            ImDrawList drawList = ImGui.getWindowDrawList();
-            drawNodeIcon(drawList, tileOrigin, node, nodeCategory, tileSide);
-            handleNodeInteraction(node, nodeCategory, displayCategory, tileSide);
+                if (hovered || active) {
+                    int highlight = ImGui.getColorU32(active ? ImGuiCol.HeaderActive : ImGuiCol.HeaderHovered);
+                    drawList.addRectFilled(x0, y0, x1, y1, highlight);
+                }
 
-            if (selected && selectCallback != null) {
-                selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
-                if (NodeCraft.LOGGER.isDebugEnabled()) {
-                    NodeCraft.LOGGER.debug("Node selected: {} ({})", node.getDisplayName(), node.getId());
+                drawNodeIcon(drawList, tileOrigin, node, nodeCategory, tileSide);
+
+                // Draw border after the icon so the hairline stays visible on top.
+                int borderColor = ImGui.colorConvertFloat4ToU32(0.70f, 0.70f, 0.70f, 0.90f);
+                drawList.addRect(
+                        x0, y0, x1, y1,
+                        borderColor,
+                        0.0f,
+                        0,
+                        NodeLibraryConstants.GRID_TILE_BORDER_THICKNESS
+                );
+
+                handleNodeInteraction(node, nodeCategory, displayCategory.getDisplayName(), tileSide);
+
+                if (clicked && selectCallback != null) {
+                    selectCallback.onNodeSelected(node.getId(), node.getDisplayName());
+                    if (NodeCraft.LOGGER.isDebugEnabled()) {
+                        NodeCraft.LOGGER.debug("Node selected: {} ({})", node.getDisplayName(), node.getId());
+                    }
+                }
+
+                boolean isEndOfRow = (i + 1) % columns == 0;
+                boolean isLastItem = i == nodesToRender.size() - 1;
+                if (!isEndOfRow && !isLastItem) {
+                    ImGui.sameLine(0.0f, gap);
                 }
             }
-
-            boolean isEndOfRow = (i + 1) % columns == 0;
-            boolean isLastItem = i == nodesToRender.size() - 1;
-            if (!isEndOfRow && !isLastItem) {
-                ImGui.sameLine(0.0f, spacingX);
-            }
+        } finally {
+            ImGui.popStyleVar();
         }
     }
 
@@ -896,7 +928,7 @@ public class NodeLibraryComponent implements EditorComponent {
         );
     }
 
-    private void handleNodeInteraction(NodeInfo node, String nodeCategory, DisplayCategory displayCategory, float dragIconSizeRef) {
+    private void handleNodeInteraction(NodeInfo node, String nodeCategory, String categoryDisplayName, float dragIconSizeRef) {
         if (ImGui.beginDragDropSource(ImGuiDragDropFlags.None)) {
             byte[] payloadBytes = node.getId().getBytes(StandardCharsets.UTF_8);
             ImGui.setDragDropPayload(NodeLibraryConstants.DRAG_DROP_PAYLOAD_TYPE, payloadBytes);
@@ -935,7 +967,7 @@ public class NodeLibraryComponent implements EditorComponent {
             }
 
             ImGui.separator();
-            ImGui.text("Category: " + displayCategory.getDisplayName());
+            ImGui.text("Category: " + categoryDisplayName);
             ImGui.textDisabled(NodeFavoritesStore.isFavorite(node.getId())
                     ? "Favorite · right-click to remove"
                     : "Right-click to add to Favorites");
