@@ -203,6 +203,8 @@ public final class PresetLibraryPanel {
         ImGui.popID();
     }
 
+    private static final float TOOLTIP_WRAP_CHARS = 22.0f;
+
     private void renderPresetHoverTooltip(
             GraphPresetRules.GraphPresetDefinition preset,
             boolean applicable,
@@ -212,31 +214,26 @@ public final class PresetLibraryPanel {
             return;
         }
 
-        StringBuilder tooltip = new StringBuilder();
-        if (preset.description != null && !preset.description.isBlank()) {
-            tooltip.append(preset.description.trim());
-        }
-        if (applicable) {
-            appendTooltipLine(tooltip, "拖动到画布以创建节点链");
-        } else {
-            appendTooltipLine(tooltip, "筹备中");
-        }
-        if (editable) {
-            appendTooltipLine(tooltip, "右键：编辑 / 删除；拖 :: 可移动位置");
-        }
-        if (!tooltip.isEmpty()) {
-            ImGui.setTooltip(tooltip.toString());
-        }
-    }
+        String description = preset.description != null ? preset.description.trim() : "";
 
-    private static void appendTooltipLine(StringBuilder tooltip, String line) {
-        if (line == null || line.isBlank()) {
-            return;
+        ImGui.beginTooltip();
+        ImGui.pushTextWrapPos(ImGui.getFontSize() * TOOLTIP_WRAP_CHARS);
+        try {
+            if (!description.isEmpty()) {
+                ImGui.textWrapped(description);
+            }
+            if (applicable) {
+                ImGui.textDisabled("拖动到画布以创建节点链");
+            } else {
+                ImGui.textDisabled("筹备中");
+            }
+            if (editable) {
+                ImGui.textDisabled("右键：编辑 / 删除；拖 :: 可移动位置");
+            }
+        } finally {
+            ImGui.popTextWrapPos();
+            ImGui.endTooltip();
         }
-        if (!tooltip.isEmpty()) {
-            tooltip.append('\n');
-        }
-        tooltip.append(line);
     }
 
     private static boolean isAnyPopupOpen() {
