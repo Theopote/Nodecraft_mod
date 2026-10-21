@@ -3,10 +3,28 @@ package com.nodecraft.gui.components.ai;
 import com.nodecraft.gui.ai.AiGraphDiffService;
 import com.nodecraft.gui.layout.ImGuiChildScope;
 import imgui.ImGui;
+import imgui.flag.ImGuiCond;
+import imgui.flag.ImGuiWindowFlags;
 
 import java.util.List;
 
+/**
+ * Developer diagnostics for the AI remote planner: inspect raw HTTP payloads,
+ * extracted model text, request snapshots, graph diffs, and clipboard exports.
+ * <p>
+ * Opened from the AI Assistant <b>Debug</b> button when debug data is available.
+ */
 final class AiAssistantDebugConsoleRenderer {
+
+    private static final float WINDOW_WIDTH = 640.0f;
+    private static final float WINDOW_HEIGHT = 520.0f;
+
+    private enum ActiveTab {
+        RAW,
+        MODEL,
+        REQUEST,
+        EXPORT
+    }
 
     private AiAssistantDebugConsoleRenderer() {
     }
@@ -41,98 +59,147 @@ final class AiAssistantDebugConsoleRenderer {
     }
 
     static void renderDebugConsolePopup(State state, Actions actions) {
-        int flags = 0;
-        if (!ImGui.beginPopupModal("AI Debug Console", flags)) {
+        ImGui.setNextWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT, ImGuiCond.Appearing);
+        ImGui.setNextWindowSizeConstraints(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+        if (!ImGui.beginPopupModal("AI Debug Console", ImGuiWindowFlags.NoResize)) {
             return;
         }
 
+        float footerReserve = ImGui.getFrameHeightWithSpacing()
+                + ImGui.getStyle().getItemSpacingY()
+                + 1.0f;
+
+        // --- Fixed header (does not scroll away with tabs) ---
         actions.renderFailureSummarySection();
         ImGui.spacing();
 
         String categoryText = state.errorCategory() == null || state.errorCategory().isBlank()
                 ? "none"
                 : state.errorCategory();
-        ImGui.textDisabled("Category: " + categoryText + " | Attempts: " + state.attempts());
-        ImGui.separator();
-
+        AiUiHelper.textWrappedDisabled("Category: " + categoryText + " | Attempts: " + state.attempts());
         renderRequestDiagnostics(state);
         renderDebugDiffDetails(state);
+        ImGui.separator();
 
-        if (ImGui.beginTabBar("aiDebugConsoleTabs")) {
-            if (ImGui.beginTabItem("Raw Response")) {
-                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugRawBody", 0.0f, 280.0f, true, 0)) {
-                    if (scope.isOpen()) {
-                        if (state.rawResponse() == null || state.rawResponse().isBlank()) {
-                            ImGui.textDisabled("No raw response available.");
-                        } else {
-                            ImGui.textWrapped(state.rawResponse());
-                        }
-                    }
+        // --- Tab strip + content (tabs stay visible; content scrolls) ---
+        float tabsAreaHeight = Math.max(140.0f, ImGui.getContentRegionAvailY() - footerReserve);
+        ActiveTab activeTab = ActiveTab.RAW;
+        try (ImGuiChildScope tabsArea = new ImGuiChildScope(
+                "aiDebugTabsArea",
+                0.0f,
+                tabsAreaHeight,
+                false,
+                ImGuiWindowFlags.NoScrollbar)) {
+            if (tabsArea.isOpen()) {
+                ActiveTab selected = renderTabs(state);
+                if (selected != null) {
+                    activeTab = selected;
                 }
-                if (ImGui.button("Copy Raw Response")) {
-                    actions.copyRawResponse();
-                }
-                ImGui.endTabItem();
             }
-
-            if (ImGui.beginTabItem("Model Text")) {
-                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugModelTextBody", 0.0f, 280.0f, true, 0)) {
-                    if (scope.isOpen()) {
-                        if (state.modelText() == null || state.modelText().isBlank()) {
-                            ImGui.textDisabled("No extracted model text available.");
-                        } else {
-                            ImGui.textWrapped(state.modelText());
-                        }
-                    }
-                }
-                if (ImGui.button("Copy Model Text")) {
-                    actions.copyModelText();
-                }
-                ImGui.endTabItem();
-            }
-
-            if (ImGui.beginTabItem("Request Snapshot")) {
-                ImGui.textDisabled("API key is masked for safety.");
-                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugRequestSnapshotBody", 0.0f, 260.0f, true, 0)) {
-                    if (scope.isOpen()) {
-                        if (state.requestSnapshot() == null || state.requestSnapshot().isBlank()) {
-                            ImGui.textDisabled("No request snapshot available.");
-                        } else {
-                            ImGui.textWrapped(state.requestSnapshot());
-                        }
-                    }
-                }
-                if (ImGui.button("Copy Request Snapshot")) {
-                    actions.copyRequestSnapshot();
-                }
-                ImGui.endTabItem();
-            }
-
-            if (ImGui.beginTabItem("Export")) {
-                try (ImGuiChildScope scope = new ImGuiChildScope("aiDebugExportBody", 0.0f, 260.0f, true, 0)) {
-                    if (scope.isOpen()) {
-                        ImGui.textDisabled("Preview (compact):");
-                        ImGui.textWrapped(state.compactDiagnostics() == null ? "" : state.compactDiagnostics());
-                    }
-                }
-                if (ImGui.button("Copy Compact Export")) {
-                    actions.copyCompactExport();
-                }
-                ImGui.sameLine();
-                if (ImGui.button("Copy Full Export")) {
-                    actions.copyFullExport();
-                }
-                ImGui.endTabItem();
-            }
-
-            ImGui.endTabBar();
         }
 
-        if (ImGui.button("Close")) {
-            ImGui.closeCurrentPopup();
-        }
+        ImGui.separator();
+        renderFooter(activeTab, actions);
 
         ImGui.endPopup();
+    }
+
+    private static ActiveTab renderTabs(State state) {
+        ActiveTab selected = null;
+        if (!ImGui.beginTabBar("aiDebugConsoleTabs")) {
+            return null;
+        }
+
+        // Leave room for the tab bar itself inside the tabs area.
+        float contentHeight = Math.max(100.0f, ImGui.getContentRegionAvailY() - ImGui.getFrameHeightWithSpacing());
+
+        if (ImGui.beginTabItem("Raw Response")) {
+            selected = ActiveTab.RAW;
+            renderScrollText("aiDebugRawBody", contentHeight, state.rawResponse(), "No raw response available.");
+            ImGui.endTabItem();
+        }
+
+        if (ImGui.beginTabItem("Model Text")) {
+            selected = ActiveTab.MODEL;
+            renderScrollText("aiDebugModelTextBody", contentHeight, state.modelText(),
+                    "No extracted model text available.");
+            ImGui.endTabItem();
+        }
+
+        if (ImGui.beginTabItem("Request Snapshot")) {
+            selected = ActiveTab.REQUEST;
+            AiUiHelper.textWrappedDisabled("API key is masked for safety.");
+            float snapshotHeight = Math.max(80.0f, contentHeight - ImGui.getTextLineHeightWithSpacing());
+            renderScrollText("aiDebugRequestSnapshotBody", snapshotHeight, state.requestSnapshot(),
+                    "No request snapshot available.");
+            ImGui.endTabItem();
+        }
+
+        if (ImGui.beginTabItem("Export")) {
+            selected = ActiveTab.EXPORT;
+            try (ImGuiChildScope scope = new ImGuiChildScope(
+                    "aiDebugExportBody",
+                    0.0f,
+                    contentHeight,
+                    true,
+                    ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                if (scope.isOpen()) {
+                    AiUiHelper.textWrappedDisabled("Preview (compact):");
+                    AiUiHelper.textWrapped(state.compactDiagnostics() == null ? "" : state.compactDiagnostics());
+                }
+            }
+            ImGui.endTabItem();
+        }
+
+        ImGui.endTabBar();
+        return selected;
+    }
+
+    private static void renderScrollText(String childId, float height, String text, String emptyHint) {
+        try (ImGuiChildScope scope = new ImGuiChildScope(
+                childId,
+                0.0f,
+                height,
+                true,
+                ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+            if (!scope.isOpen()) {
+                return;
+            }
+            if (text == null || text.isBlank()) {
+                AiUiHelper.textWrappedDisabled(emptyHint);
+            } else {
+                AiUiHelper.textWrapped(text);
+            }
+        }
+    }
+
+    /** Copy action(s) for the active tab + Close, kept on one row when width allows. */
+    private static void renderFooter(ActiveTab activeTab, Actions actions) {
+        float rowRight = AiUiHelper.contentRowRightEdge();
+        boolean first = true;
+
+        switch (activeTab == null ? ActiveTab.RAW : activeTab) {
+            case RAW -> first = footerButton(rowRight, first, "Copy Raw Response", actions::copyRawResponse);
+            case MODEL -> first = footerButton(rowRight, first, "Copy Model Text", actions::copyModelText);
+            case REQUEST -> first = footerButton(rowRight, first, "Copy Request Snapshot", actions::copyRequestSnapshot);
+            case EXPORT -> {
+                first = footerButton(rowRight, first, "Copy Compact Export", actions::copyCompactExport);
+                first = footerButton(rowRight, first, "Copy Full Export", actions::copyFullExport);
+            }
+        }
+        footerButton(rowRight, first, "Close", ImGui::closeCurrentPopup);
+    }
+
+    private static boolean footerButton(float rowRight, boolean first, String label, Runnable onClick) {
+        float width = ImGui.calcTextSize(label).x + ImGui.getStyle().getFramePaddingX() * 2.0f;
+        if (!first) {
+            AiUiHelper.sameLineIfFitsInRow(rowRight, width);
+        }
+        if (ImGui.button(label)) {
+            onClick.run();
+        }
+        return false;
     }
 
     private static void renderRequestDiagnostics(State state) {
@@ -145,8 +212,8 @@ final class AiAssistantDebugConsoleRenderer {
         if (!ImGui.treeNode("Request diagnostics")) {
             return;
         }
-        ImGui.textDisabled("Input language: " + (language == null || language.isBlank() ? "unknown" : language));
-        ImGui.textDisabled("Normalized intent: " + (intent == null || intent.isBlank() ? "general-request" : intent));
+        AiUiHelper.textWrappedDisabled("Input language: " + (language == null || language.isBlank() ? "unknown" : language));
+        AiUiHelper.textWrappedDisabled("Normalized intent: " + (intent == null || intent.isBlank() ? "general-request" : intent));
         ImGui.treePop();
     }
 
@@ -161,7 +228,7 @@ final class AiAssistantDebugConsoleRenderer {
         }
 
         if (diff != null && ImGui.treeNode("Heuristic diff")) {
-            ImGui.textDisabled("Compared by node type+params signature and typed connection signature.");
+            AiUiHelper.textWrappedDisabled("Compared by node type+params signature and typed connection signature.");
             ImGui.text("Potential additions: nodes=" + diff.nodeAdditions() + ", connections=" + diff.connectionAdditions());
             ImGui.text("Potential missing from plan: nodes=" + diff.nodeMissingFromPlan()
                     + ", connections=" + diff.connectionMissingFromPlan());
@@ -174,7 +241,7 @@ final class AiAssistantDebugConsoleRenderer {
         }
 
         if (mapped != null && ImGui.treeNode("Mapped diff")) {
-            ImGui.textDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
+            AiUiHelper.textWrappedDisabled("Greedy matching by type+params, then type fallback. Estimates reusable vs new nodes.");
             ImGui.text("Reusable matches=" + mapped.reusableNodeMatches()
                     + ", new nodes=" + mapped.newNodesToCreate());
             ImGui.text("Unchanged reused=" + mapped.unchangedReusableNodes()
