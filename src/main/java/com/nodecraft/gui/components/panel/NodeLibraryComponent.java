@@ -830,13 +830,17 @@ public class NodeLibraryComponent implements EditorComponent {
             NodeInfo node = nodesToRender.get(i);
             String nodeCategory = node.getCategoryId();
 
+            // Capture layout cell origin BEFORE selectable. ImGui expands the
+            // selectable hit/highlight rect by ~half ItemSpacing, so drawing at
+            // getItemRectMin() leaves the icon offset toward the top-left of the
+            // highlight; the cursor position is the true tile content origin.
+            ImVec2 tileOrigin = new ImVec2(ImGui.getCursorScreenPos());
+
             boolean selected = ImGui.selectable("##node_tile_" + node.getId(), false,
                     ImGuiSelectableFlags.AllowItemOverlap, tileSide, tileSide);
 
-            ImVec2 rectMin = ImGui.getItemRectMin();
             ImDrawList drawList = ImGui.getWindowDrawList();
-
-            drawNodeIcon(drawList, rectMin, node, nodeCategory, tileSide);
+            drawNodeIcon(drawList, tileOrigin, node, nodeCategory, tileSide);
             handleNodeInteraction(node, nodeCategory, displayCategory, tileSide);
 
             if (selected && selectCallback != null) {

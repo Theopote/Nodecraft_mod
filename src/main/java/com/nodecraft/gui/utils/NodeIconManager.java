@@ -57,6 +57,8 @@ public class NodeIconManager {
     private int frameRequestCount;
     private long frameRequestStartedNs;
     private String frameRequestCategoryHint;
+    /** Set by resource reload; applied at the next safe upload window (beginFrame). */
+    private boolean reloadPending;
 
     private NodeIconManager() {
         initCategoryColors();
@@ -79,14 +81,22 @@ public class NodeIconManager {
     }
 
     /**
-     * Resets the per-frame upload budget and drains previously queued icons.
-     * Call once at the start of each ImGui frame.
+     * Safe GPU upload window: call once per frame <em>before</em> {@code ImGui.newFrame()}.
+     * <p>
+     * Must not run during ImGui UI building — mid-frame {@code glTexImage2D} with leftover
+     * Minecraft pixel-unpack state has caused garbled icons and native crashes.
      */
     public void beginFrame() {
         if (!isOnRenderThread("begin node icon frame")) {
             return;
         }
+        if (reloadPending) {
+            reloadPending = false;
+            clearCachesAndTextures();
+            NodeCraft.LOGGER.info("Node icon manager cleared after resource reload");
+        }
         uploadsThisFrame = 0;
+        ensureUtilityTextures();
         processPendingUploads(MAX_UPLOADS_PER_FRAME);
         maybeLogBurstSummary();
     }
@@ -99,39 +109,24 @@ public class NodeIconManager {
         if (!isOnRenderThread("cleanup node icon textures")) {
             return;
         }
-        deleteAllTextures();
-        pendingQueue.clear();
-        pendingKeys.clear();
-        failedResources.clear();
-        resolvedTextureKeys.clear();
-        placeholderTextureId = 0;
-        uploadsThisFrame = 0;
+        reloadPending = false;
+        clearCachesAndTextures();
         NodeCraft.LOGGER.info("Node icon manager cleaned up");
     }
 
     /**
-     * Resource pack / reload: drop GPU textures and resolution memo so icons re-resolve.
+     * Resource pack / reload: defer GPU teardown to the next {@link #beginFrame()} so we
+     * never delete textures while an ImGui draw list may still reference them.
      */
     public void onResourcesReloaded() {
-        if (!isOnRenderThread("reload node icon textures")) {
-            return;
-        }
-        deleteAllTextures();
-        pendingQueue.clear();
-        pendingKeys.clear();
-        failedResources.clear();
-        resolvedTextureKeys.clear();
-        placeholderTextureId = 0;
-        uploadsThisFrame = 0;
-        NodeCraft.LOGGER.info("Node icon manager cleared after resource reload");
+        reloadPending = true;
     }
 
     /**
      * Loads (or requests) the icon for a node.
      * <p>
-     * Cache hits return immediately. Misses consume the per-frame upload budget when
-     * available; otherwise they enqueue and return a shared placeholder so ImGui drawing
-     * never blocks on bulk SVG/PNG work.
+     * Cache hits return immediately. Misses only enqueue work — GPU upload happens in
+     * {@link #beginFrame()}, never during ImGui widget building.
      */
     public int loadNodeIcon(String nodeId, String category, String explicitIcon) {
         if (!isOnRenderThread("load node icon")) {
@@ -167,29 +162,18 @@ public class NodeIconManager {
                 continue;
             }
             if (pendingKeys.contains(cacheKey)) {
-                return getPlaceholderTexture();
+                return peekPlaceholderTexture();
             }
 
-            PendingLoad pending = new PendingLoad(
+            enqueue(new PendingLoad(
                     cacheKey,
                     candidate.resourcePath(),
                     logicalKey,
                     nodeId,
                     category,
                     candidate.kind().name()
-            );
-
-            if (uploadsThisFrame < MAX_UPLOADS_PER_FRAME) {
-                int texId = completeLoad(pending);
-                if (texId != 0) {
-                    return texId;
-                }
-                // Failed this candidate — try the next (e.g. PNG miss → SVG).
-                continue;
-            }
-
-            enqueue(pending);
-            return getPlaceholderTexture();
+            ));
+            return peekPlaceholderTexture();
         }
 
         return getFallbackTexture("unknown");
@@ -428,8 +412,13 @@ public class NodeIconManager {
         }
         buffer.flip();
 
+        // Minecraft frequently leaves non-default unpack state (ROW_LENGTH / SKIP_*).
+        // Uploading without resetting them produces garbled icons and can native-crash.
         int previousTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         int previousAlignment = GL11.glGetInteger(GL11.GL_UNPACK_ALIGNMENT);
+        int previousRowLength = GL11.glGetInteger(GL11.GL_UNPACK_ROW_LENGTH);
+        int previousSkipPixels = GL11.glGetInteger(GL11.GL_UNPACK_SKIP_PIXELS);
+        int previousSkipRows = GL11.glGetInteger(GL11.GL_UNPACK_SKIP_ROWS);
         int textureId = 0;
         try {
             clearGlErrors();
@@ -439,14 +428,18 @@ public class NodeIconManager {
             }
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, 0);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+            // Match the previously stable path: sized internal format GL_RGBA (not RGBA8).
             GL11.glTexImage2D(
                     GL11.GL_TEXTURE_2D,
                     0,
-                    GL11.GL_RGBA8,
+                    GL11.GL_RGBA,
                     width,
                     height,
                     0,
@@ -463,10 +456,14 @@ public class NodeIconManager {
             return textureId;
         } finally {
             GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, previousAlignment);
+            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, previousRowLength);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, previousSkipPixels);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, previousSkipRows);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, previousTexture);
         }
     }
 
+    /** Cache-only lookup; textures are created in {@link #ensureUtilityTextures()}. */
     private int getFallbackTexture(String mainCategory) {
         String category = mainCategory == null || mainCategory.isBlank() ? "unknown" : mainCategory;
         String key = "fallback:" + category;
@@ -474,24 +471,36 @@ public class NodeIconManager {
         if (cached != null) {
             return cached;
         }
-
-        int color = categoryColors.getOrDefault(category, 0xFF607D8B);
-        int textureId = createColorTexture(color);
-        if (textureId != 0) {
-            textureCache.put(key, textureId);
-        }
-        return textureId;
+        return peekPlaceholderTexture();
     }
 
-    private int getPlaceholderTexture() {
-        if (placeholderTextureId != 0) {
-            return placeholderTextureId;
-        }
-        placeholderTextureId = createColorTexture(0xFF9CA3AF);
-        if (placeholderTextureId != 0) {
-            textureCache.put("placeholder:loading", placeholderTextureId);
-        }
+    /** Never allocates GL resources during ImGui UI building. */
+    private int peekPlaceholderTexture() {
         return placeholderTextureId;
+    }
+
+    private void ensureUtilityTextures() {
+        if (placeholderTextureId == 0) {
+            placeholderTextureId = createColorTexture(0xFF9CA3AF);
+            if (placeholderTextureId != 0) {
+                textureCache.put("placeholder:loading", placeholderTextureId);
+            }
+        }
+        for (Map.Entry<String, Integer> entry : categoryColors.entrySet()) {
+            String key = "fallback:" + entry.getKey();
+            if (!textureCache.containsKey(key)) {
+                int textureId = createColorTexture(entry.getValue());
+                if (textureId != 0) {
+                    textureCache.put(key, textureId);
+                }
+            }
+        }
+        if (!textureCache.containsKey("fallback:unknown")) {
+            int textureId = createColorTexture(0xFF607D8B);
+            if (textureId != 0) {
+                textureCache.put("fallback:unknown", textureId);
+            }
+        }
     }
 
     private int createColorTexture(int argb) {
@@ -502,6 +511,16 @@ public class NodeIconManager {
             }
         }
         return uploadBufferedImage(image);
+    }
+
+    private void clearCachesAndTextures() {
+        deleteAllTextures();
+        pendingQueue.clear();
+        pendingKeys.clear();
+        failedResources.clear();
+        resolvedTextureKeys.clear();
+        placeholderTextureId = 0;
+        uploadsThisFrame = 0;
     }
 
     private void deleteAllTextures() {

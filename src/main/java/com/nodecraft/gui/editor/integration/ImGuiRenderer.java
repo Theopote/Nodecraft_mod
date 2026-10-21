@@ -404,11 +404,12 @@ public class ImGuiRenderer {
 
             updateUiScaleIfNeeded(io);
 
+            // Upload icons BEFORE ImGui.newFrame — never mid-UI-build (avoids MC unpack-state
+            // corruption that produced garbled icons / native crashes).
+            NodeIconManager.getInstance().beginFrame();
+
             imGuiGlfw.newFrame();
             ImGui.newFrame();
-
-            // Drain icon upload queue under a per-frame budget before UI draws request more.
-            NodeIconManager.getInstance().beginFrame();
             
             closeDetector.onFrameStart();
             
