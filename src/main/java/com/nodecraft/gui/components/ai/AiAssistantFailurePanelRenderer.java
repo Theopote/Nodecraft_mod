@@ -44,16 +44,16 @@ final class AiAssistantFailurePanelRenderer {
 
         ImGui.text("Failure Summary");
         ImGui.separator();
-        ImGui.textWrapped("Category: " + category
+        AiUiHelper.textWrapped("Category: " + category
                 + " | Status: " + state.statusCode()
                 + " | Attempts: " + state.attempts());
         if (state.errorMessage() != null && !state.errorMessage().isBlank()) {
-            ImGui.textWrapped("Message: " + state.errorMessage());
+            AiUiHelper.textWrapped("Message: " + state.errorMessage());
         }
 
         String suggestion = buildRemoteFailureSuggestion(category);
         if (!suggestion.isBlank()) {
-            ImGui.textWrapped("Suggested action: " + suggestion);
+            AiUiHelper.textWrapped("Suggested action: " + suggestion);
         }
 
         ImGui.spacing();
@@ -82,31 +82,35 @@ final class AiAssistantFailurePanelRenderer {
             if (ImGui.smallButton("Retry Last Request")) {
                 actions.retryLastRequest();
             }
-            ImGui.sameLine();
         }
 
         if (allowTimeoutAction) {
-            if (ImGui.smallButton("Increase Timeout +30s")) {
+            String label = "Increase Timeout +30s";
+            AiUiHelper.sameLineIfFits(ImGui.calcTextSize(label).x + 16.0f);
+            if (ImGui.smallButton(label)) {
                 actions.increaseTimeoutSeconds(30);
             }
-            ImGui.sameLine();
         }
 
         if (allowModeAction) {
-            if (ImGui.smallButton(state.remotePlannerEnabled() ? "Use Local Planner" : "Use Remote Planner")) {
+            String label = state.remotePlannerEnabled() ? "Use Local Planner" : "Use Remote Planner";
+            AiUiHelper.sameLineIfFits(ImGui.calcTextSize(label).x + 16.0f);
+            if (ImGui.smallButton(label)) {
                 actions.togglePlannerMode();
             }
-            ImGui.sameLine();
         }
 
         if (allowSettingsAction) {
-            if (ImGui.smallButton("Open AI Settings")) {
+            String label = "Open AI Settings";
+            AiUiHelper.sameLineIfFits(ImGui.calcTextSize(label).x + 16.0f);
+            if (ImGui.smallButton(label)) {
                 actions.openAiSettingsPopup();
             }
-            ImGui.sameLine();
         }
 
-        if (ImGui.smallButton("Resave Settings")) {
+        String resave = "Resave Settings";
+        AiUiHelper.sameLineIfFits(ImGui.calcTextSize(resave).x + 16.0f);
+        if (ImGui.smallButton(resave)) {
             actions.resaveSettings();
         }
     }

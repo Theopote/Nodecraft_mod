@@ -488,10 +488,19 @@ public class PropertyPanelComponent implements EditorComponent {
     }
 
     private void renderAiAssistantTabContent() {
+        // Auto scrollbar (not Always*) so short content has no gutter; wrap pos keeps text/buttons
+        // inside the work rect when the scrollbar is visible.
         try (ImGuiChildScope scope = new ImGuiChildScope(
-                "rightPanelAiContent", 0, 0, false, ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
-            if (scope.isOpen()) {
+                "rightPanelAiContent", 0, 0, false, 0)) {
+            if (!scope.isOpen()) {
+                return;
+            }
+            float wrapPos = ImGui.getCursorPosX() + Math.max(1.0f, ImGui.getContentRegionAvailX());
+            ImGui.pushTextWrapPos(wrapPos);
+            try {
                 aiAssistantPanel.render();
+            } finally {
+                ImGui.popTextWrapPos();
             }
         }
     }

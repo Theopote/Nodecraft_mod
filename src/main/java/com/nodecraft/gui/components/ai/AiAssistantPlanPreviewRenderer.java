@@ -74,7 +74,7 @@ final class AiAssistantPlanPreviewRenderer {
             return;
         }
 
-        ImGui.textWrapped(state.summary() == null ? "" : state.summary());
+        AiUiHelper.textWrapped(state.summary() == null ? "" : state.summary());
         renderChangeSummary(state);
         if (state.applyModeHint() != null && !state.applyModeHint().isBlank()) {
             ImGui.textDisabled(state.applyModeHint());
@@ -138,7 +138,7 @@ final class AiAssistantPlanPreviewRenderer {
         if (ImGui.button("Review Changes")) {
             actions.reviewChanges();
         }
-        ImGui.sameLine();
+        AiUiHelper.sameLineIfFits(ImGui.calcTextSize("Apply Changes").x + 24.0f);
         if (ImGui.button("Apply Changes")) {
             actions.applyChanges();
         }
@@ -146,7 +146,7 @@ final class AiAssistantPlanPreviewRenderer {
             ImGui.endDisabled();
         }
 
-        if (ImGui.treeNode("More ▾")) {
+        if (ImGui.treeNode("More")) {
             if (!state.hasPlan()) {
                 ImGui.beginDisabled();
             }

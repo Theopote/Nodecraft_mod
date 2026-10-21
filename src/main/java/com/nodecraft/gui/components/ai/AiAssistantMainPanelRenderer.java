@@ -64,14 +64,14 @@ final class AiAssistantMainPanelRenderer {
     }
 
     private static void renderHeader(State state, Actions actions) {
-        ImGui.textWrapped("Describe the graph you want to create or change.");
+        AiUiHelper.textWrapped("Describe the graph you want to create or change.");
         if (ImGui.smallButton("Settings")) {
             actions.openSettingsPopup();
         }
         String summary = state.settingsSummary();
         if (summary != null && !summary.isBlank()) {
-            ImGui.sameLine();
-            ImGui.textDisabled(summary);
+            // Keep summary on its own wrapped line so it never runs under the scrollbar.
+            AiUiHelper.textWrappedDisabled(summary);
         }
 
         if (state.settingsStatusMessage() != null && !state.settingsStatusMessage().isBlank()) {
@@ -86,8 +86,7 @@ final class AiAssistantMainPanelRenderer {
     /** Single busy/failed status row — no raw streaming dump on the main panel. */
     private static void renderStatusLine(State state, Actions actions) {
         if (state.busy()) {
-            ImGui.textColored(0.95f, 0.78f, 0.30f, 1.0f, "Generating plan…");
-            ImGui.sameLine();
+            AiUiHelper.textWrappedColored(0.95f, 0.78f, 0.30f, 1.0f, "Generating plan…");
             if (ImGui.smallButton("Cancel")) {
                 actions.cancelRequest();
             }
@@ -102,7 +101,7 @@ final class AiAssistantMainPanelRenderer {
         String message = (detail != null && !detail.isBlank())
                 ? "Failed — " + shortReason(detail)
                 : "Failed";
-        ImGui.textColored(0.95f, 0.42f, 0.42f, 1.0f, message);
+        AiUiHelper.textWrappedColored(0.95f, 0.42f, 0.42f, 1.0f, message);
     }
 
     private static String shortReason(String detail) {
@@ -119,14 +118,14 @@ final class AiAssistantMainPanelRenderer {
 
     private static void renderContextSelector(State state) {
         ImGui.separator();
-        ImGui.textColored(0.45f, 0.85f, 0.55f, 1.0f, buildContextSummary(state));
+        AiUiHelper.textWrappedColored(0.45f, 0.85f, 0.55f, 1.0f, buildContextSummary(state));
         if (ImGui.treeNode("Change##ai_context_change")) {
             ImGui.checkbox("Selected node", state.useSelectionContext());
             ImGui.checkbox("Nearby graph", state.includeGraphContext());
             ImGui.checkbox("World position and view", state.includePlayerWorldContext());
             ImGui.checkbox("Selected world region", state.includeSelectedWorldRegionContext());
             if (state.includePlayerWorldContext().get() || state.includeSelectedWorldRegionContext().get()) {
-                ImGui.textDisabled("World context is sent to the configured remote planner.");
+                AiUiHelper.textWrappedDisabled("World context is sent to the configured remote planner.");
             }
             ImGui.treePop();
         }
@@ -165,17 +164,16 @@ final class AiAssistantMainPanelRenderer {
             ImGui.beginDisabled();
         }
 
-        boolean compact = ImGui.getContentRegionAvailX() < 330.0f;
         if (ImGui.smallButton("Generate from selection")) {
             actions.onQuickPrompt("Generate a node graph based on current selection and keep existing style.");
         }
-        if (!compact) {
-            ImGui.sameLine();
-        }
+        // Estimate button width from label; wrap to next line when the panel is narrow.
+        AiUiHelper.sameLineIfFits(ImGui.calcTextSize("Suggest improvements").x + 16.0f);
         if (ImGui.smallButton("Suggest improvements")) {
             actions.onQuickPrompt(
                     "Suggest readability and structure improvements for the selected node graph.");
         }
+        AiUiHelper.sameLineIfFits(ImGui.calcTextSize("Explain selected node").x + 16.0f);
         if (ImGui.smallButton("Explain selected node")) {
             actions.onQuickPrompt("Explain what the selected node does and how to connect it.");
         }
@@ -206,19 +204,20 @@ final class AiAssistantMainPanelRenderer {
                 return updatedCount;
             }
             if (state.chatMessages() == null || state.chatMessages().isEmpty()) {
-                ImGui.textDisabled("No messages yet.");
-                ImGui.textDisabled("Tip: Ask AI to create or modify a node graph.");
+                AiUiHelper.textWrappedDisabled("No messages yet.");
+                AiUiHelper.textWrappedDisabled("Tip: Ask AI to create or modify a node graph.");
             } else {
                 for (AiChatMessage message : state.chatMessages()) {
                     boolean isUser = "user".equals(message.role());
-                    ImGui.textColored(
+                    AiUiHelper.textWrappedColored(
                             isUser ? 0.45f : 0.65f,
                             isUser ? 0.75f : 0.85f,
                             isUser ? 1.0f : 0.55f,
                             1.0f,
                             isUser ? "You" : "AI");
-                    ImGui.sameLine();
-                    ImGui.textWrapped(message.content());
+                    // Role on its own line, then wrap body to panel width (sameLine+textWrapped
+                    // previously spilled under the scrollbar on continuations).
+                    AiUiHelper.textWrapped(message.content());
                     ImGui.spacing();
                 }
                 if (state.chatMessages().size() > updatedCount) {
@@ -245,7 +244,9 @@ final class AiAssistantMainPanelRenderer {
         float lineH = ImGui.getFrameHeight();
         float dynamicHeight = activeLineCount * lineH;
 
-        float inputWidth = Math.max(120.0f, ImGui.getContentRegionAvailX() - 85.0f);
+        float sendWidth = 80.0f;
+        float spacing = ImGui.getStyle().getItemSpacingX();
+        float inputWidth = Math.max(80.0f, AiUiHelper.usableContentWidth() - sendWidth - spacing);
         ImGui.pushItemWidth(inputWidth);
         int inputFlags = ImGuiInputTextFlags.CtrlEnterForNewLine;
         if (state.enterToSend().get()) {
@@ -262,8 +263,8 @@ final class AiAssistantMainPanelRenderer {
             ImGui.endDisabled();
         }
 
-        ImGui.sameLine();
-        if (ImGui.button("Send##ai_prompt_send", 80.0f, dynamicHeight)
+        AiUiHelper.sameLineIfFits(sendWidth);
+        if (ImGui.button("Send##ai_prompt_send", sendWidth, dynamicHeight)
                 || (state.enterToSend().get() && submitted)) {
             actions.onSubmitPrompt();
         }
