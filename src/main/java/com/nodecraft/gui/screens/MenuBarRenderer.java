@@ -456,15 +456,14 @@ public class MenuBarRenderer {
                 boolean isExecuting = isExecuting();
                 boolean hasGraph = execGraph != null && !execGraph.getNodes().isEmpty();
                 
-                // 执行节点图
-                if (ImGui.menuItem("\u25b6 执行节点图", "F5", false, hasGraph && !isExecuting)) {
+                // Plain labels only: ▶/■ are missing from the UI font and render as "?".
+                if (ImGui.menuItem("执行节点图", "F5", false, hasGraph && !isExecuting)) {
                     if (execGraph != null) {
                         executeNodeGraph(execGraph);
                     }
                 }
-                
-                // 停止执行
-                if (ImGui.menuItem("\u25a0 停止执行", "Shift+F5", false, isExecuting)) {
+
+                if (ImGui.menuItem("停止执行", "Shift+F5", false, isExecuting)) {
                     stopExecution();
                 }
                 

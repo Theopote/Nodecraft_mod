@@ -56,6 +56,7 @@ public class ImGuiRenderer {
     
     private static final String FONT_RESOURCE_PATH = "assets/nodecraft/fonts/NotoSansSC-Regular.ttf";
     /** UI symbols used outside the bundled CJK common ranges (recommendation plan marks, etc.). */
+    /** Keep in sync with menu/recommendation marks; omit shapes the bundled CJK font lacks (▶■★). */
     private static final String UI_SYMBOL_GLYPHS = "→↻·←↑↓—–…";
     private static final float BASE_FONT_SIZE = 18.0f;
     private static final float DEFAULT_UI_SCALE = 1.0f;

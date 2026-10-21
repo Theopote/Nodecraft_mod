@@ -278,11 +278,11 @@ public class ImGuiNodeMenus {
                             continue;
                         }
                         if (!favoritesVisible) {
-                            ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "★ Favorites");
+                            ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "Favorites");
                             ImGui.separator();
                             favoritesVisible = true;
                         }
-                        String favLabel = "  ★ " + fav.getDisplayName();
+                        String favLabel = "  * " + fav.getDisplayName();
                         if (ImGui.selectable(favLabel + "##fav_popup_" + fav.getId())) {
                             editor.addNode(fav.getId(), nodeSearchPosX, nodeSearchPosY);
                             showNodeSearchPopup = false;
@@ -319,7 +319,7 @@ public class ImGuiNodeMenus {
                             if (lastCategory != null) {
                                 ImGui.spacing();
                             }
-                            ImGui.textColored(0.6f, 0.8f, 1.0f, 1.0f, "\u25b6 " + categoryId);
+                            ImGui.textColored(0.6f, 0.8f, 1.0f, 1.0f, categoryId);
                             ImGui.separator();
                             lastCategory = categoryId;
                         }
@@ -327,7 +327,7 @@ public class ImGuiNodeMenus {
                         // 节点按钮
                         String label = (displayName != null ? displayName : nodeId);
                         boolean isFavorite = favoriteIds.contains(nodeId.toLowerCase());
-                        String row = (isFavorite ? "  ★ " : "  ") + label;
+                        String row = (isFavorite ? "  * " : "  ") + label;
                         if (ImGui.selectable(row + "##" + nodeId)) {
                             editor.addNode(nodeId, nodeSearchPosX, nodeSearchPosY);
                             showNodeSearchPopup = false;
