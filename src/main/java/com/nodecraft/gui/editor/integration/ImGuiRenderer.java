@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.URL; // Changed to java.net.URL for clarity
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.gui.screens.NodecraftScreen;
+import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.window.DetachedEditorWindow;
 import com.nodecraft.gui.window.WindowManager;
 import com.nodecraft.gui.window.ImGuiWindowHandler;
@@ -405,6 +406,9 @@ public class ImGuiRenderer {
 
             imGuiGlfw.newFrame();
             ImGui.newFrame();
+
+            // Drain icon upload queue under a per-frame budget before UI draws request more.
+            NodeIconManager.getInstance().beginFrame();
             
             closeDetector.onFrameStart();
             

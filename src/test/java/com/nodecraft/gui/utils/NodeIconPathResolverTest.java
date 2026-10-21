@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NodeIconPathResolverTest {
 
     @Test
-    void candidatesPreferExplicitThenNodeIdThenCategoryThenFallback() {
+    void candidatesPreferPngThenSvgForEachLogicalResource() {
         List<NodeIconPathResolver.Candidate> candidates = NodeIconPathResolver.candidates(
                 "geometry.combine.geometry",
                 "geometry.combine",
@@ -20,25 +20,32 @@ class NodeIconPathResolverTest {
 
         assertEquals(NodeIconPathResolver.CandidateKind.EXPLICIT, candidates.get(0).kind());
         assertEquals(
-                "textures/icons/nodes/geometry/combine/custom.svg",
+                "textures/icons/nodes/geometry/combine/custom.png",
                 candidates.get(0).resourcePath()
         );
-        assertEquals(NodeIconPathResolver.CandidateKind.NODE_ID, candidates.get(1).kind());
+        assertEquals(NodeIconPathResolver.CandidateKind.EXPLICIT, candidates.get(1).kind());
         assertEquals(
-                "textures/icons/nodes/geometry/combine/geometry.svg",
+                "textures/icons/nodes/geometry/combine/custom.svg",
                 candidates.get(1).resourcePath()
         );
-        assertEquals(NodeIconPathResolver.CandidateKind.SUBCATEGORY, candidates.get(2).kind());
-        assertEquals(NodeIconPathResolver.CandidateKind.MAIN_CATEGORY, candidates.get(3).kind());
+        assertEquals(NodeIconPathResolver.CandidateKind.NODE_ID, candidates.get(2).kind());
+        assertEquals(
+                "textures/icons/nodes/geometry/combine/geometry.png",
+                candidates.get(2).resourcePath()
+        );
+        assertEquals(
+                "textures/icons/nodes/geometry/combine/geometry.svg",
+                candidates.get(3).resourcePath()
+        );
         assertEquals(NodeIconPathResolver.CandidateKind.FALLBACK, candidates.getLast().kind());
         assertEquals("geometry", candidates.getLast().fallbackCategory());
         assertNull(candidates.getLast().resourcePath());
     }
 
     @Test
-    void buildNodePathHandlesDottedIds() {
+    void buildNodePathHandlesDottedIdsAsPng() {
         assertEquals(
-                "textures/icons/nodes/math/scalar_math/add.svg",
+                "textures/icons/nodes/math/scalar_math/add.png",
                 NodeIconPathResolver.buildNodePath("math.scalar_math.add")
         );
     }
@@ -46,12 +53,16 @@ class NodeIconPathResolverTest {
     @Test
     void normalizeIconPathAcceptsNamespaceAndCatShortcut() {
         assertEquals(
-                "textures/icons/nodes/geometry/geometry.svg",
+                "textures/icons/nodes/geometry/geometry.png",
                 NodeIconPathResolver.normalizeIconPath("cat:geometry")
         );
         assertEquals(
                 "textures/icons/nodes/output/preview/blocks.svg",
                 NodeIconPathResolver.normalizeIconPath("nodecraft:textures/icons/nodes/output/preview/blocks.svg")
+        );
+        assertEquals(
+                "textures/icons/nodes/output/preview/blocks.png",
+                NodeIconPathResolver.normalizeIconPath("nodecraft:textures/icons/nodes/output/preview/blocks.png")
         );
         assertNull(NodeIconPathResolver.normalizeIconPath("otherns:textures/icons/nodes/x.svg"));
     }
@@ -62,5 +73,17 @@ class NodeIconPathResolverTest {
         String b = NodeIconPathResolver.logicalKey("geometry.combine.geometry", "geometry.combine", "foo");
         assertEquals(a, b);
         assertTrue(a.contains("geometry.combine.geometry"));
+    }
+
+    @Test
+    void stripExtensionRemovesPngAndSvg() {
+        assertEquals(
+                "textures/icons/nodes/math/add",
+                NodeIconPathResolver.stripExtension("textures/icons/nodes/math/add.png")
+        );
+        assertEquals(
+                "textures/icons/nodes/math/add",
+                NodeIconPathResolver.stripExtension("textures/icons/nodes/math/add.svg")
+        );
     }
 }

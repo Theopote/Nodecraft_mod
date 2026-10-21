@@ -27,8 +27,6 @@ import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.utils.UserPreferences;
 import com.nodecraft.gui.components.search.NodeSearchManager;
 import com.nodecraft.gui.components.search.NodeSearchMatcher;
-import org.lwjgl.opengl.GL11;
-
 import imgui.ImGui;
 import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiSelectableFlags;
@@ -351,8 +349,8 @@ public class NodeLibraryComponent implements EditorComponent {
      */
     @Override
     public void cleanup() {
-        // Release icon resources.
-        iconManager.cleanup();
+        // Icon GPU textures are owned by NodeIconManager for the client lifetime
+        // (and resource reloads) — do not wipe the global cache when this panel closes.
         displayCache.clear();
     }
 
@@ -1062,7 +1060,8 @@ public class NodeLibraryComponent implements EditorComponent {
         int textureId = iconManager.loadNodeIcon(nodeId, nodeCategory, node.getIcon());
 
         if (textureId > 0) {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+            // ImDrawList.addImage already carries the texture id — do not bind here
+            // (avoids clobbering Minecraft / ImGui GL texture state mid-frame).
             drawList.addImage(
                     textureId,
                     topLeft.x, topLeft.y,

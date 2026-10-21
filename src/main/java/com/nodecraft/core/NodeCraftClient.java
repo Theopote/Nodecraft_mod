@@ -4,6 +4,7 @@ import com.nodecraft.core.debug.SystemInfo;
 import com.nodecraft.gui.editor.impl.ImGuiNodeEditor;
 import com.nodecraft.gui.editor.NodeEditorFactory;
 import com.nodecraft.gui.editor.integration.ImGuiRenderer;
+import com.nodecraft.gui.utils.NodeIconManager;
 import com.nodecraft.gui.window.WindowManager;
 import com.nodecraft.gui.screens.NodecraftScreen;
 import net.fabricmc.api.ClientModInitializer;
@@ -12,9 +13,13 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
+import net.fabricmc.fabric.api.resource.v1.reloader.SimpleResourceReloader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.resource.ResourceReloader;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.hit.BlockHitResult;
 import org.lwjgl.glfw.GLFW;
@@ -67,8 +72,31 @@ public class NodeCraftClient implements ClientModInitializer {
             // 注册客户端生命周期事件
             ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
                 NodeCraft.LOGGER.info("关闭ImGui渲染器...");
+                try {
+                    NodeIconManager.getInstance().cleanup();
+                } catch (Exception e) {
+                    NodeCraft.LOGGER.warn("Node icon manager cleanup failed: {}", e.toString());
+                }
                 renderer.shutdown();
             });
+
+            ResourceLoader.get(ResourceType.CLIENT_RESOURCES).registerReloader(
+                    Identifier.of("nodecraft", "node_icons"),
+                    new SimpleResourceReloader<Void>() {
+                        @Override
+                        protected Void prepare(ResourceReloader.Store store) {
+                            return null;
+                        }
+
+                        @Override
+                        protected void apply(Void data, ResourceReloader.Store store) {
+                            MinecraftClient client = MinecraftClient.getInstance();
+                            if (client != null) {
+                                client.execute(() -> NodeIconManager.getInstance().onResourcesReloaded());
+                            }
+                        }
+                    }
+            );
             
             // 注册客户端初始化完成事件
             ClientLifecycleEvents.CLIENT_STARTED.register(client -> {

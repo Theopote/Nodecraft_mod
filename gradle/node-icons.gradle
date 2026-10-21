@@ -1,0 +1,80 @@
+/*
+ * Build-time SVG → PNG rasterization for node-library icons.
+ *
+ * SVG remains the editable source under assets/; generated PNGs are packaged
+ * into the jar so runtime never needs to parse SVG during ImGui draws.
+ */
+
+sourceSets {
+	iconTools {
+		java {
+			srcDirs = ['src/iconTools/java', 'src/main/java']
+			include 'com/nodecraft/tools/RasterizeNodeIconsMain.java'
+			include 'com/nodecraft/gui/utils/SvgIconRasterizer.java'
+		}
+	}
+}
+
+dependencies {
+	iconToolsImplementation "com.github.weisj:jsvg:${project.jsvg_version}"
+}
+
+def svgIconRoot = file('src/main/resources/assets/nodecraft/textures/icons/nodes')
+def generatedIconPngRoot = layout.buildDirectory.dir('generated/resources/nodeIconPngs/assets/nodecraft/textures/icons/nodes')
+def generatedIconPngBundle = layout.buildDirectory.dir('generated/resources/nodeIconPngs')
+
+tasks.named('compileIconToolsJava', JavaCompile).configure {
+	options.release = 21
+	options.encoding = 'UTF-8'
+}
+
+tasks.register('rasterizeNodeIcons', JavaExec) {
+	group = 'nodecraft'
+	description = 'Rasterizes node-library SVG icons to PNG (build-time)'
+	dependsOn('compileIconToolsJava')
+	classpath = sourceSets.iconTools.runtimeClasspath
+	mainClass = 'com.nodecraft.tools.RasterizeNodeIconsMain'
+	args = [
+			svgIconRoot.absolutePath,
+			generatedIconPngRoot.get().asFile.absolutePath,
+			'64'
+	]
+	inputs.dir(svgIconRoot)
+	outputs.dir(generatedIconPngRoot)
+}
+
+tasks.register('validateNodeIcons') {
+	group = 'nodecraft'
+	description = 'Fails if any node-library SVG cannot be rasterized to PNG'
+	dependsOn('rasterizeNodeIcons')
+	doLast {
+		def pngRoot = generatedIconPngRoot.get().asFile
+		def missing = []
+		svgIconRoot.eachFileRecurse { File svg ->
+			if (!svg.name.toLowerCase(Locale.ROOT).endsWith('.svg')) {
+				return
+			}
+			def relative = svgIconRoot.toPath().relativize(svg.toPath()).toString().replace('\\', '/')
+			def pngRelative = relative.substring(0, relative.length() - 4) + '.png'
+			def png = new File(pngRoot, pngRelative)
+			if (!png.isFile() || png.length() == 0L) {
+				missing << relative
+			}
+		}
+		if (!missing.isEmpty()) {
+			throw new GradleException("Missing generated PNGs for ${missing.size()} SVG(s). First: ${missing.take(10)}")
+		}
+		logger.lifecycle("Validated node icon PNGs under ${pngRoot}")
+	}
+}
+
+processResources {
+	dependsOn('rasterizeNodeIcons')
+	from(generatedIconPngBundle) {
+		into ''
+	}
+}
+
+tasks.named('check').configure {
+	dependsOn('validateNodeIcons')
+}

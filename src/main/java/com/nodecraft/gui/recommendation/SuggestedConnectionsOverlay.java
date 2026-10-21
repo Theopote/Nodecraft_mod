@@ -18,7 +18,6 @@ import imgui.flag.ImGuiCol;
 import imgui.flag.ImGuiSelectableFlags;
 import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
-import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 import java.util.UUID;
@@ -272,7 +271,6 @@ public final class SuggestedConnectionsOverlay {
     private void drawNodeIcon(ImDrawList drawList, ImVec2 topLeft, NodeInfo node, String nodeCategory, float iconSize) {
         int textureId = iconManager.loadNodeIcon(node.getId(), nodeCategory, node.getIcon());
         if (textureId > 0) {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
             drawList.addImage(
                     textureId,
                     topLeft.x, topLeft.y,

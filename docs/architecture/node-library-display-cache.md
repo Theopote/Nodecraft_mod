@@ -12,6 +12,10 @@ Keep Node Library scrolling/search responsive by caching:
 Texture GPU upload cache + missing-resource negative cache already exist in
 `NodeIconManager`; this phase adds the missing **resolution** and **display** layers.
 
+**Icon pipeline (stability follow-up):** build-time `rasterizeNodeIcons` emits PNGs from
+SVG sources; runtime prefers PNG decode + bounded per-frame GPU upload. Panels must not
+call `NodeIconManager.cleanup()` — textures are owned for the client lifetime / resource reload.
+
 ## Resolutions
 
 | Topic | Decision |

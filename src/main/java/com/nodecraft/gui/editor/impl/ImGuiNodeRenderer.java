@@ -25,8 +25,6 @@ import org.jetbrains.annotations.Nullable;
 import com.nodecraft.nodesystem.nodes.output.execute.ApplyChangesNode;
 import com.nodecraft.nodesystem.nodes.output.preview.PreviewGeometryNode;
 import com.nodecraft.nodesystem.nodes.output.preview.GeometryViewerNode;
-import org.lwjgl.opengl.GL11;
-
 import imgui.ImGui;
 import imgui.ImVec2;
 import imgui.ImDrawList;
@@ -444,7 +442,6 @@ public class ImGuiNodeRenderer {
         }
         int textureId = NodeIconManager.getInstance().loadNodeIcon(typeId, category, explicitIcon);
         if (textureId > 0) {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
             drawList.addImage(textureId, iconLeft, iconTop, iconLeft + iconSizeScaled, iconTop + iconSizeScaled,
                     0.0f, 0.0f, 1.0f, 1.0f);
         } else {

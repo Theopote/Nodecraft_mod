@@ -10,11 +10,15 @@ import java.util.Locale;
  * Pure icon resource-path resolution for the node library.
  * <p>
  * No OpenGL / Minecraft dependencies — safe for unit tests.
+ * <p>
+ * Preference order for each logical resource: pre-rasterized {@code .png}, then
+ * editable-source {@code .svg} (runtime should avoid SVG when PNGs are packaged).
  */
 public final class NodeIconPathResolver {
 
     public static final String ICON_NAMESPACE = "nodecraft";
     public static final String ICON_BASE_PATH = "textures/icons/nodes/";
+    public static final String PNG_EXTENSION = ".png";
     public static final String SVG_EXTENSION = ".svg";
 
     public enum CandidateKind {
@@ -28,9 +32,9 @@ public final class NodeIconPathResolver {
     /**
      * One lookup candidate in resolution order.
      *
-     * @param cacheKey     stable key for texture / negative caches
-     * @param resourcePath Minecraft resource path under the nodecraft namespace, or {@code null} for synthetic fallback
-     * @param kind         candidate kind
+     * @param cacheKey         stable key for texture / negative caches
+     * @param resourcePath     Minecraft resource path under the nodecraft namespace, or {@code null} for synthetic fallback
+     * @param kind             candidate kind
      * @param fallbackCategory main category used when {@code kind == FALLBACK}
      */
     public record Candidate(
@@ -52,29 +56,27 @@ public final class NodeIconPathResolver {
             @Nullable String category,
             @Nullable String explicitIcon
     ) {
-        List<Candidate> result = new ArrayList<>(5);
+        List<Candidate> result = new ArrayList<>(9);
         String normalizedCategory = normalizeId(category);
 
         String explicitPath = normalizeIconPath(explicitIcon);
         if (explicitPath != null) {
-            result.add(new Candidate("explicit:" + explicitPath, explicitPath, CandidateKind.EXPLICIT, ""));
+            addPngThenSvg(result, "explicit", stripExtension(explicitPath), CandidateKind.EXPLICIT);
         }
 
         String normalizedNodeId = normalizeId(nodeId);
         if (!normalizedNodeId.isEmpty()) {
-            String path = buildNodePath(normalizedNodeId);
-            result.add(new Candidate("node:" + normalizedNodeId, path, CandidateKind.NODE_ID, ""));
+            addPngThenSvg(result, "node:" + normalizedNodeId, stripExtension(buildNodePath(normalizedNodeId)), CandidateKind.NODE_ID);
         }
 
         if (!normalizedCategory.isEmpty()) {
-            String path = buildCategoryPath(normalizedCategory);
-            result.add(new Candidate("subcat:" + normalizedCategory, path, CandidateKind.SUBCATEGORY, ""));
+            addPngThenSvg(result, "subcat:" + normalizedCategory, stripExtension(buildCategoryPath(normalizedCategory)), CandidateKind.SUBCATEGORY);
         }
 
         String mainCategory = extractMainCategory(normalizedCategory);
         if (!mainCategory.isEmpty()) {
-            String path = ICON_BASE_PATH + mainCategory + "/" + mainCategory + SVG_EXTENSION;
-            result.add(new Candidate("cat:" + mainCategory, path, CandidateKind.MAIN_CATEGORY, ""));
+            String base = ICON_BASE_PATH + mainCategory + "/" + mainCategory;
+            addPngThenSvg(result, "cat:" + mainCategory, base, CandidateKind.MAIN_CATEGORY);
         }
 
         String fallbackCategory = mainCategory.isEmpty() ? "unknown" : mainCategory;
@@ -108,6 +110,12 @@ public final class NodeIconPathResolver {
         return dot >= 0 ? normalized.substring(0, dot) : normalized;
     }
 
+    /**
+     * Normalizes an explicit icon token to a resource path.
+     * <p>
+     * Extensionless inputs default to {@code .png} (build-time raster primary).
+     * Callers that need SVG fallback should use {@link #candidates}.
+     */
     public static @Nullable String normalizeIconPath(@Nullable String icon) {
         if (icon == null || icon.isBlank()) {
             return null;
@@ -116,7 +124,7 @@ public final class NodeIconPathResolver {
         String path = icon.trim().replace('\\', '/');
         if (path.startsWith("cat:")) {
             String mainCategory = normalizeId(path.substring("cat:".length()));
-            return mainCategory.isEmpty() ? null : ICON_BASE_PATH + mainCategory + "/" + mainCategory + SVG_EXTENSION;
+            return mainCategory.isEmpty() ? null : ICON_BASE_PATH + mainCategory + "/" + mainCategory + PNG_EXTENSION;
         }
 
         int namespaceSeparator = path.indexOf(':');
@@ -138,8 +146,9 @@ public final class NodeIconPathResolver {
             }
             path = ICON_BASE_PATH + path;
         }
-        if (!path.endsWith(SVG_EXTENSION)) {
-            path += SVG_EXTENSION;
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (!lower.endsWith(PNG_EXTENSION) && !lower.endsWith(SVG_EXTENSION)) {
+            path += PNG_EXTENSION;
         }
         return path;
     }
@@ -149,7 +158,7 @@ public final class NodeIconPathResolver {
         String fileName = parts[parts.length - 1];
 
         if (parts.length == 1) {
-            return ICON_BASE_PATH + fileName + "/" + fileName + SVG_EXTENSION;
+            return ICON_BASE_PATH + fileName + "/" + fileName + PNG_EXTENSION;
         }
 
         StringBuilder path = new StringBuilder(ICON_BASE_PATH);
@@ -158,14 +167,14 @@ public final class NodeIconPathResolver {
                 path.append(parts[i]).append('/');
             }
         }
-        path.append(fileName).append(SVG_EXTENSION);
+        path.append(fileName).append(PNG_EXTENSION);
         return path.toString();
     }
 
     public static String buildCategoryPath(String category) {
         String[] parts = category.split("\\.");
         if (parts.length == 1) {
-            return ICON_BASE_PATH + parts[0] + "/" + parts[0] + SVG_EXTENSION;
+            return ICON_BASE_PATH + parts[0] + "/" + parts[0] + PNG_EXTENSION;
         }
 
         StringBuilder path = new StringBuilder(ICON_BASE_PATH);
@@ -176,8 +185,39 @@ public final class NodeIconPathResolver {
                 path.append('/');
             }
         }
-        path.append(SVG_EXTENSION);
+        path.append(PNG_EXTENSION);
         return path.toString();
+    }
+
+    public static String stripExtension(String path) {
+        if (path == null) {
+            return "";
+        }
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(PNG_EXTENSION) || lower.endsWith(SVG_EXTENSION)) {
+            return path.substring(0, path.length() - 4);
+        }
+        return path;
+    }
+
+    public static boolean isPngPath(@Nullable String path) {
+        return path != null && path.toLowerCase(Locale.ROOT).endsWith(PNG_EXTENSION);
+    }
+
+    public static boolean isSvgPath(@Nullable String path) {
+        return path != null && path.toLowerCase(Locale.ROOT).endsWith(SVG_EXTENSION);
+    }
+
+    private static void addPngThenSvg(
+            List<Candidate> result,
+            String cacheKeyStem,
+            String pathWithoutExtension,
+            CandidateKind kind
+    ) {
+        String png = pathWithoutExtension + PNG_EXTENSION;
+        String svg = pathWithoutExtension + SVG_EXTENSION;
+        result.add(new Candidate(cacheKeyStem + "|png", png, kind, ""));
+        result.add(new Candidate(cacheKeyStem + "|svg", svg, kind, ""));
     }
 
     private static String normalizeIconToken(@Nullable String icon) {
