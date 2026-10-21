@@ -21,6 +21,8 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 
 import imgui.ImGui;
 import imgui.ImVec2;
+import imgui.flag.ImGuiCond;
+import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImString;
 
@@ -42,9 +44,15 @@ public class ImGuiNodeMenus {
     private final GraphPresetSaveDialog presetSaveDialog = new GraphPresetSaveDialog();
     
     // 节点搜索弹窗状态
+    private static final float NODE_SEARCH_WIDTH = 320f;
+    private static final float NODE_SEARCH_HEIGHT = 450f;
+    private static final float NODE_SEARCH_CANCEL_HEIGHT = 28f;
+
     private float nodeSearchPosX = 0;
     private float nodeSearchPosY = 0;
     private boolean showNodeSearchPopup = false;
+    /** True after request until openPopup runs (avoids resetting pos every frame / blocking drag). */
+    private boolean nodeSearchOpenRequested = false;
     private final ImString searchBuffer = new ImString(256);
     private boolean searchFocusRequested = false;
     
@@ -225,159 +233,171 @@ public class ImGuiNodeMenus {
      * 渲染节点搜索弹窗 — 从 NodeRegistry 动态获取节点列表，支持模糊搜索
      */
     public void renderNodeSearchPopup() {
-        if (showNodeSearchPopup) {
-            // 设置弹窗位置和大小
-            ImVec2 canvasPos = ImGui.getWindowPos();
-            float popupX = canvasPos.x + nodeSearchPosX * editor.getCanvasZoom() + editor.getCanvasOffsetX();
-            float popupY = canvasPos.y + nodeSearchPosY * editor.getCanvasZoom() + editor.getCanvasOffsetY();
-            
-            ImGui.setNextWindowPos(popupX, popupY);
-            ImGui.setNextWindowSize(320, 450);
-            
-            // 打开模态弹窗
+        if (!showNodeSearchPopup) {
+            return;
+        }
+
+        // Appearing-only: place at click once; later frames leave the title-bar drag alone.
+        ImVec2 canvasPos = ImGui.getWindowPos();
+        float popupX = canvasPos.x + nodeSearchPosX * editor.getCanvasZoom() + editor.getCanvasOffsetX();
+        float popupY = canvasPos.y + nodeSearchPosY * editor.getCanvasZoom() + editor.getCanvasOffsetY();
+        ImGui.setNextWindowPos(popupX, popupY, ImGuiCond.Appearing);
+        ImGui.setNextWindowSize(NODE_SEARCH_WIDTH, NODE_SEARCH_HEIGHT, ImGuiCond.Appearing);
+
+        if (nodeSearchOpenRequested) {
             ImGui.openPopup("Node Search");
-            
-            if (ImGui.beginPopupModal("Node Search", ImGuiWindowFlags.AlwaysAutoResize)) {
+            nodeSearchOpenRequested = false;
+        }
+
+        float baseScrollbarSize = ImGui.getStyle().getScrollbarSize();
+        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, baseScrollbarSize * 0.5f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0.0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 0.0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, 0.0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.PopupRounding, 0.0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarRounding, 0.0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowMinSize, 240.0f, 280.0f);
+        try {
+            if (ImGui.beginPopupModal("Node Search", ImGuiWindowFlags.NoResize)) {
                 try {
                     ImGui.text("Search and add node:");
                     ImGui.separator();
-                    
-                    // 搜索输入框
+
                     if (searchFocusRequested) {
                         ImGui.setKeyboardFocusHere();
                         searchFocusRequested = false;
                     }
+                    ImGui.setNextItemWidth(-1.0f);
                     ImGui.inputTextWithHint("##search", "Search nodes...", searchBuffer);
                     String filter = searchBuffer.get().toLowerCase().trim();
-                    
+
                     ImGui.separator();
-                    
-                    // 从 NodeRegistry 获取所有节点
+
                     NodeRegistry registry = NodeRegistry.getInstance();
                     List<String> allNodeIds = registry.getAllNodeIds();
-                    
-                    // 按分类分组，筛选匹配的节点
+
                     String lastCategory = null;
                     int displayedCount = 0;
-                    
-                    // 排序后遍历
+
                     List<String> sortedIds = new ArrayList<>(allNodeIds);
                     sortedIds.sort(String::compareTo);
 
                     Set<String> favoriteIds = new HashSet<>(NodeFavoritesStore.getFavoriteIds());
-                    
-                    try (ImGuiChildScope nodeListScope = new ImGuiChildScope("NodeList", 300, 340, true, 0)) {
-                    if (!nodeListScope.isOpen()) {
-                        ImGui.textDisabled("Unable to open node list");
-                    } else {
 
-                    List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(registry);
-                    boolean favoritesVisible = false;
-                    for (NodeInfo fav : favorites) {
-                        if (!NodeSearchMatcher.matchesNode(fav, filter)) {
-                            continue;
-                        }
-                        if (!favoritesVisible) {
-                            ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "Favorites");
-                            ImGui.separator();
-                            favoritesVisible = true;
-                        }
-                        String favLabel = "  * " + fav.getDisplayName();
-                        if (ImGui.selectable(favLabel + "##fav_popup_" + fav.getId())) {
-                            editor.addNode(fav.getId(), nodeSearchPosX, nodeSearchPosY);
-                            showNodeSearchPopup = false;
-                            searchBuffer.set("");
-                            ImGui.closeCurrentPopup();
-                        }
-                        if (ImGui.isItemHovered()) {
-                            ImGui.setTooltip(fav.getId());
-                        }
-                        displayedCount++;
-                    }
-                    if (favoritesVisible) {
-                        ImGui.spacing();
-                    }
-
-                    for (String nodeId : sortedIds) {
-                        NodeInfo info = registry.getNodeInfo(nodeId);
-                        if (info == null) continue;
-                        if (favoriteIds.contains(nodeId.toLowerCase()) && filter.isEmpty()) {
-                            // Already listed under Favorites when browsing.
-                            continue;
-                        }
-                        
-                        String displayName = info.getDisplayName();
-                        String categoryId = info.getCategoryId();
-                        
-                        if (!NodeSearchMatcher.matches(
-                                nodeId, displayName, info.getDescription(), categoryId, filter)) {
-                            continue;
-                        }
-                        
-                        // 分类标题
-                        if (categoryId != null && !categoryId.equals(lastCategory)) {
-                            if (lastCategory != null) {
+                    float listHeight = ImGui.getContentRegionAvailY()
+                            - NODE_SEARCH_CANCEL_HEIGHT
+                            - ImGui.getStyle().getItemSpacingY()
+                            - ImGui.getStyle().getFramePaddingY();
+                    try (ImGuiChildScope nodeListScope = new ImGuiChildScope(
+                            "NodeList", 0, Math.max(80.0f, listHeight), true, 0)) {
+                        if (!nodeListScope.isOpen()) {
+                            ImGui.textDisabled("Unable to open node list");
+                        } else {
+                            List<NodeInfo> favorites = NodeFavoritesStore.resolveFavorites(registry);
+                            boolean favoritesVisible = false;
+                            for (NodeInfo fav : favorites) {
+                                if (!NodeSearchMatcher.matchesNode(fav, filter)) {
+                                    continue;
+                                }
+                                if (!favoritesVisible) {
+                                    ImGui.textColored(1.0f, 0.85f, 0.35f, 1.0f, "Favorites");
+                                    ImGui.separator();
+                                    favoritesVisible = true;
+                                }
+                                String favLabel = "  * " + fav.getDisplayName();
+                                if (ImGui.selectable(favLabel + "##fav_popup_" + fav.getId())) {
+                                    editor.addNode(fav.getId(), nodeSearchPosX, nodeSearchPosY);
+                                    closeNodeSearchPopup();
+                                }
+                                if (ImGui.isItemHovered()) {
+                                    ImGui.setTooltip(fav.getId());
+                                }
+                                displayedCount++;
+                            }
+                            if (favoritesVisible) {
                                 ImGui.spacing();
                             }
-                            ImGui.textColored(0.6f, 0.8f, 1.0f, 1.0f, categoryId);
-                            ImGui.separator();
-                            lastCategory = categoryId;
-                        }
-                        
-                        // 节点按钮
-                        String label = (displayName != null ? displayName : nodeId);
-                        boolean isFavorite = favoriteIds.contains(nodeId.toLowerCase());
-                        String row = (isFavorite ? "  * " : "  ") + label;
-                        if (ImGui.selectable(row + "##" + nodeId)) {
-                            editor.addNode(nodeId, nodeSearchPosX, nodeSearchPosY);
-                            showNodeSearchPopup = false;
-                            searchBuffer.set("");
-                            ImGui.closeCurrentPopup();
-                        }
-                        
-                        // 悬停提示显示节点ID
-                        if (ImGui.isItemHovered()) {
-                            ImGui.beginTooltip();
-                            ImGui.text("ID: " + nodeId);
-                            if (info.getDescription() != null) {
-                                ImGui.text(info.getDescription());
-                            }
-                            ImGui.endTooltip();
-                        }
 
-                        if (ImGui.beginPopupContextItem("search_fav_ctx_" + nodeId)) {
-                            if (ImGui.menuItem(isFavorite ? "Remove from Favorites" : "Add to Favorites")) {
-                                NodeFavoritesStore.toggle(nodeId);
+                            for (String nodeId : sortedIds) {
+                                NodeInfo info = registry.getNodeInfo(nodeId);
+                                if (info == null) continue;
+                                if (favoriteIds.contains(nodeId.toLowerCase()) && filter.isEmpty()) {
+                                    // Already listed under Favorites when browsing.
+                                    continue;
+                                }
+
+                                String displayName = info.getDisplayName();
+                                String categoryId = info.getCategoryId();
+
+                                if (!NodeSearchMatcher.matches(
+                                        nodeId, displayName, info.getDescription(), categoryId, filter)) {
+                                    continue;
+                                }
+
+                                if (categoryId != null && !categoryId.equals(lastCategory)) {
+                                    if (lastCategory != null) {
+                                        ImGui.spacing();
+                                    }
+                                    ImGui.textColored(0.6f, 0.8f, 1.0f, 1.0f, categoryId);
+                                    ImGui.separator();
+                                    lastCategory = categoryId;
+                                }
+
+                                String label = (displayName != null ? displayName : nodeId);
+                                boolean isFavorite = favoriteIds.contains(nodeId.toLowerCase());
+                                String row = (isFavorite ? "  * " : "  ") + label;
+                                if (ImGui.selectable(row + "##" + nodeId)) {
+                                    editor.addNode(nodeId, nodeSearchPosX, nodeSearchPosY);
+                                    closeNodeSearchPopup();
+                                }
+
+                                if (ImGui.isItemHovered()) {
+                                    ImGui.beginTooltip();
+                                    ImGui.text("ID: " + nodeId);
+                                    if (info.getDescription() != null) {
+                                        ImGui.text(info.getDescription());
+                                    }
+                                    ImGui.endTooltip();
+                                }
+
+                                if (ImGui.beginPopupContextItem("search_fav_ctx_" + nodeId)) {
+                                    if (ImGui.menuItem(isFavorite ? "Remove from Favorites" : "Add to Favorites")) {
+                                        NodeFavoritesStore.toggle(nodeId);
+                                    }
+                                    ImGui.endPopup();
+                                }
+
+                                displayedCount++;
                             }
-                            ImGui.endPopup();
+
+                            if (displayedCount == 0) {
+                                ImGui.textDisabled("No matching nodes");
+                            }
                         }
-                        
-                        displayedCount++;
                     }
-                    
-                    if (displayedCount == 0) {
-                        ImGui.textDisabled("No matching nodes");
-                    }
-                    }
-                    }
-                    
+
                     ImGui.separator();
-                    
-                    if (ImGui.button("Cancel", 300, 28)) {
-                        showNodeSearchPopup = false;
-                        searchBuffer.set("");
-                        ImGui.closeCurrentPopup();
+
+                    if (ImGui.button("Cancel", ImGui.getContentRegionAvailX(), NODE_SEARCH_CANCEL_HEIGHT)) {
+                        closeNodeSearchPopup();
                     }
                 } finally {
                     ImGui.endPopup();
                 }
             }
-            
-            // 如果弹窗关闭，重置状态
+
             if (!ImGui.isPopupOpen("Node Search")) {
                 showNodeSearchPopup = false;
             }
+        } finally {
+            ImGui.popStyleVar(7);
         }
+    }
+
+    private void closeNodeSearchPopup() {
+        showNodeSearchPopup = false;
+        searchBuffer.set("");
+        ImGui.closeCurrentPopup();
     }
 
     public void renderSavePresetDialog() {
@@ -411,6 +431,7 @@ public class ImGuiNodeMenus {
         nodeSearchPosX = x;
         nodeSearchPosY = y;
         showNodeSearchPopup = true;
+        nodeSearchOpenRequested = true;
         searchBuffer.set("");
         searchFocusRequested = true;
         NodeCraft.LOGGER.debug("节点搜索请求，位置: ({}, {})", x, y);
