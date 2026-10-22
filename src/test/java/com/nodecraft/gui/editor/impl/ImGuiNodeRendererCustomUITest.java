@@ -21,5 +21,9 @@ class ImGuiNodeRendererCustomUITest {
                 "Custom UI flag should come from NodeVisualLayout");
         assertTrue(content.contains("renderCustomUI("),
                 "Custom UI render path should be present");
+        assertTrue(content.contains("beginInteractionFrame()"),
+                "Custom UI interaction state should reset once per frame");
+        assertFalse(content.contains("resetCustomUIInteractionState();"),
+                "Per-node interaction reset would break multi-node custom UI");
     }
 }

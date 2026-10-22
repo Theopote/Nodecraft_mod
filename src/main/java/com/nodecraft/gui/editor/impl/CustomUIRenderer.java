@@ -13,10 +13,9 @@ public class CustomUIRenderer {
     
     private final ICanvasEditor editor;
 
-    // === 自定义UI交互状态追踪 ===
-    // 追踪最近一次渲染的自定义UI子窗口的鼠标状态，
-    // 用于在 handleNodeInteraction 中支持通过自定义UI区域拖动节点
+    // === 自定义UI交互状态追踪（帧级累积，多节点画布安全） ===
     private java.util.UUID lastCustomUIHoveredNodeId = null;
+    private java.util.UUID activeWidgetNodeId = null;
     private boolean lastCustomUIWasHoveredEmpty = false;
     private boolean lastCustomUIHasActiveWidget = false;
     private boolean lastCustomUIHasHoveredWidget = false;
@@ -40,14 +39,26 @@ public class CustomUIRenderer {
         return lastCustomUIHasActiveWidget;
     }
 
+    /** Node that owns the active custom UI widget this frame, if any. */
+    public java.util.UUID getActiveWidgetNodeId() {
+        return activeWidgetNodeId;
+    }
+
     /**
-     * 重置自定义UI交互状态（在每帧开始前调用）。
+     * 重置自定义UI交互状态（每帧开始前调用一次，勿在每个节点绘制前重复调用）。
      */
-    public void resetCustomUIInteractionState() {
+    public void beginInteractionFrame() {
         lastCustomUIHoveredNodeId = null;
+        activeWidgetNodeId = null;
         lastCustomUIWasHoveredEmpty = false;
         lastCustomUIHasActiveWidget = false;
         lastCustomUIHasHoveredWidget = false;
+    }
+
+    /** @deprecated use {@link #beginInteractionFrame()} */
+    @Deprecated
+    public void resetCustomUIInteractionState() {
+        beginInteractionFrame();
     }
 
     /**
@@ -87,7 +98,35 @@ public class CustomUIRenderer {
     }
 
     /**
-     * 渲染单个节点的自定义UI（使用子窗口）
+     * 统一入口：ImGui 控件路径或直接绘制路径，并累积帧级交互状态。
+     */
+    public void renderNodeCustomUI(CustomUIRenderInfo info) {
+        if (info.customUINode != null && info.supportsDirectDrawing) {
+            renderDirectCustomUI(info);
+            return;
+        }
+        renderSingleCustomUIWithChildWindow(info);
+    }
+
+    private void renderDirectCustomUI(CustomUIRenderInfo info) {
+        float scaledWidth = info.width * info.zoom;
+        float scaledHeight = info.height * info.zoom;
+        try {
+            boolean uiInteracted = info.customUINode.renderCustomUIDirect(
+                    ImGui.getWindowDrawList(),
+                    info.screenX,
+                    info.screenY,
+                    scaledWidth,
+                    scaledHeight,
+                    info.zoom);
+            recordDirectDrawInteraction(info, uiInteracted);
+        } catch (Exception e) {
+            NodeCraft.LOGGER.warn("Failed to render direct custom UI for node {}", info.nodeId, e);
+        }
+    }
+
+    /**
+     * 渲染单个节点的自定义UI（ImGui 控件）
      */
     public void renderSingleCustomUIWithChildWindow(CustomUIRenderInfo info) {
         try {
@@ -208,54 +247,21 @@ public class CustomUIRenderer {
                 }
                 ImGui.endGroup();
 
-                // === 自定义UI区域的鼠标事件处理 ===
-                // 基于节点自定义UI区域进行悬停检测
-                boolean isChildWindowHovered = ImGui.isMouseHoveringRect(
+                boolean regionHovered = ImGui.isMouseHoveringRect(
                         info.screenX,
                         info.screenY,
                         info.screenX + scaledWidth,
                         info.screenY + scaledHeight,
-                        true
-                );
-
-                // 检查此节点是否正在被拖动
-                // 如果正在拖动，忽略控件的 active 状态，因为那只是拖动时鼠标经过控件导致的误激活
+                        true);
                 ImGuiNodeInteraction interaction = editor.getInteraction();
                 boolean isNodeBeingDragged = interaction != null && interaction.isDraggingNode()
                         && info.nodeId.equals(interaction.getDraggingNodeId());
-                
-                if (isNodeBeingDragged) {
-                    // 节点正在被拖动 → 不报告任何控件激活状态
-                    // 始终捕获鼠标以防止父窗口被拖动
-                    ImGui.getIO().setWantCaptureMouse(true);
-                    lastCustomUIHoveredNodeId = info.nodeId;
-                    lastCustomUIWasHoveredEmpty = true;
-                    lastCustomUIHasActiveWidget = false;
-                } else if (isChildWindowHovered) {
-                    // 鼠标在自定义UI子窗口区域内
-                    // 无论是否有控件交互，都要捕获鼠标以防止父窗口被拖动
-                    ImGui.getIO().setWantCaptureMouse(true);
-
-                    if (widgetActiveBeforeGroupEnd) {
-                        // 有控件正在被交互（如拖拽滑块），记录活跃状态
-                        lastCustomUIHasActiveWidget = true;
-                        lastCustomUIHoveredNodeId = info.nodeId;
-                        lastCustomUIWasHoveredEmpty = false;
-                        lastCustomUIHasHoveredWidget = true;
-                    } else if (!widgetHoveredBeforeGroupEnd) {
-                        // 鼠标在子窗口空白区域 → 允许通过此区域拖动/选中节点
-                        lastCustomUIHoveredNodeId = info.nodeId;
-                        lastCustomUIWasHoveredEmpty = true;
-                        lastCustomUIHasActiveWidget = false;
-                        lastCustomUIHasHoveredWidget = false;
-                    } else {
-                        // 鼠标悬停在真正的控件上（尚未激活）
-                        lastCustomUIHoveredNodeId = info.nodeId;
-                        lastCustomUIWasHoveredEmpty = false;
-                        lastCustomUIHasActiveWidget = false;
-                        lastCustomUIHasHoveredWidget = true;
-                    }
-                }
+                recordImGuiWidgetInteraction(
+                        info.nodeId,
+                        regionHovered,
+                        widgetHoveredBeforeGroupEnd,
+                        widgetActiveBeforeGroupEnd,
+                        isNodeBeingDragged);
 
             } finally {
                 // 恢复原始样式状态
@@ -318,6 +324,98 @@ public class CustomUIRenderer {
             }
         }
         return uiInteracted;
+    }
+
+    /**
+     * 累积 ImGui 控件路径的交互状态；同一帧内多个自定义 UI 节点不会互相覆盖 active 状态。
+     */
+    void recordImGuiWidgetInteraction(
+            UUID nodeId,
+            boolean regionHovered,
+            boolean widgetHovered,
+            boolean widgetActive,
+            boolean nodeBeingDragged) {
+        if (regionHovered || nodeBeingDragged) {
+            ImGui.getIO().setWantCaptureMouse(true);
+        }
+        mergeInteractionSnapshot(nodeId, regionHovered, widgetHovered, widgetActive, nodeBeingDragged);
+    }
+
+    /**
+     * 纯合并逻辑（无 ImGui 依赖），供多节点帧级状态累积与单元测试使用。
+     */
+    void mergeInteractionSnapshot(
+            UUID nodeId,
+            boolean regionHovered,
+            boolean widgetHovered,
+            boolean widgetActive,
+            boolean nodeBeingDragged) {
+        if (nodeBeingDragged) {
+            if (!lastCustomUIHasActiveWidget) {
+                lastCustomUIHoveredNodeId = nodeId;
+                lastCustomUIWasHoveredEmpty = true;
+                lastCustomUIHasHoveredWidget = false;
+            }
+            return;
+        }
+        if (!regionHovered) {
+            return;
+        }
+
+        if (widgetActive) {
+            lastCustomUIHasActiveWidget = true;
+            activeWidgetNodeId = nodeId;
+            lastCustomUIHoveredNodeId = nodeId;
+            lastCustomUIWasHoveredEmpty = false;
+            lastCustomUIHasHoveredWidget = true;
+            return;
+        }
+
+        if (lastCustomUIHasActiveWidget) {
+            return;
+        }
+
+        if (!widgetHovered) {
+            lastCustomUIHoveredNodeId = nodeId;
+            lastCustomUIWasHoveredEmpty = true;
+            lastCustomUIHasHoveredWidget = false;
+        } else {
+            lastCustomUIHoveredNodeId = nodeId;
+            lastCustomUIWasHoveredEmpty = false;
+            lastCustomUIHasHoveredWidget = true;
+        }
+    }
+
+    /**
+     * 直接绘制路径：记录区域悬停与交互，供节点拖拽拦截使用。
+     */
+    void recordDirectDrawInteraction(CustomUIRenderInfo info, boolean uiInteracted) {
+        float scaledWidth = info.width * info.zoom;
+        float scaledHeight = info.height * info.zoom;
+        boolean regionHovered = ImGui.isMouseHoveringRect(
+                info.screenX,
+                info.screenY,
+                info.screenX + scaledWidth,
+                info.screenY + scaledHeight,
+                true);
+        ImGuiNodeInteraction interaction = editor.getInteraction();
+        boolean isNodeBeingDragged = interaction != null && interaction.isDraggingNode()
+                && info.nodeId.equals(interaction.getDraggingNodeId());
+
+        if (isNodeBeingDragged) {
+            recordImGuiWidgetInteraction(info.nodeId, true, false, false, true);
+            return;
+        }
+        if (!regionHovered) {
+            return;
+        }
+
+        ImGui.getIO().setWantCaptureMouse(true);
+        if (uiInteracted) {
+            mergeInteractionSnapshot(info.nodeId, true, true, true, false);
+            return;
+        }
+        mergeInteractionSnapshot(info.nodeId, true, false, false, false);
     }
 
     /**

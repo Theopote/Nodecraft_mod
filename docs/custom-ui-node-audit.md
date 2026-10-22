@@ -18,22 +18,22 @@ Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom U
 
 | Priority | Type ID | Class | Historical controls | Current UI code | Registered | Action |
 |----------|---------|-------|---------------------|-----------------|------------|--------|
-| A | `input.numeric.integer_input` | `IntegerInputNode` | int input + drag | Present | Yes | Restore |
-| A | `input.numeric.float_input` | `FloatInputNode` | float input + drag | Present | Yes | Restore |
-| A | `input.numeric.range_input` | `RangeInputNode` | min/max sliders | Present | Yes | Restore |
-| A | `input.numeric.angle_slider` | `AngleSliderNode` | angle slider | Present | Yes | Restore |
+| A | `input.numeric.integer` | `IntegerInputNode` | int input + drag | Present | Yes | Restore |
+| A | `input.numeric.float` | `FloatInputNode` | float input + drag | Present | Yes | Restore |
+| A | `input.numeric.range` | `RangeInputNode` | min/max sliders | Present | Yes | Restore |
+| A | `input.numeric.angle` | `AngleSliderNode` | angle slider | Present | Yes | Restore |
 | A | `input.numeric.float_slider` | `FloatSliderNode` | float slider | Present | Yes | Restore |
 | A | `input.numeric.integer_slider` | `IntegerSliderNode` | int slider | Present | Yes | Restore |
-| A | `input.numeric.circular_angle` | `CircularAngleNode` | circular angle dial | Present | Yes | Restore |
+| A | `input.numeric.angle_picker` | `CircularAngleNode` | circular angle dial | Present | Yes | Restore |
 | A | `input.numeric.xy_slider` | `XYSliderNode` | 2D XY slider | Present | Yes | Restore |
 | A | `reference.vectors.vector2_input` | `Vector2InputNode` | X/Y inputs | Present | Yes | Restore |
-| A | `reference.vectors.vector_input` | `VectorInputNode` | X/Y/Z inputs | Present | Yes | Restore |
-| A | `reference.points.coordinate_input` | `CoordinateInputNode` | coordinate fields | Present | Yes | Restore |
+| A | `reference.vectors.vector` | `VectorInputNode` | X/Y/Z inputs | Present | Yes | Restore |
+| A | `reference.points.block_position` | `CoordinateInputNode` | coordinate fields | Present | Yes | Restore |
 | A | `input.values.boolean_toggle` | `BooleanToggleNode` | checkbox/toggle | Present | Yes | Restore |
 | A | `input.values.text_input` | `TextInputNode` | text field | Present | Yes | Restore |
 | A | `input.values.color_picker` | `ColorPickerNode` | color picker | Present | Yes | Restore |
 | A | `input.values.gradient_ramp` | `GradientRampNode` | gradient editor | Present | Yes | Restore |
-| A | `input.values.file_path_input` | `FilePathInputNode` | path field + browse | Present | Yes | Restore |
+| A | `input.values.file_path` | `FilePathInputNode` | path field + browse | Present | Yes | Restore |
 | A | `math.list.create_list` | `CreateListNode` | +/- dynamic ports | Present | Yes | Restore |
 | A | `math.scalar_math.expression` | `ExpressionNode` | expression field | Present | Yes | Restore |
 | A | `utilities.assist.signal_fork` | `SignalForkNode` | fork count control | Present | Yes | Restore |
@@ -42,15 +42,15 @@ Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom U
 | A | `input.type_selectors.entity_type_selector` | `EntityTypeSelectorNode` | registry picker | Present | Yes | Restore |
 | A | `input.type_selectors.biome_selector` | `BiomeSelectorNode` | registry picker | Present | Yes | Restore |
 | B | `output.debug.value_monitor` | `ValueMonitorNode` | live value text | Present | Yes | Restore |
-| B | `output.debug.panel` | `PanelNode` | preview panel | Present | Yes | Restore |
-| B | `output.debug.stopwatch` | `StopwatchNode` | timer controls | Present | Yes | Restore |
+| B | `output.debug.data_inspector` | `PanelNode` | preview panel | Present | Yes | Restore |
+| B | `output.debug.execution_timer` | `StopwatchNode` | timer controls | Present | Yes | Restore |
 | B | `output.debug.print_to_chat` | `PrintToChatNode` | send button | Present | Yes | Restore |
 | B | `output.preview.geometry_viewer` | `GeometryViewerNode` | viewer controls | Present | Yes | Restore |
 | B | `output.preview.preview_blocks` | `PreviewBlocksNode` | preview controls | Present | Yes | Restore |
 | B | `output.execute.apply_changes` | `ApplyChangesNode` | apply/bake button | Present | Yes | Restore |
 | B | `output.execute.undo_last_bake` | `UndoLastBakeNode` | undo button | Present | Yes | Restore |
 | B | `output.execute.redo_last_bake` | `RedoLastBakeNode` | redo button | Present | Yes | Restore |
-| B | `output.execute.clear_all_previews` | `ClearAllPreviewsNode` | clear button | Present | Yes | Restore |
+| B | `output.execute.clear_preview` | `ClearAllPreviewsNode` | clear button | Present | Yes | Restore |
 | B | `output.execute.bake_status` | `BakeStatusNode` | status display | Present | Yes | Restore |
 | C | `output.export.export_worldedit` | `ExportWorldEditNode` | export controls | Present | Yes | Restore |
 | C | `output.export.export_schematic` | `ExportSchematicNode` | export controls | Present | Yes | Restore |
@@ -69,10 +69,17 @@ Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom U
 - `ImGuiNodeRenderer` re-enables `customUIRenderer.hasCustomUI(node)` and draws controls below ports in both TEXT_ONLY and ICON_ONLY modes.
 - `invisibleButton` covers title/ports only so widgets remain clickable.
 
+## Phase 2 stabilization (interaction state)
+
+- Custom UI interaction state resets **once per frame** in `renderNodesDirect` via `beginInteractionFrame()`.
+- Multiple custom UI nodes on the same canvas **merge** interaction state; an active widget on node A is not cleared when node B renders later in the frame.
+- Direct-draw and ImGui widget paths both route through `CustomUIRenderer.renderNodeCustomUI()` and share merge logic.
+
 ## Manual in-game verification checklist
 
 - [ ] Float Slider / Boolean Toggle / Create List / Value Monitor visible in TEXT_ONLY
 - [ ] Same nodes visible in ICON_ONLY
 - [ ] Slider drag does not move node
+- [ ] Two custom UI nodes on canvas: dragging slider on one does not break when the other renders
 - [ ] CreateList +/- updates ports with undo
 - [ ] Zoom 25%–200% without clipping

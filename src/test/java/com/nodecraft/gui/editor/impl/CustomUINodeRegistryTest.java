@@ -7,21 +7,15 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CustomUINodeRegistryTest {
-
-    private static final Set<String> PRIORITY_A_SAMPLES = Set.of(
-            "input.numeric.float_slider",
-            "input.values.boolean_toggle",
-            "math.list.create_list",
-            "input.type_selectors.block_type_selector"
-    );
 
     @BeforeAll
     static void initRegistry() {
@@ -32,8 +26,29 @@ class CustomUINodeRegistryTest {
     }
 
     @Test
-    void registryContainsConcreteCustomUINodeClasses() {
-        List<String> customNodes = new ArrayList<>();
+    void auditListsExactlyFortyFourRegisteredCustomUINodes() {
+        List<String> missing = new ArrayList<>();
+        List<String> notCustomUi = new ArrayList<>();
+
+        for (String typeId : CustomUINodeAuditTypeIds.ALL) {
+            NodeInfo info = NodeRegistry.getInstance().getNodeInfo(typeId);
+            if (info == null) {
+                missing.add(typeId);
+                continue;
+            }
+            if (!BaseCustomUINode.class.isAssignableFrom(info.getNodeClass())) {
+                notCustomUi.add(typeId);
+            }
+        }
+
+        assertTrue(missing.isEmpty(), "Missing audit type IDs: " + missing);
+        assertTrue(notCustomUi.isEmpty(), "Audit type IDs not extending BaseCustomUINode: " + notCustomUi);
+        assertEquals(44, CustomUINodeAuditTypeIds.ALL.size());
+    }
+
+    @Test
+    void registryCustomUINodeCountMatchesAudit() {
+        Set<String> registeredCustom = new HashSet<>();
         for (String typeId : NodeRegistry.getInstance().getAllNodeIds()) {
             NodeInfo info = NodeRegistry.getInstance().getNodeInfo(typeId);
             if (info == null || info.getNodeClass() == null) {
@@ -42,22 +57,11 @@ class CustomUINodeRegistryTest {
             Class<?> nodeClass = info.getNodeClass();
             if (BaseCustomUINode.class.isAssignableFrom(nodeClass)
                     && !Modifier.isAbstract(nodeClass.getModifiers())) {
-                customNodes.add(typeId);
+                registeredCustom.add(typeId);
             }
         }
 
-        assertFalse(customNodes.isEmpty(), "Expected registered BaseCustomUINode subclasses");
-        assertTrue(customNodes.size() >= 40,
-                "Expected at least 40 custom UI nodes, found " + customNodes.size());
-    }
-
-    @Test
-    void priorityCustomUINodesAreRegistered() {
-        for (String typeId : PRIORITY_A_SAMPLES) {
-            NodeInfo info = NodeRegistry.getInstance().getNodeInfo(typeId);
-            assertNotNull(info, "Missing node info for " + typeId);
-            assertTrue(BaseCustomUINode.class.isAssignableFrom(info.getNodeClass()),
-                    typeId + " should extend BaseCustomUINode");
-        }
+        assertEquals(CustomUINodeAuditTypeIds.ALL, registeredCustom,
+                "Registry custom UI set must match audit list exactly");
     }
 }

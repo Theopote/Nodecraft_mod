@@ -115,6 +115,7 @@ public class ImGuiNodeRenderer {
 
         if (graph == null) return;
 
+        customUIRenderer.beginInteractionFrame();
         cache.cleanupCacheIfNeeded();
 
         float canvasZoom = editor.getCanvasZoom();
@@ -388,7 +389,6 @@ public class ImGuiNodeRenderer {
         ImGui.invisibleButton("node_interaction_area_" + nodeId, finalNodeWidthScaled, nodeBodyInteractionHeight);
 
         if (nodeHasCustomUI && !compactRerouteNode) {
-            customUIRenderer.resetCustomUIInteractionState();
             renderCustomUI(node, nodeId, nodeScreenX, nodeScreenY, finalNodeWidthScaled, canvasZoom, layout);
         }
 
@@ -429,21 +429,6 @@ public class ImGuiNodeRenderer {
             supportsDirectDrawing = customUI.supportsDirectDrawing();
         }
 
-        if (supportsDirectDrawing && customUINode != null) {
-            try {
-                customUINode.renderCustomUIDirect(
-                        ImGui.getWindowDrawList(),
-                        customUIScreenX,
-                        customUIStartY,
-                        customUILogicalWidth * canvasZoom,
-                        customUIUnscaledHeight * canvasZoom,
-                        canvasZoom);
-            } catch (Exception e) {
-                NodeCraft.LOGGER.warn("Failed to render direct custom UI for node {}", nodeId, e);
-            }
-            return;
-        }
-
         CustomUIRenderer.CustomUIRenderInfo info = new CustomUIRenderer.CustomUIRenderInfo(
                 node,
                 customUINode,
@@ -453,8 +438,8 @@ public class ImGuiNodeRenderer {
                 customUILogicalWidth,
                 customUIUnscaledHeight,
                 canvasZoom,
-                false);
-        customUIRenderer.renderSingleCustomUIWithChildWindow(info);
+                supportsDirectDrawing);
+        customUIRenderer.renderNodeCustomUI(info);
     }
 
     private void renderNodePorts(ImDrawList drawList, NodeVisualLayout.Result layout,
