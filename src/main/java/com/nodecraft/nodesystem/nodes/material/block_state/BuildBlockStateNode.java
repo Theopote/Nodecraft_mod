@@ -1,14 +1,16 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
+import com.nodecraft.gui.components.customui.BlockStateCompactWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -23,7 +25,7 @@ import java.util.UUID;
     category = "material.block_state",
     order = 0
 )
-public class BuildBlockStateNode extends BaseNode {
+public class BuildBlockStateNode extends BaseCustomUINode {
 
     private static final String INPUT_BASE_STATE_ID = "input_base_state";
     private static final String INPUT_BLOCK_TYPE_ID = "input_block_type";
@@ -188,7 +190,63 @@ public class BuildBlockStateNode extends BaseNode {
     }
 
     public void setPropertiesText(String propertiesText) {
-        this.propertiesText = propertiesText == null ? "" : propertiesText;
+        String resolved = propertiesText == null ? "" : propertiesText;
+        if (!resolved.equals(this.propertiesText)) {
+            this.propertiesText = resolved;
+            markDirty();
+        }
+    }
+
+    private boolean isPropertiesUiEditable() {
+        return !isDriven(INPUT_PROPERTY_NAME_ID)
+            && !isDriven(INPUT_PROPERTY_VALUE_ID)
+            && !isDriven(INPUT_FACING_ID)
+            && !isDriven(INPUT_AXIS_ID)
+            && !isDriven(INPUT_HALF_ID)
+            && !isDriven(INPUT_WATERLOGGED_ID);
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        return BlockStateCompactWidget.preferredHeight(
+            isPropertiesUiEditable(),
+            ImGui.getFrameHeight(),
+            getMediumPadding());
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 176.0f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            boolean editable = isPropertiesUiEditable();
+            if (!editable) {
+                ImGui.textDisabled("Property ports driven (read-only)");
+            }
+
+            String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
+            boolean changed = BlockStateCompactWidget.renderPropertiesText(
+                propertiesText,
+                editable,
+                this::setPropertiesText,
+                availableWidth);
+
+            if (editable) {
+                changed = BlockStateCompactWidget.renderEnumShortcuts(
+                    blockType,
+                    true,
+                    this::setPropertiesText,
+                    propertiesText) || changed;
+            }
+            return changed;
+        });
     }
 
     @Override
@@ -202,6 +260,7 @@ public class BuildBlockStateNode extends BaseNode {
     public void setNodeState(Object state) {
         if (state instanceof Map<?, ?> map && map.get("propertiesText") instanceof String text) {
             setPropertiesText(text);
+            markDirty();
         }
     }
 
