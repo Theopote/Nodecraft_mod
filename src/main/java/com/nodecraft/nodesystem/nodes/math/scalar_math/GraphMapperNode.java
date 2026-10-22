@@ -1,13 +1,11 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
-import com.nodecraft.gui.components.customui.CurvePlotWidget;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
-import imgui.ImGui;
 import com.nodecraft.nodesystem.datatypes.NumericRangeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.NumericDomainResolver;
@@ -26,7 +24,7 @@ import java.util.UUID;
     category = "math.scalar_math",
     order = 22
 )
-public class GraphMapperNode extends BaseCustomUINode {
+public class GraphMapperNode extends BaseNode {
 
     /** Local solver tolerance only — not graph-facing zero semantics. */
     private static final double SOLVER_EPS = 1.0e-12d;
@@ -159,80 +157,6 @@ public class GraphMapperNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_MAPPED_ID, mapped);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
-    }
-
-    /**
-     * Samples the normalized graph function at {@code t} using current node properties.
-     * Intended for custom UI preview and unit tests.
-     */
-    public double sampleNormalizedCurve(double t) {
-        return evaluate(t, defaultExponent, gaussianCenter, gaussianWidth);
-    }
-
-    public void resetCurveDefaults() {
-        setCurveType(CurveType.SMOOTHSTEP);
-        setClampInput(true);
-        setDefaultExponent(2.0d);
-        setGaussianCenter(0.5d);
-        setGaussianWidth(0.2d);
-        setBezierX1(0.25d);
-        setBezierY1(0.0d);
-        setBezierX2(0.75d);
-        setBezierY2(1.0d);
-        markDirty();
-    }
-
-    @Override
-    protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        height += CurvePlotWidget.preferredHeight(1.0f);
-        height += getSmallPadding();
-        height += ImGui.getFrameHeight();
-        return height;
-    }
-
-    @Override
-    protected float calculateMinUIWidth() {
-        return 168.0f + getContentMargin();
-    }
-
-    @Override
-    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, l -> {
-            boolean changed = false;
-            float edgeMargin = l.toPixels(getSmallPadding());
-            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
-            float baseCursorX = ImGui.getCursorPosX();
-
-            ImGui.setCursorPosX(baseCursorX + edgeMargin);
-            l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
-            CurveType current = curveType == null ? CurveType.SMOOTHSTEP : curveType;
-            if (ImGui.beginCombo("##curve_type", current.name())) {
-                for (CurveType type : CurveType.values()) {
-                    if (ImGui.selectable(type.name(), type == current)) {
-                        setCurveType(type);
-                        changed = true;
-                    }
-                }
-                ImGui.endCombo();
-            }
-            l.popItemWidth();
-            l.addVerticalSpacing(getSmallPadding());
-
-            ImGui.setCursorPosX(baseCursorX + edgeMargin);
-            float plotHeight = CurvePlotWidget.preferredHeight(zoom);
-            changed = CurvePlotWidget.render(this, availableWidth, plotHeight, zoom, this::markDirty) || changed;
-            l.addVerticalSpacing(getSmallPadding());
-
-            ImGui.setCursorPosX(baseCursorX + edgeMargin);
-            if (ImGui.button("Reset", Math.min(availableWidth * 0.4f, l.toPixels(72.0f)), ImGui.getFrameHeight())) {
-                resetCurveDefaults();
-                changed = true;
-            }
-            return changed;
-        });
     }
 
     private double evaluate(double t, double exponent, double center, double width) {

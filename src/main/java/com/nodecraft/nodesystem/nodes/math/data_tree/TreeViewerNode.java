@@ -1,15 +1,13 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
-import com.nodecraft.gui.components.customui.TreePreviewWidget;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -22,7 +20,7 @@ import java.util.UUID;
     category = "math.data_tree",
     order = 7
 )
-public class TreeViewerNode extends BaseCustomUINode {
+public class TreeViewerNode extends BaseNode {
     private static final String INPUT_TREE_ID = "input_tree";
     private static final String OUTPUT_SUMMARY_ID = "output_summary";
     private static final String OUTPUT_VALID_ID = "output_valid";
@@ -70,39 +68,5 @@ public class TreeViewerNode extends BaseCustomUINode {
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_TRUNCATED_ID, false);
-    }
-
-    private @Nullable DataTreeData resolvePreviewTree() {
-        DataTreeNodeUtils.ParseResult<DataTreeData> parsed = DataTreeNodeUtils.parseTree(inputValues.get(INPUT_TREE_ID));
-        return parsed.valid() ? parsed.value() : null;
-    }
-
-    @Override
-    protected float calculateUIHeight() {
-        DataTreeData tree = resolvePreviewTree();
-        return TreePreviewWidget.preferredHeight(
-                tree,
-                GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
-                ImGui.getTextLineHeight(),
-                getMediumPadding());
-    }
-
-    @Override
-    protected float calculateMinUIWidth() {
-        return 160.0f + getContentMargin();
-    }
-
-    @Override
-    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, l -> {
-            DataTreeData tree = resolvePreviewTree();
-            DataTreeData.TreePreview preview = tree != null
-                ? tree.describePreview(
-                    GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
-                    GenerationLimits.MAX_TREE_VIEWER_OUTPUT_CHARS)
-                : null;
-            TreePreviewWidget.render(tree, preview, GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES);
-            return false;
-        });
     }
 }
