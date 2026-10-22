@@ -86,7 +86,7 @@ class CustomUIHeadlessContractTest {
     }
 
     @Test
-    void auditInventoryHasExactlyFortyFourRestoreNodes() {
-        assertEquals(44, CustomUINodeAuditTypeIds.ALL.size());
+    void auditInventoryHasExactlyFortySixCustomUINodes() {
+        assertEquals(46, CustomUINodeAuditTypeIds.ALL.size());
     }
 }
