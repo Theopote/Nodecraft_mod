@@ -218,10 +218,17 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
         }
     }
 
+    private void previewDraftEntries(List<BlockPaletteEntry> entries) {
+        setDraftEntries(entries, true);
+    }
+
     private void applyDraftEntries(List<BlockPaletteEntry> entries, String undoLabel) {
         Object before = getNodeState();
         setDraftEntries(entries, true);
-        CustomUIPropertyHistory.recordNodeStateChange(getId(), before, getNodeState(), undoLabel);
+        Object after = getNodeState();
+        if (!java.util.Objects.equals(before, after)) {
+            CustomUIPropertyHistory.recordNodeStateChange(getId(), before, after, undoLabel);
+        }
     }
 
     private boolean appendBlock(List<String> blockIds, String portId, String label) {
@@ -274,7 +281,17 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
             }
             return BlockPaletteWidget.renderEditable(
                 this::draftPaletteData,
-                (entries, dirty) -> applyDraftEntries(entries, "Edit draft palette"),
+                new BlockPaletteWidget.PaletteEditSink() {
+                    @Override
+                    public void preview(List<BlockPaletteEntry> entries) {
+                        previewDraftEntries(entries);
+                    }
+
+                    @Override
+                    public void commit(List<BlockPaletteEntry> entries) {
+                        applyDraftEntries(entries, "Edit draft palette");
+                    }
+                },
                 availableWidth);
         });
     }

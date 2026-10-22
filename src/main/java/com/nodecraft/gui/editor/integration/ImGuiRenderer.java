@@ -100,6 +100,7 @@ public class ImGuiRenderer {
             
             // 1. 创建 ImGui 上下文
             ImGui.createContext();
+            com.nodecraft.gui.components.customui.CustomUIMetricsSafe.bindEditorContext();
             
             ImGuiIO io = ImGui.getIO();
             io.setIniFilename(null); // 禁用ini持久化，避免窗口恢复到屏幕外

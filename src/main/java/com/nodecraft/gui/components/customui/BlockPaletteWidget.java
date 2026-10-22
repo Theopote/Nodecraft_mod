@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 /**
@@ -26,13 +25,22 @@ public final class BlockPaletteWidget {
     private BlockPaletteWidget() {
     }
 
+    /**
+     * Live preview during typing/drag; {@link #commit} records a single undo step.
+     */
+    public interface PaletteEditSink {
+        void preview(List<BlockPaletteEntry> entries);
+
+        void commit(List<BlockPaletteEntry> entries);
+    }
+
     public static float rowHeight() {
-        return Math.max(SWATCH_SIZE + ROW_GAP, ImGui.getFrameHeight() + ROW_GAP);
+        return Math.max(SWATCH_SIZE + ROW_GAP, CustomUIMetricsSafe.frameHeight() + ROW_GAP);
     }
 
     public static float preferredHeight(BlockPaletteData palette, float padding) {
         int rows = Math.max(1, palette == null ? 1 : palette.size());
-        return rows * rowHeight() + padding + ImGui.getFrameHeight();
+        return rows * rowHeight() + padding + CustomUIMetricsSafe.frameHeight();
     }
 
     public static boolean renderReadOnly(BlockPaletteData palette, float width) {
@@ -41,11 +49,11 @@ public final class BlockPaletteWidget {
 
     public static boolean renderEditable(
             Supplier<BlockPaletteData> paletteSupplier,
-            BiConsumer<List<BlockPaletteEntry>, Boolean> paletteConsumer,
+            PaletteEditSink editSink,
             float width
     ) {
         BlockPaletteData palette = paletteSupplier.get();
-        return render(palette, width, true, paletteSupplier, paletteConsumer);
+        return render(palette, width, true, paletteSupplier, editSink);
     }
 
     private static boolean render(
@@ -53,7 +61,7 @@ public final class BlockPaletteWidget {
             float width,
             boolean editable,
             @Nullable Supplier<BlockPaletteData> paletteSupplier,
-            @Nullable BiConsumer<List<BlockPaletteEntry>, Boolean> paletteConsumer
+            @Nullable PaletteEditSink editSink
     ) {
         BlockPaletteData resolved = palette != null ? palette : BlockPaletteData.empty();
         boolean changed = false;
@@ -74,32 +82,38 @@ public final class BlockPaletteWidget {
 
                 ImGui.setCursorScreenPos(rowStart.x + SWATCH_SIZE + 4.0f, rowStart.y);
                 ImGui.pushID(i);
-                if (editable) {
+                if (editable && editSink != null) {
                     if (BlockPickerPopup.renderButton(
                             "palette_row_" + i,
                             entry.blockId(),
                             pickerWidth,
                             newId -> {
                                 entries.set(rowIndex, new BlockPaletteEntry(newId, rowWeight));
-                                paletteConsumer.accept(entries, true);
+                                editSink.commit(new ArrayList<>(entries));
                             })) {
                         changed = true;
                     }
                     ImGui.sameLine();
                     ImDouble weightInput = new ImDouble(entry.weight());
                     ImGui.setNextItemWidth(WEIGHT_INPUT_WIDTH);
-                    if (ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f")) {
-                        double weight = weightInput.get();
-                        if (Double.isFinite(weight) && weight >= 0.0d) {
-                            entries.set(i, new BlockPaletteEntry(entry.blockId(), weight));
-                            paletteConsumer.accept(entries, true);
+                    ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f");
+                    double weight = weightInput.get();
+                    if (Double.isFinite(weight) && weight >= 0.0d
+                            && Math.abs(weight - entry.weight()) > 1.0e-6d) {
+                        entries.set(i, new BlockPaletteEntry(entry.blockId(), weight));
+                        if (ImGui.isItemActive()) {
+                            editSink.preview(new ArrayList<>(entries));
                             changed = true;
                         }
+                    }
+                    if (ImGui.isItemDeactivatedAfterEdit()) {
+                        editSink.commit(new ArrayList<>(entries));
+                        changed = true;
                     }
                     ImGui.sameLine();
                     if (ImGui.smallButton("-")) {
                         entries.remove(i);
-                        paletteConsumer.accept(entries, true);
+                        editSink.commit(new ArrayList<>(entries));
                         changed = true;
                         ImGui.popID();
                         break;
@@ -117,11 +131,11 @@ public final class BlockPaletteWidget {
             }
         }
 
-        if (editable && paletteSupplier != null && paletteConsumer != null) {
-            if (ImGui.button("+ Add Block", Math.min(width, 120.0f), ImGui.getFrameHeight())) {
+        if (editable && paletteSupplier != null && editSink != null) {
+            if (ImGui.button("+ Add Block", Math.min(width, 120.0f), CustomUIMetricsSafe.frameHeight())) {
                 List<BlockPaletteEntry> entries = new ArrayList<>(paletteSupplier.get().entries());
                 entries.add(new BlockPaletteEntry("minecraft:stone"));
-                paletteConsumer.accept(entries, true);
+                editSink.commit(entries);
                 changed = true;
             }
         }

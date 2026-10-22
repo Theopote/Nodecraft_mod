@@ -62,6 +62,7 @@ public final class BlockPickerPopup {
         ImGui.setNextWindowSize(320.0f, 360.0f, imgui.flag.ImGuiCond.Appearing);
         boolean changed = false;
         if (!ImGui.beginPopupModal(popupId, ImGuiWindowFlags.NoResize)) {
+            SEARCH_BUFFERS.remove(popupId);
             return false;
         }
         try {

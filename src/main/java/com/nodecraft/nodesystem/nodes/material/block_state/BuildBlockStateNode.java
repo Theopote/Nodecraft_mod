@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.block_state;
 
 import com.nodecraft.gui.components.customui.BlockStateCompactWidget;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -212,10 +213,15 @@ public class BuildBlockStateNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
+        boolean editable = isPropertiesUiEditable();
+        float contentWidth = calculateMinUIWidth() - getContentMargin();
         return BlockStateCompactWidget.preferredHeight(
             blockType,
-            isPropertiesUiEditable(),
-            ImGui.getFrameHeight(),
+            editable,
+            propertiesText,
+            CustomUIMetricsSafe.frameHeight(),
+            CustomUIMetricsSafe.textLineHeight(),
+            contentWidth,
             getMediumPadding());
     }
 

@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.nodes.math.scalar_math;
 import com.nodecraft.gui.components.customui.CurvePlotWidget;
 import com.nodecraft.gui.components.customui.CurvePlotWidget.BezierHandle;
 import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -85,11 +86,7 @@ public class GraphMapperNode extends BaseCustomUINode {
     private double defaultTargetEnd = 1.0d;
 
     private transient final CurvePlotWidget.InteractionState curveInteraction = new CurvePlotWidget.InteractionState();
-    private transient long bezierDragSessionId;
-    private transient double dragStartBezierX1;
-    private transient double dragStartBezierY1;
-    private transient double dragStartBezierX2;
-    private transient double dragStartBezierY2;
+    private transient Object bezierDragBeforeState;
 
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_T_ID = "output_t";
@@ -199,12 +196,13 @@ public class GraphMapperNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float frameHeight = CustomUIMetricsSafe.frameHeight();
         float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
+        height += frameHeight;
         height += getSmallPadding();
         height += CurvePlotWidget.preferredHeight(1.0f);
         height += getSmallPadding();
-        height += ImGui.getFrameHeight();
+        height += frameHeight;
         return height;
     }
 
@@ -257,14 +255,7 @@ public class GraphMapperNode extends BaseCustomUINode {
         return new CurvePlotWidget.BezierDragCallbacks() {
             @Override
             public void onBezierDragStarted(BezierHandle handle) {
-                bezierDragSessionId = CustomUIPropertyHistory.openDragSession();
-                if (handle == BezierHandle.P1) {
-                    dragStartBezierX1 = bezierX1;
-                    dragStartBezierY1 = bezierY1;
-                } else if (handle == BezierHandle.P2) {
-                    dragStartBezierX2 = bezierX2;
-                    dragStartBezierY2 = bezierY2;
-                }
+                bezierDragBeforeState = getNodeState();
             }
 
             @Override
@@ -272,24 +263,21 @@ public class GraphMapperNode extends BaseCustomUINode {
                 if (handle == BezierHandle.P1) {
                     setBezierX1(x);
                     setBezierY1(y);
-                    CustomUIPropertyHistory.recordPropertyChange(
-                        getId(), "bezierX1", dragStartBezierX1, bezierX1, bezierDragSessionId);
-                    CustomUIPropertyHistory.recordPropertyChange(
-                        getId(), "bezierY1", dragStartBezierY1, bezierY1, bezierDragSessionId);
                 } else if (handle == BezierHandle.P2) {
                     setBezierX2(x);
                     setBezierY2(y);
-                    CustomUIPropertyHistory.recordPropertyChange(
-                        getId(), "bezierX2", dragStartBezierX2, bezierX2, bezierDragSessionId);
-                    CustomUIPropertyHistory.recordPropertyChange(
-                        getId(), "bezierY2", dragStartBezierY2, bezierY2, bezierDragSessionId);
                 }
                 markDirty();
             }
 
             @Override
             public void onBezierDragEnded(BezierHandle handle) {
-                bezierDragSessionId = 0L;
+                if (bezierDragBeforeState != null) {
+                    Object after = getNodeState();
+                    CustomUIPropertyHistory.recordNodeStateChange(
+                        getId(), bezierDragBeforeState, after, "Adjust Bezier curve");
+                    bezierDragBeforeState = null;
+                }
             }
         };
     }

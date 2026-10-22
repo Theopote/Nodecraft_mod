@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.data_tree;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.components.customui.TreePreviewWidget;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -97,7 +98,7 @@ public class TreeViewerNode extends BaseCustomUINode {
         return TreePreviewWidget.preferredHeight(
                 tree,
                 GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
-                ImGui.getTextLineHeight(),
+                CustomUIMetricsSafe.textLineHeight(),
                 getMediumPadding());
     }
 

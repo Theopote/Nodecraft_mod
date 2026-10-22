@@ -46,15 +46,32 @@ public final class BlockStateCompactWidget {
 
     public static float preferredHeight(
             @Nullable String blockType,
-            boolean showCombos,
+            boolean editable,
+            @Nullable String propertiesText,
             float frameHeight,
+            float textLineHeight,
+            float contentWidth,
             float padding
     ) {
-        float height = multilineEditorHeight(frameHeight) + padding;
-        if (showCombos) {
-            height += countVisiblePropertyRows(blockType) * (frameHeight + COMBO_ROW_SPACING);
+        if (!editable) {
+            float height = textLineHeight + estimateWrappedTextHeight(propertiesText, contentWidth, textLineHeight);
+            return height + padding;
         }
+        float height = multilineEditorHeight(frameHeight) + padding;
+        height += countVisiblePropertyRows(blockType) * (frameHeight + COMBO_ROW_SPACING);
         return height;
+    }
+
+    private static float estimateWrappedTextHeight(
+            @Nullable String text,
+            float contentWidth,
+            float textLineHeight
+    ) {
+        String display = text == null || text.isBlank() ? "(no overrides)" : text;
+        float charWidth = Math.max(4.0f, textLineHeight * 0.55f);
+        int charsPerLine = Math.max(8, (int) (contentWidth / charWidth));
+        int lines = Math.max(1, (display.length() + charsPerLine - 1) / charsPerLine);
+        return lines * textLineHeight;
     }
 
     public static boolean renderPropertiesText(

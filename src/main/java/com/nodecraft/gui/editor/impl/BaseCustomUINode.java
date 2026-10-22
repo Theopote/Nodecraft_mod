@@ -1,5 +1,6 @@
 package com.nodecraft.gui.editor.impl;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.core.NodeCraft;
 import imgui.ImGui;
@@ -185,8 +186,9 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
      * Resolve height/width via subclass {@code calculateUI*} methods, with optional headless fallback.
      */
     private float resolveCustomUIMetric(boolean height) {
-        // Native ImGui without a context can hard-crash the JVM; never call calculateUI* headless.
-        if (Boolean.getBoolean("nodecraft.customui.headlessMetrics")) {
+        // Native ImGui without a context can SIGSEGV the JVM (GameTest, server, registry init).
+        if (Boolean.getBoolean("nodecraft.customui.headlessMetrics")
+            || !CustomUIMetricsSafe.hasImGuiContext()) {
             return height ? HEADLESS_FALLBACK_HEIGHT : HEADLESS_FALLBACK_WIDTH;
         }
         return height ? calculateUIHeight() : calculateMinUIWidth();
