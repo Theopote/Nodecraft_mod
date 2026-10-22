@@ -1,7 +1,10 @@
 package com.nodecraft.gui.editor.impl;
 
 import java.util.UUID;
+import com.nodecraft.gui.components.customui.CustomUIEditorContext;
+import com.nodecraft.gui.components.customui.CustomUIImageTextureCache;
 import com.nodecraft.nodesystem.api.INode;
+import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;
 import com.nodecraft.core.NodeCraft;
 
@@ -48,14 +51,23 @@ public class CustomUIRenderer {
 
     /**
      * 重置自定义UI交互状态（每帧开始前调用一次，勿在每个节点绘制前重复调用）。
+     * Also binds the active graph for widgets that need {@link CustomUIEditorContext}.
      */
     public void beginInteractionFrame() {
+        NodeGraph graph = editor != null ? editor.getCurrentGraph() : null;
+        CustomUIEditorContext.bind(graph);
+        CustomUIImageTextureCache.getInstance().beginFrame();
         lastCustomUIHoveredNodeId = null;
         activeWidgetNodeId = null;
         lastCustomUIWasHoveredEmpty = false;
         lastCustomUIHasActiveWidget = false;
         lastCustomUIHasHoveredWidget = false;
         syncInteractionActiveFlag();
+    }
+
+    /** Clears frame-scoped editor binding after all custom UI for the frame has rendered. */
+    public void endInteractionFrame() {
+        CustomUIEditorContext.unbind();
     }
 
     /** @deprecated use {@link #beginInteractionFrame()} */

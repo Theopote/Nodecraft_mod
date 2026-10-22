@@ -1,18 +1,22 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
+import com.nodecraft.gui.components.customui.ImagePreviewWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ImageData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.StrictDoubleUtils;
+import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -26,7 +30,7 @@ import java.util.UUID;
     category = "utilities.fileio",
     order = 1
 )
-public class ImageSamplerNode extends BaseNode {
+public class ImageSamplerNode extends BaseCustomUINode {
 
     public enum CoordinateMode {
         UV,
@@ -124,8 +128,8 @@ public class ImageSamplerNode extends BaseNode {
         }
 
         CoordinateMode resolvedMode = coordinateMode == null ? CoordinateMode.UV : coordinateMode;
-        double x;
-        double y;
+        double coordX;
+        double coordY;
         if (resolvedMode == CoordinateMode.PIXEL) {
             Double px = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_X_ID));
             Double py = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_Y_ID));
@@ -133,8 +137,8 @@ public class ImageSamplerNode extends BaseNode {
                 writeInvalid("Pixel coordinates must be finite doubles");
                 return;
             }
-            x = px;
-            y = py;
+            coordX = px;
+            coordY = py;
         } else {
             Double u = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_U_ID));
             Double v = StrictDoubleUtils.requireExactFiniteDouble(inputValues.get(INPUT_V_ID));
@@ -142,17 +146,26 @@ public class ImageSamplerNode extends BaseNode {
                 writeInvalid("UV coordinates must be finite doubles");
                 return;
             }
-            x = u * Math.max(0, image.sampleWidth() - 1);
-            y = v * Math.max(0, image.sampleHeight() - 1);
+            coordX = u;
+            coordY = v;
         }
 
-        if (originMode == OriginMode.BOTTOM_LEFT) {
-            y = Math.max(0, image.sampleHeight() - 1) - y;
-        }
+        ImageSamplerMath.SamplePoint sampleSpace = ImageSamplerMath.toSampleSpace(
+            coordX,
+            coordY,
+            resolvedMode == CoordinateMode.UV,
+            image.sampleWidth(),
+            image.sampleHeight(),
+            originMode == null ? OriginMode.TOP_LEFT : originMode
+        );
 
-        ColorData color = filterMode == FilterMode.NEAREST
-            ? sampleNearest(image, x, y)
-            : sampleBilinear(image, x, y);
+        ColorData color = ImageSamplerMath.sample(
+            image,
+            sampleSpace.x(),
+            sampleSpace.y(),
+            filterMode,
+            wrapMode
+        );
 
         if (color == null) {
             writeInvalid("Sample coordinate resolved outside image data");
@@ -164,9 +177,11 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_GREEN_ID, (double) color.g());
         outputValues.put(OUTPUT_BLUE_ID, (double) color.b());
         outputValues.put(OUTPUT_ALPHA_ID, (double) color.a());
-        outputValues.put(OUTPUT_GRAYSCALE_ID, grayscale(color));
-        outputValues.put(OUTPUT_SAMPLE_X_ID, resolveCoordinate(x, image.sampleWidth()));
-        outputValues.put(OUTPUT_SAMPLE_Y_ID, resolveCoordinate(y, image.sampleHeight()));
+        outputValues.put(OUTPUT_GRAYSCALE_ID, ImageSamplerMath.grayscale(color));
+        outputValues.put(OUTPUT_SAMPLE_X_ID, ImageSamplerMath.resolveCoordinate(
+            sampleSpace.x(), image.sampleWidth(), wrapMode));
+        outputValues.put(OUTPUT_SAMPLE_Y_ID, ImageSamplerMath.resolveCoordinate(
+            sampleSpace.y(), image.sampleHeight(), wrapMode));
         outputValues.put(OUTPUT_RESOLVED_MODE_ID, resolvedMode.name());
         outputValues.put(OUTPUT_ERROR_ID, "");
         outputValues.put(OUTPUT_VALID_ID, true);
@@ -193,92 +208,85 @@ public class ImageSamplerNode extends BaseNode {
         }
     }
 
-    private ColorData sampleNearest(ImageData image, double x, double y) {
-        int px = (int) Math.round(resolveCoordinate(x, image.sampleWidth()));
-        int py = (int) Math.round(resolveCoordinate(y, image.sampleHeight()));
-        return readColor(image, px, py);
-    }
-
-    private ColorData sampleBilinear(ImageData image, double x, double y) {
-        double rx = resolveCoordinate(x, image.sampleWidth());
-        double ry = resolveCoordinate(y, image.sampleHeight());
-        int x0 = (int) Math.floor(rx);
-        int y0 = (int) Math.floor(ry);
-        int x1 = x0 + 1;
-        int y1 = y0 + 1;
-        double tx = rx - x0;
-        double ty = ry - y0;
-
-        ColorData c00 = readColor(image, x0, y0);
-        ColorData c10 = readColor(image, x1, y0);
-        ColorData c01 = readColor(image, x0, y1);
-        ColorData c11 = readColor(image, x1, y1);
-        if (c00 == null || c10 == null || c01 == null || c11 == null) {
-            return null;
+    public void setOriginMode(OriginMode originMode) {
+        if (originMode != null && this.originMode != originMode) {
+            this.originMode = originMode;
+            markDirty();
         }
-
-        float r = (float) bilerp(c00.r(), c10.r(), c01.r(), c11.r(), tx, ty);
-        float g = (float) bilerp(c00.g(), c10.g(), c01.g(), c11.g(), tx, ty);
-        float b = (float) bilerp(c00.b(), c10.b(), c01.b(), c11.b(), tx, ty);
-        float a = (float) bilerp(c00.a(), c10.a(), c01.a(), c11.a(), tx, ty);
-        return new ColorData(r, g, b, a);
     }
 
-    private ColorData readColor(ImageData image, int x, int y) {
-        int px = (int) resolveCoordinate(x, image.sampleWidth());
-        int py = (int) resolveCoordinate(y, image.sampleHeight());
-        int index = py * image.sampleWidth() + px;
-        List<ColorData> colors = image.colors();
-        if (index < 0 || index >= colors.size()) {
-            return null;
-        }
-        return colors.get(index);
+    public CoordinateMode getCoordinateMode() {
+        return coordinateMode == null ? CoordinateMode.UV : coordinateMode;
     }
 
-    private double resolveCoordinate(double value, int size) {
-        if (size <= 1) {
-            return 0.0d;
-        }
-
-        double max = size - 1.0d;
-        WrapMode mode = wrapMode == null ? WrapMode.CLAMP : wrapMode;
-        return switch (mode) {
-            case CLAMP -> Math.max(0.0d, Math.min(max, value));
-            case REPEAT -> positiveModulo(value, size);
-            case MIRROR -> mirror(value, size);
-        };
+    @Override
+    protected float calculateUIHeight() {
+        boolean hasImage = inputValues.get(INPUT_IMAGE_ID) instanceof ImageData;
+        return ImagePreviewWidget.preferredHeight(hasImage, true)
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + getMediumPadding();
     }
 
-    private double positiveModulo(double value, int size) {
-        double result = value % size;
-        return result < 0.0d ? result + size : result;
+    @Override
+    protected float calculateMinUIWidth() {
+        return 168.0f + getContentMargin();
     }
 
-    private double mirror(double value, int size) {
-        if (size <= 1) {
-            return 0.0d;
-        }
-        double period = (size - 1.0d) * 2.0d;
-        double wrapped = value % period;
-        if (wrapped < 0.0d) {
-            wrapped += period;
-        }
-        double max = size - 1.0d;
-        return wrapped <= max ? wrapped : period - wrapped;
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            CoordinateMode mode = getCoordinateMode();
+            ImGui.textDisabled(mode.name() + " Mode");
+
+            ImageData image = inputValues.get(INPUT_IMAGE_ID) instanceof ImageData data ? data : null;
+            double sampleX = doubleOutput(OUTPUT_SAMPLE_X_ID);
+            double sampleY = doubleOutput(OUTPUT_SAMPLE_Y_ID);
+            float thumbH = l.toPixels(ImagePreviewWidget.LOGICAL_THUMB_HEIGHT);
+            ImagePreviewWidget.renderThumbnail(
+                getId(),
+                image,
+                availableWidth,
+                thumbH,
+                zoom,
+                image != null && Boolean.TRUE.equals(outputValues.get(OUTPUT_VALID_ID)),
+                sampleX,
+                sampleY
+            );
+
+            if (mode == CoordinateMode.UV) {
+                ImGui.text(String.format("U %.2f  V %.2f",
+                    doubleInput(INPUT_U_ID), doubleInput(INPUT_V_ID)));
+            } else {
+                ImGui.text(String.format("X %.1f  Y %.1f",
+                    doubleInput(INPUT_X_ID), doubleInput(INPUT_Y_ID)));
+            }
+
+            ColorData color = outputValues.get(OUTPUT_COLOR_ID) instanceof ColorData c ? c : null;
+            float swatch = l.toPixels(14.0f);
+            ImagePreviewWidget.renderSampleSwatch(color, swatch);
+            ImGui.sameLine();
+            if (Boolean.TRUE.equals(outputValues.get(OUTPUT_VALID_ID))) {
+                ImGui.text("Sample");
+            } else {
+                Object err = outputValues.get(OUTPUT_ERROR_ID);
+                ImGui.textDisabled(err instanceof String s && !s.isBlank() ? s : "Invalid");
+            }
+            return false;
+        });
     }
 
-    private double bilerp(double c00, double c10, double c01, double c11, double tx, double ty) {
-        double top = lerp(c00, c10, tx);
-        double bottom = lerp(c01, c11, tx);
-        return lerp(top, bottom, ty);
+    private double doubleOutput(String portId) {
+        Object value = outputValues.get(portId);
+        return value instanceof Number number ? number.doubleValue() : 0.0d;
     }
 
-    private double lerp(double a, double b, double t) {
-        return a + (b - a) * t;
-    }
-
-    private double grayscale(ColorData color) {
-        return color.r() * 0.299d + color.g() * 0.587d + color.b() * 0.114d;
+    private double doubleInput(String portId) {
+        Object value = inputValues.get(portId);
+        return value instanceof Number number ? number.doubleValue() : 0.0d;
     }
 
     private void writeInvalid(String error) {
@@ -293,5 +301,46 @@ public class ImageSamplerNode extends BaseNode {
         outputValues.put(OUTPUT_RESOLVED_MODE_ID, coordinateMode == null ? CoordinateMode.UV.name() : coordinateMode.name());
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
         outputValues.put(OUTPUT_VALID_ID, false);
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("coordinateMode", getCoordinateMode().name());
+        state.put("wrapMode", (wrapMode == null ? WrapMode.CLAMP : wrapMode).name());
+        state.put("filterMode", (filterMode == null ? FilterMode.BILINEAR : filterMode).name());
+        state.put("originMode", (originMode == null ? OriginMode.TOP_LEFT : originMode).name());
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("coordinateMode") instanceof String text) {
+            try {
+                setCoordinateMode(CoordinateMode.valueOf(text));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        if (map.get("wrapMode") instanceof String text) {
+            try {
+                setWrapMode(WrapMode.valueOf(text));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        if (map.get("filterMode") instanceof String text) {
+            try {
+                setFilterMode(FilterMode.valueOf(text));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        if (map.get("originMode") instanceof String text) {
+            try {
+                setOriginMode(OriginMode.valueOf(text));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
     }
 }

@@ -1,11 +1,13 @@
 package com.nodecraft.nodesystem.nodes.utilities.fileio;
 
+import com.nodecraft.gui.components.customui.ImagePreviewWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
+import imgui.ImGui;
 import com.nodecraft.nodesystem.datatypes.ColorData;
 import com.nodecraft.nodesystem.datatypes.ImageData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -38,7 +40,7 @@ import java.util.UUID;
     category = "utilities.fileio",
     order = 0
 )
-public class ReadImageNode extends BaseNode {
+public class ReadImageNode extends BaseCustomUINode {
 
     public enum ReadMode {
         FULL,
@@ -454,6 +456,88 @@ public class ReadImageNode extends BaseNode {
     public void setDownsampleStep(int downsampleStep) {
         this.downsampleStep = Math.max(1, downsampleStep);
         markDirty();
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        boolean hasThumb = outputValues.get(OUTPUT_IMAGE_ID) instanceof ImageData;
+        return ImagePreviewWidget.preferredHeight(hasThumb, true) + getMediumPadding();
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 176.0f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            boolean valid = Boolean.TRUE.equals(outputValues.get(OUTPUT_VALID_ID));
+            if (valid) {
+                ImGui.textColored(0.35f, 0.75f, 0.4f, 1.0f, "Valid");
+            } else {
+                ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f, "Invalid");
+            }
+
+            ImageData image = outputValues.get(OUTPUT_IMAGE_ID) instanceof ImageData data ? data : null;
+            float thumbH = l.toPixels(ImagePreviewWidget.LOGICAL_THUMB_HEIGHT);
+            if (image != null) {
+                ImagePreviewWidget.renderThumbnail(
+                    getId(), image, availableWidth, thumbH, zoom, false, 0.0d, 0.0d);
+            } else {
+                ImGui.textDisabled("No thumbnail (metadata-only or unread)");
+            }
+
+            ImGui.text(pathBasename(stringOutput(OUTPUT_PATH_ID)));
+            int w = intOutput(OUTPUT_WIDTH_ID);
+            int h = intOutput(OUTPUT_HEIGHT_ID);
+            ImGui.textDisabled(w > 0 && h > 0 ? (w + " × " + h) : "— × —");
+
+            ReadMode mode = resolveReadModeForDisplay();
+            boolean downsampled = Boolean.TRUE.equals(outputValues.get(OUTPUT_WAS_DOWNSAMPLED_ID));
+            ImGui.textDisabled(mode.name() + (downsampled ? " · Downsampled" : ""));
+
+            String error = stringOutput(OUTPUT_ERROR_ID);
+            if (!error.isBlank()) {
+                ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f, truncate(error, 42));
+            }
+            return false;
+        });
+    }
+
+    private ReadMode resolveReadModeForDisplay() {
+        ReadMode mode = resolveReadMode();
+        return mode == null ? (readMode == null ? ReadMode.DOWNSAMPLED : readMode) : mode;
+    }
+
+    private static String pathBasename(String path) {
+        if (path == null || path.isBlank()) {
+            return "(no path)";
+        }
+        int slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        String name = slash >= 0 && slash + 1 < path.length() ? path.substring(slash + 1) : path;
+        return truncate(name, 28);
+    }
+
+    private static String truncate(String text, int max) {
+        if (text.length() <= max) {
+            return text;
+        }
+        return text.substring(0, Math.max(1, max - 1)) + "…";
+    }
+
+    private String stringOutput(String portId) {
+        Object value = outputValues.get(portId);
+        return value instanceof String text ? text : "";
+    }
+
+    private int intOutput(String portId) {
+        Object value = outputValues.get(portId);
+        return value instanceof Number number ? number.intValue() : 0;
     }
 
     @Override

@@ -1,12 +1,15 @@
 package com.nodecraft.nodesystem.nodes.output.preview;
 
+import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
+import com.nodecraft.gui.components.customui.PreviewStatusPanelWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
+import imgui.ImGui;
 import com.nodecraft.nodesystem.preview.PreviewBackend;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.protocol.PreviewBlock;
@@ -46,7 +49,7 @@ import java.util.UUID;
     category = "output.preview",
     order = 2
 )
-public class PreviewPlacementsNode extends BaseNode {
+public class PreviewPlacementsNode extends BaseCustomUINode {
 
     private static final String INPUT_BLOCKS_ID = "input_blocks";
     private static final String INPUT_GEOMETRY_ID = "input_geometry";
@@ -268,6 +271,64 @@ public class PreviewPlacementsNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
     }
 
+    public boolean isPreviewEnabled() {
+        return previewEnabled;
+    }
+
+    public void setPreviewEnabled(boolean value) {
+        if (previewEnabled != value) {
+            previewEnabled = value;
+            markDirty();
+        }
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        return PreviewStatusPanelWidget.preferredHeight() + getMediumPadding();
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 176.0f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+            PreviewStatusPanelWidget.Counts counts = readOutputCounts();
+            return PreviewStatusPanelWidget.render(
+                previewEnabled,
+                counts,
+                () -> true,
+                enabled -> {
+                    boolean before = previewEnabled;
+                    setPreviewEnabled(enabled);
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "previewEnabled", before, enabled, 0L);
+                });
+        });
+    }
+
+    private PreviewStatusPanelWidget.Counts readOutputCounts() {
+        int raw = intOutput(OUTPUT_RAW_COUNT_ID);
+        int unique = intOutput(OUTPUT_UNIQUE_COUNT_ID);
+        int shown = intOutput(OUTPUT_SHOWN_COUNT_ID);
+        boolean sampled = Boolean.TRUE.equals(outputValues.get(OUTPUT_SAMPLED_ID));
+        Object errorObj = outputValues.get(OUTPUT_ERROR_ID);
+        String error = errorObj instanceof String text && !text.isBlank() ? text : null;
+        return new PreviewStatusPanelWidget.Counts(raw, unique, shown, sampled, error);
+    }
+
+    private int intOutput(String portId) {
+        Object value = outputValues.get(portId);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
+    }
+
     @Override
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
@@ -285,7 +346,7 @@ public class PreviewPlacementsNode extends BaseNode {
             return;
         }
         if (map.get("previewEnabled") instanceof Boolean value) {
-            previewEnabled = value;
+            setPreviewEnabled(value);
         }
         if (map.get("solidGeometry") instanceof Boolean value) {
             solidGeometry = value;
@@ -299,6 +360,7 @@ public class PreviewPlacementsNode extends BaseNode {
         if (map.get("duration") instanceof Number value) {
             duration = Math.max(1, value.intValue());
         }
+        markDirty();
     }
 
     record GhostSample(List<PreviewBlock> ghosts, boolean sampled) {

@@ -1,14 +1,16 @@
 package com.nodecraft.nodesystem.nodes.material.directional_mapping;
 
+import com.nodecraft.gui.components.customui.MaterialSlotStripWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
+import imgui.ImGui;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,7 +31,7 @@ import java.util.UUID;
     category = "material.directional_mapping",
     order = 0
 )
-public class TopSideBottomMapNode extends BaseNode {
+public class TopSideBottomMapNode extends BaseCustomUINode {
 
     private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
@@ -187,6 +189,49 @@ public class TopSideBottomMapNode extends BaseNode {
         }
 
         emitSuccess(placements);
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        return MaterialSlotStripWidget.preferredHeight() + getMediumPadding();
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return MaterialSlotStripWidget.preferredWidth() + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            MaterialSlotStripWidget.render(
+                resolveSlot("TOP", INPUT_TOP_ID),
+                resolveSlot("SIDE", INPUT_SIDE_ID),
+                resolveSlot("BOTTOM", INPUT_BOTTOM_ID),
+                availableWidth,
+                zoom);
+            return false;
+        });
+    }
+
+    private MaterialSlotStripWidget.Slot resolveSlot(String role, String portId) {
+        boolean driven = MaterialSourceResolver.isDriven(this, portId);
+        MaterialMappingSupport.MappedBlockType mapped =
+            MaterialMappingSupport.requireKnownBlockType(inputValues.get(portId), driven);
+        if (!driven) {
+            return MaterialSlotStripWidget.Slot.missing(role);
+        }
+        if (!mapped.valid()) {
+            return MaterialSlotStripWidget.Slot.invalid(role, mapped.error());
+        }
+        if (mapped.blockId() == null) {
+            return MaterialSlotStripWidget.Slot.missing(role);
+        }
+        return MaterialSlotStripWidget.Slot.known(role, mapped.blockId());
     }
 
     private void emitInvalid(String message) {

@@ -170,6 +170,8 @@ public class ImGuiNodeRenderer {
                     textColor, navHighlightColor, hoveredNodeId, hoveredPortId, isHoveredPortOutput,
                     shouldHighlight, highlightSinValue, highlightCosValue);
         }
+
+        customUIRenderer.endInteractionFrame();
     }
 
     private void updateNodeDimensionsInPosition(INode node, Map<UUID, NodePosition> nodePositions,

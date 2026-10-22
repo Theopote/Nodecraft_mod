@@ -12,7 +12,7 @@ Phase 3 focus: continuous pointer interaction, headless vs in-game layout contra
 
 | Metric | Count / Status |
 |--------|------:|
-| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 50 |
+| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 56 |
 | Recommended **Restore** | 50 |
 | Recommended **Intentionally Panel-Only** | 0 |
 | Headless contract (instantiate + hasCustomUI) | **Pass** |
@@ -83,6 +83,12 @@ Authoritative inventory: `CustomUINodeAuditTypeIds`.
 | B | `material.basic_assignment.weighted_palette` | `WeightedBlockPaletteNode` | Pass | Pending | Phase 1 |
 | B | `material.block_state.build_block_state` | `BuildBlockStateNode` | Pass | Pending | Phase 1 |
 | B | `material.gradient_mapping.gradient_ramp_map` | `GradientRampMapNode` | Pass | Pending | Phase 1 |
+| A | `material.directional_mapping.top_side_bottom_map` | `TopSideBottomMapNode` | Pass | Pending | Phase 2 |
+| A | `output.preview.preview_placements` | `PreviewPlacementsNode` | Pass | Pending | Phase 2 |
+| A | `flow.control.manual_trigger` | `ManualTriggerNode` | Pass | Pending | Phase 2 |
+| B | `utilities.fileio.read_image` | `ReadImageNode` | Pass | Pending | Phase 2 |
+| B | `utilities.fileio.image_sampler` | `ImageSamplerNode` | Pass | Pending | Phase 2 |
+| B | `pattern.lsystem.rule` | `LSystemRuleNode` | Pass | Pending | Phase 2 |
 
 ## Phase 1 additional nodes (2026)
 
@@ -96,6 +102,19 @@ Authoritative inventory: `CustomUINodeAuditTypeIds`.
 | Height Palette Map | Vertical height-bin strip from palette |
 
 Shared widgets: `com.nodecraft.gui.components.customui.*`
+
+## Phase 2 additional nodes (2026)
+
+| Node | Custom UI |
+|------|-----------|
+| Top / Side / Bottom Map | Three material preview slots (BlockSwatch) |
+| Preview Placements | Enabled toggle + Raw/Unique/Shown counts from outputs |
+| Manual Trigger | Trigger button + Idle/Pending; `requestPulse` + MANUAL run |
+| Read Image | Path/dims/mode/status + optional thumbnail |
+| Image Sampler | Thumbnail + crosshair + UV/pixel coords + sample color |
+| L-System Rule | Symbol → Production preview; draft edit when undriven |
+
+Shared additions: `CustomUIEditorContext`, `ImagePreviewWidget`, `CustomUIImageTextureCache`, `MaterialSlotStripWidget`, `PreviewStatusPanelWidget`
 
 ## Phase 3 fixes
 
@@ -134,7 +153,7 @@ Shared widgets: `com.nodecraft.gui.components.customui.*`
 | Test | Layer |
 |------|--------|
 | `CustomUIHeadlessContractTest` | Headless registry + hasCustomUI |
-| `CustomUINodeRegistryTest` | Exact 50-ID set match |
+| `CustomUINodeRegistryTest` | Exact 56-ID set match |
 | `CustomUIAdditionalNodesTest` | Phase 1 six-node headless contract |
 | `GraphMapperCurveSamplerTest` | Normalized curve sampling |
 | `CreateBlockPaletteDraftStateTest` | Draft palette state round-trip |
@@ -158,4 +177,4 @@ Shared widgets: `com.nodecraft.gui.components.customui.*`
 
 ## Intentionally inactive
 
-None. All 50 are **Restore** (44 baseline + 6 Phase 1).
+None. All 56 are **Restore** (44 baseline + 6 Phase 1 + 6 Phase 2).

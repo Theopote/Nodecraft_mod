@@ -23,6 +23,8 @@ class ImGuiNodeRendererCustomUITest {
                 "Custom UI render path should be present");
         assertTrue(content.contains("beginInteractionFrame()"),
                 "Custom UI interaction state should reset once per frame");
+        assertTrue(content.contains("endInteractionFrame()"),
+                "Custom UI editor context should unbind at end of frame");
         assertFalse(content.contains("resetCustomUIInteractionState();"),
                 "Per-node interaction reset would break multi-node custom UI");
     }

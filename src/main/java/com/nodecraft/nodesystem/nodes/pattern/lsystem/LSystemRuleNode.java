@@ -1,16 +1,23 @@
 package com.nodecraft.nodesystem.nodes.pattern.lsystem;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
+import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
 import com.nodecraft.nodesystem.api.NodeProperty;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.LSystemRule;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import imgui.ImGui;
+import imgui.type.ImFloat;
+import imgui.type.ImString;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @NodeInfo(
@@ -21,11 +28,16 @@ import java.util.UUID;
     category = "pattern.lsystem",
     order = 0
 )
-public class LSystemRuleNode extends BaseNode {
+public class LSystemRuleNode extends BaseCustomUINode {
 
     @NodeProperty(displayName = "Weight", category = "Rule", order = 1,
         description = "Relative weight when multiple rules share the same symbol")
     private double weight = 1.0d;
+
+    /** Local draft used when Symbol port is undriven. */
+    private String draftSymbol = "F";
+    /** Local draft used when Production port is undriven; empty string is valid. */
+    private String draftProduction = "F[+F]F[-F]F";
 
     private static final String INPUT_SYMBOL_ID = "input_symbol";
     private static final String INPUT_PRODUCTION_ID = "input_production";
@@ -34,6 +46,9 @@ public class LSystemRuleNode extends BaseNode {
     private static final String OUTPUT_RULE_ID = "output_rule";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
+
+    private transient ImString symbolBuffer;
+    private transient ImString productionBuffer;
 
     public LSystemRuleNode() {
         super(UUID.randomUUID(), "pattern.lsystem.rule");
@@ -59,16 +74,32 @@ public class LSystemRuleNode extends BaseNode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        Object symbolRaw = inputValues.get(INPUT_SYMBOL_ID);
-        if (!(symbolRaw instanceof String symbol) || symbol.trim().isEmpty()) {
-            writeInvalid("Symbol is required");
-            return;
+        String symbol;
+        if (OptionalPortDrive.isDriven(this, INPUT_SYMBOL_ID)) {
+            Object symbolRaw = inputValues.get(INPUT_SYMBOL_ID);
+            if (!(symbolRaw instanceof String text) || text.trim().isEmpty()) {
+                writeInvalid("Symbol is required");
+                return;
+            }
+            symbol = text;
+        } else {
+            if (draftSymbol == null || draftSymbol.trim().isEmpty()) {
+                writeInvalid("Symbol is required");
+                return;
+            }
+            symbol = draftSymbol;
         }
 
-        Object productionRaw = inputValues.get(INPUT_PRODUCTION_ID);
-        if (!(productionRaw instanceof String production)) {
-            writeInvalid("Production must be a String");
-            return;
+        String production;
+        if (OptionalPortDrive.isDriven(this, INPUT_PRODUCTION_ID)) {
+            Object productionRaw = inputValues.get(INPUT_PRODUCTION_ID);
+            if (!(productionRaw instanceof String text)) {
+                writeInvalid("Production must be a String");
+                return;
+            }
+            production = text;
+        } else {
+            production = draftProduction == null ? "" : draftProduction;
         }
 
         Double ruleWeight = OptionalPortDrive.resolveOptionalDouble(this, INPUT_WEIGHT_ID, weight);
@@ -88,9 +119,182 @@ public class LSystemRuleNode extends BaseNode {
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
 
+    public String getDraftSymbol() {
+        return draftSymbol == null ? "" : draftSymbol;
+    }
+
+    public void setDraftSymbol(String value) {
+        draftSymbol = value == null ? "" : value;
+        markDirty();
+    }
+
+    public String getDraftProduction() {
+        return draftProduction == null ? "" : draftProduction;
+    }
+
+    public void setDraftProduction(String value) {
+        draftProduction = value == null ? "" : value;
+        markDirty();
+    }
+
+    public double getWeight() {
+        return weight;
+    }
+
+    public void setWeight(double value) {
+        // Allow non-finite values so setNodeState can fail-closed via resolveOptionalDouble.
+        if (Double.compare(weight, value) != 0) {
+            weight = value;
+            markDirty();
+        }
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float line = CustomUIMetricsSafe.layoutTextLineHeight();
+        float gap = CustomUIMetricsSafe.layoutItemSpacingY();
+        // rule row + weight row + status
+        return frame + gap + frame + gap + line + getMediumPadding();
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 168.0f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            boolean symbolDriven = OptionalPortDrive.isDriven(this, INPUT_SYMBOL_ID);
+            boolean productionDriven = OptionalPortDrive.isDriven(this, INPUT_PRODUCTION_ID);
+            boolean weightDriven = OptionalPortDrive.isDriven(this, INPUT_WEIGHT_ID);
+            boolean changed = false;
+
+            String displaySymbol = resolveDisplaySymbol();
+            String displayProduction = resolveDisplayProduction();
+
+            if (symbolDriven || productionDriven) {
+                ImGui.textDisabled(formatRule(displaySymbol, displayProduction));
+            } else {
+                if (symbolBuffer == null) {
+                    symbolBuffer = new ImString(getDraftSymbol(), 64);
+                }
+                if (productionBuffer == null) {
+                    productionBuffer = new ImString(getDraftProduction(), 256);
+                }
+                if (!ImGui.isAnyItemActive()) {
+                    if (!getDraftSymbol().equals(symbolBuffer.get())) {
+                        symbolBuffer.set(getDraftSymbol());
+                    }
+                    if (!getDraftProduction().equals(productionBuffer.get())) {
+                        productionBuffer.set(getDraftProduction());
+                    }
+                }
+                float half = Math.max(40.0f, availableWidth * 0.28f);
+                ImGui.setNextItemWidth(half);
+                if (ImGui.inputText("##lsys_symbol", symbolBuffer)) {
+                    Object before = getNodeState();
+                    setDraftSymbol(symbolBuffer.get());
+                    CustomUIPropertyHistory.recordNodeStateChange(
+                        getId(), before, getNodeState(), "Edit L-System symbol");
+                    changed = true;
+                }
+                ImGui.sameLine();
+                ImGui.textDisabled("→");
+                ImGui.sameLine();
+                ImGui.setNextItemWidth(Math.max(48.0f, availableWidth - half - 28.0f * zoom));
+                if (ImGui.inputText("##lsys_production", productionBuffer)) {
+                    Object before = getNodeState();
+                    setDraftProduction(productionBuffer.get());
+                    CustomUIPropertyHistory.recordNodeStateChange(
+                        getId(), before, getNodeState(), "Edit L-System production");
+                    changed = true;
+                }
+            }
+
+            Double ruleWeight = OptionalPortDrive.resolveOptionalDouble(this, INPUT_WEIGHT_ID, weight);
+            double shownWeight = ruleWeight != null ? ruleWeight : weight;
+            if (weightDriven) {
+                ImGui.textDisabled(String.format("Weight: %.2f", shownWeight));
+            } else {
+                ImFloat weightEdit = new ImFloat((float) weight);
+                ImGui.setNextItemWidth(Math.min(availableWidth * 0.5f, l.toPixels(96.0f)));
+                if (ImGui.inputFloat("Weight##lsys_weight", weightEdit, 0.0f, 0.0f, "%.2f")) {
+                    double before = weight;
+                    setWeight(weightEdit.get());
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "weight", before, weight, 0L);
+                    changed = true;
+                }
+            }
+
+            if (Boolean.TRUE.equals(outputValues.get(OUTPUT_VALID_ID))) {
+                ImGui.textColored(0.35f, 0.75f, 0.4f, 1.0f, "Valid");
+            } else {
+                Object err = outputValues.get(OUTPUT_ERROR_ID);
+                ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f,
+                    err instanceof String s && !s.isBlank() ? s : "Invalid");
+            }
+            return changed;
+        });
+    }
+
+    private String resolveDisplaySymbol() {
+        if (OptionalPortDrive.isDriven(this, INPUT_SYMBOL_ID)
+            && inputValues.get(INPUT_SYMBOL_ID) instanceof String text) {
+            return text;
+        }
+        return getDraftSymbol();
+    }
+
+    private String resolveDisplayProduction() {
+        if (OptionalPortDrive.isDriven(this, INPUT_PRODUCTION_ID)
+            && inputValues.get(INPUT_PRODUCTION_ID) instanceof String text) {
+            return text;
+        }
+        return getDraftProduction();
+    }
+
+    private static String formatRule(String symbol, String production) {
+        String s = symbol == null || symbol.isBlank() ? "?" : symbol;
+        String p = production == null ? "" : production;
+        String line = s + " → " + p;
+        return line.length() <= 42 ? line : line.substring(0, 41) + "…";
+    }
+
     private void writeInvalid(String error) {
         outputValues.put(OUTPUT_RULE_ID, null);
         outputValues.put(OUTPUT_VALID_ID, false);
         outputValues.put(OUTPUT_ERROR_ID, error == null ? "" : error);
+    }
+
+    @Override
+    public Object getNodeState() {
+        Map<String, Object> state = new HashMap<>();
+        state.put("weight", weight);
+        state.put("draftSymbol", getDraftSymbol());
+        state.put("draftProduction", getDraftProduction());
+        return state;
+    }
+
+    @Override
+    public void setNodeState(Object state) {
+        if (!(state instanceof Map<?, ?> map)) {
+            return;
+        }
+        if (map.get("weight") instanceof Number number) {
+            setWeight(number.doubleValue());
+        }
+        if (map.get("draftSymbol") instanceof String text) {
+            setDraftSymbol(text);
+        }
+        if (map.get("draftProduction") instanceof String text) {
+            setDraftProduction(text);
+        }
     }
 }
