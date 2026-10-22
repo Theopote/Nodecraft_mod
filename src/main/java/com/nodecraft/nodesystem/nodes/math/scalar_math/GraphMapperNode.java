@@ -196,11 +196,11 @@ public class GraphMapperNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float frameHeight = CustomUIMetricsSafe.frameHeight();
+        float frameHeight = CustomUIMetricsSafe.logicalFrameHeight();
         float height = getMediumPadding();
         height += frameHeight;
         height += getSmallPadding();
-        height += CurvePlotWidget.preferredHeight(1.0f);
+        height += CurvePlotWidget.preferredHeight();
         height += getSmallPadding();
         height += frameHeight;
         return height;
@@ -237,7 +237,7 @@ public class GraphMapperNode extends BaseCustomUINode {
             l.addVerticalSpacing(getSmallPadding());
 
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
-            float plotHeight = CurvePlotWidget.preferredHeight(zoom);
+            float plotHeight = l.toPixels(CurvePlotWidget.LOGICAL_HEIGHT);
             changed = CurvePlotWidget.render(
                 this, curveInteraction, availableWidth, plotHeight, zoom, bezierDragCallbacks()) || changed;
             l.addVerticalSpacing(getSmallPadding());

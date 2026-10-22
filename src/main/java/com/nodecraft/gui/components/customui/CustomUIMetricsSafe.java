@@ -82,4 +82,24 @@ public final class CustomUIMetricsSafe {
             return FALLBACK_TEXT_LINE_HEIGHT;
         }
     }
+
+    /**
+     * Baseline frame height in logical units for {@code calculateUIHeight()} — stable across canvas zoom.
+     * Do not use live {@link #frameHeight()} for layout sizing; CustomUIRenderer scales style at render time.
+     */
+    public static float logicalFrameHeight() {
+        return FALLBACK_FRAME_HEIGHT;
+    }
+
+    /**
+     * Baseline text line height in logical units for {@code calculateUIHeight()}.
+     */
+    public static float logicalTextLineHeight() {
+        return FALLBACK_TEXT_LINE_HEIGHT;
+    }
+
+    /** Converts a logical dimension to screen pixels for the current canvas zoom. */
+    public static float scaleLogical(float logicalSize, float zoom) {
+        return logicalSize * Math.max(0.001f, zoom);
+    }
 }

@@ -319,7 +319,7 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
 
             if (hasAnyPalettePortDriven()) {
                 ImGui.textDisabled("Port-driven (read-only preview)");
-                return BlockPaletteWidget.renderReadOnly(resolvePreviewPalette(), availableWidth);
+                return BlockPaletteWidget.renderReadOnly(resolvePreviewPalette(), availableWidth, zoom);
             }
             return BlockPaletteWidget.renderEditable(
                 this::draftPaletteData,
@@ -344,7 +344,8 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
                         applyDraftEntries(entries, "Edit draft palette");
                     }
                 },
-                availableWidth);
+                availableWidth,
+                zoom);
         });
     }
 

@@ -17,10 +17,13 @@ import java.util.function.Supplier;
  */
 public final class BlockPaletteWidget {
 
+    /** Logical units — multiplied by canvas zoom at render time. */
     private static final float SWATCH_SIZE = 14.0f;
     private static final float ROW_GAP = 4.0f;
     private static final float WEIGHT_INPUT_WIDTH = 52.0f;
     private static final float REMOVE_BUTTON_WIDTH = 22.0f;
+    private static final float MIN_PICKER_WIDTH = 72.0f;
+    private static final float ADD_BUTTON_MAX_WIDTH = 120.0f;
 
     private BlockPaletteWidget() {
     }
@@ -42,39 +45,54 @@ public final class BlockPaletteWidget {
         void commit(List<BlockPaletteEntry> entries);
     }
 
-    public static float rowHeight() {
-        return Math.max(SWATCH_SIZE + ROW_GAP, CustomUIMetricsSafe.frameHeight() + ROW_GAP);
+    private static float rowHeightLogical() {
+        float frameH = CustomUIMetricsSafe.logicalFrameHeight();
+        return Math.max(SWATCH_SIZE + ROW_GAP, frameH + ROW_GAP);
+    }
+
+    private static float rowHeightRender(float zoom) {
+        float frameH = ImGui.getFrameHeight();
+        float swatch = CustomUIMetricsSafe.scaleLogical(SWATCH_SIZE, zoom);
+        float gap = CustomUIMetricsSafe.scaleLogical(ROW_GAP, zoom);
+        return Math.max(swatch + gap, frameH + gap);
     }
 
     public static float preferredHeight(BlockPaletteData palette, float padding) {
         int rows = Math.max(1, palette == null ? 1 : palette.size());
-        return rows * rowHeight() + padding + CustomUIMetricsSafe.frameHeight();
+        return rows * rowHeightLogical() + padding + CustomUIMetricsSafe.logicalFrameHeight();
     }
 
-    public static boolean renderReadOnly(BlockPaletteData palette, float width) {
-        return render(palette, width, false, null, null);
+    public static boolean renderReadOnly(BlockPaletteData palette, float widthPixels, float zoom) {
+        return render(palette, widthPixels, zoom, false, null, null);
     }
 
     public static boolean renderEditable(
             Supplier<BlockPaletteData> paletteSupplier,
             PaletteEditSink editSink,
-            float width
+            float widthPixels,
+            float zoom
     ) {
         BlockPaletteData palette = paletteSupplier.get();
-        return render(palette, width, true, paletteSupplier, editSink);
+        return render(palette, widthPixels, zoom, true, paletteSupplier, editSink);
     }
 
     private static boolean render(
             @Nullable BlockPaletteData palette,
-            float width,
+            float widthPixels,
+            float zoom,
             boolean editable,
             @Nullable Supplier<BlockPaletteData> paletteSupplier,
             @Nullable PaletteEditSink editSink
     ) {
         BlockPaletteData resolved = palette != null ? palette : BlockPaletteData.empty();
         boolean changed = false;
-        float rowHeight = rowHeight();
-        float pickerWidth = Math.max(72.0f, width - SWATCH_SIZE - WEIGHT_INPUT_WIDTH - REMOVE_BUTTON_WIDTH - 24.0f);
+        float rowHeight = rowHeightRender(zoom);
+        float swatchSize = CustomUIMetricsSafe.scaleLogical(SWATCH_SIZE, zoom);
+        float weightWidth = CustomUIMetricsSafe.scaleLogical(WEIGHT_INPUT_WIDTH, zoom);
+        float removeWidth = CustomUIMetricsSafe.scaleLogical(REMOVE_BUTTON_WIDTH, zoom);
+        float rowGap = CustomUIMetricsSafe.scaleLogical(ROW_GAP, zoom);
+        float minPicker = CustomUIMetricsSafe.scaleLogical(MIN_PICKER_WIDTH, zoom);
+        float pickerWidth = Math.max(minPicker, widthPixels - swatchSize - weightWidth - removeWidth - 24.0f * zoom);
 
         if (resolved.isEmpty()) {
             ImGui.textDisabled(editable ? "Empty palette — add a block" : "Empty palette");
@@ -86,9 +104,9 @@ public final class BlockPaletteWidget {
                 final double rowWeight = entry.weight();
                 ImVec2 rowStart = ImGui.getCursorScreenPos();
                 ImDrawList drawList = ImGui.getWindowDrawList();
-                BlockSwatchHelper.drawSwatch(drawList, rowStart.x, rowStart.y + 1.0f, SWATCH_SIZE, entry.blockId());
+                BlockSwatchHelper.drawSwatch(drawList, rowStart.x, rowStart.y + 1.0f, swatchSize, entry.blockId());
 
-                ImGui.setCursorScreenPos(rowStart.x + SWATCH_SIZE + 4.0f, rowStart.y);
+                ImGui.setCursorScreenPos(rowStart.x + swatchSize + rowGap, rowStart.y);
                 ImGui.pushID(i);
                 if (editable && editSink != null && paletteSupplier != null) {
                     if (BlockPickerPopup.renderButton(
@@ -104,7 +122,7 @@ public final class BlockPaletteWidget {
                     }
                     ImGui.sameLine();
                     ImDouble weightInput = new ImDouble(entry.weight());
-                    ImGui.setNextItemWidth(WEIGHT_INPUT_WIDTH);
+                    ImGui.setNextItemWidth(weightWidth);
                     ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f");
                     if (ImGui.isItemActivated()) {
                         editSink.beginWeightEdit();
@@ -154,7 +172,8 @@ public final class BlockPaletteWidget {
         }
 
         if (editable && paletteSupplier != null && editSink != null) {
-            if (ImGui.button("+ Add Block", Math.min(width, 120.0f), CustomUIMetricsSafe.frameHeight())) {
+            float addWidth = Math.min(widthPixels, CustomUIMetricsSafe.scaleLogical(ADD_BUTTON_MAX_WIDTH, zoom));
+            if (ImGui.button("+ Add Block", addWidth, ImGui.getFrameHeight())) {
                 List<BlockPaletteEntry> entries = new ArrayList<>(paletteSupplier.get().entries());
                 entries.add(new BlockPaletteEntry("minecraft:stone"));
                 editSink.commit(entries);

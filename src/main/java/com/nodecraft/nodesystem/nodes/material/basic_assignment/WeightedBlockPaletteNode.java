@@ -296,7 +296,7 @@ public class WeightedBlockPaletteNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         BlockPaletteData palette = resolvePreviewPalette();
         float height = BlockPaletteWidget.preferredHeight(palette, getMediumPadding());
-        height += CustomUIMetricsSafe.textLineHeight();
+        height += CustomUIMetricsSafe.logicalTextLineHeight();
         return height;
     }
 
@@ -313,7 +313,7 @@ public class WeightedBlockPaletteNode extends BaseCustomUINode {
             ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
 
             BlockPaletteData palette = resolvePreviewPalette();
-            BlockPaletteWidget.renderReadOnly(palette, availableWidth);
+            BlockPaletteWidget.renderReadOnly(palette, availableWidth, zoom);
 
             double total = BasicAssignmentUtils.totalWeight(palette.weights());
             ImGui.text(String.format("Entries: %d  Total weight: %.2f", palette.size(), total));

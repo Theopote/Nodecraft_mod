@@ -36,7 +36,10 @@ public final class CurvePlotWidget {
     private static final int HANDLE_COLOR = 0xFFFFB74D;
     private static final int HANDLE_LINE = 0x80FFB74D;
     private static final int BORDER_COLOR = 0xFF505050;
+    /** Logical units — scaled by canvas zoom at render time. */
+    public static final float LOGICAL_HEIGHT = 96.0f;
     private static final float HANDLE_HIT_RADIUS = 8.0f;
+    private static final float HANDLE_DRAW_RADIUS = 5.0f;
 
     private CurvePlotWidget() {
     }
@@ -69,7 +72,8 @@ public final class CurvePlotWidget {
 
         boolean changed = false;
         if (node.getCurveType() == GraphMapperNode.CurveType.BEZIER) {
-            changed = dragBezierHandles(node, interaction, drawList, x0, y0, x1, y1, hovered || active, callbacks);
+            changed = dragBezierHandles(
+                node, interaction, drawList, x0, y0, x1, y1, hovered || active, zoom, callbacks);
         } else if (!ImGui.isMouseDown(0)) {
             interaction.clearCapture();
         }
@@ -86,8 +90,9 @@ public final class CurvePlotWidget {
         void onBezierDragEnded(BezierHandle handle);
     }
 
-    public static float preferredHeight(float zoom) {
-        return Math.max(72.0f, 96.0f / Math.max(zoom, 0.001f));
+    /** Logical height for {@code calculateUIHeight()} — constant across zoom levels. */
+    public static float preferredHeight() {
+        return LOGICAL_HEIGHT;
     }
 
     private static void drawGrid(ImDrawList drawList, float x0, float y0, float x1, float y1) {
@@ -127,8 +132,11 @@ public final class CurvePlotWidget {
             float x1,
             float y1,
             boolean interactive,
+            float zoom,
             @Nullable BezierDragCallbacks callbacks
     ) {
+        float hitRadius = CustomUIMetricsSafe.scaleLogical(HANDLE_HIT_RADIUS, zoom);
+        float handleRadius = CustomUIMetricsSafe.scaleLogical(HANDLE_DRAW_RADIUS, zoom);
         float w = x1 - x0;
         float h = y1 - y0;
         float p0x = x0;
@@ -142,20 +150,20 @@ public final class CurvePlotWidget {
 
         drawList.addLine(p0x, p0y, p1x, p1y, HANDLE_LINE, 1.0f);
         drawList.addLine(p3x, p3y, p2x, p2y, HANDLE_LINE, 1.0f);
-        drawHandle(drawList, p1x, p1y);
-        drawHandle(drawList, p2x, p2y);
+        drawHandle(drawList, p1x, p1y, handleRadius);
+        drawHandle(drawList, p2x, p2y, handleRadius);
 
         float mx = ImGui.getMousePosX();
         float my = ImGui.getMousePosY();
         boolean mouseDown = ImGui.isMouseDown(0);
 
         if (interactive && ImGui.isItemClicked(0) && interaction.capturedHandle == BezierHandle.NONE) {
-            if (distance(mx, my, p1x, p1y) <= HANDLE_HIT_RADIUS) {
+            if (distance(mx, my, p1x, p1y) <= hitRadius) {
                 interaction.capturedHandle = BezierHandle.P1;
                 if (callbacks != null) {
                     callbacks.onBezierDragStarted(BezierHandle.P1);
                 }
-            } else if (distance(mx, my, p2x, p2y) <= HANDLE_HIT_RADIUS) {
+            } else if (distance(mx, my, p2x, p2y) <= hitRadius) {
                 interaction.capturedHandle = BezierHandle.P2;
                 if (callbacks != null) {
                     callbacks.onBezierDragStarted(BezierHandle.P2);
@@ -186,10 +194,9 @@ public final class CurvePlotWidget {
         return true;
     }
 
-    private static void drawHandle(ImDrawList drawList, float x, float y) {
-        float r = 5.0f;
-        drawList.addCircleFilled(x, y, r, HANDLE_COLOR);
-        drawList.addCircle(x, y, r, BORDER_COLOR, 12, 1.0f);
+    private static void drawHandle(ImDrawList drawList, float x, float y, float radius) {
+        drawList.addCircleFilled(x, y, radius, HANDLE_COLOR);
+        drawList.addCircle(x, y, radius, BORDER_COLOR, 12, 1.0f);
     }
 
     private static float distance(float x1, float y1, float x2, float y2) {
