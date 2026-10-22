@@ -26,7 +26,7 @@ class CustomUINodeRegistryTest {
     }
 
     @Test
-    void auditListsExactlyFortySixRegisteredCustomUINodes() {
+    void auditListsExactlyFortyEightRegisteredCustomUINodes() {
         List<String> missing = new ArrayList<>();
         List<String> notCustomUi = new ArrayList<>();
 
@@ -43,7 +43,7 @@ class CustomUINodeRegistryTest {
 
         assertTrue(missing.isEmpty(), "Missing audit type IDs: " + missing);
         assertTrue(notCustomUi.isEmpty(), "Audit type IDs not extending BaseCustomUINode: " + notCustomUi);
-        assertEquals(46, CustomUINodeAuditTypeIds.ALL.size());
+        assertEquals(48, CustomUINodeAuditTypeIds.ALL.size());
     }
 
     @Test
