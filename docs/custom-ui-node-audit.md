@@ -2,7 +2,11 @@
 
 Baseline: commit `4a9b239` (2025) introduced `NodeVisualLayout` and **globally disabled** canvas custom UI via `nodeHasCustomUI = false` in `ImGuiNodeRenderer`. Node-level `renderCustomUIScaled` implementations were **not removed**.
 
+Phase 2 baseline: `8b4a70f` (restore canvas custom UI rendering) + interaction-state stabilization.
+
 Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom UI from individual node classes. Regression is renderer-level only.
+
+**Full acceptance status: NOT claimed.** Automated contracts pass; in-game interaction for all 44 nodes remains outstanding.
 
 ## Summary
 
@@ -13,73 +17,118 @@ Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom U
 | Nodes with `renderCustomUIScaled` present | 44 |
 | Recommended **Restore** | 44 |
 | Recommended **Intentionally Panel-Only** | 0 |
+| Automated registry / metrics contract | **Pass** |
+| In-game interaction acceptance | **Pending** |
+
+### Pass/fail legend
+
+| Column | Meaning |
+|--------|---------|
+| Auto | Instantiated via registry as `ICustomUINode`, `hasCustomUI()`, finite nonnegative height/width (headless metrics) |
+| In-game | Mouse / keyboard / popup / zoom / undo verified in client (Phase 2 §3) — blank until manual QA |
 
 ## Audit Table
 
-| Priority | Type ID | Class | Historical controls | Current UI code | Registered | Action |
-|----------|---------|-------|---------------------|-----------------|------------|--------|
-| A | `input.numeric.integer` | `IntegerInputNode` | int input + drag | Present | Yes | Restore |
-| A | `input.numeric.float` | `FloatInputNode` | float input + drag | Present | Yes | Restore |
-| A | `input.numeric.range` | `RangeInputNode` | min/max sliders | Present | Yes | Restore |
-| A | `input.numeric.angle` | `AngleSliderNode` | angle slider | Present | Yes | Restore |
-| A | `input.numeric.float_slider` | `FloatSliderNode` | float slider | Present | Yes | Restore |
-| A | `input.numeric.integer_slider` | `IntegerSliderNode` | int slider | Present | Yes | Restore |
-| A | `input.numeric.angle_picker` | `CircularAngleNode` | circular angle dial | Present | Yes | Restore |
-| A | `input.numeric.xy_slider` | `XYSliderNode` | 2D XY slider | Present | Yes | Restore |
-| A | `reference.vectors.vector2_input` | `Vector2InputNode` | X/Y inputs | Present | Yes | Restore |
-| A | `reference.vectors.vector` | `VectorInputNode` | X/Y/Z inputs | Present | Yes | Restore |
-| A | `reference.points.block_position` | `CoordinateInputNode` | coordinate fields | Present | Yes | Restore |
-| A | `input.values.boolean_toggle` | `BooleanToggleNode` | checkbox/toggle | Present | Yes | Restore |
-| A | `input.values.text_input` | `TextInputNode` | text field | Present | Yes | Restore |
-| A | `input.values.color_picker` | `ColorPickerNode` | color picker | Present | Yes | Restore |
-| A | `input.values.gradient_ramp` | `GradientRampNode` | gradient editor | Present | Yes | Restore |
-| A | `input.values.file_path` | `FilePathInputNode` | path field + browse | Present | Yes | Restore |
-| A | `math.list.create_list` | `CreateListNode` | +/- dynamic ports | Present | Yes | Restore |
-| A | `math.scalar_math.expression` | `ExpressionNode` | expression field | Present | Yes | Restore |
-| A | `utilities.assist.signal_fork` | `SignalForkNode` | fork count control | Present | Yes | Restore |
-| A | `input.type_selectors.block_type_selector` | `BlockTypeSelectorNode` | registry picker | Present | Yes | Restore |
-| A | `input.type_selectors.item_type_selector` | `ItemTypeSelectorNode` | registry picker | Present | Yes | Restore |
-| A | `input.type_selectors.entity_type_selector` | `EntityTypeSelectorNode` | registry picker | Present | Yes | Restore |
-| A | `input.type_selectors.biome_selector` | `BiomeSelectorNode` | registry picker | Present | Yes | Restore |
-| B | `output.debug.value_monitor` | `ValueMonitorNode` | live value text | Present | Yes | Restore |
-| B | `output.debug.data_inspector` | `PanelNode` | preview panel | Present | Yes | Restore |
-| B | `output.debug.execution_timer` | `StopwatchNode` | timer controls | Present | Yes | Restore |
-| B | `output.debug.print_to_chat` | `PrintToChatNode` | send button | Present | Yes | Restore |
-| B | `output.preview.geometry_viewer` | `GeometryViewerNode` | viewer controls | Present | Yes | Restore |
-| B | `output.preview.preview_blocks` | `PreviewBlocksNode` | preview controls | Present | Yes | Restore |
-| B | `output.execute.apply_changes` | `ApplyChangesNode` | apply/bake button | Present | Yes | Restore |
-| B | `output.execute.undo_last_bake` | `UndoLastBakeNode` | undo button | Present | Yes | Restore |
-| B | `output.execute.redo_last_bake` | `RedoLastBakeNode` | redo button | Present | Yes | Restore |
-| B | `output.execute.clear_preview` | `ClearAllPreviewsNode` | clear button | Present | Yes | Restore |
-| B | `output.execute.bake_status` | `BakeStatusNode` | status display | Present | Yes | Restore |
-| C | `output.export.export_worldedit` | `ExportWorldEditNode` | export controls | Present | Yes | Restore |
-| C | `output.export.export_schematic` | `ExportSchematicNode` | export controls | Present | Yes | Restore |
-| C | `output.export.export_litematic` | `ExportLitematicNode` | export controls | Present | Yes | Restore |
-| C | `input.context.player_position` | `PlayerPositionNode` | coords + Update button | Present | Yes | Restore |
-| C | `input.context.player_raycast` | `PlayerRaycastNode` | raycast controls | Present | Yes | Restore |
-| C | `world.selection.selected_entity` | `SelectedEntityNode` | pick controls | Present | Yes | Restore |
-| C | `world.selection.selected_region` | `SelectedRegionNode` | region pick UI | Present | Yes | Restore |
-| C | `world.selection.selected_block` | `SelectedBlockNode` | block pick + expand | Present | Yes | Restore |
-| C | `world.selection.selected_block_sequence` | `SelectedBlockSequenceNode` | sequence pick UI | Present | Yes | Restore |
-| C | `utilities.assist.coalesce` | `CoalesceNode` | coalesce controls | Present | Yes | Restore |
+| Priority | Type ID | Class | Auto | In-game | Action |
+|----------|---------|-------|------|---------|--------|
+| A | `input.numeric.integer` | `IntegerInputNode` | Pass | Pending | Restore |
+| A | `input.numeric.float` | `FloatInputNode` | Pass | Pending | Restore |
+| A | `input.numeric.range` | `RangeInputNode` | Pass | Pending | Restore |
+| A | `input.numeric.angle` | `AngleSliderNode` | Pass | Pending | Restore |
+| A | `input.numeric.float_slider` | `FloatSliderNode` | Pass | Pending | Restore |
+| A | `input.numeric.integer_slider` | `IntegerSliderNode` | Pass | Pending | Restore |
+| A | `input.numeric.angle_picker` | `CircularAngleNode` | Pass | Pending | Restore |
+| A | `input.numeric.xy_slider` | `XYSliderNode` | Pass | Pending | Restore |
+| A | `reference.vectors.vector2_input` | `Vector2InputNode` | Pass | Pending | Restore |
+| A | `reference.vectors.vector` | `VectorInputNode` | Pass | Pending | Restore |
+| A | `reference.points.block_position` | `CoordinateInputNode` | Pass | Pending | Restore |
+| A | `input.values.boolean_toggle` | `BooleanToggleNode` | Pass | Pending | Restore |
+| A | `input.values.text_input` | `TextInputNode` | Pass | Pending | Restore |
+| A | `input.values.color_picker` | `ColorPickerNode` | Pass | Pending | Restore |
+| A | `input.values.gradient_ramp` | `GradientRampNode` | Pass | Pending | Restore |
+| A | `input.values.file_path` | `FilePathInputNode` | Pass | Pending | Restore |
+| A | `math.list.create_list` | `CreateListNode` | Pass | Pending | Restore |
+| A | `math.scalar_math.expression` | `ExpressionNode` | Pass | Pending | Restore |
+| A | `utilities.assist.signal_fork` | `SignalForkNode` | Pass | Pending | Restore |
+| A | `input.type_selectors.block_type_selector` | `BlockTypeSelectorNode` | Pass | Pending | Restore |
+| A | `input.type_selectors.item_type_selector` | `ItemTypeSelectorNode` | Pass | Pending | Restore |
+| A | `input.type_selectors.entity_type_selector` | `EntityTypeSelectorNode` | Pass | Pending | Restore |
+| A | `input.type_selectors.biome_selector` | `BiomeSelectorNode` | Pass | Pending | Restore |
+| B | `output.debug.value_monitor` | `ValueMonitorNode` | Pass | Pending | Restore |
+| B | `output.debug.data_inspector` | `PanelNode` | Pass | Pending | Restore |
+| B | `output.debug.execution_timer` | `StopwatchNode` | Pass | Pending | Restore |
+| B | `output.debug.print_to_chat` | `PrintToChatNode` | Pass | Pending | Restore |
+| B | `output.preview.geometry_viewer` | `GeometryViewerNode` | Pass | Pending | Restore |
+| B | `output.preview.preview_blocks` | `PreviewBlocksNode` | Pass | Pending | Restore |
+| B | `output.execute.apply_changes` | `ApplyChangesNode` | Pass | Pending | Restore |
+| B | `output.execute.undo_last_bake` | `UndoLastBakeNode` | Pass | Pending | Restore |
+| B | `output.execute.redo_last_bake` | `RedoLastBakeNode` | Pass | Pending | Restore |
+| B | `output.execute.clear_preview` | `ClearAllPreviewsNode` | Pass | Pending | Restore |
+| B | `output.execute.bake_status` | `BakeStatusNode` | Pass | Pending | Restore |
+| C | `output.export.export_worldedit` | `ExportWorldEditNode` | Pass | Pending | Restore |
+| C | `output.export.export_schematic` | `ExportSchematicNode` | Pass | Pending | Restore |
+| C | `output.export.export_litematic` | `ExportLitematicNode` | Pass | Pending | Restore |
+| C | `input.context.player_position` | `PlayerPositionNode` | Pass | Pending | Restore |
+| C | `input.context.player_raycast` | `PlayerRaycastNode` | Pass | Pending | Restore |
+| C | `world.selection.selected_entity` | `SelectedEntityNode` | Pass | Pending | Restore |
+| C | `world.selection.selected_region` | `SelectedRegionNode` | Pass | Pending | Restore |
+| C | `world.selection.selected_block` | `SelectedBlockNode` | Pass | Pending | Restore |
+| C | `world.selection.selected_block_sequence` | `SelectedBlockSequenceNode` | Pass | Pending | Restore |
+| C | `utilities.assist.coalesce` | `CoalesceNode` | Pass | Pending | Restore |
 
-## Renderer fix (Phase 2)
+## Phase 2 fixes and root causes
 
-- `NodeVisualLayout` now adds `customUIHeight`, `customUIRegionTop`, and `hasCustomUI` to layout results.
-- `ImGuiNodeRenderer` re-enables `customUIRenderer.hasCustomUI(node)` and draws controls below ports in both TEXT_ONLY and ICON_ONLY modes.
-- `invisibleButton` covers title/ports only so widgets remain clickable.
+| Issue | Root cause | Fix |
+|-------|------------|-----|
+| Custom UI missing on canvas | `ImGuiNodeRenderer` hardcoded `nodeHasCustomUI = false` | Use `layout.hasCustomUI()`; call `renderCustomUI()` |
+| Layout ignored custom UI size | `NodeVisualLayout` omitted custom metrics | `CustomUIMetrics` height/width/regionTop |
+| Multi-node interaction wipe | `resetCustomUIInteractionState()` per node | `beginInteractionFrame()` once/frame + merge |
+| Screen mouse capture ignored active widgets | `ImGuiNodeInteraction.nodeCustomUIActive` never written | `CustomUIRenderer` syncs active widget node ID |
+| Audit type IDs mismatched registry | Doc used guessed IDs (`float_input` etc.) | Aligned to `@NodeInfo.id` |
 
-## Phase 2 stabilization (interaction state)
+## Interaction-state contract (§1)
 
-- Custom UI interaction state resets **once per frame** in `renderNodesDirect` via `beginInteractionFrame()`.
-- Multiple custom UI nodes on the same canvas **merge** interaction state; an active widget on node A is not cleared when node B renders later in the frame.
-- Direct-draw and ImGui widget paths both route through `CustomUIRenderer.renderNodeCustomUI()` and share merge logic.
+- Frame reset: `ImGuiNodeRenderer.renderNodesDirect` → `customUIRenderer.beginInteractionFrame()` once.
+- Hover / active associated with node UUID via `mergeInteractionSnapshot`.
+- Active widget on node A survives later render of node B.
+- Empty custom-UI hover still allows node drag; widget hover/active blocks drag.
+- Direct-draw and ImGui paths both call the same merge helper.
+- `NodecraftScreen` reads `interaction.isNodeCustomUIActive()` (now synced).
 
-## Manual in-game verification checklist
+## Automated tests (§2 / §4 / §5)
 
-- [ ] Float Slider / Boolean Toggle / Create List / Value Monitor visible in TEXT_ONLY
-- [ ] Same nodes visible in ICON_ONLY
-- [ ] Slider drag does not move node
-- [ ] Two custom UI nodes on canvas: dragging slider on one does not break when the other renders
-- [ ] CreateList +/- updates ports with undo
-- [ ] Zoom 25%–200% without clipping
+| Test | Covers |
+|------|--------|
+| `CustomUINodeRegistryTest` | 44 audit IDs registered + exact set match |
+| `CustomUIRuntimeMetricsAuditTest` | Instantiate each `ICustomUINode`; `hasCustomUI`; finite metrics |
+| `CustomUIRendererInteractionStateTest` | Multi-node merge + empty hover + shared merge semantics |
+| `CustomUIStructuralOpsTest` | CreateList / SignalFork port count immediate update |
+| `GraphStructureEditSupportTest` | CreateList / SignalFork undo + dangling edges |
+| `NodeVisualLayoutTest` | Custom UI expands layout in TEXT_ONLY and ICON_ONLY |
+| `ImGuiNodeRendererCustomUITest` | Guard against reintroducing hard-disable |
+
+## Manual in-game verification checklist (§3 / screenshots)
+
+Representative nodes (both TEXT_ONLY and ICON_ONLY):
+
+- [ ] Float Slider / Integer Slider — drag value without moving node
+- [ ] XY Slider / Circular Angle (`angle_picker`)
+- [ ] Boolean Toggle
+- [ ] Text Input — focus, edit, commit
+- [ ] Color Picker / Gradient Ramp — popup behavior
+- [ ] Create List — +/- ports, undo, no dangling wires
+- [ ] Signal Fork — +/- branches, undo
+- [ ] Block Type Selector — popup / search
+- [ ] Value Monitor
+- [ ] Geometry Viewer / Preview Blocks
+- [ ] Apply Changes
+
+Also:
+
+- [ ] Two custom UI nodes: active slider on A not broken when B is visible
+- [ ] Zoom screenshots at **50% / 100% / 200%** (no clipping)
+- [ ] Empty custom UI region still selects / drags node
+
+## Intentionally inactive
+
+None. All 44 concrete custom UI nodes are **Restore**.

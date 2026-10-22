@@ -762,7 +762,9 @@ public class ImGuiNodeRenderer {
         boolean isMouseInNodeBounds = mousePos.x >= nodeScreenX && mousePos.x <= nodeScreenX + nodeWidthScaled &&
                                      mousePos.y >= nodeScreenY && mousePos.y <= nodeScreenY + nodeHeightScaled;
 
-        boolean isCustomUIWidgetActive = isIsCustomUIWidgetActive(nodeId, nodeHasCustomUI, isMouseInNodeBounds);
+        // Global active widget blocks drag on every node; hover only blocks the hovered custom-UI node.
+        boolean isCustomUIWidgetActive = customUIRenderer.isCustomUIWidgetActive()
+                || (nodeHasCustomUI && customUIRenderer.isCustomUIWidgetHovered(nodeId));
 
         if (ImGuiInputAdapter.isMouseClicked(ImGuiMouseButton.Left)) {
             UUID clickTarget = interaction.getPendingClickTargetNodeId();
@@ -808,25 +810,6 @@ public class ImGuiNodeRenderer {
      */
     public boolean isCustomUIWidgetBlockingNodeDrag(UUID nodeId) {
         return customUIRenderer.isCustomUIWidgetHovered(nodeId) || customUIRenderer.isCustomUIWidgetActive();
-    }
-
-    private boolean isIsCustomUIWidgetActive(UUID nodeId, boolean nodeHasCustomUI, boolean isMouseInNodeBounds) {
-        boolean isCustomUIHoveredEmpty = false;
-        boolean isCustomUIWidgetActive = false;
-        if (nodeHasCustomUI) {
-            UUID hoveredCustomUINodeId = customUIRenderer.getCustomUIHoveredEmptyNodeId();
-            isCustomUIHoveredEmpty = hoveredCustomUINodeId != null && hoveredCustomUINodeId.equals(nodeId);
-            isCustomUIWidgetActive = customUIRenderer.isCustomUIWidgetActive();
-        }
-
-        // invisibleButton 是否活跃（标准方式）
-        boolean isInvisibleButtonActive = ImGui.isItemActive();
-
-        // 综合判断：节点可拖动条件
-        // 1. 标准方式：invisible button 活跃
-        // 2. 增强方式：鼠标在节点区域内 + 自定义UI空白区域被悬停（无控件活跃）
-        boolean canDragNode = isInvisibleButtonActive || (isMouseInNodeBounds && isCustomUIHoveredEmpty && !isCustomUIWidgetActive);
-        return isCustomUIWidgetActive;
     }
 
     public void renderConnectionsDirect(ImDrawList drawList, NodeGraph graph,

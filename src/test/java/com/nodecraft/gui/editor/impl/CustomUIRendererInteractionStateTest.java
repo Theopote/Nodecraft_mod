@@ -52,4 +52,22 @@ class CustomUIRendererInteractionStateTest {
         renderer.beginInteractionFrame();
         assertFalse(renderer.isCustomUIWidgetActive());
     }
+
+    @Test
+    void emptyRegionHoverDoesNotMarkWidgetActive() {
+        renderer.mergeInteractionSnapshot(nodeA, true, false, false, false);
+        assertFalse(renderer.isCustomUIWidgetActive());
+        assertEquals(nodeA, renderer.getCustomUIHoveredEmptyNodeId());
+        assertFalse(renderer.isCustomUIWidgetHovered(nodeA));
+    }
+
+    @Test
+    void directDrawAndImGuiPathsShareMergeSemantics() {
+        // Direct-draw path records interacted=true as (region, widgetHovered, widgetActive).
+        renderer.mergeInteractionSnapshot(nodeA, true, true, true, false);
+        // Later ImGui path on another node with only empty hover must not clear active.
+        renderer.mergeInteractionSnapshot(nodeB, true, false, false, false);
+        assertTrue(renderer.isCustomUIWidgetActive());
+        assertEquals(nodeA, renderer.getActiveWidgetNodeId());
+    }
 }

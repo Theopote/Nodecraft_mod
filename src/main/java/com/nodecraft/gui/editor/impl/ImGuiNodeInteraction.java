@@ -3,6 +3,7 @@ package com.nodecraft.gui.editor.impl;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.jetbrains.annotations.Nullable;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.graph.NodeGraph;
@@ -147,6 +148,19 @@ public class ImGuiNodeInteraction {
      */
     public boolean isNodeCustomUIActive() {
         return nodeCustomUIActive != null;
+    }
+
+    /**
+     * 同步本帧活跃自定义 UI 控件所属节点（由 {@link CustomUIRenderer} 在帧级合并后写入）。
+     * @param nodeId 活跃控件节点；null 表示本帧无活跃控件
+     */
+    public void setNodeCustomUIActive(@Nullable UUID nodeId) {
+        this.nodeCustomUIActive = nodeId;
+    }
+
+    /** @return 本帧拥有活跃自定义 UI 控件的节点 ID，可能为 null */
+    public @Nullable UUID getNodeCustomUIActiveId() {
+        return nodeCustomUIActive;
     }
 
     /**

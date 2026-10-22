@@ -53,6 +53,7 @@ public class CustomUIRenderer {
         lastCustomUIWasHoveredEmpty = false;
         lastCustomUIHasActiveWidget = false;
         lastCustomUIHasHoveredWidget = false;
+        syncInteractionActiveFlag();
     }
 
     /** @deprecated use {@link #beginInteractionFrame()} */
@@ -368,6 +369,7 @@ public class CustomUIRenderer {
             lastCustomUIHoveredNodeId = nodeId;
             lastCustomUIWasHoveredEmpty = false;
             lastCustomUIHasHoveredWidget = true;
+            syncInteractionActiveFlag();
             return;
         }
 
@@ -383,6 +385,18 @@ public class CustomUIRenderer {
             lastCustomUIHoveredNodeId = nodeId;
             lastCustomUIWasHoveredEmpty = false;
             lastCustomUIHasHoveredWidget = true;
+        }
+        syncInteractionActiveFlag();
+    }
+
+    /** Keep {@link ImGuiNodeInteraction#isNodeCustomUIActive()} in sync for screen-level mouse capture. */
+    private void syncInteractionActiveFlag() {
+        if (editor == null) {
+            return;
+        }
+        ImGuiNodeInteraction interaction = editor.getInteraction();
+        if (interaction != null) {
+            interaction.setNodeCustomUIActive(activeWidgetNodeId);
         }
     }
 

@@ -125,6 +125,9 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     private static final float CACHE_CONSISTENCY_THRESHOLD = 0.001f;
     /** 缓存不一致时是否抛出异常（调试模式下） */
     private static final boolean STRICT_CACHE_VALIDATION = Boolean.getBoolean("debug.ui.cache.strict");
+    /** Headless metrics fallbacks (unit tests). Enable with {@code -Dnodecraft.customui.headlessMetrics=true}. */
+    private static final float HEADLESS_FALLBACK_HEIGHT = 48.0f;
+    private static final float HEADLESS_FALLBACK_WIDTH = 160.0f;
     
     // ### 字体缩放相关常量
     
@@ -178,6 +181,17 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         return true;
     }
 
+    /**
+     * Resolve height/width via subclass {@code calculateUI*} methods, with optional headless fallback.
+     */
+    private float resolveCustomUIMetric(boolean height) {
+        // Native ImGui without a context can hard-crash the JVM; never call calculateUI* headless.
+        if (Boolean.getBoolean("nodecraft.customui.headlessMetrics")) {
+            return height ? HEADLESS_FALLBACK_HEIGHT : HEADLESS_FALLBACK_WIDTH;
+        }
+        return height ? calculateUIHeight() : calculateMinUIWidth();
+    }
+
     @Override
     public final float getCustomUIHeight() {
         if (cacheInvalid || cachedUIHeight < 0) {
@@ -186,7 +200,7 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
                                      getId(), cacheInvalid, cachedUIHeight);
         }
             
-            float newHeight = calculateUIHeight();
+            float newHeight = resolveCustomUIMetric(true);
             
             // 确保返回值为非负
             if (newHeight < 0) {
@@ -230,7 +244,7 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
                                      getId(), cacheInvalid, cachedMinWidth);
             }
             
-            float newWidth = calculateMinUIWidth();
+            float newWidth = resolveCustomUIMetric(false);
             
             // 确保返回值为非负
             if (newWidth < 0) {
