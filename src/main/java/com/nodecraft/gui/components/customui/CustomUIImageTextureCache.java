@@ -26,7 +26,11 @@ public final class CustomUIImageTextureCache {
 
     public static final int MAX_THUMB_EDGE = 128;
     public static final int MAX_UPLOADS_PER_FRAME = 2;
-    /** Soft cap on retained textures; unreferenced entries are evicted first. */
+    /**
+     * Hard cap on retained GPU thumbnails. Unreferenced entries are evicted first;
+     * when every slot is still referenced, new uploads are refused (caller shows a placeholder)
+     * unless the requesting owner can free an exclusive previous texture as a safe replacement.
+     */
     public static final int MAX_CACHED_TEXTURES = 48;
 
     private static final CustomUIImageTextureCache INSTANCE = new CustomUIImageTextureCache();
@@ -72,7 +76,9 @@ public final class CustomUIImageTextureCache {
         if (uploadsThisFrame >= MAX_UPLOADS_PER_FRAME) {
             return 0;
         }
-        evictIfNeeded();
+        if (!admitNewTextureSlot(ownerNodeId)) {
+            return 0;
+        }
         int textureId = uploadThumbnail(image);
         if (textureId <= 0) {
             return 0;
@@ -157,6 +163,27 @@ public final class CustomUIImageTextureCache {
             refCounts.remove(key);
             deleteTexture(key);
         }
+    }
+
+    /**
+     * Ensures there is room for one new texture key. Evicts unreferenced entries first;
+     * if still full, frees the caller's exclusive previous texture (safe replacement).
+     * Returns false when the hard cap is still saturated by live references.
+     */
+    private boolean admitNewTextureSlot(@Nullable UUID ownerNodeId) {
+        evictIfNeeded();
+        if (textures.size() < MAX_CACHED_TEXTURES) {
+            return true;
+        }
+        // Safe replacement: this owner alone holds a slot — free it so the new image can take its place.
+        if (ownerNodeId != null) {
+            String previous = ownerKeys.get(ownerNodeId);
+            if (previous != null && refCounts.getOrDefault(previous, 0) <= 1) {
+                releaseOwner(ownerNodeId);
+                evictIfNeeded();
+            }
+        }
+        return textures.size() < MAX_CACHED_TEXTURES;
     }
 
     private void evictIfNeeded() {
@@ -271,11 +298,22 @@ public final class CustomUIImageTextureCache {
         keyMemo.clear();
     }
 
-    /** Headless ownership transition without GL (tests). */
-    void simulateBindHeadless(UUID owner, ImageData image) {
+    /**
+     * Headless ownership transition without GL (tests).
+     *
+     * @return {@code true} when the owner is bound to the image key; {@code false} when the hard
+     *         capacity budget refused admitting a new texture
+     */
+    boolean simulateBindHeadless(UUID owner, ImageData image) {
         String key = cacheKey(image);
-        textures.putIfAbsent(key, -1); // sentinel non-GL id for bookkeeping tests
-        refCounts.putIfAbsent(key, 0);
+        if (!textures.containsKey(key)) {
+            if (!admitNewTextureSlot(owner)) {
+                return false;
+            }
+            textures.put(key, -1); // sentinel non-GL id for bookkeeping tests
+            refCounts.put(key, 0);
+        }
         bindOwner(owner, key);
+        return true;
     }
 }

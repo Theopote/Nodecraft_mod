@@ -29,7 +29,7 @@ class GradientRampNodeStateTest {
 
         Thread reader = new Thread(() -> {
             try {
-                for (int i = 0; i < 1000; i++) {
+                for (int i = 0; i < 5000; i++) {
                     node.getNodeState();
                 }
             } catch (Throwable t) {
@@ -39,7 +39,7 @@ class GradientRampNodeStateTest {
 
         Thread writer = new Thread(() -> {
             try {
-                for (int i = 0; i < 1000; i++) {
+                for (int i = 0; i < 5000; i++) {
                     Object snapshot = node.getNodeState();
                     node.setNodeState(snapshot);
                 }
@@ -50,9 +50,9 @@ class GradientRampNodeStateTest {
 
         reader.start();
         writer.start();
-        reader.join(10_000);
-        writer.join(10_000);
+        reader.join(30_000);
+        writer.join(30_000);
 
-        assertNull(failure.get(), () -> "getNodeState must snapshot stops: " + failure.get());
+        assertNull(failure.get(), () -> "getNodeState/setNodeState must share stopsLock: " + failure.get());
     }
 }

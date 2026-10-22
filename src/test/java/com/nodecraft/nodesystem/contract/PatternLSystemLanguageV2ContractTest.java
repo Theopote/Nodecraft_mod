@@ -110,19 +110,37 @@ class PatternLSystemLanguageV2ContractTest {
     }
 
     @Test
-    void ruleEmptyProductionLegalMissingProductionFails() {
-        RuleProbe ok = new RuleProbe();
-        ok.setInput("input_symbol", "F");
-        ok.setInput("input_production", "");
-        ok.processNode(null);
-        assertEquals(Boolean.TRUE, ok.getOutput("output_valid"));
-        assertEquals("", ok.getOutput("output_error"));
+    void ruleEmptyProductionLegalDraftAndConnectedPrecedence() {
+        // Explicit empty Production string is legal.
+        RuleProbe empty = new RuleProbe();
+        empty.setInput("input_symbol", "F");
+        empty.setInput("input_production", "");
+        empty.processNode(null);
+        assertEquals(Boolean.TRUE, empty.getOutput("output_valid"));
+        assertEquals("", empty.getOutput("output_error"));
+        LSystemRule emptyRule = assertInstanceOf(LSystemRule.class, empty.getOutput("output_rule"));
+        assertEquals("", emptyRule.production());
 
-        RuleProbe missing = new RuleProbe();
-        missing.setInput("input_symbol", "F");
-        missing.processNode(null);
-        assertEquals(Boolean.FALSE, missing.getOutput("output_valid"));
-        assertTrue(String.valueOf(missing.getOutput("output_error")).toLowerCase(Locale.ROOT).contains("production"));
+        // Undriven Production uses local draft (Phase 2 canvas editor contract).
+        RuleProbe draft = new RuleProbe();
+        draft.setDraftSymbol("X");
+        draft.setDraftProduction("X[+X]");
+        draft.processNode(null);
+        assertEquals(Boolean.TRUE, draft.getOutput("output_valid"));
+        LSystemRule draftRule = assertInstanceOf(LSystemRule.class, draft.getOutput("output_rule"));
+        assertEquals("X", draftRule.symbol());
+        assertEquals("X[+X]", draftRule.production());
+
+        // Connected invalid Production must fail closed — never silently fall back to draft.
+        RuleProbe connectedBad = new RuleProbe();
+        connectedBad.setDraftProduction("SHOULD_NOT_USE");
+        connectedBad.setInput("input_symbol", "F");
+        connectedBad.connectInput("input_production", NodeDataType.STRING);
+        connectedBad.putRawInput("input_production", 42);
+        connectedBad.processNode(null);
+        assertEquals(Boolean.FALSE, connectedBad.getOutput("output_valid"));
+        assertTrue(String.valueOf(connectedBad.getOutput("output_error")).toLowerCase(Locale.ROOT)
+            .contains("production"));
     }
 
     @Test

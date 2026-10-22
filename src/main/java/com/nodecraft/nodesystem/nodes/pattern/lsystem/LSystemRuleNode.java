@@ -21,6 +21,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Constructs one L-system production rule.
+ *
+ * <p><b>Input contract (Phase 2 custom UI):</b>
+ * <ul>
+ *   <li>An undriven Symbol / Production port uses the local draft (new nodes ship a valid default).</li>
+ *   <li>A driven (connected) Symbol or Production port takes precedence over the draft.</li>
+ *   <li>Invalid connected input fails closed — never silently falls back to the draft.</li>
+ *   <li>Empty Production ({@code ""}) is valid; blank Symbol is not.</li>
+ *   <li>Weight must be finite and {@code >= 0}.</li>
+ * </ul>
+ */
 @NodeInfo(
     effect = NodeEffect.PURE,
     id = "pattern.lsystem.rule",

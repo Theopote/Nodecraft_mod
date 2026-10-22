@@ -112,4 +112,44 @@ class CustomUIImageTextureCacheTest {
         assertEquals(0, cache.ownerCount());
         assertEquals(0, cache.cachedTextureCount());
     }
+
+    @Test
+    void hardCapRefusesNewTextureWhenAllSlotsReferenced() {
+        CustomUIImageTextureCache cache = CustomUIImageTextureCache.getInstance();
+        int cap = CustomUIImageTextureCache.MAX_CACHED_TEXTURES;
+        for (int i = 0; i < cap; i++) {
+            float channel = (i % 256) / 255.0f;
+            ImageData image = ImageData.create(1, 1, 1, 1, 1,
+                List.of(new ColorData(channel, (1.0f - channel), 0.25f, 1.0f)));
+            assertTrue(cache.simulateBindHeadless(UUID.randomUUID(), image));
+        }
+        assertEquals(cap, cache.cachedTextureCount());
+
+        ImageData overflow = ImageData.create(1, 1, 1, 1, 1, List.of(ColorData.WHITE));
+        assertEquals(false, cache.simulateBindHeadless(UUID.randomUUID(), overflow));
+        assertEquals(cap, cache.cachedTextureCount());
+    }
+
+    @Test
+    void hardCapAllowsExclusiveOwnerReplacement() {
+        CustomUIImageTextureCache cache = CustomUIImageTextureCache.getInstance();
+        int cap = CustomUIImageTextureCache.MAX_CACHED_TEXTURES;
+        UUID stickyOwner = UUID.randomUUID();
+        ImageData first = ImageData.create(1, 1, 1, 1, 1, List.of(ColorData.RED));
+        assertTrue(cache.simulateBindHeadless(stickyOwner, first));
+
+        for (int i = 1; i < cap; i++) {
+            float channel = (i % 256) / 255.0f;
+            ImageData image = ImageData.create(1, 1, 1, 1, 1,
+                List.of(new ColorData(channel, 0.5f, 0.75f, 1.0f)));
+            assertTrue(cache.simulateBindHeadless(UUID.randomUUID(), image));
+        }
+        assertEquals(cap, cache.cachedTextureCount());
+
+        ImageData replacement = ImageData.create(1, 1, 1, 1, 1, List.of(ColorData.BLUE));
+        assertTrue(cache.simulateBindHeadless(stickyOwner, replacement));
+        assertEquals(cap, cache.cachedTextureCount());
+        assertEquals(1, cache.refCount(CustomUIImageTextureCache.computeCacheKey(replacement)));
+        assertEquals(0, cache.refCount(CustomUIImageTextureCache.computeCacheKey(first)));
+    }
 }

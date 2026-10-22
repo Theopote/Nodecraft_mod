@@ -96,6 +96,8 @@ public class GradientRampNode extends BaseCustomUINode {
     private boolean showSampleInput = true;
 
     private final List<GradientStop> stops = new ArrayList<>();
+    /** Guards {@link #stops} and {@link #selectedStopIndex} across UI edits and property-panel snapshots. */
+    private final Object stopsLock = new Object();
     private int selectedStopIndex = 0;
 
     public GradientRampNode() {
@@ -200,8 +202,6 @@ public class GradientRampNode extends BaseCustomUINode {
     }
 
     private boolean renderRampEditor(float width, float rampHeight, float markerHeight, float zoom) {
-        ensureValidStops();
-
         ImVec2 start = ImGui.getCursorScreenPos();
         float x0 = start.x;
         float y0 = start.y;
@@ -215,31 +215,36 @@ public class GradientRampNode extends BaseCustomUINode {
         boolean active = ImGui.isItemActive();
         float mouseX = ImGui.getMousePosX();
 
-        if (hovered && ImGui.isItemClicked(ImGuiMouseButton.Left)) {
-            double t = clamp01((mouseX - x0) / Math.max(1.0f, width));
-            int nearest = findNearestStop(t, 0.035d);
-            if (nearest >= 0) {
-                selectedStopIndex = nearest;
-            } else if (stops.size() < MAX_STOPS) {
-                ColorData color = sampleColor(t);
-                stops.add(new GradientStop(t, color));
-                sortStops();
-                selectedStopIndex = findNearestStop(t, 0.001d);
-                changed = true;
+        synchronized (stopsLock) {
+            ensureValidStopsUnlocked();
+            if (hovered && ImGui.isItemClicked(ImGuiMouseButton.Left)) {
+                double t = clamp01((mouseX - x0) / Math.max(1.0f, width));
+                int nearest = findNearestStopUnlocked(t, 0.035d);
+                if (nearest >= 0) {
+                    selectedStopIndex = nearest;
+                } else if (stops.size() < MAX_STOPS) {
+                    ColorData color = sampleColorUnlocked(t);
+                    stops.add(new GradientStop(t, color));
+                    sortStopsUnlocked();
+                    selectedStopIndex = findNearestStopUnlocked(t, 0.001d);
+                    changed = true;
+                }
             }
-        }
 
-        if (active && selectedStopIndex >= 0 && selectedStopIndex < stops.size() && ImGui.isMouseDown(ImGuiMouseButton.Left)) {
-            double t = clamp01((mouseX - x0) / Math.max(1.0f, width));
-            GradientStop selected = stops.get(selectedStopIndex);
-            if (Math.abs(selected.position - t) > 1.0e-5d) {
-                selected.position = t;
-                sortStopsKeeping(selected);
-                changed = true;
+            if (active && selectedStopIndex >= 0 && selectedStopIndex < stops.size()
+                && ImGui.isMouseDown(ImGuiMouseButton.Left)) {
+                double t = clamp01((mouseX - x0) / Math.max(1.0f, width));
+                GradientStop selected = stops.get(selectedStopIndex);
+                if (Math.abs(selected.position - t) > 1.0e-5d) {
+                    selected.position = t;
+                    sortStopsUnlocked();
+                    selectedStopIndex = stops.indexOf(selected);
+                    changed = true;
+                }
             }
-        }
 
-        drawRamp(ImGui.getWindowDrawList(), x0, y0, x1, y1, markerHeight, zoom, hovered || active);
+            drawRampUnlocked(ImGui.getWindowDrawList(), x0, y0, x1, y1, markerHeight, zoom, hovered || active);
+        }
         if (changed) {
             updateOutput();
             markDirty();
@@ -249,51 +254,81 @@ public class GradientRampNode extends BaseCustomUINode {
 
     private boolean renderStopControls(float availableWidth, LayoutHelper l, float zoom) {
         boolean changed = false;
-        GradientStop selected = getSelectedStop();
-        if (selected == null) {
-            return false;
+        double selectedPosition;
+        int stopCount;
+        synchronized (stopsLock) {
+            GradientStop selected = getSelectedStopUnlocked();
+            if (selected == null) {
+                return false;
+            }
+            selectedPosition = selected.position;
+            stopCount = stops.size();
         }
 
         float buttonHeight = ImGui.getFrameHeight();
         float buttonWidth = Math.min(l.toPixels(72.0f), availableWidth * 0.32f);
-        if (ImGui.button("Add", buttonWidth, buttonHeight) && stops.size() < MAX_STOPS) {
-            double t = selected.position < 0.95d ? selected.position + 0.1d : selected.position - 0.1d;
-            t = clamp01(t);
-            stops.add(new GradientStop(t, selected.color));
-            sortStops();
-            selectedStopIndex = findNearestStop(t, 0.001d);
-            updateOutput();
-            markDirty();
-            changed = true;
+        if (ImGui.button("Add", buttonWidth, buttonHeight) && stopCount < MAX_STOPS) {
+            synchronized (stopsLock) {
+                GradientStop selected = getSelectedStopUnlocked();
+                if (selected != null && stops.size() < MAX_STOPS) {
+                    double t = selected.position < 0.95d ? selected.position + 0.1d : selected.position - 0.1d;
+                    t = clamp01(t);
+                    stops.add(new GradientStop(t, selected.color));
+                    sortStopsUnlocked();
+                    selectedStopIndex = findNearestStopUnlocked(t, 0.001d);
+                    changed = true;
+                }
+            }
+            if (changed) {
+                updateOutput();
+                markDirty();
+            }
         }
         ImGui.sameLine();
-        if (ImGui.button("Remove", buttonWidth, buttonHeight) && stops.size() > 2) {
-            stops.remove(selectedStopIndex);
-            selectedStopIndex = Math.max(0, Math.min(selectedStopIndex, stops.size() - 1));
-            updateOutput();
-            markDirty();
-            changed = true;
+        if (ImGui.button("Remove", buttonWidth, buttonHeight) && stopCount > 2) {
+            synchronized (stopsLock) {
+                if (stops.size() > 2) {
+                    stops.remove(selectedStopIndex);
+                    selectedStopIndex = Math.max(0, Math.min(selectedStopIndex, stops.size() - 1));
+                    changed = true;
+                }
+            }
+            if (changed) {
+                updateOutput();
+                markDirty();
+            }
         }
         ImGui.sameLine();
         l.setItemWidth(Math.max(availableWidth - buttonWidth * 2.0f - ImGui.getStyle().getItemSpacingX() * 2.0f, l.toPixels(64.0f)) / Math.max(zoom, 0.001f));
-        ImDouble positionInput = new ImDouble(selected.position);
+        ImDouble positionInput = new ImDouble(selectedPosition);
         if (ImGui.inputDouble("Pos##gradient_stop_pos", positionInput, 0.0d, 0.0d, "%.3f")) {
-            selected.position = clamp01(positionInput.get());
-            sortStopsKeeping(selected);
-            updateOutput();
-            markDirty();
-            changed = true;
+            synchronized (stopsLock) {
+                GradientStop selected = getSelectedStopUnlocked();
+                if (selected != null) {
+                    selected.position = clamp01(positionInput.get());
+                    sortStopsUnlocked();
+                    selectedStopIndex = stops.indexOf(selected);
+                    changed = true;
+                }
+            }
+            if (changed) {
+                updateOutput();
+                markDirty();
+            }
         }
         l.popItemWidth();
         return changed;
     }
 
     private boolean renderSelectedColorEditor(float availableWidth, LayoutHelper l, float zoom) {
-        GradientStop selected = getSelectedStop();
-        if (selected == null) {
-            return false;
+        float[] color;
+        synchronized (stopsLock) {
+            GradientStop selected = getSelectedStopUnlocked();
+            if (selected == null) {
+                return false;
+            }
+            color = new float[]{selected.color.r(), selected.color.g(), selected.color.b(), selected.color.a()};
         }
-        float[] color = {selected.color.r(), selected.color.g(), selected.color.b(), selected.color.a()};
         int flags = ImGuiColorEditFlags.DisplayRGB
             | ImGuiColorEditFlags.InputRGB
             | ImGuiColorEditFlags.Float
@@ -307,21 +342,30 @@ public class GradientRampNode extends BaseCustomUINode {
         l.popStyleVar();
 
         if (changed) {
-            selected.color = new ColorData(color[0], color[1], color[2], color[3]);
-            updateOutput();
-            markDirty();
+            synchronized (stopsLock) {
+                GradientStop selected = getSelectedStopUnlocked();
+                if (selected != null) {
+                    selected.color = new ColorData(color[0], color[1], color[2], color[3]);
+                } else {
+                    changed = false;
+                }
+            }
+            if (changed) {
+                updateOutput();
+                markDirty();
+            }
         }
         return changed;
     }
 
-    private void drawRamp(ImDrawList drawList, float x0, float y0, float x1, float y1,
-                          float markerHeight, float zoom, boolean hot) {
+    private void drawRampUnlocked(ImDrawList drawList, float x0, float y0, float x1, float y1,
+                                  float markerHeight, float zoom, boolean hot) {
         float width = Math.max(1.0f, x1 - x0);
         int steps = Math.max(32, Math.min(128, (int) width));
         for (int i = 0; i < steps; i++) {
             double t0 = (double) i / steps;
             double t1 = (double) (i + 1) / steps;
-            ColorData color = sampleColor((t0 + t1) * 0.5d);
+            ColorData color = sampleColorUnlocked((t0 + t1) * 0.5d);
             float sx0 = x0 + (float) t0 * width;
             float sx1 = x0 + (float) t1 * width + 0.75f;
             drawList.addRectFilled(sx0, y0, sx1, y1, toU32(color), 0.0f);
@@ -349,8 +393,11 @@ public class GradientRampNode extends BaseCustomUINode {
     }
 
     private void updateOutput() {
-        ensureValidStops();
-        SampleResult sample = resolveSample();
+        SampleResult sample;
+        synchronized (stopsLock) {
+            ensureValidStopsUnlocked();
+            sample = resolveSample();
+        }
         if (!sample.valid()) {
             invalidateOutputs();
             return;
@@ -412,7 +459,7 @@ public class GradientRampNode extends BaseCustomUINode {
         if (!Double.isFinite(t)) {
             return SampleResult.invalid();
         }
-        ColorData color = sampleColor(t);
+        ColorData color = sampleColorUnlocked(t);
         if (!ValueInputUtils.isFiniteColor(color)) {
             return SampleResult.invalid();
         }
@@ -420,6 +467,7 @@ public class GradientRampNode extends BaseCustomUINode {
     }
 
     private boolean stopsFinite() {
+        // Caller must hold stopsLock (resolveSample / updateOutput).
         if (stops.isEmpty()) {
             return false;
         }
@@ -483,8 +531,9 @@ public class GradientRampNode extends BaseCustomUINode {
         };
     }
 
-    private ColorData sampleColor(double t) {
-        ensureValidStops();
+    /** Caller must hold {@link #stopsLock}. */
+    private ColorData sampleColorUnlocked(double t) {
+        ensureValidStopsUnlocked();
         double u = clamp01(t);
         if (stops.size() == 1 || u <= stops.getFirst().position) {
             return stops.getFirst().color;
@@ -527,22 +576,27 @@ public class GradientRampNode extends BaseCustomUINode {
     }
 
     private List<Map<String, Object>> toRampList() {
-        List<Map<String, Object>> ramp = new ArrayList<>();
-        // Snapshot — custom UI may sort/add/remove stops while property panel calls getNodeState().
-        for (GradientStop stop : List.copyOf(stops)) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("position", stop.position);
-            item.put("r", (double) stop.color.r());
-            item.put("g", (double) stop.color.g());
-            item.put("b", (double) stop.color.b());
-            item.put("a", (double) stop.color.a());
-            item.put("hex", toHex(stop.color));
-            ramp.add(item);
+        synchronized (stopsLock) {
+            List<Map<String, Object>> ramp = new ArrayList<>(stops.size());
+            // Copy field values under the same lock that guards mutations — List.copyOf alone is not enough
+            // when another thread clears/rebuilds the list or mutates GradientStop fields.
+            for (GradientStop stop : stops) {
+                ColorData color = stop.color != null ? stop.color : ColorData.WHITE;
+                Map<String, Object> item = new HashMap<>();
+                item.put("position", stop.position);
+                item.put("r", (double) color.r());
+                item.put("g", (double) color.g());
+                item.put("b", (double) color.b());
+                item.put("a", (double) color.a());
+                item.put("hex", toHex(color));
+                ramp.add(item);
+            }
+            return ramp;
         }
-        return ramp;
     }
 
-    private void ensureValidStops() {
+    /** Caller must hold {@link #stopsLock}. */
+    private void ensureValidStopsUnlocked() {
         if (stops.isEmpty()) {
             stops.add(new GradientStop(0.0d, ColorData.BLACK));
             stops.add(new GradientStop(1.0d, ColorData.WHITE));
@@ -553,20 +607,17 @@ public class GradientRampNode extends BaseCustomUINode {
                 stop.color = ColorData.WHITE;
             }
         }
-        sortStops();
+        sortStopsUnlocked();
         selectedStopIndex = Math.max(0, Math.min(selectedStopIndex, stops.size() - 1));
     }
 
-    private void sortStops() {
+    /** Caller must hold {@link #stopsLock}. */
+    private void sortStopsUnlocked() {
         stops.sort(Comparator.comparingDouble(s -> s.position));
     }
 
-    private void sortStopsKeeping(GradientStop selected) {
-        sortStops();
-        selectedStopIndex = stops.indexOf(selected);
-    }
-
-    private int findNearestStop(double t, double threshold) {
+    /** Caller must hold {@link #stopsLock}. */
+    private int findNearestStopUnlocked(double t, double threshold) {
         int nearest = -1;
         double best = threshold;
         for (int i = 0; i < stops.size(); i++) {
@@ -579,8 +630,9 @@ public class GradientRampNode extends BaseCustomUINode {
         return nearest;
     }
 
-    private GradientStop getSelectedStop() {
-        ensureValidStops();
+    /** Caller must hold {@link #stopsLock}. */
+    private GradientStop getSelectedStopUnlocked() {
+        ensureValidStopsUnlocked();
         if (selectedStopIndex < 0 || selectedStopIndex >= stops.size()) {
             return null;
         }
@@ -666,19 +718,21 @@ public class GradientRampNode extends BaseCustomUINode {
         if (map.get("showSampleInput") instanceof Boolean value) {
             showSampleInput = value;
         }
-        if (map.get("selectedStopIndex") instanceof Number value) {
-            selectedStopIndex = value.intValue();
-        }
-        if (map.get("stops") instanceof List<?> list) {
-            stops.clear();
-            for (Object item : list) {
-                GradientStop stop = parseStop(item);
-                if (stop != null) {
-                    stops.add(stop);
+        synchronized (stopsLock) {
+            if (map.get("selectedStopIndex") instanceof Number value) {
+                selectedStopIndex = value.intValue();
+            }
+            if (map.get("stops") instanceof List<?> list) {
+                stops.clear();
+                for (Object item : list) {
+                    GradientStop stop = parseStop(item);
+                    if (stop != null) {
+                        stops.add(stop);
+                    }
                 }
             }
+            ensureValidStopsUnlocked();
         }
-        ensureValidStops();
         updateOutput();
         invalidateCache();
         markDirty();
