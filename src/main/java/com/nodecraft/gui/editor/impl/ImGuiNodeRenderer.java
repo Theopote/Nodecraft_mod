@@ -379,10 +379,18 @@ public class ImGuiNodeRenderer {
                     !compactRerouteNode);
         }
 
-        // Custom canvas UI is hidden in both display modes; controls stay in the property panel.
-        boolean nodeHasCustomUI = false;
+        boolean nodeHasCustomUI = layout.hasCustomUI();
+        float nodeBodyInteractionHeight = finalNodeHeightScaled;
+        if (nodeHasCustomUI && !compactRerouteNode) {
+            nodeBodyInteractionHeight = Math.max(0f, layout.customUIRegionTop() * canvasZoom);
+        }
         ImGui.setCursorScreenPos(nodeScreenX, nodeScreenY);
-        ImGui.invisibleButton("node_interaction_area_" + nodeId, finalNodeWidthScaled, finalNodeHeightScaled);
+        ImGui.invisibleButton("node_interaction_area_" + nodeId, finalNodeWidthScaled, nodeBodyInteractionHeight);
+
+        if (nodeHasCustomUI && !compactRerouteNode) {
+            customUIRenderer.resetCustomUIInteractionState();
+            renderCustomUI(node, nodeId, nodeScreenX, nodeScreenY, finalNodeWidthScaled, canvasZoom, layout);
+        }
 
         handleNodeInteraction(nodeId, selectedNodeIds, nodeHasCustomUI,
                 nodeScreenX, nodeScreenY, finalNodeWidthScaled, finalNodeHeightScaled);
@@ -394,6 +402,59 @@ public class ImGuiNodeRenderer {
                     navHighlightColor, selectionCornerRadius, 0, nodeBorderThicknessScaled);
         }
         ImGui.popID();
+    }
+
+    private void renderCustomUI(
+            INode node,
+            UUID nodeId,
+            float nodeScreenX,
+            float nodeScreenY,
+            float finalNodeWidthScaled,
+            float canvasZoom,
+            NodeVisualLayout.Result layout) {
+        float customUIUnscaledHeight = layout.customUIHeight();
+        if (customUIUnscaledHeight <= 0f) {
+            return;
+        }
+
+        float customUIStartY = nodeScreenY + layout.customUIRegionTop() * canvasZoom;
+        float customUILogicalWidth = finalNodeWidthScaled / canvasZoom
+                - 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING;
+        float customUIScreenX = nodeScreenX + NodeRenderConstants.NODE_HORIZONTAL_PADDING * canvasZoom;
+
+        ICustomUINode customUINode = null;
+        boolean supportsDirectDrawing = false;
+        if (node instanceof ICustomUINode customUI) {
+            customUINode = customUI;
+            supportsDirectDrawing = customUI.supportsDirectDrawing();
+        }
+
+        if (supportsDirectDrawing && customUINode != null) {
+            try {
+                customUINode.renderCustomUIDirect(
+                        ImGui.getWindowDrawList(),
+                        customUIScreenX,
+                        customUIStartY,
+                        customUILogicalWidth * canvasZoom,
+                        customUIUnscaledHeight * canvasZoom,
+                        canvasZoom);
+            } catch (Exception e) {
+                NodeCraft.LOGGER.warn("Failed to render direct custom UI for node {}", nodeId, e);
+            }
+            return;
+        }
+
+        CustomUIRenderer.CustomUIRenderInfo info = new CustomUIRenderer.CustomUIRenderInfo(
+                node,
+                customUINode,
+                nodeId,
+                customUIScreenX,
+                customUIStartY,
+                customUILogicalWidth,
+                customUIUnscaledHeight,
+                canvasZoom,
+                false);
+        customUIRenderer.renderSingleCustomUIWithChildWindow(info);
     }
 
     private void renderNodePorts(ImDrawList drawList, NodeVisualLayout.Result layout,

@@ -152,17 +152,29 @@ class NodeVisualLayoutTest {
     }
 
     @Test
-    void customUiDoesNotContributeToEitherMode() {
-        // Layout API never accepts custom UI metrics — height is header + ports (+ icon block) only.
+    void customUiExpandsLayoutInBothDisplayModes() {
         StubNode node = StubNode.named("Slider").inputs("Value").outputs("Out");
-        NodeVisualLayout.Result text = NodeVisualLayout.compute(
-                node, NodeDisplayMode.TEXT_ONLY, node.inputs, node.outputs, CHAR_WIDTH, LINE_H, SPACING_Y);
-        NodeVisualLayout.Result icon = NodeVisualLayout.compute(
-                node, NodeDisplayMode.ICON_ONLY, node.inputs, node.outputs, CHAR_WIDTH, LINE_H, SPACING_Y);
+        NodeVisualLayout.CustomUIMetricsProvider provider = ignored ->
+                new NodeVisualLayout.CustomUIMetrics(true, 48f, 200f);
 
-        float expectedPortsH = LINE_H; // one port row each side
-        assertEquals(expectedPortsH, text.portsRegionHeight(), 0.01f);
-        assertTrue(text.height() < text.headerHeight() + expectedPortsH + NodeRenderConstants.NODE_VERTICAL_PADDING + 50f);
+        NodeVisualLayout.Result textBase = NodeVisualLayout.compute(
+                node, NodeDisplayMode.TEXT_ONLY, node.inputs, node.outputs,
+                CHAR_WIDTH, LINE_H, SPACING_Y, ignored -> NodeVisualLayout.CustomUIMetrics.NONE);
+        NodeVisualLayout.Result text = NodeVisualLayout.compute(
+                node, NodeDisplayMode.TEXT_ONLY, node.inputs, node.outputs,
+                CHAR_WIDTH, LINE_H, SPACING_Y, provider);
+        NodeVisualLayout.Result icon = NodeVisualLayout.compute(
+                node, NodeDisplayMode.ICON_ONLY, node.inputs, node.outputs,
+                CHAR_WIDTH, LINE_H, SPACING_Y, provider);
+
+        assertFalse(textBase.hasCustomUI());
+        assertTrue(text.hasCustomUI());
+        assertTrue(icon.hasCustomUI());
+        assertEquals(48f, text.customUIHeight(), 0.01f);
+        assertEquals(textBase.height(), text.customUIRegionTop(), 0.01f);
+        assertEquals(textBase.height() + 48f + NodeRenderConstants.NODE_HORIZONTAL_PADDING,
+                text.height(), 0.01f);
+        assertTrue(text.width() >= 200f + 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
         assertTrue(icon.height() > icon.headerHeight());
         assertFalse(text.showIcon());
         assertTrue(icon.showIcon());

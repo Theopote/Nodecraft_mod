@@ -22,6 +22,16 @@ public final class NodeVisualLayout {
         float measure(String text);
     }
 
+    /** Unscaled custom UI metrics for layout sizing. */
+    public record CustomUIMetrics(boolean enabled, float height, float minWidth) {
+        public static final CustomUIMetrics NONE = new CustomUIMetrics(false, 0f, 0f);
+    }
+
+    @FunctionalInterface
+    public interface CustomUIMetricsProvider {
+        CustomUIMetrics metricsFor(INode node);
+    }
+
     /**
      * Layout result in unscaled (logical) coordinates relative to the node top-left.
      */
@@ -46,8 +56,23 @@ public final class NodeVisualLayout {
             float portRegionTop,
             List<String> inputLabels,
             List<String> outputLabels,
+            boolean hasCustomUI,
+            float customUIHeight,
+            /** Unscaled Y where the custom UI region begins (below title/ports). */
+            float customUIRegionTop,
             boolean compactReroute
     ) {
+    }
+
+    /** Resolve custom UI metrics from {@link ICustomUINode} when present. */
+    public static CustomUIMetrics metricsFromNode(INode node) {
+        if (node instanceof ICustomUINode customUINode && customUINode.hasCustomUI()) {
+            float height = customUINode.getCustomUIHeight();
+            if (height > 0f) {
+                return new CustomUIMetrics(true, height, customUINode.getMinRequiredUIWidth());
+            }
+        }
+        return CustomUIMetrics.NONE;
     }
 
     private NodeVisualLayout() {
@@ -79,6 +104,19 @@ public final class NodeVisualLayout {
             TextWidthMeasurer measurer,
             float baseTextLineHeight,
             float baseItemSpacingY) {
+        return compute(node, mode, visibleInputs, visibleOutputs, measurer,
+                baseTextLineHeight, baseItemSpacingY, NodeVisualLayout::metricsFromNode);
+    }
+
+    public static Result compute(
+            INode node,
+            NodeDisplayMode mode,
+            List<IPort> visibleInputs,
+            List<IPort> visibleOutputs,
+            TextWidthMeasurer measurer,
+            float baseTextLineHeight,
+            float baseItemSpacingY,
+            CustomUIMetricsProvider customUIMetricsProvider) {
 
         NodeDisplayMode resolvedMode = mode != null ? mode : NodeDisplayMode.TEXT_ONLY;
         TextWidthMeasurer text = measurer != null ? measurer : ignored -> 0f;
@@ -102,6 +140,9 @@ public final class NodeVisualLayout {
                     0f,
                     emptyLabels(inputs.size()),
                     emptyLabels(outputs.size()),
+                    false,
+                    0f,
+                    0f,
                     true
             );
         }
@@ -111,12 +152,57 @@ public final class NodeVisualLayout {
 
         float portsRegionHeight = portsRegionHeight(inputs.size(), outputs.size(), baseTextLineHeight, baseItemSpacingY);
 
+        Result base;
         if (resolvedMode == NodeDisplayMode.ICON_ONLY) {
-            return computeIconOnly(node, inputs, outputs, inputLabels, outputLabels, text,
+            base = computeIconOnly(node, inputs, outputs, inputLabels, outputLabels, text,
+                    baseTextLineHeight, portsRegionHeight);
+        } else {
+            base = computeTextOnly(node, inputs, outputs, inputLabels, outputLabels, text,
                     baseTextLineHeight, portsRegionHeight);
         }
-        return computeTextOnly(node, inputs, outputs, inputLabels, outputLabels, text,
-                baseTextLineHeight, portsRegionHeight);
+        return applyCustomUIMetrics(base, node, customUIMetricsProvider);
+    }
+
+    private static Result applyCustomUIMetrics(
+            Result base,
+            INode node,
+            CustomUIMetricsProvider customUIMetricsProvider) {
+        if (customUIMetricsProvider == null || base.compactReroute()) {
+            return base;
+        }
+        CustomUIMetrics metrics = customUIMetricsProvider.metricsFor(node);
+        if (!metrics.enabled() || metrics.height() <= 0f) {
+            return base;
+        }
+
+        float width = base.width();
+        if (metrics.minWidth() > 0f) {
+            width = Math.max(width, metrics.minWidth() + 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
+        }
+        float regionTop = base.height();
+        float height = base.height() + metrics.height() + NodeRenderConstants.NODE_HORIZONTAL_PADDING;
+
+        return new Result(
+                width,
+                height,
+                base.headerHeight(),
+                base.showTitle(),
+                base.showIcon(),
+                base.iconSize(),
+                base.iconLeft(),
+                base.iconTop(),
+                base.captionTop(),
+                base.caption(),
+                base.captionMaxWidth(),
+                base.portsRegionHeight(),
+                base.portRegionTop(),
+                base.inputLabels(),
+                base.outputLabels(),
+                true,
+                metrics.height(),
+                regionTop,
+                false
+        );
     }
 
     private static Result computeTextOnly(
@@ -160,6 +246,9 @@ public final class NodeVisualLayout {
                 portRegionTop,
                 inputLabels,
                 outputLabels,
+                false,
+                0f,
+                0f,
                 false
         );
     }
@@ -239,6 +328,9 @@ public final class NodeVisualLayout {
                 portRegionTop,
                 inputLabels,
                 outputLabels,
+                false,
+                0f,
+                0f,
                 false
         );
     }
