@@ -1,23 +1,18 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
-import com.nodecraft.gui.components.customui.BlockPaletteWidget;
-import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
+import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
-import com.nodecraft.nodesystem.util.BlockPaletteEntry;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -31,7 +26,7 @@ import java.util.UUID;
     category = "material.basic_assignment",
     order = 0
 )
-public class CreateBlockPaletteNode extends BaseCustomUINode {
+public class CreateBlockPaletteNode extends BaseNode {
 
     private static final String INPUT_BLOCK_IDS_ID = "input_block_ids";
     private static final String INPUT_WEIGHTS_ID = "input_weights";
@@ -44,9 +39,6 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
     private static final String OUTPUT_SIZE_ID = "output_size";
     private static final String OUTPUT_VALID_ID = "output_valid";
     private static final String OUTPUT_ERROR_ID = "output_error";
-
-    private List<String> draftBlockIds = new ArrayList<>();
-    private List<Double> draftWeights = new ArrayList<>();
 
     public CreateBlockPaletteNode() {
         super(UUID.randomUUID(), "material.basic_assignment.create_block_palette");
@@ -71,11 +63,6 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
-        if (!hasAnyPalettePortDriven()) {
-            processFromDraft();
-            return;
-        }
-
         BasicAssignmentUtils.ParseResult<String> blockIdsResult =
             BasicAssignmentUtils.parseStringList(inputValues.get(INPUT_BLOCK_IDS_ID), "Block IDs");
         if (!blockIdsResult.valid()) {
@@ -117,106 +104,6 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
         emitOk(palette);
     }
 
-    private void processFromDraft() {
-        List<String> blockIds = new ArrayList<>(draftBlockIds.size());
-        for (String blockId : draftBlockIds) {
-            String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(blockId);
-            if (canonical != null) {
-                blockIds.add(canonical);
-            }
-        }
-        if (blockIds.isEmpty()) {
-            emitOk(BlockPaletteData.empty());
-            return;
-        }
-        if (blockIds.size() > GenerationLimits.MAX_BLOCK_PALETTE_ENTRIES) {
-            emitFail("Palette exceeds MAX_BLOCK_PALETTE_ENTRIES");
-            return;
-        }
-        List<Double> weights = draftWeights.isEmpty() ? null : new ArrayList<>(draftWeights);
-        if (weights != null) {
-            BasicAssignmentUtils.Validation weightsOk =
-                BasicAssignmentUtils.validateWeights(weights, blockIds.size());
-            if (!weightsOk.valid()) {
-                emitFail(weightsOk.message());
-                return;
-            }
-        }
-        emitOk(BasicAssignmentUtils.buildPalette(blockIds, weights));
-    }
-
-    private boolean hasAnyPalettePortDriven() {
-        return isDriven(INPUT_BLOCK_IDS_ID)
-            || isDriven(INPUT_WEIGHTS_ID)
-            || isDriven(INPUT_BLOCK_A_ID)
-            || isDriven(INPUT_BLOCK_B_ID)
-            || isDriven(INPUT_BLOCK_C_ID)
-            || isDriven(INPUT_BLOCK_D_ID);
-    }
-
-    private BlockPaletteData resolvePreviewPalette() {
-        if (!hasAnyPalettePortDriven()) {
-            return draftPaletteData();
-        }
-        BasicAssignmentUtils.ParseResult<String> blockIdsResult =
-            BasicAssignmentUtils.parseStringList(inputValues.get(INPUT_BLOCK_IDS_ID), "Block IDs");
-        if (!blockIdsResult.valid()) {
-            return BlockPaletteData.empty();
-        }
-        List<String> blockIds = new ArrayList<>(blockIdsResult.values());
-        appendBlockPreview(blockIds, INPUT_BLOCK_A_ID);
-        appendBlockPreview(blockIds, INPUT_BLOCK_B_ID);
-        appendBlockPreview(blockIds, INPUT_BLOCK_C_ID);
-        appendBlockPreview(blockIds, INPUT_BLOCK_D_ID);
-        List<Double> weights = null;
-        if (isDriven(INPUT_WEIGHTS_ID)) {
-            BasicAssignmentUtils.ParseResult<Double> weightsResult =
-                BasicAssignmentUtils.parseDoubleList(inputValues.get(INPUT_WEIGHTS_ID), "Weights");
-            if (weightsResult.valid()) {
-                weights = weightsResult.values();
-            }
-        }
-        return BasicAssignmentUtils.buildPalette(blockIds, weights);
-    }
-
-    private void appendBlockPreview(List<String> blockIds, String portId) {
-        if (!isDriven(portId)) {
-            return;
-        }
-        String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(
-            inputValues.get(portId) instanceof String text ? text : null);
-        if (canonical != null) {
-            blockIds.add(canonical);
-        }
-    }
-
-    private BlockPaletteData draftPaletteData() {
-        List<BlockPaletteEntry> entries = new ArrayList<>(draftBlockIds.size());
-        for (int i = 0; i < draftBlockIds.size(); i++) {
-            String canonical = BasicAssignmentUtils.canonicalizePaletteBlockId(draftBlockIds.get(i));
-            if (canonical == null) {
-                continue;
-            }
-            double weight = i < draftWeights.size() && draftWeights.get(i) != null
-                ? draftWeights.get(i)
-                : 1.0d;
-            entries.add(new BlockPaletteEntry(canonical, weight));
-        }
-        return new BlockPaletteData(entries);
-    }
-
-    private void setDraftEntries(List<BlockPaletteEntry> entries, boolean markDirty) {
-        draftBlockIds = new ArrayList<>(entries.size());
-        draftWeights = new ArrayList<>(entries.size());
-        for (BlockPaletteEntry entry : entries) {
-            draftBlockIds.add(entry.blockId());
-            draftWeights.add(entry.weight());
-        }
-        if (markDirty) {
-            markDirty();
-        }
-    }
-
     private boolean appendBlock(List<String> blockIds, String portId, String label) {
         if (!isDriven(portId)) {
             return true;
@@ -241,70 +128,5 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
 
     private void emitOk(BlockPaletteData palette) {
         outputValues.putAll(BasicAssignmentUtils.createPaletteOkResult(palette));
-    }
-
-    @Override
-    protected float calculateUIHeight() {
-        BlockPaletteData palette = resolvePreviewPalette();
-        return BlockPaletteWidget.preferredHeight(palette, ImGui.getTextLineHeight() + 4.0f, getMediumPadding());
-    }
-
-    @Override
-    protected float calculateMinUIWidth() {
-        return 168.0f + getContentMargin();
-    }
-
-    @Override
-    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
-        return layout(zoom, l -> {
-            float edgeMargin = l.toPixels(getSmallPadding());
-            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
-            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
-
-            if (hasAnyPalettePortDriven()) {
-                ImGui.textDisabled("Port-driven (read-only preview)");
-                return BlockPaletteWidget.renderReadOnly(resolvePreviewPalette(), availableWidth);
-            }
-            return BlockPaletteWidget.renderEditable(
-                this::draftPaletteData,
-                (entries, dirty) -> {
-                    setDraftEntries(entries, dirty);
-                    markDirty();
-                },
-                availableWidth);
-        });
-    }
-
-    @Override
-    public Object getNodeState() {
-        Map<String, Object> state = new HashMap<>();
-        state.put("draftBlockIds", new ArrayList<>(draftBlockIds));
-        state.put("draftWeights", new ArrayList<>(draftWeights));
-        return state;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void setNodeState(Object state) {
-        if (!(state instanceof Map<?, ?> map)) {
-            return;
-        }
-        if (map.get("draftBlockIds") instanceof List<?> ids) {
-            draftBlockIds = new ArrayList<>();
-            for (Object id : ids) {
-                if (id instanceof String text) {
-                    draftBlockIds.add(text);
-                }
-            }
-        }
-        if (map.get("draftWeights") instanceof List<?> weights) {
-            draftWeights = new ArrayList<>();
-            for (Object weight : weights) {
-                if (weight instanceof Number number) {
-                    draftWeights.add(number.doubleValue());
-                }
-            }
-        }
-        markDirty();
     }
 }

@@ -12,13 +12,13 @@ Phase 3 focus: continuous pointer interaction, headless vs in-game layout contra
 
 | Metric | Count / Status |
 |--------|------:|
-| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 50 |
-| Recommended **Restore** | 50 |
+| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 44 |
+| Recommended **Restore** | 44 |
 | Recommended **Intentionally Panel-Only** | 0 |
 | Headless contract (instantiate + hasCustomUI) | **Pass** |
 | Direct-draw hovered/active/changed + hold-without-change | **Pass (unit)** |
 | CreateList / SignalFork Undo+Redo E2E | **Pass (unit)** |
-| In-game layout / interaction (50 nodes) | **Pending** |
+| In-game layout / interaction (44 nodes) | **Pending** |
 
 ### Pass/fail legend
 
@@ -77,25 +77,6 @@ Authoritative inventory: `CustomUINodeAuditTypeIds`.
 | C | `world.selection.selected_block` | `SelectedBlockNode` | Pass | Pending | Restore |
 | C | `world.selection.selected_block_sequence` | `SelectedBlockSequenceNode` | Pass | Pending | Restore |
 | C | `utilities.assist.coalesce` | `CoalesceNode` | Pass | Pending | Restore |
-| A | `math.scalar_math.graph_mapper` | `GraphMapperNode` | Pass | Pending | Phase 1 |
-| A | `math.data_tree.viewer` | `TreeViewerNode` | Pass | Pending | Phase 1 |
-| B | `material.basic_assignment.create_block_palette` | `CreateBlockPaletteNode` | Pass | Pending | Phase 1 |
-| B | `material.basic_assignment.weighted_palette` | `WeightedBlockPaletteNode` | Pass | Pending | Phase 1 |
-| B | `material.block_state.build_block_state` | `BuildBlockStateNode` | Pass | Pending | Phase 1 |
-| B | `material.gradient_mapping.gradient_ramp_map` | `GradientRampMapNode` | Pass | Pending | Phase 1 |
-
-## Phase 1 additional nodes (2026)
-
-| Node | Custom UI |
-|------|-----------|
-| Graph Mapper | Curve preview, type combo, Bezier handles, Reset |
-| Tree Viewer | Bounded branch list (read-only) |
-| Create Block Palette | Draft palette +/- when undriven; read-only when port-driven |
-| Weighted Spatial Palette | Read-only swatch + weight summary |
-| Build Block State | Properties text + enum shortcuts when undriven |
-| Height Palette Map | Vertical height-bin strip from palette |
-
-Shared widgets: `com.nodecraft.gui.components.customui.*`
 
 ## Phase 3 fixes
 
@@ -134,10 +115,7 @@ Shared widgets: `com.nodecraft.gui.components.customui.*`
 | Test | Layer |
 |------|--------|
 | `CustomUIHeadlessContractTest` | Headless registry + hasCustomUI |
-| `CustomUINodeRegistryTest` | Exact 50-ID set match |
-| `CustomUIAdditionalNodesTest` | Phase 1 six-node headless contract |
-| `GraphMapperCurveSamplerTest` | Normalized curve sampling |
-| `CreateBlockPaletteDraftStateTest` | Draft palette state round-trip |
+| `CustomUINodeRegistryTest` | Exact 44-ID set match |
 | `CustomUIRendererInteractionStateTest` | Multi-node merge + hold-without-change capture |
 | `CustomUIStructuralOpsTest` | Port count immediate update |
 | `GraphStructureEditSupportTest` | CreateList / SignalFork Undo **and** Redo |
@@ -158,4 +136,4 @@ Shared widgets: `com.nodecraft.gui.components.customui.*`
 
 ## Intentionally inactive
 
-None. All 50 are **Restore** (44 baseline + 6 Phase 1).
+None. All 44 are **Restore**.
