@@ -54,7 +54,9 @@ public final class BlockStateCompactWidget {
             float padding
     ) {
         if (!editable) {
-            float height = textLineHeight + estimateWrappedTextHeight(propertiesText, contentWidth, textLineHeight);
+            // Banner ("Property ports driven…") + wrapped properties body
+            float height = textLineHeight + textLineHeight;
+            height += estimateWrappedTextHeight(propertiesText, contentWidth, textLineHeight);
             return height + padding;
         }
         float height = multilineEditorHeight(frameHeight) + padding;

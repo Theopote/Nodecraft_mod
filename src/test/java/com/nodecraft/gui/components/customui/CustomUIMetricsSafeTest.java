@@ -1,6 +1,7 @@
 package com.nodecraft.gui.components.customui;
 
 import com.nodecraft.gui.editor.impl.ICustomUINode;
+import com.nodecraft.nodesystem.nodes.material.basic_assignment.CreateBlockPaletteNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,21 @@ class CustomUIMetricsSafeTest {
         } finally {
             CustomUIMetricsSafe.unbindEditorContext();
         }
+    }
+
+    @Test
+    void createBlockPaletteHeightReflectsRowCountWithoutImGuiContext() {
+        System.clearProperty("nodecraft.customui.headlessMetrics");
+        CreateBlockPaletteNode node = new CreateBlockPaletteNode();
+        node.setNodeState(java.util.Map.of(
+            "draftBlockIds", java.util.List.of(
+                "minecraft:stone",
+                "minecraft:dirt",
+                "minecraft:grass_block"),
+            "draftWeights", java.util.List.of(1.0d, 1.0d, 1.0d)));
+        float height = node.getCustomUIHeight();
+        assertTrue(height > 48.0f,
+            "Three-row palette must reserve more than the old 48px placeholder");
     }
 
     @Test

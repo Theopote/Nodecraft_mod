@@ -219,8 +219,8 @@ public class BuildBlockStateNode extends BaseCustomUINode {
             blockType,
             editable,
             propertiesText,
-            CustomUIMetricsSafe.logicalFrameHeight(),
-            CustomUIMetricsSafe.logicalTextLineHeight(),
+            CustomUIMetricsSafe.layoutFrameHeight(),
+            CustomUIMetricsSafe.layoutTextLineHeight(),
             contentWidth,
             getMediumPadding());
     }

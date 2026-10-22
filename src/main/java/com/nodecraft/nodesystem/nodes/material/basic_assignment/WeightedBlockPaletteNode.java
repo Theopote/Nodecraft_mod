@@ -296,7 +296,7 @@ public class WeightedBlockPaletteNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         BlockPaletteData palette = resolvePreviewPalette();
         float height = BlockPaletteWidget.preferredHeight(palette, getMediumPadding());
-        height += CustomUIMetricsSafe.logicalTextLineHeight();
+        height += CustomUIMetricsSafe.layoutTextLineHeight();
         return height;
     }
 

@@ -10,10 +10,15 @@ import imgui.ImGui;
  */
 public final class CustomUIMetricsSafe {
 
-    /** Typical default frame height when ImGui context is unavailable. */
-    public static final float FALLBACK_FRAME_HEIGHT = 18.0f;
+    /**
+     * Conservative frame height when ImGui context is unavailable.
+     * Matches typical in-game compact custom UI controls so row/button layout is not underestimated.
+     */
+    public static final float FALLBACK_FRAME_HEIGHT = 22.0f;
     /** Typical default text line height when ImGui context is unavailable. */
     public static final float FALLBACK_TEXT_LINE_HEIGHT = 16.0f;
+    /** Typical ImGui item spacing when context is unavailable. */
+    public static final float FALLBACK_ITEM_SPACING_Y = 4.0f;
 
     /**
      * Set by {@link com.nodecraft.gui.editor.integration.ImGuiRenderer} after {@link ImGui#createContext()}.
@@ -101,5 +106,39 @@ public final class CustomUIMetricsSafe {
     /** Converts a logical dimension to screen pixels for the current canvas zoom. */
     public static float scaleLogical(float logicalSize, float zoom) {
         return logicalSize * Math.max(0.001f, zoom);
+    }
+
+    /**
+     * Frame height for {@code calculateUIHeight()} on the client — uses live ImGui metrics when safe,
+     * never underestimates {@link #FALLBACK_FRAME_HEIGHT}. Matches default editor style sizing so the
+     * reserved node body is not shorter than rendered widgets.
+     */
+    public static float layoutFrameHeight() {
+        if (!hasImGuiContext()) {
+            return FALLBACK_FRAME_HEIGHT;
+        }
+        return Math.max(FALLBACK_FRAME_HEIGHT, frameHeight());
+    }
+
+    /**
+     * Text line height for {@code calculateUIHeight()} on the client.
+     */
+    public static float layoutTextLineHeight() {
+        if (!hasImGuiContext()) {
+            return FALLBACK_TEXT_LINE_HEIGHT;
+        }
+        return Math.max(FALLBACK_TEXT_LINE_HEIGHT, textLineHeight());
+    }
+
+    /** Vertical gap ImGui inserts after each widget row in {@code calculateUIHeight()}. */
+    public static float layoutItemSpacingY() {
+        if (!hasImGuiContext()) {
+            return FALLBACK_ITEM_SPACING_Y;
+        }
+        try {
+            return Math.max(FALLBACK_ITEM_SPACING_Y, ImGui.getStyle().getItemSpacingY());
+        } catch (Throwable ignored) {
+            return FALLBACK_ITEM_SPACING_Y;
+        }
     }
 }

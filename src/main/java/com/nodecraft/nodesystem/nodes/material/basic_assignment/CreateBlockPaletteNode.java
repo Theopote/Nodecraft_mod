@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.gui.components.customui.BlockPaletteWidget;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -302,7 +303,11 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         BlockPaletteData palette = resolvePreviewPalette();
-        return BlockPaletteWidget.preferredHeight(palette, getMediumPadding());
+        float height = BlockPaletteWidget.preferredHeight(palette, getMediumPadding());
+        if (hasAnyPalettePortDriven()) {
+            height += CustomUIMetricsSafe.layoutTextLineHeight();
+        }
+        return height;
     }
 
     @Override

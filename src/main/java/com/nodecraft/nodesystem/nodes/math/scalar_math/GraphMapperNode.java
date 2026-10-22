@@ -196,12 +196,13 @@ public class GraphMapperNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float frameHeight = CustomUIMetricsSafe.logicalFrameHeight();
+        float frameHeight = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
         height += frameHeight;
-        height += getSmallPadding();
+        height += getSmallPadding() + itemGap;
         height += CurvePlotWidget.preferredHeight();
-        height += getSmallPadding();
+        height += getSmallPadding() + itemGap;
         height += frameHeight;
         return height;
     }

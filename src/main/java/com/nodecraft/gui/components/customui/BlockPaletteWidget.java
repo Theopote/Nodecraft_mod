@@ -46,7 +46,7 @@ public final class BlockPaletteWidget {
     }
 
     private static float rowHeightLogical() {
-        float frameH = CustomUIMetricsSafe.logicalFrameHeight();
+        float frameH = CustomUIMetricsSafe.layoutFrameHeight();
         return Math.max(SWATCH_SIZE + ROW_GAP, frameH + ROW_GAP);
     }
 
@@ -59,7 +59,10 @@ public final class BlockPaletteWidget {
 
     public static float preferredHeight(BlockPaletteData palette, float padding) {
         int rows = Math.max(1, palette == null ? 1 : palette.size());
-        return rows * rowHeightLogical() + padding + CustomUIMetricsSafe.logicalFrameHeight();
+        return rows * rowHeightLogical()
+            + padding
+            + ROW_GAP
+            + CustomUIMetricsSafe.layoutFrameHeight();
     }
 
     public static boolean renderReadOnly(BlockPaletteData palette, float widthPixels, float zoom) {

@@ -22,8 +22,8 @@ class CustomUIZoomLayoutTest {
             List.of(new BlockPaletteEntry("minecraft:stone", 1.0d)));
         float rowLogical = Math.max(
             14.0f + 4.0f,
-            CustomUIMetricsSafe.logicalFrameHeight() + 4.0f);
-        float expected = rowLogical + 8.0f + CustomUIMetricsSafe.logicalFrameHeight();
+            CustomUIMetricsSafe.layoutFrameHeight() + 4.0f);
+        float expected = rowLogical + 8.0f + 4.0f + CustomUIMetricsSafe.layoutFrameHeight();
         assertEquals(expected, BlockPaletteWidget.preferredHeight(single, 8.0f), 0.01f);
     }
 

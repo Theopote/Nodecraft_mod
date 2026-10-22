@@ -98,7 +98,7 @@ public class TreeViewerNode extends BaseCustomUINode {
         return TreePreviewWidget.preferredHeight(
                 tree,
                 GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
-                CustomUIMetricsSafe.logicalTextLineHeight(),
+                CustomUIMetricsSafe.layoutTextLineHeight(),
                 getMediumPadding());
     }
 

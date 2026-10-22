@@ -186,30 +186,42 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
      * Resolve height/width via subclass {@code calculateUI*} methods, with optional headless fallback.
      */
     private float resolveCustomUIMetric(boolean height) {
-        // Native ImGui without a context can SIGSEGV the JVM (GameTest, server, registry init).
-        if (Boolean.getBoolean("nodecraft.customui.headlessMetrics")
-            || !CustomUIMetricsSafe.hasImGuiContext()) {
+        // Explicit headless mode for unit tests — never call subclass layout math.
+        if (Boolean.getBoolean("nodecraft.customui.headlessMetrics")) {
             return height ? HEADLESS_FALLBACK_HEIGHT : HEADLESS_FALLBACK_WIDTH;
         }
-        return height ? calculateUIHeight() : calculateMinUIWidth();
+        // calculateUI* uses CustomUIMetricsSafe fallbacks when ImGui is unavailable (no native calls).
+        return height ? calculateUIHeight() + getCustomUIClipSlack() : calculateMinUIWidth();
+    }
+
+    /**
+     * Cache layout metrics only with a live ImGui context on the render thread.
+     * Off-thread estimates (e.g. graph load) must not stick as the cached 48px placeholder.
+     */
+    private boolean shouldCacheCustomUIMetrics() {
+        return CustomUIMetricsSafe.hasImGuiContext();
+    }
+
+    /**
+     * Extra logical height reserved so bottom controls are not clipped by the node panel.
+     * CustomUIRenderer applies compact style + font scale that can exceed static estimates.
+     */
+    protected float getCustomUIClipSlack() {
+        return getSmallPadding() * 2.0f + 4.0f;
     }
 
     @Override
     public final float getCustomUIHeight() {
+        if (!shouldCacheCustomUIMetrics()) {
+            return clampCustomUIMetric(resolveCustomUIMetric(true), "UI height");
+        }
         if (cacheInvalid || cachedUIHeight < 0) {
                     if (isCacheDebugEnabled()) {
                 NodeCraft.LOGGER.debug("[Cache Debug] Node {}: Recalculating UI height (cache invalid: {}, cached value: {})", 
                                      getId(), cacheInvalid, cachedUIHeight);
         }
             
-            float newHeight = resolveCustomUIMetric(true);
-            
-            // 确保返回值为非负
-            if (newHeight < 0) {
-                NodeCraft.LOGGER.warn("calculateUIHeight() returned a negative value ({}) for node {}. Clamping to 0.", 
-                                    newHeight, getId());
-                newHeight = 0;
-            }
+            float newHeight = clampCustomUIMetric(resolveCustomUIMetric(true), "UI height");
             
             // 增强的缓存一致性检查
             performCacheConsistencyCheck("UI height", cachedUIHeight, newHeight, "calculateUIHeight()");
@@ -240,20 +252,16 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
 
     @Override
     public final float getMinRequiredUIWidth() {
+        if (!shouldCacheCustomUIMetrics()) {
+            return clampCustomUIMetric(resolveCustomUIMetric(false), "min UI width");
+        }
         if (cacheInvalid || cachedMinWidth < 0) {
                         if (isCacheDebugEnabled()) {
                 NodeCraft.LOGGER.debug("[Cache Debug] Node {}: Recalculating min UI width (cache invalid: {}, cached value: {})", 
                                      getId(), cacheInvalid, cachedMinWidth);
             }
             
-            float newWidth = resolveCustomUIMetric(false);
-            
-            // 确保返回值为非负
-            if (newWidth < 0) {
-                NodeCraft.LOGGER.warn("calculateMinUIWidth() returned a negative value ({}) for node {}. Clamping to 0.", 
-                                    newWidth, getId());
-                newWidth = 0;
-            }
+            float newWidth = clampCustomUIMetric(resolveCustomUIMetric(false), "min UI width");
             
             // 增强的缓存一致性检查
             performCacheConsistencyCheck("min UI width", cachedMinWidth, newWidth, "calculateMinUIWidth()");
@@ -274,6 +282,15 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         }
         
         return cachedMinWidth;
+    }
+
+    private float clampCustomUIMetric(float value, String label) {
+        if (value < 0) {
+            NodeCraft.LOGGER.warn("Custom UI {} returned a negative value ({}) for node {}. Clamping to 0.",
+                label, value, getId());
+            return 0;
+        }
+        return value;
     }
 
     @Override

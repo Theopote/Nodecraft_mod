@@ -29,7 +29,7 @@ class BlockStateCompactWidgetLayoutTest {
         String longText = "facing=north,half=top,waterlogged=false,extra=padding";
         float height = BlockStateCompactWidget.preferredHeight(
             null, false, longText, frameHeight, textLineHeight, contentWidth, padding);
-        assertTrue(height > textLineHeight + padding,
-            "Read-only layout must exceed a single text line (banner + wrapped body)");
+        assertTrue(height > textLineHeight * 2 + padding,
+            "Read-only layout must reserve banner plus wrapped body");
     }
 }
