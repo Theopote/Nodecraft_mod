@@ -92,16 +92,22 @@ public class ImGuiRenderer {
      */
     public void init() {
         if (initialized) return;
-        
+
+        boolean contextCreated = false;
+        boolean glfwReady = false;
+        boolean gl3Ready = false;
+        boolean succeeded = false;
+
         try {
             MinecraftClient client = MinecraftClient.getInstance();
             Window window = client.getWindow();
             long windowHandle = window.getHandle();
-            
+
             // 1. 创建 ImGui 上下文
             ImGui.createContext();
             com.nodecraft.gui.components.customui.CustomUIMetricsSafe.bindEditorContext();
-            
+            contextCreated = true;
+
             ImGuiIO io = ImGui.getIO();
             io.setIniFilename(null); // 禁用ini持久化，避免窗口恢复到屏幕外
 
@@ -112,11 +118,10 @@ public class ImGuiRenderer {
             // 3. 设置后端名称
             io.setBackendPlatformName("imgui_java_impl_glfw");
             io.setBackendRendererName("imgui_java_impl_lwjgl3");
-            
+
             // 4. 预加载字体数据和字符范围
             if (!preloadFontData()) {
                 NodeCraft.LOGGER.error("字体文件预加载失败，ImGui初始化中断。");
-                initialized = false;
                 return;
             }
 
@@ -124,26 +129,64 @@ public class ImGuiRenderer {
 
             // 5. 加载字体
             loadCustomFonts(io, currentUiScale);
-            
+
             // 6. 初始化 GLFW 和 OpenGL3 后端
             imGuiGlfw.init(windowHandle, true); // true表示安装回调
+            glfwReady = true;
             backendWindowHandle = windowHandle;
             resetPixelStoreStateForImGuiTextureUpload();
             imGuiGl3.init("#version 150"); // OpenGL 3.2+ Core Profile
-            
+            gl3Ready = true;
+
             // 7. 设置 ImGui 样式
             applyEditorStyleForCurrentContext();
-            
+
             // 8. 初始化依赖的管理器
             windowManager.initialize();
             windowHandler.initialize();
             closeDetector.initialize();
-            
+
+            succeeded = true;
             initialized = true;
             NodeCraft.LOGGER.info("ImGui Renderer 初始化成功。");
         } catch (Exception e) {
-            initialized = false;
             NodeCraft.LOGGER.error("ImGui 初始化失败", e);
+        } finally {
+            if (!succeeded) {
+                rollbackPartialInit(contextCreated, glfwReady, gl3Ready);
+            }
+        }
+    }
+
+    /**
+     * Releases partially initialized ImGui resources so a later {@link #init()} can succeed.
+     */
+    private void rollbackPartialInit(boolean contextCreated, boolean glfwReady, boolean gl3Ready) {
+        com.nodecraft.gui.components.customui.CustomUIMetricsSafe.unbindEditorContext();
+        initialized = false;
+        backendWindowHandle = 0;
+        primaryContext = null;
+
+        if (gl3Ready) {
+            try {
+                imGuiGl3.dispose();
+            } catch (Exception e) {
+                NodeCraft.LOGGER.debug("ImGui GL3 rollback dispose failed: {}", e.getMessage());
+            }
+        }
+        if (glfwReady) {
+            try {
+                imGuiGlfw.dispose();
+            } catch (Exception e) {
+                NodeCraft.LOGGER.debug("ImGui GLFW rollback dispose failed: {}", e.getMessage());
+            }
+        }
+        if (contextCreated) {
+            try {
+                ImGui.destroyContext();
+            } catch (Exception e) {
+                NodeCraft.LOGGER.debug("ImGui context rollback destroy failed: {}", e.getMessage());
+            }
         }
     }
 

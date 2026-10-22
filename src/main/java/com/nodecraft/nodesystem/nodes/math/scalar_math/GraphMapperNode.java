@@ -251,6 +251,17 @@ public class GraphMapperNode extends BaseCustomUINode {
         });
     }
 
+    /**
+     * Applies a Bezier handle drag through the same callbacks used by the custom UI plot.
+     * Used by history integration tests and debugging.
+     */
+    public void applyBezierHandleDrag(BezierHandle handle, double x, double y) {
+        CurvePlotWidget.BezierDragCallbacks callbacks = bezierDragCallbacks();
+        callbacks.onBezierDragStarted(handle);
+        callbacks.onBezierDragged(handle, x, y);
+        callbacks.onBezierDragEnded(handle);
+    }
+
     private CurvePlotWidget.BezierDragCallbacks bezierDragCallbacks() {
         return new CurvePlotWidget.BezierDragCallbacks() {
             @Override

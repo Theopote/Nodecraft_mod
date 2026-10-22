@@ -225,6 +225,21 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
         setDraftEntries(entries, true);
     }
 
+    /**
+     * Applies a single-row weight edit through the same transaction used by the custom UI widget.
+     */
+    public void applyDraftWeightEdit(int rowIndex, double newWeight) {
+        List<BlockPaletteEntry> entries = new ArrayList<>(draftPaletteData().entries());
+        if (rowIndex < 0 || rowIndex >= entries.size()) {
+            return;
+        }
+        BlockPaletteEntry current = entries.get(rowIndex);
+        beginWeightEdit();
+        entries.set(rowIndex, new BlockPaletteEntry(current.blockId(), newWeight));
+        previewDraftEntries(entries);
+        commitWeightEdit();
+    }
+
     private void beginWeightEdit() {
         if (weightEditBeforeState == null) {
             weightEditBeforeState = getNodeState();
