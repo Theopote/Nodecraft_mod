@@ -5,6 +5,7 @@ import com.nodecraft.nodesystem.registry.NodeRegistry;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,9 +21,23 @@ class CustomUIMetricsSafeTest {
 
     @Test
     void metricsFallbackWithoutImGuiContext() {
+        assertFalse(CustomUIMetricsSafe.isOnRenderThread());
         assertFalse(CustomUIMetricsSafe.hasImGuiContext());
         assertTrue(CustomUIMetricsSafe.frameHeight() > 0.0f);
         assertTrue(CustomUIMetricsSafe.textLineHeight() > 0.0f);
+    }
+
+    @Test
+    void boundContextOffRenderThreadUsesFallbackWithoutNativeCalls() {
+        CustomUIMetricsSafe.bindEditorContext();
+        try {
+            assertFalse(CustomUIMetricsSafe.isOnRenderThread());
+            assertFalse(CustomUIMetricsSafe.hasImGuiContext());
+            assertEquals(CustomUIMetricsSafe.FALLBACK_FRAME_HEIGHT, CustomUIMetricsSafe.frameHeight());
+            assertEquals(CustomUIMetricsSafe.FALLBACK_TEXT_LINE_HEIGHT, CustomUIMetricsSafe.textLineHeight());
+        } finally {
+            CustomUIMetricsSafe.unbindEditorContext();
+        }
     }
 
     @Test

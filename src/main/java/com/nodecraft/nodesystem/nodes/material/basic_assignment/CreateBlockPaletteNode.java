@@ -49,6 +49,9 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
     private List<String> draftBlockIds = new ArrayList<>();
     private List<Double> draftWeights = new ArrayList<>();
 
+    /** Undo baseline captured when a weight field becomes active; cleared on commit/cancel. */
+    private transient Object weightEditBeforeState;
+
     public CreateBlockPaletteNode() {
         super(UUID.randomUUID(), "material.basic_assignment.create_block_palette");
 
@@ -222,13 +225,37 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
         setDraftEntries(entries, true);
     }
 
+    private void beginWeightEdit() {
+        if (weightEditBeforeState == null) {
+            weightEditBeforeState = getNodeState();
+        }
+    }
+
+    private void commitWeightEdit() {
+        Object before = weightEditBeforeState;
+        if (before == null) {
+            return;
+        }
+        Object after = getNodeState();
+        weightEditBeforeState = null;
+        if (!java.util.Objects.equals(before, after)) {
+            CustomUIPropertyHistory.recordNodeStateChange(getId(), before, after, "Edit draft palette weight");
+        }
+    }
+
     private void applyDraftEntries(List<BlockPaletteEntry> entries, String undoLabel) {
-        Object before = getNodeState();
+        Object before = weightEditBeforeState != null ? weightEditBeforeState : getNodeState();
+        weightEditBeforeState = null;
         setDraftEntries(entries, true);
         Object after = getNodeState();
         if (!java.util.Objects.equals(before, after)) {
             CustomUIPropertyHistory.recordNodeStateChange(getId(), before, after, undoLabel);
         }
+    }
+
+    /** Package-private for transaction tests. */
+    Object pendingWeightEditBaseline() {
+        return weightEditBeforeState;
     }
 
     private boolean appendBlock(List<String> blockIds, String portId, String label) {
@@ -283,8 +310,18 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
                 this::draftPaletteData,
                 new BlockPaletteWidget.PaletteEditSink() {
                     @Override
+                    public void beginWeightEdit() {
+                        CreateBlockPaletteNode.this.beginWeightEdit();
+                    }
+
+                    @Override
                     public void preview(List<BlockPaletteEntry> entries) {
                         previewDraftEntries(entries);
+                    }
+
+                    @Override
+                    public void commitWeightEdit() {
+                        CreateBlockPaletteNode.this.commitWeightEdit();
                     }
 
                     @Override

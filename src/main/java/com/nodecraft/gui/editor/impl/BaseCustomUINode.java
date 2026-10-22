@@ -1488,8 +1488,8 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         try {
             // 强制重新计算
             cacheInvalid = true;
-            float newHeight = calculateUIHeight();
-            float newWidth = calculateMinUIWidth();
+            float newHeight = resolveCustomUIMetric(true);
+            float newWidth = resolveCustomUIMetric(false);
 
             // 检查一致性
             boolean heightConsistent = Math.abs(savedHeight - newHeight) <= CACHE_CONSISTENCY_THRESHOLD;

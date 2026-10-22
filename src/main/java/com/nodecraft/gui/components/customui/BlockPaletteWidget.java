@@ -26,11 +26,19 @@ public final class BlockPaletteWidget {
     }
 
     /**
-     * Live preview during typing/drag; {@link #commit} records a single undo step.
+     * Live preview during typing/drag; weight edits commit via {@link #commitWeightEdit()}.
      */
     public interface PaletteEditSink {
+        /** Capture undo baseline when a weight field becomes active. */
+        void beginWeightEdit();
+
+        /** Live preview while weight changes; must not record undo. */
         void preview(List<BlockPaletteEntry> entries);
 
+        /** End weight edit — one undo from baseline captured in {@link #beginWeightEdit()}. */
+        void commitWeightEdit();
+
+        /** Immediate structural edit (picker, +/-, add) with a single undo step. */
         void commit(List<BlockPaletteEntry> entries);
     }
 
@@ -82,14 +90,15 @@ public final class BlockPaletteWidget {
 
                 ImGui.setCursorScreenPos(rowStart.x + SWATCH_SIZE + 4.0f, rowStart.y);
                 ImGui.pushID(i);
-                if (editable && editSink != null) {
+                if (editable && editSink != null && paletteSupplier != null) {
                     if (BlockPickerPopup.renderButton(
                             "palette_row_" + i,
                             entry.blockId(),
                             pickerWidth,
                             newId -> {
-                                entries.set(rowIndex, new BlockPaletteEntry(newId, rowWeight));
-                                editSink.commit(new ArrayList<>(entries));
+                                List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                                latest.set(rowIndex, new BlockPaletteEntry(newId, rowWeight));
+                                editSink.commit(latest);
                             })) {
                         changed = true;
                     }
@@ -97,6 +106,9 @@ public final class BlockPaletteWidget {
                     ImDouble weightInput = new ImDouble(entry.weight());
                     ImGui.setNextItemWidth(WEIGHT_INPUT_WIDTH);
                     ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f");
+                    if (ImGui.isItemActivated()) {
+                        editSink.beginWeightEdit();
+                    }
                     double weight = weightInput.get();
                     if (Double.isFinite(weight) && weight >= 0.0d
                             && Math.abs(weight - entry.weight()) > 1.0e-6d) {
@@ -107,13 +119,23 @@ public final class BlockPaletteWidget {
                         }
                     }
                     if (ImGui.isItemDeactivatedAfterEdit()) {
-                        editSink.commit(new ArrayList<>(entries));
+                        List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                        if (i < latest.size()) {
+                            BlockPaletteEntry current = latest.get(i);
+                            if (Double.isFinite(weight) && weight >= 0.0d
+                                    && Math.abs(weight - current.weight()) > 1.0e-6d) {
+                                latest.set(i, new BlockPaletteEntry(current.blockId(), weight));
+                                editSink.preview(latest);
+                            }
+                        }
+                        editSink.commitWeightEdit();
                         changed = true;
                     }
                     ImGui.sameLine();
                     if (ImGui.smallButton("-")) {
-                        entries.remove(i);
-                        editSink.commit(new ArrayList<>(entries));
+                        List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                        latest.remove(i);
+                        editSink.commit(latest);
                         changed = true;
                         ImGui.popID();
                         break;

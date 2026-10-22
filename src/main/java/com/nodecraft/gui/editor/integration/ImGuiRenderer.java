@@ -586,6 +586,7 @@ public class ImGuiRenderer {
             windowHandler.cleanup();
             windowManager.cleanup();
             
+            com.nodecraft.gui.components.customui.CustomUIMetricsSafe.unbindEditorContext();
             imGuiGl3.dispose();
             imGuiGlfw.dispose();
             initialized = false;

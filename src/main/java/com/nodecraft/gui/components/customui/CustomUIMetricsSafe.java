@@ -1,5 +1,6 @@
 package com.nodecraft.gui.components.customui;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import imgui.ImGui;
 
 /**
@@ -16,7 +17,8 @@ public final class CustomUIMetricsSafe {
 
     /**
      * Set by {@link com.nodecraft.gui.editor.integration.ImGuiRenderer} after {@link ImGui#createContext()}.
-     * Never call native ImGui metric APIs unless this flag is true — {@code getCurrentContext()} itself can SIGSEGV.
+     * Cleared on renderer shutdown. Never call native ImGui metric APIs unless this flag is true
+     * and the caller is on the client render thread.
      */
     private static volatile boolean editorContextBound;
 
@@ -28,11 +30,28 @@ public final class CustomUIMetricsSafe {
         editorContextBound = true;
     }
 
+    /** Called when the editor ImGui context is disposed — prevents stale bound state. */
+    public static void unbindEditorContext() {
+        editorContextBound = false;
+    }
+
     /**
-     * @return true when the editor has bound an ImGui context on this JVM
+     * @return true when running on the Minecraft client render thread
+     */
+    public static boolean isOnRenderThread() {
+        try {
+            RenderSystem.assertOnRenderThread();
+            return true;
+        } catch (IllegalStateException | NullPointerException ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * @return true when native ImGui metrics may be queried on this thread
      */
     public static boolean hasImGuiContext() {
-        if (!editorContextBound) {
+        if (!editorContextBound || !isOnRenderThread()) {
             return false;
         }
         try {
