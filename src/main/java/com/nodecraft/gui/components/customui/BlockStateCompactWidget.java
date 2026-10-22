@@ -10,7 +10,6 @@ import net.minecraft.util.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -22,19 +21,44 @@ public final class BlockStateCompactWidget {
 
     private static final int TEXT_BUF = 512;
     private static final String[] COMMON_PROPERTIES = {"facing", "axis", "half", "waterlogged"};
+    private static final float MULTILINE_HEIGHT_FACTOR = 2.5f;
+    private static final float COMBO_ROW_SPACING = 2.0f;
 
     private BlockStateCompactWidget() {
     }
 
-    public static float preferredHeight(boolean showCombos, float frameHeight, float padding) {
-        float height = frameHeight + padding;
+    public static float multilineEditorHeight(float frameHeight) {
+        return frameHeight * MULTILINE_HEIGHT_FACTOR;
+    }
+
+    public static int countVisiblePropertyRows(@Nullable String blockType) {
+        if (blockType == null || blockType.isBlank() || !BlockStateValidationUtils.containsBlockId(blockType)) {
+            return 0;
+        }
+        int count = 0;
+        for (String propertyName : COMMON_PROPERTIES) {
+            if (!listPropertyValues(blockType, propertyName).isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static float preferredHeight(
+            @Nullable String blockType,
+            boolean showCombos,
+            float frameHeight,
+            float padding
+    ) {
+        float height = multilineEditorHeight(frameHeight) + padding;
         if (showCombos) {
-            height += COMMON_PROPERTIES.length * (frameHeight + 2.0f);
+            height += countVisiblePropertyRows(blockType) * (frameHeight + COMBO_ROW_SPACING);
         }
         return height;
     }
 
     public static boolean renderPropertiesText(
+            ImString buffer,
             String propertiesText,
             boolean editable,
             Consumer<String> onTextChanged,
@@ -47,9 +71,16 @@ public final class BlockStateCompactWidget {
             return false;
         }
 
-        ImString buffer = new ImString(propertiesText == null ? "" : propertiesText, TEXT_BUF);
+        if (!ImGui.isAnyItemActive() && !propertiesText.equals(buffer.get())) {
+            buffer.set(propertiesText);
+        }
+
         ImGui.setNextItemWidth(Math.max(64.0f, width));
-        if (ImGui.inputTextMultiline("##properties_text", buffer, width, ImGui.getFrameHeight() * 2.5f)) {
+        if (ImGui.inputTextMultiline(
+                "##properties_text",
+                buffer,
+                width,
+                multilineEditorHeight(ImGui.getFrameHeight()))) {
             onTextChanged.accept(buffer.get());
             return true;
         }

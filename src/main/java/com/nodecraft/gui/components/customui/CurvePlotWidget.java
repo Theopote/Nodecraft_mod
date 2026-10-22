@@ -12,23 +12,44 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class CurvePlotWidget {
 
+    public enum BezierHandle {
+        NONE,
+        P1,
+        P2
+    }
+
+    /** Per-node drag capture state — survives fast mouse movement off the handle hit radius. */
+    public static final class InteractionState {
+        private BezierHandle capturedHandle = BezierHandle.NONE;
+
+        public BezierHandle capturedHandle() {
+            return capturedHandle;
+        }
+
+        void clearCapture() {
+            capturedHandle = BezierHandle.NONE;
+        }
+    }
+
     private static final int GRID_COLOR = 0x40303030;
     private static final int CURVE_COLOR = 0xFF4FC3F7;
     private static final int HANDLE_COLOR = 0xFFFFB74D;
     private static final int HANDLE_LINE = 0x80FFB74D;
     private static final int BORDER_COLOR = 0xFF505050;
+    private static final float HANDLE_HIT_RADIUS = 8.0f;
 
     private CurvePlotWidget() {
     }
 
     public static boolean render(
             GraphMapperNode node,
+            InteractionState interaction,
             float width,
             float plotHeight,
             float zoom,
-            @Nullable Runnable onChanged
+            BezierDragCallbacks callbacks
     ) {
-        if (node == null) {
+        if (node == null || interaction == null) {
             return false;
         }
 
@@ -48,11 +69,21 @@ public final class CurvePlotWidget {
 
         boolean changed = false;
         if (node.getCurveType() == GraphMapperNode.CurveType.BEZIER) {
-            changed = dragBezierHandles(node, drawList, x0, y0, x1, y1, hovered || active, onChanged);
+            changed = dragBezierHandles(node, interaction, drawList, x0, y0, x1, y1, hovered || active, callbacks);
+        } else if (!ImGui.isMouseDown(0)) {
+            interaction.clearCapture();
         }
 
         drawList.addRect(x0, y0, x1, y1, BORDER_COLOR, 0.0f, 0, 1.0f);
         return changed;
+    }
+
+    public interface BezierDragCallbacks {
+        void onBezierDragStarted(BezierHandle handle);
+
+        void onBezierDragged(BezierHandle handle, double x, double y);
+
+        void onBezierDragEnded(BezierHandle handle);
     }
 
     public static float preferredHeight(float zoom) {
@@ -89,13 +120,14 @@ public final class CurvePlotWidget {
 
     private static boolean dragBezierHandles(
             GraphMapperNode node,
+            InteractionState interaction,
             ImDrawList drawList,
             float x0,
             float y0,
             float x1,
             float y1,
             boolean interactive,
-            @Nullable Runnable onChanged
+            @Nullable BezierDragCallbacks callbacks
     ) {
         float w = x1 - x0;
         float h = y1 - y0;
@@ -113,33 +145,45 @@ public final class CurvePlotWidget {
         drawHandle(drawList, p1x, p1y);
         drawHandle(drawList, p2x, p2y);
 
-        if (!interactive || !ImGui.isMouseDown(0)) {
+        float mx = ImGui.getMousePosX();
+        float my = ImGui.getMousePosY();
+        boolean mouseDown = ImGui.isMouseDown(0);
+
+        if (interactive && ImGui.isItemClicked(0) && interaction.capturedHandle == BezierHandle.NONE) {
+            if (distance(mx, my, p1x, p1y) <= HANDLE_HIT_RADIUS) {
+                interaction.capturedHandle = BezierHandle.P1;
+                if (callbacks != null) {
+                    callbacks.onBezierDragStarted(BezierHandle.P1);
+                }
+            } else if (distance(mx, my, p2x, p2y) <= HANDLE_HIT_RADIUS) {
+                interaction.capturedHandle = BezierHandle.P2;
+                if (callbacks != null) {
+                    callbacks.onBezierDragStarted(BezierHandle.P2);
+                }
+            }
+        }
+
+        if (!mouseDown) {
+            if (interaction.capturedHandle != BezierHandle.NONE) {
+                BezierHandle ended = interaction.capturedHandle;
+                interaction.clearCapture();
+                if (callbacks != null) {
+                    callbacks.onBezierDragEnded(ended);
+                }
+            }
             return false;
         }
 
-        float mx = ImGui.getMousePosX();
-        float my = ImGui.getMousePosY();
-        float handleRadius = 6.0f;
-        boolean changed = false;
-
-        if (distance(mx, my, p1x, p1y) <= handleRadius + 2.0f) {
-            double nx = clamp01((mx - x0) / Math.max(1.0f, w));
-            double ny = clamp01((y1 - my) / Math.max(1.0f, h));
-            node.setBezierX1(nx);
-            node.setBezierY1(ny);
-            changed = true;
-        } else if (distance(mx, my, p2x, p2y) <= handleRadius + 2.0f) {
-            double nx = clamp01((mx - x0) / Math.max(1.0f, w));
-            double ny = clamp01((y1 - my) / Math.max(1.0f, h));
-            node.setBezierX2(nx);
-            node.setBezierY2(ny);
-            changed = true;
+        if (interaction.capturedHandle == BezierHandle.NONE) {
+            return false;
         }
 
-        if (changed && onChanged != null) {
-            onChanged.run();
+        double nx = clamp01((mx - x0) / Math.max(1.0f, w));
+        double ny = clamp01((y1 - my) / Math.max(1.0f, h));
+        if (callbacks != null) {
+            callbacks.onBezierDragged(interaction.capturedHandle, nx, ny);
         }
-        return changed;
+        return true;
     }
 
     private static void drawHandle(ImDrawList drawList, float x, float y) {

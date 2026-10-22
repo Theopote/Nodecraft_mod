@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
 import com.nodecraft.gui.components.customui.BlockPaletteWidget;
+import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -205,16 +206,22 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
         return new BlockPaletteData(entries);
     }
 
-    private void setDraftEntries(List<BlockPaletteEntry> entries, boolean markDirty) {
+    private void setDraftEntries(List<BlockPaletteEntry> entries, boolean invalidateLayout) {
         draftBlockIds = new ArrayList<>(entries.size());
         draftWeights = new ArrayList<>(entries.size());
         for (BlockPaletteEntry entry : entries) {
             draftBlockIds.add(entry.blockId());
             draftWeights.add(entry.weight());
         }
-        if (markDirty) {
+        if (invalidateLayout) {
             markDirty();
         }
+    }
+
+    private void applyDraftEntries(List<BlockPaletteEntry> entries, String undoLabel) {
+        Object before = getNodeState();
+        setDraftEntries(entries, true);
+        CustomUIPropertyHistory.recordNodeStateChange(getId(), before, getNodeState(), undoLabel);
     }
 
     private boolean appendBlock(List<String> blockIds, String portId, String label) {
@@ -246,7 +253,7 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
     @Override
     protected float calculateUIHeight() {
         BlockPaletteData palette = resolvePreviewPalette();
-        return BlockPaletteWidget.preferredHeight(palette, ImGui.getTextLineHeight() + 4.0f, getMediumPadding());
+        return BlockPaletteWidget.preferredHeight(palette, getMediumPadding());
     }
 
     @Override
@@ -267,10 +274,7 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
             }
             return BlockPaletteWidget.renderEditable(
                 this::draftPaletteData,
-                (entries, dirty) -> {
-                    setDraftEntries(entries, dirty);
-                    markDirty();
-                },
+                (entries, dirty) -> applyDraftEntries(entries, "Edit draft palette"),
                 availableWidth);
         });
     }

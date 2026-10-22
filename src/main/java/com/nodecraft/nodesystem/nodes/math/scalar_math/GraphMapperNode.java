@@ -1,6 +1,8 @@
 package com.nodecraft.nodesystem.nodes.math.scalar_math;
 
 import com.nodecraft.gui.components.customui.CurvePlotWidget;
+import com.nodecraft.gui.components.customui.CurvePlotWidget.BezierHandle;
+import com.nodecraft.gui.components.customui.CustomUIPropertyHistory;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -81,6 +83,13 @@ public class GraphMapperNode extends BaseCustomUINode {
     private double defaultSourceEnd = 1.0d;
     private double defaultTargetStart = 0.0d;
     private double defaultTargetEnd = 1.0d;
+
+    private transient final CurvePlotWidget.InteractionState curveInteraction = new CurvePlotWidget.InteractionState();
+    private transient long bezierDragSessionId;
+    private transient double dragStartBezierX1;
+    private transient double dragStartBezierY1;
+    private transient double dragStartBezierX2;
+    private transient double dragStartBezierY2;
 
     private static final String OUTPUT_RESULT_ID = "output_result";
     private static final String OUTPUT_T_ID = "output_t";
@@ -182,6 +191,12 @@ public class GraphMapperNode extends BaseCustomUINode {
         markDirty();
     }
 
+    private void resetCurveDefaultsWithHistory() {
+        Object before = getNodeState();
+        resetCurveDefaults();
+        CustomUIPropertyHistory.recordNodeStateChange(getId(), before, getNodeState(), "Reset curve");
+    }
+
     @Override
     protected float calculateUIHeight() {
         float height = getMediumPadding();
@@ -212,6 +227,8 @@ public class GraphMapperNode extends BaseCustomUINode {
             if (ImGui.beginCombo("##curve_type", current.name())) {
                 for (CurveType type : CurveType.values()) {
                     if (ImGui.selectable(type.name(), type == current)) {
+                        CustomUIPropertyHistory.recordPropertyChange(
+                            getId(), "curveType", current.name(), type.name(), 0L);
                         setCurveType(type);
                         changed = true;
                     }
@@ -223,16 +240,58 @@ public class GraphMapperNode extends BaseCustomUINode {
 
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
             float plotHeight = CurvePlotWidget.preferredHeight(zoom);
-            changed = CurvePlotWidget.render(this, availableWidth, plotHeight, zoom, this::markDirty) || changed;
+            changed = CurvePlotWidget.render(
+                this, curveInteraction, availableWidth, plotHeight, zoom, bezierDragCallbacks()) || changed;
             l.addVerticalSpacing(getSmallPadding());
 
             ImGui.setCursorPosX(baseCursorX + edgeMargin);
             if (ImGui.button("Reset", Math.min(availableWidth * 0.4f, l.toPixels(72.0f)), ImGui.getFrameHeight())) {
-                resetCurveDefaults();
+                resetCurveDefaultsWithHistory();
                 changed = true;
             }
             return changed;
         });
+    }
+
+    private CurvePlotWidget.BezierDragCallbacks bezierDragCallbacks() {
+        return new CurvePlotWidget.BezierDragCallbacks() {
+            @Override
+            public void onBezierDragStarted(BezierHandle handle) {
+                bezierDragSessionId = CustomUIPropertyHistory.openDragSession();
+                if (handle == BezierHandle.P1) {
+                    dragStartBezierX1 = bezierX1;
+                    dragStartBezierY1 = bezierY1;
+                } else if (handle == BezierHandle.P2) {
+                    dragStartBezierX2 = bezierX2;
+                    dragStartBezierY2 = bezierY2;
+                }
+            }
+
+            @Override
+            public void onBezierDragged(BezierHandle handle, double x, double y) {
+                if (handle == BezierHandle.P1) {
+                    setBezierX1(x);
+                    setBezierY1(y);
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "bezierX1", dragStartBezierX1, bezierX1, bezierDragSessionId);
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "bezierY1", dragStartBezierY1, bezierY1, bezierDragSessionId);
+                } else if (handle == BezierHandle.P2) {
+                    setBezierX2(x);
+                    setBezierY2(y);
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "bezierX2", dragStartBezierX2, bezierX2, bezierDragSessionId);
+                    CustomUIPropertyHistory.recordPropertyChange(
+                        getId(), "bezierY2", dragStartBezierY2, bezierY2, bezierDragSessionId);
+                }
+                markDirty();
+            }
+
+            @Override
+            public void onBezierDragEnded(BezierHandle handle) {
+                bezierDragSessionId = 0L;
+            }
+        };
     }
 
     private double evaluate(double t, double exponent, double center, double width) {

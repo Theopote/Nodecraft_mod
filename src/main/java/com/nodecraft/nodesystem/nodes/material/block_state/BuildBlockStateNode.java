@@ -11,6 +11,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
 import imgui.ImGui;
+import imgui.type.ImString;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -48,6 +49,8 @@ public class BuildBlockStateNode extends BaseCustomUINode {
             description = "Compact block-state overrides, e.g. facing=north,waterlogged=false"
     )
     private String propertiesText = "";
+
+    private transient ImString propertiesTextBuffer;
 
     public BuildBlockStateNode() {
         super(UUID.randomUUID(), "material.block_state.build_block_state");
@@ -208,7 +211,9 @@ public class BuildBlockStateNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
         return BlockStateCompactWidget.preferredHeight(
+            blockType,
             isPropertiesUiEditable(),
             ImGui.getFrameHeight(),
             getMediumPadding());
@@ -232,7 +237,11 @@ public class BuildBlockStateNode extends BaseCustomUINode {
             }
 
             String blockType = BlockStateValidationUtils.normalizeBlockId(inputValues.get(INPUT_BLOCK_TYPE_ID));
+            if (propertiesTextBuffer == null) {
+                propertiesTextBuffer = new ImString(propertiesText == null ? "" : propertiesText, 512);
+            }
             boolean changed = BlockStateCompactWidget.renderPropertiesText(
+                propertiesTextBuffer,
                 propertiesText,
                 editable,
                 this::setPropertiesText,

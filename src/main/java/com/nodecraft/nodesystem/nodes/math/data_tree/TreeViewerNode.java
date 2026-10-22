@@ -29,6 +29,9 @@ public class TreeViewerNode extends BaseCustomUINode {
     private static final String OUTPUT_ERROR_ID = "output_error";
     private static final String OUTPUT_TRUNCATED_ID = "output_truncated";
 
+    private transient int cachedPreviewBranchCount = -1;
+    private transient int cachedPreviewItemCount = -1;
+
     public TreeViewerNode() {
         super(UUID.randomUUID(), "math.data_tree.viewer");
         addInputPort(new BasePort(INPUT_TREE_ID, "Tree", "Data tree to inspect", NodeDataType.DATA_TREE, this));
@@ -77,9 +80,20 @@ public class TreeViewerNode extends BaseCustomUINode {
         return parsed.valid() ? parsed.value() : null;
     }
 
+    private void syncPreviewLayoutCache(@Nullable DataTreeData tree) {
+        int branches = tree == null ? 0 : tree.getBranchCount();
+        int items = tree == null ? 0 : tree.getItemCount();
+        if (branches != cachedPreviewBranchCount || items != cachedPreviewItemCount) {
+            cachedPreviewBranchCount = branches;
+            cachedPreviewItemCount = items;
+            markDirty();
+        }
+    }
+
     @Override
     protected float calculateUIHeight() {
         DataTreeData tree = resolvePreviewTree();
+        syncPreviewLayoutCache(tree);
         return TreePreviewWidget.preferredHeight(
                 tree,
                 GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
@@ -96,6 +110,7 @@ public class TreeViewerNode extends BaseCustomUINode {
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             DataTreeData tree = resolvePreviewTree();
+            syncPreviewLayoutCache(tree);
             DataTreeData.TreePreview preview = tree != null
                 ? tree.describePreview(
                     GenerationLimits.MAX_TREE_VIEWER_PREVIEW_BRANCHES,
