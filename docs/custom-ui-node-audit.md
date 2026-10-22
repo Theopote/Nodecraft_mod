@@ -12,13 +12,13 @@ Phase 3 focus: continuous pointer interaction, headless vs in-game layout contra
 
 | Metric | Count / Status |
 |--------|------:|
-| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 44 |
-| Recommended **Restore** | 44 |
+| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 46 |
+| Recommended **Restore** | 46 |
 | Recommended **Intentionally Panel-Only** | 0 |
 | Headless contract (instantiate + hasCustomUI) | **Pass** |
 | Direct-draw hovered/active/changed + hold-without-change | **Pass (unit)** |
 | CreateList / SignalFork Undo+Redo E2E | **Pass (unit)** |
-| In-game layout / interaction (44 nodes) | **Pending** |
+| In-game layout / interaction (46 nodes) | **Pending** |
 
 ### Pass/fail legend
 
@@ -77,6 +77,8 @@ Authoritative inventory: `CustomUINodeAuditTypeIds`.
 | C | `world.selection.selected_block` | `SelectedBlockNode` | Pass | Pending | Restore |
 | C | `world.selection.selected_block_sequence` | `SelectedBlockSequenceNode` | Pass | Pending | Restore |
 | C | `utilities.assist.coalesce` | `CoalesceNode` | Pass | Pending | Restore |
+| A | `math.scalar_math.graph_mapper` | `GraphMapperNode` | Pass | Pending | Phase 1 PR-A |
+| A | `math.data_tree.viewer` | `TreeViewerNode` | Pass | Pending | Phase 1 PR-A |
 
 ## Phase 3 fixes
 
