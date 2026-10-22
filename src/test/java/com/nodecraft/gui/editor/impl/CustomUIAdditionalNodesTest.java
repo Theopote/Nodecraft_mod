@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Headless contract for Phase 1 PR-A additional custom UI nodes.
+ * Headless contract for Phase 1 additional custom UI nodes.
  */
 class CustomUIAdditionalNodesTest {
 
@@ -19,7 +19,9 @@ class CustomUIAdditionalNodesTest {
         "math.scalar_math.graph_mapper",
         "math.data_tree.viewer",
         "material.basic_assignment.create_block_palette",
-        "material.basic_assignment.weighted_palette"
+        "material.basic_assignment.weighted_palette",
+        "material.block_state.build_block_state",
+        "material.gradient_mapping.gradient_ramp_map"
     );
 
     @BeforeAll
