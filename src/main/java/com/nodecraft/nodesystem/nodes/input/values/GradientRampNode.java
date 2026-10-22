@@ -528,7 +528,8 @@ public class GradientRampNode extends BaseCustomUINode {
 
     private List<Map<String, Object>> toRampList() {
         List<Map<String, Object>> ramp = new ArrayList<>();
-        for (GradientStop stop : stops) {
+        // Snapshot — custom UI may sort/add/remove stops while property panel calls getNodeState().
+        for (GradientStop stop : List.copyOf(stops)) {
             Map<String, Object> item = new HashMap<>();
             item.put("position", stop.position);
             item.put("r", (double) stop.color.r());
