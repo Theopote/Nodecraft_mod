@@ -83,12 +83,23 @@ public interface ICustomUINode {
      * @param width 可用宽度（已缩放像素）
      * @param height 可用高度（已缩放像素）
      * @param zoom 当前缩放因子
-     * @return true 如果用户与UI进行了交互
+     * @return true 如果本帧数值发生了变化（legacy；优先覆写 {@link #renderCustomUIDirectInteraction}）
      */
     default boolean renderCustomUIDirect(ImDrawList drawList, float screenX, float screenY,
                                          float width, float height, float zoom) {
         // 默认实现：不支持直接绘制
         return false;
+    }
+
+    /**
+     * Direct-draw interaction report: prefer this over the legacy boolean return.
+     * Default maps {@link #renderCustomUIDirect} via {@link DirectDrawInteraction#fromLegacyChanged(boolean)}.
+     */
+    default DirectDrawInteraction renderCustomUIDirectInteraction(
+            ImDrawList drawList, float screenX, float screenY,
+            float width, float height, float zoom) {
+        return DirectDrawInteraction.fromLegacyChanged(
+                renderCustomUIDirect(drawList, screenX, screenY, width, height, zoom));
     }
 
     /**

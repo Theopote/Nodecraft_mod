@@ -228,15 +228,16 @@ public class SignalForkNode extends BaseCustomUINode {
 
     @Override
     public void setNodeState(@Nullable Object state) {
-        if (state instanceof Integer integer) {
-            setOutputBranchCount(integer);
+        if (state instanceof Number number) {
+            setOutputBranchCount(number.intValue());
             return;
         }
 
         if (state instanceof Map<?, ?> map) {
             Object count = map.get("outputBranchCount");
-            if (count instanceof Integer integer) {
-                setOutputBranchCount(integer);
+            // History deep-copy goes through Gson; numeric values may arrive as Double.
+            if (count instanceof Number number) {
+                setOutputBranchCount(number.intValue());
             }
         }
     }

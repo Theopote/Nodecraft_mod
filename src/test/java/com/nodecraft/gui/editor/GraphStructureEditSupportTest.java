@@ -97,6 +97,63 @@ class GraphStructureEditSupportTest {
     }
 
     @Test
+    void createListConnectShrinkUndoRedoRestoresPortsAndEdge() {
+        Fixture fixture = Fixture.create();
+        CreateListNode list = new CreateListNode();
+        RelayNode source = new RelayNode();
+        fixture.document.getGraph().addNode(list);
+        fixture.document.getGraph().addNode(source);
+        fixture.document.setNodePosition(list.getId(), new NodePosition(0, 0));
+        fixture.document.setNodePosition(source.getId(), new NodePosition(-100, 0));
+
+        UUID listId = list.getId();
+        UUID sourceId = source.getId();
+        assertTrue(fixture.document.getGraph().connect(sourceId, "output_signal", listId, "input_2"));
+        fixture.history.clear();
+
+        assertEquals(
+                GraphStructureEditSupport.Outcome.SUCCESS,
+                GraphStructureEditSupport.run(
+                        fixture.structureHost(),
+                        "Change inputCount",
+                        () -> {
+                            list.setInputCount(2);
+                            NodeGraph graph = fixture.document.getGraph();
+                            for (NodeGraph.Connection connection : List.copyOf(graph.getConnections())) {
+                                boolean sourceOk = connection.sourceNode().getOutputPorts().stream()
+                                        .anyMatch(p -> p.getId().equals(connection.sourcePort().getId()));
+                                boolean targetOk = connection.targetNode().getInputPorts().stream()
+                                        .anyMatch(p -> p.getId().equals(connection.targetPort().getId()));
+                                if (!sourceOk || !targetOk) {
+                                    graph.removeConnection(connection);
+                                }
+                            }
+                            return true;
+                        }));
+
+        assertTrue(fixture.document.getGraph().getConnections().isEmpty());
+        assertEquals(2, list.getInputCount());
+
+        assertTrue(fixture.history.undo());
+        CreateListNode afterUndo = fixture.document.getGraph().getNodes().stream()
+                .filter(CreateListNode.class::isInstance)
+                .map(CreateListNode.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(3, afterUndo.getInputCount());
+        assertEquals(1, fixture.document.getGraph().getConnections().size());
+
+        assertTrue(fixture.history.redo());
+        CreateListNode afterRedo = fixture.document.getGraph().getNodes().stream()
+                .filter(CreateListNode.class::isInstance)
+                .map(CreateListNode.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2, afterRedo.getInputCount());
+        assertTrue(fixture.document.getGraph().getConnections().isEmpty());
+    }
+
+    @Test
     void forkBranchRemovalRestoresPortAndEdgeOnUndo() {
         Fixture fixture = Fixture.create();
         SignalForkNode fork = new SignalForkNode();
@@ -141,6 +198,16 @@ class GraphStructureEditSupportTest {
         NodeGraph.Connection edge = fixture.document.getGraph().getConnections().getFirst();
         assertEquals("output_b", edge.sourcePort().getId());
         assertEquals("input_signal", edge.targetPort().getId());
+
+        // Redo must re-apply removal: one branch remains, dangling edge cleared again.
+        assertTrue(fixture.history.redo());
+        SignalForkNode afterRedo = fixture.document.getGraph().getNodes().stream()
+                .filter(SignalForkNode.class::isInstance)
+                .map(SignalForkNode.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1, afterRedo.getOutputBranchCount());
+        assertTrue(fixture.document.getGraph().getConnections().isEmpty());
     }
 
     private static final class Fixture {

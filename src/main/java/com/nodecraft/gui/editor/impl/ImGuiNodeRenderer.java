@@ -140,6 +140,7 @@ public class ImGuiNodeRenderer {
         float highlightCosValue = shouldHighlight ? (float)Math.cos(highlightAnimTime * Math.PI * 2) : 0f;
 
         NodeDisplayMode displayMode = resolveDisplayMode();
+        CustomUIInGameLayoutDiagnostics.dumpGraphCustomUILayout(graph, canvasZoom, displayMode);
         for (INode node : graph.getNodes()) {
             portCalculator.precalculatePortTextSizes(node);
             updateNodeDimensionsInPosition(node, nodePositions, displayMode, baseTextLineHeight, baseItemSpacingY);

@@ -70,4 +70,43 @@ class CustomUIRendererInteractionStateTest {
         assertTrue(renderer.isCustomUIWidgetActive());
         assertEquals(nodeA, renderer.getActiveWidgetNodeId());
     }
+
+    @Test
+    void directDrawStaysActiveWhenHeldWithoutValueChange() {
+        // Frame 1: drag starts, value changes.
+        renderer.applyDirectDrawInteractionState(
+                nodeA, true, true, new DirectDrawInteraction(true, true, true), false);
+        assertTrue(renderer.isCustomUIWidgetActive());
+        assertEquals(nodeA, renderer.getDirectDrawPointerCaptureNodeId());
+
+        // Frame 2: mouse still down, no value delta — must remain active (blocks node drag).
+        renderer.beginInteractionFrame();
+        renderer.applyDirectDrawInteractionState(
+                nodeA, true, true, new DirectDrawInteraction(true, false, false), false);
+        assertTrue(renderer.isCustomUIWidgetActive(),
+                "Held direct-draw control must stay active when changed=false");
+        assertEquals(nodeA, renderer.getActiveWidgetNodeId());
+        assertEquals(nodeA, renderer.getDirectDrawPointerCaptureNodeId());
+
+        // Frame 3: mouse released — capture clears, no longer active.
+        renderer.beginInteractionFrame();
+        renderer.applyDirectDrawInteractionState(
+                nodeA, true, false, DirectDrawInteraction.NONE, false);
+        assertFalse(renderer.isCustomUIWidgetActive());
+        assertEquals(null, renderer.getDirectDrawPointerCaptureNodeId());
+    }
+
+    @Test
+    void directDrawCaptureSurvivesOtherNodeEmptyHover() {
+        renderer.applyDirectDrawInteractionState(
+                nodeA, true, true, new DirectDrawInteraction(true, true, true), false);
+        renderer.beginInteractionFrame();
+        renderer.applyDirectDrawInteractionState(
+                nodeA, false, true, new DirectDrawInteraction(false, false, false), false);
+        renderer.applyDirectDrawInteractionState(
+                nodeB, true, false, DirectDrawInteraction.NONE, false);
+
+        assertTrue(renderer.isCustomUIWidgetActive());
+        assertEquals(nodeA, renderer.getActiveWidgetNodeId());
+    }
 }

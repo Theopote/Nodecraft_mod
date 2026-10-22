@@ -2,35 +2,37 @@
 
 Baseline: commit `4a9b239` (2025) introduced `NodeVisualLayout` and **globally disabled** canvas custom UI via `nodeHasCustomUI = false` in `ImGuiNodeRenderer`. Node-level `renderCustomUIScaled` implementations were **not removed**.
 
-Phase 2 baseline: `8b4a70f` (restore canvas custom UI rendering) + interaction-state stabilization.
+Phase 2 baseline: `8b4a70f` / `20934cf` (restore + interaction-state stabilization).
 
-Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom UI from individual node classes. Regression is renderer-level only.
+Phase 3 focus: continuous pointer interaction, headless vs in-game layout contract split, structural Undo/Redo.
 
-**Full acceptance status: NOT claimed.** Automated contracts pass; in-game interaction for all 44 nodes remains outstanding.
+**Full acceptance status: NOT claimed.** Do not mark a node Passed based solely on inheritance or headless fallback metrics.
 
 ## Summary
 
-| Metric | Count |
+| Metric | Count / Status |
 |--------|------:|
-| `BaseCustomUINode` subclasses (incl. abstract) | 41 |
-| Concrete custom UI nodes (incl. type selectors) | 44 |
-| Nodes with `renderCustomUIScaled` present | 44 |
+| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 44 |
 | Recommended **Restore** | 44 |
 | Recommended **Intentionally Panel-Only** | 0 |
-| Automated registry / metrics contract | **Pass** |
-| In-game interaction acceptance | **Pending** |
+| Headless contract (instantiate + hasCustomUI) | **Pass** |
+| Direct-draw hovered/active/changed + hold-without-change | **Pass (unit)** |
+| CreateList / SignalFork Undo+Redo E2E | **Pass (unit)** |
+| In-game layout / interaction (44 nodes) | **Pending** |
 
 ### Pass/fail legend
 
 | Column | Meaning |
 |--------|---------|
-| Auto | Instantiated via registry as `ICustomUINode`, `hasCustomUI()`, finite nonnegative height/width (headless metrics) |
-| In-game | Mouse / keyboard / popup / zoom / undo verified in client (Phase 2 §3) — blank until manual QA |
+| Headless | Registry instantiate as `ICustomUINode`, `hasCustomUI()` — **not** real layout sizes |
+| In-game | Renders, usable, no clip, property/output updates, Undo where required — client QA only |
 
 ## Audit Table
 
-| Priority | Type ID | Class | Auto | In-game | Action |
-|----------|---------|-------|------|---------|--------|
+Authoritative inventory: `CustomUINodeAuditTypeIds`.
+
+| Priority | Type ID | Class | Headless | In-game (renders / usable / clip / props / undo) | Action |
+|----------|---------|-------|----------|--------------------------------------------------|--------|
 | A | `input.numeric.integer` | `IntegerInputNode` | Pass | Pending | Restore |
 | A | `input.numeric.float` | `FloatInputNode` | Pass | Pending | Restore |
 | A | `input.numeric.range` | `RangeInputNode` | Pass | Pending | Restore |
@@ -76,59 +78,62 @@ Comparison: `4a9b239^` vs `HEAD` — no commits after `4a9b239` removed custom U
 | C | `world.selection.selected_block_sequence` | `SelectedBlockSequenceNode` | Pass | Pending | Restore |
 | C | `utilities.assist.coalesce` | `CoalesceNode` | Pass | Pending | Restore |
 
-## Phase 2 fixes and root causes
+## Phase 3 fixes
 
 | Issue | Root cause | Fix |
 |-------|------------|-----|
-| Custom UI missing on canvas | `ImGuiNodeRenderer` hardcoded `nodeHasCustomUI = false` | Use `layout.hasCustomUI()`; call `renderCustomUI()` |
-| Layout ignored custom UI size | `NodeVisualLayout` omitted custom metrics | `CustomUIMetrics` height/width/regionTop |
-| Multi-node interaction wipe | `resetCustomUIInteractionState()` per node | `beginInteractionFrame()` once/frame + merge |
-| Screen mouse capture ignored active widgets | `ImGuiNodeInteraction.nodeCustomUIActive` never written | `CustomUIRenderer` syncs active widget node ID |
-| Audit type IDs mismatched registry | Doc used guessed IDs (`float_input` etc.) | Aligned to `@NodeInfo.id` |
+| Headless metrics false positive | Fallback sizes treated as real layout | Split `CustomUIHeadlessContractTest`; document placeholders; in-game dump via `CustomUIInGameLayoutDiagnostics` |
+| Direct-draw active = changed | Boolean return conflated value-change with pointer capture | `DirectDrawInteraction(hovered, active, changed)` + cross-frame pointer capture |
+| Structural Undo without Redo | CreateList/SignalFork tests stopped at undo | `GraphStructureEditSupportTest` E2E: connect → mutate → Undo → Redo |
+| SignalFork Redo kept default branch count | Gson history copy turns `Integer` into `Double`; `setNodeState` only accepted `Integer` | Accept `Number` (same pattern as CreateList) |
 
-## Interaction-state contract (§1)
+## Contract layers
 
-- Frame reset: `ImGuiNodeRenderer.renderNodesDirect` → `customUIRenderer.beginInteractionFrame()` once.
-- Hover / active associated with node UUID via `mergeInteractionSnapshot`.
-- Active widget on node A survives later render of node B.
-- Empty custom-UI hover still allows node drag; widget hover/active blocks drag.
-- Direct-draw and ImGui paths both call the same merge helper.
-- `NodecraftScreen` reads `interaction.isNodeCustomUIActive()` (now synced).
+### Headless (CI unit tests)
 
-## Automated tests (§2 / §4 / §5)
+- Registration / instantiate / `hasCustomUI()`
+- Interaction-state merge (no ImGui)
+- Structure + Undo/Redo graph snapshots
+- **Must not** claim real `calculateUIHeight` / widget clipping
 
-| Test | Covers |
+### In-game layout contract
+
+1. Launch client with `-Dnodecraft.customui.layoutDiagnostics=true` (and **without** `headlessMetrics`).
+2. Place representative nodes; set zoom to 0.5 / 1.0 / 2.0; TEXT_ONLY and ICON_ONLY.
+3. Confirm log lines show non-placeholder heights; visually check clipping.
+4. Priority interactive set: Float Slider, XY Slider, Color Picker, Gradient Ramp, Create List, Geometry Viewer.
+
+## Direct-draw nodes
+
+| Type ID | Direct draw | Notes |
+|---------|-------------|-------|
+| `input.numeric.angle_picker` | Optional (`allowDirectDrawing`) | Read-only preview → `DirectDrawInteraction.NONE` |
+| All others | `supportsDirectDrawing() == false` | ImGui path uses `isAnyItemActive()` (continuous hold) |
+
+## Automated tests
+
+| Test | Layer |
 |------|--------|
-| `CustomUINodeRegistryTest` | 44 audit IDs registered + exact set match |
-| `CustomUIRuntimeMetricsAuditTest` | Instantiate each `ICustomUINode`; `hasCustomUI`; finite metrics |
-| `CustomUIRendererInteractionStateTest` | Multi-node merge + empty hover + shared merge semantics |
-| `CustomUIStructuralOpsTest` | CreateList / SignalFork port count immediate update |
-| `GraphStructureEditSupportTest` | CreateList / SignalFork undo + dangling edges |
-| `NodeVisualLayoutTest` | Custom UI expands layout in TEXT_ONLY and ICON_ONLY |
-| `ImGuiNodeRendererCustomUITest` | Guard against reintroducing hard-disable |
+| `CustomUIHeadlessContractTest` | Headless registry + hasCustomUI |
+| `CustomUINodeRegistryTest` | Exact 44-ID set match |
+| `CustomUIRendererInteractionStateTest` | Multi-node merge + hold-without-change capture |
+| `CustomUIStructuralOpsTest` | Port count immediate update |
+| `GraphStructureEditSupportTest` | CreateList / SignalFork Undo **and** Redo |
+| `NodeVisualLayoutTest` | Layout expands for custom UI (both modes) |
+| `ImGuiNodeRendererCustomUITest` | Guard against hard-disable regression |
 
-## Manual in-game verification checklist (§3 / screenshots)
+## Manual in-game checklist (seal criterion)
 
-Representative nodes (both TEXT_ONLY and ICON_ONLY):
-
-- [ ] Float Slider / Integer Slider — drag value without moving node
-- [ ] XY Slider / Circular Angle (`angle_picker`)
-- [ ] Boolean Toggle
-- [ ] Text Input — focus, edit, commit
-- [ ] Color Picker / Gradient Ramp — popup behavior
-- [ ] Create List — +/- ports, undo, no dangling wires
-- [ ] Signal Fork — +/- branches, undo
-- [ ] Block Type Selector — popup / search
-- [ ] Value Monitor
-- [ ] Geometry Viewer / Preview Blocks
-- [ ] Apply Changes
-
-Also:
-
-- [ ] Two custom UI nodes: active slider on A not broken when B is visible
-- [ ] Zoom screenshots at **50% / 100% / 200%** (no clipping)
-- [ ] Empty custom UI region still selects / drags node
+- [ ] Float / Integer Slider — drag without moving node; hold still mid-drag
+- [ ] XY Slider / Circular Angle
+- [ ] Boolean Toggle / Text Input
+- [ ] Color Picker / Gradient Ramp — popups
+- [ ] Create List / Signal Fork — +/- → Undo → Redo, no dangling wires
+- [ ] Block Type Selector / Value Monitor / Geometry Viewer / Preview Blocks / Apply Changes
+- [ ] Two custom UI nodes: active control on A survives B on canvas
+- [ ] Screenshots at **50% / 100% / 200%** zoom
+- [ ] Layout diagnostics log at 0.5 / 1.0 / 2.0 without headless placeholders
 
 ## Intentionally inactive
 
-None. All 44 concrete custom UI nodes are **Restore**.
+None. All 44 are **Restore**.

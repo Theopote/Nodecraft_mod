@@ -16,10 +16,12 @@ public class CustomUIRenderer {
     // === 自定义UI交互状态追踪（帧级累积，多节点画布安全） ===
     private java.util.UUID lastCustomUIHoveredNodeId = null;
     private java.util.UUID activeWidgetNodeId = null;
+    /** Cross-frame pointer capture for direct-draw drags (survives frames with changed=false). */
+    private java.util.UUID directDrawPointerCaptureNodeId = null;
     private boolean lastCustomUIWasHoveredEmpty = false;
     private boolean lastCustomUIHasActiveWidget = false;
     private boolean lastCustomUIHasHoveredWidget = false;
-    
+
     public CustomUIRenderer(ICanvasEditor editor) {
         this.editor = editor;
     }
@@ -113,14 +115,28 @@ public class CustomUIRenderer {
         float scaledWidth = info.width * info.zoom;
         float scaledHeight = info.height * info.zoom;
         try {
-            boolean uiInteracted = info.customUINode.renderCustomUIDirect(
+            DirectDrawInteraction interaction = info.customUINode.renderCustomUIDirectInteraction(
                     ImGui.getWindowDrawList(),
                     info.screenX,
                     info.screenY,
                     scaledWidth,
                     scaledHeight,
                     info.zoom);
-            recordDirectDrawInteraction(info, uiInteracted);
+            boolean mouseDown = ImGui.isMouseDown(0);
+            boolean regionHovered = ImGui.isMouseHoveringRect(
+                    info.screenX,
+                    info.screenY,
+                    info.screenX + scaledWidth,
+                    info.screenY + scaledHeight,
+                    true);
+            ImGuiNodeInteraction nodeInteraction = editor != null ? editor.getInteraction() : null;
+            boolean isNodeBeingDragged = nodeInteraction != null && nodeInteraction.isDraggingNode()
+                    && info.nodeId.equals(nodeInteraction.getDraggingNodeId());
+            applyDirectDrawInteractionState(
+                    info.nodeId, regionHovered, mouseDown, interaction, isNodeBeingDragged);
+            if ((regionHovered || info.nodeId.equals(directDrawPointerCaptureNodeId)) && mouseDown) {
+                ImGui.getIO().setWantCaptureMouse(true);
+            }
         } catch (Exception e) {
             NodeCraft.LOGGER.warn("Failed to render direct custom UI for node {}", info.nodeId, e);
         }
@@ -401,8 +417,9 @@ public class CustomUIRenderer {
     }
 
     /**
-     * 直接绘制路径：记录区域悬停与交互，供节点拖拽拦截使用。
+     * @deprecated use {@link #applyDirectDrawInteractionState}; kept for call-site compatibility.
      */
+    @Deprecated
     void recordDirectDrawInteraction(CustomUIRenderInfo info, boolean uiInteracted) {
         float scaledWidth = info.width * info.zoom;
         float scaledHeight = info.height * info.zoom;
@@ -412,24 +429,68 @@ public class CustomUIRenderer {
                 info.screenX + scaledWidth,
                 info.screenY + scaledHeight,
                 true);
-        ImGuiNodeInteraction interaction = editor.getInteraction();
+        boolean mouseDown = ImGui.isMouseDown(0);
+        ImGuiNodeInteraction interaction = editor != null ? editor.getInteraction() : null;
         boolean isNodeBeingDragged = interaction != null && interaction.isDraggingNode()
                 && info.nodeId.equals(interaction.getDraggingNodeId());
+        applyDirectDrawInteractionState(
+                info.nodeId,
+                regionHovered,
+                mouseDown,
+                DirectDrawInteraction.fromLegacyChanged(uiInteracted),
+                isNodeBeingDragged);
+        if (regionHovered || info.nodeId.equals(directDrawPointerCaptureNodeId)) {
+            ImGui.getIO().setWantCaptureMouse(true);
+        }
+    }
 
-        if (isNodeBeingDragged) {
-            recordImGuiWidgetInteraction(info.nodeId, true, false, false, true);
-            return;
-        }
-        if (!regionHovered) {
+    /**
+     * Pure direct-draw interaction merge (no ImGui). Separates hovered / active / changed
+     * and keeps capture across frames where {@code changed} is false but the mouse is still down.
+     */
+    void applyDirectDrawInteractionState(
+            UUID nodeId,
+            boolean regionHovered,
+            boolean mouseDown,
+            DirectDrawInteraction result,
+            boolean nodeBeingDragged) {
+        if (nodeBeingDragged) {
+            mergeInteractionSnapshot(nodeId, true, false, false, true);
             return;
         }
 
-        ImGui.getIO().setWantCaptureMouse(true);
-        if (uiInteracted) {
-            mergeInteractionSnapshot(info.nodeId, true, true, true, false);
+        if (!mouseDown && nodeId.equals(directDrawPointerCaptureNodeId)) {
+            directDrawPointerCaptureNodeId = null;
+        }
+
+        boolean hovered = result.hovered() || (regionHovered && (result.active() || result.changed()));
+        boolean active = result.active() || result.changed();
+        if (nodeId.equals(directDrawPointerCaptureNodeId) && mouseDown) {
+            active = true;
+            hovered = true;
+        }
+        if ((result.active() || result.changed()) && mouseDown) {
+            directDrawPointerCaptureNodeId = nodeId;
+            active = true;
+            hovered = true;
+        }
+
+        if (active) {
+            mergeInteractionSnapshot(nodeId, true, true, true, false);
             return;
         }
-        mergeInteractionSnapshot(info.nodeId, true, false, false, false);
+        if (hovered) {
+            mergeInteractionSnapshot(nodeId, true, true, false, false);
+            return;
+        }
+        if (regionHovered) {
+            mergeInteractionSnapshot(nodeId, true, false, false, false);
+        }
+    }
+
+    /** Visible for tests: which node currently owns direct-draw pointer capture. */
+    UUID getDirectDrawPointerCaptureNodeId() {
+        return directDrawPointerCaptureNodeId;
     }
 
     /**

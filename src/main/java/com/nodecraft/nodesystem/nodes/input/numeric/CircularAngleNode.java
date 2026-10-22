@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
+import com.nodecraft.gui.editor.impl.DirectDrawInteraction;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -78,6 +79,15 @@ public class CircularAngleNode extends BaseCustomUINode {
     @Override
     public boolean renderCustomUIDirect(ImDrawList drawList, float screenX, float screenY,
                                         float width, float height, float zoom) {
+        // Legacy boolean: read-only preview never changes values.
+        renderCustomUIDirectInteraction(drawList, screenX, screenY, width, height, zoom);
+        return false;
+    }
+
+    @Override
+    public DirectDrawInteraction renderCustomUIDirectInteraction(
+            ImDrawList drawList, float screenX, float screenY,
+            float width, float height, float zoom) {
         float size = Math.min(width - 20.0f * zoom, DIAL_SIZE * zoom);
         size = Math.max(size, 40.0f * zoom);
         float centerX = screenX + width * 0.5f;
@@ -92,7 +102,8 @@ public class CircularAngleNode extends BaseCustomUINode {
         String hint = "直接绘制模式为只读预览";
         ImVec2 hintSize = ImGui.calcTextSize(hint);
         drawList.addText(centerX - hintSize.x * 0.5f, screenY + 6.0f * zoom, subTextColor, hint);
-        return false;
+        // Read-only: never hovered/active/changed for drag interception.
+        return DirectDrawInteraction.NONE;
     }
 
     @Override
