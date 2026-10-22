@@ -17,7 +17,9 @@ class CustomUIAdditionalNodesTest {
 
     private static final Set<String> ADDITIONAL_TYPE_IDS = Set.of(
         "math.scalar_math.graph_mapper",
-        "math.data_tree.viewer"
+        "math.data_tree.viewer",
+        "material.basic_assignment.create_block_palette",
+        "material.basic_assignment.weighted_palette"
     );
 
     @BeforeAll

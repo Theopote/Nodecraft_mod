@@ -12,8 +12,8 @@ Phase 3 focus: continuous pointer interaction, headless vs in-game layout contra
 
 | Metric | Count / Status |
 |--------|------:|
-| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 46 |
-| Recommended **Restore** | 46 |
+| Concrete custom UI nodes (`CustomUINodeAuditTypeIds`) | 48 |
+| Recommended **Restore** | 48 |
 | Recommended **Intentionally Panel-Only** | 0 |
 | Headless contract (instantiate + hasCustomUI) | **Pass** |
 | Direct-draw hovered/active/changed + hold-without-change | **Pass (unit)** |
@@ -79,6 +79,8 @@ Authoritative inventory: `CustomUINodeAuditTypeIds`.
 | C | `utilities.assist.coalesce` | `CoalesceNode` | Pass | Pending | Restore |
 | A | `math.scalar_math.graph_mapper` | `GraphMapperNode` | Pass | Pending | Phase 1 PR-A |
 | A | `math.data_tree.viewer` | `TreeViewerNode` | Pass | Pending | Phase 1 PR-A |
+| B | `material.basic_assignment.create_block_palette` | `CreateBlockPaletteNode` | Pass | Pending | Phase 1 PR-B |
+| B | `material.basic_assignment.weighted_palette` | `WeightedBlockPaletteNode` | Pass | Pending | Phase 1 PR-B |
 
 ## Phase 3 fixes
 
