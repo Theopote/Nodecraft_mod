@@ -193,13 +193,9 @@ final class VectorComponentEditor {
         if (axisEditing) {
             return;
         }
-        try {
-            double parsed = Double.parseDouble(text.get());
-            if (PropertyValueFormatters.doubleValueChanged(parsed, liveValue)) {
-                text.set(PropertyValueFormatters.formatEditNumber(liveValue));
-            }
-        } catch (NumberFormatException e) {
-            text.set(PropertyValueFormatters.formatEditNumber(liveValue));
+        String formatted = PropertyValueFormatters.formatEditNumber(liveValue);
+        if (!formatted.equals(text.get())) {
+            text.set(formatted);
         }
     }
 

@@ -16,6 +16,9 @@ public final class PropertyValueFormatters {
     /** Display format for scalar floats/doubles in the property panel. */
     public static final String DECIMAL_DISPLAY_FORMAT = "%.2f";
     private static final double DECIMAL_DISPLAY_EPSILON = 5e-3;
+    /** Relative tolerance for recognizing mathematical constants (π, e). */
+    private static final double SPECIAL_CONSTANT_REL_EPSILON = 1e-12;
+    private static final double[] SPECIAL_CONSTANTS = {Math.PI, Math.E};
 
     private PropertyValueFormatters() {
     }
@@ -28,9 +31,33 @@ public final class PropertyValueFormatters {
         return String.format(Locale.ROOT, DECIMAL_DISPLAY_FORMAT, value);
     }
 
-    /** Full-precision text for editable numeric fields. */
+    /**
+     * Text for editable numeric fields: two decimal places by default.
+     * Keeps full precision for special constants such as π and e (and their negatives).
+     */
     public static String formatEditNumber(double value) {
-        return Double.toString(value);
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return Double.toString(value);
+        }
+        if (isSpecialMathematicalConstant(value)) {
+            return Double.toString(value);
+        }
+        return formatDecimal(value);
+    }
+
+    /** True when {@code value} is (approximately) π, e, or their negatives. */
+    public static boolean isSpecialMathematicalConstant(double value) {
+        if (!Double.isFinite(value)) {
+            return false;
+        }
+        double abs = Math.abs(value);
+        for (double constant : SPECIAL_CONSTANTS) {
+            double scale = Math.max(1.0d, constant);
+            if (Math.abs(abs - constant) <= SPECIAL_CONSTANT_REL_EPSILON * scale) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True when a displayed 2-decimal text no longer matches the live value. */
@@ -54,14 +81,47 @@ public final class PropertyValueFormatters {
         if (vec == null) {
             return "(null)";
         }
-        return String.format(Locale.ROOT, "(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
+        return String.format(
+                Locale.ROOT,
+                "(%s, %s, %s)",
+                formatEditNumber(vec.x),
+                formatEditNumber(vec.y),
+                formatEditNumber(vec.z));
     }
 
     public static String formatVec3d(Vec3d vec) {
         if (vec == null) {
             return "(null)";
         }
-        return String.format(Locale.ROOT, "(%.2f, %.2f, %.2f)", vec.x, vec.y, vec.z);
+        return String.format(
+                Locale.ROOT,
+                "(%s, %s, %s)",
+                formatEditNumber(vec.x),
+                formatEditNumber(vec.y),
+                formatEditNumber(vec.z));
+    }
+
+    /** Compact triad for Point / Vector port previews. */
+    public static String formatTriad(String label, double x, double y, double z) {
+        return label
+                + "["
+                + formatEditNumber(x)
+                + ", "
+                + formatEditNumber(y)
+                + ", "
+                + formatEditNumber(z)
+                + "]";
+    }
+
+    /** Format a boxed numeric port/property value for display. */
+    public static String formatNumber(Number value) {
+        if (value == null) {
+            return "(null)";
+        }
+        if (value instanceof Float || value instanceof Double) {
+            return formatEditNumber(value.doubleValue());
+        }
+        return Long.toString(value.longValue());
     }
 
     /** One-line summary for polyline properties in the panel. */

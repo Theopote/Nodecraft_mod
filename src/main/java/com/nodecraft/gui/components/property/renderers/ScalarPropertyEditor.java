@@ -203,13 +203,9 @@ final class ScalarPropertyEditor {
                 () -> new ImString(PropertyValueFormatters.formatEditNumber(currentValue), 64));
 
         if (!panel.isPropertyBeingEdited(node, prop.name)) {
-            try {
-                double currentTextValue = Double.parseDouble(textValue.get());
-                if (PropertyValueFormatters.doubleValueChanged(currentTextValue, currentValue)) {
-                    textValue.set(PropertyValueFormatters.formatEditNumber(currentValue));
-                }
-            } catch (NumberFormatException e) {
-                textValue.set(PropertyValueFormatters.formatEditNumber(currentValue));
+            String formatted = PropertyValueFormatters.formatEditNumber(currentValue);
+            if (!formatted.equals(textValue.get())) {
+                textValue.set(formatted);
             }
         }
 

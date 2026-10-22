@@ -44,8 +44,34 @@ class PropertyValueFormattersTest {
     }
 
     @Test
-    void formatEditNumberPreservesPrecision() {
-        assertEquals("1.234567", PropertyValueFormatters.formatEditNumber(1.234567d));
+    void formatEditNumberUsesTwoDecimalsByDefault() {
+        assertEquals("1.23", PropertyValueFormatters.formatEditNumber(1.234567d));
+        assertEquals("-2.50", PropertyValueFormatters.formatEditNumber(-2.5d));
+        assertEquals("0.00", PropertyValueFormatters.formatEditNumber(0.0d));
+    }
+
+    @Test
+    void formatEditNumberKeepsPiAndEPrecision() {
+        assertEquals(Double.toString(Math.PI), PropertyValueFormatters.formatEditNumber(Math.PI));
+        assertEquals(Double.toString(-Math.PI), PropertyValueFormatters.formatEditNumber(-Math.PI));
+        assertEquals(Double.toString(Math.E), PropertyValueFormatters.formatEditNumber(Math.E));
+        assertEquals(Double.toString(-Math.E), PropertyValueFormatters.formatEditNumber(-Math.E));
+        assertTrue(PropertyValueFormatters.isSpecialMathematicalConstant(Math.PI));
+        assertTrue(PropertyValueFormatters.isSpecialMathematicalConstant(Math.E));
+        assertFalse(PropertyValueFormatters.isSpecialMathematicalConstant(3.14d));
+        assertFalse(PropertyValueFormatters.isSpecialMathematicalConstant(2.718d));
+    }
+
+    @Test
+    void formatNumberAndTriadUseDisplayPrecision() {
+        assertEquals("605.75", PropertyValueFormatters.formatNumber(605.7496414983359d));
+        assertEquals("42", PropertyValueFormatters.formatNumber(42));
+        assertEquals(
+                "Point[605.75, 114.52, 201.13]",
+                PropertyValueFormatters.formatTriad("Point", 605.7496414983359d, 114.52240436581235d, 201.12679254255286d));
+        assertEquals(
+                "Vector[" + Double.toString(Math.PI) + ", 0.00, 1.00]",
+                PropertyValueFormatters.formatTriad("Vector", Math.PI, 0.0d, 1.0d));
     }
 
     @Test
