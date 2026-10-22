@@ -1,9 +1,10 @@
 package com.nodecraft.nodesystem.nodes.material.basic_assignment;
 
+import com.nodecraft.gui.components.customui.BlockPaletteWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
@@ -12,6 +13,7 @@ import com.nodecraft.nodesystem.util.BlockPlacementData;
 import com.nodecraft.nodesystem.util.MaterialMappingSupport;
 import com.nodecraft.nodesystem.util.MaterialSourceResolver;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
+import imgui.ImGui;
 import net.minecraft.util.math.BlockPos;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,7 +29,7 @@ import java.util.UUID;
     category = "material.basic_assignment",
     order = 2
 )
-public class WeightedBlockPaletteNode extends BaseNode {
+public class WeightedBlockPaletteNode extends BaseCustomUINode {
 
     private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_PLACEMENTS_TREE_ID = "input_placements_tree";
@@ -184,6 +186,20 @@ public class WeightedBlockPaletteNode extends BaseNode {
         }
     }
 
+    private BlockPaletteData resolvePreviewPalette() {
+        BlockPaletteData paletteData = BlockPaletteData.requireTyped(inputValues.get(INPUT_PALETTE_ID));
+        Object weightsObj = inputValues.get(INPUT_WEIGHTS_ID);
+        if (weightsObj == null) {
+            return paletteData;
+        }
+        BasicAssignmentUtils.ParseResult<Double> weightsResult =
+            BasicAssignmentUtils.parseDoubleList(weightsObj, "Weights");
+        if (!weightsResult.valid()) {
+            return paletteData;
+        }
+        return BasicAssignmentUtils.buildPalette(paletteData.blockIds(), weightsResult.values());
+    }
+
     private static DataTreeData flatTree(List<BlockPlacementData> placements) {
         return new DataTreeData(List.of(
             new DataTreeData.Branch(List.of(0), new ArrayList<Object>(placements))
@@ -273,5 +289,34 @@ public class WeightedBlockPaletteNode extends BaseNode {
             double totalWeight
     ) {
         outputValues.putAll(BasicAssignmentUtils.weightedOkResult(placements, tree, paletteSize, totalWeight));
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        BlockPaletteData palette = resolvePreviewPalette();
+        float height = BlockPaletteWidget.preferredHeight(palette, ImGui.getTextLineHeight() + 4.0f, getMediumPadding());
+        height += ImGui.getTextLineHeight();
+        return height;
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return 168.0f + getContentMargin();
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float edgeMargin = l.toPixels(getSmallPadding());
+            float availableWidth = Math.max(96.0f, l.toPixelsExact(width) - edgeMargin * 2.0f);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + edgeMargin);
+
+            BlockPaletteData palette = resolvePreviewPalette();
+            BlockPaletteWidget.renderReadOnly(palette, availableWidth);
+
+            double total = BasicAssignmentUtils.totalWeight(palette.weights());
+            ImGui.text(String.format("Entries: %d  Total weight: %.2f", palette.size(), total));
+            return false;
+        });
     }
 }

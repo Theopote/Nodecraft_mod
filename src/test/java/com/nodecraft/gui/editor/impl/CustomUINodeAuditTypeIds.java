@@ -2,7 +2,7 @@ package com.nodecraft.gui.editor.impl;
 
 import java.util.Set;
 
-/** Canonical 44 custom UI node type IDs from docs/custom-ui-node-audit.md (matches @NodeInfo.id). */
+/** Canonical 50 custom UI node type IDs from docs/custom-ui-node-audit.md (matches @NodeInfo.id). */
 final class CustomUINodeAuditTypeIds {
 
     static final Set<String> ALL = Set.of(
@@ -49,7 +49,13 @@ final class CustomUINodeAuditTypeIds {
             "world.selection.selected_region",
             "world.selection.selected_block",
             "world.selection.selected_block_sequence",
-            "utilities.assist.coalesce"
+            "utilities.assist.coalesce",
+            "math.scalar_math.graph_mapper",
+            "math.data_tree.viewer",
+            "material.basic_assignment.create_block_palette",
+            "material.basic_assignment.weighted_palette",
+            "material.block_state.build_block_state",
+            "material.gradient_mapping.gradient_ramp_map"
     );
 
     private CustomUINodeAuditTypeIds() {

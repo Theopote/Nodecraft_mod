@@ -1,9 +1,10 @@
 package com.nodecraft.nodesystem.nodes.material.gradient_mapping;
 
+import com.nodecraft.gui.components.customui.HeightPaletteStripWidget;
+import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
 import com.nodecraft.nodesystem.api.NodeInfo;
-import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
@@ -28,7 +29,7 @@ import java.util.UUID;
     category = "material.gradient_mapping",
     order = 2
 )
-public class GradientRampMapNode extends BaseNode {
+public class GradientRampMapNode extends BaseCustomUINode {
 
     private static final String INPUT_PLACEMENTS_ID = "input_placements";
     private static final String INPUT_COORDINATES_ID = "input_coordinates";
@@ -161,5 +162,31 @@ public class GradientRampMapNode extends BaseNode {
         outputValues.put(OUTPUT_PLACEMENTS_ID, placements);
         outputValues.put(OUTPUT_VALID_ID, true);
         outputValues.put(OUTPUT_ERROR_ID, "");
+    }
+
+    private BlockPaletteData resolvePreviewPalette() {
+        GradientMaterialUtils.OptionalPaletteResult paletteResult =
+            GradientMaterialUtils.resolveOptionalPalette(this, INPUT_PALETTE_ID);
+        return paletteResult.valid() ? paletteResult.palette() : BlockPaletteData.empty();
+    }
+
+    @Override
+    protected float calculateUIHeight() {
+        return HeightPaletteStripWidget.preferredHeight(96.0f) + getMediumPadding();
+    }
+
+    @Override
+    protected float calculateMinUIWidth() {
+        return HeightPaletteStripWidget.preferredWidth() + getContentMargin() + 48.0f;
+    }
+
+    @Override
+    protected boolean renderCustomUIScaled(float width, float height, float zoom) {
+        return layout(zoom, l -> {
+            float stripWidth = HeightPaletteStripWidget.preferredWidth();
+            float stripHeight = Math.max(72.0f, l.toPixelsExact(height) - l.toPixels(getMediumPadding()));
+            HeightPaletteStripWidget.render(resolvePreviewPalette(), stripWidth, stripHeight);
+            return false;
+        });
     }
 }
