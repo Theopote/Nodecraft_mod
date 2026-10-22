@@ -31,9 +31,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 )
 public class ManualTriggerNode extends BaseCustomUINode {
 
+    public enum SubmitFeedback {
+        IDLE,
+        PENDING,
+        SUBMITTED,
+        FAILED
+    }
+
     private static final String OUTPUT_EXEC_ID = "output_exec";
 
     private final AtomicBoolean pulseRequested = new AtomicBoolean(false);
+    private volatile SubmitFeedback lastFeedback = SubmitFeedback.IDLE;
+    private volatile String lastFailureReason = "";
 
     public ManualTriggerNode() {
         super(UUID.randomUUID(), "flow.control.manual_trigger");
@@ -60,29 +69,67 @@ public class ManualTriggerNode extends BaseCustomUINode {
         return pulseRequested.get();
     }
 
+    public SubmitFeedback getLastFeedback() {
+        return lastFeedback;
+    }
+
+    public String getLastFailureReason() {
+        return lastFailureReason == null ? "" : lastFailureReason;
+    }
+
     /**
-     * Same semantics as the property-panel action: request one pulse and submit a MANUAL graph run.
-     * Call only from a discrete button click — never from hold/drag or per-frame render.
+     * Discrete UI click: request one pulse then submit a MANUAL graph run.
+     * On submit failure the pending pulse is cleared so the node does not stick on Pending.
+     * Does not call Apply/Bake; world writes only occur if the graph already contains WORLD_WRITE sinks.
      */
     public void fireTriggerFromUi() {
         requestPulse();
+        lastFeedback = SubmitFeedback.PENDING;
+        lastFailureReason = "";
+
         NodeGraph graph = CustomUIEditorContext.currentGraph();
+        if (graph == null || graph.getNodes().isEmpty()) {
+            clearPendingPulseOnFailure("No active graph");
+            return;
+        }
+
         ExecutionSession session = GraphManualExecution.submit(graph);
         if (session != null) {
-            NodeCraft.LOGGER.info("Manual Trigger (canvas UI) submitted graph run session={}", session.sessionId());
+            lastFeedback = SubmitFeedback.SUBMITTED;
+            lastFailureReason = "";
+            NodeCraft.LOGGER.info(
+                "Manual Trigger (canvas UI) submitted graph run session={}", session.sessionId());
+            return;
         }
+
+        clearPendingPulseOnFailure("Graph run did not start (not in world, or scheduler rejected)");
+    }
+
+    private void clearPendingPulseOnFailure(String reason) {
+        pulseRequested.set(false);
+        lastFeedback = SubmitFeedback.FAILED;
+        lastFailureReason = reason == null ? "" : reason;
+        NodeCraft.LOGGER.warn("Manual Trigger submit failed: {}", lastFailureReason);
+        markDirty();
     }
 
     @Override
     public void processNode(@Nullable ExecutionContext context) {
         boolean fire = pulseRequested.getAndSet(false);
         outputValues.put(OUTPUT_EXEC_ID, fire ? Boolean.TRUE : Boolean.FALSE);
+        if (fire && lastFeedback == SubmitFeedback.SUBMITTED) {
+            // Pulse consumed after a successful submit — return to idle for next click.
+            lastFeedback = SubmitFeedback.IDLE;
+        } else if (!fire && lastFeedback == SubmitFeedback.PENDING) {
+            lastFeedback = SubmitFeedback.IDLE;
+        }
     }
 
     @Override
     protected float calculateUIHeight() {
         return CustomUIMetricsSafe.layoutFrameHeight()
             + CustomUIMetricsSafe.layoutItemSpacingY()
+            + CustomUIMetricsSafe.layoutTextLineHeight()
             + getMediumPadding();
     }
 
@@ -103,12 +150,31 @@ public class ManualTriggerNode extends BaseCustomUINode {
                 fireTriggerFromUi();
             }
             ImGui.sameLine();
-            if (isPulsePending()) {
-                ImGui.text("Pending");
-            } else {
-                ImGui.textDisabled("Idle");
-            }
+            renderStatusLabel();
             return false;
         });
+    }
+
+    private void renderStatusLabel() {
+        SubmitFeedback feedback = lastFeedback;
+        if (isPulsePending() && feedback != SubmitFeedback.FAILED) {
+            ImGui.text("Pending");
+            return;
+        }
+        switch (feedback) {
+            case SUBMITTED -> ImGui.textColored(0.35f, 0.75f, 0.4f, 1.0f, "Submitted");
+            case FAILED -> {
+                ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f, "Failed");
+                if (!getLastFailureReason().isBlank()) {
+                    ImGui.textDisabled(truncate(getLastFailureReason(), 36));
+                }
+            }
+            case PENDING -> ImGui.text("Pending");
+            case IDLE -> ImGui.textDisabled("Idle");
+        }
+    }
+
+    private static String truncate(String text, int max) {
+        return text.length() <= max ? text : text.substring(0, Math.max(1, max - 1)) + "…";
     }
 }

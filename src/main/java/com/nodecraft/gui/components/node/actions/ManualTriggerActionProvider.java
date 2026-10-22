@@ -1,10 +1,8 @@
 package com.nodecraft.gui.components.node.actions;
 
-import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.customui.CustomUIEditorContext;
 import com.nodecraft.gui.components.node.NodeActionProvider;
-import com.nodecraft.gui.editor.GraphManualExecution;
 import com.nodecraft.nodesystem.api.INode;
-import com.nodecraft.nodesystem.execution.runtime.ExecutionSession;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.nodes.flow.control.ManualTriggerNode;
 import imgui.ImGui;
@@ -28,12 +26,22 @@ public final class ManualTriggerActionProvider implements NodeActionProvider {
         ImGui.textDisabled("Fires EXEC, then runs the graph (not auto-preview).");
 
         if (ImGui.button("Trigger")) {
-            trigger.requestPulse();
             NodeGraph graph = graphSupplier == null ? null : graphSupplier.get();
-            ExecutionSession session = GraphManualExecution.submit(graph);
-            if (session != null) {
-                NodeCraft.LOGGER.info("Manual Trigger submitted graph run session={}", session.sessionId());
+            CustomUIEditorContext.bind(graph);
+            try {
+                trigger.fireTriggerFromUi();
+            } finally {
+                CustomUIEditorContext.unbind();
             }
+        }
+
+        ManualTriggerNode.SubmitFeedback feedback = trigger.getLastFeedback();
+        if (feedback == ManualTriggerNode.SubmitFeedback.FAILED) {
+            ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f, "Failed: " + trigger.getLastFailureReason());
+        } else if (trigger.isPulsePending()) {
+            ImGui.text("Pending");
+        } else if (feedback == ManualTriggerNode.SubmitFeedback.SUBMITTED) {
+            ImGui.textColored(0.35f, 0.75f, 0.4f, 1.0f, "Submitted");
         }
         return true;
     }

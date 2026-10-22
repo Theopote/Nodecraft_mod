@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @NodeInfo(
@@ -49,6 +50,9 @@ public class LSystemRuleNode extends BaseCustomUINode {
 
     private transient ImString symbolBuffer;
     private transient ImString productionBuffer;
+    /** Undo baseline captured when a text/weight field becomes active. */
+    private transient Object fieldEditBeforeState;
+    private transient Double weightEditBefore;
 
     public LSystemRuleNode() {
         super(UUID.randomUUID(), "pattern.lsystem.rule");
@@ -149,12 +153,61 @@ public class LSystemRuleNode extends BaseCustomUINode {
         }
     }
 
+    /** Package-visible for edit-transaction tests. */
+    Object pendingFieldEditBaseline() {
+        return fieldEditBeforeState;
+    }
+
+    /**
+     * Applies a continuous draft edit through the same activate/preview/commit path as the custom UI.
+     */
+    public void applyDraftTextEditTransaction(String newSymbol, String newProduction) {
+        beginFieldEdit();
+        setDraftSymbol(newSymbol);
+        setDraftProduction(newProduction);
+        commitFieldEdit("Edit L-System rule");
+    }
+
+    private void beginFieldEdit() {
+        if (fieldEditBeforeState == null) {
+            fieldEditBeforeState = getNodeState();
+        }
+    }
+
+    private void commitFieldEdit(String label) {
+        Object before = fieldEditBeforeState;
+        if (before == null) {
+            return;
+        }
+        Object after = getNodeState();
+        fieldEditBeforeState = null;
+        if (!Objects.equals(before, after)) {
+            CustomUIPropertyHistory.recordNodeStateChange(getId(), before, after, label);
+        }
+    }
+
+    private void beginWeightEdit() {
+        if (weightEditBefore == null) {
+            weightEditBefore = weight;
+        }
+    }
+
+    private void commitWeightEdit() {
+        Double before = weightEditBefore;
+        if (before == null) {
+            return;
+        }
+        weightEditBefore = null;
+        if (Double.compare(before, weight) != 0) {
+            CustomUIPropertyHistory.recordPropertyChange(getId(), "weight", before, weight, 0L);
+        }
+    }
+
     @Override
     protected float calculateUIHeight() {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float line = CustomUIMetricsSafe.layoutTextLineHeight();
         float gap = CustomUIMetricsSafe.layoutItemSpacingY();
-        // rule row + weight row + status
         return frame + gap + frame + gap + line + getMediumPadding();
     }
 
@@ -175,44 +228,64 @@ public class LSystemRuleNode extends BaseCustomUINode {
             boolean weightDriven = OptionalPortDrive.isDriven(this, INPUT_WEIGHT_ID);
             boolean changed = false;
 
-            String displaySymbol = resolveDisplaySymbol();
-            String displayProduction = resolveDisplayProduction();
+            float half = Math.max(40.0f, availableWidth * 0.28f);
 
-            if (symbolDriven || productionDriven) {
-                ImGui.textDisabled(formatRule(displaySymbol, displayProduction));
+            // Symbol — independent of Production drive state
+            if (symbolDriven) {
+                ImGui.textDisabled(truncate(resolveDisplaySymbol(), 16));
             } else {
                 if (symbolBuffer == null) {
                     symbolBuffer = new ImString(getDraftSymbol(), 64);
                 }
+                if (!ImGui.isAnyItemActive() && !getDraftSymbol().equals(symbolBuffer.get())) {
+                    symbolBuffer.set(getDraftSymbol());
+                }
+                ImGui.setNextItemWidth(half);
+                ImGui.inputText("##lsys_symbol", symbolBuffer);
+                if (ImGui.isItemActivated()) {
+                    beginFieldEdit();
+                }
+                if (ImGui.isItemActive() && !getDraftSymbol().equals(symbolBuffer.get())) {
+                    setDraftSymbol(symbolBuffer.get());
+                    changed = true;
+                }
+                if (ImGui.isItemDeactivatedAfterEdit()) {
+                    if (!getDraftSymbol().equals(symbolBuffer.get())) {
+                        setDraftSymbol(symbolBuffer.get());
+                    }
+                    commitFieldEdit("Edit L-System symbol");
+                    changed = true;
+                }
+            }
+
+            ImGui.sameLine();
+            ImGui.textDisabled("→");
+            ImGui.sameLine();
+
+            // Production — independent of Symbol drive state
+            if (productionDriven) {
+                ImGui.textDisabled(truncate(resolveDisplayProduction(), 24));
+            } else {
                 if (productionBuffer == null) {
                     productionBuffer = new ImString(getDraftProduction(), 256);
                 }
-                if (!ImGui.isAnyItemActive()) {
-                    if (!getDraftSymbol().equals(symbolBuffer.get())) {
-                        symbolBuffer.set(getDraftSymbol());
-                    }
-                    if (!getDraftProduction().equals(productionBuffer.get())) {
-                        productionBuffer.set(getDraftProduction());
-                    }
+                if (!ImGui.isAnyItemActive() && !getDraftProduction().equals(productionBuffer.get())) {
+                    productionBuffer.set(getDraftProduction());
                 }
-                float half = Math.max(40.0f, availableWidth * 0.28f);
-                ImGui.setNextItemWidth(half);
-                if (ImGui.inputText("##lsys_symbol", symbolBuffer)) {
-                    Object before = getNodeState();
-                    setDraftSymbol(symbolBuffer.get());
-                    CustomUIPropertyHistory.recordNodeStateChange(
-                        getId(), before, getNodeState(), "Edit L-System symbol");
+                ImGui.setNextItemWidth(Math.max(48.0f, availableWidth - half - 28.0f * zoom));
+                ImGui.inputText("##lsys_production", productionBuffer);
+                if (ImGui.isItemActivated()) {
+                    beginFieldEdit();
+                }
+                if (ImGui.isItemActive() && !getDraftProduction().equals(productionBuffer.get())) {
+                    setDraftProduction(productionBuffer.get());
                     changed = true;
                 }
-                ImGui.sameLine();
-                ImGui.textDisabled("→");
-                ImGui.sameLine();
-                ImGui.setNextItemWidth(Math.max(48.0f, availableWidth - half - 28.0f * zoom));
-                if (ImGui.inputText("##lsys_production", productionBuffer)) {
-                    Object before = getNodeState();
-                    setDraftProduction(productionBuffer.get());
-                    CustomUIPropertyHistory.recordNodeStateChange(
-                        getId(), before, getNodeState(), "Edit L-System production");
+                if (ImGui.isItemDeactivatedAfterEdit()) {
+                    if (!getDraftProduction().equals(productionBuffer.get())) {
+                        setDraftProduction(productionBuffer.get());
+                    }
+                    commitFieldEdit("Edit L-System production");
                     changed = true;
                 }
             }
@@ -224,11 +297,23 @@ public class LSystemRuleNode extends BaseCustomUINode {
             } else {
                 ImFloat weightEdit = new ImFloat((float) weight);
                 ImGui.setNextItemWidth(Math.min(availableWidth * 0.5f, l.toPixels(96.0f)));
-                if (ImGui.inputFloat("Weight##lsys_weight", weightEdit, 0.0f, 0.0f, "%.2f")) {
-                    double before = weight;
-                    setWeight(weightEdit.get());
-                    CustomUIPropertyHistory.recordPropertyChange(
-                        getId(), "weight", before, weight, 0L);
+                ImGui.inputFloat("Weight##lsys_weight", weightEdit, 0.0f, 0.0f, "%.2f");
+                if (ImGui.isItemActivated()) {
+                    beginWeightEdit();
+                }
+                if (ImGui.isItemActive()) {
+                    float live = weightEdit.get();
+                    if (Float.isFinite(live) && Math.abs(live - weight) > 1.0e-6d) {
+                        setWeight(live);
+                        changed = true;
+                    }
+                }
+                if (ImGui.isItemDeactivatedAfterEdit()) {
+                    float live = weightEdit.get();
+                    if (Float.isFinite(live)) {
+                        setWeight(live);
+                    }
+                    commitWeightEdit();
                     changed = true;
                 }
             }
@@ -260,11 +345,11 @@ public class LSystemRuleNode extends BaseCustomUINode {
         return getDraftProduction();
     }
 
-    private static String formatRule(String symbol, String production) {
-        String s = symbol == null || symbol.isBlank() ? "?" : symbol;
-        String p = production == null ? "" : production;
-        String line = s + " → " + p;
-        return line.length() <= 42 ? line : line.substring(0, 41) + "…";
+    private static String truncate(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        return text.length() <= max ? text : text.substring(0, Math.max(1, max - 1)) + "…";
     }
 
     private void writeInvalid(String error) {

@@ -1,5 +1,6 @@
 package com.nodecraft.gui.editor.impl;
 
+import com.nodecraft.gui.components.customui.CustomUIImageTextureCache;
 import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.core.NodeCraft;
@@ -1390,6 +1391,13 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         if (isCacheDebugEnabled()) {
             NodeCraft.LOGGER.debug("[Cache Debug] Node {}: markDirty() called - cache invalidated", getId());
         }
+    }
+
+    @Override
+    public void onNodeRemoved() {
+        super.onNodeRemoved();
+        // Release any custom UI image textures owned by this node.
+        CustomUIImageTextureCache.getInstance().invalidate(getId());
     }
 
     /**

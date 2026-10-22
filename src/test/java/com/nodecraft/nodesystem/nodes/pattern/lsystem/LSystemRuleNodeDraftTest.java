@@ -76,4 +76,31 @@ class LSystemRuleNodeDraftTest {
         assertTrue(Float.isFinite(height) && height > 0.0f);
         assertFalse(Float.isNaN(height));
     }
+
+    @Test
+    void draftTextEditTransactionRecordsSingleBaselineCommit() {
+        LSystemRuleNode node = new LSystemRuleNode();
+        node.setDraftSymbol("F");
+        node.setDraftProduction("F");
+        node.applyDraftTextEditTransaction("X", "X[+X]");
+        assertEquals("X", node.getDraftSymbol());
+        assertEquals("X[+X]", node.getDraftProduction());
+        assertEquals(null, node.pendingFieldEditBaseline());
+        node.processNode(null);
+        assertEquals(Boolean.TRUE, node.getOutput("output_valid"));
+    }
+
+    @Test
+    void connectedSymbolDoesNotBlockProductionDraftEdit() {
+        LSystemRuleNode node = new LSystemRuleNode();
+        node.setDraftProduction("LOCAL");
+        node.setInput("input_symbol", "F");
+        // Production undriven — draft should still apply
+        node.processNode(null);
+        var rule = assertInstanceOf(
+            com.nodecraft.nodesystem.datatypes.LSystemRule.class,
+            node.getOutput("output_rule"));
+        assertEquals("F", rule.symbol());
+        assertEquals("LOCAL", rule.production());
+    }
 }

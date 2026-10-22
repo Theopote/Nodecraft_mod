@@ -53,4 +53,31 @@ public record ImageData(
     ) {
         return new ImageData(sourceWidth, sourceHeight, sampleWidth, sampleHeight, sampleStep, colors);
     }
+
+    /**
+     * Stable content fingerprint over dimensions and every sample color.
+     * Used by custom UI texture caching — sparse probes are not sufficient.
+     */
+    public long contentIdentity() {
+        long h = 0xcbf29ce484222325L;
+        h = fnv(h, sourceWidth);
+        h = fnv(h, sourceHeight);
+        h = fnv(h, sampleWidth);
+        h = fnv(h, sampleHeight);
+        h = fnv(h, sampleStep);
+        h = fnv(h, colors.size());
+        for (ColorData color : colors) {
+            h = fnv(h, Float.floatToIntBits(color.r()));
+            h = fnv(h, Float.floatToIntBits(color.g()));
+            h = fnv(h, Float.floatToIntBits(color.b()));
+            h = fnv(h, Float.floatToIntBits(color.a()));
+        }
+        return h;
+    }
+
+    private static long fnv(long hash, int value) {
+        hash ^= value;
+        hash *= 0x100000001b3L;
+        return hash;
+    }
 }

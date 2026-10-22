@@ -10,23 +10,32 @@ import org.lwjgl.opengl.GL12;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 /**
  * Lazy GPU texture cache for custom UI image thumbnails.
- * Uploads only on the render thread with a live ImGui context; never every UI frame for unchanged images.
+ * <p>
+ * Cache keys use a full content identity from {@link ImageData#contentIdentity()} (all pixels),
+ * not sparse first/middle/last probes. Owners are reference-counted; switching or clearing an
+ * owner's image releases unreferenced textures. OpenGL calls stay on the render thread.
  */
 public final class CustomUIImageTextureCache {
 
     public static final int MAX_THUMB_EDGE = 128;
     public static final int MAX_UPLOADS_PER_FRAME = 2;
+    /** Soft cap on retained textures; unreferenced entries are evicted first. */
+    public static final int MAX_CACHED_TEXTURES = 48;
 
     private static final CustomUIImageTextureCache INSTANCE = new CustomUIImageTextureCache();
 
-    private final Map<String, Integer> textures = new HashMap<>();
+    private final Map<String, Integer> textures = new LinkedHashMap<>(64, 0.75f, true);
+    private final Map<String, Integer> refCounts = new HashMap<>();
     private final Map<UUID, String> ownerKeys = new HashMap<>();
+    /** Memoize expensive content keys while the ImageData instance is reachable. */
+    private final Map<ImageData, String> keyMemo = new WeakHashMap<>();
     private int uploadsThisFrame;
 
     private CustomUIImageTextureCache() {
@@ -44,51 +53,48 @@ public final class CustomUIImageTextureCache {
      * @return OpenGL texture id, or 0 if unavailable / budget exhausted
      */
     public int getOrUpload(@Nullable UUID ownerNodeId, @Nullable ImageData image) {
-        if (image == null || !CustomUIMetricsSafe.hasImGuiContext()) {
+        if (image == null) {
+            releaseOwner(ownerNodeId);
             return 0;
         }
+        if (!CustomUIMetricsSafe.hasImGuiContext()) {
+            return 0;
+        }
+
         String key = cacheKey(image);
         Integer cached = textures.get(key);
         if (cached != null && cached > 0) {
-            if (ownerNodeId != null) {
-                ownerKeys.put(ownerNodeId, key);
-            }
+            bindOwner(ownerNodeId, key);
+            // Touch LRU order
+            textures.get(key);
             return cached;
         }
         if (uploadsThisFrame >= MAX_UPLOADS_PER_FRAME) {
             return 0;
         }
+        evictIfNeeded();
         int textureId = uploadThumbnail(image);
         if (textureId <= 0) {
             return 0;
         }
         uploadsThisFrame++;
         textures.put(key, textureId);
-        if (ownerNodeId != null) {
-            String previous = ownerKeys.put(ownerNodeId, key);
-            if (previous != null && !previous.equals(key)) {
-                // keep previous texture — may still be referenced by another owner key
-            }
-        }
+        refCounts.put(key, 0);
+        bindOwner(ownerNodeId, key);
         return textureId;
     }
 
     public void invalidate(@Nullable UUID ownerNodeId) {
-        if (ownerNodeId == null) {
-            return;
-        }
-        String key = ownerKeys.remove(ownerNodeId);
-        if (key == null) {
-            return;
-        }
-        boolean stillOwned = ownerKeys.containsValue(key);
-        if (!stillOwned) {
-            deleteTexture(key);
-        }
+        releaseOwner(ownerNodeId);
     }
 
     public void disposeAll() {
         if (!CustomUIMetricsSafe.isOnRenderThread()) {
+            // Still clear bookkeeping so next bind starts clean.
+            textures.clear();
+            refCounts.clear();
+            ownerKeys.clear();
+            keyMemo.clear();
             return;
         }
         for (Integer id : textures.values()) {
@@ -100,42 +106,78 @@ public final class CustomUIImageTextureCache {
             }
         }
         textures.clear();
+        refCounts.clear();
         ownerKeys.clear();
+        keyMemo.clear();
     }
 
+    /**
+     * Content-stable key: dimensions + full {@link ImageData#contentIdentity()}.
+     * Two images that differ only in interior pixels must not collide.
+     */
     static String cacheKey(ImageData image) {
-        int hash = Objects.hash(
-            image.sourceWidth(),
-            image.sourceHeight(),
-            image.sampleWidth(),
-            image.sampleHeight(),
-            image.sampleStep(),
-            image.colors().size()
-        );
-        // Include a few sample pixels so identical dims with different content don't collide forever
-        ListSample probe = probeColors(image);
-        return image.sampleWidth() + "x" + image.sampleHeight() + ":" + image.sampleStep()
-            + ":" + Integer.toHexString(hash) + ":" + probe.fingerprint();
+        return INSTANCE.keyMemo.computeIfAbsent(image, CustomUIImageTextureCache::computeCacheKey);
     }
 
-    private record ListSample(int fingerprint) {
+    static String computeCacheKey(ImageData image) {
+        return image.sampleWidth() + "x" + image.sampleHeight()
+            + ":src" + image.sourceWidth() + "x" + image.sourceHeight()
+            + ":step" + image.sampleStep()
+            + ":" + Long.toHexString(image.contentIdentity());
     }
 
-    private static ListSample probeColors(ImageData image) {
-        var colors = image.colors();
-        int fp = colors.size();
-        if (!colors.isEmpty()) {
-            ColorData first = colors.getFirst();
-            ColorData last = colors.get(colors.size() - 1);
-            fp = 31 * fp + Float.hashCode(first.r());
-            fp = 31 * fp + Float.hashCode(first.g());
-            fp = 31 * fp + Float.hashCode(last.b());
-            fp = 31 * fp + Float.hashCode(last.a());
-            int mid = colors.size() / 2;
-            ColorData midColor = colors.get(mid);
-            fp = 31 * fp + Float.hashCode(midColor.r() + midColor.g() + midColor.b());
+    private void bindOwner(@Nullable UUID ownerNodeId, String key) {
+        if (ownerNodeId == null) {
+            return;
         }
-        return new ListSample(fp);
+        String previous = ownerKeys.get(ownerNodeId);
+        if (key.equals(previous)) {
+            return;
+        }
+        if (previous != null) {
+            decrementRef(previous);
+        }
+        ownerKeys.put(ownerNodeId, key);
+        refCounts.merge(key, 1, Integer::sum);
+    }
+
+    private void releaseOwner(@Nullable UUID ownerNodeId) {
+        if (ownerNodeId == null) {
+            return;
+        }
+        String key = ownerKeys.remove(ownerNodeId);
+        if (key != null) {
+            decrementRef(key);
+        }
+    }
+
+    private void decrementRef(String key) {
+        int next = refCounts.merge(key, -1, Integer::sum);
+        if (next <= 0) {
+            refCounts.remove(key);
+            deleteTexture(key);
+        }
+    }
+
+    private void evictIfNeeded() {
+        while (textures.size() >= MAX_CACHED_TEXTURES) {
+            String victim = findUnreferencedVictim();
+            if (victim == null) {
+                break;
+            }
+            deleteTexture(victim);
+            refCounts.remove(victim);
+        }
+    }
+
+    private @Nullable String findUnreferencedVictim() {
+        for (String key : textures.keySet()) {
+            int refs = refCounts.getOrDefault(key, 0);
+            if (refs <= 0) {
+                return key;
+            }
+        }
+        return null;
     }
 
     private int uploadThumbnail(ImageData image) {
@@ -197,7 +239,11 @@ public final class CustomUIImageTextureCache {
 
     private void deleteTexture(String key) {
         Integer id = textures.remove(key);
-        if (id == null || id <= 0 || !CustomUIMetricsSafe.isOnRenderThread()) {
+        if (id == null || id <= 0) {
+            return;
+        }
+        if (!CustomUIMetricsSafe.isOnRenderThread()) {
+            // Drop bookkeeping; GPU id may leak only if called off-thread (should not happen).
             return;
         }
         try {
@@ -206,14 +252,30 @@ public final class CustomUIImageTextureCache {
         }
     }
 
-    /** Test helper: number of cached textures. */
     int cachedTextureCount() {
         return textures.size();
     }
 
-    /** Test helper: drop entries without GL (headless). */
+    int ownerCount() {
+        return ownerKeys.size();
+    }
+
+    int refCount(String key) {
+        return refCounts.getOrDefault(key, 0);
+    }
+
     void clearEntriesHeadless() {
         textures.clear();
+        refCounts.clear();
         ownerKeys.clear();
+        keyMemo.clear();
+    }
+
+    /** Headless ownership transition without GL (tests). */
+    void simulateBindHeadless(UUID owner, ImageData image) {
+        String key = cacheKey(image);
+        textures.putIfAbsent(key, -1); // sentinel non-GL id for bookkeeping tests
+        refCounts.putIfAbsent(key, 0);
+        bindOwner(owner, key);
     }
 }
