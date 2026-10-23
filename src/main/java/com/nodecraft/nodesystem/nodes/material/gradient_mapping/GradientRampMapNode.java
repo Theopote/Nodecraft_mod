@@ -184,8 +184,9 @@ public class GradientRampMapNode extends BaseCustomUINode {
     protected boolean renderCustomUIScaled(float width, float height, float zoom) {
         return layout(zoom, l -> {
             float stripWidth = l.toPixels(HeightPaletteStripWidget.preferredWidth());
-            float stripHeight = l.toPixelsExact(height) - l.toPixels(getMediumPadding());
-            HeightPaletteStripWidget.render(resolvePreviewPalette(), stripWidth, stripHeight, zoom);
+            // Use the widget's preferred size — do not expand into clip-slack / bottom inset.
+            float widgetHeight = l.toPixels(HeightPaletteStripWidget.preferredHeight(96.0f));
+            HeightPaletteStripWidget.render(resolvePreviewPalette(), stripWidth, widgetHeight, zoom);
             return false;
         });
     }

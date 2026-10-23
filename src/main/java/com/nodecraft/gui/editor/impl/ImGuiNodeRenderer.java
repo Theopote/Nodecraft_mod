@@ -201,19 +201,23 @@ public class ImGuiNodeRenderer {
         UUID nodeId = node.getId();
         NodePosition pos = nodePositions.computeIfAbsent(nodeId, id -> new NodePosition(100, 100));
 
-        float unscaledNodeWidth = pos.width;
-        float unscaledNodeHeight = pos.height;
+        NodeDisplayMode displayMode = resolveDisplayMode();
+        List<IPort> visibleInputPorts = getVisibleInputPorts(node);
+        List<IPort> visibleOutputPorts = getVisibleOutputPorts(node);
+        // Layout first, then size the panel from it — avoids drawing with a stale pos.height while
+        // custom UI uses a freshly computed (taller) customUIHeight after expand/collapse.
+        NodeVisualLayout.Result layout = NodeVisualLayout.compute(
+                node, displayMode, visibleInputPorts, visibleOutputPorts,
+                cache::getCachedTextWidth, baseTextLineHeight, baseItemSpacingY);
+        pos.setSize(layout.width(), layout.height());
+
+        float unscaledNodeWidth = layout.width();
+        float unscaledNodeHeight = layout.height();
 
         float nodeScreenX = canvasPos.x + (pos.x * canvasZoom + canvasOffsetX);
         float nodeScreenY = canvasPos.y + (pos.y * canvasZoom + canvasOffsetY);
         float finalNodeWidthScaled = unscaledNodeWidth * canvasZoom;
         float finalNodeHeightScaled = unscaledNodeHeight * canvasZoom;
-        NodeDisplayMode displayMode = resolveDisplayMode();
-        List<IPort> visibleInputPorts = getVisibleInputPorts(node);
-        List<IPort> visibleOutputPorts = getVisibleOutputPorts(node);
-        NodeVisualLayout.Result layout = NodeVisualLayout.compute(
-                node, displayMode, visibleInputPorts, visibleOutputPorts,
-                cache::getCachedTextWidth, baseTextLineHeight, baseItemSpacingY);
         boolean compactRerouteNode = layout.compactReroute();
 
         if (!portScreenPositions.containsKey(nodeId)) {

@@ -1,10 +1,12 @@
 package com.nodecraft.gui.components.customui;
 
+import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.util.BlockPaletteData;
 import com.nodecraft.nodesystem.util.BlockPaletteEntry;
 import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImVec2;
+import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImDouble;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,8 +16,13 @@ import java.util.function.Supplier;
 
 /**
  * Palette swatch rows with optional block picker, weight editing, and +/- controls.
+ * Long lists are capped to {@link #MAX_VISIBLE_ROWS} with an internal scrollbar so the
+ * host node stays a manageable height.
  */
 public final class BlockPaletteWidget {
+
+    /** Visible row budget before the list scrolls (logical layout + render). */
+    public static final int MAX_VISIBLE_ROWS = 6;
 
     /** Logical units — multiplied by canvas zoom at render time. */
     private static final float SWATCH_SIZE = 14.0f;
@@ -57,9 +64,14 @@ public final class BlockPaletteWidget {
         return Math.max(swatch + gap, frameH + gap);
     }
 
+    /**
+     * Node custom-UI height for a palette. Grows with entry count up to
+     * {@link #MAX_VISIBLE_ROWS}, then stays capped (scroll handles the rest).
+     */
     public static float preferredHeight(BlockPaletteData palette, float padding) {
         int rows = Math.max(1, palette == null ? 1 : palette.size());
-        return rows * rowHeightLogical()
+        int visibleRows = Math.min(rows, MAX_VISIBLE_ROWS);
+        return visibleRows * rowHeightLogical()
             + padding
             + ROW_GAP
             + CustomUIMetricsSafe.layoutFrameHeight();
@@ -95,83 +107,33 @@ public final class BlockPaletteWidget {
         float removeWidth = CustomUIMetricsSafe.scaleLogical(REMOVE_BUTTON_WIDTH, zoom);
         float rowGap = CustomUIMetricsSafe.scaleLogical(ROW_GAP, zoom);
         float minPicker = CustomUIMetricsSafe.scaleLogical(MIN_PICKER_WIDTH, zoom);
-        float pickerWidth = Math.max(minPicker, widthPixels - swatchSize - weightWidth - removeWidth - 24.0f * zoom);
+
+        boolean needsScroll = resolved.size() > MAX_VISIBLE_ROWS;
+        float scrollBarReserve = needsScroll ? ImGui.getStyle().getScrollbarSize() : 0.0f;
+        float pickerWidth = Math.max(
+                minPicker,
+                widthPixels - swatchSize - weightWidth - removeWidth - 24.0f * zoom - scrollBarReserve);
 
         if (resolved.isEmpty()) {
             ImGui.textDisabled(editable ? "Empty palette — add a block" : "Empty palette");
-        } else {
-            List<BlockPaletteEntry> entries = new ArrayList<>(resolved.entries());
-            for (int i = 0; i < entries.size(); i++) {
-                BlockPaletteEntry entry = entries.get(i);
-                final int rowIndex = i;
-                final double rowWeight = entry.weight();
-                ImVec2 rowStart = ImGui.getCursorScreenPos();
-                ImDrawList drawList = ImGui.getWindowDrawList();
-                BlockSwatchHelper.drawSwatch(drawList, rowStart.x, rowStart.y + 1.0f, swatchSize, entry.blockId());
-
-                ImGui.setCursorScreenPos(rowStart.x + swatchSize + rowGap, rowStart.y);
-                ImGui.pushID(i);
-                if (editable && editSink != null && paletteSupplier != null) {
-                    if (BlockPickerPopup.renderButton(
-                            "palette_row_" + i,
-                            entry.blockId(),
-                            pickerWidth,
-                            newId -> {
-                                List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
-                                latest.set(rowIndex, new BlockPaletteEntry(newId, rowWeight));
-                                editSink.commit(latest);
-                            })) {
-                        changed = true;
-                    }
-                    ImGui.sameLine();
-                    ImDouble weightInput = new ImDouble(entry.weight());
-                    ImGui.setNextItemWidth(weightWidth);
-                    ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f");
-                    if (ImGui.isItemActivated()) {
-                        editSink.beginWeightEdit();
-                    }
-                    double weight = weightInput.get();
-                    if (Double.isFinite(weight) && weight >= 0.0d
-                            && Math.abs(weight - entry.weight()) > 1.0e-6d) {
-                        entries.set(i, new BlockPaletteEntry(entry.blockId(), weight));
-                        if (ImGui.isItemActive()) {
-                            editSink.preview(new ArrayList<>(entries));
-                            changed = true;
-                        }
-                    }
-                    if (ImGui.isItemDeactivatedAfterEdit()) {
-                        List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
-                        if (i < latest.size()) {
-                            BlockPaletteEntry current = latest.get(i);
-                            if (Double.isFinite(weight) && weight >= 0.0d
-                                    && Math.abs(weight - current.weight()) > 1.0e-6d) {
-                                latest.set(i, new BlockPaletteEntry(current.blockId(), weight));
-                                editSink.preview(latest);
-                            }
-                        }
-                        editSink.commitWeightEdit();
-                        changed = true;
-                    }
-                    ImGui.sameLine();
-                    if (ImGui.smallButton("-")) {
-                        List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
-                        latest.remove(i);
-                        editSink.commit(latest);
-                        changed = true;
-                        ImGui.popID();
-                        break;
-                    }
-                } else {
-                    String label = entry.blockId();
-                    if (Math.abs(entry.weight() - 1.0d) > 1.0e-6d) {
-                        label += String.format(" (%.2f)", entry.weight());
-                    }
-                    ImGui.text(label);
+        } else if (needsScroll) {
+            float listViewport = MAX_VISIBLE_ROWS * rowHeight;
+            try (ImGuiChildScope scope = new ImGuiChildScope(
+                    "##block_palette_rows",
+                    widthPixels,
+                    listViewport,
+                    false,
+                    ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
+                if (scope.isOpen()) {
+                    changed |= renderRows(
+                            resolved, editable, paletteSupplier, editSink,
+                            rowHeight, swatchSize, weightWidth, rowGap, pickerWidth);
                 }
-                ImGui.popID();
-
-                ImGui.setCursorScreenPos(rowStart.x, rowStart.y + rowHeight);
             }
+        } else {
+            changed |= renderRows(
+                    resolved, editable, paletteSupplier, editSink,
+                    rowHeight, swatchSize, weightWidth, rowGap, pickerWidth);
         }
 
         if (editable && paletteSupplier != null && editSink != null) {
@@ -184,6 +146,93 @@ public final class BlockPaletteWidget {
             }
         }
 
+        return changed;
+    }
+
+    private static boolean renderRows(
+            BlockPaletteData resolved,
+            boolean editable,
+            @Nullable Supplier<BlockPaletteData> paletteSupplier,
+            @Nullable PaletteEditSink editSink,
+            float rowHeight,
+            float swatchSize,
+            float weightWidth,
+            float rowGap,
+            float pickerWidth
+    ) {
+        boolean changed = false;
+        List<BlockPaletteEntry> entries = new ArrayList<>(resolved.entries());
+        for (int i = 0; i < entries.size(); i++) {
+            BlockPaletteEntry entry = entries.get(i);
+            final int rowIndex = i;
+            final double rowWeight = entry.weight();
+            ImVec2 rowStart = ImGui.getCursorScreenPos();
+            ImDrawList drawList = ImGui.getWindowDrawList();
+            BlockSwatchHelper.drawSwatch(drawList, rowStart.x, rowStart.y + 1.0f, swatchSize, entry.blockId());
+
+            ImGui.setCursorScreenPos(rowStart.x + swatchSize + rowGap, rowStart.y);
+            ImGui.pushID(i);
+            if (editable && editSink != null && paletteSupplier != null) {
+                if (BlockPickerPopup.renderButton(
+                        "palette_row_" + i,
+                        entry.blockId(),
+                        pickerWidth,
+                        newId -> {
+                            List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                            latest.set(rowIndex, new BlockPaletteEntry(newId, rowWeight));
+                            editSink.commit(latest);
+                        })) {
+                    changed = true;
+                }
+                ImGui.sameLine();
+                ImDouble weightInput = new ImDouble(entry.weight());
+                ImGui.setNextItemWidth(weightWidth);
+                ImGui.inputDouble("##weight", weightInput, 0.0d, 0.0d, "%.2f");
+                if (ImGui.isItemActivated()) {
+                    editSink.beginWeightEdit();
+                }
+                double weight = weightInput.get();
+                if (Double.isFinite(weight) && weight >= 0.0d
+                        && Math.abs(weight - entry.weight()) > 1.0e-6d) {
+                    entries.set(i, new BlockPaletteEntry(entry.blockId(), weight));
+                    if (ImGui.isItemActive()) {
+                        editSink.preview(new ArrayList<>(entries));
+                        changed = true;
+                    }
+                }
+                if (ImGui.isItemDeactivatedAfterEdit()) {
+                    List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                    if (i < latest.size()) {
+                        BlockPaletteEntry current = latest.get(i);
+                        if (Double.isFinite(weight) && weight >= 0.0d
+                                && Math.abs(weight - current.weight()) > 1.0e-6d) {
+                            latest.set(i, new BlockPaletteEntry(current.blockId(), weight));
+                            editSink.preview(latest);
+                        }
+                    }
+                    editSink.commitWeightEdit();
+                    changed = true;
+                }
+                ImGui.sameLine();
+                if (ImGui.smallButton("-")) {
+                    List<BlockPaletteEntry> latest = new ArrayList<>(paletteSupplier.get().entries());
+                    latest.remove(i);
+                    editSink.commit(latest);
+                    changed = true;
+                    ImGui.popID();
+                    break;
+                }
+            } else {
+                String label = entry.blockId();
+                if (Math.abs(entry.weight() - 1.0d) > 1.0e-6d) {
+                    label += String.format(" (%.2f)", entry.weight());
+                }
+                ImGui.text(label);
+            }
+            ImGui.popID();
+
+            ImGui.setCursorScreenPos(rowStart.x, rowStart.y + rowHeight);
+        }
         return changed;
     }
 }

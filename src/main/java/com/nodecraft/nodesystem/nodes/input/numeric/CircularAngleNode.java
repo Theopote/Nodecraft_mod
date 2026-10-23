@@ -109,15 +109,15 @@ public class CircularAngleNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        // Match render: medium + dial + medium + label + small + optional input
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        // medium + dial (+ ImGui item gap) + medium + label (+ gap) + small + optional input
         float height = getMediumPadding();
-        height += DIAL_SIZE;
+        height += DIAL_SIZE + itemGap;
         height += getMediumPadding();
-        height += CustomUIMetricsSafe.layoutTextLineHeight();
+        height += CustomUIMetricsSafe.layoutTextLineHeight() + itemGap;
         height += getSmallPadding();
         if (showValueInput) {
-            height += CustomUIMetricsSafe.layoutFrameHeight()
-                + CustomUIMetricsSafe.layoutItemSpacingY();
+            height += CustomUIMetricsSafe.layoutFrameHeight() + itemGap;
         }
         return height;
     }

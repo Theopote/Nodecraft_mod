@@ -681,12 +681,12 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     
     @Override
     protected float calculateUIHeight() {
-        // 与 renderCustomUIScaled 布局保持一致；展开区高度必须计入，否则会被节点裁剪
-        float buttonHeight = CustomUIMetricsSafe.layoutFrameHeight();
-        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        // Must match renderCustomUIScaled. This node applies MinecraftUITheme during render,
+        // so frames run taller than the shared compact layoutFrameHeight baseline.
+        float buttonHeight = CustomUIMetricsSafe.layoutFrameHeight() + getLargePadding();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY() + getSmallPadding();
         float textLine = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
-        // CollapsingHeader is a bit taller than a bare frame in compact style.
-        float collapsingHeader = buttonHeight + itemGap + getSmallPadding();
+        float collapsingHeader = buttonHeight + itemGap + getMediumPadding();
         float smallGap = getSmallPadding();
         float baseHeight = 0f;
 
@@ -723,11 +723,11 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             baseHeight += collapsingHeader;
             if (infoSectionExpanded) {
                 baseHeight += smallGap;
-                baseHeight += textLine * 2;
+                baseHeight += textLine * 2; // 来源 / 位置
                 baseHeight += smallGap;
-                baseHeight += 1f; // separator
+                baseHeight += 1f + itemGap; // separator
                 baseHeight += smallGap;
-                baseHeight += buttonHeight + itemGap;
+                baseHeight += buttonHeight + itemGap; // 区内「清除选择」
                 baseHeight += smallGap;
             }
         }
@@ -736,21 +736,24 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         baseHeight += collapsingHeader;
         if (settingsSectionExpanded) {
             baseHeight += smallGap;
-            baseHeight += textLine * 2;
+            baseHeight += textLine * 3; // textWrapped status
             baseHeight += smallGap;
-            baseHeight += textLine;
-            baseHeight += textLine;
-            baseHeight += textLine;
+            baseHeight += buttonHeight + itemGap; // checkbox
+            baseHeight += buttonHeight + itemGap; // checkbox
+            baseHeight += textLine; // 最大距离 label
             baseHeight += smallGap;
-            baseHeight += buttonHeight + itemGap;
+            baseHeight += buttonHeight + itemGap; // slider
             baseHeight += smallGap;
         }
 
-        if (hasPickedBlock || hasInputBlock) {
+        // Bottom「Clear Selection」only when the in-section clear is hidden
+        boolean infoClearVisible = resolveActiveSource() != ActiveSource.NONE
+                && activeBlock != null
+                && infoSectionExpanded;
+        if ((hasPickedBlock || hasInputBlock) && !infoClearVisible) {
             baseHeight += smallGap;
             baseHeight += buttonHeight + itemGap;
         }
-        // Bottom inset drawn by BaseCustomUINode.renderCustomUI
         return baseHeight;
     }
 
@@ -949,7 +952,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 1.0f);
                     ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 1.0f);
                     ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f);
-                    if (ImGui.button("清除选择##clearBlock", availableWidth, buttonHeight)) {
+                    if (ImGui.button("清除选择##clearBlockInSection", availableWidth, buttonHeight)) {
                         if (activeSource == ActiveSource.PICKED || hasPickedBlock) {
                             clearPickedBlock();
                         }
@@ -1000,8 +1003,6 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                     changed = true;
                 }
 
-
-
                 // 包含流体选项
                 if (ImGui.checkbox("包含流体##includeFluids", includeFluids)) {
                     setIncludeFluids(!includeFluids);
@@ -1023,13 +1024,18 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
                 addVerticalSpacing(getSmallPadding(), zoom);
             }
 
-            if (hasPickedBlock || hasInputBlock) {
+            // Only show the bottom clear when the in-section clear is not already visible
+            // (avoids duplicate buttons + height underestimate when 已选位置 is expanded).
+            boolean infoClearVisible = activeSource != ActiveSource.NONE
+                    && activeBlock != null
+                    && infoSectionExpanded;
+            if ((hasPickedBlock || hasInputBlock) && !infoClearVisible) {
                 addVerticalSpacing(getSmallPadding(), zoom);
                 ImGui.setCursorPosX(baseCursorX + edgeMargin);
                 ImGui.pushStyleColor(ImGuiCol.Button, 0.8f, 0.2f, 0.2f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.9f, 0.3f, 0.3f, 1.0f);
                 ImGui.pushStyleColor(ImGuiCol.ButtonActive, 0.7f, 0.1f, 0.1f, 1.0f);
-                if (ImGui.button("Clear Selection##clearBlock", availableWidth, buttonHeight)) {
+                if (ImGui.button("Clear Selection##clearBlockBottom", availableWidth, buttonHeight)) {
                     clearPickedBlock();
                     clearInputBlockData();
                     updateOutputsWithActiveBlock();

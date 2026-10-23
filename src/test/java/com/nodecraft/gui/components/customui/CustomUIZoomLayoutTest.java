@@ -28,6 +28,28 @@ class CustomUIZoomLayoutTest {
     }
 
     @Test
+    void palettePreferredHeightCapsAtMaxVisibleRows() {
+        List<BlockPaletteEntry> many = new java.util.ArrayList<>();
+        for (int i = 0; i < BlockPaletteWidget.MAX_VISIBLE_ROWS + 4; i++) {
+            many.add(new BlockPaletteEntry("minecraft:stone", 1.0d));
+        }
+        BlockPaletteData large = new BlockPaletteData(many);
+        BlockPaletteData capped = new BlockPaletteData(
+            many.subList(0, BlockPaletteWidget.MAX_VISIBLE_ROWS));
+        assertEquals(
+            BlockPaletteWidget.preferredHeight(capped, 8.0f),
+            BlockPaletteWidget.preferredHeight(large, 8.0f),
+            0.01f);
+    }
+
+    @Test
+    void heightPalettePreferredHeightIncludesBinsLabel() {
+        float strip = HeightPaletteStripWidget.preferredStripHeight(96.0f);
+        float expected = strip + 4.0f + CustomUIMetricsSafe.layoutTextLineHeight();
+        assertEquals(expected, HeightPaletteStripWidget.preferredHeight(96.0f), 0.01f);
+    }
+
+    @Test
     void scaleLogicalTracksCanvasZoomLinearly() {
         assertEquals(36.0f, CustomUIMetricsSafe.scaleLogical(18.0f, 2.0f), 0.01f);
         assertEquals(9.0f, CustomUIMetricsSafe.scaleLogical(18.0f, 0.5f), 0.01f);

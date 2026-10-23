@@ -215,7 +215,8 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
 
     /**
      * Extra height after {@link #calculateUIHeight()} content: bottom inset plus a small safety
-     * band so modest height underestimates cannot eat the visible margin.
+     * band so slight underestimates cannot eat the visible margin. Expand sections must still
+     * size themselves correctly in {@link #calculateUIHeight()}.
      */
     protected float getCustomUIClipSlack() {
         return getCustomUIBottomInset() + getMediumPadding();
@@ -1424,6 +1425,8 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
      */
     protected final boolean syncExpandableUiState(boolean previousState, boolean currentState) {
         if (previousState != currentState) {
+            // Expand/collapse changes custom-UI height — invalidate size cache immediately.
+            invalidateCache();
             markDirty();
         }
         return currentState;
