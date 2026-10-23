@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.values;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.dialogs.FileDialogManager;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -94,14 +95,10 @@ public class FilePathInputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        return height;
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float gap = getSmallPadding();
+        // path field + Open combo + Browse/Clear row
+        return getMediumPadding() + frame + gap + frame + gap + frame + getSmallPadding();
     }
 
     @Override

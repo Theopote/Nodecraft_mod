@@ -11,14 +11,25 @@ import imgui.ImGui;
 public final class CustomUIMetricsSafe {
 
     /**
-     * Conservative frame height when ImGui context is unavailable.
-     * Matches typical in-game compact custom UI controls so row/button layout is not underestimated.
+     * Compact frame height for {@code calculateUIHeight()} — matches
+     * {@link com.nodecraft.gui.editor.impl.CustomUIRenderer} compact style at zoom 1
+     * (not the editor chrome's uncompacted {@link ImGui#getFrameHeight()}).
      */
     public static final float FALLBACK_FRAME_HEIGHT = 22.0f;
     /** Typical default text line height when ImGui context is unavailable. */
     public static final float FALLBACK_TEXT_LINE_HEIGHT = 16.0f;
-    /** Typical ImGui item spacing when context is unavailable. */
-    public static final float FALLBACK_ITEM_SPACING_Y = 4.0f;
+    /**
+     * Compact vertical item spacing for layout sizing.
+     * Matches CustomUIRenderer {@link #COMPACT_ITEM_SPACING_FACTOR} applied to a ~4px baseline.
+     */
+    public static final float FALLBACK_ITEM_SPACING_Y = 2.0f;
+
+    /** Must stay in sync with CustomUIRenderer compact style. */
+    public static final float COMPACT_FRAME_PADDING_FACTOR = 0.70f;
+    /** Must stay in sync with CustomUIRenderer compact style. */
+    public static final float COMPACT_ITEM_SPACING_FACTOR = 0.52f;
+    /** Must stay in sync with CustomUIRenderer compact style. */
+    public static final float COMPACT_INNER_SPACING_FACTOR = 0.68f;
 
     /**
      * Set by {@link com.nodecraft.gui.editor.integration.ImGuiRenderer} after {@link ImGui#createContext()}.
@@ -109,36 +120,26 @@ public final class CustomUIMetricsSafe {
     }
 
     /**
-     * Frame height for {@code calculateUIHeight()} on the client — uses live ImGui metrics when safe,
-     * never underestimates {@link #FALLBACK_FRAME_HEIGHT}. Matches default editor style sizing so the
-     * reserved node body is not shorter than rendered widgets.
+     * Frame height for {@code calculateUIHeight()}.
+     * Always the compact baseline — live {@link #frameHeight()} reflects editor chrome style
+     * <em>before</em> CustomUIRenderer applies compact padding, and over-reserves empty bottom space.
      */
     public static float layoutFrameHeight() {
-        if (!hasImGuiContext()) {
-            return FALLBACK_FRAME_HEIGHT;
-        }
-        return Math.max(FALLBACK_FRAME_HEIGHT, frameHeight());
+        return FALLBACK_FRAME_HEIGHT;
     }
 
     /**
-     * Text line height for {@code calculateUIHeight()} on the client.
+     * Text line height for {@code calculateUIHeight()}.
      */
     public static float layoutTextLineHeight() {
-        if (!hasImGuiContext()) {
-            return FALLBACK_TEXT_LINE_HEIGHT;
-        }
-        return Math.max(FALLBACK_TEXT_LINE_HEIGHT, textLineHeight());
+        return FALLBACK_TEXT_LINE_HEIGHT;
     }
 
-    /** Vertical gap ImGui inserts after each widget row in {@code calculateUIHeight()}. */
+    /**
+     * Vertical gap between widget rows for {@code calculateUIHeight()}.
+     * Compact baseline — not live uncompacted {@code ItemSpacing.y}.
+     */
     public static float layoutItemSpacingY() {
-        if (!hasImGuiContext()) {
-            return FALLBACK_ITEM_SPACING_Y;
-        }
-        try {
-            return Math.max(FALLBACK_ITEM_SPACING_Y, ImGui.getStyle().getItemSpacingY());
-        } catch (Throwable ignored) {
-            return FALLBACK_ITEM_SPACING_Y;
-        }
+        return FALLBACK_ITEM_SPACING_Y;
     }
 }

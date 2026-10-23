@@ -127,10 +127,8 @@ public class ManualTriggerNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        return CustomUIMetricsSafe.layoutFrameHeight()
-            + CustomUIMetricsSafe.layoutItemSpacingY()
-            + CustomUIMetricsSafe.layoutTextLineHeight()
-            + getMediumPadding();
+        // Trigger button + status share one row (sameLine), including Failed reason.
+        return CustomUIMetricsSafe.layoutFrameHeight() + getSmallPadding();
     }
 
     @Override
@@ -166,7 +164,8 @@ public class ManualTriggerNode extends BaseCustomUINode {
             case FAILED -> {
                 ImGui.textColored(0.9f, 0.35f, 0.3f, 1.0f, "Failed");
                 if (!getLastFailureReason().isBlank()) {
-                    ImGui.textDisabled(truncate(getLastFailureReason(), 36));
+                    ImGui.sameLine();
+                    ImGui.textDisabled(truncate(getLastFailureReason(), 28));
                 }
             }
             case PENDING -> ImGui.text("Pending");

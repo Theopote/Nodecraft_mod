@@ -5,6 +5,7 @@ import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.datatypes.PlaneData;
 import com.nodecraft.nodesystem.datatypes.PolylineData;
 import com.nodecraft.nodesystem.datatypes.RegionData;
+import com.nodecraft.nodesystem.io.JsonFiniteValues;
 import com.nodecraft.nodesystem.util.Curve;
 import com.nodecraft.nodesystem.util.Vec3;
 import net.minecraft.block.BlockState;
@@ -65,7 +66,11 @@ public final class PropertyValueSnapshots {
         if (value == null) {
             return null;
         }
-        if (value instanceof Number || value instanceof Boolean || value instanceof String || value instanceof Character) {
+        if (value instanceof Number number) {
+            // Non-finite doubles/floats are not JSON-legal; null keeps history/Gson deep-copy safe.
+            return JsonFiniteValues.sanitizeNumber(number);
+        }
+        if (value instanceof Boolean || value instanceof String || value instanceof Character) {
             return value;
         }
         if (value instanceof Enum<?> enumValue) {

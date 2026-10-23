@@ -26,8 +26,8 @@ public final class PreviewStatusPanelWidget {
         float line = CustomUIMetricsSafe.layoutTextLineHeight();
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float gap = CustomUIMetricsSafe.layoutItemSpacingY();
-        // checkbox row + counts row + status/error row
-        return frame + gap + line * 2.0f + gap + line + gap;
+        // checkbox + counts (one row) + status + error line (always reserved so Valid→error does not clip)
+        return frame + gap + line + gap + line + gap + line;
     }
 
     /**

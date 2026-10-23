@@ -149,7 +149,8 @@ public class ImGuiNodeHistory implements GraphApplyHistoryView {
         // or overflow, and GraphStructureEditSupport would then roll back a successful delete.
         SavedGraph sanitized = sanitizeGraphStateForHistory(graph);
         try {
-            com.google.gson.Gson gson = new com.google.gson.Gson();
+            // serializeNulls: unbounded numeric bounds are stored as null and must survive deep-copy.
+            com.google.gson.Gson gson = new com.google.gson.GsonBuilder().serializeNulls().create();
             SavedGraph copied = gson.fromJson(gson.toJson(sanitized), SavedGraph.class);
             return copied != null ? copied : sanitized;
         } catch (Exception e) {

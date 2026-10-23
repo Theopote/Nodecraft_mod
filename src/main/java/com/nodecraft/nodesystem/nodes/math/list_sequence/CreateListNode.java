@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.math.list_sequence;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.GraphStructureEditSupport;
 import com.nodecraft.gui.editor.StructureEditRollbackException;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
@@ -82,7 +83,9 @@ public class CreateListNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        return getMediumPadding() + ImGui.getFrameHeight() + getMediumPadding();
+        return getMediumPadding()
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + getSmallPadding();
     }
 
     @Override

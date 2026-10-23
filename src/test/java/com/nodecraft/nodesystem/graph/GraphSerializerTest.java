@@ -10,6 +10,7 @@ import com.nodecraft.nodesystem.io.GraphFormatVersion;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
 import com.nodecraft.nodesystem.nodes.geometry.boolops.SdfBoxNode;
+import com.nodecraft.nodesystem.nodes.input.numeric.FloatInputNode;
 import com.nodecraft.nodesystem.nodes.math.logic.IfNode;
 import com.nodecraft.nodesystem.nodes.variable.SetVariableNode;
 import com.nodecraft.nodesystem.registry.NodeRegistry;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,11 +40,34 @@ class GraphSerializerTest {
         registry.registerNode(new NodeInfo("math.logic.if", "If", "if node", "math.logic", 0, IfNode.class));
         registry.registerNode(new NodeInfo("variable.set", "Set Variable", "set variable", "variable", 0, SetVariableNode.class));
         registry.registerNode(new NodeInfo("geometry.boolean.sdf_box", "SDF Box", "sdf box", "geometry", 0, SdfBoxNode.class));
+        registry.registerNode(new NodeInfo(
+            "input.numeric.float", "Number Input", "float input", "input.numeric", 0, FloatInputNode.class));
     }
 
     @AfterEach
     void clearRegistry() {
         registry.clear();
+    }
+
+    @Test
+    void floatInputWithUnboundedBoundsSerializesWithoutInfinity() {
+        NodeGraph original = new NodeGraph("float-unbounded");
+        FloatInputNode input = new FloatInputNode();
+        input.setValue(42.0d);
+        original.addNode(input);
+
+        String json = assertDoesNotThrow(() -> GraphSerializer.toJson(original));
+        assertTrue(!json.contains("Infinity") && !json.contains("NaN"));
+
+        NodeGraph loaded = GraphSerializer.fromJsonToGraph(json);
+        FloatInputNode restored = loaded.getNodes().stream()
+            .filter(FloatInputNode.class::isInstance)
+            .map(FloatInputNode.class::cast)
+            .findFirst()
+            .orElseThrow();
+        assertEquals(42.0d, restored.getValue(), 0.0d);
+        assertEquals(Double.NEGATIVE_INFINITY, restored.getMinValue(), 0.0d);
+        assertEquals(Double.POSITIVE_INFINITY, restored.getMaxValue(), 0.0d);
     }
 
     @Test

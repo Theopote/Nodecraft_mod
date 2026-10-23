@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PropertyValueSnapshotsTest {
@@ -79,6 +80,21 @@ class PropertyValueSnapshotsTest {
         assertNotSame(center, copiedCenter);
         center.setX(99.0d);
         assertEquals(1.0d, copiedCenter.getX(), 0.0d);
+    }
+
+    @Test
+    void nonFiniteNumbersBecomeNullForJsonSafety() {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> snapshot = (Map<String, Object>) PropertyValueSnapshots.copyNodeState(Map.of(
+            "min", Double.NEGATIVE_INFINITY,
+            "max", Double.POSITIVE_INFINITY,
+            "nan", Double.NaN,
+            "ok", 2.0d
+        ));
+        assertNull(snapshot.get("min"));
+        assertNull(snapshot.get("max"));
+        assertNull(snapshot.get("nan"));
+        assertEquals(2.0d, snapshot.get("ok"));
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.interaction.AreaPreviewStyleSettings;
 import com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager;
@@ -136,13 +137,11 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getSmallPadding();
-        height += ImGui.getTextLineHeightWithSpacing();
-        height += ImGui.getFrameHeight() * 3.0f;
-        height += getSmallPadding();
-        height += ImGui.getTextLineHeightWithSpacing() * 2.0f;
-        height += getSmallPadding();
-        return height;
+        float line = CustomUIMetricsSafe.layoutTextLineHeight();
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float gap = getSmallPadding();
+        // hint + Start/Cancel button + Clear button + Pos1 + Pos2
+        return gap + line + gap + frame + gap + frame + gap + line + line + gap;
     }
 
     @Override

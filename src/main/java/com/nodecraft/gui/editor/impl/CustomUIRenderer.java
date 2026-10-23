@@ -3,6 +3,7 @@ package com.nodecraft.gui.editor.impl;
 import java.util.UUID;
 import com.nodecraft.gui.components.customui.CustomUIEditorContext;
 import com.nodecraft.gui.components.customui.CustomUIImageTextureCache;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.graph.NodeGraph;
 import imgui.ImGui;
@@ -205,10 +206,10 @@ public class CustomUIRenderer {
             // 应用统一的缩放变换
             // 这样 ImGui 控件的所有部分（边框、内边距、交互区域等）都会正确缩放
             float zoom = info.zoom;
-            // 统一做紧凑化，并通过 y 向 frame padding 归一化常见控件高度。
-            float compactFramePaddingFactor = 0.70f;
-            float compactItemSpacingFactor = 0.52f;
-            float compactInnerSpacingFactor = 0.68f;
+            // Compact factors shared with CustomUIMetricsSafe.layout* so height matches draw.
+            float compactFramePaddingFactor = CustomUIMetricsSafe.COMPACT_FRAME_PADDING_FACTOR;
+            float compactItemSpacingFactor = CustomUIMetricsSafe.COMPACT_ITEM_SPACING_FACTOR;
+            float compactInnerSpacingFactor = CustomUIMetricsSafe.COMPACT_INNER_SPACING_FACTOR;
 
             float framePadX = originalFramePaddingX * zoom * compactFramePaddingFactor;
             float framePadY = originalFramePaddingY * zoom * compactFramePaddingFactor;

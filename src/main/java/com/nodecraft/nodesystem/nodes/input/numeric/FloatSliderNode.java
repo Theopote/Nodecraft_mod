@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -74,11 +75,11 @@ public class FloatSliderNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float height = getMediumPadding();
         if (showValueInput) {
-            height += ImGui.getFrameHeight();
+            height += CustomUIMetricsSafe.layoutFrameHeight();
             height += getSmallPadding();
         }
-        height += ImGui.getFrameHeight();
-        height += 1.0f;
+        height += CustomUIMetricsSafe.layoutFrameHeight();
+        height += getSmallPadding();
         return height;
     }
 

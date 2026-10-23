@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.style.MinecraftUITheme;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.ZoomHelper;
@@ -681,8 +682,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     @Override
     protected float calculateUIHeight() {
         // 与 renderCustomUIScaled 布局保持一致；展开区高度必须计入，否则会被节点裁剪
-        float buttonHeight = ImGui.getFrameHeight();
-        float textLine = Math.max(ImGui.getTextLineHeightWithSpacing(), 18f);
+        float buttonHeight = CustomUIMetricsSafe.layoutFrameHeight();
+        float textLine = CustomUIMetricsSafe.layoutTextLineHeight();
         float headerHeight = buttonHeight;
         float smallGap = getSmallPadding();
         float baseHeight = 0f;
@@ -691,7 +692,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         // Source Mode 标签 + combo
         baseHeight += textLine;
-        baseHeight += ImGui.getFrameHeight();
+        baseHeight += buttonHeight;
         baseHeight += smallGap;
         // Active 行
         baseHeight += textLine;

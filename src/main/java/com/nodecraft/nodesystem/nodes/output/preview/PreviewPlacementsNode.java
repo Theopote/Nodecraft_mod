@@ -284,7 +284,7 @@ public class PreviewPlacementsNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        return PreviewStatusPanelWidget.preferredHeight() + getMediumPadding();
+        return PreviewStatusPanelWidget.preferredHeight() + getSmallPadding();
     }
 
     @Override

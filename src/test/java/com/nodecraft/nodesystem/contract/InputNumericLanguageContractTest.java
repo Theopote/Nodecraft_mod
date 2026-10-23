@@ -101,6 +101,31 @@ class InputNumericLanguageContractTest {
     }
 
     @Test
+    void floatInputStateOmitsNonFiniteBoundsForJson() {
+        FloatInputNode node = new FloatInputNode();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> state = (Map<String, Object>) node.getNodeState();
+        assertNull(state.get("min"));
+        assertNull(state.get("max"));
+        assertEquals(0.0d, ((Number) state.get("value")).doubleValue(), 0.0d);
+    }
+
+    @Test
+    void floatInputNullBoundsRestoreToUnbounded() {
+        FloatInputNode node = new FloatInputNode();
+        node.setMinValue(0.0d);
+        node.setMaxValue(10.0d);
+        Map<String, Object> state = new java.util.HashMap<>();
+        state.put("value", 5.0d);
+        state.put("min", null);
+        state.put("max", null);
+        node.setNodeState(state);
+        assertEquals(Double.NEGATIVE_INFINITY, node.getMinValue(), 0.0d);
+        assertEquals(Double.POSITIVE_INFINITY, node.getMaxValue(), 0.0d);
+        assertEquals(5.0d, node.getValue(), 0.0d);
+    }
+
+    @Test
     void floatSliderStateInfinityRemainsFinite() {
         FloatSliderNode node = new FloatSliderNode();
         node.setCurrentValue(12.0d);

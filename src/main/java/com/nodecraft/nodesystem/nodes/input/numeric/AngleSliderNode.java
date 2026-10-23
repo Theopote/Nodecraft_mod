@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -66,11 +67,11 @@ public class AngleSliderNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float height = getMediumPadding();
         if (showRangeInputs) {
-            height += ImGui.getFrameHeight();
-            height += getMediumPadding();
+            height += CustomUIMetricsSafe.layoutFrameHeight();
+            height += getSmallPadding();
         }
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
+        height += CustomUIMetricsSafe.layoutFrameHeight();
+        height += getSmallPadding();
         return height;
     }
 

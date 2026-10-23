@@ -220,7 +220,8 @@ public class LSystemRuleNode extends BaseCustomUINode {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float line = CustomUIMetricsSafe.layoutTextLineHeight();
         float gap = CustomUIMetricsSafe.layoutItemSpacingY();
-        return frame + gap + frame + gap + line + getMediumPadding();
+        // symbol→production row + weight row + Valid label
+        return frame + gap + frame + gap + line + getSmallPadding();
     }
 
     @Override

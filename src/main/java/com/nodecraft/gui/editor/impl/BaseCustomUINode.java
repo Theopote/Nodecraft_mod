@@ -204,11 +204,12 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
-     * Extra logical height reserved so bottom controls are not clipped by the node panel.
-     * CustomUIRenderer applies compact style + font scale that can exceed static estimates.
+     * Extra logical height below custom UI content so controls are not flush with (or clipped by)
+     * the node panel bottom edge. Kept modest — large enough for a clear margin, small enough
+     * to avoid the old oversized empty band ({@code small*2+4}).
      */
     protected float getCustomUIClipSlack() {
-        return getSmallPadding() * 2.0f + 4.0f;
+        return getMediumPadding() + getSmallPadding();
     }
 
     @Override

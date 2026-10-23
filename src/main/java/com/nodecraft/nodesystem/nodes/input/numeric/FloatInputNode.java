@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -71,10 +72,9 @@ public class FloatInputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        return height;
+        return getMediumPadding()
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + getSmallPadding();
     }
 
     @Override
@@ -205,8 +205,9 @@ public class FloatInputNode extends BaseCustomUINode {
     public Object getNodeState() {
         Map<String, Object> state = new HashMap<>();
         state.put("value", value);
-        state.put("min", minValue);
-        state.put("max", maxValue);
+        // Unbounded ±Infinity is not JSON-legal; null means unbounded and restores to ±Infinity.
+        state.put("min", Double.isFinite(minValue) ? minValue : null);
+        state.put("max", Double.isFinite(maxValue) ? maxValue : null);
         state.put("precision", precision);
         state.put("dragSpeed", dragSpeed);
         return state;
@@ -220,13 +221,24 @@ public class FloatInputNode extends BaseCustomUINode {
             }
             refreshPrecisionState();
 
-            if (stateMap.get("min") instanceof Number min) {
-                this.minValue = NumericInputUtils.sanitizeOptionalBound(min.doubleValue(), this.minValue);
+            if (stateMap.containsKey("min")) {
+                Object minObj = stateMap.get("min");
+                if (minObj instanceof Number min) {
+                    this.minValue = NumericInputUtils.sanitizeOptionalBound(min.doubleValue(), this.minValue);
+                } else if (minObj == null) {
+                    this.minValue = Double.NEGATIVE_INFINITY;
+                }
             }
-            if (stateMap.get("max") instanceof Number max) {
-                this.maxValue = NumericInputUtils.sanitizeOptionalBound(max.doubleValue(), this.maxValue);
+            if (stateMap.containsKey("max")) {
+                Object maxObj = stateMap.get("max");
+                if (maxObj instanceof Number max) {
+                    this.maxValue = NumericInputUtils.sanitizeOptionalBound(max.doubleValue(), this.maxValue);
+                } else if (maxObj == null) {
+                    this.maxValue = Double.POSITIVE_INFINITY;
+                }
             }
-            if (Double.compare(this.minValue, this.maxValue) > 0) {
+            if (Double.isFinite(this.minValue) && Double.isFinite(this.maxValue)
+                    && Double.compare(this.minValue, this.maxValue) > 0) {
                 double tmp = this.minValue;
                 this.minValue = this.maxValue;
                 this.maxValue = tmp;

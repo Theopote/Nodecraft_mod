@@ -17,6 +17,7 @@ import com.nodecraft.nodesystem.graph.NodeGraph;
 import com.nodecraft.nodesystem.graph.GraphLoadResult;
 import com.nodecraft.nodesystem.graph.GraphSerializer;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.io.JsonFiniteValues;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -45,7 +46,8 @@ public class ImGuiNodeIO {
      */
     public ImGuiNodeIO(ICanvasEditor editor) {
         this.editor = editor;
-        this.gson = new GsonBuilder().setPrettyPrinting().create();
+        // serializeNulls: node state may use null for unbounded numeric bounds (±Infinity).
+        this.gson = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
         this.defaultSavePath = resolveDefaultSavePath();
     }
 
@@ -110,7 +112,7 @@ public class ImGuiNodeIO {
                 SavedNode savedNode = new SavedNode();
                 savedNode.nodeId = baseNode.getId().toString();
                 savedNode.typeId = registry.resolveCanonicalNodeId(baseNode.getTypeId());
-                savedNode.state = baseNode.getNodeState();
+                savedNode.state = JsonFiniteValues.sanitize(baseNode.getNodeState());
                 savedGraph.nodes.add(savedNode);
             } else {
                 NodeCraft.LOGGER.warn("跳过保存非 BaseNode 节点: {}", node.getId());
@@ -129,15 +131,20 @@ public class ImGuiNodeIO {
 
         // Save positions
         for (Map.Entry<UUID, NodePosition> entry : nodePositions.entrySet()) {
+            float x = entry.getValue().x;
+            float y = entry.getValue().y;
             savedGraph.nodePositions.put(
-                entry.getKey().toString(), 
-                new SavedPosition(entry.getValue().x, entry.getValue().y)
+                entry.getKey().toString(),
+                new SavedPosition(
+                    Float.isFinite(x) ? x : 0.0f,
+                    Float.isFinite(y) ? y : 0.0f
+                )
             );
         }
 
         // Serialize to JSON and write to file
         try {
-            String json = gson.toJson(savedGraph);
+            String json = gson.toJson(JsonFiniteValues.sanitizeGraph(savedGraph));
             Path parent = filePath.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);

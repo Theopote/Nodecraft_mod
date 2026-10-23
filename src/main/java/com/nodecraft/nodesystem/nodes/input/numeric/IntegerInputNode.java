@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.IPort;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -65,10 +66,9 @@ public class IntegerInputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getSmallPadding();
-        return height;
+        return getMediumPadding()
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + getSmallPadding();
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.nodecraft.core.exception.NodeValidationException;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.core.BaseNode;
 import com.nodecraft.nodesystem.io.GraphFormatVersion;
+import com.nodecraft.nodesystem.io.JsonFiniteValues;
 import com.nodecraft.nodesystem.io.SavedConnection;
 import com.nodecraft.nodesystem.io.SavedGraph;
 import com.nodecraft.nodesystem.io.SavedNode;
@@ -38,7 +39,8 @@ record NodeRestoreResult(@Nullable BaseNode node, boolean unknownTypeSkipped) {
 public class GraphSerializer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphSerializer.class);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /** serializeNulls: unbounded FloatInput min/max are stored as null and must round-trip. */
+    private static final Gson GSON = new GsonBuilder().serializeNulls().setPrettyPrinting().create();
 
     private GraphSerializer() {
         // Utility class.
@@ -60,11 +62,16 @@ public class GraphSerializer {
                 SavedNode savedNode = new SavedNode();
                 savedNode.nodeId = baseNode.getId().toString();
                 savedNode.typeId = registry.resolveCanonicalNodeId(baseNode.getTypeId());
-                savedNode.state = baseNode.getNodeState();
+                savedNode.state = JsonFiniteValues.sanitize(baseNode.getNodeState());
                 savedGraph.nodes.add(savedNode);
+                float posX = (float) baseNode.getPositionX();
+                float posY = (float) baseNode.getPositionY();
                 savedGraph.nodePositions.put(
                     savedNode.nodeId,
-                    new SavedPosition((float) baseNode.getPositionX(), (float) baseNode.getPositionY())
+                    new SavedPosition(
+                        Float.isFinite(posX) ? posX : 0.0f,
+                        Float.isFinite(posY) ? posY : 0.0f
+                    )
                 );
             } else {
                 LOGGER.warn("Skipping non-BaseNode while saving: {}", node.getId());
@@ -103,7 +110,7 @@ public class GraphSerializer {
     }
 
     public static String toJson(SavedGraph savedGraph) {
-        return GSON.toJson(savedGraph);
+        return GSON.toJson(JsonFiniteValues.sanitizeGraph(savedGraph));
     }
 
     public static String toJson(NodeGraph graph) {

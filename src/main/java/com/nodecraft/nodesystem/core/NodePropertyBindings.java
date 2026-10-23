@@ -3,6 +3,7 @@ package com.nodecraft.nodesystem.core;
 import com.nodecraft.gui.components.property.core.PropertyConstraints;
 import com.nodecraft.nodesystem.api.INode;
 import com.nodecraft.nodesystem.api.NodeProperty;
+import com.nodecraft.nodesystem.io.JsonFiniteValues;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +50,10 @@ public final class NodePropertyBindings {
         for (NodePropertyBinding binding : bindingsFor(node.getClass())) {
             try {
                 Object value = binding.read(node);
-                if (value != null) {
+                if (value instanceof Number number) {
+                    // Keep key with null for non-finite so JSON/Gson stay valid; restore may treat null as unbounded.
+                    state.put(binding.name(), JsonFiniteValues.sanitizeNumber(number));
+                } else if (value != null) {
                     state.put(binding.name(), value);
                 }
             } catch (Throwable e) {
