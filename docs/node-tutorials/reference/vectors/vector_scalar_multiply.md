@@ -1,0 +1,33 @@
+# Vector Scalar Multiply
+
+| 字段 | 值 |
+|---|---|
+| 节点 ID | `reference.vectors.vector_scalar_multiply` |
+| 分类 | `reference.vectors` |
+| 显示名称 | Vector Scalar Multiply |
+| 效果 | `PURE` |
+
+## 作用
+
+`V * s`。
+
+## 端点
+
+| 方向 | 显示名 | 端口 ID | 类型 |
+|---|---|---|---|
+| 入 | Vector | … | VECTOR |
+| 入 | Scalar | … | DOUBLE |
+| 出 | Scaled Vector | … | VECTOR |
+| 出 | Valid / Error | … | BOOLEAN / STRING |
+
+## 使用步骤
+
+1. 设置面板参数或接上游值。
+2. 把输出接到需要该类型的下游节点。
+
+## 典型接法
+
+```text
+[上游].… ──► [Vector Scalar Multiply].Vector
+[Vector Scalar Multiply].Scaled Vector ──► [下游].…
+```

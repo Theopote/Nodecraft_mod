@@ -1,0 +1,36 @@
+# Float To Double
+
+| 字段 | 值 |
+|---|---|
+| 节点 ID | `input.numeric.float_to_double` |
+| 分类 | `input.numeric` |
+| 显示名称 | Float To Double |
+| 效果 | `PURE` |
+
+## 作用
+
+把有限 `FLOAT` 显式转为 `DOUBLE`。
+
+## 端点
+
+| 方向 | 显示名 | 端口 ID | 类型 |
+|---|---|---|---|
+| 入 | Value | `input_value` | FLOAT |
+| 出 | Value | `output_value` | DOUBLE |
+| 出 | Valid / Error | `output_valid` / `output_error` | BOOLEAN / STRING |
+
+## 使用步骤
+
+1. 设置面板参数或接上游值。
+2. 把输出接到需要该类型的下游节点。
+
+## 典型接法
+
+```text
+[上游].… ──► [Float To Double].Value
+[Float To Double].Value ──► [下游].…
+```
+
+## 注意事项
+
+- 输入须为 exact finite FLOAT；NaN/Inf 失败。
