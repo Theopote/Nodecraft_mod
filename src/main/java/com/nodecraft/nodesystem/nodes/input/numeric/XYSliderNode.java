@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -89,14 +90,14 @@ public class XYSliderNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
-        height += PAD_SIZE;
+        height += PAD_SIZE + itemGap;
         height += getMediumPadding();
-        height += ImGui.getTextLineHeight();
+        height += CustomUIMetricsSafe.layoutTextLineHeight() + itemGap;
         height += getSmallPadding();
         if (showValueInputs) {
-            height += ImGui.getFrameHeight();
-            height += getMediumPadding();
+            height += CustomUIMetricsSafe.layoutFrameHeight() + itemGap;
         }
         return height;
     }
@@ -162,7 +163,6 @@ public class XYSliderNode extends BaseCustomUINode {
                 }
                 interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
                 l.popItemWidth();
-                l.addVerticalSpacing(getMediumPadding());
             }
 
             return interacted || changed;

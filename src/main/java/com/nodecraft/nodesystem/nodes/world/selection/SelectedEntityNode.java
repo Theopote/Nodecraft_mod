@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -267,16 +268,15 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
 
     @Override
     protected float calculateUIHeight() {
-        float frame = ImGui.getFrameHeight();
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float small = getSmallPadding();
 
-        float height = small;
-        height += frame;
+        float height = small + frame + itemGap;
         if (hasPickedUuid()) {
-            height += small;
-            height += frame;
+            height += small + frame + itemGap;
         }
-        height += small;
+        // Bottom inset = node chrome (matches left/right)
         return height;
     }
 
@@ -329,8 +329,6 @@ public class SelectedEntityNode extends BaseCustomUINode implements NodeEditorIn
                     changed = true;
                 }
             }
-
-            addVerticalSpacing(getSmallPadding(), zoom);
         } catch (Exception e) {
             NodeCraft.LOGGER.warn("SelectedEntityNode UI render failed: {}", e.getMessage(), e);
         }

@@ -74,8 +74,7 @@ public class FloatInputNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         return getMediumPadding()
             + CustomUIMetricsSafe.layoutFrameHeight()
-            + CustomUIMetricsSafe.layoutItemSpacingY()
-            + getMediumPadding();
+            + CustomUIMetricsSafe.layoutItemSpacingY();
     }
 
     @Override
@@ -106,7 +105,6 @@ public class FloatInputNode extends BaseCustomUINode {
 
             l.popItemWidth();
             l.popStyleVar();
-            l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }

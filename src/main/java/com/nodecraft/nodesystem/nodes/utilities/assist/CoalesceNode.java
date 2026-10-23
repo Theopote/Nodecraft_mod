@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.utilities.assist;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -100,10 +101,9 @@ public class CoalesceNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        return height;
+        return getMediumPadding()
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + CustomUIMetricsSafe.layoutItemSpacingY();
     }
 
     @Override
@@ -155,8 +155,6 @@ public class CoalesceNode extends BaseCustomUINode {
                 ImGui.sameLine();
                 ImGui.textDisabled("(2-8)");
             }
-
-            l.addVerticalSpacing(getMediumPadding());
             return changed;
         });
     }

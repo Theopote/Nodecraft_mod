@@ -79,7 +79,7 @@ public class FloatSliderNode extends BaseCustomUINode {
         if (showValueInput) {
             height += frame + itemGap + getSmallPadding();
         }
-        height += frame + itemGap + getMediumPadding();
+        height += frame + itemGap;
         return height;
     }
 

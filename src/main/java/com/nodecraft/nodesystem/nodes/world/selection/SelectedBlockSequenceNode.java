@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.world.selection;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.core.NodeCraft;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -344,18 +345,15 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
     @Override
     protected float calculateUIHeight() {
-        float frame = ImGui.getFrameHeight();
-        float text = ImGui.getTextLineHeightWithSpacing();
-        float buttonGap = 0.5f;
-        float topMargin = getSmallPadding();
-        float bottomMargin = getSmallPadding();
-
-        float height = topMargin;
-        height += text;
-        height += frame * 3.0f; // Start/Stop + Remove Last + Clear Sequence
-        height += buttonGap * 2.0f;
-        height += bottomMargin;
-        return height;
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        float text = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
+        float gap = getSmallPadding();
+        // status + 3 buttons; bottom inset = node chrome (matches left/right)
+        return gap + text
+            + frame + itemGap + gap
+            + frame + itemGap + gap
+            + frame + itemGap;
     }
 
     @Override
@@ -430,7 +428,6 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 clearSequence();
                 changed = true;
             }
-            layout.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }

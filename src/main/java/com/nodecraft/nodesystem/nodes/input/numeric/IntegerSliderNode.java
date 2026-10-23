@@ -79,7 +79,7 @@ public class IntegerSliderNode extends BaseCustomUINode {
             height += frame + itemGap + getMediumPadding();
         }
 
-        height += frame + itemGap + getMediumPadding();
+        height += frame + itemGap;
         return height;
     }
 
@@ -149,8 +149,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
             }
             interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
             l.popItemWidth();
-
-            l.addVerticalSpacing(getMediumPadding());
             return interacted || changed;
         });
     }

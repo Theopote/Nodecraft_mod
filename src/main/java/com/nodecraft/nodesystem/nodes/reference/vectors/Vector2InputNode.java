@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.reference.vectors;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -61,11 +62,11 @@ public class Vector2InputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight() * 2;
-        height += getSmallPadding();
-        height += getSmallPadding();
-        return height;
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        float gap = getSmallPadding();
+        // top + X + gap + Y; bottom inset = node chrome (matches left/right)
+        return getMediumPadding() + frame + itemGap + gap + frame + itemGap;
     }
 
     @Override
@@ -86,8 +87,6 @@ public class Vector2InputNode extends BaseCustomUINode {
             changed |= renderComponentInput("X", availableWidth, l, getResolvedX(), this::setX, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
             changed |= renderComponentInput("Y", availableWidth, l, getResolvedY(), this::setY, baseCursorX, edgeMargin);
-
-            l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }

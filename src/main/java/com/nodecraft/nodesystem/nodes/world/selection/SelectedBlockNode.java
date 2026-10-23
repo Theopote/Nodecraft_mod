@@ -751,8 +751,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
             baseHeight += smallGap;
             baseHeight += buttonHeight + itemGap; // 底部 Clear Selection
         }
-
-        baseHeight += getMediumPadding();
+        // Bottom inset = node chrome (matches left/right)
         return baseHeight;
     }
 

@@ -98,12 +98,11 @@ public class FilePathInputNode extends BaseCustomUINode {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float gap = getSmallPadding();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
-        // Matches render: top medium + 3 frames (each followed by ImGui item gap) + explicit gaps + bottom medium
+        // Bottom inset = node chrome (same as left/right). No trailing content padding.
         return getMediumPadding()
             + frame + itemGap + gap
             + frame + itemGap + gap
-            + frame + itemGap
-            + getMediumPadding();
+            + frame + itemGap;
     }
 
     @Override
@@ -149,8 +148,6 @@ public class FilePathInputNode extends BaseCustomUINode {
                 setSelectedPath("");
                 changed = true;
             }
-
-            l.addVerticalSpacing(getMediumPadding());
             return changed;
         });
     }

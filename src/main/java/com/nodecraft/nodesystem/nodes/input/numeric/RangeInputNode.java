@@ -77,11 +77,9 @@ public class RangeInputNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
-        // top medium + Start + gap + End + bottom medium (matches render)
         return getMediumPadding()
             + frame + itemGap + getSmallPadding()
-            + frame + itemGap
-            + getMediumPadding();
+            + frame + itemGap;
     }
 
     @Override
@@ -102,8 +100,6 @@ public class RangeInputNode extends BaseCustomUINode {
             changed |= renderBoundInput("Start", availableWidth, l, start, this::setStart, baseCursorX, edgeMargin);
             l.addVerticalSpacing(getSmallPadding());
             changed |= renderBoundInput("End", availableWidth, l, end, this::setEnd, baseCursorX, edgeMargin);
-
-            l.addVerticalSpacing(getMediumPadding());
             return changed;
         });
     }

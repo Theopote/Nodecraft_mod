@@ -1,6 +1,7 @@
 package com.nodecraft.nodesystem.nodes.input.type_selectors;
 
 import com.nodecraft.core.NodeCraft;
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.layout.ImGuiChildScope;
 import com.nodecraft.nodesystem.api.NodeDataType;
@@ -163,10 +164,10 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight();
-        height += getMediumPadding();
-        return height;
+        // Bottom inset comes from node chrome (NODE_HORIZONTAL_PADDING), matching left/right.
+        return getMediumPadding()
+            + CustomUIMetricsSafe.layoutFrameHeight()
+            + CustomUIMetricsSafe.layoutItemSpacingY();
     }
 
     @Override
@@ -201,8 +202,7 @@ abstract class AbstractRegistryTypeSelectorNode extends BaseCustomUINode {
                 if (renderPickerPopup()) {
                     changed = true;
                 }
-
-                layoutHelper.addVerticalSpacing(getMediumPadding());
+                // No trailing content padding — node chrome matches left/right inset.
             } catch (Exception e) {
                 NodeCraft.LOGGER.warn("{} UI render failed: {}", getClass().getSimpleName(), e.getMessage());
             }

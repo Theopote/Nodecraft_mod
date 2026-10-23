@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.reference.points;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.nodesystem.api.NodeDataType;
 import com.nodecraft.nodesystem.api.NodeEffect;
@@ -74,11 +75,13 @@ public class CoordinateInputNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float height = getMediumPadding();
-        height += ImGui.getFrameHeight() * 3;
-        height += getSmallPadding() * 2;
-        height += getSmallPadding();
-        return height;
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        float gap = getSmallPadding();
+        return getMediumPadding()
+            + frame + itemGap + gap
+            + frame + itemGap + gap
+            + frame + itemGap;
     }
 
     @Override
@@ -104,8 +107,6 @@ public class CoordinateInputNode extends BaseCustomUINode {
             l.addVerticalSpacing(getSmallPadding());
             changed |= renderComponentInput("Z", INPUT_Z_ID, getResolvedZ(), this::setZ,
                 availableWidth, baseCursorX, edgeMargin);
-
-            l.addVerticalSpacing(getSmallPadding());
             return changed;
         });
     }

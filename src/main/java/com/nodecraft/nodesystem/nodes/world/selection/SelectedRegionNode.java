@@ -141,12 +141,11 @@ public class SelectedRegionNode extends BaseCustomUINode {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float gap = getSmallPadding();
-        // hint + Start/Cancel + Clear + Pos1 + Pos2 + bottom margin
+        // hint + Start/Cancel + Clear + Pos1 + Pos2; bottom inset = node chrome
         return gap + line + gap
             + frame + itemGap + gap
             + frame + itemGap + gap
-            + line + line
-            + getMediumPadding();
+            + line + line;
     }
 
     @Override

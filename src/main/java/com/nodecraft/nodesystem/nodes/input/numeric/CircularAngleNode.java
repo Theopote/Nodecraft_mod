@@ -1,5 +1,6 @@
 package com.nodecraft.nodesystem.nodes.input.numeric;
 
+import com.nodecraft.gui.components.customui.CustomUIMetricsSafe;
 import com.nodecraft.gui.editor.impl.BaseCustomUINode;
 import com.nodecraft.gui.editor.impl.DirectDrawInteraction;
 import com.nodecraft.nodesystem.api.IPort;
@@ -108,14 +109,14 @@ public class CircularAngleNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
-        height += DIAL_SIZE;
+        height += DIAL_SIZE + itemGap;
         height += getMediumPadding();
-        height += ImGui.getTextLineHeight();
+        height += CustomUIMetricsSafe.layoutTextLineHeight() + itemGap;
         height += getSmallPadding();
         if (showValueInput) {
-            height += ImGui.getFrameHeight();
-            height += getMediumPadding();
+            height += CustomUIMetricsSafe.layoutFrameHeight() + itemGap;
         }
         return height;
     }
@@ -178,7 +179,6 @@ public class CircularAngleNode extends BaseCustomUINode {
                     changed = true;
                 }
                 l.popItemWidth();
-                l.addVerticalSpacing(getMediumPadding());
             }
 
             return changed;

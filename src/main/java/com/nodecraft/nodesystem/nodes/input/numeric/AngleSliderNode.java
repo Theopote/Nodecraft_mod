@@ -71,7 +71,7 @@ public class AngleSliderNode extends BaseCustomUINode {
         if (showRangeInputs) {
             height += frame + itemGap + getMediumPadding();
         }
-        height += frame + itemGap + getMediumPadding();
+        height += frame + itemGap;
         return height;
     }
 
@@ -113,8 +113,6 @@ public class AngleSliderNode extends BaseCustomUINode {
                 changed = true;
             }
             l.popItemWidth();
-            l.addVerticalSpacing(getMediumPadding());
-
             return changed;
         });
     }

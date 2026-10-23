@@ -204,12 +204,15 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
-     * Guaranteed inset below the last custom-UI control so widgets are never flush with the
-     * node panel border. Sized for a clear margin; per-node {@link #calculateUIHeight()} should
-     * still match rendered rows (this slack is the safety net, not the only padding).
+     * Empty space reserved <em>after</em> {@link #calculateUIHeight()} content, inside the custom-UI
+     * region. Equals the left/right inset of custom UI from the node border
+     * ({@link NodeRenderConstants#NODE_HORIZONTAL_PADDING}) plus the usual content edge margin
+     * ({@link #getSmallPadding()}), so the gap from the last control to the bottom border matches
+     * the gap from controls to the side borders. Kept in height (not only as outer chrome) so
+     * slight content underestimates cannot eat the margin.
      */
     protected float getCustomUIClipSlack() {
-        return getLargePadding() + getMediumPadding();
+        return NodeRenderConstants.NODE_HORIZONTAL_PADDING + getSmallPadding();
     }
 
     @Override
