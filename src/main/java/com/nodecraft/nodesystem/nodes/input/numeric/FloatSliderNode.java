@@ -75,7 +75,8 @@ public class FloatSliderNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
-        float height = getMediumPadding();
+        // Render has no top medium pad — only optional value row + slider
+        float height = 0.0f;
         if (showValueInput) {
             height += frame + itemGap + getSmallPadding();
         }

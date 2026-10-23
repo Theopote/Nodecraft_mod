@@ -65,7 +65,7 @@ public class Vector2InputNode extends BaseCustomUINode {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float gap = getSmallPadding();
-        // top + X + gap + Y; bottom inset = node chrome (matches left/right)
+        // top + X + gap + Y; bottom inset from BaseCustomUINode
         return getMediumPadding() + frame + itemGap + gap + frame + itemGap;
     }
 

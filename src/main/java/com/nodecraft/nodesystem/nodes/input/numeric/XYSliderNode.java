@@ -90,14 +90,15 @@ public class XYSliderNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        // Match render: medium + pad + medium + label + small + optional inputs
         float height = getMediumPadding();
-        height += PAD_SIZE + itemGap;
+        height += PAD_SIZE;
         height += getMediumPadding();
-        height += CustomUIMetricsSafe.layoutTextLineHeight() + itemGap;
+        height += CustomUIMetricsSafe.layoutTextLineHeight();
         height += getSmallPadding();
         if (showValueInputs) {
-            height += CustomUIMetricsSafe.layoutFrameHeight() + itemGap;
+            height += CustomUIMetricsSafe.layoutFrameHeight()
+                + CustomUIMetricsSafe.layoutItemSpacingY();
         }
         return height;
     }

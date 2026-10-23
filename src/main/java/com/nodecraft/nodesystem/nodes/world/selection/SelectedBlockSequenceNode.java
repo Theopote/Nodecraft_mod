@@ -348,11 +348,11 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float text = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
-        float gap = getSmallPadding();
-        // status + 3 buttons; bottom inset = node chrome (matches left/right)
-        return gap + text
-            + frame + itemGap + gap
-            + frame + itemGap + gap
+        float top = getSmallPadding();
+        // Match render gaps (0.35 / 0.5); bottom inset from BaseCustomUINode
+        return top + text + 0.35f
+            + frame + itemGap + 0.5f
+            + frame + itemGap + 0.5f
             + frame + itemGap;
     }
 

@@ -98,7 +98,7 @@ public class FilePathInputNode extends BaseCustomUINode {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float gap = getSmallPadding();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
-        // Bottom inset = node chrome (same as left/right). No trailing content padding.
+        // path + Open combo + Browse/Clear; bottom inset from BaseCustomUINode
         return getMediumPadding()
             + frame + itemGap + gap
             + frame + itemGap + gap

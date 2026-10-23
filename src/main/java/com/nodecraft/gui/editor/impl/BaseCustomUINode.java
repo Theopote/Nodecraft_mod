@@ -204,15 +204,21 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
-     * Empty space reserved <em>after</em> {@link #calculateUIHeight()} content, inside the custom-UI
-     * region. Equals the left/right inset of custom UI from the node border
-     * ({@link NodeRenderConstants#NODE_HORIZONTAL_PADDING}) plus the usual content edge margin
-     * ({@link #getSmallPadding()}), so the gap from the last control to the bottom border matches
-     * the gap from controls to the side borders. Kept in height (not only as outer chrome) so
-     * slight content underestimates cannot eat the margin.
+     * Visible empty space after the last custom-UI control, matching the left/right inset
+     * from the node border to content ({@link NodeRenderConstants#NODE_HORIZONTAL_PADDING}
+     * + {@link #getSmallPadding()} content edge). Drawn by {@link #renderCustomUI} so every
+     * node gets the same bottom gap without relying on each subclass to pad itself.
+     */
+    protected float getCustomUIBottomInset() {
+        return NodeRenderConstants.NODE_HORIZONTAL_PADDING + getSmallPadding();
+    }
+
+    /**
+     * Extra height after {@link #calculateUIHeight()} content: bottom inset plus a small safety
+     * band so modest height underestimates cannot eat the visible margin.
      */
     protected float getCustomUIClipSlack() {
-        return NodeRenderConstants.NODE_HORIZONTAL_PADDING + getSmallPadding();
+        return getCustomUIBottomInset() + getMediumPadding();
     }
 
     @Override
@@ -335,6 +341,10 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
         try {
             // 调用子类实现的缩放感知渲染方法
             boolean interacted = renderCustomUIScaled(width, height, zoom);
+
+            // Uniform bottom inset for every custom-UI node (same as left/right gap to the border).
+            // Reserved in getCustomUIClipSlack(); subclasses should not add their own trailing pad.
+            addVerticalSpacing(getCustomUIBottomInset(), zoom);
 
             // 兜底：若节点在自定义UI区域内发生点击交互，自动失效尺寸缓存。
             // 这可覆盖子类遗漏 markDirty() 的场景（例如展开/收起设置面板）。

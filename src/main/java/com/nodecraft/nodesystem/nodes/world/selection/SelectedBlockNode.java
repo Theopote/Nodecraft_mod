@@ -685,7 +685,8 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         float buttonHeight = CustomUIMetricsSafe.layoutFrameHeight();
         float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float textLine = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
-        float headerHeight = buttonHeight + itemGap;
+        // CollapsingHeader is a bit taller than a bare frame in compact style.
+        float collapsingHeader = buttonHeight + itemGap + getSmallPadding();
         float smallGap = getSmallPadding();
         float baseHeight = 0f;
 
@@ -719,39 +720,37 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         ActiveBlock activeBlock = resolveActiveBlock();
         if (resolveActiveSource() != ActiveSource.NONE && activeBlock != null) {
-            baseHeight += smallGap;
-            baseHeight += headerHeight; // 「已选位置」折叠头
+            baseHeight += collapsingHeader;
             if (infoSectionExpanded) {
                 baseHeight += smallGap;
-                // 来源 / 位置
                 baseHeight += textLine * 2;
                 baseHeight += smallGap;
                 baseHeight += 1f; // separator
                 baseHeight += smallGap;
-                baseHeight += buttonHeight; // 区内清除按钮
+                baseHeight += buttonHeight + itemGap;
                 baseHeight += smallGap;
             }
         }
 
         // Advanced Settings
-        baseHeight += headerHeight;
+        baseHeight += collapsingHeader;
         if (settingsSectionExpanded) {
             baseHeight += smallGap;
-            baseHeight += textLine * 2; // 状态说明（可能换行）
+            baseHeight += textLine * 2;
             baseHeight += smallGap;
-            baseHeight += textLine; // 方块预览
-            baseHeight += textLine; // 包含流体
-            baseHeight += textLine; // 最大距离标签
-            baseHeight += 2f;
-            baseHeight += ImGui.getFrameHeight(); // 滑条
+            baseHeight += textLine;
+            baseHeight += textLine;
+            baseHeight += textLine;
+            baseHeight += smallGap;
+            baseHeight += buttonHeight + itemGap;
             baseHeight += smallGap;
         }
 
         if (hasPickedBlock || hasInputBlock) {
             baseHeight += smallGap;
-            baseHeight += buttonHeight + itemGap; // 底部 Clear Selection
+            baseHeight += buttonHeight + itemGap;
         }
-        // Bottom inset = node chrome (matches left/right)
+        // Bottom inset drawn by BaseCustomUINode.renderCustomUI
         return baseHeight;
     }
 

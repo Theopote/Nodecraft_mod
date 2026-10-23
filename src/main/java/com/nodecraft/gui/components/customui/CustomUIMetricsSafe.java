@@ -15,7 +15,7 @@ public final class CustomUIMetricsSafe {
      * {@link com.nodecraft.gui.editor.impl.CustomUIRenderer} compact style at zoom 1
      * (not the editor chrome's uncompacted {@link ImGui#getFrameHeight()}).
      */
-    public static final float FALLBACK_FRAME_HEIGHT = 22.0f;
+    public static final float FALLBACK_FRAME_HEIGHT = 24.0f;
     /** Typical default text line height when ImGui context is unavailable. */
     public static final float FALLBACK_TEXT_LINE_HEIGHT = 16.0f;
     /**
