@@ -204,12 +204,12 @@ public abstract class BaseCustomUINode extends BaseNode implements ICustomUINode
     }
 
     /**
-     * Extra logical height below custom UI content so controls are not flush with (or clipped by)
-     * the node panel bottom edge. Kept modest — large enough for a clear margin, small enough
-     * to avoid the old oversized empty band ({@code small*2+4}).
+     * Guaranteed inset below the last custom-UI control so widgets are never flush with the
+     * node panel border. Sized for a clear margin; per-node {@link #calculateUIHeight()} should
+     * still match rendered rows (this slack is the safety net, not the only padding).
      */
     protected float getCustomUIClipSlack() {
-        return getMediumPadding() + getSmallPadding();
+        return getLargePadding() + getMediumPadding();
     }
 
     @Override

@@ -180,9 +180,8 @@ public final class NodeVisualLayout {
             width = Math.max(width, metrics.minWidth() + 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
         }
         float regionTop = base.height();
-        // Bottom chrome inset — vertical padding keeps a visible gap under custom UI without the
-        // old horizontal-padding-sized empty band.
-        float height = base.height() + metrics.height() + NodeRenderConstants.NODE_VERTICAL_PADDING;
+        // Match side chrome inset so the panel keeps a visible gap under custom UI.
+        float height = base.height() + metrics.height() + NodeRenderConstants.NODE_HORIZONTAL_PADDING;
 
         return new Result(
                 width,

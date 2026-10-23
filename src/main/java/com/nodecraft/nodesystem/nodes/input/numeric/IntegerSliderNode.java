@@ -71,15 +71,15 @@ public class IntegerSliderNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
 
         if (!compact && showValueInput) {
-            height += CustomUIMetricsSafe.layoutFrameHeight();
-            height += getSmallPadding();
+            height += frame + itemGap + getMediumPadding();
         }
 
-        height += CustomUIMetricsSafe.layoutFrameHeight();
-        height += getSmallPadding();
+        height += frame + itemGap + getMediumPadding();
         return height;
     }
 
@@ -149,8 +149,6 @@ public class IntegerSliderNode extends BaseCustomUINode {
             }
             interacted |= ImGui.isItemHovered() || ImGui.isItemActive();
             l.popItemWidth();
-
-            l.addVerticalSpacing(getMediumPadding());
 
             l.addVerticalSpacing(getMediumPadding());
             return interacted || changed;

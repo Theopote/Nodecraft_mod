@@ -136,6 +136,14 @@ public final class CustomUIMetricsSafe {
     }
 
     /**
+     * Text line + trailing item spacing — use when a label/status row advances the cursor
+     * like ImGui {@code GetTextLineHeightWithSpacing()}.
+     */
+    public static float layoutTextLineHeightWithSpacing() {
+        return layoutTextLineHeight() + layoutItemSpacingY();
+    }
+
+    /**
      * Vertical gap between widget rows for {@code calculateUIHeight()}.
      * Compact baseline — not live uncompacted {@code ItemSpacing.y}.
      */

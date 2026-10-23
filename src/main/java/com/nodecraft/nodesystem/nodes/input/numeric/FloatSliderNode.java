@@ -73,13 +73,13 @@ public class FloatSliderNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
         if (showValueInput) {
-            height += CustomUIMetricsSafe.layoutFrameHeight();
-            height += getSmallPadding();
+            height += frame + itemGap + getSmallPadding();
         }
-        height += CustomUIMetricsSafe.layoutFrameHeight();
-        height += getSmallPadding();
+        height += frame + itemGap + getMediumPadding();
         return height;
     }
 

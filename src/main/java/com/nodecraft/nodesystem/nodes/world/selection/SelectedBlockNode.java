@@ -683,8 +683,9 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
     protected float calculateUIHeight() {
         // 与 renderCustomUIScaled 布局保持一致；展开区高度必须计入，否则会被节点裁剪
         float buttonHeight = CustomUIMetricsSafe.layoutFrameHeight();
-        float textLine = CustomUIMetricsSafe.layoutTextLineHeight();
-        float headerHeight = buttonHeight;
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        float textLine = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
+        float headerHeight = buttonHeight + itemGap;
         float smallGap = getSmallPadding();
         float baseHeight = 0f;
 
@@ -692,7 +693,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         // Source Mode 标签 + combo
         baseHeight += textLine;
-        baseHeight += buttonHeight;
+        baseHeight += buttonHeight + itemGap;
         baseHeight += smallGap;
         // Active 行
         baseHeight += textLine;
@@ -703,7 +704,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         baseHeight += smallGap;
 
         // 拾取按钮
-        baseHeight += buttonHeight;
+        baseHeight += buttonHeight + itemGap;
 
         NodeEditorInteractionManager interactionManager = NodeEditorInteractionManager.getInstance();
         if (interactionManager.isPendingBlockPick(getId().toString())) {
@@ -748,10 +749,10 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
 
         if (hasPickedBlock || hasInputBlock) {
             baseHeight += smallGap;
-            baseHeight += buttonHeight; // 底部 Clear Selection
+            baseHeight += buttonHeight + itemGap; // 底部 Clear Selection
         }
 
-        baseHeight += smallGap;
+        baseHeight += getMediumPadding();
         return baseHeight;
     }
 

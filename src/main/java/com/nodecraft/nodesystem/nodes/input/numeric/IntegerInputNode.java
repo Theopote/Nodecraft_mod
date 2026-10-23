@@ -68,7 +68,8 @@ public class IntegerInputNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         return getMediumPadding()
             + CustomUIMetricsSafe.layoutFrameHeight()
-            + getSmallPadding();
+            + CustomUIMetricsSafe.layoutItemSpacingY()
+            + getMediumPadding();
     }
 
     @Override

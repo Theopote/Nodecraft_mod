@@ -137,11 +137,16 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
-        float line = CustomUIMetricsSafe.layoutTextLineHeight();
+        float line = CustomUIMetricsSafe.layoutTextLineHeightWithSpacing();
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float gap = getSmallPadding();
-        // hint + Start/Cancel button + Clear button + Pos1 + Pos2
-        return gap + line + gap + frame + gap + frame + gap + line + line + gap;
+        // hint + Start/Cancel + Clear + Pos1 + Pos2 + bottom margin
+        return gap + line + gap
+            + frame + itemGap + gap
+            + frame + itemGap + gap
+            + line + line
+            + getMediumPadding();
     }
 
     @Override

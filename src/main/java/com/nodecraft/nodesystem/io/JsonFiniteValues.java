@@ -24,7 +24,6 @@ public final class JsonFiniteValues {
      * Deep-copies {@code value}, replacing non-finite {@link Double}/{@link Float} with {@code null}.
      * Other values are returned as-is when already JSON-safe (no structural copy needed).
      */
-    @SuppressWarnings("unchecked")
     public static @Nullable Object sanitize(@Nullable Object value) {
         return sanitize(value, new IdentityHashMap<>());
     }
@@ -70,16 +69,12 @@ public final class JsonFiniteValues {
 
     /** JSON-safe number: finite Double/Float unchanged; non-finite → {@code null}; other Number unchanged. */
     public static @Nullable Object sanitizeNumber(@Nullable Number number) {
-        if (number == null) {
-            return null;
-        }
-        if (number instanceof Double d) {
-            return Double.isFinite(d) ? d : null;
-        }
-        if (number instanceof Float f) {
-            return Float.isFinite(f) ? f : null;
-        }
-        return number;
+        return switch (number) {
+            case null -> null;
+            case Double d -> Double.isFinite(d) ? d : null;
+            case Float f -> Float.isFinite(f) ? f : null;
+            default -> number;
+        };
     }
 
     private static @Nullable Object sanitize(@Nullable Object value, IdentityHashMap<Object, Object> seen) {

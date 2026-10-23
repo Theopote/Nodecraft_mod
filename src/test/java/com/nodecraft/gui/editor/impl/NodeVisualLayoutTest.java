@@ -172,7 +172,7 @@ class NodeVisualLayoutTest {
         assertTrue(icon.hasCustomUI());
         assertEquals(48f, text.customUIHeight(), 0.01f);
         assertEquals(textBase.height(), text.customUIRegionTop(), 0.01f);
-        assertEquals(textBase.height() + 48f + NodeRenderConstants.NODE_VERTICAL_PADDING,
+        assertEquals(textBase.height() + 48f + NodeRenderConstants.NODE_HORIZONTAL_PADDING,
                 text.height(), 0.01f);
         assertTrue(text.width() >= 200f + 2f * NodeRenderConstants.NODE_HORIZONTAL_PADDING);
         assertTrue(icon.height() > icon.headerHeight());

@@ -363,7 +363,6 @@ public class CreateBlockPaletteNode extends BaseCustomUINode {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void setNodeState(Object state) {
         if (!(state instanceof Map<?, ?> map)) {
             return;

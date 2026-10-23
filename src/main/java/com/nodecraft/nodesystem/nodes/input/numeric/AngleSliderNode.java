@@ -65,13 +65,13 @@ public class AngleSliderNode extends BaseCustomUINode {
 
     @Override
     protected float calculateUIHeight() {
+        float frame = CustomUIMetricsSafe.layoutFrameHeight();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
         float height = getMediumPadding();
         if (showRangeInputs) {
-            height += CustomUIMetricsSafe.layoutFrameHeight();
-            height += getSmallPadding();
+            height += frame + itemGap + getMediumPadding();
         }
-        height += CustomUIMetricsSafe.layoutFrameHeight();
-        height += getSmallPadding();
+        height += frame + itemGap + getMediumPadding();
         return height;
     }
 

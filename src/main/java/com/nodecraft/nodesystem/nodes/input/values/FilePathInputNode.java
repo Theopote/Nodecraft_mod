@@ -97,8 +97,13 @@ public class FilePathInputNode extends BaseCustomUINode {
     protected float calculateUIHeight() {
         float frame = CustomUIMetricsSafe.layoutFrameHeight();
         float gap = getSmallPadding();
-        // path field + Open combo + Browse/Clear row
-        return getMediumPadding() + frame + gap + frame + gap + frame + getSmallPadding();
+        float itemGap = CustomUIMetricsSafe.layoutItemSpacingY();
+        // Matches render: top medium + 3 frames (each followed by ImGui item gap) + explicit gaps + bottom medium
+        return getMediumPadding()
+            + frame + itemGap + gap
+            + frame + itemGap + gap
+            + frame + itemGap
+            + getMediumPadding();
     }
 
     @Override

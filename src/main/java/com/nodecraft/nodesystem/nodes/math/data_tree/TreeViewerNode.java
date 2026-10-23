@@ -10,7 +10,6 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.datatypes.DataTreeData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
-import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
