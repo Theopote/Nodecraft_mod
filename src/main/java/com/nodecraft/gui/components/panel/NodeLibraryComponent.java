@@ -44,6 +44,8 @@ public class NodeLibraryComponent implements EditorComponent {
 
     private static final NodeCategoryPresentationMapper PRESENTATION_MAPPER = new NodeCategoryPresentationMapper();
     private static final boolean SHOW_DEPRECATED_NODES = false;
+    /** Approximate character width for hover tooltip text wrapping. */
+    private static final float TOOLTIP_WRAP_CHARS = 35.0f;
 
     // Inner record for display purposes
     private record DisplayCategory(CategoryPresentation presentation, List<NodeInfo> displayNodes) {
@@ -947,32 +949,37 @@ public class NodeLibraryComponent implements EditorComponent {
 
         if (ImGui.isItemHovered()) {
             ImGui.beginTooltip();
+            // Explicit wrap width: without this, TextWrapped uses ContentRegionAvail on the
+            // tooltip's first frame (often ~0), so text wraps per-glyph into a tall flash.
+            ImGui.pushTextWrapPos(ImGui.getFontSize() * TOOLTIP_WRAP_CHARS);
+            try {
+                float tooltipIconSize = ImGui.getTextLineHeight() * 1.2f;
+                ImVec2 tooltipPos = ImGui.getCursorScreenPos();
 
-            float tooltipIconSize = ImGui.getTextLineHeight() * 1.2f;
-            ImVec2 tooltipPos = ImGui.getCursorScreenPos();
+                ImDrawList tooltipDrawList = ImGui.getWindowDrawList();
+                drawNodeIcon(tooltipDrawList, tooltipPos, node, nodeCategory, tooltipIconSize);
 
-            ImDrawList tooltipDrawList = ImGui.getWindowDrawList();
-            drawNodeIcon(tooltipDrawList, tooltipPos, node, nodeCategory, tooltipIconSize);
+                ImGui.dummy(tooltipIconSize, tooltipIconSize);
+                ImGui.sameLine();
+                ImGui.textUnformatted(node.getDisplayName());
 
-            ImGui.dummy(tooltipIconSize, tooltipIconSize);
-            ImGui.sameLine();
-            ImGui.textUnformatted(node.getDisplayName());
+                ImGui.text(node.getId());
 
-            ImGui.text(node.getId());
+                String description = node.getDescription() != null ? node.getDescription() : "";
+                if (!description.isEmpty()) {
+                    ImGui.separator();
+                    ImGui.textWrapped(description);
+                }
 
-            String description = node.getDescription() != null ? node.getDescription() : "";
-            if (!description.isEmpty()) {
                 ImGui.separator();
-                ImGui.textWrapped(description);
+                ImGui.text("Category: " + categoryDisplayName);
+                ImGui.textDisabled(NodeFavoritesStore.isFavorite(node.getId())
+                        ? "Favorite · right-click to remove"
+                        : "Right-click to add to Favorites");
+            } finally {
+                ImGui.popTextWrapPos();
+                ImGui.endTooltip();
             }
-
-            ImGui.separator();
-            ImGui.text("Category: " + categoryDisplayName);
-            ImGui.textDisabled(NodeFavoritesStore.isFavorite(node.getId())
-                    ? "Favorite · right-click to remove"
-                    : "Right-click to add to Favorites");
-
-            ImGui.endTooltip();
         }
 
         if (ImGui.beginPopupContextItem("node_fav_ctx_" + node.getId())) {
