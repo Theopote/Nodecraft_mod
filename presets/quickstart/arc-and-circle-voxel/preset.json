@@ -1,0 +1,369 @@
+{
+  "preset_id": "quickstart.arc_and_circle_voxel",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "Arc & Circle Voxelize",
+    "name_i18n": {
+      "zh_CN": "圆弧与圆圈体素化",
+      "en_US": "Arc & Circle Voxelize"
+    },
+    "description": "Build a quarter arc and a full circle, voxelize both paths, and preview blocks.",
+    "description_i18n": {
+      "zh_CN": "建造圆弧与圆圈，体素化路径并预览方块。",
+      "en_US": "Build a quarter arc and a full circle, voxelize both paths, and preview blocks."
+    },
+    "author": "NodeCraft Team",
+    "tags": [
+      "arc",
+      "circle",
+      "voxelize",
+      "quickstart"
+    ],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 15
+  },
+  "thumbnails": {
+    "main": "",
+    "previews": []
+  },
+  "parameters": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_arc_start",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 260.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_arc_end",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 480.0
+        },
+        "parameters": {
+          "value": {
+            "value": 90.0
+          }
+        }
+      },
+      {
+        "id": "node_arc",
+        "type": "geometry.curves.arc",
+        "position": {
+          "x": 320.0,
+          "y": 570.0
+        },
+        "parameters": {
+          "defaultRadius": {
+            "value": 6.0
+          },
+          "defaultSamples": {
+            "value": 24
+          }
+        }
+      },
+      {
+        "id": "node_circle",
+        "type": "geometry.profiles.circle_profile",
+        "position": {
+          "x": 320.0,
+          "y": 390.0
+        },
+        "parameters": {
+          "radius": {
+            "value": 8.0
+          },
+          "segments": {
+            "value": 32
+          }
+        }
+      },
+      {
+        "id": "node_voxelize_arc",
+        "type": "geometry.curves.voxelize_curve",
+        "position": {
+          "x": 640.0,
+          "y": 570.0
+        },
+        "parameters": {
+          "defaultRadius": {
+            "value": 0.6
+          },
+          "fillTube": {
+            "value": true
+          },
+          "capEnds": {
+            "value": true
+          }
+        }
+      },
+      {
+        "id": "node_voxelize_circle",
+        "type": "geometry.curves.voxelize_curve",
+        "position": {
+          "x": 640.0,
+          "y": 390.0
+        },
+        "parameters": {
+          "defaultRadius": {
+            "value": 0.6
+          },
+          "fillTube": {
+            "value": true
+          },
+          "capEnds": {
+            "value": true
+          }
+        }
+      },
+      {
+        "id": "node_material_arc",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 960.0,
+          "y": 570.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_circle",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 960.0,
+          "y": 750.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_block_arc",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 700.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:smooth_stone"
+          }
+        }
+      },
+      {
+        "id": "node_block_circle",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 920.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:gold_block"
+          }
+        }
+      },
+      {
+        "id": "node_preview_arc",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1280.0,
+          "y": 390.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_circle",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1280.0,
+          "y": 570.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_arc_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 390.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_circle_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 210.0
+        },
+        "parameters": {}
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_arc",
+          "port": "input_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc_start",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_arc",
+          "port": "input_start_angle"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc_end",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_arc",
+          "port": "input_end_angle"
+        }
+      },
+      {
+        "from": {
+          "node": "node_arc",
+          "port": "output_path"
+        },
+        "to": {
+          "node": "node_voxelize_arc",
+          "port": "input_path"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_arc",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_arc_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_arc",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material_arc",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_block_arc",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material_arc",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_arc",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_arc",
+          "port": "input_block_placements"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_circle",
+          "port": "input_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_circle",
+          "port": "output_boundary"
+        },
+        "to": {
+          "node": "node_voxelize_circle",
+          "port": "input_path"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_circle",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_circle_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize_circle",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material_circle",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_block_circle",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material_circle",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_circle",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_circle",
+          "port": "input_block_placements"
+        }
+      }
+    ]
+  },
+  "documentation": {
+    "learning_notes": "Build a quarter arc and a full circle, voxelize both paths, and preview blocks.",
+    "tips": [],
+    "related_presets": []
+  }
+}

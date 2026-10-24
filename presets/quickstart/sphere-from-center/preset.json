@@ -1,0 +1,175 @@
+{
+  "preset_id": "quickstart.sphere_from_center",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "Sphere From Center",
+    "name_i18n": {
+      "zh_CN": "中心点球体",
+      "en_US": "Sphere From Center"
+    },
+    "description": "Build a sphere from a center point and preview geometry plus blocks.",
+    "description_i18n": {
+      "zh_CN": "以中心点建造球体，并同时预览几何体与方块。",
+      "en_US": "Build a sphere from a center point and preview geometry plus blocks."
+    },
+    "author": "NodeCraft Team",
+    "tags": [
+      "sphere",
+      "center",
+      "quickstart",
+      "beginner"
+    ],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 7
+  },
+  "thumbnails": {
+    "main": "",
+    "previews": []
+  },
+  "parameters": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_sphere",
+        "type": "geometry.primitives.sphere",
+        "position": {
+          "x": 320.0,
+          "y": 130.0
+        },
+        "parameters": {
+          "radius": {
+            "value": 5.0
+          }
+        }
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 640.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 640.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 960.0,
+          "y": 130.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1280.0,
+          "y": 130.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:stone"
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_sphere",
+          "port": "input_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_sphere",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_sphere",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      }
+    ]
+  },
+  "documentation": {
+    "learning_notes": "Build a sphere from a center point and preview geometry plus blocks.",
+    "tips": [],
+    "related_presets": []
+  }
+}

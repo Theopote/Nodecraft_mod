@@ -1,0 +1,301 @@
+{
+  "preset_id": "quickstart.twisted_cube",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "Twisted Cube",
+    "name_i18n": {
+      "zh_CN": "扭转立方体",
+      "en_US": "Twisted Cube"
+    },
+    "description": "Twist an SDF box around the vertical axis and preview the deformed solid.",
+    "description_i18n": {
+      "zh_CN": "让一个立方体沿竖直轴扭转，并预览变形后的几何体与方块。",
+      "en_US": "Twist an SDF box around the vertical axis and preview the deformed solid."
+    },
+    "author": "NodeCraft Team",
+    "tags": [
+      "twist",
+      "sdf",
+      "deformation",
+      "quickstart"
+    ],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 10
+  },
+  "thumbnails": {
+    "main": "",
+    "previews": []
+  },
+  "parameters": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_axis_up",
+        "type": "reference.vectors.vector",
+        "position": {
+          "x": 0.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "x": {
+            "value": 0.0
+          },
+          "y": {
+            "value": 1.0
+          },
+          "z": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_sdf_box",
+        "type": "geometry.boolean.sdf_box",
+        "position": {
+          "x": 320.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "halfX": {
+            "value": 3.0
+          },
+          "halfY": {
+            "value": 4.0
+          },
+          "halfZ": {
+            "value": 3.0
+          }
+        }
+      },
+      {
+        "id": "node_twist",
+        "type": "transform.deformations.twist_sdf",
+        "position": {
+          "x": 640.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "angleDegrees": {
+            "value": 180.0
+          },
+          "twistLength": {
+            "value": 8.0
+          },
+          "clampMode": {
+            "value": "CLAMP"
+          },
+          "boundsPadding": {
+            "value": 1.0
+          },
+          "boundsSamples": {
+            "value": 5
+          }
+        }
+      },
+      {
+        "id": "node_sdf_to_geometry",
+        "type": "geometry.boolean.sdf_to_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "autoBounds": {
+            "value": true
+          },
+          "boundsPadding": {
+            "value": 1.0
+          }
+        }
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 130.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 310.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1600.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1920.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 400.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:purple_concrete"
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_sdf_box",
+          "port": "input_center"
+        }
+      },
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_twist",
+          "port": "input_axis_origin"
+        }
+      },
+      {
+        "from": {
+          "node": "node_axis_up",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_twist",
+          "port": "input_axis_direction"
+        }
+      },
+      {
+        "from": {
+          "node": "node_sdf_box",
+          "port": "output_sdf"
+        },
+        "to": {
+          "node": "node_twist",
+          "port": "input_sdf"
+        }
+      },
+      {
+        "from": {
+          "node": "node_twist",
+          "port": "output_sdf"
+        },
+        "to": {
+          "node": "node_sdf_to_geometry",
+          "port": "input_sdf"
+        }
+      },
+      {
+        "from": {
+          "node": "node_twist",
+          "port": "output_bounds_min"
+        },
+        "to": {
+          "node": "node_sdf_to_geometry",
+          "port": "input_min"
+        }
+      },
+      {
+        "from": {
+          "node": "node_twist",
+          "port": "output_bounds_max"
+        },
+        "to": {
+          "node": "node_sdf_to_geometry",
+          "port": "input_max"
+        }
+      },
+      {
+        "from": {
+          "node": "node_sdf_to_geometry",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_sdf_to_geometry",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      }
+    ]
+  },
+  "documentation": {
+    "learning_notes": "Twist an SDF box around the vertical axis and preview the deformed solid.",
+    "tips": [],
+    "related_presets": []
+  }
+}

@@ -7106,6 +7106,803 @@
               "toPort": "input_block_placements"
             }
           ]
+        },
+        {
+          "id": "quickstart.sphere_from_center",
+          "displayName": "Sphere From Center",
+          "description": "Player Position as center → Sphere By Center Radius → Preview Geometry, plus Voxelize → Assign Block Type → Preview Blocks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0.0,
+              "y": 40.0
+            },
+            {
+              "ref": "sphere",
+              "typeId": "geometry.primitives.sphere",
+              "x": 320.0,
+              "y": 130.0,
+              "state": {
+                "radius": 5.0
+              }
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 640.0,
+              "y": 40.0
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 640.0,
+              "y": 220.0
+            },
+            {
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 960.0,
+              "y": 130.0
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1280.0,
+              "y": 130.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 0.0,
+              "y": 220.0,
+              "state": {
+                "selectedBlock": "minecraft:stone"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "sphere",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "sphere",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "sphere",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.box_from_two_corners",
+          "displayName": "Box From Two Corners",
+          "description": "Two opposite corner points → Box by Two Corners → Move to player → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0.0,
+              "y": 40.0
+            },
+            {
+              "ref": "move_to_pos",
+              "typeId": "transform.basic_transforms.move_geometry",
+              "x": 960.0,
+              "y": 936.0
+            },
+            {
+              "ref": "move_to_pos_point_deconstruct",
+              "typeId": "reference.points.deconstruct_point",
+              "x": 320.0,
+              "y": 756.0
+            },
+            {
+              "ref": "move_to_pos_point_as_vector",
+              "typeId": "reference.vectors.construct_vector",
+              "x": 640.0,
+              "y": 846.0
+            },
+            {
+              "ref": "corner_a_x",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 552.0,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "corner_a_y",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 808.0,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "corner_a_z",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1064.0,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "corner_a",
+              "typeId": "reference.points.construct_point",
+              "x": 320.0,
+              "y": 936.0
+            },
+            {
+              "ref": "corner_b_x",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1320.0,
+              "state": {
+                "value": 6.0
+              }
+            },
+            {
+              "ref": "corner_b_y",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1576.0,
+              "state": {
+                "value": 4.0
+              }
+            },
+            {
+              "ref": "corner_b_z",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 1832.0,
+              "state": {
+                "value": 5.0
+              }
+            },
+            {
+              "ref": "corner_b",
+              "typeId": "reference.points.construct_point",
+              "x": 320.0,
+              "y": 1116.0
+            },
+            {
+              "ref": "box",
+              "typeId": "geometry.primitives.box_from_corners",
+              "x": 640.0,
+              "y": 1026.0
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1280.0,
+              "y": 846.0
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1280.0,
+              "y": 1026.0
+            },
+            {
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1600.0,
+              "y": 936.0
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1920.0,
+              "y": 936.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 0.0,
+              "y": 296.0,
+              "state": {
+                "selectedBlock": "minecraft:oak_planks"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "move_to_pos_point_deconstruct",
+              "toPort": "input_point"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_x",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_y",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "move_to_pos_point_deconstruct",
+              "fromPort": "output_z",
+              "toRef": "move_to_pos_point_as_vector",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "move_to_pos_point_as_vector",
+              "fromPort": "output_vector",
+              "toRef": "move_to_pos",
+              "toPort": "input_translation"
+            },
+            {
+              "fromRef": "corner_a_x",
+              "fromPort": "output_value",
+              "toRef": "corner_a",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "corner_a_y",
+              "fromPort": "output_value",
+              "toRef": "corner_a",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "corner_a_z",
+              "fromPort": "output_value",
+              "toRef": "corner_a",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "corner_b_x",
+              "fromPort": "output_value",
+              "toRef": "corner_b",
+              "toPort": "input_x"
+            },
+            {
+              "fromRef": "corner_b_y",
+              "fromPort": "output_value",
+              "toRef": "corner_b",
+              "toPort": "input_y"
+            },
+            {
+              "fromRef": "corner_b_z",
+              "fromPort": "output_value",
+              "toRef": "corner_b",
+              "toPort": "input_z"
+            },
+            {
+              "fromRef": "corner_a",
+              "fromPort": "output_point",
+              "toRef": "box",
+              "toPort": "input_corner_a"
+            },
+            {
+              "fromRef": "corner_b",
+              "fromPort": "output_point",
+              "toRef": "box",
+              "toPort": "input_corner_b"
+            },
+            {
+              "fromRef": "box",
+              "fromPort": "output_geometry",
+              "toRef": "move_to_pos",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "move_to_pos",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.arc_and_circle_voxel",
+          "displayName": "Arc & Circle Voxelize",
+          "description": "Quarter Arc + full Circle profile boundary at the player → Voxelize Path (tube) → Assign Block Type → Preview Blocks. Demonstrates curve voxelization.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0.0,
+              "y": 40.0
+            },
+            {
+              "ref": "arc_start",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 260.0,
+              "state": {
+                "value": 0.0
+              }
+            },
+            {
+              "ref": "arc_end",
+              "typeId": "input.numeric.float",
+              "x": 0.0,
+              "y": 480.0,
+              "state": {
+                "value": 90.0
+              }
+            },
+            {
+              "ref": "arc",
+              "typeId": "geometry.curves.arc",
+              "x": 320.0,
+              "y": 570.0,
+              "state": {
+                "defaultRadius": 6.0,
+                "defaultSamples": 24
+              }
+            },
+            {
+              "ref": "circle",
+              "typeId": "geometry.profiles.circle_profile",
+              "x": 320.0,
+              "y": 390.0,
+              "state": {
+                "radius": 8.0,
+                "segments": 32
+              }
+            },
+            {
+              "ref": "voxelize_arc",
+              "typeId": "geometry.curves.voxelize_curve",
+              "x": 640.0,
+              "y": 570.0,
+              "state": {
+                "defaultRadius": 0.6,
+                "fillTube": true,
+                "capEnds": true
+              }
+            },
+            {
+              "ref": "voxelize_circle",
+              "typeId": "geometry.curves.voxelize_curve",
+              "x": 640.0,
+              "y": 390.0,
+              "state": {
+                "defaultRadius": 0.6,
+                "fillTube": true,
+                "capEnds": true
+              }
+            },
+            {
+              "ref": "material_arc",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 960.0,
+              "y": 570.0
+            },
+            {
+              "ref": "material_circle",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 960.0,
+              "y": 750.0
+            },
+            {
+              "ref": "block_arc",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 0.0,
+              "y": 700.0,
+              "state": {
+                "selectedBlock": "minecraft:smooth_stone"
+              }
+            },
+            {
+              "ref": "block_circle",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 0.0,
+              "y": 920.0,
+              "state": {
+                "selectedBlock": "minecraft:gold_block"
+              }
+            },
+            {
+              "ref": "preview_arc",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1280.0,
+              "y": 390.0
+            },
+            {
+              "ref": "preview_circle",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1280.0,
+              "y": 570.0
+            },
+            {
+              "ref": "preview_arc_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 960.0,
+              "y": 390.0
+            },
+            {
+              "ref": "preview_circle_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 960.0,
+              "y": 210.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "arc",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "arc_start",
+              "fromPort": "output_value",
+              "toRef": "arc",
+              "toPort": "input_start_angle"
+            },
+            {
+              "fromRef": "arc_end",
+              "fromPort": "output_value",
+              "toRef": "arc",
+              "toPort": "input_end_angle"
+            },
+            {
+              "fromRef": "arc",
+              "fromPort": "output_path",
+              "toRef": "voxelize_arc",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "voxelize_arc",
+              "fromPort": "output_geometry",
+              "toRef": "preview_arc_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize_arc",
+              "fromPort": "output_blocks",
+              "toRef": "material_arc",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "block_arc",
+              "fromPort": "output_block_id",
+              "toRef": "material_arc",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material_arc",
+              "fromPort": "output_placements",
+              "toRef": "preview_arc",
+              "toPort": "input_block_placements"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "circle",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "circle",
+              "fromPort": "output_boundary",
+              "toRef": "voxelize_circle",
+              "toPort": "input_path"
+            },
+            {
+              "fromRef": "voxelize_circle",
+              "fromPort": "output_geometry",
+              "toRef": "preview_circle_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize_circle",
+              "fromPort": "output_blocks",
+              "toRef": "material_circle",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "block_circle",
+              "fromPort": "output_block_id",
+              "toRef": "material_circle",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material_circle",
+              "fromPort": "output_placements",
+              "toRef": "preview_circle",
+              "toPort": "input_block_placements"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.selected_block_column",
+          "displayName": "Select Connected Column",
+          "description": "Selected Block (pick a seed) → Flood Fill same-type connected blocks (ideal for a vertical column / pillar) → Preview Blocks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "selected_block",
+              "typeId": "world.selection.selected_block",
+              "x": 0.0,
+              "y": 40.0
+            },
+            {
+              "ref": "flood_fill",
+              "typeId": "world.query.flood_fill",
+              "x": 320.0,
+              "y": 220.0
+            },
+            {
+              "ref": "max_distance",
+              "typeId": "input.numeric.integer",
+              "x": 0.0,
+              "y": 220.0,
+              "state": {
+                "value": 64
+              }
+            },
+            {
+              "ref": "max_blocks",
+              "typeId": "input.numeric.integer",
+              "x": 0.0,
+              "y": 400.0,
+              "state": {
+                "value": 512
+              }
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 640.0,
+              "y": 220.0
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "selected_block",
+              "fromPort": "output_position",
+              "toRef": "flood_fill",
+              "toPort": "input_seed"
+            },
+            {
+              "fromRef": "max_distance",
+              "fromPort": "output_value",
+              "toRef": "flood_fill",
+              "toPort": "input_max_distance"
+            },
+            {
+              "fromRef": "max_blocks",
+              "fromPort": "output_value",
+              "toRef": "flood_fill",
+              "toPort": "input_max_blocks"
+            },
+            {
+              "fromRef": "flood_fill",
+              "fromPort": "output_blocks",
+              "toRef": "preview_blocks",
+              "toPort": "input_blocks"
+            }
+          ]
+        },
+        {
+          "id": "quickstart.twisted_cube",
+          "displayName": "Twisted Cube",
+          "description": "SDF Box at the player → Twist SDF around Y → SDF To Geometry → Preview Geometry, Voxelize → Assign Block Type → Preview Blocks.",
+          "kind": "composite",
+          "nodes": [
+            {
+              "ref": "player_pos",
+              "typeId": "input.context.player_position",
+              "x": 0.0,
+              "y": 40.0
+            },
+            {
+              "ref": "axis_up",
+              "typeId": "reference.vectors.vector",
+              "x": 0.0,
+              "y": 220.0,
+              "state": {
+                "x": 0.0,
+                "y": 1.0,
+                "z": 0.0
+              }
+            },
+            {
+              "ref": "sdf_box",
+              "typeId": "geometry.boolean.sdf_box",
+              "x": 320.0,
+              "y": 220.0,
+              "state": {
+                "halfX": 3.0,
+                "halfY": 4.0,
+                "halfZ": 3.0
+              }
+            },
+            {
+              "ref": "twist",
+              "typeId": "transform.deformations.twist_sdf",
+              "x": 640.0,
+              "y": 220.0,
+              "state": {
+                "angleDegrees": 180.0,
+                "twistLength": 8.0,
+                "clampMode": "CLAMP",
+                "boundsPadding": 1.0,
+                "boundsSamples": 5
+              }
+            },
+            {
+              "ref": "sdf_to_geometry",
+              "typeId": "geometry.boolean.sdf_to_geometry",
+              "x": 960.0,
+              "y": 220.0,
+              "state": {
+                "autoBounds": true,
+                "boundsPadding": 1.0
+              }
+            },
+            {
+              "ref": "preview_geometry",
+              "typeId": "output.preview.preview_geometry",
+              "x": 1280.0,
+              "y": 130.0
+            },
+            {
+              "ref": "voxelize",
+              "typeId": "geometry.voxel.voxelize_geometry",
+              "x": 1280.0,
+              "y": 310.0
+            },
+            {
+              "ref": "material",
+              "typeId": "material.basic_assignment.assign_block_type",
+              "x": 1600.0,
+              "y": 220.0
+            },
+            {
+              "ref": "preview_blocks",
+              "typeId": "output.preview.preview_blocks",
+              "x": 1920.0,
+              "y": 220.0
+            },
+            {
+              "ref": "material_block_type",
+              "typeId": "input.type_selectors.block_type_selector",
+              "x": 0.0,
+              "y": 400.0,
+              "state": {
+                "selectedBlock": "minecraft:purple_concrete"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "sdf_box",
+              "toPort": "input_center"
+            },
+            {
+              "fromRef": "player_pos",
+              "fromPort": "output_position",
+              "toRef": "twist",
+              "toPort": "input_axis_origin"
+            },
+            {
+              "fromRef": "axis_up",
+              "fromPort": "output_vector",
+              "toRef": "twist",
+              "toPort": "input_axis_direction"
+            },
+            {
+              "fromRef": "sdf_box",
+              "fromPort": "output_sdf",
+              "toRef": "twist",
+              "toPort": "input_sdf"
+            },
+            {
+              "fromRef": "twist",
+              "fromPort": "output_sdf",
+              "toRef": "sdf_to_geometry",
+              "toPort": "input_sdf"
+            },
+            {
+              "fromRef": "twist",
+              "fromPort": "output_bounds_min",
+              "toRef": "sdf_to_geometry",
+              "toPort": "input_min"
+            },
+            {
+              "fromRef": "twist",
+              "fromPort": "output_bounds_max",
+              "toRef": "sdf_to_geometry",
+              "toPort": "input_max"
+            },
+            {
+              "fromRef": "sdf_to_geometry",
+              "fromPort": "output_geometry",
+              "toRef": "preview_geometry",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "sdf_to_geometry",
+              "fromPort": "output_geometry",
+              "toRef": "voxelize",
+              "toPort": "input_geometry"
+            },
+            {
+              "fromRef": "voxelize",
+              "fromPort": "output_blocks",
+              "toRef": "material",
+              "toPort": "input_coordinates"
+            },
+            {
+              "fromRef": "material_block_type",
+              "fromPort": "output_block_id",
+              "toRef": "material",
+              "toPort": "input_block_type"
+            },
+            {
+              "fromRef": "material",
+              "fromPort": "output_placements",
+              "toRef": "preview_blocks",
+              "toPort": "input_block_placements"
+            }
+          ]
         }
       ]
     },

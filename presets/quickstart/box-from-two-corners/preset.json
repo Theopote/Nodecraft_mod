@@ -1,0 +1,424 @@
+{
+  "preset_id": "quickstart.box_from_two_corners",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "Box From Two Corners",
+    "name_i18n": {
+      "zh_CN": "两点建造盒子",
+      "en_US": "Box From Two Corners"
+    },
+    "description": "Build an axis-aligned box from two opposite corners and preview it.",
+    "description_i18n": {
+      "zh_CN": "用两个对角点建造盒子，并预览几何体与方块。",
+      "en_US": "Build an axis-aligned box from two opposite corners and preview it."
+    },
+    "author": "NodeCraft Team",
+    "tags": [
+      "box",
+      "corners",
+      "quickstart",
+      "beginner"
+    ],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 18
+  },
+  "thumbnails": {
+    "main": "",
+    "previews": []
+  },
+  "parameters": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_player_pos",
+        "type": "input.context.player_position",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos",
+        "type": "transform.basic_transforms.move_geometry",
+        "position": {
+          "x": 960.0,
+          "y": 936.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_deconstruct",
+        "type": "reference.points.deconstruct_point",
+        "position": {
+          "x": 320.0,
+          "y": 756.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_move_to_pos_point_as_vector",
+        "type": "reference.vectors.construct_vector",
+        "position": {
+          "x": 640.0,
+          "y": 846.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_corner_a_x",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 552.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_a_y",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 808.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_a_z",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1064.0
+        },
+        "parameters": {
+          "value": {
+            "value": 0.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_a",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 936.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_corner_b_x",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1320.0
+        },
+        "parameters": {
+          "value": {
+            "value": 6.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_b_y",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1576.0
+        },
+        "parameters": {
+          "value": {
+            "value": 4.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_b_z",
+        "type": "input.numeric.float",
+        "position": {
+          "x": 0.0,
+          "y": 1832.0
+        },
+        "parameters": {
+          "value": {
+            "value": 5.0
+          }
+        }
+      },
+      {
+        "id": "node_corner_b",
+        "type": "reference.points.construct_point",
+        "position": {
+          "x": 320.0,
+          "y": 1116.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_box",
+        "type": "geometry.primitives.box_from_corners",
+        "position": {
+          "x": 640.0,
+          "y": 1026.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_geometry",
+        "type": "output.preview.preview_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 846.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_voxelize",
+        "type": "geometry.voxel.voxelize_geometry",
+        "position": {
+          "x": 1280.0,
+          "y": 1026.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material",
+        "type": "material.basic_assignment.assign_block_type",
+        "position": {
+          "x": 1600.0,
+          "y": 936.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 1920.0,
+          "y": 936.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_material_block_type",
+        "type": "input.type_selectors.block_type_selector",
+        "position": {
+          "x": 0.0,
+          "y": 296.0
+        },
+        "parameters": {
+          "selectedBlock": {
+            "value": "minecraft:oak_planks"
+          }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "node": "node_player_pos",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "input_point"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_x"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_y"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_deconstruct",
+          "port": "output_z"
+        },
+        "to": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos_point_as_vector",
+          "port": "output_vector"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_translation"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_a_x",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_a",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_a_y",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_a",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_a_z",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_a",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_b_x",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_b",
+          "port": "input_x"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_b_y",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_b",
+          "port": "input_y"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_b_z",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_corner_b",
+          "port": "input_z"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_a",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_box",
+          "port": "input_corner_a"
+        }
+      },
+      {
+        "from": {
+          "node": "node_corner_b",
+          "port": "output_point"
+        },
+        "to": {
+          "node": "node_box",
+          "port": "input_corner_b"
+        }
+      },
+      {
+        "from": {
+          "node": "node_box",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_move_to_pos",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_preview_geometry",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_move_to_pos",
+          "port": "output_geometry"
+        },
+        "to": {
+          "node": "node_voxelize",
+          "port": "input_geometry"
+        }
+      },
+      {
+        "from": {
+          "node": "node_voxelize",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_coordinates"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material_block_type",
+          "port": "output_block_id"
+        },
+        "to": {
+          "node": "node_material",
+          "port": "input_block_type"
+        }
+      },
+      {
+        "from": {
+          "node": "node_material",
+          "port": "output_placements"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_block_placements"
+        }
+      }
+    ]
+  },
+  "documentation": {
+    "learning_notes": "Build an axis-aligned box from two opposite corners and preview it.",
+    "tips": [],
+    "related_presets": []
+  }
+}

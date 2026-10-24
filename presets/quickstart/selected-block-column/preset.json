@@ -1,0 +1,137 @@
+{
+  "preset_id": "quickstart.selected_block_column",
+  "version": "1.0.0",
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "Select Connected Column",
+    "name_i18n": {
+      "zh_CN": "整列选中相连方块",
+      "en_US": "Select Connected Column"
+    },
+    "description": "Pick a seed block, flood-fill the connected same-type column, and preview the selection.",
+    "description_i18n": {
+      "zh_CN": "选中一个种子方块，洪水填充相连的同类型方块（适合整列/立柱），并预览选区。",
+      "en_US": "Pick a seed block, flood-fill the connected same-type column, and preview the selection."
+    },
+    "author": "NodeCraft Team",
+    "tags": [
+      "selection",
+      "flood-fill",
+      "column",
+      "quickstart"
+    ],
+    "category": "quickstart",
+    "difficulty": "beginner",
+    "estimated_build_time": "1 minute",
+    "estimated_node_count": 5
+  },
+  "thumbnails": {
+    "main": "",
+    "previews": []
+  },
+  "parameters": [],
+  "graph": {
+    "nodes": [
+      {
+        "id": "node_selected_block",
+        "type": "world.selection.selected_block",
+        "position": {
+          "x": 0.0,
+          "y": 40.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_flood_fill",
+        "type": "world.query.flood_fill",
+        "position": {
+          "x": 320.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      },
+      {
+        "id": "node_max_distance",
+        "type": "input.numeric.integer",
+        "position": {
+          "x": 0.0,
+          "y": 220.0
+        },
+        "parameters": {
+          "value": {
+            "value": 64
+          }
+        }
+      },
+      {
+        "id": "node_max_blocks",
+        "type": "input.numeric.integer",
+        "position": {
+          "x": 0.0,
+          "y": 400.0
+        },
+        "parameters": {
+          "value": {
+            "value": 512
+          }
+        }
+      },
+      {
+        "id": "node_preview_blocks",
+        "type": "output.preview.preview_blocks",
+        "position": {
+          "x": 640.0,
+          "y": 220.0
+        },
+        "parameters": {}
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "node": "node_selected_block",
+          "port": "output_position"
+        },
+        "to": {
+          "node": "node_flood_fill",
+          "port": "input_seed"
+        }
+      },
+      {
+        "from": {
+          "node": "node_max_distance",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_flood_fill",
+          "port": "input_max_distance"
+        }
+      },
+      {
+        "from": {
+          "node": "node_max_blocks",
+          "port": "output_value"
+        },
+        "to": {
+          "node": "node_flood_fill",
+          "port": "input_max_blocks"
+        }
+      },
+      {
+        "from": {
+          "node": "node_flood_fill",
+          "port": "output_blocks"
+        },
+        "to": {
+          "node": "node_preview_blocks",
+          "port": "input_blocks"
+        }
+      }
+    ]
+  },
+  "documentation": {
+    "learning_notes": "Pick a seed block, flood-fill the connected same-type column, and preview the selection.",
+    "tips": [],
+    "related_presets": []
+  }
+}
