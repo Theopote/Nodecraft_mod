@@ -14,6 +14,7 @@ import imgui.ImGui;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -107,8 +108,10 @@ public class AngleSliderNode extends BaseCustomUINode {
             }
 
             l.setItemWidth(Math.max(availableWidth / Math.max(zoom, 0.001f), 1.0f));
+            // Keep slider in [0,1] for float precision across wide double ranges, but label with the real angle.
             float[] sliderT = {(float) NumericInputUtils.normalizedInRange(currentAngle, minAngle, maxAngle)};
-            if (ImGui.sliderFloat("##angle_slider", sliderT, 0.0f, 1.0f, "%.1f°")) {
+            String displayLabel = String.format(Locale.ROOT, "%.1f°", currentAngle);
+            if (ImGui.sliderFloat("##angle_slider", sliderT, 0.0f, 1.0f, displayLabel)) {
                 setCurrentAngle(NumericInputUtils.lerpFromNormalized(sliderT[0], minAngle, maxAngle));
                 changed = true;
             }
