@@ -176,15 +176,11 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
             BlockPos blockPos = new BlockPos(pos.x(), pos.y(), pos.z());
             BlockState blockState = world.getBlockState(blockPos);
-            
-            // 如果方块是空气，跳过
-            if (blockState.isAir()) {
-                continue;
-            }
+            boolean air = blockState.isAir();
 
-            // 使用简化的方块边框渲染
+            // Air cells still get an outline so empty selection volumes remain visible.
             try {
-                if (showFill) {
+                if (showFill && !air) {
                     VertexConsumer fillVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox());
                     try {
                         renderSimpleBlockFill(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, fillVertexConsumer);
@@ -196,9 +192,10 @@ public class BlockHighlightElement extends AbstractPreviewElement {
                         }
                     }
                 }
-                if (showOutline) {
+                if (showOutline || air) {
                     VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.LINES);
-                    renderSimpleBlockOutline(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, lineVertexConsumer);
+                    float outlineOpacity = air ? finalOpacity * 0.75f : finalOpacity;
+                    renderSimpleBlockOutline(matrices, cameraPos, blockPos, outlineOpacity, pulseFactor, lineVertexConsumer);
                 }
             } catch (IllegalStateException e) {
                 if (e.getMessage() != null && e.getMessage().contains("Not building")) {

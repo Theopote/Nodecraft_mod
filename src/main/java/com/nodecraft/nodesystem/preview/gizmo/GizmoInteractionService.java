@@ -4,17 +4,18 @@ import com.nodecraft.nodesystem.interaction.WorldPickingService;
 import com.nodecraft.nodesystem.preview.AbstractPreviewElement;
 import com.nodecraft.nodesystem.preview.InteractivePreviewElement;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
+import com.nodecraft.nodesystem.preview.elements.RegionResizeHandlesElement;
 import com.nodecraft.nodesystem.preview.elements.TransformationGizmoElement;
 import net.minecraft.util.math.Vec3d;
 
 /**
- * Routes editor mouse input to active transformation gizmos.
+ * Routes editor mouse input to interactive preview elements (transform gizmos, region resize handles).
  */
 public final class GizmoInteractionService {
 
     private static final double MAX_PICK_DISTANCE = 256.0d;
 
-    private TransformationGizmoElement activeGizmo;
+    private InteractivePreviewElement activeInteractive;
     private boolean leftMouseWasDown;
 
     private GizmoInteractionService() {
@@ -44,9 +45,9 @@ public final class GizmoInteractionService {
         PreviewRenderer renderer = PreviewRenderer.getInstance();
 
         if (isLeftMouseReleased) {
-            if (activeGizmo != null) {
-                activeGizmo.onMouseRelease(rayStart, rayDirection, 0);
-                activeGizmo = null;
+            if (activeInteractive != null) {
+                activeInteractive.onMouseRelease(rayStart, rayDirection, 0);
+                activeInteractive = null;
             } else {
                 dispatchRelease(renderer, rayStart, rayDirection);
             }
@@ -54,9 +55,9 @@ public final class GizmoInteractionService {
             return;
         }
 
-        TransformationGizmoElement dragged = findDraggedGizmo(renderer);
+        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
         if (dragged != null) {
-            activeGizmo = dragged;
+            activeInteractive = dragged;
             if (isLeftMouseDown) {
                 dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             }
@@ -65,65 +66,71 @@ public final class GizmoInteractionService {
         }
 
         if (isLeftMouseClicked) {
-            TransformationGizmoElement clicked = pickClosestGizmo(renderer, rayStart, rayDirection);
+            InteractivePreviewElement clicked = pickClosestInteractive(renderer, rayStart, rayDirection);
             if (clicked != null && clicked.onMouseClick(rayStart, rayDirection, 0)) {
-                activeGizmo = clicked;
+                activeInteractive = clicked;
                 leftMouseWasDown = true;
                 return;
             }
         }
 
-        if (isLeftMouseDown && activeGizmo != null) {
-            activeGizmo.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+        if (isLeftMouseDown && activeInteractive != null) {
+            activeInteractive.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             leftMouseWasDown = true;
             return;
         }
 
-        hoverGizmos(renderer, rayStart, rayDirection);
+        hoverInteractives(renderer, rayStart, rayDirection);
         if (!isLeftMouseDown) {
-            activeGizmo = null;
+            activeInteractive = null;
         }
         leftMouseWasDown = isLeftMouseDown;
     }
 
     public boolean isDraggingGizmo() {
-        return activeGizmo != null && activeGizmo.isBeingDragged();
+        return activeInteractive != null && activeInteractive.isBeingDragged();
     }
 
-    private TransformationGizmoElement findDraggedGizmo(PreviewRenderer renderer) {
+    private InteractivePreviewElement findDraggedInteractive(PreviewRenderer renderer) {
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
-            if (element instanceof TransformationGizmoElement gizmo && gizmo.isBeingDragged()) {
-                return gizmo;
+            if (element instanceof InteractivePreviewElement interactive && interactive.isBeingDragged()) {
+                return interactive;
             }
         }
         return null;
     }
 
-    private TransformationGizmoElement pickClosestGizmo(PreviewRenderer renderer, Vec3d rayStart, Vec3d rayDirection) {
-        TransformationGizmoElement closest = null;
+    private InteractivePreviewElement pickClosestInteractive(
+        PreviewRenderer renderer,
+        Vec3d rayStart,
+        Vec3d rayDirection
+    ) {
+        InteractivePreviewElement closest = null;
         double closestDistance = Double.MAX_VALUE;
 
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
-            if (!(element instanceof TransformationGizmoElement gizmo) || !gizmo.isInteractable()) {
+            if (!(element instanceof InteractivePreviewElement interactive) || !interactive.isInteractable()) {
                 continue;
             }
-            if (!gizmo.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE)) {
+            if (!interactive.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE)) {
                 continue;
             }
-            double distance = gizmo.getInteractionCenter().distanceTo(rayStart);
+            double distance = interactive.getInteractionCenter().distanceTo(rayStart);
             if (distance < closestDistance) {
                 closestDistance = distance;
-                closest = gizmo;
+                closest = interactive;
             }
         }
         return closest;
     }
 
-    private void hoverGizmos(PreviewRenderer renderer, Vec3d rayStart, Vec3d rayDirection) {
+    private void hoverInteractives(PreviewRenderer renderer, Vec3d rayStart, Vec3d rayDirection) {
         boolean anyHovered = false;
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
-            if (element instanceof TransformationGizmoElement gizmo && gizmo.isInteractable() && !gizmo.isBeingDragged()) {
-                if (gizmo.onMouseHover(rayStart, rayDirection)) {
+            if (element instanceof InteractivePreviewElement interactive
+                && interactive.isInteractable()
+                && !interactive.isBeingDragged()) {
+                if (interactive.onMouseHover(rayStart, rayDirection)) {
                     anyHovered = true;
                 }
             }
@@ -141,6 +148,8 @@ public final class GizmoInteractionService {
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
             if (element instanceof TransformationGizmoElement gizmo && !gizmo.isBeingDragged()) {
                 gizmo.clearHoverState();
+            } else if (element instanceof RegionResizeHandlesElement handles && !handles.isBeingDragged()) {
+                handles.clearHoverState();
             }
         }
     }

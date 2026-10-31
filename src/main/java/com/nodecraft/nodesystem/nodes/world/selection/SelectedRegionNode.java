@@ -12,6 +12,7 @@ import com.nodecraft.nodesystem.datatypes.RegionData;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
+import com.nodecraft.nodesystem.preview.RegionResizeHandlesData;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import imgui.ImGui;
@@ -50,6 +51,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
     private volatile String selectionHint = "Click Start Area Selection, then left-click two corner points in the world.";
     private volatile String completedRegionPreviewId;
     private volatile String completedBlocksPreviewId;
+    private volatile String resizeHandlesPreviewId;
     private static final int MAX_BLOCK_PREVIEW_COUNT = 8192;
 
     private final AreaSelectionCallback areaSelectionCallback = new AreaSelectionCallback();
@@ -77,6 +79,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             selectionHint = "First point selected. Choose the second point.";
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
+            clearResizeHandlesPreview();
             publishPendingSelection();
             invalidateCache();
             markDirty();
@@ -122,6 +125,8 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
         if (pos1 == null || pos2 == null) {
             clearCompletedRegionPreview();
+            clearCompletedBlocksPreview();
+            clearResizeHandlesPreview();
             if (pos1 == null) {
                 resetOutputs();
             } else {
@@ -289,6 +294,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
         clearCompletedRegionPreview();
         clearCompletedBlocksPreview();
+        clearResizeHandlesPreview();
         pos1 = null;
         pos2 = null;
         selecting = false;
@@ -347,6 +353,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         }
         clearCompletedRegionPreview();
         clearCompletedBlocksPreview();
+        clearResizeHandlesPreview();
     }
 
     @Override
@@ -363,6 +370,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             pos2 = null;
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
+            clearResizeHandlesPreview();
             resetOutputs();
 
             selecting = false;
@@ -375,6 +383,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
         if (pos1 == null || pos2 == null) {
             clearCompletedRegionPreview();
             clearCompletedBlocksPreview();
+            clearResizeHandlesPreview();
             return;
         }
 
@@ -383,23 +392,18 @@ public class SelectedRegionNode extends BaseCustomUINode {
             Math.min(pos1.y(), pos2.y()),
             Math.min(pos1.z(), pos2.z())
         );
-        Vec3d max = new Vec3d(
+        Vec3d maxExclusive = new Vec3d(
             Math.max(pos1.x(), pos2.x()) + 1.0d,
             Math.max(pos1.y(), pos2.y()) + 1.0d,
             Math.max(pos1.z(), pos2.z()) + 1.0d
         );
 
         PreviewOptions options = createCompletedRegionPreviewOptions();
-        Object[] regionData = new Object[] { min, max };
-
-        if (completedRegionPreviewId == null) {
-            completedRegionPreviewId = PreviewManager.showRegionBox(getId().toString(), min, max, options);
-        } else {
-            PreviewManager.updatePreview(completedRegionPreviewId, regionData);
-            PreviewManager.updatePreviewOptions(completedRegionPreviewId, options);
-        }
+        // Always upsert via showRegionBox so stale IDs cannot leave a permanent blank preview.
+        completedRegionPreviewId = PreviewManager.showRegionBox(getId().toString(), min, maxExclusive, options);
 
         syncCompletedBlocksPreview();
+        syncResizeHandlesPreview(min, maxExclusive);
     }
 
     private PreviewOptions createCompletedRegionPreviewOptions() {
@@ -472,6 +476,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             .setLineWidth(Math.max(2.2f, areaStyle.getLineWidth()))
             .setOpacity(Math.max(0.3f, areaStyle.getOpacity()));
 
+        completedBlocksPreviewId = PreviewManager.activePreviewIdOrNull(completedBlocksPreviewId);
         if (completedBlocksPreviewId == null) {
             completedBlocksPreviewId = PreviewManager.highlightBlocks(getId().toString(), blocks, options);
         } else {
@@ -485,5 +490,87 @@ public class SelectedRegionNode extends BaseCustomUINode {
             PreviewManager.hidePreview(completedBlocksPreviewId);
             completedBlocksPreviewId = null;
         }
+    }
+
+    private void syncResizeHandlesPreview(Vec3d minInclusive, Vec3d maxExclusive) {
+        PreviewOptions options = new PreviewOptions()
+            .setOpacity(1.0f)
+            .setLineWidth(2.5f);
+        options.alwaysOnTop = true;
+        options.renderPriority = 1000;
+        options.interactionRadius = 0.45f;
+
+        RegionResizeHandlesData data = new RegionResizeHandlesData(
+            minInclusive,
+            maxExclusive,
+            this::onRegionFaceResized
+        );
+        resizeHandlesPreviewId = PreviewManager.activePreviewIdOrNull(resizeHandlesPreviewId);
+        if (resizeHandlesPreviewId == null) {
+            resizeHandlesPreviewId = PreviewManager.showRegionResizeHandles(getId().toString(), data, options);
+        } else {
+            PreviewManager.updatePreview(resizeHandlesPreviewId, data);
+            PreviewManager.updatePreviewOptions(resizeHandlesPreviewId, options);
+        }
+    }
+
+    private void clearResizeHandlesPreview() {
+        if (resizeHandlesPreviewId != null) {
+            PreviewManager.hidePreview(resizeHandlesPreviewId);
+            resizeHandlesPreviewId = null;
+        }
+    }
+
+    /**
+     * Called by face-center resize handles; {@code faceAxis} is 0=X, 1=Y, 2=Z and
+     * {@code towardMax} selects the max (true) or min (false) face. {@code newFaceCoord}
+     * is the inclusive block coordinate for that face.
+     */
+    private void onRegionFaceResized(int faceAxis, boolean towardMax, int newFaceCoord) {
+        if (pos1 == null || pos2 == null) {
+            return;
+        }
+
+        int minX = (int) Math.min(pos1.x(), pos2.x());
+        int minY = (int) Math.min(pos1.y(), pos2.y());
+        int minZ = (int) Math.min(pos1.z(), pos2.z());
+        int maxX = (int) Math.max(pos1.x(), pos2.x());
+        int maxY = (int) Math.max(pos1.y(), pos2.y());
+        int maxZ = (int) Math.max(pos1.z(), pos2.z());
+
+        switch (faceAxis) {
+            case 0 -> {
+                if (towardMax) {
+                    maxX = Math.max(minX, newFaceCoord);
+                } else {
+                    minX = Math.min(maxX, newFaceCoord);
+                }
+            }
+            case 1 -> {
+                if (towardMax) {
+                    maxY = Math.max(minY, newFaceCoord);
+                } else {
+                    minY = Math.min(maxY, newFaceCoord);
+                }
+            }
+            case 2 -> {
+                if (towardMax) {
+                    maxZ = Math.max(minZ, newFaceCoord);
+                } else {
+                    minZ = Math.min(maxZ, newFaceCoord);
+                }
+            }
+            default -> {
+                return;
+            }
+        }
+
+        pos1 = new Vector3(minX, minY, minZ);
+        pos2 = new Vector3(maxX, maxY, maxZ);
+        selectionHint = "Area resized.";
+        updateOutputsFromPositions();
+        syncCompletedRegionPreview();
+        invalidateCache();
+        markDirty();
     }
 }

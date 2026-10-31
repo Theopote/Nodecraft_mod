@@ -230,11 +230,12 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
             ));
         }
 
+        boolean pathClosed = shouldClosePath(snapshot);
         List<Vec3d> pathPoints = new ArrayList<>(centers.size() + 1);
         for (Vector3d center : centers) {
             pathPoints.add(new Vec3d(center.x, center.y, center.z));
         }
-        if (closePath && snapshot.size() >= 2) {
+        if (pathClosed && snapshot.size() >= 2) {
             Coordinate first = snapshot.getFirst();
             Coordinate last = snapshot.getLast();
             if (!first.equals(last)) {
@@ -261,7 +262,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
             ? null
             : new BlockPos(snapshot.getLast().x(), snapshot.getLast().y(), snapshot.getLast().z()));
         outputValues.put(OUTPUT_COUNT_ID, snapshot.size());
-        outputValues.put(OUTPUT_IS_CLOSED_ID, closePath && snapshot.size() >= 2);
+        outputValues.put(OUTPUT_IS_CLOSED_ID, pathClosed);
         outputValues.put(OUTPUT_VALID_ID, valid);
         outputValues.put(OUTPUT_ERROR_ID, "");
     }
@@ -289,7 +290,7 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
 
         // Use geometric centers so preview path semantics match output polyline data.
         final double previewYOffset = 0.5d;
-        List<Vec3d> points = new ArrayList<>();
+        List<Vec3d> points = new ArrayList<>(snapshot.size());
         for (Coordinate coordinate : snapshot) {
             points.add(new Vec3d(
                 coordinate.x() + 0.5d,
@@ -297,29 +298,20 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 coordinate.z() + 0.5d
             ));
         }
-        if (closePath) {
-            Coordinate first = snapshot.getFirst();
-            Coordinate last = snapshot.getLast();
-            if (!first.equals(last)) {
-                points.add(new Vec3d(
-                    first.x() + 0.5d,
-                    first.y() + previewYOffset,
-                    first.z() + 0.5d
-                ));
-            }
-        }
 
+        boolean pathClosed = shouldClosePath(snapshot);
         Color color = Color.fromHex(previewPathColor);
         PreviewOptions options = new PreviewOptions()
             .setColor(color.red(), color.green(), color.blue())
-            .setLineWidth(3.0f)
-            .setDuration(30);
+            .setLineWidth(3.0f);
         options.showArrows = true;
         options.arrowSize = 0.24f;
         options.renderPriority = 30;
 
+        // Pass closed via payload so LinesElement appends the first point once (no double-append).
         PolylineData polylineData = new PolylineData(points);
-        PreviewCurvePayload curvePayload = PreviewPayloadAdapters.curveFromPolylineData(polylineData, false);
+        PreviewCurvePayload curvePayload = PreviewPayloadAdapters.curveFromPolylineData(polylineData, pathClosed);
+        pathPreviewId = PreviewManager.activePreviewIdOrNull(pathPreviewId);
         if (pathPreviewId == null) {
             pathPreviewId = PreviewManager.showCurve(getId().toString(), curvePayload, options);
         } else {
@@ -335,6 +327,44 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
                 MinecraftClientController.getInstance().showHudMessage("Path preview creation failed, please check logs");
             }
         }
+    }
+
+    /**
+     * Close when the Close Path property is on (2+ points), or automatically when
+     * there are at least three non-collinear picked blocks.
+     */
+    private boolean shouldClosePath(List<Coordinate> snapshot) {
+        if (snapshot == null || snapshot.size() < 2) {
+            return false;
+        }
+        if (closePath) {
+            return true;
+        }
+        return snapshot.size() >= 3 && !areCollinear(snapshot);
+    }
+
+    private static boolean areCollinear(List<Coordinate> blocks) {
+        if (blocks.size() < 3) {
+            return true;
+        }
+        Coordinate a = blocks.get(0);
+        Coordinate b = blocks.get(1);
+        long abx = b.x() - a.x();
+        long aby = b.y() - a.y();
+        long abz = b.z() - a.z();
+        for (int i = 2; i < blocks.size(); i++) {
+            Coordinate c = blocks.get(i);
+            long acx = c.x() - a.x();
+            long acy = c.y() - a.y();
+            long acz = c.z() - a.z();
+            long cx = aby * acz - abz * acy;
+            long cy = abz * acx - abx * acz;
+            long cz = abx * acy - aby * acx;
+            if (cx != 0L || cy != 0L || cz != 0L) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private List<Coordinate> snapshotPickedBlocks() {

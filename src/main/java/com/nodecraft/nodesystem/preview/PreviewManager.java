@@ -379,14 +379,28 @@ public final class PreviewManager {
 
     /**
      * Polyline-style path preview using v1 {@link PreviewCurvePayload}.
+     * Invalid/short curves clear only path previews for the node — never sibling highlights.
      */
     public static String showCurve(String nodeId, PreviewCurvePayload payload, PreviewOptions options) {
         if (payload == null || payload.getPoints().size() < 2) {
-            hideNodePreviews(nodeId);
+            if (nodeId != null && !nodeId.isBlank() && !withinEmptyGrace(nodeId, "paths")) {
+                clearTypePreviewState(nodeId, "paths");
+            }
             return null;
         }
         PreviewStyle style = PreviewStyle.from(options, PreviewKind.CURVES);
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
+    }
+
+    /**
+     * Returns {@code previewId} when it still refers to an active element; otherwise {@code null}.
+     */
+    @Nullable
+    public static String activePreviewIdOrNull(@Nullable String previewId) {
+        if (previewId == null || previewId.isBlank()) {
+            return null;
+        }
+        return hasActivePreview(previewId) ? previewId : null;
     }
 
     /**
@@ -545,6 +559,22 @@ public final class PreviewManager {
         return showPreview(new PreviewRequest(nodeId, payload, style, PreviewBackend.GHOST, null));
     }
 
+    /**
+     * Face-center resize handles for a completed region selection (always-on-top interactive gizmo).
+     */
+    public static String showRegionResizeHandles(String nodeId, RegionResizeHandlesData data, PreviewOptions options) {
+        if (nodeId == null || nodeId.isBlank() || data == null) {
+            return null;
+        }
+        PreviewOptions opts = options != null ? options : new PreviewOptions();
+        if (opts.alwaysOnTop == null) {
+            opts.alwaysOnTop = true;
+        }
+        if (opts.renderPriority == null) {
+            opts.renderPriority = 1000;
+        }
+        return renderer().upsertPreview(nodeId, "region_resize_handles", data, opts);
+    }
 
     public static String showPoints(String nodeId, List<Coordinate> points, PreviewOptions options) {
         if (points == null || points.isEmpty()) {

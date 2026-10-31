@@ -89,6 +89,8 @@ public class PreviewRenderer {
                 () -> registerElementType("semi_transparent_block", GhostBlockElement::new));
         tryRegister("region_box", () -> registerElementType("region_box", RegionBoxElement::new));
         tryRegister("spatial_shape", () -> registerElementType("spatial_shape", RegionBoxElement::new));
+        tryRegister("region_resize_handles",
+                () -> registerElementType("region_resize_handles", RegionResizeHandlesElement::new));
         tryRegister("plane_grid", () -> registerElementType("plane_grid", PlaneGridElement::new));
         tryRegister("frame_axes", () -> registerElementType("frame_axes", FrameAxesElement::new));
         tryRegister("points", () -> registerElementType("points", PointsElement::new));

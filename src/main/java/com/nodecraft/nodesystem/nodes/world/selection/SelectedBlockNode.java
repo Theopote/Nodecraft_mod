@@ -405,6 +405,7 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         ActiveBlock active = resolveActiveBlock();
         if (active == null || active.position() == null) {
             // Idle / no selection: Has Selection=false, Valid=true, Error=""
+            SelectionVisualFeedback.getInstance().clearFeedback(getId().toString());
             resetOutputs();
             return;
         }
@@ -415,6 +416,17 @@ public class SelectedBlockNode extends BaseCustomUINode implements IBlockPickerC
         outputValues.put(OUTPUT_VALID, true);
         outputValues.put(OUTPUT_ERROR, "");
         syncOutputPorts();
+
+        // Re-apply every process so highlight survives eviction / style refresh (mirrors sequence node).
+        try {
+            SelectionVisualFeedback.getInstance().showBlockSelection(
+                getId().toString(),
+                position,
+                SelectionVisualFeedback.SelectionState.SELECTED
+            );
+        } catch (Exception e) {
+            NodeCraft.LOGGER.debug("节点 {} 刷新方块选择高亮失败: {}", getId(), e.getMessage());
+        }
     }
 
     private void resetOutputs() {

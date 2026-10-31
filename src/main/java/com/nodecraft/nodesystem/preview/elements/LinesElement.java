@@ -111,13 +111,9 @@ public class LinesElement extends AbstractPreviewElement {
             Vec3d end = pointsSnapshot.get(i + 1).subtract(cameraPos);
             VertexConsumer segmentConsumer = provider.getBuffer(RenderLayers.LINES);
             drawLine(segmentConsumer, matrix, start, end, finalOpacity);
-        }
-
-        if (showDirection && pointsSnapshot.size() >= 2) {
-            Vec3d start = pointsSnapshot.get(pointsSnapshot.size() - 2).subtract(cameraPos);
-            Vec3d end = pointsSnapshot.getLast().subtract(cameraPos);
-            VertexConsumer arrowConsumer = provider.getBuffer(RenderLayers.LINES);
-            drawArrowHead(arrowConsumer, matrix, start, end, finalOpacity);
+            if (showDirection) {
+                drawArrowHead(segmentConsumer, matrix, start, end, finalOpacity);
+            }
         }
 
         if (flushImmediately && immediate != null) {
