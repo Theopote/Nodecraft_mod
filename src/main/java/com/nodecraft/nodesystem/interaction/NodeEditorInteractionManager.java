@@ -349,16 +349,15 @@ public class NodeEditorInteractionManager {
         GizmoInteractionService gizmos = GizmoInteractionService.getInstance();
         boolean draggingGizmo = gizmos.isDraggingGizmo();
         boolean capturingGizmo = gizmos.isCapturingInput();
+        // Do not clear previousGizmoLeftMouseDown on early-outs — that creates false click/release
+        // edges and aborts an in-progress handle drag after a few frames.
         if (interactionState.isInInteractionMode() && !draggingGizmo && !capturingGizmo) {
-            previousGizmoLeftMouseDown = false;
             return;
         }
         if (editorModeCamera.isMiddleMouseDragging() && !draggingGizmo) {
-            previousGizmoLeftMouseDown = false;
             return;
         }
         if (!allowWorldInteraction && !draggingGizmo && !capturingGizmo) {
-            previousGizmoLeftMouseDown = false;
             return;
         }
 
@@ -370,7 +369,6 @@ public class NodeEditorInteractionManager {
             ? client.getWindow().getHandle()
             : ImGuiRenderer.getInstance().getActiveInputWindowHandle();
         if (windowHandle == 0L) {
-            previousGizmoLeftMouseDown = false;
             return;
         }
 

@@ -586,7 +586,12 @@ public class PreviewRenderer {
             if (Objects.equals(entry.getKey(), excludePreviewId)) {
                 continue;
             }
-            long updatedAt = entry.getValue().getLastUpdatedTime();
+            AbstractPreviewElement candidate = entry.getValue();
+            // Never evict a handle/gizmo the user is currently dragging.
+            if (candidate instanceof InteractivePreviewElement interactive && interactive.isBeingDragged()) {
+                continue;
+            }
+            long updatedAt = candidate.getLastUpdatedTime();
             if (updatedAt < oldestTime) {
                 oldestTime = updatedAt;
                 oldestId = entry.getKey();

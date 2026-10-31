@@ -13,6 +13,7 @@ import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.preview.PreviewManager;
 import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.RegionResizeHandlesData;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.Vector3;
 import imgui.ImGui;
@@ -604,7 +605,11 @@ public class SelectedRegionNode extends BaseCustomUINode {
 
         PreviewOptions options = createCompletedRegionPreviewOptions();
         completedRegionPreviewId = PreviewManager.showRegionBox(getId().toString(), min, maxExclusive, options);
-        syncCompletedBlocksPreview();
+        // Skip per-block highlight rebuild while a handle drag is live — it is expensive and can
+        // churn/evict preview elements mid-drag. Box + handles below stay in sync.
+        if (!GizmoInteractionService.getInstance().isDraggingGizmo()) {
+            syncCompletedBlocksPreview();
+        }
 
         // Update handle geometry in place (same preview id) so beingDragged is not lost.
         resizeHandlesPreviewId = PreviewManager.activePreviewIdOrNull(resizeHandlesPreviewId);

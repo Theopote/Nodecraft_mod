@@ -14,11 +14,16 @@ import net.minecraft.util.math.Vec3d;
 public final class GizmoInteractionService {
 
     private static final double MAX_PICK_DISTANCE = 256.0d;
+    /** Ignore single-frame GLFW "button up" blips during an active drag. */
+    private static final int RELEASE_CONFIRM_FRAMES = 2;
 
     private InteractivePreviewElement activeInteractive;
     private InteractivePreviewElement lastHoveredInteractive;
     private boolean hoveringInteractive;
     private boolean leftMouseWasDown;
+    /** True from successful press until a confirmed release — survives element flag glitches. */
+    private boolean dragSessionActive;
+    private int leftUpStreak;
 
     private GizmoInteractionService() {
     }
@@ -37,8 +42,16 @@ public final class GizmoInteractionService {
         boolean isLeftMouseDown,
         boolean isLeftMouseReleased
     ) {
+        if (isLeftMouseDown) {
+            leftUpStreak = 0;
+        } else {
+            leftUpStreak++;
+        }
+
         if (ray == null) {
-            if (!isLeftMouseDown) {
+            // Keep an in-progress drag alive across a brief null-ray frame.
+            if (!isLeftMouseDown && (!dragSessionActive || leftUpStreak >= RELEASE_CONFIRM_FRAMES)) {
+                endDragSession(null, null);
                 clearHover();
                 hoveringInteractive = false;
                 lastHoveredInteractive = null;
@@ -50,34 +63,59 @@ public final class GizmoInteractionService {
         Vec3d rayDirection = ray.direction();
         PreviewRenderer renderer = PreviewRenderer.getInstance();
 
-        if (isLeftMouseReleased) {
-            if (activeInteractive != null) {
-                activeInteractive.onMouseRelease(rayStart, rayDirection, 0);
-                activeInteractive = null;
-            } else {
-                dispatchRelease(renderer, rayStart, rayDirection);
+        boolean confirmedRelease = (!isLeftMouseDown && leftUpStreak >= RELEASE_CONFIRM_FRAMES)
+            || (isLeftMouseReleased && !dragSessionActive && leftUpStreak >= 1);
+        if (dragSessionActive && !isLeftMouseDown && leftUpStreak < RELEASE_CONFIRM_FRAMES) {
+            // Debounce: keep dragging with the last active target.
+            InteractivePreviewElement dragged = resolveDragTarget(renderer);
+            if (dragged != null) {
+                activeInteractive = dragged;
+                hoveringInteractive = true;
+                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             }
+            leftMouseWasDown = true;
+            return;
+        }
+
+        if (confirmedRelease || (isLeftMouseReleased && dragSessionActive && !isLeftMouseDown)) {
+            endDragSession(rayStart, rayDirection);
             leftMouseWasDown = false;
             hoverInteractives(renderer, rayStart, rayDirection);
             return;
         }
 
-        // Continue an in-progress drag even if the ray briefly misses the handle.
-        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
-        if (dragged == null && activeInteractive != null && activeInteractive.isBeingDragged()) {
-            dragged = activeInteractive;
+        // Continue an in-progress drag; never fall through to onMouseClick while the session is live.
+        if (isLeftMouseDown && dragSessionActive) {
+            InteractivePreviewElement dragged = resolveDragTarget(renderer);
+            if (dragged != null) {
+                activeInteractive = dragged;
+                hoveringInteractive = true;
+                if (!dragged.isBeingDragged()) {
+                    dragged.setBeingDragged(true);
+                }
+                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+                leftMouseWasDown = true;
+                return;
+            }
+            // Element disappeared mid-drag — keep the session so we don't re-click/reset every frame.
+            leftMouseWasDown = true;
+            return;
         }
+
+        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
         if (isLeftMouseDown && dragged != null) {
             activeInteractive = dragged;
+            lastHoveredInteractive = dragged;
+            dragSessionActive = true;
             hoveringInteractive = true;
             dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             leftMouseWasDown = true;
             return;
         }
 
-        // Start drag from the currently hovered handle first (sticky), then fresh pick.
-        // Use press-hold (isLeftMouseDown), not edge-only, so a 1-frame hover miss still grabs.
-        if (isLeftMouseDown) {
+        // Start only on rising edge. Press-hold re-entry called onMouseClick every frame, which
+        // re-seeded dragStartPoint under the cursor and froze movement (delta ≈ 0).
+        if (isLeftMouseClicked || (isLeftMouseDown && !leftMouseWasDown)) {
             InteractivePreviewElement target = null;
             if (lastHoveredInteractive != null && lastHoveredInteractive.isInteractable()) {
                 boolean stickyOk = lastHoveredInteractive instanceof RegionResizeHandlesElement handles
@@ -94,6 +132,7 @@ public final class GizmoInteractionService {
             if (target != null && target.onMouseClick(rayStart, rayDirection, 0)) {
                 activeInteractive = target;
                 lastHoveredInteractive = target;
+                dragSessionActive = true;
                 hoveringInteractive = true;
                 target.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
                 leftMouseWasDown = true;
@@ -104,12 +143,14 @@ public final class GizmoInteractionService {
         hoverInteractives(renderer, rayStart, rayDirection);
         if (!isLeftMouseDown) {
             activeInteractive = null;
+            dragSessionActive = false;
         }
         leftMouseWasDown = isLeftMouseDown;
     }
 
     public boolean isDraggingGizmo() {
-        return activeInteractive != null && activeInteractive.isBeingDragged();
+        return dragSessionActive
+            || (activeInteractive != null && activeInteractive.isBeingDragged());
     }
 
     /** True while a handle/gizmo is hovered or dragged — world clicks/picks should be locked out. */
@@ -124,6 +165,52 @@ public final class GizmoInteractionService {
                 handles.refreshHoverCursor();
             }
         }
+    }
+
+    private void endDragSession(Vec3d rayStart, Vec3d rayDirection) {
+        if (activeInteractive != null) {
+            if (rayStart != null && rayDirection != null) {
+                activeInteractive.onMouseRelease(rayStart, rayDirection, 0);
+            } else {
+                activeInteractive.setBeingDragged(false);
+            }
+            activeInteractive = null;
+        } else if (rayStart != null && rayDirection != null) {
+            dispatchRelease(PreviewRenderer.getInstance(), rayStart, rayDirection);
+        }
+        dragSessionActive = false;
+        leftUpStreak = 0;
+    }
+
+    private InteractivePreviewElement resolveDragTarget(PreviewRenderer renderer) {
+        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
+        if (dragged != null) {
+            return dragged;
+        }
+        if (activeInteractive != null) {
+            // Prefer the same instance when it is still registered.
+            for (AbstractPreviewElement element : renderer.getActiveElements()) {
+                if (element == activeInteractive) {
+                    return activeInteractive;
+                }
+            }
+            // Element was recreated (same owner); rebind to the replacement interactive.
+            String owner = null;
+            if (activeInteractive instanceof AbstractPreviewElement ape) {
+                owner = ape.getOwnerNodeId();
+            }
+            if (owner != null) {
+                for (AbstractPreviewElement element : renderer.getActiveElements()) {
+                    if (element instanceof InteractivePreviewElement interactive
+                        && owner.equals(element.getOwnerNodeId())
+                        && interactive.isInteractable()) {
+                        return interactive;
+                    }
+                }
+            }
+            return activeInteractive;
+        }
+        return null;
     }
 
     private InteractivePreviewElement findDraggedInteractive(PreviewRenderer renderer) {
