@@ -538,6 +538,9 @@ public class SelectedRegionNode extends BaseCustomUINode {
         int maxY = (int) Math.max(pos1.y(), pos2.y());
         int maxZ = (int) Math.max(pos1.z(), pos2.z());
 
+        int oldMinX = minX, oldMinY = minY, oldMinZ = minZ;
+        int oldMaxX = maxX, oldMaxY = maxY, oldMaxZ = maxZ;
+
         switch (faceAxis) {
             case 0 -> {
                 if (towardMax) {
@@ -565,12 +568,55 @@ public class SelectedRegionNode extends BaseCustomUINode {
             }
         }
 
+        if (minX == oldMinX && minY == oldMinY && minZ == oldMinZ
+            && maxX == oldMaxX && maxY == oldMaxY && maxZ == oldMaxZ) {
+            return;
+        }
+
         pos1 = new Vector3(minX, minY, minZ);
         pos2 = new Vector3(maxX, maxY, maxZ);
         selectionHint = "Area resized.";
         updateOutputsFromPositions();
-        syncCompletedRegionPreview();
+        // Update box/blocks immediately; keep the same handles element so drag state survives.
+        syncCompletedRegionPreviewPreservingHandles();
         invalidateCache();
         markDirty();
+    }
+
+    private void syncCompletedRegionPreviewPreservingHandles() {
+        if (pos1 == null || pos2 == null) {
+            clearCompletedRegionPreview();
+            clearCompletedBlocksPreview();
+            clearResizeHandlesPreview();
+            return;
+        }
+
+        Vec3d min = new Vec3d(
+            Math.min(pos1.x(), pos2.x()),
+            Math.min(pos1.y(), pos2.y()),
+            Math.min(pos1.z(), pos2.z())
+        );
+        Vec3d maxExclusive = new Vec3d(
+            Math.max(pos1.x(), pos2.x()) + 1.0d,
+            Math.max(pos1.y(), pos2.y()) + 1.0d,
+            Math.max(pos1.z(), pos2.z()) + 1.0d
+        );
+
+        PreviewOptions options = createCompletedRegionPreviewOptions();
+        completedRegionPreviewId = PreviewManager.showRegionBox(getId().toString(), min, maxExclusive, options);
+        syncCompletedBlocksPreview();
+
+        // Update handle geometry in place (same preview id) so beingDragged is not lost.
+        resizeHandlesPreviewId = PreviewManager.activePreviewIdOrNull(resizeHandlesPreviewId);
+        RegionResizeHandlesData data = new RegionResizeHandlesData(min, maxExclusive, this::onRegionFaceResized);
+        if (resizeHandlesPreviewId == null) {
+            PreviewOptions handleOptions = new PreviewOptions().setOpacity(1.0f).setLineWidth(2.5f);
+            handleOptions.alwaysOnTop = true;
+            handleOptions.renderPriority = 1000;
+            handleOptions.interactionRadius = 0.45f;
+            resizeHandlesPreviewId = PreviewManager.showRegionResizeHandles(getId().toString(), data, handleOptions);
+        } else {
+            PreviewManager.updatePreview(resizeHandlesPreviewId, data);
+        }
     }
 }

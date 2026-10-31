@@ -58,28 +58,25 @@ public final class GizmoInteractionService {
             return;
         }
 
-        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
-        if (dragged != null) {
-            activeInteractive = dragged;
-            hoveringInteractive = true;
-            if (isLeftMouseDown) {
-                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+        // Press-and-hold over a handle starts drag (do not rely only on click-edge frames).
+        if (isLeftMouseDown) {
+            InteractivePreviewElement dragged = findDraggedInteractive(renderer);
+            if (dragged == null) {
+                InteractivePreviewElement target = pickClosestInteractive(renderer, rayStart, rayDirection);
+                if (target != null && !target.isBeingDragged() && target.onMouseClick(rayStart, rayDirection, 0)) {
+                    dragged = target;
+                }
             }
-            leftMouseWasDown = isLeftMouseDown;
-            return;
-        }
-
-        if (isLeftMouseClicked) {
-            InteractivePreviewElement clicked = pickClosestInteractive(renderer, rayStart, rayDirection);
-            if (clicked != null && clicked.onMouseClick(rayStart, rayDirection, 0)) {
-                activeInteractive = clicked;
+            if (dragged != null) {
+                activeInteractive = dragged;
                 hoveringInteractive = true;
+                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
                 leftMouseWasDown = true;
                 return;
             }
         }
 
-        if (isLeftMouseDown && activeInteractive != null) {
+        if (isLeftMouseDown && activeInteractive != null && activeInteractive.isBeingDragged()) {
             activeInteractive.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             hoveringInteractive = true;
             leftMouseWasDown = true;

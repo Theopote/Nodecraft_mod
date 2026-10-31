@@ -332,7 +332,11 @@ public class NodeEditorInteractionManager {
                 
                 // 清除射线缓存（鼠标在UI上时不需要缓存）
                 invalidateRayCache();
-                updateGizmoInteraction(mouseX, mouseY, false);
+                // Keep processing while already hovering/dragging a handle so press-drag is not dropped.
+                boolean keepGizmo =
+                    GizmoInteractionService.getInstance().isCapturingInput()
+                        || GizmoInteractionService.getInstance().isDraggingGizmo();
+                updateGizmoInteraction(mouseX, mouseY, keepGizmo);
             }
             
         } catch (Exception e) {
@@ -344,8 +348,10 @@ public class NodeEditorInteractionManager {
      * 处理鼠标点击事件
      */
     private void updateGizmoInteraction(float mouseX, float mouseY, boolean allowWorldInteraction) {
-        boolean draggingGizmo = GizmoInteractionService.getInstance().isDraggingGizmo();
-        if (interactionState.isInInteractionMode() && !draggingGizmo) {
+        GizmoInteractionService gizmos = GizmoInteractionService.getInstance();
+        boolean draggingGizmo = gizmos.isDraggingGizmo();
+        boolean capturingGizmo = gizmos.isCapturingInput();
+        if (interactionState.isInInteractionMode() && !draggingGizmo && !capturingGizmo) {
             previousGizmoLeftMouseDown = false;
             return;
         }
@@ -353,14 +359,18 @@ public class NodeEditorInteractionManager {
             previousGizmoLeftMouseDown = false;
             return;
         }
-        if (!allowWorldInteraction && !draggingGizmo) {
+        if (!allowWorldInteraction && !draggingGizmo && !capturingGizmo) {
             previousGizmoLeftMouseDown = false;
             return;
         }
 
         // Prefer Minecraft mouse coords (same space as world block raycasts) for stable handle picking.
         WorldPickingService.Ray ray = resolveGizmoRay(mouseX, mouseY);
-        long windowHandle = ImGuiRenderer.getInstance().getActiveInputWindowHandle();
+        // Always read the game window for button state (detached ImGui window handle can desync).
+        MinecraftClient client = MinecraftClient.getInstance();
+        long windowHandle = client != null && client.getWindow() != null
+            ? client.getWindow().getHandle()
+            : ImGuiRenderer.getInstance().getActiveInputWindowHandle();
         if (windowHandle == 0L) {
             previousGizmoLeftMouseDown = false;
             return;
@@ -371,7 +381,7 @@ public class NodeEditorInteractionManager {
         boolean leftReleased = !leftDown && previousGizmoLeftMouseDown;
         previousGizmoLeftMouseDown = leftDown;
 
-        GizmoInteractionService.getInstance().update(ray, leftClicked, leftDown, leftReleased);
+        gizmos.update(ray, leftClicked, leftDown, leftReleased);
     }
 
     private WorldPickingService.Ray resolveGizmoRay(float fallbackMouseX, float fallbackMouseY) {

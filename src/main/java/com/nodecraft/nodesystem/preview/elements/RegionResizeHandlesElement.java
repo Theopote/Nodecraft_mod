@@ -319,7 +319,11 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         if (!interactable || button != 0) {
             return false;
         }
-        int face = pickFace(rayStart, rayDirection, 256.0d);
+        if (beingDragged && activeFace >= 0) {
+            return true;
+        }
+        // Prefer already-hovered face so press-while-hover always starts drag.
+        int face = hoveredFace >= 0 ? hoveredFace : pickFace(rayStart, rayDirection, 256.0d);
         if (face < 0) {
             return false;
         }
@@ -333,7 +337,9 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         beingDragged = true;
         Vec3d normal = faceNormal(face);
         Vec3d center = faceCenter(data, face);
-        dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, rayDirection);
+        // Same convention as TransformationGizmo: plane faces camera around the move axis.
+        Vec3d toCamera = rayStart.subtract(center);
+        dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, toCamera);
         dragStartPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
         if (dragStartPoint == null) {
             dragStartPoint = center;
@@ -355,7 +361,14 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
 
         Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
         if (hit == null) {
-            return true;
+            // Rebuild a camera-facing plane if the original became parallel to the ray.
+            Vec3d center = faceCenter(data, activeFace);
+            Vec3d normal = faceNormal(activeFace);
+            dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, rayStart.subtract(center));
+            hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
+            if (hit == null) {
+                return true;
+            }
         }
 
         Vec3d normal = faceNormal(activeFace);
