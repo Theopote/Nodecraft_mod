@@ -10,6 +10,10 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.glfw.GLFW;
+
+import java.nio.DoubleBuffer;
 
 /**
  * NodeCraft输入系统
@@ -35,6 +39,28 @@ public final class NodecraftInputSystem {
      * Prefer this for gizmo/handle picking so hit tests align with on-screen visuals.
      */
     public record MouseRay(Vec3d origin, Vec3d direction) {
+    }
+
+    /**
+     * World-space ray from the *game window* cursor position (GLFW).
+     * <p>
+     * World-space gizmos/handles are rendered in the game window, so their picking ray must
+     * come from the game window cursor. ImGui coordinates are relative to whichever ImGui
+     * window is being rendered (the editor can run in a detached window), so they cannot be
+     * used directly for world picking.
+     */
+    public static MouseRay rayFromGameWindowCursor() {
+        if (MC.world == null || MC.getWindow() == null) {
+            return null;
+        }
+        long handle = MC.getWindow().getHandle();
+        if (handle == 0L) {
+            return null;
+        }
+        DoubleBuffer xBuffer = BufferUtils.createDoubleBuffer(1);
+        DoubleBuffer yBuffer = BufferUtils.createDoubleBuffer(1);
+        GLFW.glfwGetCursorPos(handle, xBuffer, yBuffer);
+        return rayFromScreen(xBuffer.get(0), yBuffer.get(0));
     }
 
     /**

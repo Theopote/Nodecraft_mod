@@ -170,6 +170,12 @@ public final class GizmoInteractionService {
     }
 
     private InteractivePreviewElement resolveDragTarget(PreviewRenderer renderer) {
+        // Prefer the instance that actually holds the drag state. A node re-execute mid-drag
+        // hides and re-creates the handle preview, so the live element in the renderer may be a
+        // fresh copy with no drag geometry — keep driving the original one until release.
+        if (activeInteractive != null && activeInteractive.isBeingDragged()) {
+            return activeInteractive;
+        }
         InteractivePreviewElement dragged = findDraggedInteractive(renderer);
         if (dragged != null) {
             return dragged;

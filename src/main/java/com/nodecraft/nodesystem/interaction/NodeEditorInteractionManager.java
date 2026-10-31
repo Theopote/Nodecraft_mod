@@ -405,11 +405,13 @@ public class NodeEditorInteractionManager {
     }
 
     private WorldPickingService.Ray resolveGizmoRay(float editorMouseX, float editorMouseY) {
-        // Prefer the ImGui/editor cursor (same coords as updateInteractionManager). MC.mouse can
-        // stop tracking while a button is held under ImGui input ownership — that froze resize drags.
-        NodecraftInputSystem.MouseRay fromEditor = NodecraftInputSystem.rayFromScreen(editorMouseX, editorMouseY);
-        if (fromEditor != null) {
-            return new WorldPickingService.Ray(fromEditor.origin(), fromEditor.direction());
+        // World-space handles are drawn in the GAME window, so the picking ray must use the
+        // game-window cursor. ImGui coordinates belong to the editor window (which may be a
+        // detached window with its own origin) — using them here mis-aims the ray and makes
+        // slow drags stall while fast flicks still jump.
+        NodecraftInputSystem.MouseRay fromGameWindow = NodecraftInputSystem.rayFromGameWindowCursor();
+        if (fromGameWindow != null) {
+            return new WorldPickingService.Ray(fromGameWindow.origin(), fromGameWindow.direction());
         }
         NodecraftInputSystem.MouseRay fromMc = NodecraftInputSystem.rayFromMouse();
         if (fromMc != null) {

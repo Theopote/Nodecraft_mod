@@ -149,8 +149,9 @@ public final class GizmoMath {
     }
 
     /**
-     * Closest point on an infinite axis to a ray (skew-line solve). Used for axis-constrained
-     * resize/translate so drag does not depend on a fragile camera plane.
+     * Closest point on an infinite axis to a ray (skew-line solve). Matches Formacraft
+     * {@code ToolGeometry.axisPoint}: returns null when the ray is parallel to the axis or
+     * the closest approach is behind the camera.
      */
     public static Vec3d closestPointOnAxis(Vec3d rayOrigin, Vec3d rayDirection, Vec3d axisOrigin, Vec3d axisDirection) {
         Vec3d rayDir = normalizeOr(rayDirection, new Vec3d(0.0d, 0.0d, -1.0d));
@@ -164,12 +165,13 @@ public final class GizmoMath {
         double e = axisDir.dotProduct(w0);
         double denom = a * c - b * b;
 
-        double tc;
-        if (Math.abs(denom) < 1.0e-12d) {
-            // Nearly parallel: project ray origin onto the axis.
-            tc = e / Math.max(c, 1.0e-12d);
-        } else {
-            tc = (a * e - b * d) / denom;
+        if (Math.abs(denom) < 1.0e-6d) {
+            return null;
+        }
+        double tc = (a * e - b * d) / denom;
+        double rayDistance = (b * e - c * d) / denom;
+        if (rayDistance < 0.0d) {
+            return null;
         }
         return axisOrigin.add(axisDir.multiply(tc));
     }

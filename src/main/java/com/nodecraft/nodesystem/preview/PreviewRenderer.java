@@ -224,36 +224,64 @@ public class PreviewRenderer {
      * 隐藏并清除指定预览
      */
     public void hidePreview(String previewId) {
-        AbstractPreviewElement element = activeElements.remove(previewId);
-        if (element != null) {
-            // 从节点映射中移除
-            String nodeId = element.getOwnerNodeId();
-            List<String> nodePreviews = nodeToPreviewsMap.get(nodeId);
-            if (nodePreviews != null) {
-                nodePreviews.remove(previewId);
-                if (nodePreviews.isEmpty()) {
-                    nodeToPreviewsMap.remove(nodeId);
-                }
-            }
-            
-            element.cleanup();
-            
-            // 标记需要更新排序列表
-            listDirty.set(true);
+        AbstractPreviewElement element = activeElements.get(previewId);
+        if (element == null) {
+            return;
         }
+        // A handle/gizmo the user is actively dragging must survive: hiding it ends the drag
+        // (cleanup() -> endDrag()) and drops the in-flight resize baseline. The node re-executes
+        // on every drag frame and hides previews, which previously aborted the drag after one
+        // frame. Keep the element registered so upsertPreview reuses the same instance.
+        if (isActivelyDragged(element)) {
+            return;
+        }
+
+        activeElements.remove(previewId);
+        // 从节点映射中移除
+        String nodeId = element.getOwnerNodeId();
+        List<String> nodePreviews = nodeToPreviewsMap.get(nodeId);
+        if (nodePreviews != null) {
+            nodePreviews.remove(previewId);
+            if (nodePreviews.isEmpty()) {
+                nodeToPreviewsMap.remove(nodeId);
+            }
+        }
+
+        element.cleanup();
+        
+        // 标记需要更新排序列表
+        listDirty.set(true);
+    }
+
+    /** True when the element is an interactive preview currently held by the user. */
+    private static boolean isActivelyDragged(AbstractPreviewElement element) {
+        return element instanceof InteractivePreviewElement interactive && interactive.isBeingDragged();
     }
     
     /**
      * 隐藏并清除某个节点生成的所有预览
      */
     public void hidePreviewsByNode(String ownerNodeId) {
-        List<String> previews = nodeToPreviewsMap.remove(ownerNodeId);
-        if (previews != null) {
+        List<String> previews = nodeToPreviewsMap.get(ownerNodeId);
+        if (previews != null && !previews.isEmpty()) {
+            List<String> kept = new ArrayList<>();
             for (String previewId : previews) {
-                AbstractPreviewElement element = activeElements.remove(previewId);
-                if (element != null) {
-                    element.cleanup();
+                AbstractPreviewElement element = activeElements.get(previewId);
+                if (element == null) {
+                    continue;
                 }
+                if (isActivelyDragged(element)) {
+                    // Keep the active drag alive (see hidePreview).
+                    kept.add(previewId);
+                    continue;
+                }
+                activeElements.remove(previewId);
+                element.cleanup();
+            }
+            if (kept.isEmpty()) {
+                nodeToPreviewsMap.remove(ownerNodeId);
+            } else {
+                nodeToPreviewsMap.put(ownerNodeId, new CopyOnWriteArrayList<>(kept));
             }
             
             // 标记需要更新排序列表
@@ -278,10 +306,17 @@ public class PreviewRenderer {
             if (!isPreviewIdOfType(previewId, ownerNodeId, previewType)) {
                 continue;
             }
-            AbstractPreviewElement element = activeElements.remove(previewId);
-            if (element != null) {
-                element.cleanup();
+            AbstractPreviewElement element = activeElements.get(previewId);
+            if (element == null) {
+                removed.add(previewId);
+                continue;
             }
+            if (isActivelyDragged(element)) {
+                // Keep the active drag alive (see hidePreview).
+                continue;
+            }
+            activeElements.remove(previewId);
+            element.cleanup();
             removed.add(previewId);
         }
 
