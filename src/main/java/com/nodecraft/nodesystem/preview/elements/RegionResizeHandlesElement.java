@@ -38,8 +38,10 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     private int hoveredFace = -1;
     private int activeFace = -1;
     private Vec3d dragPlaneNormal = Vec3d.ZERO;
+    private Vec3d dragAxis = new Vec3d(1.0d, 0.0d, 0.0d);
     private Vec3d dragStartPoint = Vec3d.ZERO;
     private int dragStartFaceCoord = 0;
+    private int lastEmittedFaceCoord = 0;
     private int cursorFace = -1;
 
     public RegionResizeHandlesElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
@@ -262,6 +264,15 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         return (face % 2) == 1;
     }
 
+    /** Always +X/+Y/+Z so min-face outward normals do not invert drag direction. */
+    private static Vec3d faceAxisDir(int face) {
+        return switch (faceAxis(face)) {
+            case 0 -> new Vec3d(1.0d, 0.0d, 0.0d);
+            case 1 -> new Vec3d(0.0d, 1.0d, 0.0d);
+            default -> new Vec3d(0.0d, 0.0d, 1.0d);
+        };
+    }
+
     /** X=red, Y=green, Z=blue (standard transform gizmo colors). */
     private static float[] axisRgb(int axis) {
         return switch (axis) {
@@ -343,16 +354,14 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         activeFace = face;
         hoveredFace = face;
         beingDragged = true;
-        Vec3d normal = faceNormal(face);
+        dragAxis = faceAxisDir(face);
         Vec3d center = faceCenter(data, face);
-        // Seed plane for compatibility; drag itself projects onto the face axis.
-        Vec3d toCamera = rayStart.subtract(center);
-        dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, toCamera);
-        dragStartPoint = GizmoMath.closestPointOnAxis(rayStart, rayDirection, center, normal);
-        if (dragStartPoint == null) {
-            dragStartPoint = center;
-        }
+        // Plane contains the resize axis and faces the camera (stable mouse → world mapping).
+        dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(dragAxis, rayStart.subtract(center));
+        Vec3d planeHit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
+        dragStartPoint = planeHit != null ? planeHit : center;
         dragStartFaceCoord = inclusiveFaceCoord(data, face);
+        lastEmittedFaceCoord = dragStartFaceCoord;
         applyResizeCursor(face);
         return true;
     }
@@ -367,22 +376,50 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
             return false;
         }
 
-        Vec3d normal = faceNormal(activeFace);
-        Vec3d hit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, dragStartPoint, normal);
+        Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
         if (hit == null) {
-            return true;
+            Vec3d center = faceCenter(data, activeFace);
+            dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(dragAxis, rayStart.subtract(center));
+            hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
+            if (hit == null) {
+                return true;
+            }
         }
 
-        double deltaAlong = hit.subtract(dragStartPoint).dotProduct(normal);
-        int newCoord = dragStartFaceCoord + (int) Math.round(deltaAlong);
+        // Project onto +axis (not outward face normal) so -X/-Y/-Z handles move with the mouse.
+        double deltaAlong = hit.subtract(dragStartPoint).dotProduct(dragAxis);
+        int newCoord = quantizeFaceCoord(deltaAlong);
+        if (newCoord == lastEmittedFaceCoord) {
+            return true;
+        }
+        lastEmittedFaceCoord = newCoord;
         data.callback().onFaceResized(faceAxis(activeFace), faceTowardMax(activeFace), newCoord);
         return true;
+    }
+
+    /**
+     * Block-snap with hysteresis so noise around ±0.5 does not flicker the face back and forth.
+     */
+    private int quantizeFaceCoord(double deltaAlong) {
+        double exact = dragStartFaceCoord + deltaAlong;
+        int nearest = (int) Math.round(exact);
+        if (nearest == lastEmittedFaceCoord) {
+            return lastEmittedFaceCoord;
+        }
+        // Require crossing further past the midpoint before switching blocks.
+        double sticky = lastEmittedFaceCoord + Math.copySign(0.55d, nearest - lastEmittedFaceCoord);
+        if ((nearest > lastEmittedFaceCoord && exact < sticky)
+            || (nearest < lastEmittedFaceCoord && exact > sticky)) {
+            return lastEmittedFaceCoord;
+        }
+        return nearest;
     }
 
     @Override
     public boolean onMouseRelease(Vec3d rayStart, Vec3d rayDirection, int button) {
         beingDragged = false;
         activeFace = -1;
+        dragAxis = new Vec3d(1.0d, 0.0d, 0.0d);
         restoreCursor();
         return true;
     }

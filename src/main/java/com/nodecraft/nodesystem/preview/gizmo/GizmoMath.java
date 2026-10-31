@@ -174,12 +174,21 @@ public final class GizmoMath {
         return axisOrigin.add(axisDir.multiply(tc));
     }
 
+    /**
+     * Normal of a plane that contains {@code axisDirection} and faces the camera as much as
+     * possible. (Previously used {@code camera × axis}, which made the plane parallel to the
+     * view ray and caused unstable / reversed drag intersections.)
+     */
     public static Vec3d cameraFacingPlaneNormal(Vec3d axisDirection, Vec3d cameraDirection) {
         Vec3d axis = normalizeOr(axisDirection, new Vec3d(0.0d, 1.0d, 0.0d));
-        Vec3d camera = normalizeOr(cameraDirection, new Vec3d(0.0d, 0.0d, -1.0d));
-        Vec3d normal = camera.crossProduct(axis);
+        Vec3d toCamera = normalizeOr(cameraDirection, new Vec3d(0.0d, 0.0d, -1.0d));
+        // Reject the move axis from the camera vector so the plane contains the axis.
+        Vec3d normal = toCamera.subtract(axis.multiply(toCamera.dotProduct(axis)));
         if (normal.lengthSquared() < 1.0e-8d) {
-            normal = axis.crossProduct(new Vec3d(0.0d, 1.0d, 0.0d));
+            // Looking along the axis — any perpendicular will do.
+            normal = Math.abs(axis.y) < 0.9d
+                ? axis.crossProduct(new Vec3d(0.0d, 1.0d, 0.0d))
+                : axis.crossProduct(new Vec3d(1.0d, 0.0d, 0.0d));
         }
         if (normal.lengthSquared() < 1.0e-8d) {
             normal = new Vec3d(0.0d, 0.0d, 1.0d);
