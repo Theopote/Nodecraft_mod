@@ -310,12 +310,15 @@ public class NodeEditorInteractionManager {
                     newHoveredBlock = new Coordinate(blockPos.getX(), blockPos.getY(), blockPos.getZ());
                 }
                 
-                // 更新高亮预览
-                hoveredBlockHighlight.updateHoveredBlockHighlight(newHoveredBlock);
-                
-                // 处理鼠标点击事件
-                handleMouseClickEvents(newHoveredBlock, hitResult, isLeftMouseClicked, isRightMouseClicked);
+                // Gizmo/handles first so hover can lock out world picking & other click routing.
                 updateGizmoInteraction(mouseX, mouseY, true);
+                boolean gizmoCapturing = GizmoInteractionService.getInstance().isCapturingInput();
+                if (gizmoCapturing) {
+                    hoveredBlockHighlight.clear();
+                } else {
+                    hoveredBlockHighlight.updateHoveredBlockHighlight(newHoveredBlock);
+                    handleMouseClickEvents(newHoveredBlock, hitResult, isLeftMouseClicked, isRightMouseClicked);
+                }
             } else {
                 boolean wasMiddleDragging = editorModeCamera.isMiddleMouseDragging();
                 editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, false);

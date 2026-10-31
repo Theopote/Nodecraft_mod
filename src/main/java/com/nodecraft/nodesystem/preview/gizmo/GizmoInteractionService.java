@@ -16,6 +16,7 @@ public final class GizmoInteractionService {
     private static final double MAX_PICK_DISTANCE = 256.0d;
 
     private InteractivePreviewElement activeInteractive;
+    private boolean hoveringInteractive;
     private boolean leftMouseWasDown;
 
     private GizmoInteractionService() {
@@ -37,6 +38,7 @@ public final class GizmoInteractionService {
     ) {
         if (ray == null) {
             clearHover();
+            hoveringInteractive = false;
             return;
         }
 
@@ -52,12 +54,14 @@ public final class GizmoInteractionService {
                 dispatchRelease(renderer, rayStart, rayDirection);
             }
             leftMouseWasDown = false;
+            hoverInteractives(renderer, rayStart, rayDirection);
             return;
         }
 
         InteractivePreviewElement dragged = findDraggedInteractive(renderer);
         if (dragged != null) {
             activeInteractive = dragged;
+            hoveringInteractive = true;
             if (isLeftMouseDown) {
                 dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             }
@@ -69,6 +73,7 @@ public final class GizmoInteractionService {
             InteractivePreviewElement clicked = pickClosestInteractive(renderer, rayStart, rayDirection);
             if (clicked != null && clicked.onMouseClick(rayStart, rayDirection, 0)) {
                 activeInteractive = clicked;
+                hoveringInteractive = true;
                 leftMouseWasDown = true;
                 return;
             }
@@ -76,6 +81,7 @@ public final class GizmoInteractionService {
 
         if (isLeftMouseDown && activeInteractive != null) {
             activeInteractive.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+            hoveringInteractive = true;
             leftMouseWasDown = true;
             return;
         }
@@ -89,6 +95,11 @@ public final class GizmoInteractionService {
 
     public boolean isDraggingGizmo() {
         return activeInteractive != null && activeInteractive.isBeingDragged();
+    }
+
+    /** True while a handle/gizmo is hovered or dragged — world clicks/picks should be locked out. */
+    public boolean isCapturingInput() {
+        return hoveringInteractive || isDraggingGizmo();
     }
 
     private InteractivePreviewElement findDraggedInteractive(PreviewRenderer renderer) {
@@ -135,6 +146,7 @@ public final class GizmoInteractionService {
                 }
             }
         }
+        hoveringInteractive = anyHovered || isDraggingGizmo();
         if (!anyHovered) {
             clearHover(renderer);
         }
@@ -142,6 +154,7 @@ public final class GizmoInteractionService {
 
     private void clearHover() {
         clearHover(PreviewRenderer.getInstance());
+        hoveringInteractive = false;
     }
 
     private void clearHover(PreviewRenderer renderer) {

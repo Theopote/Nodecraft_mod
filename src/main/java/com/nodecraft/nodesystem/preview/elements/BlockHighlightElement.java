@@ -176,11 +176,12 @@ public class BlockHighlightElement extends AbstractPreviewElement {
 
             BlockPos blockPos = new BlockPos(pos.x(), pos.y(), pos.z());
             BlockState blockState = world.getBlockState(blockPos);
-            boolean air = blockState.isAir();
+            if (blockState.isAir()) {
+                continue;
+            }
 
-            // Air cells still get an outline so empty selection volumes remain visible.
             try {
-                if (showFill && !air) {
+                if (showFill) {
                     VertexConsumer fillVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.debugFilledBox());
                     try {
                         renderSimpleBlockFill(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, fillVertexConsumer);
@@ -192,10 +193,9 @@ public class BlockHighlightElement extends AbstractPreviewElement {
                         }
                     }
                 }
-                if (showOutline || air) {
+                if (showOutline) {
                     VertexConsumer lineVertexConsumer = vertexConsumerProvider.getBuffer(RenderLayers.LINES);
-                    float outlineOpacity = air ? finalOpacity * 0.75f : finalOpacity;
-                    renderSimpleBlockOutline(matrices, cameraPos, blockPos, outlineOpacity, pulseFactor, lineVertexConsumer);
+                    renderSimpleBlockOutline(matrices, cameraPos, blockPos, finalOpacity, pulseFactor, lineVertexConsumer);
                 }
             } catch (IllegalStateException e) {
                 if (e.getMessage() != null && e.getMessage().contains("Not building")) {
@@ -234,11 +234,8 @@ public class BlockHighlightElement extends AbstractPreviewElement {
         float b = color.z();
         float a = alpha * pulseFactor; // 直接使用计算的透明度，不再强制最小值
         
-        // 使用统一的线框缓冲提交
+        // 单层轮廓：仅使用配置颜色（不要黑色描边）
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        
-        // 双层轮廓：外层深色 + 内层高亮，参考 chronoblocks 的高对比可视化效果
-        renderOutlineEdges(vertexConsumer, matrix, 2.0f * OUTLINE_EXPAND, 0.02f, 0.02f, 0.02f, Math.min(1.0f, a * 0.95f));
         renderOutlineEdges(vertexConsumer, matrix, OUTLINE_EXPAND, r, g, b, a);
         
         matrices.pop();

@@ -329,42 +329,9 @@ public class SelectedBlockSequenceNode extends BaseCustomUINode implements IBloc
         }
     }
 
-    /**
-     * Close when the Close Path property is on (2+ points), or automatically when
-     * there are at least three non-collinear picked blocks.
-     */
+    /** Close only when the Close Path property is explicitly enabled. */
     private boolean shouldClosePath(List<Coordinate> snapshot) {
-        if (snapshot == null || snapshot.size() < 2) {
-            return false;
-        }
-        if (closePath) {
-            return true;
-        }
-        return snapshot.size() >= 3 && !areCollinear(snapshot);
-    }
-
-    private static boolean areCollinear(List<Coordinate> blocks) {
-        if (blocks.size() < 3) {
-            return true;
-        }
-        Coordinate a = blocks.get(0);
-        Coordinate b = blocks.get(1);
-        long abx = b.x() - a.x();
-        long aby = b.y() - a.y();
-        long abz = b.z() - a.z();
-        for (int i = 2; i < blocks.size(); i++) {
-            Coordinate c = blocks.get(i);
-            long acx = c.x() - a.x();
-            long acy = c.y() - a.y();
-            long acz = c.z() - a.z();
-            long cx = aby * acz - abz * acy;
-            long cy = abz * acx - abx * acz;
-            long cz = abx * acy - aby * acx;
-            if (cx != 0L || cy != 0L || cz != 0L) {
-                return false;
-            }
-        }
-        return true;
+        return closePath && snapshot != null && snapshot.size() >= 2;
     }
 
     private List<Coordinate> snapshotPickedBlocks() {

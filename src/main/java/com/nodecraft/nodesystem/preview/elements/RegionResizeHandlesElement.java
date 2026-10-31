@@ -22,8 +22,8 @@ import org.lwjgl.glfw.GLFW;
  */
 public class RegionResizeHandlesElement extends AbstractPreviewElement implements InteractivePreviewElement {
 
-    private static final double HANDLE_RADIUS = 0.22d;
-    private static final double ARROW_LENGTH = 0.45d;
+    private static final double HANDLE_RADIUS = 0.10d;
+    private static final double ARROW_LENGTH = 0.32d;
     private static final int FACE_COUNT = 6;
 
     private volatile RegionResizeHandlesData handlesData;
@@ -104,22 +104,24 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
             boolean frontFacing = cameraLook.dotProduct(normal) < 0.0d;
             boolean highlighted = face == hoveredFace || face == activeFace;
 
-            float alpha = frontFacing ? finalOpacity : finalOpacity * 0.35f;
-            float r = highlighted ? 1.0f : (frontFacing ? 1.0f : 0.55f);
-            float g = highlighted ? 0.95f : (frontFacing ? 0.82f : 0.45f);
-            float b = highlighted ? 0.35f : (frontFacing ? 0.27f : 0.2f);
+            float[] axisColor = axisRgb(faceAxis(face));
+            float boost = highlighted ? 0.25f : 0.0f;
+            float r = Math.min(1.0f, axisColor[0] + boost);
+            float g = Math.min(1.0f, axisColor[1] + boost);
+            float b = Math.min(1.0f, axisColor[2] + boost);
+            // Back faces stay same hue but dimmer so the user knows which side is behind.
+            float alpha = frontFacing ? finalOpacity : finalOpacity * 0.4f;
 
             Vec3d local = center.subtract(cameraPos);
-            drawHandleCube(lines, matrix, local, HANDLE_RADIUS * (highlighted ? 1.25d : 1.0d), r, g, b, alpha);
+            drawHandleCube(lines, matrix, local, HANDLE_RADIUS * (highlighted ? 1.35d : 1.0d), r, g, b, alpha);
 
             Vec3d arrowA = local.add(normal.multiply(ARROW_LENGTH));
             Vec3d arrowB = local.subtract(normal.multiply(ARROW_LENGTH));
             if (frontFacing) {
-                drawLine(lines, matrix, arrowA, arrowB, r, g, b, alpha, highlighted ? 3.5f : 2.5f);
+                drawLine(lines, matrix, arrowA, arrowB, r, g, b, alpha, highlighted ? 3.2f : 2.2f);
                 drawArrowTips(lines, matrix, local, normal, r, g, b, alpha);
             } else {
-                // Dashed bidirectional indicator for back faces.
-                drawDashedLine(lines, matrix, arrowA, arrowB, r, g, b, alpha * 0.85f, 2.0f);
+                drawDashedLine(lines, matrix, arrowA, arrowB, r, g, b, alpha * 0.85f, 1.8f);
             }
         }
 
@@ -166,11 +168,11 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         Vec3d tip = center.add(normal.multiply(ARROW_LENGTH));
         Vec3d tipNeg = center.subtract(normal.multiply(ARROW_LENGTH));
         Vec3d reference = Math.abs(normal.y) < 0.9d ? new Vec3d(0.0d, 1.0d, 0.0d) : new Vec3d(1.0d, 0.0d, 0.0d);
-        Vec3d side = normal.crossProduct(reference).normalize().multiply(0.12d);
-        Vec3d back = normal.multiply(-0.18d);
+        Vec3d side = normal.crossProduct(reference).normalize().multiply(0.08d);
+        Vec3d back = normal.multiply(-0.12d);
         drawLine(consumer, matrix, tip, tip.add(back).add(side), r, g, b, alpha, 2.0f);
         drawLine(consumer, matrix, tip, tip.add(back).subtract(side), r, g, b, alpha, 2.0f);
-        Vec3d backNeg = normal.multiply(0.18d);
+        Vec3d backNeg = normal.multiply(0.12d);
         drawLine(consumer, matrix, tipNeg, tipNeg.add(backNeg).add(side), r, g, b, alpha, 2.0f);
         drawLine(consumer, matrix, tipNeg, tipNeg.add(backNeg).subtract(side), r, g, b, alpha, 2.0f);
     }
@@ -259,6 +261,19 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         return (face % 2) == 1;
     }
 
+    /** X=red, Y=green, Z=blue (standard transform gizmo colors). */
+    private static float[] axisRgb(int axis) {
+        return switch (axis) {
+            case 0 -> new float[] { 1.0f, 0.22f, 0.22f };
+            case 1 -> new float[] { 0.25f, 0.95f, 0.3f };
+            default -> new float[] { 0.25f, 0.5f, 1.0f };
+        };
+    }
+
+    public boolean isHandleHovered() {
+        return hoveredFace >= 0 || beingDragged;
+    }
+
     private int pickFace(Vec3d rayStart, Vec3d rayDirection, double maxDistance) {
         RegionResizeHandlesData data = handlesData;
         if (data == null) {
@@ -266,7 +281,7 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         }
         int best = -1;
         double bestDist = Double.MAX_VALUE;
-        double pickR = Math.max(interactionRadius, HANDLE_RADIUS * 1.5d);
+        double pickR = Math.max(interactionRadius, Math.max(HANDLE_RADIUS * 2.5d, ARROW_LENGTH * 0.85d));
         for (int face = 0; face < FACE_COUNT; face++) {
             Vec3d center = faceCenter(data, face);
             Vec3d toCenter = center.subtract(rayStart);
