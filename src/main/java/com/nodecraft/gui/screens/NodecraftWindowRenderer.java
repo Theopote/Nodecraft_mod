@@ -9,6 +9,7 @@ import com.nodecraft.gui.style.MinecraftTheme;
 import com.nodecraft.gui.utils.ImGuiStyleVar;
 import com.nodecraft.gui.window.ViewportCloseDetector;
 import com.nodecraft.gui.window.WindowManager;
+import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import imgui.ImGui;
 import imgui.flag.ImGuiCond;
 import imgui.flag.ImGuiConfigFlags;
@@ -44,8 +45,11 @@ public class NodecraftWindowRenderer {
             imGuiRenderer.beginFrame();
             // Poll after beginFrame so ImGui IO reflects the current frame before widgets render.
             parentScreen.pollEditorShortcuts();
+            // World/gizmo interaction after newFrame so hover cursors (ImGui.setMouseCursor) stick.
+            parentScreen.updateInteractionManager();
             try {
                 renderWithStyles(context, mouseX, mouseY, delta);
+                GizmoInteractionService.getInstance().refreshHoverCursor();
             } finally {
                 imGuiRenderer.endFrame();
             }

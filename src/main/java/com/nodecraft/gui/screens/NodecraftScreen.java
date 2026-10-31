@@ -153,10 +153,7 @@ public class NodecraftScreen extends Screen {
             return;
         }
         
-        // 更新交互管理器
-        updateInteractionManager();
-
-        // 渲染主窗口（业务快捷键在 ImGui beginFrame 之后轮询，见 NodecraftWindowRenderer）
+        // 渲染主窗口；世界/手柄交互在 ImGui beginFrame 之后更新（见 NodecraftWindowRenderer）
         if (windowRenderer != null) {
             windowRenderer.render(context, mouseX, mouseY, delta);
         }
@@ -185,7 +182,8 @@ private void handleCloseRequest() {
     MinecraftClient.getInstance().execute(() -> MinecraftClient.getInstance().setScreen(null));
 }
 
-private void updateInteractionManager() {
+/** Called after ImGui.newFrame so handle hover cursors apply this frame. */
+public void updateInteractionManager() {
     try {
         com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager interactionManager = 
             com.nodecraft.nodesystem.interaction.NodeEditorInteractionManager.getInstance();

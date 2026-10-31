@@ -6,6 +6,8 @@ import com.nodecraft.nodesystem.preview.PreviewOptions;
 import com.nodecraft.nodesystem.preview.PreviewRenderer;
 import com.nodecraft.nodesystem.preview.RegionResizeHandlesData;
 import com.nodecraft.nodesystem.preview.gizmo.GizmoMath;
+import imgui.ImGui;
+import imgui.flag.ImGuiMouseCursor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.RenderLayers;
@@ -15,7 +17,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Six face-center resize handles for an AABB region (WorldEdit-style gizmo points).
@@ -36,16 +37,13 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     private Vec3d dragPlaneNormal = Vec3d.ZERO;
     private Vec3d dragStartPoint = Vec3d.ZERO;
     private int dragStartFaceCoord = 0;
-    private boolean cursorOverridden = false;
-    private static long hResizeCursor;
-    private static long vResizeCursor;
-    private static long allResizeCursor;
+    private int cursorFace = -1;
 
     public RegionResizeHandlesElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
         super(id, ownerNodeId, data, options);
         this.renderPriority = options != null && options.renderPriority != null ? options.renderPriority : 1000;
         if (options != null && options.interactionRadius != null) {
-            this.interactionRadius = Math.max(0.1f, options.interactionRadius);
+            this.interactionRadius = Math.max(0.2f, options.interactionRadius);
         }
     }
 
@@ -274,22 +272,35 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         return hoveredFace >= 0 || beingDragged;
     }
 
+    /** Re-apply ImGui cursor late in the frame so UI widgets do not overwrite it. */
+    public void refreshHoverCursor() {
+        int face = beingDragged ? activeFace : hoveredFace;
+        if (face >= 0) {
+            applyResizeCursor(face);
+        }
+    }
+
     private int pickFace(Vec3d rayStart, Vec3d rayDirection, double maxDistance) {
         RegionResizeHandlesData data = handlesData;
-        if (data == null) {
+        if (data == null || rayDirection == null) {
             return -1;
         }
+        Vec3d dir = rayDirection.lengthSquared() > 1.0e-12d ? rayDirection.normalize() : new Vec3d(0.0d, 0.0d, 1.0d);
         int best = -1;
         double bestDist = Double.MAX_VALUE;
-        double pickR = Math.max(interactionRadius, Math.max(HANDLE_RADIUS * 2.5d, ARROW_LENGTH * 0.85d));
         for (int face = 0; face < FACE_COUNT; face++) {
             Vec3d center = faceCenter(data, face);
-            Vec3d toCenter = center.subtract(rayStart);
-            double t = toCenter.dotProduct(rayDirection.normalize());
+            double distance = Math.max(1.0d, center.distanceTo(rayStart));
+            // Scale pick radius with camera distance so distant handles stay hittable.
+            double pickR = Math.max(
+                interactionRadius,
+                Math.max(HANDLE_RADIUS * 3.0d, Math.min(1.35d, distance * 0.045d))
+            );
+            double t = center.subtract(rayStart).dotProduct(dir);
             if (t < 0.0d || t > maxDistance) {
                 continue;
             }
-            Vec3d closest = rayStart.add(rayDirection.normalize().multiply(t));
+            Vec3d closest = rayStart.add(dir.multiply(t));
             if (closest.distanceTo(center) <= pickR && t < bestDist) {
                 bestDist = t;
                 best = face;
@@ -399,53 +410,30 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     }
 
     private void applyResizeCursor(int face) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.getWindow() == null) {
-            return;
-        }
-        long cursor = switch (faceAxis(face)) {
-            case 0 -> {
-                if (hResizeCursor == 0L) {
-                    hResizeCursor = GLFW.glfwCreateStandardCursor(GLFW.GLFW_HRESIZE_CURSOR);
-                }
-                yield hResizeCursor;
-            }
-            case 1 -> {
-                if (vResizeCursor == 0L) {
-                    vResizeCursor = GLFW.glfwCreateStandardCursor(GLFW.GLFW_VRESIZE_CURSOR);
-                }
-                yield vResizeCursor;
-            }
-            default -> {
-                // Prefer all-axes resize when available (GLFW 3.4+); fall back to crosshair.
-                if (allResizeCursor == 0L) {
-                    try {
-                        allResizeCursor = GLFW.glfwCreateStandardCursor(0x0003600B); // GLFW_RESIZE_ALL_CURSOR
-                    } catch (Throwable ignored) {
-                        allResizeCursor = 0L;
-                    }
-                    if (allResizeCursor == 0L) {
-                        allResizeCursor = GLFW.glfwCreateStandardCursor(GLFW.GLFW_CROSSHAIR_CURSOR);
-                    }
-                }
-                yield allResizeCursor;
-            }
+        cursorFace = face;
+        // ImGui owns the OS cursor while NodecraftScreen is open; GLFW.glfwSetCursor is overwritten.
+        int cursor = switch (faceAxis(face)) {
+            case 1 -> ImGuiMouseCursor.ResizeNS;   // Y: vertical double-arrow
+            case 0, 2 -> ImGuiMouseCursor.ResizeEW; // X/Z: horizontal double-arrow
+            default -> ImGuiMouseCursor.ResizeAll;
         };
-        if (cursor != 0L) {
-            GLFW.glfwSetCursor(client.getWindow().getHandle(), cursor);
-            cursorOverridden = true;
+        try {
+            ImGui.setMouseCursor(cursor);
+        } catch (Throwable ignored) {
+            // ImGui may not have a frame yet; ignore.
         }
     }
 
     private void restoreCursor() {
-        if (!cursorOverridden) {
+        if (cursorFace < 0) {
             return;
         }
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client != null && client.getWindow() != null) {
-            GLFW.glfwSetCursor(client.getWindow().getHandle(), 0L);
+        cursorFace = -1;
+        try {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Arrow);
+        } catch (Throwable ignored) {
+            // ignore
         }
-        cursorOverridden = false;
     }
 
     @Override

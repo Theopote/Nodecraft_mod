@@ -102,6 +102,15 @@ public final class GizmoInteractionService {
         return hoveringInteractive || isDraggingGizmo();
     }
 
+    /** Call near end of ImGui frame so resize cursors win over default Arrow. */
+    public void refreshHoverCursor() {
+        for (AbstractPreviewElement element : PreviewRenderer.getInstance().getActiveElements()) {
+            if (element instanceof RegionResizeHandlesElement handles && handles.isHandleHovered()) {
+                handles.refreshHoverCursor();
+            }
+        }
+    }
+
     private InteractivePreviewElement findDraggedInteractive(PreviewRenderer renderer) {
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
             if (element instanceof InteractivePreviewElement interactive && interactive.isBeingDragged()) {

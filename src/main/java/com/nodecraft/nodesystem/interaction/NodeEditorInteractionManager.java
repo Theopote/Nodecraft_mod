@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.client.input.NodecraftInputSystem;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -357,7 +358,8 @@ public class NodeEditorInteractionManager {
             return;
         }
 
-        WorldPickingService.Ray ray = worldPicking.getCachedOrComputeRay(mouseX, mouseY);
+        // Prefer Minecraft mouse coords (same space as world block raycasts) for stable handle picking.
+        WorldPickingService.Ray ray = resolveGizmoRay(mouseX, mouseY);
         long windowHandle = ImGuiRenderer.getInstance().getActiveInputWindowHandle();
         if (windowHandle == 0L) {
             previousGizmoLeftMouseDown = false;
@@ -370,6 +372,20 @@ public class NodeEditorInteractionManager {
         previousGizmoLeftMouseDown = leftDown;
 
         GizmoInteractionService.getInstance().update(ray, leftClicked, leftDown, leftReleased);
+    }
+
+    private WorldPickingService.Ray resolveGizmoRay(float fallbackMouseX, float fallbackMouseY) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client != null && client.mouse != null) {
+            WorldPickingService.Ray fromMc = worldPicking.getRayFromMouse(
+                (float) client.mouse.getX(),
+                (float) client.mouse.getY()
+            );
+            if (fromMc != null) {
+                return fromMc;
+            }
+        }
+        return worldPicking.getCachedOrComputeRay(fallbackMouseX, fallbackMouseY);
     }
 
     private void handleMouseClickEvents(Coordinate hoveredBlock, BlockHitResult hitResult, boolean isLeftMouseClicked, boolean isRightMouseClicked) {

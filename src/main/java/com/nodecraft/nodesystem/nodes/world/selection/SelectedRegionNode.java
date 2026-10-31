@@ -498,7 +498,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             .setLineWidth(2.5f);
         options.alwaysOnTop = true;
         options.renderPriority = 1000;
-        options.interactionRadius = 0.28f;
+        options.interactionRadius = 0.45f;
 
         RegionResizeHandlesData data = new RegionResizeHandlesData(
             minInclusive,
