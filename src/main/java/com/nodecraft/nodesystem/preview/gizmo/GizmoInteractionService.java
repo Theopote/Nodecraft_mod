@@ -16,6 +16,7 @@ public final class GizmoInteractionService {
     private static final double MAX_PICK_DISTANCE = 256.0d;
 
     private InteractivePreviewElement activeInteractive;
+    private InteractivePreviewElement lastHoveredInteractive;
     private boolean hoveringInteractive;
     private boolean leftMouseWasDown;
 
@@ -37,8 +38,11 @@ public final class GizmoInteractionService {
         boolean isLeftMouseReleased
     ) {
         if (ray == null) {
-            clearHover();
-            hoveringInteractive = false;
+            if (!isLeftMouseDown) {
+                clearHover();
+                hoveringInteractive = false;
+                lastHoveredInteractive = null;
+            }
             return;
         }
 
@@ -58,29 +62,43 @@ public final class GizmoInteractionService {
             return;
         }
 
-        // Press-and-hold over a handle starts drag (do not rely only on click-edge frames).
+        // Continue an in-progress drag even if the ray briefly misses the handle.
+        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
+        if (dragged == null && activeInteractive != null && activeInteractive.isBeingDragged()) {
+            dragged = activeInteractive;
+        }
+        if (isLeftMouseDown && dragged != null) {
+            activeInteractive = dragged;
+            hoveringInteractive = true;
+            dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+            leftMouseWasDown = true;
+            return;
+        }
+
+        // Start drag from the currently hovered handle first (sticky), then fresh pick.
+        // Use press-hold (isLeftMouseDown), not edge-only, so a 1-frame hover miss still grabs.
         if (isLeftMouseDown) {
-            InteractivePreviewElement dragged = findDraggedInteractive(renderer);
-            if (dragged == null) {
-                InteractivePreviewElement target = pickClosestInteractive(renderer, rayStart, rayDirection);
-                if (target != null && !target.isBeingDragged() && target.onMouseClick(rayStart, rayDirection, 0)) {
-                    dragged = target;
+            InteractivePreviewElement target = null;
+            if (lastHoveredInteractive != null && lastHoveredInteractive.isInteractable()) {
+                boolean stickyOk = lastHoveredInteractive instanceof RegionResizeHandlesElement handles
+                    ? (handles.isHandleHovered()
+                        || handles.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE))
+                    : lastHoveredInteractive.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE);
+                if (stickyOk) {
+                    target = lastHoveredInteractive;
                 }
             }
-            if (dragged != null) {
-                activeInteractive = dragged;
+            if (target == null) {
+                target = pickClosestInteractive(renderer, rayStart, rayDirection);
+            }
+            if (target != null && target.onMouseClick(rayStart, rayDirection, 0)) {
+                activeInteractive = target;
+                lastHoveredInteractive = target;
                 hoveringInteractive = true;
-                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+                target.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
                 leftMouseWasDown = true;
                 return;
             }
-        }
-
-        if (isLeftMouseDown && activeInteractive != null && activeInteractive.isBeingDragged()) {
-            activeInteractive.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
-            hoveringInteractive = true;
-            leftMouseWasDown = true;
-            return;
         }
 
         hoverInteractives(renderer, rayStart, rayDirection);
@@ -132,7 +150,8 @@ public final class GizmoInteractionService {
             if (!interactive.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE)) {
                 continue;
             }
-            double distance = interactive.getInteractionCenter().distanceTo(rayStart);
+            // Prefer the element whose interaction point is closest to the ray, not just to camera.
+            double distance = distanceRayToPoint(rayStart, rayDirection, interactive.getInteractionCenter());
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closest = interactive;
@@ -141,20 +160,33 @@ public final class GizmoInteractionService {
         return closest;
     }
 
+    private static double distanceRayToPoint(Vec3d rayStart, Vec3d rayDirection, Vec3d point) {
+        Vec3d dir = rayDirection.lengthSquared() > 1.0e-12d ? rayDirection.normalize() : new Vec3d(0, 0, 1);
+        Vec3d toPoint = point.subtract(rayStart);
+        double t = Math.max(0.0d, toPoint.dotProduct(dir));
+        Vec3d closest = rayStart.add(dir.multiply(t));
+        return closest.distanceTo(point);
+    }
+
     private void hoverInteractives(PreviewRenderer renderer, Vec3d rayStart, Vec3d rayDirection) {
         boolean anyHovered = false;
+        InteractivePreviewElement hovered = null;
         for (AbstractPreviewElement element : renderer.getActiveElements()) {
             if (element instanceof InteractivePreviewElement interactive
                 && interactive.isInteractable()
                 && !interactive.isBeingDragged()) {
                 if (interactive.onMouseHover(rayStart, rayDirection)) {
                     anyHovered = true;
+                    hovered = interactive;
                 }
             }
         }
         hoveringInteractive = anyHovered || isDraggingGizmo();
-        if (!anyHovered) {
+        if (anyHovered) {
+            lastHoveredInteractive = hovered;
+        } else {
             clearHover(renderer);
+            lastHoveredInteractive = null;
         }
     }
 

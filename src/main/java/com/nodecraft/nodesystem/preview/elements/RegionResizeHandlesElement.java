@@ -26,9 +26,12 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     private static final double HANDLE_RADIUS = 0.10d;
     private static final double ARROW_LENGTH = 0.32d;
     private static final int FACE_COUNT = 6;
+    /** World-space pick radius near the camera; grows gently with distance. */
+    private static final double BASE_PICK_RADIUS = 0.22d;
+    private static final double STICKY_PICK_SCALE = 1.55d;
 
     private volatile RegionResizeHandlesData handlesData;
-    private float interactionRadius = 0.45f;
+    private float interactionRadius = 0.28f;
 
     private boolean interactable = true;
     private boolean beingDragged = false;
@@ -285,28 +288,33 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         if (data == null || rayDirection == null) {
             return -1;
         }
-        Vec3d dir = rayDirection.lengthSquared() > 1.0e-12d ? rayDirection.normalize() : new Vec3d(0.0d, 0.0d, 1.0d);
         int best = -1;
         double bestDist = Double.MAX_VALUE;
         for (int face = 0; face < FACE_COUNT; face++) {
             Vec3d center = faceCenter(data, face);
+            Vec3d normal = faceNormal(face);
+            // Match the drawn arrow segment so hover lines up with what the user sees.
+            Vec3d segA = center.add(normal.multiply(ARROW_LENGTH));
+            Vec3d segB = center.subtract(normal.multiply(ARROW_LENGTH));
             double distance = Math.max(1.0d, center.distanceTo(rayStart));
-            // Scale pick radius with camera distance so distant handles stay hittable.
-            double pickR = Math.max(
-                interactionRadius,
-                Math.max(HANDLE_RADIUS * 3.0d, Math.min(1.35d, distance * 0.045d))
-            );
-            double t = center.subtract(rayStart).dotProduct(dir);
-            if (t < 0.0d || t > maxDistance) {
+            if (distance > maxDistance) {
                 continue;
             }
-            Vec3d closest = rayStart.add(dir.multiply(t));
-            if (closest.distanceTo(center) <= pickR && t < bestDist) {
-                bestDist = t;
+            double pickR = pickRadiusForDistance(distance, face == hoveredFace);
+            double perp = GizmoMath.rayToSegmentDistance(rayStart, rayDirection, segA, segB);
+            if (perp <= pickR && perp < bestDist) {
+                bestDist = perp;
                 best = face;
             }
         }
         return best;
+    }
+
+    private double pickRadiusForDistance(double distance, boolean sticky) {
+        double base = Math.max(BASE_PICK_RADIUS, interactionRadius);
+        // ~1.6° screen cone, capped so far handles do not become huge hit targets.
+        double scaled = Math.min(0.55d, Math.max(base, distance * 0.022d));
+        return sticky ? scaled * STICKY_PICK_SCALE : scaled;
     }
 
     @Override
@@ -337,10 +345,10 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         beingDragged = true;
         Vec3d normal = faceNormal(face);
         Vec3d center = faceCenter(data, face);
-        // Same convention as TransformationGizmo: plane faces camera around the move axis.
+        // Seed plane for compatibility; drag itself projects onto the face axis.
         Vec3d toCamera = rayStart.subtract(center);
         dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, toCamera);
-        dragStartPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
+        dragStartPoint = GizmoMath.closestPointOnAxis(rayStart, rayDirection, center, normal);
         if (dragStartPoint == null) {
             dragStartPoint = center;
         }
@@ -359,19 +367,12 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
             return false;
         }
 
-        Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
+        Vec3d normal = faceNormal(activeFace);
+        Vec3d hit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, dragStartPoint, normal);
         if (hit == null) {
-            // Rebuild a camera-facing plane if the original became parallel to the ray.
-            Vec3d center = faceCenter(data, activeFace);
-            Vec3d normal = faceNormal(activeFace);
-            dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(normal, rayStart.subtract(center));
-            hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
-            if (hit == null) {
-                return true;
-            }
+            return true;
         }
 
-        Vec3d normal = faceNormal(activeFace);
         double deltaAlong = hit.subtract(dragStartPoint).dotProduct(normal);
         int newCoord = dragStartFaceCoord + (int) Math.round(deltaAlong);
         data.callback().onFaceResized(faceAxis(activeFace), faceTowardMax(activeFace), newCoord);

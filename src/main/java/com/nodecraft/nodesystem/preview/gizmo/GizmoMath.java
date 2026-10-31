@@ -148,6 +148,32 @@ public final class GizmoMath {
         return rayOrigin.add(direction.multiply(t));
     }
 
+    /**
+     * Closest point on an infinite axis to a ray (skew-line solve). Used for axis-constrained
+     * resize/translate so drag does not depend on a fragile camera plane.
+     */
+    public static Vec3d closestPointOnAxis(Vec3d rayOrigin, Vec3d rayDirection, Vec3d axisOrigin, Vec3d axisDirection) {
+        Vec3d rayDir = normalizeOr(rayDirection, new Vec3d(0.0d, 0.0d, -1.0d));
+        Vec3d axisDir = normalizeOr(axisDirection, new Vec3d(0.0d, 1.0d, 0.0d));
+        Vec3d w0 = rayOrigin.subtract(axisOrigin);
+
+        double a = rayDir.dotProduct(rayDir);
+        double b = rayDir.dotProduct(axisDir);
+        double c = axisDir.dotProduct(axisDir);
+        double d = rayDir.dotProduct(w0);
+        double e = axisDir.dotProduct(w0);
+        double denom = a * c - b * b;
+
+        double tc;
+        if (Math.abs(denom) < 1.0e-12d) {
+            // Nearly parallel: project ray origin onto the axis.
+            tc = e / Math.max(c, 1.0e-12d);
+        } else {
+            tc = (a * e - b * d) / denom;
+        }
+        return axisOrigin.add(axisDir.multiply(tc));
+    }
+
     public static Vec3d cameraFacingPlaneNormal(Vec3d axisDirection, Vec3d cameraDirection) {
         Vec3d axis = normalizeOr(axisDirection, new Vec3d(0.0d, 1.0d, 0.0d));
         Vec3d camera = normalizeOr(cameraDirection, new Vec3d(0.0d, 0.0d, -1.0d));

@@ -296,11 +296,17 @@ public class NodeEditorInteractionManager {
         }
         
         try {
+            // Handles/gizmos always update (GLFW button + world ray). Gating them behind
+            // isMouseOverImGui made post-selection resize nearly impossible whenever the
+            // editor window covered the game view.
+            updateGizmoInteraction(mouseX, mouseY, true);
+            boolean gizmoCapturing = GizmoInteractionService.getInstance().isCapturingInput();
+
             // 交互模式下需要允许 ImGui 光标与世界交互（参考 chronoblocks 的 UI+世界交互行为）
-            boolean allowWorldInteraction = !isMouseOverImGui || interactionState.isInInteractionMode();
+            boolean allowWorldInteraction = !isMouseOverImGui || interactionState.isInInteractionMode() || gizmoCapturing;
 
             if (allowWorldInteraction) {
-                editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, !isMouseOverImGui);
+                editorModeCamera.updateMiddleMouseCamera(mouseX, mouseY, isMiddleMouseDown, !isMouseOverImGui || gizmoCapturing);
                 
                 // 使用输入系统中已验证的射线换算，避免屏幕边缘拾取偏移
                 BlockHitResult hitResult = NodecraftInputSystem.raycastFromMouse();
@@ -311,9 +317,6 @@ public class NodeEditorInteractionManager {
                     newHoveredBlock = new Coordinate(blockPos.getX(), blockPos.getY(), blockPos.getZ());
                 }
                 
-                // Gizmo/handles first so hover can lock out world picking & other click routing.
-                updateGizmoInteraction(mouseX, mouseY, true);
-                boolean gizmoCapturing = GizmoInteractionService.getInstance().isCapturingInput();
                 if (gizmoCapturing) {
                     hoveredBlockHighlight.clear();
                 } else {
@@ -332,11 +335,6 @@ public class NodeEditorInteractionManager {
                 
                 // 清除射线缓存（鼠标在UI上时不需要缓存）
                 invalidateRayCache();
-                // Keep processing while already hovering/dragging a handle so press-drag is not dropped.
-                boolean keepGizmo =
-                    GizmoInteractionService.getInstance().isCapturingInput()
-                        || GizmoInteractionService.getInstance().isDraggingGizmo();
-                updateGizmoInteraction(mouseX, mouseY, keepGizmo);
             }
             
         } catch (Exception e) {
@@ -385,15 +383,10 @@ public class NodeEditorInteractionManager {
     }
 
     private WorldPickingService.Ray resolveGizmoRay(float fallbackMouseX, float fallbackMouseY) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client != null && client.mouse != null) {
-            WorldPickingService.Ray fromMc = worldPicking.getRayFromMouse(
-                (float) client.mouse.getX(),
-                (float) client.mouse.getY()
-            );
-            if (fromMc != null) {
-                return fromMc;
-            }
+        // Must match on-screen projection (actual FOV + camera quaternion), same as block picking.
+        NodecraftInputSystem.MouseRay accurate = NodecraftInputSystem.rayFromMouse();
+        if (accurate != null) {
+            return new WorldPickingService.Ray(accurate.origin(), accurate.direction());
         }
         return worldPicking.getCachedOrComputeRay(fallbackMouseX, fallbackMouseY);
     }

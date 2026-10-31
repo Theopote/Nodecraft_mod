@@ -297,17 +297,9 @@ private boolean isMouseOverImGuiForInteraction(com.nodecraft.nodesystem.interact
             // 就应稳定地视为在 UI 上，避免菜单在移动鼠标时被误关闭。
 
         } else {
-            // 非交互模式下，使用标准的检测逻辑
+            // Prefer WantCaptureMouse only. Treating the whole Nodecraft window as "over UI"
+            // blocked world gizmos (region resize handles) after selection completed.
             isMouseOverImGui = ImGui.getIO().getWantCaptureMouse();
-            
-            // 作为备用方案，使用窗口边界检查
-            if (!isMouseOverImGui && windowRenderer != null) {
-                float mouseX = ImGui.getIO().getMousePosX();
-                float mouseY = ImGui.getIO().getMousePosY();
-                
-                isMouseOverImGui = (mouseX >= windowX && mouseX <= windowX + windowWidth &&
-                                   mouseY >= windowY && mouseY <= windowY + windowHeight);
-            }
         }
         
     } catch (Exception e) {

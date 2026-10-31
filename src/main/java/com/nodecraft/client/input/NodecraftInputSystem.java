@@ -31,6 +31,74 @@ public final class NodecraftInputSystem {
     private NodecraftInputSystem() {}
 
     /**
+     * World-space mouse ray matching the rendered camera (actual FOV + camera quaternion).
+     * Prefer this for gizmo/handle picking so hit tests align with on-screen visuals.
+     */
+    public record MouseRay(Vec3d origin, Vec3d direction) {
+    }
+
+    /**
+     * Builds the same mouse→world ray used by {@link #raycastFromMouse()} without doing a block hit.
+     */
+    public static MouseRay rayFromMouse() {
+        if (MC.world == null || MC.getCameraEntity() == null || MC.getWindow() == null || MC.gameRenderer == null) {
+            return null;
+        }
+
+        Camera camera = MC.gameRenderer.getCamera();
+        if (camera == null) {
+            return null;
+        }
+
+        double mouseLogicalX = MC.mouse.getX();
+        double mouseLogicalY = MC.mouse.getY();
+        int windowW = MC.getWindow().getWidth();
+        int windowH = MC.getWindow().getHeight();
+        int fbw = MC.getWindow().getFramebufferWidth();
+        int fbh = MC.getWindow().getFramebufferHeight();
+        if (windowW <= 0 || windowH <= 0 || fbw <= 0 || fbh <= 0) {
+            return null;
+        }
+        double mouseX = mouseLogicalX * fbw / (double) windowW;
+        double mouseY = mouseLogicalY * fbh / (double) windowH;
+
+        Vec3d cameraPos = camera.getCameraPos();
+        double ndcX = (mouseX / (double) fbw) * 2.0 - 1.0;
+        double ndcY = 1.0 - (mouseY / (double) fbh) * 2.0;
+
+        GameRenderer gr = MC.gameRenderer;
+        float tickDelta = getRenderTickDeltaSafe();
+        float fov = getActualFov(gr, camera, tickDelta);
+        Matrix4f projMatrix = new Matrix4f(gr.getBasicProjectionMatrix(fov));
+        Matrix4f invProj = new Matrix4f(projMatrix).invert();
+
+        Vector4f nearClip = new Vector4f((float) ndcX, (float) ndcY, -1.0f, 1.0f).mul(invProj);
+        Vector4f farClip = new Vector4f((float) ndcX, (float) ndcY, 1.0f, 1.0f).mul(invProj);
+        if (nearClip.w != 0.0f) nearClip.div(nearClip.w);
+        if (farClip.w != 0.0f) farClip.div(farClip.w);
+
+        Vec3d viewDir = new Vec3d(
+            farClip.x - nearClip.x,
+            farClip.y - nearClip.y,
+            farClip.z - nearClip.z
+        ).normalize();
+
+        var q = camera.getRotation();
+        float x = (float) viewDir.x;
+        float y = (float) viewDir.y;
+        float z = (float) viewDir.z;
+        float qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+        float cx1 = qy * z - qz * y;
+        float cy1 = qz * x - qx * z;
+        float cz1 = qx * y - qy * x;
+        float rx = x + 2.0f * (qy * cz1 - qz * cy1 + qw * cx1);
+        float ry = y + 2.0f * (qz * cx1 - qx * cz1 + qw * cy1);
+        float rz = z + 2.0f * (qx * cy1 - qy * cx1 + qw * cz1);
+        Vec3d rayDir = new Vec3d(rx, ry, rz).normalize();
+        return new MouseRay(cameraPos, rayDir);
+    }
+
+    /**
      * 使用OpenGL标准unproject方法构建从鼠标位置到世界的射线
      * @return 射线命中的方块结果，或 null
      */
@@ -49,21 +117,15 @@ public final class NodecraftInputSystem {
             return cachedRay;
         }
 
-        // 获取鼠标坐标（逻辑坐标）并换算为帧缓冲像素
-        double mouseLogicalX = MC.mouse.getX();
-        double mouseLogicalY = MC.mouse.getY();
-        int windowW = MC.getWindow().getWidth();
-        int windowH = MC.getWindow().getHeight();
-        int fbw = MC.getWindow().getFramebufferWidth();
-        int fbh = MC.getWindow().getFramebufferHeight();
-        if (windowW <= 0 || windowH <= 0 || fbw <= 0 || fbh <= 0) {
+        MouseRay mouseRay = rayFromMouse();
+        if (mouseRay == null) {
             return null;
         }
-        double mouseX = mouseLogicalX * fbw / (double) windowW;
-        double mouseY = mouseLogicalY * fbh / (double) windowH;
 
-        // 获取相机位置
-        Vec3d cameraPos = camera.getCameraPos();
+        Vec3d cameraPos = mouseRay.origin();
+        Vec3d rayDir = mouseRay.direction();
+        double mouseX = MC.mouse.getX() * MC.getWindow().getFramebufferWidth() / (double) MC.getWindow().getWidth();
+        double mouseY = MC.mouse.getY() * MC.getWindow().getFramebufferHeight() / (double) MC.getWindow().getHeight();
 
         // 检查缓存 - 如果鼠标和相机位置没有变化则复用上次结果
         if (cachedRay != null
@@ -74,52 +136,6 @@ public final class NodecraftInputSystem {
             return cachedRay;
         }
 
-        // 转换为归一化设备坐标 (NDC)，范围 [-1, 1]
-        double ndcX = (mouseX / (double) fbw) * 2.0 - 1.0;
-        double ndcY = 1.0 - (mouseY / (double) fbh) * 2.0; // Y轴翻转
-
-        // 获取FOV和投影矩阵
-        // 关键：必须使用"当前帧真实 FOV"（包含动态 FOV、疾跑/速度效果），
-        // 否则会出现屏幕边缘偏移
-        GameRenderer gr = MC.gameRenderer;
-        float tickDelta = getRenderTickDeltaSafe();
-        float fov = getActualFov(gr, camera, tickDelta);
-        Matrix4f projMatrix = new Matrix4f(gr.getBasicProjectionMatrix(fov));
-
-        // 计算 inv(proj) 反投影到视空间
-        Matrix4f invProj = new Matrix4f(projMatrix).invert();
-
-        // 反投影计算（Unproject）
-        Vector4f nearClip = new Vector4f((float) ndcX, (float) ndcY, -1.0f, 1.0f).mul(invProj);
-        Vector4f farClip = new Vector4f((float) ndcX, (float) ndcY, 1.0f, 1.0f).mul(invProj);
-
-        // 透视除法
-        if (nearClip.w != 0.0f) nearClip.div(nearClip.w);
-        if (farClip.w != 0.0f) farClip.div(farClip.w);
-
-        // 计算射线方向
-        Vec3d viewDir = new Vec3d(
-                farClip.x - nearClip.x,
-                farClip.y - nearClip.y,
-                farClip.z - nearClip.z
-        ).normalize();
-
-        // 使用相机四元数将视空间方向旋转到世界空间
-        var q = camera.getRotation();
-        float x = (float) viewDir.x;
-        float y = (float) viewDir.y;
-        float z = (float) viewDir.z;
-        float qx = q.x, qy = q.y, qz = q.z, qw = q.w;
-        // v' = v + 2*cross(q.xyz, cross(q.xyz, v) + qw*v)
-        float cx1 = qy * z - qz * y;
-        float cy1 = qz * x - qx * z;
-        float cz1 = qx * y - qy * x;
-        float rx = x + 2.0f * (qy * cz1 - qz * cy1 + qw * cx1);
-        float ry = y + 2.0f * (qz * cx1 - qx * cz1 + qw * cy1);
-        float rz = z + 2.0f * (qx * cy1 - qy * cx1 + qw * cz1);
-        Vec3d rayDir = new Vec3d(rx, ry, rz).normalize();
-
-        // 执行光线追踪
         Vec3d endPos = cameraPos.add(rayDir.multiply(MAX_RAYCAST_DISTANCE));
 
         BlockHitResult result = MC.world.raycast(new RaycastContext(
@@ -130,7 +146,6 @@ public final class NodecraftInputSystem {
                 MC.player
         ));
 
-        // 更新缓存
         lastCameraPos = cameraPos;
         lastMouseX = mouseX;
         lastMouseY = mouseY;

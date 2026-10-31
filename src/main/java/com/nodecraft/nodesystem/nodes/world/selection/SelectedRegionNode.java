@@ -498,7 +498,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             .setLineWidth(2.5f);
         options.alwaysOnTop = true;
         options.renderPriority = 1000;
-        options.interactionRadius = 0.45f;
+        options.interactionRadius = 0.28f;
 
         RegionResizeHandlesData data = new RegionResizeHandlesData(
             minInclusive,
@@ -613,7 +613,7 @@ public class SelectedRegionNode extends BaseCustomUINode {
             PreviewOptions handleOptions = new PreviewOptions().setOpacity(1.0f).setLineWidth(2.5f);
             handleOptions.alwaysOnTop = true;
             handleOptions.renderPriority = 1000;
-            handleOptions.interactionRadius = 0.45f;
+            handleOptions.interactionRadius = 0.28f;
             resizeHandlesPreviewId = PreviewManager.showRegionResizeHandles(getId().toString(), data, handleOptions);
         } else {
             PreviewManager.updatePreview(resizeHandlesPreviewId, data);
