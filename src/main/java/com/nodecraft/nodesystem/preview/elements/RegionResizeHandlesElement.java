@@ -356,9 +356,13 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         beingDragged = true;
         dragAxis = faceAxisDir(face);
         Vec3d center = faceCenter(data, face);
-        // Plane contains the resize axis and faces the camera (stable mouse → world mapping).
+        // Camera-facing plane containing the +axis (stable mouse→world mapping).
         dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(dragAxis, rayStart.subtract(center));
         Vec3d planeHit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
+        // Fallback to axis projection if the plane is edge-on at the click frame.
+        if (planeHit == null) {
+            planeHit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, center, dragAxis);
+        }
         dragStartPoint = planeHit != null ? planeHit : center;
         dragStartFaceCoord = inclusiveFaceCoord(data, face);
         lastEmittedFaceCoord = dragStartFaceCoord;
@@ -368,9 +372,11 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
 
     @Override
     public boolean onMouseDrag(Vec3d rayStart, Vec3d rayDirection, Vec3d deltaMovement) {
-        if (!beingDragged || activeFace < 0) {
+        // activeFace is the source of truth; beingDragged may briefly desync after input glitches.
+        if (activeFace < 0) {
             return false;
         }
+        beingDragged = true;
         RegionResizeHandlesData data = handlesData;
         if (data == null || data.callback() == null) {
             return false;
@@ -378,15 +384,15 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
 
         Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
         if (hit == null) {
-            Vec3d center = faceCenter(data, activeFace);
-            dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(dragAxis, rayStart.subtract(center));
-            hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
+            // Prefer axis projection over rebuilding the plane against a moving face center —
+            // that rebuild was unstable once the handle had moved a couple of blocks.
+            hit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, dragStartPoint, dragAxis);
             if (hit == null) {
                 return true;
             }
         }
 
-        // Project onto +axis (not outward face normal) so -X/-Y/-Z handles move with the mouse.
+        // Project onto +axis so -X/-Y/-Z handles move with the mouse, not against it.
         double deltaAlong = hit.subtract(dragStartPoint).dotProduct(dragAxis);
         int newCoord = quantizeFaceCoord(deltaAlong);
         if (newCoord == lastEmittedFaceCoord) {
@@ -398,7 +404,7 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     }
 
     /**
-     * Block-snap with hysteresis so noise around ±0.5 does not flicker the face back and forth.
+     * Block-snap with light hysteresis so noise around ±0.5 does not flicker the face.
      */
     private int quantizeFaceCoord(double deltaAlong) {
         double exact = dragStartFaceCoord + deltaAlong;
@@ -406,7 +412,6 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         if (nearest == lastEmittedFaceCoord) {
             return lastEmittedFaceCoord;
         }
-        // Require crossing further past the midpoint before switching blocks.
         double sticky = lastEmittedFaceCoord + Math.copySign(0.55d, nearest - lastEmittedFaceCoord);
         if ((nearest > lastEmittedFaceCoord && exact < sticky)
             || (nearest < lastEmittedFaceCoord && exact > sticky)) {
@@ -417,11 +422,16 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
 
     @Override
     public boolean onMouseRelease(Vec3d rayStart, Vec3d rayDirection, int button) {
+        endDrag();
+        return true;
+    }
+
+    /** Clears drag geometry; only call on confirmed mouse-up (not single-frame blips). */
+    public void endDrag() {
         beingDragged = false;
         activeFace = -1;
         dragAxis = new Vec3d(1.0d, 0.0d, 0.0d);
         restoreCursor();
-        return true;
     }
 
     @Override
@@ -508,11 +518,9 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
 
     @Override
     public void cleanup() {
-        restoreCursor();
+        endDrag();
         handlesData = null;
         hoveredFace = -1;
-        activeFace = -1;
-        beingDragged = false;
     }
 
     @Override
@@ -523,8 +531,9 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     @Override
     public void setBeingDragged(boolean dragged) {
         this.beingDragged = dragged;
+        // Do NOT clear activeFace here — mid-drag flag glitches must not wipe drag geometry.
+        // Only {@link #endDrag()} / {@link #onMouseRelease} may reset the face.
         if (!dragged) {
-            activeFace = -1;
             restoreCursor();
         }
     }

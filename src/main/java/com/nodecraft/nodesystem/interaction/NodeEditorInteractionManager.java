@@ -6,6 +6,7 @@ import com.nodecraft.nodesystem.preview.gizmo.GizmoInteractionService;
 import com.nodecraft.nodesystem.util.Coordinate;
 import com.nodecraft.nodesystem.util.BlockStateData;
 import com.nodecraft.client.input.NodecraftInputSystem;
+import imgui.ImGui;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.hit.BlockHitResult;
@@ -372,7 +373,16 @@ public class NodeEditorInteractionManager {
             return;
         }
 
-        boolean leftDown = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        // Prefer "down if either source says down" so a one-frame GLFW miss during ImGui
+        // ownership transfer does not look like a release mid-drag.
+        boolean glfwDown = GLFW.glfwGetMouseButton(windowHandle, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        boolean imGuiDown = false;
+        try {
+            imGuiDown = ImGui.isMouseDown(0);
+        } catch (Throwable ignored) {
+            // ImGui may not have a frame yet.
+        }
+        boolean leftDown = glfwDown || imGuiDown;
         boolean leftClicked = leftDown && !previousGizmoLeftMouseDown;
         boolean leftReleased = !leftDown && previousGizmoLeftMouseDown;
         previousGizmoLeftMouseDown = leftDown;

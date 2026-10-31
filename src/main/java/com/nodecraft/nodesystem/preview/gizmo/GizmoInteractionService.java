@@ -14,14 +14,14 @@ import net.minecraft.util.math.Vec3d;
 public final class GizmoInteractionService {
 
     private static final double MAX_PICK_DISTANCE = 256.0d;
-    /** Ignore single-frame GLFW "button up" blips during an active drag. */
-    private static final int RELEASE_CONFIRM_FRAMES = 2;
+    /** Require this many consecutive "button up" frames before ending a drag. */
+    private static final int RELEASE_CONFIRM_FRAMES = 3;
 
     private InteractivePreviewElement activeInteractive;
     private InteractivePreviewElement lastHoveredInteractive;
     private boolean hoveringInteractive;
     private boolean leftMouseWasDown;
-    /** True from successful press until a confirmed release — survives element flag glitches. */
+    /** True from successful press until confirmed release — independent of element flags. */
     private boolean dragSessionActive;
     private int leftUpStreak;
 
@@ -42,20 +42,27 @@ public final class GizmoInteractionService {
         boolean isLeftMouseDown,
         boolean isLeftMouseReleased
     ) {
+        // `isLeftMouseReleased` is intentionally ignored for ending sessions: a single-frame
+        // GLFW blip was ending the drag (and wiping activeFace) after 1–2 blocks of movement.
         if (isLeftMouseDown) {
             leftUpStreak = 0;
         } else {
-            leftUpStreak++;
+            leftUpStreak = Math.min(leftUpStreak + 1, RELEASE_CONFIRM_FRAMES + 1);
         }
 
         if (ray == null) {
-            // Keep an in-progress drag alive across a brief null-ray frame.
-            if (!isLeftMouseDown && (!dragSessionActive || leftUpStreak >= RELEASE_CONFIRM_FRAMES)) {
+            if (dragSessionActive && (isLeftMouseDown || leftUpStreak < RELEASE_CONFIRM_FRAMES)) {
+                // Keep session; skip this frame's ray work.
+                leftMouseWasDown = isLeftMouseDown || dragSessionActive;
+                return;
+            }
+            if (!isLeftMouseDown) {
                 endDragSession(null, null);
                 clearHover();
                 hoveringInteractive = false;
                 lastHoveredInteractive = null;
             }
+            leftMouseWasDown = isLeftMouseDown;
             return;
         }
 
@@ -63,58 +70,36 @@ public final class GizmoInteractionService {
         Vec3d rayDirection = ray.direction();
         PreviewRenderer renderer = PreviewRenderer.getInstance();
 
-        boolean confirmedRelease = (!isLeftMouseDown && leftUpStreak >= RELEASE_CONFIRM_FRAMES)
-            || (isLeftMouseReleased && !dragSessionActive && leftUpStreak >= 1);
-        if (dragSessionActive && !isLeftMouseDown && leftUpStreak < RELEASE_CONFIRM_FRAMES) {
-            // Debounce: keep dragging with the last active target.
-            InteractivePreviewElement dragged = resolveDragTarget(renderer);
-            if (dragged != null) {
-                activeInteractive = dragged;
-                hoveringInteractive = true;
-                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+        // Active drag session: continue until button has been up for several frames.
+        if (dragSessionActive) {
+            if (isLeftMouseDown || leftUpStreak < RELEASE_CONFIRM_FRAMES) {
+                InteractivePreviewElement dragged = resolveDragTarget(renderer);
+                if (dragged != null) {
+                    activeInteractive = dragged;
+                    hoveringInteractive = true;
+                    dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+                }
+                leftMouseWasDown = true;
+                return;
             }
-            leftMouseWasDown = true;
-            return;
-        }
-
-        if (confirmedRelease || (isLeftMouseReleased && dragSessionActive && !isLeftMouseDown)) {
             endDragSession(rayStart, rayDirection);
             leftMouseWasDown = false;
             hoverInteractives(renderer, rayStart, rayDirection);
             return;
         }
 
-        // Continue an in-progress drag; never fall through to onMouseClick while the session is live.
-        if (isLeftMouseDown && dragSessionActive) {
-            InteractivePreviewElement dragged = resolveDragTarget(renderer);
-            if (dragged != null) {
-                activeInteractive = dragged;
-                hoveringInteractive = true;
-                if (!dragged.isBeingDragged()) {
-                    dragged.setBeingDragged(true);
-                }
-                dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
-                leftMouseWasDown = true;
-                return;
-            }
-            // Element disappeared mid-drag — keep the session so we don't re-click/reset every frame.
-            leftMouseWasDown = true;
-            return;
-        }
-
-        InteractivePreviewElement dragged = findDraggedInteractive(renderer);
-        if (isLeftMouseDown && dragged != null) {
-            activeInteractive = dragged;
-            lastHoveredInteractive = dragged;
+        InteractivePreviewElement alreadyDragging = findDraggedInteractive(renderer);
+        if (isLeftMouseDown && alreadyDragging != null) {
+            activeInteractive = alreadyDragging;
+            lastHoveredInteractive = alreadyDragging;
             dragSessionActive = true;
             hoveringInteractive = true;
-            dragged.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
+            alreadyDragging.onMouseDrag(rayStart, rayDirection, Vec3d.ZERO);
             leftMouseWasDown = true;
             return;
         }
 
-        // Start only on rising edge. Press-hold re-entry called onMouseClick every frame, which
-        // re-seeded dragStartPoint under the cursor and froze movement (delta ≈ 0).
+        // Start only on rising edge — never re-click every held frame (that resets drag origin).
         if (isLeftMouseClicked || (isLeftMouseDown && !leftMouseWasDown)) {
             InteractivePreviewElement target = null;
             if (lastHoveredInteractive != null && lastHoveredInteractive.isInteractable()) {
@@ -171,6 +156,8 @@ public final class GizmoInteractionService {
         if (activeInteractive != null) {
             if (rayStart != null && rayDirection != null) {
                 activeInteractive.onMouseRelease(rayStart, rayDirection, 0);
+            } else if (activeInteractive instanceof RegionResizeHandlesElement handles) {
+                handles.endDrag();
             } else {
                 activeInteractive.setBeingDragged(false);
             }
@@ -187,30 +174,31 @@ public final class GizmoInteractionService {
         if (dragged != null) {
             return dragged;
         }
-        if (activeInteractive != null) {
-            // Prefer the same instance when it is still registered.
-            for (AbstractPreviewElement element : renderer.getActiveElements()) {
-                if (element == activeInteractive) {
-                    return activeInteractive;
-                }
-            }
-            // Element was recreated (same owner); rebind to the replacement interactive.
-            String owner = null;
-            if (activeInteractive instanceof AbstractPreviewElement ape) {
-                owner = ape.getOwnerNodeId();
-            }
-            if (owner != null) {
-                for (AbstractPreviewElement element : renderer.getActiveElements()) {
-                    if (element instanceof InteractivePreviewElement interactive
-                        && owner.equals(element.getOwnerNodeId())
-                        && interactive.isInteractable()) {
-                        return interactive;
-                    }
-                }
-            }
-            return activeInteractive;
+        if (activeInteractive == null) {
+            return null;
         }
-        return null;
+        for (AbstractPreviewElement element : renderer.getActiveElements()) {
+            if (element == activeInteractive) {
+                return activeInteractive;
+            }
+        }
+        String owner = null;
+        if (activeInteractive instanceof AbstractPreviewElement ape) {
+            owner = ape.getOwnerNodeId();
+        }
+        if (owner != null) {
+            for (AbstractPreviewElement element : renderer.getActiveElements()) {
+                if (element instanceof InteractivePreviewElement interactive
+                    && owner.equals(element.getOwnerNodeId())
+                    && interactive.isInteractable()
+                    && element.getClass() == activeInteractive.getClass()) {
+                    return interactive;
+                }
+            }
+        }
+        // Keep calling the old instance so in-memory drag fields (activeFace, etc.) still apply
+        // even if it was briefly removed from the active map.
+        return activeInteractive;
     }
 
     private InteractivePreviewElement findDraggedInteractive(PreviewRenderer renderer) {
@@ -237,7 +225,6 @@ public final class GizmoInteractionService {
             if (!interactive.intersectsRay(rayStart, rayDirection, MAX_PICK_DISTANCE)) {
                 continue;
             }
-            // Prefer the element whose interaction point is closest to the ray, not just to camera.
             double distance = distanceRayToPoint(rayStart, rayDirection, interactive.getInteractionCenter());
             if (distance < closestDistance) {
                 closestDistance = distance;
