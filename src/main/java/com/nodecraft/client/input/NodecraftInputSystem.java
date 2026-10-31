@@ -39,8 +39,21 @@ public final class NodecraftInputSystem {
 
     /**
      * Builds the same mouse→world ray used by {@link #raycastFromMouse()} without doing a block hit.
+     * Uses {@code MinecraftClient#mouse} coordinates.
      */
     public static MouseRay rayFromMouse() {
+        if (MC.mouse == null) {
+            return null;
+        }
+        return rayFromScreen(MC.mouse.getX(), MC.mouse.getY());
+    }
+
+    /**
+     * Accurate FOV mouse→world ray from explicit screen/window coordinates
+     * (e.g. ImGui {@code io.getMousePos()}). Prefer this in the NodeCraft editor so handle
+     * dragging tracks the same cursor ImGui reports while a button is held.
+     */
+    public static MouseRay rayFromScreen(double mouseLogicalX, double mouseLogicalY) {
         if (MC.world == null || MC.getCameraEntity() == null || MC.getWindow() == null || MC.gameRenderer == null) {
             return null;
         }
@@ -50,8 +63,6 @@ public final class NodecraftInputSystem {
             return null;
         }
 
-        double mouseLogicalX = MC.mouse.getX();
-        double mouseLogicalY = MC.mouse.getY();
         int windowW = MC.getWindow().getWidth();
         int windowH = MC.getWindow().getHeight();
         int fbw = MC.getWindow().getFramebufferWidth();

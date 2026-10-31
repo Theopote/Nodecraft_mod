@@ -39,7 +39,15 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     private int activeFace = -1;
     private Vec3d dragPlaneNormal = Vec3d.ZERO;
     private Vec3d dragAxis = new Vec3d(1.0d, 0.0d, 0.0d);
+    private Vec3d dragAxisOrigin = Vec3d.ZERO;
     private Vec3d dragStartPoint = Vec3d.ZERO;
+    private double dragStartAlong = 0.0d;
+    private float dragStartMouseX = 0.0f;
+    private float dragStartMouseY = 0.0f;
+    private double dragScreenAxisX = 1.0d;
+    private double dragScreenAxisY = 0.0d;
+    private double dragPixelsPerBlock = 40.0d;
+    private boolean dragUseScreenSpace = false;
     private int dragStartFaceCoord = 0;
     private int lastEmittedFaceCoord = 0;
     private int cursorFace = -1;
@@ -356,17 +364,28 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
         beingDragged = true;
         dragAxis = faceAxisDir(face);
         Vec3d center = faceCenter(data, face);
-        // Camera-facing plane containing the +axis (stable mouse→world mapping).
+        dragAxisOrigin = center;
         dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(dragAxis, rayStart.subtract(center));
-        Vec3d planeHit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
-        // Fallback to axis projection if the plane is edge-on at the click frame.
-        if (planeHit == null) {
-            planeHit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, center, dragAxis);
+        Vec3d axisHit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, center, dragAxis);
+        if (axisHit == null) {
+            axisHit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, center, dragPlaneNormal);
         }
-        dragStartPoint = planeHit != null ? planeHit : center;
+        dragStartPoint = axisHit != null ? axisHit : center;
+        dragStartAlong = dragStartPoint.subtract(dragAxisOrigin).dotProduct(dragAxis);
         dragStartFaceCoord = inclusiveFaceCoord(data, face);
         lastEmittedFaceCoord = dragStartFaceCoord;
+
+        // Screen-space drag: mouse pixel motion along the projected +axis. Logs showed world
+        // axis-closest-point deltas plateau after ~1 block while the cursor kept moving.
+        dragStartMouseX = ImGui.getIO().getMousePosX();
+        dragStartMouseY = ImGui.getIO().getMousePosY();
+        dragUseScreenSpace = initScreenSpaceDragAxis(center, dragAxis);
+
         applyResizeCursor(face);
+        com.nodecraft.core.NodeCraft.LOGGER.info(
+            "RegionResize drag START face={} startCoord={} screenSpace={} pxPerBlock={}",
+            face, dragStartFaceCoord, dragUseScreenSpace, dragPixelsPerBlock
+        );
         return true;
     }
 
@@ -382,42 +401,115 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
             return false;
         }
 
-        Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
-        if (hit == null) {
-            // Prefer axis projection over rebuilding the plane against a moving face center —
-            // that rebuild was unstable once the handle had moved a couple of blocks.
-            hit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, dragStartPoint, dragAxis);
-            if (hit == null) {
-                return true;
-            }
+        double screenDelta = Double.NaN;
+        if (dragUseScreenSpace && dragPixelsPerBlock > 1.0d) {
+            float mx = ImGui.getIO().getMousePosX();
+            float my = ImGui.getIO().getMousePosY();
+            double alongPixels = (mx - dragStartMouseX) * dragScreenAxisX
+                + (my - dragStartMouseY) * dragScreenAxisY;
+            screenDelta = alongPixels / dragPixelsPerBlock;
         }
 
-        // Project onto +axis so -X/-Y/-Z handles move with the mouse, not against it.
-        double deltaAlong = hit.subtract(dragStartPoint).dotProduct(dragAxis);
-        int newCoord = quantizeFaceCoord(deltaAlong);
+        double planeDelta = Double.NaN;
+        Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragStartPoint, dragPlaneNormal);
+        if (hit != null) {
+            planeDelta = hit.subtract(dragAxisOrigin).dotProduct(dragAxis) - dragStartAlong;
+        }
+
+        final double deltaAlong;
+        if (!Double.isNaN(screenDelta) && !Double.isNaN(planeDelta)) {
+            // Whichever moved farther from the re-anchor — screen can stall on bad scale,
+            // plane can plateau; taking the larger keeps slow continuous drags alive.
+            deltaAlong = Math.abs(screenDelta) >= Math.abs(planeDelta) ? screenDelta : planeDelta;
+        } else if (!Double.isNaN(screenDelta)) {
+            deltaAlong = screenDelta;
+        } else if (!Double.isNaN(planeDelta)) {
+            deltaAlong = planeDelta;
+        } else {
+            return true;
+        }
+
+        int newCoord = (int) Math.round(dragStartFaceCoord + deltaAlong);
         if (newCoord == lastEmittedFaceCoord) {
             return true;
         }
+        com.nodecraft.core.NodeCraft.LOGGER.info(
+            "RegionResize drag MOVE face={} delta={} screen={} plane={} {} -> {}",
+            activeFace, deltaAlong, screenDelta, planeDelta, lastEmittedFaceCoord, newCoord
+        );
         lastEmittedFaceCoord = newCoord;
         data.callback().onFaceResized(faceAxis(activeFace), faceTowardMax(activeFace), newCoord);
+        // Re-anchor after each step so follow-the-handle motion only needs ~1 block of travel
+        // per cell. Without this, an overstated pixels/block scale caps slow drags at 1–2 cells.
+        reanchorDrag(rayStart, rayDirection, newCoord);
         return true;
     }
 
+    /** Resets drag baselines to the current cursor after a face coord is committed. */
+    private void reanchorDrag(Vec3d rayStart, Vec3d rayDirection, int faceCoord) {
+        dragStartFaceCoord = faceCoord;
+        dragStartMouseX = ImGui.getIO().getMousePosX();
+        dragStartMouseY = ImGui.getIO().getMousePosY();
+        Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragAxisOrigin, dragPlaneNormal);
+        if (hit == null) {
+            hit = GizmoMath.closestPointOnAxis(rayStart, rayDirection, dragAxisOrigin, dragAxis);
+        }
+        if (hit != null) {
+            dragStartPoint = hit;
+            dragStartAlong = hit.subtract(dragAxisOrigin).dotProduct(dragAxis);
+        }
+    }
+
     /**
-     * Block-snap with light hysteresis so noise around ±0.5 does not flicker the face.
+     * Maps the world +axis into ImGui mouse pixel space using the camera right/up basis.
+     * @return false when looking nearly along the axis
      */
-    private int quantizeFaceCoord(double deltaAlong) {
-        double exact = dragStartFaceCoord + deltaAlong;
-        int nearest = (int) Math.round(exact);
-        if (nearest == lastEmittedFaceCoord) {
-            return lastEmittedFaceCoord;
+    private boolean initScreenSpaceDragAxis(Vec3d origin, Vec3d axis) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.gameRenderer == null || client.getWindow() == null) {
+            return false;
         }
-        double sticky = lastEmittedFaceCoord + Math.copySign(0.55d, nearest - lastEmittedFaceCoord);
-        if ((nearest > lastEmittedFaceCoord && exact < sticky)
-            || (nearest < lastEmittedFaceCoord && exact > sticky)) {
-            return lastEmittedFaceCoord;
+        Camera camera = client.gameRenderer.getCamera();
+        if (camera == null) {
+            return false;
         }
-        return nearest;
+
+        var q = camera.getRotation();
+        Vector3f right = new Vector3f(1.0f, 0.0f, 0.0f).rotate(q);
+        Vector3f up = new Vector3f(0.0f, 1.0f, 0.0f).rotate(q);
+        double sx = axis.x * right.x + axis.y * right.y + axis.z * right.z;
+        // ImGui Y grows downward; camera up is opposite on screen.
+        double sy = -(axis.x * up.x + axis.y * up.y + axis.z * up.z);
+        double planeLen = Math.hypot(sx, sy);
+        if (planeLen < 0.08d) {
+            return false;
+        }
+        dragScreenAxisX = sx / planeLen;
+        dragScreenAxisY = sy / planeLen;
+
+        double dist = Math.max(1.0d, camera.getCameraPos().distanceTo(origin));
+        float fovDeg = (float) client.options.getFov().getValue();
+        try {
+            if (client.gameRenderer instanceof com.nodecraft.mixin.accessor.GameRendererAccessor accessor) {
+                float actual = accessor.nodecraft$invokeGetFov(camera, 0.0f, true);
+                if (actual > 0 && actual < 180) {
+                    fovDeg = actual;
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        // Mouse positions are in ImGui display space — must match that, not raw window pixels.
+        float displayH = ImGui.getIO().getDisplaySizeY();
+        if (displayH <= 1.0f) {
+            displayH = client.getWindow().getHeight();
+        }
+        if (displayH <= 1.0f) {
+            return false;
+        }
+        double fullPixelsPerBlock = (displayH * 0.5d) / (Math.tan(Math.toRadians(fovDeg) * 0.5d) * dist);
+        // Slightly softer than pure projection so slow follow-the-handle feels one-to-one.
+        dragPixelsPerBlock = fullPixelsPerBlock * planeLen * 0.85d;
+        return dragPixelsPerBlock > 2.0d;
     }
 
     @Override

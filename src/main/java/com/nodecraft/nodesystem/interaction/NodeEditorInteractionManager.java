@@ -362,7 +362,6 @@ public class NodeEditorInteractionManager {
             return;
         }
 
-        // Prefer Minecraft mouse coords (same space as world block raycasts) for stable handle picking.
         WorldPickingService.Ray ray = resolveGizmoRay(mouseX, mouseY);
         // Always read the game window for button state (detached ImGui window handle can desync).
         MinecraftClient client = MinecraftClient.getInstance();
@@ -387,16 +386,36 @@ public class NodeEditorInteractionManager {
         boolean leftReleased = !leftDown && previousGizmoLeftMouseDown;
         previousGizmoLeftMouseDown = leftDown;
 
+        boolean sessionDragging = gizmos.isDraggingGizmo();
+        if (sessionDragging || leftClicked) {
+            NodeCraft.LOGGER.info(
+                "GizmoInput - sessionDrag={} capture={} glfwDown={} imGuiDown={} click={} mouse=({},{}) rayOk={}",
+                sessionDragging,
+                capturingGizmo,
+                glfwDown,
+                imGuiDown,
+                leftClicked,
+                mouseX,
+                mouseY,
+                ray != null
+            );
+        }
+
         gizmos.update(ray, leftClicked, leftDown, leftReleased);
     }
 
-    private WorldPickingService.Ray resolveGizmoRay(float fallbackMouseX, float fallbackMouseY) {
-        // Must match on-screen projection (actual FOV + camera quaternion), same as block picking.
-        NodecraftInputSystem.MouseRay accurate = NodecraftInputSystem.rayFromMouse();
-        if (accurate != null) {
-            return new WorldPickingService.Ray(accurate.origin(), accurate.direction());
+    private WorldPickingService.Ray resolveGizmoRay(float editorMouseX, float editorMouseY) {
+        // Prefer the ImGui/editor cursor (same coords as updateInteractionManager). MC.mouse can
+        // stop tracking while a button is held under ImGui input ownership — that froze resize drags.
+        NodecraftInputSystem.MouseRay fromEditor = NodecraftInputSystem.rayFromScreen(editorMouseX, editorMouseY);
+        if (fromEditor != null) {
+            return new WorldPickingService.Ray(fromEditor.origin(), fromEditor.direction());
         }
-        return worldPicking.getCachedOrComputeRay(fallbackMouseX, fallbackMouseY);
+        NodecraftInputSystem.MouseRay fromMc = NodecraftInputSystem.rayFromMouse();
+        if (fromMc != null) {
+            return new WorldPickingService.Ray(fromMc.origin(), fromMc.direction());
+        }
+        return worldPicking.getCachedOrComputeRay(editorMouseX, editorMouseY);
     }
 
     private void handleMouseClickEvents(Coordinate hoveredBlock, BlockHitResult hitResult, boolean isLeftMouseClicked, boolean isRightMouseClicked) {
