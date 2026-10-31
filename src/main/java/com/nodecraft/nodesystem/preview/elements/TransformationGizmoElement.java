@@ -32,7 +32,8 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
     private float interactionRadius = 0.35f;
     private String gizmoType = "all";
 
-    private boolean beingDragged = false;
+    /** Volatile: the render thread sets it, the node-execution thread reads it (drag survival). */
+    private volatile boolean beingDragged = false;
     private boolean interactable = true;
     private GizmoHandle hoveredHandle = null;
     private GizmoHandle activeHandle = null;
@@ -43,6 +44,22 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
     private double dragStartScaleDistance = 1.0d;
     private Vec3d dragRingNormal = Vec3d.ZERO;
     private Vec3d dragRingReference = Vec3d.ZERO;
+
+    /**
+     * Drag baselines frozen at press time. The gizmo origin moves while dragging (the node
+     * re-executes and republishes the preview), so every measurement is taken against these
+     * fixed values rather than the live origin. This keeps the reported displacement equal to
+     * the total distance travelled since the press, independent of frame pacing.
+     */
+    private Vec3d dragOrigin = Vec3d.ZERO;
+    /** Point on the drag plane at press time (translation / scale anchor). */
+    private Vec3d dragPlanePoint = Vec3d.ZERO;
+    /** Last absolute values applied, used to emit deltas against a frozen baseline. */
+    private Vec3d lastAppliedTranslation = Vec3d.ZERO;
+    private double lastAppliedRotationDeg = 0.0d;
+    private double lastAppliedScale = 1.0d;
+    /** Raw (unwrapped) angle of the previous frame, used for seam-aware step accumulation. */
+    private double lastRawAngleDeg = 0.0d;
 
     public TransformationGizmoElement(String id, String ownerNodeId, Object data, PreviewOptions options) {
         super(id, ownerNodeId, data, options);
@@ -329,6 +346,7 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         hoveredHandle = null;
         activeHandle = null;
         beingDragged = false;
+        resetDragBaselines();
     }
 
     public GizmoHandle pickHandle(Vec3d rayStart, Vec3d rayDirection, double maxDistance) {
@@ -533,20 +551,33 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
         Vec3d origin = gizmoData.getOrigin();
         Vec3d axis = axisForHandle(handle);
         Vec3d cameraDirection = rayStart.subtract(origin);
+        // Freeze the origin: it moves as the node re-executes during the drag.
+        dragOrigin = origin;
         if (handle.isTranslation() || handle.isScale()) {
             dragPlaneNormal = GizmoMath.cameraFacingPlaneNormal(axis, cameraDirection);
             dragStartPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, origin, dragPlaneNormal);
             if (dragStartPoint == null) {
                 dragStartPoint = origin;
             }
+            // The drag plane is anchored at the press-time origin, not the live one.
+            dragPlanePoint = origin;
+            lastAppliedTranslation = dragStartPoint;
+            lastAppliedRotationDeg = 0.0d;
+            lastAppliedScale = 1.0d;
+            lastRawAngleDeg = 0.0d;
             if (handle.isScale()) {
-                dragStartScaleDistance = Math.max(1.0e-6d, dragStartPoint.subtract(origin).dotProduct(axis.normalize()));
+                dragStartScaleDistance = Math.max(1.0e-6d, dragStartPoint.subtract(dragOrigin).dotProduct(axis.normalize()));
             }
         } else if (handle.isRotation()) {
             dragRingNormal = axis.normalize();
             dragRingReference = referenceOnRing(dragRingNormal);
             Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, origin, dragRingNormal);
-            dragStartAngleDeg = hit == null ? 0.0d : GizmoMath.signedAngleOnPlane(origin, dragRingNormal, dragRingReference, hit);
+            dragStartAngleDeg = hit == null ? 0.0d : GizmoMath.signedAngleOnPlane(dragOrigin, dragRingNormal, dragRingReference, hit);
+            lastAppliedTranslation = Vec3d.ZERO;
+            // Deltas are relative to the press-time angle, not to zero.
+            lastAppliedRotationDeg = 0.0d;
+            lastRawAngleDeg = dragStartAngleDeg;
+            lastAppliedScale = 1.0d;
         }
     }
 
@@ -561,52 +592,62 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
             return false;
         }
 
-        Vec3d origin = gizmoData.getOrigin();
         Vec3d axis = axisForHandle(activeHandle);
         Vector3d translationDelta = new Vector3d();
         Vector3d rotationDelta = new Vector3d();
         double scaleDelta = 1.0d;
 
         if (activeHandle.isTranslation()) {
-            Vec3d currentPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, origin, dragPlaneNormal);
+            // Measure against the frozen press-time plane and baseline. The camera-facing drag
+            // plane contains the drag axis, so sliding the origin along that axis leaves the
+            // intersection unchanged — but keeping the baseline frozen guarantees the reported
+            // displacement is the total since the press, independent of frame pacing.
+            Vec3d currentPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragPlanePoint, dragPlaneNormal);
             if (currentPoint != null) {
                 Vec3d delta = currentPoint.subtract(dragStartPoint);
                 double projected = delta.dotProduct(axis.normalize());
-                Vec3d worldDelta = axis.normalize().multiply(projected);
-                translationDelta.set(worldDelta.x, worldDelta.y, worldDelta.z);
-                dragStartPoint = currentPoint;
+                Vec3d absolute = dragStartPoint.add(axis.normalize().multiply(projected));
+                Vec3d step = absolute.subtract(lastAppliedTranslation);
+                translationDelta.set(step.x, step.y, step.z);
+                lastAppliedTranslation = absolute;
             }
         } else if (activeHandle.isRotation()) {
-            Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, origin, dragRingNormal);
+            Vec3d hit = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragOrigin, dragRingNormal);
             if (hit != null) {
-                double angle = GizmoMath.signedAngleOnPlane(origin, dragRingNormal, dragRingReference, hit);
-                double deltaAngle = angle - dragStartAngleDeg;
-                dragStartAngleDeg = angle;
+                double angle = GizmoMath.signedAngleOnPlane(dragOrigin, dragRingNormal, dragRingReference, hit);
+                // Accumulate seam-aware steps: crossing the +/-180 seam must not spin the gizmo.
+                double step = GizmoMath.normalizeDegrees(angle - lastRawAngleDeg);
+                lastRawAngleDeg = angle;
+                lastAppliedRotationDeg += step;
                 switch (activeHandle) {
-                    case RING_X -> rotationDelta.x = deltaAngle;
-                    case RING_Y -> rotationDelta.y = deltaAngle;
-                    case RING_Z -> rotationDelta.z = deltaAngle;
+                    case RING_X -> rotationDelta.x = step;
+                    case RING_Y -> rotationDelta.y = step;
+                    case RING_Z -> rotationDelta.z = step;
                     default -> {
                     }
                 }
             }
         } else if (activeHandle.isScale()) {
-            Vec3d currentPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, origin, dragPlaneNormal);
+            Vec3d currentPoint = GizmoMath.intersectRayWithPlane(rayStart, rayDirection, dragPlanePoint, dragPlaneNormal);
             if (currentPoint != null) {
+                double absolute;
                 if (activeHandle == GizmoHandle.SCALE_UNIFORM) {
-                    double currentDistance = currentPoint.distanceTo(origin);
-                    double startDistance = dragStartPoint.distanceTo(origin);
-                    if (startDistance > 1.0e-6d) {
-                        scaleDelta = currentDistance / startDistance;
-                    }
-                    dragStartPoint = currentPoint;
+                    double currentDistance = currentPoint.distanceTo(dragOrigin);
+                    double startDistance = dragStartPoint.distanceTo(dragOrigin);
+                    absolute = startDistance > 1.0e-6d ? currentDistance / startDistance : 1.0d;
                 } else {
-                    double currentDistance = currentPoint.subtract(origin).dotProduct(axis.normalize());
-                    if (dragStartScaleDistance > 1.0e-6d) {
-                        scaleDelta = currentDistance / dragStartScaleDistance;
-                    }
-                    dragStartScaleDistance = currentDistance;
+                    double currentDistance = currentPoint.subtract(dragOrigin).dotProduct(axis.normalize());
+                    absolute = dragStartScaleDistance > 1.0e-6d
+                        ? currentDistance / dragStartScaleDistance
+                        : 1.0d;
                 }
+                if (!Double.isFinite(absolute) || absolute <= 1.0e-9d) {
+                    absolute = lastAppliedScale;
+                }
+                // Emit the ratio between the last applied scale and the new absolute scale so
+                // the node's multiplicative accumulation stays consistent.
+                scaleDelta = lastAppliedScale > 1.0e-9d ? absolute / lastAppliedScale : 1.0d;
+                lastAppliedScale = absolute;
             }
         }
 
@@ -631,7 +672,24 @@ public class TransformationGizmoElement extends AbstractPreviewElement implement
 
         activeHandle = null;
         setBeingDragged(false);
+        resetDragBaselines();
         return true;
+    }
+
+    /** Clears the frozen drag baselines so a later drag starts from a clean state. */
+    private void resetDragBaselines() {
+        dragOrigin = Vec3d.ZERO;
+        dragPlanePoint = Vec3d.ZERO;
+        dragPlaneNormal = Vec3d.ZERO;
+        dragStartPoint = Vec3d.ZERO;
+        dragRingNormal = Vec3d.ZERO;
+        dragRingReference = Vec3d.ZERO;
+        dragStartAngleDeg = 0.0d;
+        dragStartScaleDistance = 1.0d;
+        lastAppliedTranslation = Vec3d.ZERO;
+        lastAppliedRotationDeg = 0.0d;
+        lastAppliedScale = 1.0d;
+        lastRawAngleDeg = 0.0d;
     }
 
     @Override

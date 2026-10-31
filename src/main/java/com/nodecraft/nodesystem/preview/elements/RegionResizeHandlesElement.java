@@ -34,7 +34,8 @@ public class RegionResizeHandlesElement extends AbstractPreviewElement implement
     private float interactionRadius = 0.28f;
 
     private boolean interactable = true;
-    private boolean beingDragged = false;
+    /** Volatile: the render thread sets it, the node-execution thread reads it (drag survival). */
+    private volatile boolean beingDragged = false;
     private int hoveredFace = -1;
     private int activeFace = -1;
     /** Unit +X/+Y/+Z for the active face axis (fixed for the drag). */

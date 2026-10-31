@@ -213,4 +213,18 @@ public final class GizmoMath {
         double cos = ref.dotProduct(target);
         return Math.toDegrees(Math.atan2(sin, cos));
     }
+
+    /**
+     * Wraps an angle difference into {@code (-180, 180]} so crossing the +/-180 degree seam
+     * does not produce a ~360 degree jump. Used when accumulating rotation drag steps.
+     */
+    public static double normalizeDegrees(double degrees) {
+        double wrapped = degrees % 360.0d;
+        if (wrapped > 180.0d) {
+            wrapped -= 360.0d;
+        } else if (wrapped <= -180.0d) {
+            wrapped += 360.0d;
+        }
+        return wrapped;
+    }
 }
