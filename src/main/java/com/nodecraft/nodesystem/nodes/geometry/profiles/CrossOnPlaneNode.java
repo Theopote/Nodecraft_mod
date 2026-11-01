@@ -51,10 +51,10 @@ public class CrossOnPlaneNode extends AbstractProfileNode {
     public CrossOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.cross_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_ARM_LENGTH_ID, "Arm Length", "Length from center to each arm tip", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ARM_WIDTH_ID, "Arm Width", "Width of each arm", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane cross X axis", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_ARM_LENGTH_ID, "Arm Length", "Length from center to each arm tip", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ARM_WIDTH_ID, "Arm Width", "Width of each arm", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane cross X axis", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed cross points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Cross polygon profile", NodeDataType.POLYGON_PROFILE, this));

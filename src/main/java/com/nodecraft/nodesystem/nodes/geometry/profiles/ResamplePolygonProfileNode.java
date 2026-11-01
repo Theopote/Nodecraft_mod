@@ -44,7 +44,7 @@ public class ResamplePolygonProfileNode extends AbstractProfileNode {
         super(UUID.randomUUID(), "geometry.profiles.resample_profile");
 
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Polygon profile to resample", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_EDGE_COUNT_ID, "Edge Count", "Target edge count after resampling", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_EDGE_COUNT_ID, "Edge Count", "Target edge count after resampling", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Resampled polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed resampled polygon points", NodeDataType.POINT_LIST, this));

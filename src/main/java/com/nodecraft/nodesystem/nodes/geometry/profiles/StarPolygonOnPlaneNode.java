@@ -55,11 +55,11 @@ public class StarPolygonOnPlaneNode extends AbstractProfileNode {
     public StarPolygonOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.star_polygon_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Radius of outer star points", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Radius of inner star points", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_POINT_COUNT_ID, "Points", "Number of outer points", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane direction to first outer point", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Radius of outer star points", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Radius of inner star points", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_POINT_COUNT_ID, "Points", "Number of outer points", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane direction to first outer point", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed star polygon points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Star polygon profile", NodeDataType.POLYGON_PROFILE, this));

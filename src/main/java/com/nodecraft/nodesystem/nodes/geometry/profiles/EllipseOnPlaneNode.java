@@ -55,11 +55,11 @@ public class EllipseOnPlaneNode extends AbstractProfileNode {
     public EllipseOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.ellipse_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipse local X radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RADIUS_Y_ID, "Radius Y", "Ellipse local Y radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane major-axis direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipse local X radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_Y_ID, "Radius Y", "Ellipse local Y radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane major-axis direction", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed ellipse points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Ellipse polygon profile approximation", NodeDataType.POLYGON_PROFILE, this));

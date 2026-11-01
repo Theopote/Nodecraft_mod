@@ -59,12 +59,12 @@ public class RoundedRectangleOnPlaneNode extends AbstractProfileNode {
     public RoundedRectangleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.rounded_rectangle_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total width", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total height", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Corner Radius", "Corner fillet radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_CORNER_SEGMENTS_ID, "Corner Segments", "Segments per corner arc", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane rectangle X axis", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total width", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total height", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Corner Radius", "Corner fillet radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_CORNER_SEGMENTS_ID, "Corner Segments", "Segments per corner arc", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane rectangle X axis", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed rounded-rectangle points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rounded-rectangle polygon profile", NodeDataType.POLYGON_PROFILE, this));

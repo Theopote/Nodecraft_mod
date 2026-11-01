@@ -61,11 +61,11 @@ public class AnnulusOnPlaneNode extends AbstractProfileNode {
     public AnnulusOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.annulus_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Inner ring radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Outer ring radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane zero-angle direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Inner ring radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Outer ring radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane zero-angle direction", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_OUTER_POINTS_ID, "Outer Points", "Closed outer ring points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_INNER_POINTS_ID, "Inner Points", "Closed inner ring points", NodeDataType.POINT_LIST, this));

@@ -50,7 +50,7 @@ public class ConvexHull2DOnPlaneNode extends AbstractProfileNode {
             NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane",
             "Plane used for projection and polygon embedding. Defaults to XZ (horizontal)",
-            NodeDataType.PLANE, this));
+            NodeDataType.PLANE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points",
             "Closed convex hull points",

@@ -55,11 +55,11 @@ public class HeartOnPlaneNode extends AbstractProfileNode {
     public HeartOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.heart_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total heart width", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total heart height", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane heart X axis", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total heart width", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total heart height", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane heart X axis", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed heart points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Heart polygon profile", NodeDataType.POLYGON_PROFILE, this));

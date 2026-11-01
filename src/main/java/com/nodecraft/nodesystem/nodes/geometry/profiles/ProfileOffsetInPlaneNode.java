@@ -44,7 +44,7 @@ public class ProfileOffsetInPlaneNode extends AbstractProfileNode {
     public ProfileOffsetInPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.offset_profile_plane");
         addInputPort(new BasePort(INPUT_PROFILE_ID, "Profile", "Input polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
             "Primary offset planar region (may include holes)", NodeDataType.PLANAR_REGION, this));

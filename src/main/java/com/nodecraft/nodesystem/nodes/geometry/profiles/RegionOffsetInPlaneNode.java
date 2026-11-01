@@ -45,7 +45,7 @@ public class RegionOffsetInPlaneNode extends AbstractProfileNode {
         addInputPort(new BasePort(INPUT_REGION_ID, "Region",
             "Input planar region", NodeDataType.PLANAR_REGION, this));
         addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset",
-            "Signed offset distance", NodeDataType.DOUBLE, this));
+            "Signed offset distance", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region",
             "Primary offset planar region (may include holes)", NodeDataType.PLANAR_REGION, this));

@@ -60,12 +60,12 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
     public SectorOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.sector_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sector radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Arc Segments", "Arc segment count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane zero-angle direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sector radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Arc Segments", "Arc segment count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Start Direction", "Optional in-plane zero-angle direction", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed sector points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Sector polygon profile", NodeDataType.POLYGON_PROFILE, this));

@@ -51,10 +51,10 @@ public class RhombusOnPlaneNode extends AbstractProfileNode {
     public RhombusOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.rhombus_profile");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_DIAGONAL_X_ID, "Diagonal X", "Diagonal length along local X axis", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_DIAGONAL_Y_ID, "Diagonal Y", "Diagonal length along local Y axis", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane rhombus X axis", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_DIAGONAL_X_ID, "Diagonal X", "Diagonal length along local X axis", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_DIAGONAL_Y_ID, "Diagonal Y", "Diagonal length along local Y axis", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "X Axis", "Optional in-plane rhombus X axis", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Closed rhombus points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Rhombus polygon profile", NodeDataType.POLYGON_PROFILE, this));
