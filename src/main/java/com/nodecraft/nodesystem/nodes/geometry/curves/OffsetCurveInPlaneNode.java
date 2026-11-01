@@ -45,7 +45,7 @@ public class OffsetCurveInPlaneNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to offset (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Work plane containing the curve", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance in the plane", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_OFFSET_ID, "Offset", "Signed offset distance in the plane", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Offset path in the work plane", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_VALID_ID, "Valid", "True when the offset succeeded", NodeDataType.BOOLEAN, this));

@@ -67,7 +67,7 @@ public class VoxelizeCurveNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to voxelize (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Tube radius in blocks/meters", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Tube radius in blocks/meters", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_BLOCKS_ID, "Blocks", "Voxelized curve block coordinates", NodeDataType.BLOCK_LIST, this));
         addOutputPort(new BasePort(OUTPUT_BLOCKS_TREE_ID, "Blocks Tree", "Voxelized blocks grouped as one branch for this curve", NodeDataType.DATA_TREE, this));

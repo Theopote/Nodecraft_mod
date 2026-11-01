@@ -44,9 +44,9 @@ public class SdfBlendMaterialMaskNode extends AbstractSdfNode {
         addInputPort(new BasePort(INPUT_DISTANCES_ID, "Distances",
             "SDF distance list (typically from SDF Sample Points)", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center",
-            "Distance center where mask weight is 0.5", NodeDataType.DOUBLE, this));
+            "Distance center where mask weight is 0.5", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_HALF_WIDTH_ID, "Half Width",
-            "Half of transition band width (> 0)", NodeDataType.DOUBLE, this));
+            "Half of transition band width (> 0)", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_WEIGHTS_ID, "Weights",
             "0..1 smooth blend weights", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_INSIDE_ID, "Inside",

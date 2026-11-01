@@ -63,9 +63,9 @@ public class MapListNode extends BaseNode {
         addInputPort(new BasePort(INPUT_LIST_ID, "Numbers", "Input double list", NodeDataType.DOUBLE_LIST, this));
         addInputPort(new BasePort(INPUT_VALUE_ID, "Value", "Operand value for scalar operations", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_MIN_ID, "Min", "Clamp minimum (undriven=0; reversed bounds auto-normalized)",
-                NodeDataType.DOUBLE, this));
+                NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_MAX_ID, "Max", "Clamp maximum (undriven=1; reversed bounds auto-normalized)",
-                NodeDataType.DOUBLE, this));
+                NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_LIST_ID, "Numbers", "Mapped double list", NodeDataType.DOUBLE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of mapped entries", NodeDataType.INTEGER, this));

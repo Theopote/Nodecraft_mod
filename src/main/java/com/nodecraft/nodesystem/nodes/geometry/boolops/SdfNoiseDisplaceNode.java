@@ -47,9 +47,9 @@ public class SdfNoiseDisplaceNode extends AbstractSdfNode {
     public SdfNoiseDisplaceNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_noise_displace");
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Source signed distance field", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_AMPLITUDE_ID, "Amplitude", "Optional amplitude override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_FREQUENCY_ID, "Frequency", "Optional frequency override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_AMPLITUDE_ID, "Amplitude", "Optional amplitude override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_FREQUENCY_ID, "Frequency", "Optional frequency override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Noise-displaced SDF", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when displacement was applied");
     }

@@ -59,9 +59,9 @@ public class SdfToGeometryNode extends AbstractSdfNode {
         addInputPort(new BasePort(INPUT_MAX_ID, "Bounds Max",
             "Sampling maximum corner (optional if Auto Bounds is on)", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_ISO_ID, "Iso Value",
-            "Iso-surface threshold (0 is standard SDF surface)", NodeDataType.DOUBLE, this));
+            "Iso-surface threshold (0 is standard SDF surface)", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_PADDING_ID, "Padding",
-            "Bounds padding override (optional)", NodeDataType.DOUBLE, this));
+            "Bounds padding override (optional)", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry",
             "Geometry wrapper consumable by geometry voxelizer", NodeDataType.GEOMETRY, this));
         addValidAndErrorOutputs("True when SDF and bounds are valid");

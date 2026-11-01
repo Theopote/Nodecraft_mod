@@ -59,9 +59,9 @@ public class SectionCutNode extends AbstractSolidNode {
     public SectionCutNode() {
         super(UUID.randomUUID(), "geometry.solids.section_cut");
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to section", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Section plane", NodeDataType.PLANE, this));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Section plane", NodeDataType.PLANE, this, false, false));
         addInputPort(new BasePort(INPUT_PLANES_ID, "Planes", "Optional list of section planes. When connected, each plane outputs one section branch", NodeDataType.PLANE_LIST, this));
-        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary traced section profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Primary traced section boundary path", NodeDataType.PATH, this));

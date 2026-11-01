@@ -35,8 +35,8 @@ public class SdfTorusNode extends AbstractSdfNode {
     public SdfTorusNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_torus");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Torus center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "Distance from center to tube center", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "Tube radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "Distance from center to tube center", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "Tube radius", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Torus signed distance field", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when center and ring-torus radii are valid");
     }

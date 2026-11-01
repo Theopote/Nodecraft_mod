@@ -57,13 +57,13 @@ public class TweenCurvesNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.tween_curves");
 
         addInputPort(new BasePort(INPUT_PATH_A_ID, "Path A",
-            "First path to tween from (line, polyline, or curve)", NodeDataType.PATH, this));
+            "First path to tween from (line, polyline, or curve)", NodeDataType.PATH, this, false, false));
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
-            "Second path to tween to (line, polyline, or curve)", NodeDataType.PATH, this));
+            "Second path to tween to (line, polyline, or curve)", NodeDataType.PATH, this, false, false));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
-            "Number of intermediate paths to generate", NodeDataType.INTEGER, this));
+            "Number of intermediate paths to generate", NodeDataType.INTEGER, this, false, false));
         addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples",
-            "Sample point count per tween path", NodeDataType.INTEGER, this));
+            "Sample point count per tween path", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATHS_ID, "Paths",
             "Generated tween paths", NodeDataType.PATH_LIST, this));

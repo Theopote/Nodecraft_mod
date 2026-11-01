@@ -56,8 +56,8 @@ public class SampleSphereSurfaceNode extends AbstractSurfaceVolumeDistributionNo
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.sample_sphere_surface");
 
         addInputPort(new BasePort(INPUT_SPHERE_ID, "Sphere", "Sphere geometry to sample", NodeDataType.SPHERE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Exact sample count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Exact sample count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional random seed override", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled surface points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_NORMALS_ID, "Normals", "Outward normals aligned with the sampled points", NodeDataType.VECTOR_LIST, this));

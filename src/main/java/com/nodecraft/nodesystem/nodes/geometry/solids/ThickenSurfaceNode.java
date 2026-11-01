@@ -50,7 +50,7 @@ public class ThickenSurfaceNode extends AbstractSolidNode {
         super(UUID.randomUUID(), "geometry.solids.thicken_surface");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to thicken", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Thickness override for the thickened strip", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Thickness override for the thickened strip", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_FRONT_SURFACE_ID, "Front Surface", "Primary offset surface layer", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_BACK_SURFACE_ID, "Back Surface", "Secondary offset surface layer", NodeDataType.SURFACE_STRIP, this));

@@ -41,9 +41,9 @@ public class ExtendPathNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Open path to extend (line, polyline, or curve)", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_START_LENGTH_ID, "Start Length",
-            "Length to extend before path start (>= 0)", NodeDataType.DOUBLE, this));
+            "Length to extend before path start (>= 0)", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_END_LENGTH_ID, "End Length",
-            "Length to extend after path end (>= 0)", NodeDataType.DOUBLE, this));
+            "Length to extend after path end (>= 0)", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Extended path", NodeDataType.PATH, this));

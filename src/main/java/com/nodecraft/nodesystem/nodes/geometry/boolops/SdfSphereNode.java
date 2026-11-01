@@ -32,7 +32,7 @@ public class SdfSphereNode extends AbstractSdfNode {
     public SdfSphereNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_sphere");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Sphere signed distance field", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when center and radius are valid");
     }

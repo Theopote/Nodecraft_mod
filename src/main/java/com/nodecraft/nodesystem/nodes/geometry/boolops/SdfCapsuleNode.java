@@ -35,7 +35,7 @@ public class SdfCapsuleNode extends AbstractSdfNode {
         super(UUID.randomUUID(), "geometry.boolean.sdf_capsule");
         addInputPort(new BasePort(INPUT_START_ID, "Start", "Segment start point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_END_ID, "End", "Segment end point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Capsule signed distance field", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when endpoints and radius are valid");
     }

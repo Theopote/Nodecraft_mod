@@ -60,12 +60,12 @@ public class FilterPointsByRuleNode extends BaseNode {
         super(UUID.randomUUID(), "world.query.filter_points_by_rule");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Points to filter", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Optional normals aligned with points for slope tests", NodeDataType.VECTOR_LIST, this));
-        addInputPort(new BasePort(INPUT_MIN_HEIGHT_ID, "Min Height", "Minimum Y value to keep", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MAX_HEIGHT_ID, "Max Height", "Maximum Y value to keep", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MIN_SLOPE_ID, "Min Slope", "Minimum slope angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MAX_SLOPE_ID, "Max Slope", "Maximum slope angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert the final keep mask", NodeDataType.BOOLEAN, this));
+        addInputPort(new BasePort(INPUT_NORMALS_ID, "Normals", "Optional normals aligned with points for slope tests", NodeDataType.VECTOR_LIST, this, false, false));
+        addInputPort(new BasePort(INPUT_MIN_HEIGHT_ID, "Min Height", "Minimum Y value to keep", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MAX_HEIGHT_ID, "Max Height", "Maximum Y value to keep", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MIN_SLOPE_ID, "Min Slope", "Minimum slope angle in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MAX_SLOPE_ID, "Max Slope", "Maximum slope angle in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert the final keep mask", NodeDataType.BOOLEAN, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_FILTERED_POINTS_ID, "Filtered Points", "Points that passed the rule", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_REMOVED_POINTS_ID, "Removed Points", "Points rejected by the rule", NodeDataType.POINT_LIST, this));

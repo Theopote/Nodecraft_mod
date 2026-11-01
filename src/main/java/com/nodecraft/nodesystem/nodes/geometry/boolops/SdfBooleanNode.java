@@ -40,7 +40,7 @@ public class SdfBooleanNode extends AbstractSdfNode {
         super(UUID.randomUUID(), "geometry.boolean.sdf_boolean");
         addInputPort(new BasePort(INPUT_A_ID, "A", "Left SDF operand", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_B_ID, "B", "Right SDF operand", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_SMOOTH_K_ID, "Smooth K", "Blend radius (0 = hard boolean)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_SMOOTH_K_ID, "Smooth K", "Blend radius (0 = hard boolean)", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Combined SDF output", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when both input SDFs are valid");
     }

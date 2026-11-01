@@ -46,9 +46,9 @@ public class SdfDomainWarpNode extends AbstractSdfNode {
     public SdfDomainWarpNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_domain_warp");
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Source signed distance field", NodeDataType.SDF, this));
-        addInputPort(new BasePort(INPUT_WARP_AMPLITUDE_ID, "Warp Amplitude", "Optional warp amplitude override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_WARP_FREQUENCY_ID, "Warp Frequency", "Optional warp frequency override", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_WARP_AMPLITUDE_ID, "Warp Amplitude", "Optional warp amplitude override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_WARP_FREQUENCY_ID, "Warp Frequency", "Optional warp frequency override", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Domain-warped SDF", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when domain warp was applied");
     }

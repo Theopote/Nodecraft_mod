@@ -70,12 +70,12 @@ public class BlendCurvesNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.blend_curves");
 
         addInputPort(new BasePort(INPUT_PATH_A_ID, "Path A",
-            "First path to blend from (line, polyline, or curve)", NodeDataType.PATH, this));
+            "First path to blend from (line, polyline, or curve)", NodeDataType.PATH, this, false, false));
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
-            "Second path to blend to (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_LENGTH_A_ID, "Length A", "Tangent handle length from path A endpoint", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_LENGTH_B_ID, "Length B", "Tangent handle length toward path B endpoint", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Number of segments used to sample the blend", NodeDataType.INTEGER, this));
+            "Second path to blend to (line, polyline, or curve)", NodeDataType.PATH, this, false, false));
+        addInputPort(new BasePort(INPUT_LENGTH_A_ID, "Length A", "Tangent handle length from path A endpoint", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_LENGTH_B_ID, "Length B", "Tangent handle length toward path B endpoint", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Number of segments used to sample the blend", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Sampled blend path", NodeDataType.PATH, this));

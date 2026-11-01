@@ -60,10 +60,10 @@ public class WriteSignTextNode extends BaseNode {
 
         addInputPort(new BasePort(INPUT_COORDINATE_ID, "Coordinate", "Sign position", NodeDataType.BLOCK_POS, this));
         addInputPort(new BasePort(INPUT_TRIGGER_ID, "Trigger", "Optional arming gate; connected invalid fails closed", NodeDataType.BOOLEAN, this));
-        addInputPort(new BasePort(INPUT_LINE_1_ID, "Line 1", "First line", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_LINE_2_ID, "Line 2", "Second line", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_LINE_3_ID, "Line 3", "Third line", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_LINE_4_ID, "Line 4", "Fourth line", NodeDataType.STRING, this));
+        addInputPort(new BasePort(INPUT_LINE_1_ID, "Line 1", "First line", NodeDataType.STRING, this, false, false));
+        addInputPort(new BasePort(INPUT_LINE_2_ID, "Line 2", "Second line", NodeDataType.STRING, this, false, false));
+        addInputPort(new BasePort(INPUT_LINE_3_ID, "Line 3", "Third line", NodeDataType.STRING, this, false, false));
+        addInputPort(new BasePort(INPUT_LINE_4_ID, "Line 4", "Fourth line", NodeDataType.STRING, this, false, false));
         addInputPort(new BasePort(INPUT_LINES_LIST_ID, "Lines List", "Optional STRING_LIST overriding individual lines (front side)", NodeDataType.STRING_LIST, this));
         addInputPort(new BasePort(INPUT_TEXT_COLOR_ID, "Text Color", "Sign dye color id", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_GLOWING_ID, "Glowing", "Whether sign text should glow", NodeDataType.BOOLEAN, this));

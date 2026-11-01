@@ -69,16 +69,16 @@ public class RoofGeneratorNode extends BaseNode {
         addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Thickness used for flat roof slabs", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_OVERHANG_ID, "Overhang", "Extra overhang beyond the footprint edges", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_RIDGE_DIRECTION_ID, "Ridge Direction", "Ridge direction: x or y", NodeDataType.STRING, this));
-        addInputPort(new BasePort(INPUT_RIDGE_RATIO_ID, "Ridge Ratio", "Normalized ridge placement used for hip roofs (0.1-0.9)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RIDGE_RATIO_ID, "Ridge Ratio", "Normalized ridge placement used for hip roofs (0.1-0.9)", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_INSET_ID, "Inset", "Inset applied to hip roof eaves before rising to the ridge", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_EAVE_DROP_ID, "Eave Drop", "Drops the eave edge below the footprint plane", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_M_PEAK_RATIO_ID, "M Peak Ratio", "Normalized peak placement for M roofs (0.1-0.45 per side)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_M_PEAK_RATIO_ID, "M Peak Ratio", "Normalized peak placement for M roofs (0.1-0.45 per side)", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_VALLEY_DROP_ID, "Valley Drop", "Vertical drop from the M-roof peak to its center valley", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ASYMMETRIC_LEFT_HEIGHT_RATIO_ID, "Asymmetric Left Height Ratio", "Height ratio for the left peak of an asymmetric gable roof", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ASYMMETRIC_RIGHT_HEIGHT_RATIO_ID, "Asymmetric Right Height Ratio", "Height ratio for the right peak of an asymmetric gable roof", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_CROSS_GABLE_RATIO_ID, "Cross Gable Ratio", "Relative footprint scale used for the crossing gable wing", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SECONDARY_HEIGHT_RATIO_ID, "Secondary Height Ratio", "Relative height of the crossing gable wing", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_CROSS_GABLE_OFFSET_ID, "Cross Gable Offset", "Normalized offset for the crossing gable wing along the primary ridge axis (-0.5 to 0.5)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_ASYMMETRIC_LEFT_HEIGHT_RATIO_ID, "Asymmetric Left Height Ratio", "Height ratio for the left peak of an asymmetric gable roof", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ASYMMETRIC_RIGHT_HEIGHT_RATIO_ID, "Asymmetric Right Height Ratio", "Height ratio for the right peak of an asymmetric gable roof", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_CROSS_GABLE_RATIO_ID, "Cross Gable Ratio", "Relative footprint scale used for the crossing gable wing", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SECONDARY_HEIGHT_RATIO_ID, "Secondary Height Ratio", "Relative height of the crossing gable wing", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_CROSS_GABLE_OFFSET_ID, "Cross Gable Offset", "Normalized offset for the crossing gable wing along the primary ridge axis (-0.5 to 0.5)", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Generated roof geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EAVE_PATH_ID, "Primary Eave Path", "Primary eave edge path", NodeDataType.PATH, this));

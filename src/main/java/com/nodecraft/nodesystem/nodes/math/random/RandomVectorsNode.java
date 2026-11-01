@@ -36,8 +36,8 @@ public class RandomVectorsNode extends RandomSamplingNode {
 
     public RandomVectorsNode() {
         super(UUID.randomUUID(), "math.random.random_vectors");
-        addInputPort(new BasePort(INPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the bounding box", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the bounding box", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_MIN_CORNER_ID, "Min Corner", "Minimum corner of the bounding box", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_MAX_CORNER_ID, "Max Corner", "Maximum corner of the bounding box", NodeDataType.VECTOR, this, false, false));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of random vectors to generate", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Deterministic seed (missing ≡ 0)", NodeDataType.INTEGER, this));
         addOutputPort(new BasePort(OUTPUT_VECTORS_ID, "Vectors", "List of random vectors", NodeDataType.VECTOR_LIST, this));

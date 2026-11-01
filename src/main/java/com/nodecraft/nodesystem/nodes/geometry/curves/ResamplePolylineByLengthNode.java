@@ -64,10 +64,10 @@ public class ResamplePolylineByLengthNode extends AbstractCurveNode {
             "Sampling mode: Count or Spacing", NodeDataType.STRING, this));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing",
             "Target distance between samples when Mode=Spacing",
-            NodeDataType.DOUBLE, this));
+            NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
             "Target sample count when Mode=Count (>= 2)",
-            NodeDataType.INTEGER, this));
+            NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Resampled path (closed when the input path is closed)",

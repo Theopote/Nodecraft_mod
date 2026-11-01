@@ -53,7 +53,7 @@ public class MorphBetweenProfilesNode extends AbstractSolidNode {
         super(UUID.randomUUID(), "geometry.solids.morph_profiles");
         addInputPort(new BasePort(INPUT_SOURCE_PROFILE_ID, "Source Profile", "Source polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addInputPort(new BasePort(INPUT_TARGET_PROFILE_ID, "Target Profile", "Target polygon profile", NodeDataType.POLYGON_PROFILE, this));
-        addInputPort(new BasePort(INPUT_T_ID, "T", "Interpolation parameter in [0,1]", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_T_ID, "T", "Interpolation parameter in [0,1]", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Interpolated polygon profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Boundary path of interpolated profile", NodeDataType.PATH, this));

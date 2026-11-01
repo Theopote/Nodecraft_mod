@@ -58,7 +58,7 @@ public class PolylineCornerFilletNode extends AbstractCurveNode {
             NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius",
             "Fillet radius (must be positive)",
-            NodeDataType.DOUBLE, this));
+            NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Fillet path with circular arcs replacing sharp corners",

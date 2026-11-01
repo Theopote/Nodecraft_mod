@@ -36,7 +36,7 @@ public class SdfBoxNode extends AbstractSdfNode {
     public SdfBoxNode() {
         super(UUID.randomUUID(), "geometry.boolean.sdf_box");
         addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Box center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_HALF_EXTENTS_ID, "Half Extents", "Box half extents as vector", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_HALF_EXTENTS_ID, "Half Extents", "Box half extents as vector", NodeDataType.VECTOR, this, false, false));
         addOutputPort(new BasePort(OUTPUT_SDF_ID, "SDF", "Box signed distance field", NodeDataType.SDF, this));
         addValidAndErrorOutputs("True when center and extents are valid");
     }

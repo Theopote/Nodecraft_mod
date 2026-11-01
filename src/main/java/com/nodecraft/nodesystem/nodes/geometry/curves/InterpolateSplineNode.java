@@ -56,8 +56,8 @@ public class InterpolateSplineNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.interpolate_spline");
 
         addInputPort(new BasePort(INPUT_POINTS_ID, "Points", "Ordered interpolation points (curve passes through each point)", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Segment", "Samples generated per segment", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_ALPHA_ID, "Alpha", "Parameterization alpha: 0.0 uniform, 0.5 centripetal, 1.0 chordal", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Segment", "Samples generated per segment", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_ALPHA_ID, "Alpha", "Parameterization alpha: 0.0 uniform, 0.5 centripetal, 1.0 chordal", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary interpolation path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points on the interpolation spline", NodeDataType.POINT_LIST, this));

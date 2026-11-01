@@ -47,7 +47,7 @@ public class BezierNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.bezier");
 
         addInputPort(new BasePort(INPUT_CONTROL_POINTS_ID, "Control Points", "Ordered control points for the Bezier curve", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the curve", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SAMPLES_ID, "Samples", "Number of sample points along the curve", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary Bezier path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points along the Bezier curve", NodeDataType.POINT_LIST, this));

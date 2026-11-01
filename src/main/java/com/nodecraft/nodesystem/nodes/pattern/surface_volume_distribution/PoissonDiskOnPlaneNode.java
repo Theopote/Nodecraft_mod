@@ -69,11 +69,11 @@ public class PoissonDiskOnPlaneNode extends AbstractSurfaceVolumeDistributionNod
 
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Plane defining UV basis and projection", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Rectangle center on the plane. When disconnected, the plane reference point is used.", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_HALF_U_ID, "Half U", "Half extent along the plane U axis (> 0)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HALF_V_ID, "Half V", "Half extent along the plane V axis (> 0)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Target number of samples", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean distance between accepted samples (>= 0)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional RNG seed for reproducibility", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_HALF_U_ID, "Half U", "Half extent along the plane U axis (> 0)", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_HALF_V_ID, "Half V", "Half extent along the plane V axis (> 0)", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Target number of samples", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean distance between accepted samples (>= 0)", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional RNG seed for reproducibility", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Accepted sample positions", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_COUNT_ID, "Count", "Number of accepted samples", NodeDataType.INTEGER, this));

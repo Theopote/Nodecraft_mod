@@ -48,8 +48,8 @@ public class RainbowCurveOffsetNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_PATH_ID, "Path",
             "Path to offset (line, polyline, or curve)", NodeDataType.PATH, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of offset paths to generate", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SEPARATION_ID, "Separation", "Distance between adjacent offset paths", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Number of offset paths to generate", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_SEPARATION_ID, "Separation", "Distance between adjacent offset paths", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Optional path sample spacing", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_SAMPLE_COUNT_ID, "Sample Count", "Optional path sample count; overrides spacing", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_UP_VECTOR_ID, "Up Vector", "Reference up vector for stable frame normals", NodeDataType.VECTOR, this));

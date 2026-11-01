@@ -41,7 +41,7 @@ public class ExtrudeBoxFaceNode extends AbstractSolidNode {
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The source box geometry", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Optional box face to extrude", NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_FACE_INDEX_ID, "Face Index", "Fallback face index from 0 to 5", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed extrusion distance along the face normal", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed extrusion distance along the face normal", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing the source and extruded segment", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EXTRUDED_BOX_ID, "Extruded Box", "The generated extrusion segment as box geometry", NodeDataType.BOX_GEOMETRY, this));

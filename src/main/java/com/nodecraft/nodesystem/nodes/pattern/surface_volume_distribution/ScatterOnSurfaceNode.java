@@ -60,9 +60,9 @@ public class ScatterOnSurfaceNode extends AbstractSurfaceVolumeDistributionNode 
     public ScatterOnSurfaceNode() {
         super(UUID.randomUUID(), "pattern.surface_volume_distribution.scatter_surface");
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Primitive geometry to scatter on", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points (>= 0)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Maximum requested scatter count", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Optional seed override", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_MIN_DISTANCE_ID, "Min Distance", "Minimum Euclidean spacing between accepted points (>= 0)", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Scattered surface points", NodeDataType.POINT_LIST, this));
         addOutputPort(new BasePort(OUTPUT_NORMALS_ID, "Normals", "Outward surface normals aligned with points", NodeDataType.VECTOR_LIST, this));

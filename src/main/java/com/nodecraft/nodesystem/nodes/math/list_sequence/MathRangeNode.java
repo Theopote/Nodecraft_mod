@@ -35,9 +35,9 @@ public class MathRangeNode extends SequenceGenerationNode {
     public MathRangeNode() {
         super(UUID.randomUUID(), "math.sequence.range");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "The starting number of the range", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "The ending number of the range", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "The step size between numbers", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_NUMBERS_ID, "Numbers", "The generated double list", NodeDataType.DOUBLE_LIST, this));
     }
 

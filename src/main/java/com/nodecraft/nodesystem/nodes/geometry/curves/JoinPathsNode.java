@@ -42,7 +42,7 @@ public class JoinPathsNode extends AbstractCurveNode {
         addInputPort(new BasePort(INPUT_PATH_B_ID, "Path B",
             "Second path appended after Path A when endpoints meet", NodeDataType.PATH, this));
         addInputPort(new BasePort(INPUT_TOLERANCE_ID, "Tolerance",
-            "Maximum endpoint distance for a valid join", NodeDataType.DOUBLE, this));
+            "Maximum endpoint distance for a valid join", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path",
             "Joined path", NodeDataType.PATH, this));

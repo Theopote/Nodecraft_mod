@@ -52,8 +52,8 @@ public class BSplineNode extends AbstractCurveNode {
         super(UUID.randomUUID(), "geometry.curves.b_spline");
 
         addInputPort(new BasePort(INPUT_CONTROL_POINTS_ID, "Control Points", "Ordered B-spline control points", NodeDataType.POINT_LIST, this));
-        addInputPort(new BasePort(INPUT_DEGREE_ID, "Degree", "Spline degree (1..5, must be less than control point count)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Span", "Samples generated per knot span", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_DEGREE_ID, "Degree", "Spline degree (1..5, must be less than control point count)", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Span", "Samples generated per knot span", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary B-spline path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points along the B-spline", NodeDataType.POINT_LIST, this));

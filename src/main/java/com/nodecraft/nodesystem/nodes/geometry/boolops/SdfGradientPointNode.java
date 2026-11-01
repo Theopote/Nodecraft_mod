@@ -37,7 +37,7 @@ public class SdfGradientPointNode extends AbstractSdfNode {
         super(UUID.randomUUID(), "geometry.boolean.sdf_gradient_point");
         addInputPort(new BasePort(INPUT_SDF_ID, "SDF", "Signed distance field input", NodeDataType.SDF, this));
         addInputPort(new BasePort(INPUT_POINT_ID, "Point", "Query point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Finite difference step size", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_STEP_ID, "Step", "Finite difference step size", NodeDataType.DOUBLE, this, false, false));
         addOutputPort(new BasePort(OUTPUT_GRADIENT_ID, "Gradient", "Normalized SDF gradient direction", NodeDataType.VECTOR, this));
         addOutputPort(new BasePort(OUTPUT_DISTANCE_ID, "Distance", "Signed distance at query point", NodeDataType.DOUBLE, this));
         addValidAndErrorOutputs("True when gradient sampling succeeded");

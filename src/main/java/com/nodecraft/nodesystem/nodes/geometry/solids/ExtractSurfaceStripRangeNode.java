@@ -44,8 +44,8 @@ public class ExtractSurfaceStripRangeNode extends AbstractSolidNode {
         super(UUID.randomUUID(), "geometry.solids.extract_surface_strip_range");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to extract from", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "Normalized start U in [0, 1]", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "Normalized end U in [0, 1]", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "Normalized start U in [0, 1]", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "Normalized end U in [0, 1]", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Extracted surface strip", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_COUNT_ID, "Section Count", "Number of extracted sections", NodeDataType.INTEGER, this));

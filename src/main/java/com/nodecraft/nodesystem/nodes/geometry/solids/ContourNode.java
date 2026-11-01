@@ -63,13 +63,13 @@ public class ContourNode extends AbstractSolidNode {
     public ContourNode() {
         super(UUID.randomUUID(), "geometry.solids.contour");
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to contour", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_BASE_PLANE_ID, "Base Plane", "First contour plane orientation and origin. Defaults to XY", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_START_DISTANCE_ID, "Start Distance", "Offset from the base plane along its normal for the first contour", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between adjacent contour planes", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_BASE_PLANE_ID, "Base Plane", "First contour plane orientation and origin. Defaults to XY", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_START_DISTANCE_ID, "Start Distance", "Offset from the base plane along its normal for the first contour", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SPACING_ID, "Spacing", "Distance between adjacent contour planes", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_COUNT_ID, "Count",
             "Number of contour planes (exact integer, 1 to " + GenerationLimits.MAX_SECTION_PLANES + ")",
-            NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this));
+            NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_THICKNESS_ID, "Thickness", "Slice thickness in world units", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PROFILE_ID, "Profile", "Primary traced contour profile", NodeDataType.POLYGON_PROFILE, this));
         addOutputPort(new BasePort(OUTPUT_BOUNDARY_ID, "Boundary", "Primary traced contour boundary path", NodeDataType.PATH, this));

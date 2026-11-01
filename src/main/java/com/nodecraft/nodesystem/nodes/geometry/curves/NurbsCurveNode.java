@@ -59,8 +59,8 @@ public class NurbsCurveNode extends AbstractCurveNode {
 
         addInputPort(new BasePort(INPUT_CONTROL_POINTS_ID, "Control Points", "Ordered NURBS control points", NodeDataType.POINT_LIST, this));
         addInputPort(new BasePort(INPUT_WEIGHTS_ID, "Weights", "Optional weight list aligned with control points (unconnected uses Default Weight)", NodeDataType.DOUBLE_LIST, this));
-        addInputPort(new BasePort(INPUT_DEGREE_ID, "Degree", "Curve degree (1..5, must be less than control point count)", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Span", "Samples generated per knot span", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_DEGREE_ID, "Degree", "Curve degree (1..5, must be less than control point count)", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_RESOLUTION_ID, "Resolution / Span", "Samples generated per knot span", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_PATH_ID, "Path", "Primary NURBS path output", NodeDataType.PATH, this));
         addOutputPort(new BasePort(OUTPUT_POINTS_ID, "Points", "Sampled points along the NURBS curve", NodeDataType.POINT_LIST, this));

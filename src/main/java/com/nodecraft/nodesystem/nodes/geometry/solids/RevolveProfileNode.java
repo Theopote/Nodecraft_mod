@@ -55,8 +55,8 @@ public class RevolveProfileNode extends AbstractSolidNode {
         addInputPort(new BasePort(INPUT_AXIS_LINE_ID, "Axis Line", "Optional axis line defining origin and direction", NodeDataType.LINE, this));
         addInputPort(new BasePort(INPUT_AXIS_ORIGIN_ID, "Axis Origin", "Fallback axis origin point", NodeDataType.POINT, this));
         addInputPort(new BasePort(INPUT_AXIS_DIRECTION_ID, "Axis Direction", "Fallback axis direction vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_ANGLE_DEGREES_ID, "Angle Degrees", "Revolution angle in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_STEPS_ID, "Steps", "Number of rotational sections to generate", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_ANGLE_DEGREES_ID, "Angle Degrees", "Revolution angle in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_STEPS_ID, "Steps", "Number of rotational sections to generate", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SECTION_PROFILES_ID, "Section Profiles", "Polygon profiles generated along the revolution", NodeDataType.POLYGON_PROFILE_LIST, this));
         addOutputPort(new BasePort(OUTPUT_SECTION_PATHS_ID, "Section Paths", "Boundary paths for each revolved section", NodeDataType.PATH_LIST, this));

@@ -40,7 +40,7 @@ public class OffsetSurfaceStripNode extends AbstractSolidNode {
         super(UUID.randomUUID(), "geometry.solids.offset_surface_strip");
 
         addInputPort(new BasePort(INPUT_SURFACE_STRIP_ID, "Surface Strip", "Surface strip to offset", NodeDataType.SURFACE_STRIP, this));
-        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed offset distance", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed offset distance", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_SURFACE_STRIP_ID, "Surface Strip", "Single offset surface strip", NodeDataType.SURFACE_STRIP, this));
         addOutputPort(new BasePort(OUTPUT_REGION_ID, "Region", "Bounding region of the offset strip", NodeDataType.REGION, this));

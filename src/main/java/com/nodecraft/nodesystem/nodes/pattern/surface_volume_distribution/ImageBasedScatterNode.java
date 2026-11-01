@@ -77,10 +77,10 @@ public class ImageBasedScatterNode extends AbstractSurfaceVolumeDistributionNode
         addInputPort(new BasePort(INPUT_IMAGE_HEIGHT_ID, "Image Height", "Image height in pixels", NodeDataType.INTEGER, this));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional target plane (unconnected → world XZ)", NodeDataType.PLANE, this));
         addInputPort(new BasePort(INPUT_ORIGIN_ID, "Origin", "Optional scatter origin point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_SPAN_U_ID, "Span U", "World span along U axis (> 0)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SPAN_V_ID, "Span V", "World span along V axis (> 0)", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Exact number of scattered points", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Random seed", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_SPAN_U_ID, "Span U", "World span along U axis (> 0)", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SPAN_V_ID, "Span V", "World span along V axis (> 0)", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_TARGET_COUNT_ID, "Target Count", "Exact number of scattered points", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_SEED_ID, "Seed", "Random seed", NodeDataType.INTEGER, this, false, false));
         addInputPort(new BasePort(INPUT_THRESHOLD_ID, "Threshold", "Density threshold in [0,1]", NodeDataType.DOUBLE, this));
         addInputPort(new BasePort(INPUT_INVERT_ID, "Invert", "Invert density values", NodeDataType.BOOLEAN, this));
 

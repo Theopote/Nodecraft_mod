@@ -38,7 +38,7 @@ public class PushPullBoxFaceNode extends AbstractSolidNode {
         addInputPort(new BasePort(INPUT_BOX_GEOMETRY_ID, "Box Geometry", "The source box geometry", NodeDataType.BOX_GEOMETRY, this));
         addInputPort(new BasePort(INPUT_FACE_ID, "Face", "Optional box face to modify", NodeDataType.BOX_FACE, this));
         addInputPort(new BasePort(INPUT_FACE_INDEX_ID, "Face Index", "Fallback face index from 0 to 5", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed push/pull distance along the face normal", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Signed push/pull distance along the face normal", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_BOX_GEOMETRY_ID, "Box Geometry", "Modified box geometry", NodeDataType.BOX_GEOMETRY, this));
