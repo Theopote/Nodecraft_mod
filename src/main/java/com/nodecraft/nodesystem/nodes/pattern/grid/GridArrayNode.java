@@ -74,15 +74,15 @@ public class GridArrayNode extends AbstractPatternGridNode {
         super(UUID.randomUUID(), "pattern.grid.grid_array");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_X_DIRECTION_ID, "X Direction", "First array axis direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_X_DIRECTION_ID, "X Direction", "First array axis direction", NodeDataType.VECTOR, this, false, false));
         addInputPort(new BasePort(INPUT_X_DISTANCE_ID, "X Distance", "Positive spacing along X Direction", NodeDataType.DOUBLE, this, false, false));
-        addInputPort(new BasePort(INPUT_X_COUNT_ID, "X Count", "Number of positions along X Direction", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Y_DIRECTION_ID, "Y Direction", "Second array axis direction", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_X_COUNT_ID, "X Count", "Number of positions along X Direction", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Y_DIRECTION_ID, "Y Direction", "Second array axis direction", NodeDataType.VECTOR, this, false, false));
         addInputPort(new BasePort(INPUT_Y_DISTANCE_ID, "Y Distance", "Positive spacing along Y Direction", NodeDataType.DOUBLE, this, false, false));
-        addInputPort(new BasePort(INPUT_Y_COUNT_ID, "Y Count", "Number of positions along Y Direction", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_Z_DIRECTION_ID, "Z Direction", "Optional third array axis for box arrays", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_Y_COUNT_ID, "Y Count", "Number of positions along Y Direction", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_Z_DIRECTION_ID, "Z Direction", "Optional third array axis for box arrays", NodeDataType.VECTOR, this, false, false));
         addInputPort(new BasePort(INPUT_Z_DISTANCE_ID, "Z Distance", "Positive spacing along Z Direction", NodeDataType.DOUBLE, this, false, false));
-        addInputPort(new BasePort(INPUT_Z_COUNT_ID, "Z Count", "Number of positions along Z Direction. Use 1 for rectangular arrays.", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_Z_COUNT_ID, "Z Count", "Number of positions along Z Direction. Use 1 for rectangular arrays.", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all grid copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_OFFSETS_ID, "Offsets", "Offset vectors used for each copy", NodeDataType.VECTOR_LIST, this));

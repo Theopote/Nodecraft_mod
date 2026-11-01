@@ -45,7 +45,7 @@ public class MoveGeometryNode extends AbstractBasicTransformNode {
         super(UUID.randomUUID(), "transform.basic_transforms.move_geometry");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to move", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_TRANSLATION_ID, "Translation", "Translation vector override", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_TRANSLATION_ID, "Translation", "Translation vector override", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Moved geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_TRANSLATION_ID, "Effective Translation", "Translation vector actually applied", NodeDataType.VECTOR, this));

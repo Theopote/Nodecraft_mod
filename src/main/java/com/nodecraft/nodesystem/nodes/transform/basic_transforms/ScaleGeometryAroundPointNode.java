@@ -41,8 +41,8 @@ public class ScaleGeometryAroundPointNode extends AbstractBasicTransformNode {
         super(UUID.randomUUID(), "transform.basic_transforms.scale_geometry_point");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to scale", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scale center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor (must be > 0)", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Scale center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_SCALE_ID, "Scale", "Uniform scale factor (must be > 0)", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Scaled geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_EFFECTIVE_SCALE_ID, "Effective Scale", "Scale factor actually applied", NodeDataType.DOUBLE, this));

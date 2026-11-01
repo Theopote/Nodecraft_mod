@@ -65,10 +65,10 @@ public class PolarArrayNode extends AbstractPatternRadialNode {
         super(UUID.randomUUID(), "pattern.radial.polar_array");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances around the center", NodeDataType.INTEGER, this));
-        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Exact full-circle multiples of 360° sample one signed revolution (no duplicate seam). Zero is only legal when Count is 1.", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Array center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Rotation axis vector", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances around the center", NodeDataType.INTEGER, this, false, false));
+        addInputPort(new BasePort(INPUT_TOTAL_ANGLE_ID, "Total Angle", "Total angle span in degrees. Exact full-circle multiples of 360° sample one signed revolution (no duplicate seam). Zero is only legal when Count is 1.", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));

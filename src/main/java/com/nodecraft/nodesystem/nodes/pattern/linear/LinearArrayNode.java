@@ -51,9 +51,9 @@ public class LinearArrayNode extends AbstractPatternLinearNode {
         super(UUID.randomUUID(), "pattern.linear.linear_array");
 
         addInputPort(new BasePort(INPUT_GEOMETRY_ID, "Geometry", "Geometry to copy", NodeDataType.GEOMETRY, this));
-        addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Array direction vector", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Distance between consecutive instances", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances (including the original at offset 0)", NodeDataType.INTEGER, this));
+        addInputPort(new BasePort(INPUT_DIRECTION_ID, "Direction", "Array direction vector", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_DISTANCE_ID, "Distance", "Distance between consecutive instances", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_COUNT_ID, "Count", "Total number of emitted instances (including the original at offset 0)", NodeDataType.INTEGER, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Composite geometry containing all copies", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_TREE_ID, "Geometry Tree", "One branch per emitted geometry copy", NodeDataType.DATA_TREE, this));
