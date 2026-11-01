@@ -19,6 +19,14 @@ public final class GraphPresetRules {
         public String displayName;
         public String description;
         public String kind = "placeholder";
+        /** Optional teaching difficulty: beginner / intermediate / advanced. */
+        public String difficulty;
+        /** Free-form search tags for the preset library filter. */
+        public List<String> tags = List.of();
+        /** Short teaching note shown in the library tooltip. */
+        public String learningNotes;
+        /** Optional tip strings shown under the tooltip description. */
+        public List<String> tips = List.of();
         public List<PresetNode> nodes = List.of();
         public List<PresetConnection> connections = List.of();
     }

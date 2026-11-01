@@ -103,7 +103,7 @@
             "value": 2.4
           },
           "sizeY": {
-            "value": 2.6
+            "value": 3.2
           },
           "sizeZ": {
             "value": 0.35
@@ -184,7 +184,7 @@
         },
         "parameters": {
           "value": {
-            "value": 0.5
+            "value": 0.3
           }
         }
       },

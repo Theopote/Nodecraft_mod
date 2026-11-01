@@ -76,12 +76,40 @@ class PresetSemanticAuditTest {
             "styles.medieval.castle_keep",
             "styles.modern.glass_box_building");
 
+    /** P4 operations teaching presets + sphere-from-diameter quickstart. */
+    private static final Set<String> P4_CANONICAL_IDS = Set.of(
+            "quickstart.sphere_from_diameter",
+            "operations.primitive.torus",
+            "operations.primitive.cone",
+            "operations.primitive.capsule",
+            "operations.primitive.ellipsoid",
+            "operations.primitive.square_pyramid",
+            "operations.primitive.hemisphere",
+            "operations.primitive.frustum",
+            "operations.primitive.platonic_pair",
+            "operations.solid.extrude_profile",
+            "operations.solid.loft_profiles",
+            "operations.solid.revolve_profile",
+            "operations.solid.sweep_helix",
+            "operations.transform.move_offset",
+            "operations.transform.rotate_axis",
+            "operations.transform.scale_point",
+            "operations.transform.mirror_plane",
+            "operations.array.linear",
+            "operations.array.polar",
+            "operations.array.grid",
+            "operations.boolean.difference",
+            "operations.boolean.intersection",
+            "operations.combine.three_boxes",
+            "operations.advanced.hollow_tower");
+
     private static final Set<String> CANONICAL_IDS;
     static {
         Set<String> all = new LinkedHashSet<>(P0_CANONICAL_IDS);
         all.addAll(P1_CANONICAL_IDS);
         all.addAll(P2_CANONICAL_IDS);
         all.addAll(P3_CANONICAL_IDS);
+        all.addAll(P4_CANONICAL_IDS);
         CANONICAL_IDS = Set.copyOf(all);
     }
 
@@ -130,6 +158,11 @@ class PresetSemanticAuditTest {
     @Test
     void p3CanonicalPresetsPassSemanticContract() {
         auditCanonicalPresetIds(P3_CANONICAL_IDS);
+    }
+
+    @Test
+    void p4CanonicalPresetsPassSemanticContract() {
+        auditCanonicalPresetIds(P4_CANONICAL_IDS);
     }
 
     @Test

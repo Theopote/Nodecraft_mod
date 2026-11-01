@@ -32,7 +32,7 @@ class PresetCoordinateSpaceAuditTest {
     private static final Gson GSON = new Gson();
     private static final String RESOURCE_PATH = GraphPresetTestResources.BUILTIN_GRAPH_PRESETS;
 
-    /** Mirrors {@link PresetSemanticAuditTest} canonical coverage (P0–P3). */
+    /** Mirrors {@link PresetSemanticAuditTest} canonical coverage (P0–P4). */
     private static final Set<String> CANONICAL_IDS = Set.of(
             "composite.textured_box",
             "composite.array_transform",
@@ -41,6 +41,7 @@ class PresetCoordinateSpaceAuditTest {
             "quickstart.basic_sphere",
             "quickstart.garden_wall",
             "quickstart.simple_tower",
+            "quickstart.sphere_from_diameter",
             "architectural.residential.mini_building_v1",
             "building_elements.roofs.gable_roof",
             "building_elements.stairs.straight_staircase",
@@ -57,7 +58,30 @@ class PresetCoordinateSpaceAuditTest {
             "decorative.gazebo",
             "styles.fantasy.wizard_tower",
             "styles.medieval.castle_keep",
-            "styles.modern.glass_box_building");
+            "styles.modern.glass_box_building",
+            "operations.primitive.torus",
+            "operations.primitive.cone",
+            "operations.primitive.capsule",
+            "operations.primitive.ellipsoid",
+            "operations.primitive.square_pyramid",
+            "operations.primitive.hemisphere",
+            "operations.primitive.frustum",
+            "operations.primitive.platonic_pair",
+            "operations.solid.extrude_profile",
+            "operations.solid.loft_profiles",
+            "operations.solid.revolve_profile",
+            "operations.solid.sweep_helix",
+            "operations.transform.move_offset",
+            "operations.transform.rotate_axis",
+            "operations.transform.scale_point",
+            "operations.transform.mirror_plane",
+            "operations.array.linear",
+            "operations.array.polar",
+            "operations.array.grid",
+            "operations.boolean.difference",
+            "operations.boolean.intersection",
+            "operations.combine.three_boxes",
+            "operations.advanced.hollow_tower");
 
     /**
      * Known coordinate-space violations tracked until presets are normalized to the local-space contract.

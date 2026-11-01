@@ -215,12 +215,46 @@ public final class PresetLibraryPanel {
         }
 
         String description = preset.description != null ? preset.description.trim() : "";
+        String learningNotes = preset.learningNotes != null ? preset.learningNotes.trim() : "";
+        String difficulty = preset.difficulty != null ? preset.difficulty.trim() : "";
 
         ImGui.beginTooltip();
         ImGui.pushTextWrapPos(ImGui.getFontSize() * TOOLTIP_WRAP_CHARS);
         try {
+            if (!difficulty.isEmpty()) {
+                ImGui.textDisabled("难度: " + difficulty);
+            }
             if (!description.isEmpty()) {
                 ImGui.textWrapped(description);
+            }
+            if (!learningNotes.isEmpty()) {
+                if (!description.isEmpty()) {
+                    ImGui.spacing();
+                }
+                ImGui.textWrapped(learningNotes);
+            }
+            if (preset.tips != null) {
+                for (String tip : preset.tips) {
+                    if (tip == null || tip.isBlank()) {
+                        continue;
+                    }
+                    ImGui.bulletText(tip.trim());
+                }
+            }
+            if (preset.tags != null && !preset.tags.isEmpty()) {
+                StringBuilder tagLine = new StringBuilder();
+                for (String tag : preset.tags) {
+                    if (tag == null || tag.isBlank()) {
+                        continue;
+                    }
+                    if (tagLine.length() > 0) {
+                        tagLine.append(", ");
+                    }
+                    tagLine.append(tag.trim());
+                }
+                if (tagLine.length() > 0) {
+                    ImGui.textDisabled(tagLine.toString());
+                }
             }
             if (applicable) {
                 ImGui.textDisabled("拖动到画布以创建节点链");
@@ -418,7 +452,30 @@ public final class PresetLibraryPanel {
         String name = preset.displayName != null ? preset.displayName.toLowerCase(Locale.ROOT) : "";
         String description = preset.description != null ? preset.description.toLowerCase(Locale.ROOT) : "";
         String id = preset.id != null ? preset.id.toLowerCase(Locale.ROOT) : "";
-        return name.contains(filter) || description.contains(filter) || id.contains(filter);
+        String difficulty = preset.difficulty != null ? preset.difficulty.toLowerCase(Locale.ROOT) : "";
+        String learningNotes = preset.learningNotes != null ? preset.learningNotes.toLowerCase(Locale.ROOT) : "";
+        if (name.contains(filter)
+                || description.contains(filter)
+                || id.contains(filter)
+                || difficulty.contains(filter)
+                || learningNotes.contains(filter)) {
+            return true;
+        }
+        if (preset.tags != null) {
+            for (String tag : preset.tags) {
+                if (tag != null && tag.toLowerCase(Locale.ROOT).contains(filter)) {
+                    return true;
+                }
+            }
+        }
+        if (preset.tips != null) {
+            for (String tip : preset.tips) {
+                if (tip != null && tip.toLowerCase(Locale.ROOT).contains(filter)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static String parsePayload(Object payload) {
