@@ -56,7 +56,7 @@ public class PresetRegistry {
         try (Stream<Path> paths = Files.walk(presetDirectory)) {
             List<Path> presetFiles = paths
                 .filter(p -> p.getFileName().toString().equals("preset.json"))
-                .collect(Collectors.toList());
+                .toList();
 
             int loadedCount = 0;
             int failedCount = 0;
@@ -94,7 +94,7 @@ public class PresetRegistry {
         try (Stream<Path> paths = Files.walk(presetDirectory)) {
             List<Path> presetFiles = paths
                     .filter(p -> p.getFileName().toString().equals("preset.json"))
-                    .collect(Collectors.toList());
+                    .toList();
 
             for (Path presetFile : presetFiles) {
                 try {
@@ -220,11 +220,7 @@ public class PresetRegistry {
                 }
 
                 // Match category
-                if (category != null && !preset.metadata().getCategory().equals(category)) {
-                    return false;
-                }
-
-                return true;
+                return category == null || preset.metadata().getCategory().equals(category);
             })
             .collect(Collectors.toList());
     }

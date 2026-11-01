@@ -59,7 +59,7 @@ public class SectorOnPlaneNode extends AbstractProfileNode {
 
     public SectorOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.sector_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sector radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_END_ANGLE_ID, "End Angle", "End angle in degrees", NodeDataType.DOUBLE, this, false, false));

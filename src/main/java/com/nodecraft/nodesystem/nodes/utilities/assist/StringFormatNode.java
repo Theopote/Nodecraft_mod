@@ -9,9 +9,9 @@ import com.nodecraft.nodesystem.core.BasePort;
 import com.nodecraft.nodesystem.execution.ExecutionContext;
 import com.nodecraft.nodesystem.util.GenerationLimits;
 import com.nodecraft.nodesystem.util.OptionalPortDrive;
-import com.nodecraft.nodesystem.util.StrictIntegerUtils;
 import com.nodecraft.nodesystem.util.StringFormatEngine;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -112,7 +112,7 @@ public class StringFormatNode extends BaseNode {
         return template == null ? "" : template;
     }
 
-    private @Nullable String resolveValuesError() {
+    private @NonNull String resolveValuesError() {
         if (OptionalPortDrive.isConnected(this, INPUT_VALUES_ID)) {
             Object value = inputValues.get(INPUT_VALUES_ID);
             if (!(value instanceof List<?> list)) {

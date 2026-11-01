@@ -50,7 +50,7 @@ public class RhombusOnPlaneNode extends AbstractProfileNode {
 
     public RhombusOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.rhombus_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_DIAGONAL_X_ID, "Diagonal X", "Diagonal length along local X axis", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_DIAGONAL_Y_ID, "Diagonal Y", "Diagonal length along local Y axis", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));

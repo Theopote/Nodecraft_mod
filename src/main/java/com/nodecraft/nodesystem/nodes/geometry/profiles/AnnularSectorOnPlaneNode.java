@@ -63,7 +63,7 @@ public class AnnularSectorOnPlaneNode extends AbstractProfileNode {
 
     public AnnularSectorOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.annular_sector_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Inner radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Outer radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_START_ANGLE_ID, "Start Angle", "Start angle in degrees", NodeDataType.DOUBLE, this, false, false));

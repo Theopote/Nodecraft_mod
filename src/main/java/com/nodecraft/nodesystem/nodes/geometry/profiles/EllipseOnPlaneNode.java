@@ -54,7 +54,7 @@ public class EllipseOnPlaneNode extends AbstractProfileNode {
 
     public EllipseOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.ellipse_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipse local X radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_Y_ID, "Radius Y", "Ellipse local Y radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));

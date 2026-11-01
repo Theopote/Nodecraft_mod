@@ -54,7 +54,7 @@ public class RegularPolygonOnPlaneNode extends AbstractProfileNode {
     public RegularPolygonOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.polygon_profile");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Circumradius of the polygon", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SIDE_COUNT_ID, "Sides", "Number of polygon sides", NodeDataType.INTEGER, this, false, false));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));

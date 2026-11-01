@@ -54,7 +54,7 @@ public class CapsuleOnPlaneNode extends AbstractProfileNode {
 
     public CapsuleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.capsule_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_LENGTH_ID, "Length", "Total capsule length along local X axis", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_CAP_SEGMENTS_ID, "Cap Segments", "Segments per semicircle cap", NodeDataType.INTEGER, this, false, false));

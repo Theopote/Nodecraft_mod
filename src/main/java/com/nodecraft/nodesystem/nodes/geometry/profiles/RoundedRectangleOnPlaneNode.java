@@ -58,7 +58,7 @@ public class RoundedRectangleOnPlaneNode extends AbstractProfileNode {
 
     public RoundedRectangleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.rounded_rectangle_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total width", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total height", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Corner Radius", "Corner fillet radius", NodeDataType.DOUBLE, this, false, false));

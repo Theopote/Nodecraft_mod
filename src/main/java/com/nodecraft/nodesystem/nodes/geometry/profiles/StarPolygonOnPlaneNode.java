@@ -54,7 +54,7 @@ public class StarPolygonOnPlaneNode extends AbstractProfileNode {
 
     public StarPolygonOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.star_polygon_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Radius of outer star points", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Radius of inner star points", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_POINT_COUNT_ID, "Points", "Number of outer points", NodeDataType.INTEGER, this, false, false));

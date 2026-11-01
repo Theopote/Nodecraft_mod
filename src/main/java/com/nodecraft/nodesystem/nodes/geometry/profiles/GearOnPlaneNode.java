@@ -54,7 +54,7 @@ public class GearOnPlaneNode extends AbstractProfileNode {
 
     public GearOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.gear_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_TOOTH_COUNT_ID, "Teeth", "Number of gear teeth", NodeDataType.INTEGER, this, false, false));
         addInputPort(new BasePort(INPUT_ROOT_RADIUS_ID, "Root Radius", "Radius at tooth root", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_TIP_RADIUS_ID, "Tip Radius", "Radius at tooth tip", NodeDataType.DOUBLE, this, false, false));

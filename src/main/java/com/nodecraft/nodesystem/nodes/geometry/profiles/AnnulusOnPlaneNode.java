@@ -60,7 +60,7 @@ public class AnnulusOnPlaneNode extends AbstractProfileNode {
 
     public AnnulusOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.annulus_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_INNER_RADIUS_ID, "Inner Radius", "Inner ring radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_OUTER_RADIUS_ID, "Outer Radius", "Outer ring radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));

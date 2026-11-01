@@ -50,7 +50,7 @@ public class SemiCircleOnPlaneNode extends AbstractProfileNode {
 
     public SemiCircleOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.semicircle_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Semicircle radius", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Arc Segments", "Arc segment count", NodeDataType.INTEGER, this, false, false));
         addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Target construction plane. Defaults to XZ (horizontal)", NodeDataType.PLANE, this, false, false));

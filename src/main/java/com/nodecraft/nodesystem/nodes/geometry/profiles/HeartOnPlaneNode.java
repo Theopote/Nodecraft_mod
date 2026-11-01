@@ -54,7 +54,7 @@ public class HeartOnPlaneNode extends AbstractProfileNode {
 
     public HeartOnPlaneNode() {
         super(UUID.randomUUID(), "geometry.profiles.heart_profile");
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Optional center override; otherwise uses Plane origin", NodeDataType.POINT, this, false, false));
         addInputPort(new BasePort(INPUT_WIDTH_ID, "Width", "Total heart width", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Total heart height", NodeDataType.DOUBLE, this, false, false));
         addInputPort(new BasePort(INPUT_SEGMENTS_ID, "Segments", "Boundary segment count", NodeDataType.INTEGER, this, false, false));
