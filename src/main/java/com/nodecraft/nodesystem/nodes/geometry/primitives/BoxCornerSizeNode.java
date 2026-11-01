@@ -47,14 +47,14 @@ public class BoxCornerSizeNode extends AbstractBoxGeneratorNode {
     public BoxCornerSizeNode() {
         super("geometry.primitives.box_from_corner_size");
 
-        addInputPort(new BasePort(INPUT_CORNER_ID, "Corner", "Anchor corner of the box", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Signed size along local X. Negative values grow from the corner in the opposite X direction.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Signed size along local Y. Negative values grow from the corner in the opposite Y direction.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Signed size along local Z. Negative values grow from the corner in the opposite Z direction.", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CORNER_ID, "Corner", "Anchor corner of the box", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Optional reference plane used to orient the local X/Y/Z axes", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_X_ID, "Size X", "Signed size along local X. Negative values grow from the corner in the opposite X direction.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_Y_ID, "Size Y", "Signed size along local Y. Negative values grow from the corner in the opposite Y direction.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_SIZE_Z_ID, "Size Z", "Signed size along local Z. Negative values grow from the corner in the opposite Z direction.", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_X_ID, "Rotation X", "Additional local rotation around the box X axis in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_Y_ID, "Rotation Y", "Additional local rotation around the box Y axis in degrees", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ROT_Z_ID, "Rotation Z", "Additional local rotation around the box Z axis in degrees", NodeDataType.DOUBLE, this, false, false));
     }
 
     @Override

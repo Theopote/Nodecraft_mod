@@ -260,11 +260,11 @@ public class BrickPatternMapNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("brickLength") instanceof Integer value) {
-            this.brickLength = value;
+        if (map.get("brickLength") instanceof Number value) {
+            this.brickLength = value.intValue();
         }
-        if (map.get("courseHeight") instanceof Integer value) {
-            this.courseHeight = value;
+        if (map.get("courseHeight") instanceof Number value) {
+            this.courseHeight = value.intValue();
         }
         if (map.get("brickDirection") instanceof String name) {
             try {

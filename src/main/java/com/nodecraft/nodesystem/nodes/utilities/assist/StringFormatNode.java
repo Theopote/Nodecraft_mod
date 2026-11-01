@@ -183,9 +183,8 @@ public class StringFormatNode extends BaseNode {
         if (map.get("template") instanceof String text) {
             template = text;
         }
-        Integer exactPrecision = StrictIntegerUtils.requireExactInteger(map.get("precision"));
-        if (exactPrecision != null) {
-            precision = Math.max(0, Math.min(8, exactPrecision));
+        if (map.get("precision") instanceof Number precisionValue) {
+            precision = Math.max(0, Math.min(8, precisionValue.intValue()));
         }
     }
 }

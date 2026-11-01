@@ -127,16 +127,16 @@ public class DataSeriesNode extends SequenceGenerationNode {
         }
 
         Object count = stateMap.get("defaultCount");
-        if (count instanceof Integer integer) {
-            setDefaultCount(integer);
+        if (count instanceof Number integer) {
+            setDefaultCount(integer.intValue());
         }
         Object start = stateMap.get("defaultStart");
-        if (start instanceof Double value) {
-            setDefaultStart(value);
+        if (start instanceof Number value) {
+            setDefaultStart(value.doubleValue());
         }
         Object step = stateMap.get("defaultStep");
-        if (step instanceof Double value) {
-            setDefaultStep(value);
+        if (step instanceof Number value) {
+            setDefaultStep(value.doubleValue());
         }
     }
 }

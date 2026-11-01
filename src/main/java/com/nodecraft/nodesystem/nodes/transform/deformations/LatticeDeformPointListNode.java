@@ -212,14 +212,14 @@ public class LatticeDeformPointListNode extends AbstractDeformationNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("gridX") instanceof Integer value && isValidGrid(value)) {
-            gridX = value;
+        if (map.get("gridX") instanceof Number raw && isValidGrid(raw.intValue())) {
+            gridX = raw.intValue();
         }
-        if (map.get("gridY") instanceof Integer value && isValidGrid(value)) {
-            gridY = value;
+        if (map.get("gridY") instanceof Number raw && isValidGrid(raw.intValue())) {
+            gridY = raw.intValue();
         }
-        if (map.get("gridZ") instanceof Integer value && isValidGrid(value)) {
-            gridZ = value;
+        if (map.get("gridZ") instanceof Number raw && isValidGrid(raw.intValue())) {
+            gridZ = raw.intValue();
         }
     }
 }

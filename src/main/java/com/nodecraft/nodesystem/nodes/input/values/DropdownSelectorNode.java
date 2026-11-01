@@ -131,8 +131,8 @@ public class DropdownSelectorNode extends BaseNode {
         if (map.get("options") instanceof String text) {
             setOptions(text);
         }
-        if (map.get("selectedIndex") instanceof Integer i) {
-            setSelectedIndex(i);
+        if (map.get("selectedIndex") instanceof Number i) {
+            setSelectedIndex(i.intValue());
         }
     }
 

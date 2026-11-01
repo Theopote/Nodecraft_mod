@@ -58,9 +58,9 @@ public class CapsuleByAxisRadiusNode extends AbstractPrimitiveNode {
     public CapsuleByAxisRadiusNode() {
         super("geometry.primitives.capsule");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "Capsule axis start", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "Capsule axis end", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "Capsule axis start", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "Capsule axis end", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Capsule radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified capsule geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_CYLINDER_ID, "Cylinder", "Capsule middle cylinder", NodeDataType.CYLINDER_GEOMETRY, this));

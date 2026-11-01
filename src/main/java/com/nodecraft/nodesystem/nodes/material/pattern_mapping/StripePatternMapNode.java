@@ -207,8 +207,8 @@ public class StripePatternMapNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("stripeWidth") instanceof Integer value) {
-            this.stripeWidth = value;
+        if (map.get("stripeWidth") instanceof Number value) {
+            this.stripeWidth = value.intValue();
         }
         if (map.get("axis") instanceof String name) {
             try {

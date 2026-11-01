@@ -74,6 +74,19 @@ public final class GraphPresetExporter {
             presetNode.typeId = registry.resolveCanonicalNodeId(node.getTypeId());
             presetNode.x = pos.x - minX;
             presetNode.y = pos.y - minY;
+            Object nodeState = node.getNodeState();
+            if (nodeState instanceof Map<?, ?> stateMap) {
+                Map<String, Object> state = new HashMap<>();
+                for (Map.Entry<?, ?> entry : stateMap.entrySet()) {
+                    if (entry.getKey() == null) {
+                        continue;
+                    }
+                    state.put(entry.getKey().toString(), entry.getValue());
+                }
+                if (!state.isEmpty()) {
+                    presetNode.state = state;
+                }
+            }
             presetNodes.add(presetNode);
         }
 

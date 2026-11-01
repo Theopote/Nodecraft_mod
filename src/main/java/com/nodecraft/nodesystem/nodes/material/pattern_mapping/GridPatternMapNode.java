@@ -203,11 +203,11 @@ public class GridPatternMapNode extends BaseNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("gridSize") instanceof Integer value) {
-            this.gridSize = value;
+        if (map.get("gridSize") instanceof Number value) {
+            this.gridSize = value.intValue();
         }
-        if (map.get("lineWidth") instanceof Integer value) {
-            this.lineWidth = value;
+        if (map.get("lineWidth") instanceof Number value) {
+            this.lineWidth = value.intValue();
         }
     }
 }

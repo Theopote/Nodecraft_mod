@@ -221,8 +221,8 @@ public class TweenCurvesNode extends AbstractCurveNode {
     @Override
     public void setNodeState(Object state) {
         if (!(state instanceof java.util.Map<?, ?> map)) return;
-        if (map.get("defaultCount") instanceof Integer value) setDefaultCount(value);
-        if (map.get("defaultSamples") instanceof Integer value) setDefaultSamples(value);
+        if (map.get("defaultCount") instanceof Number value) setDefaultCount(value.intValue());
+        if (map.get("defaultSamples") instanceof Number value) setDefaultSamples(value.intValue());
         if (map.get("reverseA") instanceof Boolean value) setReverseA(value);
         if (map.get("reverseB") instanceof Boolean value) setReverseB(value);
         if (map.get("includeInputs") instanceof Boolean value) setIncludeInputs(value);

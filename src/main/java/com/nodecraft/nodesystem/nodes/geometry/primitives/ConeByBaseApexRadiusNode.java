@@ -56,9 +56,9 @@ public class ConeByBaseApexRadiusNode extends AbstractPrimitiveNode {
     public ConeByBaseApexRadiusNode() {
         super("geometry.primitives.cone");
 
-        addInputPort(new BasePort(INPUT_BASE_CENTER_ID, "Base Center", "Cone base center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_APEX_ID, "Apex", "Cone apex point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Base Radius", "Cone base radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_BASE_CENTER_ID, "Base Center", "Cone base center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_APEX_ID, "Apex", "Cone apex point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Base Radius", "Cone base radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_CONE_ID, "Cone", "Constructed cone geometry", NodeDataType.CONE_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

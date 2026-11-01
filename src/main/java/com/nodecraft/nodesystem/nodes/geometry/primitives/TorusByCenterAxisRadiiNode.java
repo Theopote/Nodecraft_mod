@@ -59,10 +59,10 @@ public class TorusByCenterAxisRadiiNode extends AbstractPrimitiveNode {
     public TorusByCenterAxisRadiiNode() {
         super("geometry.primitives.torus");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Torus center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Symmetry axis direction (tube runs around this axis)", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "Distance from center to tube center", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "Tube cross-section radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Torus center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Symmetry axis direction (tube runs around this axis)", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_MAJOR_RADIUS_ID, "Major Radius", "Distance from center to tube center", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_MINOR_RADIUS_ID, "Minor Radius", "Tube cross-section radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_TORUS_ID, "Torus", "Constructed torus geometry", NodeDataType.TORUS_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

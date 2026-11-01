@@ -129,14 +129,14 @@ abstract class AbstractPrimitiveNode extends BaseNode {
     }
 
     protected static void restoreFiniteDouble(Map<?, ?> map, String key, DoubleConsumer setter) {
-        if (map.get(key) instanceof Double value && Double.isFinite(value)) {
-            setter.accept(value);
+        if (map.get(key) instanceof Number value && Double.isFinite(value.doubleValue())) {
+            setter.accept(value.doubleValue());
         }
     }
 
     protected static void restoreInteger(Map<?, ?> map, String key, java.util.function.IntConsumer setter) {
-        if (map.get(key) instanceof Integer value) {
-            setter.accept(value);
+        if (map.get(key) instanceof Number value) {
+            setter.accept(value.intValue());
         }
     }
 }

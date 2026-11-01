@@ -53,9 +53,9 @@ public class HemisphereByCenterAxisRadiusNode extends AbstractPrimitiveNode {
     public HemisphereByCenterAxisRadiusNode() {
         super("geometry.primitives.hemisphere");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center (lies on the flat circular face)", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Unit direction from the flat face into the dome (solid uses dot(p - center, axis) >= 0)", NodeDataType.VECTOR, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Sphere center (lies on the flat circular face)", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_AXIS_ID, "Axis", "Unit direction from the flat face into the dome (solid uses dot(p - center, axis) >= 0)", NodeDataType.VECTOR, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Sphere radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_HEMISPHERE_ID, "Hemisphere", "Constructed hemisphere geometry", NodeDataType.HEMISPHERE_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

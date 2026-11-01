@@ -74,9 +74,9 @@ public abstract class AbstractPolyhedronNode<T extends GeometryData> extends Abs
         this.outputPrimaryId = outputPrimaryId;
         this.outputSizeId = outputSizeId;
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Polyhedron center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(inputSizeId, inputSizeName, inputSizeDescription, NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_ORIENTATION_ID, "Orientation", "Optional rotation matrix (local -> world)", NodeDataType.MATRIX3, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Polyhedron center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(inputSizeId, inputSizeName, inputSizeDescription, NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_ORIENTATION_ID, "Orientation", "Optional rotation matrix (local -> world)", NodeDataType.MATRIX3, this, false, false));
 
         addOutputPort(new BasePort(outputPrimaryId, outputPrimaryName, outputPrimaryDescription, outputPrimaryType, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

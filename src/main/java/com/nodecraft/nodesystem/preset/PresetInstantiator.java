@@ -156,7 +156,12 @@ public class PresetInstantiator {
                 throw new PresetInstantiationException("Unknown node type: " + nodeDef.type());
             }
 
-            // Set node parameters with substitution
+            // Apply node parameters. Folder presets may store values either as raw values
+            // or wrapped in a {"value": ...} envelope; both are unwrapped into a state bag
+            // so property-backed nodes restore through setNodeState.
+            applyNodeState(node, nodeDef.parameters());
+
+            // Set the input value on the node (port-addressed parameters).
             for (Map.Entry<String, Object> entry : nodeDef.parameters().entrySet()) {
                 String paramName = entry.getKey();
                 Object paramValue = entry.getValue();
@@ -177,6 +182,36 @@ public class PresetInstantiator {
 
         } catch (Exception e) {
             throw new PresetInstantiationException("Failed to create node: " + nodeDef.type(), e);
+        }
+    }
+
+    /**
+     * Applies preset parameters as node state (property bag) so nodes that expose
+     * parameters as {@code @NodeProperty} fields restore them correctly.
+     */
+    @SuppressWarnings("unchecked")
+    private static void applyNodeState(INode node, Map<String, Object> parameters) {
+        if (parameters == null || parameters.isEmpty()) {
+            return;
+        }
+        Map<String, Object> state = new HashMap<>();
+        for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            Object value = entry.getValue();
+            if (value instanceof Map<?, ?> map && map.size() == 1 && map.containsKey("value")) {
+                value = map.get("value");
+            }
+            state.put(entry.getKey(), value);
+        }
+        if (state.isEmpty()) {
+            return;
+        }
+        try {
+            node.setNodeState(state);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to apply node state for node {}: {}", node.getTypeId(), e.getMessage());
         }
     }
 

@@ -52,10 +52,10 @@ public class EllipsoidByCenterRadiiNode extends AbstractPrimitiveNode {
     public EllipsoidByCenterRadiiNode() {
         super("geometry.primitives.ellipsoid");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Ellipsoid center point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipsoid X radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RADIUS_Y_ID, "Radius Y", "Ellipsoid Y radius", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_RADIUS_Z_ID, "Radius Z", "Ellipsoid Z radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Center", "Ellipsoid center point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_X_ID, "Radius X", "Ellipsoid X radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_Y_ID, "Radius Y", "Ellipsoid Y radius", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_Z_ID, "Radius Z", "Ellipsoid Z radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_ELLIPSOID_ID, "Ellipsoid", "Constructed ellipsoid geometry", NodeDataType.ELLIPSOID_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

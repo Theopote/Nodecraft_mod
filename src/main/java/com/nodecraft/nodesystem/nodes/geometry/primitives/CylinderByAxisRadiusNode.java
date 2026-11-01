@@ -56,9 +56,9 @@ public class CylinderByAxisRadiusNode extends AbstractPrimitiveNode {
     public CylinderByAxisRadiusNode() {
         super("geometry.primitives.cylinder");
 
-        addInputPort(new BasePort(INPUT_START_ID, "Start", "Cylinder axis start point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_END_ID, "End", "Cylinder axis end point", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Cylinder radius", NodeDataType.DOUBLE, this));
+        addInputPort(new BasePort(INPUT_START_ID, "Start", "Cylinder axis start point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_END_ID, "End", "Cylinder axis end point", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_RADIUS_ID, "Radius", "Cylinder radius", NodeDataType.DOUBLE, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_CYLINDER_ID, "Cylinder", "Constructed cylinder geometry", NodeDataType.CYLINDER_GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Unified geometry output", NodeDataType.GEOMETRY, this));

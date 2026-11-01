@@ -150,8 +150,8 @@ public class NoiseDisplacePointListNode extends AbstractDeformationNode {
         if (map.get("frequency") instanceof Number value && Double.isFinite(value.doubleValue()) && value.doubleValue() >= 0.0d) {
             frequency = value.doubleValue();
         }
-        if (map.get("seed") instanceof Integer value) {
-            seed = value;
+        if (map.get("seed") instanceof Number value) {
+            seed = value.intValue();
         }
         if (map.get("offsetX") instanceof Number value && Double.isFinite(value.doubleValue())) {
             offset.x = value.doubleValue();

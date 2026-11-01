@@ -127,13 +127,31 @@ public class PresetRegistry {
      * @param preset the preset definition to register
      */
     public void registerPreset(PresetDefinition preset) {
-        presets.put(preset.presetId(), preset);
+        if (preset == null || preset.presetId() == null) {
+            return;
+        }
+
+        PresetDefinition previous = presets.put(preset.presetId(), preset);
+        if (previous != null) {
+            removeFromCategoryIndex(previous);
+        }
 
         // Index by category
         String category = preset.metadata().getCategory();
         presetsByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(preset);
 
         LOGGER.debug("Registered preset: {}", preset.presetId());
+    }
+
+    private void removeFromCategoryIndex(PresetDefinition preset) {
+        List<PresetDefinition> bucket = presetsByCategory.get(preset.metadata().getCategory());
+        if (bucket == null) {
+            return;
+        }
+        bucket.removeIf(existing -> existing.presetId().equals(preset.presetId()));
+        if (bucket.isEmpty()) {
+            presetsByCategory.remove(preset.metadata().getCategory());
+        }
     }
 
     /**

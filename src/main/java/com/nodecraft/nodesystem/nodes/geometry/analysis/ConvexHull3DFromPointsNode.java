@@ -153,8 +153,8 @@ public class ConvexHull3DFromPointsNode extends BaseNode {
         if (!(state instanceof java.util.Map<?, ?> map)) {
             return;
         }
-        if (map.get("maxPoints") instanceof Integer n) {
-            setMaxPoints(n);
+        if (map.get("maxPoints") instanceof Number n) {
+            setMaxPoints(n.intValue());
         }
     }
 }

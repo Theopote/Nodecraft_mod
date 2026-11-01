@@ -145,11 +145,12 @@ public class RelaxPointListNode extends AbstractDeformationNode {
         if (!(state instanceof Map<?, ?> map)) {
             return;
         }
-        if (map.get("neighborsK") instanceof Integer value && value >= 1) {
-            neighborsK = value;
+        if (map.get("neighborsK") instanceof Number raw && raw.intValue() >= 1) {
+            neighborsK = raw.intValue();
         }
-        if (map.get("iterations") instanceof Integer value && value >= 1 && value <= GenerationLimits.MAX_RELAX_ITERATIONS) {
-            iterations = value;
+        if (map.get("iterations") instanceof Number raw
+            && raw.intValue() >= 1 && raw.intValue() <= GenerationLimits.MAX_RELAX_ITERATIONS) {
+            iterations = raw.intValue();
         }
         if (map.get("blend") instanceof Number value) {
             double v = value.doubleValue();

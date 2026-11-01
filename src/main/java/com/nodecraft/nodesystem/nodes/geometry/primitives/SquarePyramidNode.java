@@ -57,11 +57,11 @@ public class SquarePyramidNode extends AbstractPrimitiveNode {
     public SquarePyramidNode() {
         super("geometry.primitives.square_pyramid");
 
-        addInputPort(new BasePort(INPUT_CENTER_ID, "Base Center", "Center point of the square base", NodeDataType.POINT, this));
-        addInputPort(new BasePort(INPUT_BASE_SIZE_ID, "Base Size", "Length of each base edge", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Distance from base plane to apex", NodeDataType.DOUBLE, this));
-        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Construction plane for the square base", NodeDataType.PLANE, this));
-        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to rotate the square base", NodeDataType.VECTOR, this));
+        addInputPort(new BasePort(INPUT_CENTER_ID, "Base Center", "Center point of the square base", NodeDataType.POINT, this, false, false));
+        addInputPort(new BasePort(INPUT_BASE_SIZE_ID, "Base Size", "Length of each base edge", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_HEIGHT_ID, "Height", "Distance from base plane to apex", NodeDataType.DOUBLE, this, false, false));
+        addInputPort(new BasePort(INPUT_PLANE_ID, "Plane", "Construction plane for the square base", NodeDataType.PLANE, this, false, false));
+        addInputPort(new BasePort(INPUT_X_AXIS_ID, "X Axis", "Optional in-plane axis to rotate the square base", NodeDataType.VECTOR, this, false, false));
 
         addOutputPort(new BasePort(OUTPUT_GEOMETRY_ID, "Geometry", "Square pyramid geometry", NodeDataType.GEOMETRY, this));
         addOutputPort(new BasePort(OUTPUT_APEX_ID, "Apex", "Apex point above the base plane", NodeDataType.POINT, this));
